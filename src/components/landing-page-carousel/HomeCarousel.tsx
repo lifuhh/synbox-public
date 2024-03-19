@@ -26,6 +26,7 @@ const HomeCarousel = ({ items }: HomeCarouselProps) => {
 
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false)
 
+  //* UseEffect for full screen mode
   useEffect(() => {
     const handleFullscreenChange = () => {
       // Different browsers have different properties for detecting fullscreen
