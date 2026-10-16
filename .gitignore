@@ -12,6 +12,9 @@ cgpt_training/
 dist
 dist-ssr
 *.local
+.env
+.env.*
+!.env.example
 cgpt_training
 pnpm-lock.yaml
 bun.lockb
@@ -26,3 +29,6 @@ bun.lockb
 *.njsproj
 *.sln
 *.sw?
+
+# Local AI/LLM reference notes for large upgrades (not committed)
+.upgrade-log/

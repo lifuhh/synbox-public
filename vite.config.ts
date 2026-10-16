@@ -1,17 +1,44 @@
+import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
-import jotaiDebugLabel from 'jotai/babel/plugin-debug-label'
-import jotaiReactRefresh from 'jotai/babel/plugin-react-refresh'
-import path from 'path'
-import { defineConfig } from 'vite'
+import jotai from 'jotai-rolldown'
+import ultraciteFmt from 'ultracite/oxfmt'
+import core from 'ultracite/oxlint/core'
+import ultraciteReact from 'ultracite/oxlint/react'
+import shadcn from 'ultracite/oxlint/shadcn'
+import { defineConfig, lazyPlugins } from 'vite-plus'
 
 export default defineConfig({
+  fmt: {
+    ...ultraciteFmt,
+    bracketSameLine: true,
+    ignorePatterns: [...(ultraciteFmt.ignorePatterns ?? []), '.upgrade-log/**'],
+    jsxSingleQuote: true,
+    semi: false,
+    singleQuote: true,
+    sortTailwindcss: {
+      ...(typeof ultraciteFmt.sortTailwindcss === 'object'
+        ? ultraciteFmt.sortTailwindcss
+        : {}),
+      stylesheet: './src/globals.css',
+    },
+  },
+  lint: {
+    env: core.env,
+    extends: [core, ultraciteReact, shadcn],
+    ignorePatterns: [...(core.ignorePatterns ?? []), '.upgrade-log/**'],
+    jsPlugins: [
+      ...(shadcn.jsPlugins ?? []),
+      { name: 'vite-plus', specifier: 'vite-plus/oxlint-plugin' },
+    ],
+    options: { typeAware: true, typeCheck: true },
+    rules: { 'vite-plus/prefer-vite-plus-imports': 'error' },
+  },
   build: {
     chunkSizeWarningLimit: 1000,
-    sourcemap: true,
-    rollupOptions: {
+    rolldownOptions: {
       onLog(level, log, handler) {
         if (
-          log.cause &&
+          log.cause instanceof Error &&
           log.cause.message === `Can't resolve original location of error.`
         ) {
           return
@@ -19,13 +46,12 @@ export default defineConfig({
         handler(level, log)
       },
     },
+    sourcemap: true,
   },
-  plugins: [
-    react({ babel: { plugins: [jotaiDebugLabel, jotaiReactRefresh] } }),
-  ],
+  plugins: lazyPlugins(() => [tailwindcss(), react(), jotai()]),
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'),
+      '@': `${import.meta.dirname}/src`,
     },
   },
 })
