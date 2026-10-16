@@ -4,7 +4,7 @@ const OptimizedThumbnail = ({ src, alt, onClick, className }) => {
   const [isLoading, setIsLoading] = useState(true)
 
   return (
-    <div className='relative aspect-video h-[50px] w-[80px] flex-shrink-0 overflow-hidden rounded-sm'>
+    <div className='relative aspect-video h-[50px] w-[80px] shrink-0 overflow-hidden rounded-xs'>
       {isLoading && (
         <div className='absolute inset-0 animate-pulse bg-gray-800' />
       )}
@@ -15,7 +15,9 @@ const OptimizedThumbnail = ({ src, alt, onClick, className }) => {
           isLoading ? 'opacity-0' : 'opacity-100'
         } ${className || ''}`}
         onClick={onClick}
-        onLoad={() => setIsLoading(false)}
+        onLoad={() => {
+          setIsLoading(false)
+        }}
         loading='lazy'
       />
     </div>

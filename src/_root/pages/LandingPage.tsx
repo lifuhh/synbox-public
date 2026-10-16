@@ -1,63 +1,52 @@
 import HeroGenerateLyricsSection from '@/components/generate-lyrics/HeroGenerateLyricsSection'
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-import HoverTranslateText from '@/components/landing-page/HoverTranslateText'
 import LandingPageCharts from '@/components/landing-page/PopularSongsTable'
 import SongHighlightCarousel from '@/components/landing-page/SongHighlightCarousel'
 import SongsInfiniteGallery from '@/components/landing-page/SongsInfiniteGallery'
-import { Divider } from '@mantine/core'
-import { Helmet } from 'react-helmet-async'
+import { Separator } from '@/components/ui/separator'
+import { cn } from '@/utils/cn'
 
-const LandingPage = () => {
-  return (
-    //* <!-- This is the main container for the landing page -->
-    <section className='anchor-for-top-scroll custom-scrollbar flex flex-1 flex-col overflow-y-scroll md:px-10'>
-      <Helmet>
-        <title>Synbox</title>
-        <meta name='Synbox Homepage' content='Synbox - AI Powered Karaoke' />
-      </Helmet>
-      {/* //? This is the song URL input area >> convert to component */}
-      <HeroGenerateLyricsSection />
-      {/* <Divider
-        my='xs'
-        label={
-          <HoverTranslateText text='おすすめ' revealText='Recommendations' />
-        }
-        labelPosition='center'
-        className='p-4'
-      /> */}
-      {/* //TODO: Figure out how to do the mouseover to reveal different text */}
-      <Divider
-        my='sm'
-        label={
-          <h1 className='font_noto_sans_jp_black_900 unselectable text-2xl font-bold text-foreground'>
-            {/* おすすめ */}
-            Recommendations
-          </h1>
-        }
-        labelPosition='center'
-        className='px-8 pb-6 pt-2'
-      />
-      <section className='mx-auto flex w-full flex-col justify-center gap-4 lg:flex-row '>
-        {/* //? Song Carousel */}
-        <SongHighlightCarousel />
+const SectionDivider = ({
+  label,
+  className,
+}: {
+  label: React.ReactNode
+  className?: string
+}) => (
+  <div className={cn('flex items-center whitespace-nowrap', className)}>
+    <Separator className='flex-1 bg-[#424242]' />
+    <span className='mx-2.5'>{label}</span>
+    <Separator className='flex-1 bg-[#424242]' />
+  </div>
+)
 
-        {/* //? Songs Top 50 Leaderboard */}
-        <LandingPageCharts />
-      </section>
-      <Divider
-        my='xs'
-        label={
-          <h1 className='unselectable text-2xl font-bold text-foreground'>
-            Gallery
-          </h1>
-        }
-        labelPosition='center'
-        className=' px-8 py-2'
-      />
-      {/* //? Infinite Gallery */}
-      <SongsInfiniteGallery />
-      {/* //? Footer with tech used & personal links */}
+const LandingPage = () => (
+  <section className='anchor-for-top-scroll flex custom-scrollbar flex-1 flex-col overflow-y-scroll md:px-10'>
+    <title>Synbox</title>
+    <meta name='Synbox Homepage' content='Synbox - AI Powered Karaoke' />
+    <HeroGenerateLyricsSection />
+    <SectionDivider
+      label={
+        <h1 className='unselectable font_noto_sans_jp_black_900 text-2xl font-bold text-foreground'>
+          Recommendations
+        </h1>
+      }
+      className='my-3 px-8 pt-2 pb-6'
+    />
+    <section className='mx-auto flex w-full flex-col justify-center gap-4 lg:flex-row'>
+      <SongHighlightCarousel />
+
+      <LandingPageCharts />
     </section>
-  )
-}
+    <SectionDivider
+      label={
+        <h1 className='unselectable text-2xl font-bold text-foreground'>
+          Gallery
+        </h1>
+      }
+      className='my-2.5 px-8 py-2'
+    />
+    <SongsInfiniteGallery />
+  </section>
+)
+
 export default LandingPage

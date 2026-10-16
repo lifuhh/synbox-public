@@ -1,74 +1,54 @@
+import { useAtom, useAtomValue } from 'jotai'
+import { RotateCcwClockIcon } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { useNavigate, useParams } from 'react-router'
+
 import LyricsDisplayOverlay from '@/components/lyrics-display/LyricsDisplayOverlay'
 import LyricsVisibilityToggleGroup from '@/components/lyrics-display/LyricsVisibilityToggleGroup'
 import VideoPlayer from '@/components/shared/VideoPlayer'
-import { ToastProps } from '@/components/ui/toast'
+import type { ToastProps } from '@/components/ui/toast'
+import { useToast } from '@/components/ui/use-toast'
 import { useAppContext } from '@/context/AppContext'
 import {
   currentVideoAtom,
-  fullscreenAtom,
   lyricsControlVisibilityAtom,
   lyricsVisibilityAtom,
   mutedAtom,
   romajiVisibilityAtom,
   translationVisibilityAtom,
-  userInteractedWithSettingsAtom,
 } from '@/context/atoms'
-import { handleVideoRoute } from '@/utils/routeHandler.ts'
-import HistoryIcon from '@mui/icons-material/History'
-import { useAtom, useAtomValue } from 'jotai'
-import React, { useCallback, useEffect, useRef, useState } from 'react'
-import { Helmet } from 'react-helmet-async'
-import ReactPlayer from 'react-player'
-import BaseReactPlayer from 'react-player/base'
-import { useNavigate, useParams } from 'react-router-dom'
-
-import { useToast } from '@/components/ui/use-toast'
 import { showWatchHistoryToastAtom } from '@/context/atoms'
+import { handleVideoRoute } from '@/utils/routeHandler.ts'
 
 const PlayerPage = () => {
   const navigate = useNavigate()
   const { videoId } = useParams<{ videoId: string }>()
   const { volume, playerOverlayVisibleHandler } = useAppContext()
 
-  // All useState hooks must be declared before any conditional returns
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [stateVideoId, setStateVideoId] = useState<string | null>(null)
   const [isPlayerReady, setIsPlayerReady] = useState(false)
   const [playing, setPlaying] = useState<boolean>(false)
-  const [seeking, setSeeking] = useState<boolean>(false)
-  const [played, setPlayed] = useState<number>(0)
-  const [loop, setLoop] = useState<boolean>(false)
-  const [duration, setDuration] = useState<number>(0)
+  // Values unread, but these subscriptions re-render VideoPlayer, which re-applies `playing` each render
+  const [, setPlayed] = useState<number>(0)
+  const [, setDuration] = useState<number>(0)
+  const [, setLyricsControlVisibility] = useAtom(lyricsControlVisibilityAtom)
 
-  // Refs
-  const playerRef = useRef<BaseReactPlayer<ReactPlayer> | null>(null)
-  const testRafId = useRef<number>(0)
-  const testCounter = useRef<number>(0)
+  const playerRef = useRef<HTMLVideoElement>(null)
 
-  // Jotai atoms
-  const userInteractedWithSettings = useAtomValue(
-    userInteractedWithSettingsAtom,
-  )
   const [muted, setMuted] = useAtom(mutedAtom)
-  const isFullscreen = useAtomValue(fullscreenAtom)
-  const [lyricsVisibility, setLyricsVisibility] = useAtom(lyricsVisibilityAtom)
-  const [romajiVisibility, setRomajiVisibility] = useAtom(romajiVisibilityAtom)
-  const [translationVisibility, setTranslationVisibility] = useAtom(
-    translationVisibilityAtom,
-  )
-  const [lyricsControlVisibility, setLyricsControlVisibility] = useAtom(
-    lyricsControlVisibilityAtom,
-  )
+  const lyricsVisibility = useAtomValue(lyricsVisibilityAtom)
+  const romajiVisibility = useAtomValue(romajiVisibilityAtom)
+  const translationVisibility = useAtomValue(translationVisibilityAtom)
   const currentVideo = useAtomValue(currentVideoAtom)
 
   const title = currentVideo && currentVideo.title
 
-  //
   const { toast, dismiss } = useToast()
   const toastIdRef = useRef<string | null>(null)
   const [showWatchHistoryToast, setShowWatchHistoryToast] = useAtom(
-    showWatchHistoryToastAtom,
+    showWatchHistoryToastAtom
   )
 
   useEffect(() => {
@@ -78,31 +58,34 @@ const PlayerPage = () => {
       navigate,
       videoId,
       setIsLoading: (loading) => {
-        if (mounted) setIsLoading(loading)
+        if (mounted) {
+          setIsLoading(loading)
+        }
       },
       setError: (err) => {
-        if (mounted) setError(err)
+        if (mounted) {
+          setError(err)
+        }
       },
       setStateVideoId: (id) => {
-        if (mounted) setStateVideoId(id)
+        if (mounted) {
+          setStateVideoId(id)
+        }
       },
       onSuccess: () => {
         if (mounted) {
-          setIsPlayerReady(false) // Reset player ready state
-          setPlaying(false) // Reset playing state
-          setPlayed(0) // Reset played progress
-          // Add any other state resets you need
+          setIsPlayerReady(false)
+          setPlaying(false)
+          setPlayed(0)
         }
       },
     })
 
-    // Cleanup function
     return () => {
       mounted = false
     }
   }, [videoId, navigate])
 
-  // Modified error handling
   if (error) {
     return (
       <div className='flex h-screen flex-col items-center justify-center gap-4'>
@@ -110,71 +93,32 @@ const PlayerPage = () => {
         <p className='text-sm text-gray-600'>Video ID: {videoId}</p>
         <button
           onClick={() => navigate('/')}
-          className='rounded bg-primary px-4 py-2 text-white transition-colors hover:bg-primary/90'>
+          className='rounded-sm bg-primary px-4 py-2 text-white transition-colors hover:bg-primary/90'>
           Return Home
         </button>
       </div>
     )
   }
 
-  // Your existing callback functions
-  const handleToggleLyricsOverlayVisibility = useCallback(() => {
-    const someOn = lyricsVisibility || romajiVisibility || translationVisibility
-    const newState = !someOn
-    setLyricsVisibility(newState)
-    setRomajiVisibility(newState)
-    setTranslationVisibility(newState)
-  }, [
-    lyricsVisibility,
-    romajiVisibility,
-    translationVisibility,
-    setLyricsVisibility,
-    setRomajiVisibility,
-    setTranslationVisibility,
-  ])
-
-  const handleToggleRomajiVisibility = useCallback(() => {
-    setRomajiVisibility((prev) => !prev)
-  }, [setRomajiVisibility])
-
-  const handleToggleTranslationVisibility = useCallback(() => {
-    setTranslationVisibility((prev) => !prev)
-  }, [setTranslationVisibility])
-
-  const handleToggleLyricsVisibility = useCallback(() => {
-    setLyricsVisibility((prev) => !prev)
-  }, [setLyricsVisibility])
-
-  const handlePause = useCallback(() => {
-    setPlaying(false)
-    if (!userInteractedWithSettings) {
-      setLyricsControlVisibility(true)
-    }
-  }, [setLyricsControlVisibility, userInteractedWithSettings])
-
   const handlePlayPause = useCallback(() => {
     const newPlayingState = !playing
     setPlaying(newPlayingState)
-    if (!userInteractedWithSettings) {
-      setLyricsControlVisibility(!newPlayingState)
-    }
-  }, [playing, setLyricsControlVisibility, userInteractedWithSettings])
+    setLyricsControlVisibility(!newPlayingState)
+  }, [playing, setLyricsControlVisibility])
 
   const handlePlay = useCallback(() => {
     setPlaying(true)
-    if (muted) setMuted(false)
-    if (!userInteractedWithSettings) {
-      setLyricsControlVisibility(false)
+    if (muted) {
+      setMuted(false)
     }
-  }, [muted, setMuted, setLyricsControlVisibility, userInteractedWithSettings])
+    setLyricsControlVisibility(false)
+  }, [muted, setMuted, setLyricsControlVisibility])
 
   const handleInitMutedPlay = useCallback(() => {
     setMuted(false)
     playerOverlayVisibleHandler.close()
     handlePlay()
-    if (!userInteractedWithSettings) {
-      setLyricsControlVisibility(false)
-    }
+    setLyricsControlVisibility(false)
 
     const handleToastDismiss = () => {
       setShowWatchHistoryToast(false)
@@ -188,7 +132,7 @@ const PlayerPage = () => {
         title: (
           <div className='flex items-center gap-2'>
             <p>Video added to Watch History</p>
-            <HistoryIcon className='h-6 w-6' />
+            <RotateCcwClockIcon className='h-6 w-6 shrink-0' />
           </div>
         ) as unknown as ToastProps['title'],
         description: (
@@ -211,81 +155,32 @@ const PlayerPage = () => {
     playerOverlayVisibleHandler,
     dismiss,
     setShowWatchHistoryToast,
-    userInteractedWithSettings,
     setMuted,
     toast,
     showWatchHistoryToast,
   ])
 
-  const handleToggleLoop = useCallback(() => {
-    setLoop((prev) => !prev)
-  }, [])
-
   const handleStart = useCallback(() => {
     setPlaying(true)
   }, [])
 
-  const handleSeekChange = useCallback(
-    (value: number) => {
-      const newPlayedTime = parseInt((value * duration).toFixed(0))
-      setPlayed(newPlayedTime)
-      if (playerRef.current) {
-        playerRef.current.seekTo(newPlayedTime)
-      }
-    },
-    [duration],
-  )
-
-  const handleSeekMouseDown = useCallback(() => {
-    setSeeking(true)
-  }, [])
-
-  const handleSeekMouseUp = useCallback(
-    (e: React.MouseEvent<HTMLInputElement>) => {
-      if (playerRef.current) {
-        setSeeking(false)
-        playerRef.current.seekTo(parseFloat(e.currentTarget.value))
-      }
-    },
-    [],
-  )
-
   const handleProgress = useCallback(() => {
-    if (!playerRef.current) return null
-    const secondsLapsed = playerRef.current.getCurrentTime()
+    if (!playerRef.current) {
+      return null
+    }
+    const secondsLapsed = playerRef.current.currentTime
     const curPlayed = Math.floor(parseInt(secondsLapsed.toFixed(0)))
     setPlayed(curPlayed)
   }, [])
 
   const handleEnded = useCallback(() => {
-    setPlaying(loop)
-  }, [loop])
+    setPlaying(false)
+  }, [])
 
   const handleDuration = useCallback((duration: number) => {
     setDuration(duration)
   }, [])
 
-  // RAF effect
-  useEffect(() => {
-    const testAnimationFrameCallback = (timestamp: number) => {
-      testCounter.current++
-      if (playerRef.current) {
-        testRafId.current = requestAnimationFrame(testAnimationFrameCallback)
-      }
-    }
-
-    if (playing) {
-      testRafId.current = requestAnimationFrame(testAnimationFrameCallback)
-    } else {
-      cancelAnimationFrame(testRafId.current)
-    }
-
-    return () => {
-      cancelAnimationFrame(testRafId.current)
-    }
-  }, [playing])
-
-  // Spacebar handler effect
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === ' ' || event.code === 'Space') {
@@ -300,7 +195,6 @@ const PlayerPage = () => {
     }
   }, [handlePlayPause])
 
-  // Prevent spacebar scroll effect
   useEffect(() => {
     const preventSpacebarScroll = (e: KeyboardEvent) => {
       if (e.key === ' ' || e.code === 'Space') {
@@ -314,7 +208,6 @@ const PlayerPage = () => {
     }
   }, [])
 
-  // Loading state
   if (isLoading) {
     return (
       <div className='flex h-screen items-center justify-center'>
@@ -323,25 +216,9 @@ const PlayerPage = () => {
     )
   }
 
-  // Error state
-  if (error) {
-    return (
-      <div className='flex h-screen flex-col items-center justify-center'>
-        <p className='text-red-500'>{error}</p>
-        <button
-          onClick={() => navigate('/')}
-          className='mt-4 rounded bg-primary px-4 py-2 text-white'>
-          Return Home
-        </button>
-      </div>
-    )
-  }
-
   return (
     <>
-      <Helmet>
-        <title>{title ? title : 'Player Page'} | Synbox</title>
-      </Helmet>
+      <title>{`${title ? title : 'Player Page'} | Synbox`}</title>
       <LyricsVisibilityToggleGroup />
 
       {isPlayerReady && (
@@ -354,17 +231,17 @@ const PlayerPage = () => {
         />
       )}
 
-      <div className='relative aspect-video h-full w-full border-none border-opacity-5'>
+      <div className='relative aspect-video h-full w-full border-none'>
         {stateVideoId && (
           <VideoPlayer
             videoId={stateVideoId}
             playerRef={playerRef}
-            loop={loop}
+            loop={false}
             playing={playing}
             volume={volume}
             handleInitMutedPlay={handleInitMutedPlay}
             handlePlay={handlePlay}
-            handlePlayPause={handlePlayPause}
+
             handleProgress={handleProgress}
             handleDuration={handleDuration}
             handleStart={handleStart}

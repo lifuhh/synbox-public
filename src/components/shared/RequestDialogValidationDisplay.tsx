@@ -1,3 +1,7 @@
+import { Info } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router'
+
 import { Button } from '@/components/ui/button'
 import {
   Tooltip,
@@ -5,10 +9,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
-import { VideoInfo } from '@/types'
-import { Info } from 'lucide-react'
-import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import type { VideoInfo } from '@/types'
+
 import { Checkbox } from '../ui/checkbox'
 interface DisplayVideoData {
   title: string
@@ -37,13 +39,9 @@ const RequestDialogValidationDisplay = ({
   const [forceAiTranscription, setForceAiTranscription] = useState(false)
 
   useEffect(() => {
-    // console.log(
-    //   'RequestDialogValidationDisplay mounted with vidInfo:',
-    //   JSON.stringify(vidInfo, null, 2),
-    // )
-
-    // console.log('Mounted with vidInfo:', vidInfo)
-    if (!vidInfo) setError('Video information is missing')
+    if (!vidInfo) {
+      setError('Video information is missing')
+    }
 
     try {
       if (!vidInfo) {
@@ -73,16 +71,10 @@ const RequestDialogValidationDisplay = ({
         passed,
         subtitleInfo: subtitle_info,
       })
-
-      // console.log('Successfully parsed video info:', {
-      //   title,
-      //   id,
-      //   thumbnail,
-      // })
     } catch (error: unknown) {
       console.error('Error processing vidInfo:', error)
       setError(
-        `Error processing video information: ${error instanceof Error ? error.message : 'Unknown error occurred'}`,
+        `Error processing video information: ${error instanceof Error ? error.message : 'Unknown error occurred'}`
       )
     }
   }, [vidInfo])
@@ -124,7 +116,7 @@ const RequestDialogValidationDisplay = ({
           <div
             className='mb-4 aspect-video w-full max-w-lg rounded-lg bg-cover bg-center shadow-md'
             style={{ backgroundImage: `url(${thumbnail})` }}
-            onError={(e: React.SyntheticEvent<HTMLDivElement, Event>) => {
+            onError={(e: React.SyntheticEvent<HTMLDivElement>) => {
               console.error('Error loading thumbnail')
               const target = e.currentTarget
               target.style.backgroundImage = 'none'
@@ -149,9 +141,9 @@ const RequestDialogValidationDisplay = ({
               <Checkbox
                 id='forceAi'
                 checked={forceAiTranscription}
-                onCheckedChange={(checked) =>
+                onCheckedChange={(checked) => {
                   setForceAiTranscription(checked as boolean)
-                }
+                }}
               />
               <label htmlFor='forceAi' className='text-md'>
                 Force AI Transcription
@@ -168,7 +160,7 @@ const RequestDialogValidationDisplay = ({
                     side='bottom'
                     sideOffset={10}
                     align='center'>
-                    <p className='text-pretty text-center'>
+                    <p className='text-center text-pretty'>
                       Use only when lyrics in next step is not Japanese
                     </p>
                   </TooltipContent>
@@ -197,7 +189,7 @@ const InfoItem = ({
 }: InfoItemProps) => (
   <div className='flex flex-col'>
     <span className='text-sm text-gray-500'>{label}</span>
-    <span className={`font-medium ${valueClassName} pt-[1px]`}>
+    <span className={`font-medium ${valueClassName} pt-px`}>
       {typeof value === 'object' ? value : value || fallback}
     </span>
   </div>

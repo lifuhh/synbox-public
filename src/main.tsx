@@ -1,7 +1,6 @@
-import { MantineProvider } from '@mantine/core'
 import ReactDOM from 'react-dom/client'
-import { HelmetProvider } from 'react-helmet-async'
-import { BrowserRouter } from 'react-router-dom'
+import { BrowserRouter } from 'react-router'
+
 import App from './App'
 import AppProvider from './context/AppContext'
 import { QueryProvider } from './lib/react-query/QueryProvider'
@@ -9,16 +8,12 @@ import ErrorBoundary from './test_stuff/ErrorBoundary'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <BrowserRouter>
-    <HelmetProvider>
-      <MantineProvider forceColorScheme='dark'>
-        <AppProvider>
-          <QueryProvider>
-            <ErrorBoundary>
-              <App />
-            </ErrorBoundary>
-          </QueryProvider>
-        </AppProvider>
-      </MantineProvider>
-    </HelmetProvider>
-  </BrowserRouter>,
+    <AppProvider>
+      <QueryProvider>
+        <ErrorBoundary>
+          <App />
+        </ErrorBoundary>
+      </QueryProvider>
+    </AppProvider>
+  </BrowserRouter>
 )

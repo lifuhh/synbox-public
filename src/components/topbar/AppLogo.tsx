@@ -1,5 +1,6 @@
 import React from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router'
+
 import { SynboxLogo } from '../svgicons'
 
 const AppLogo: React.FC = () => {
@@ -9,9 +10,8 @@ const AppLogo: React.FC = () => {
   const handleOnClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
     event.preventDefault()
     if (location.pathname === '/') {
-      // Find the LandingPage component and scroll it to the top
       const landingPage = document.querySelector(
-        '.anchor-for-top-scroll',
+        '.anchor-for-top-scroll'
       ) as HTMLElement
       if (landingPage) {
         landingPage.scrollTo({ top: 0, behavior: 'smooth' })

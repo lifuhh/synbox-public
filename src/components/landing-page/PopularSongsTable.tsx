@@ -1,10 +1,11 @@
+import { PlayIcon } from 'lucide-react'
+import React, { useEffect, useRef, useState } from 'react'
+import { useNavigate } from 'react-router'
+
+import DotsLoader from '@/components/shared/DotsLoader'
 import { Button } from '@/components/ui/button'
 import { useOverflow } from '@/hooks/useOverflow'
 import { useGetChartsPlaylist } from '@/lib/react-query/queriesAndMutations'
-import { Loader } from '@mantine/core'
-import PlayArrowIcon from '@mui/icons-material/PlayArrow'
-import React, { useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 
 const LandingPageCharts: React.FC = () => {
   const navigate = useNavigate()
@@ -15,12 +16,11 @@ const LandingPageCharts: React.FC = () => {
     navigate(`/v/${videoId}`)
   }
 
-  // Calculate the height for 6 items
-  const tableBodyHeight = 6 * 55 // Assuming each row is 52px
+  const tableBodyHeight = 6 * 55
 
   return (
-    <div className='w-full rounded-md border border-primary/30 bg-background lg:ml-6 lg:mt-2 lg:w-5/12 xl:w-4/12'>
-      <div className='bg-dark-3 relative overflow-hidden rounded-md bg-opacity-15'>
+    <div className='w-full rounded-md border border-primary/30 bg-background lg:mt-2 lg:ml-6 lg:w-5/12 xl:w-4/12'>
+      <div className='bg-dark-3 relative overflow-hidden rounded-md'>
         <table
           className='w-full border-collapse'
           style={{ tableLayout: 'fixed' }}>
@@ -51,11 +51,11 @@ const LandingPageCharts: React.FC = () => {
                 ? Array(6)
                     .fill(null)
                     .map((_, index) => (
-                      <tr key={index} className='h-13 '>
+                      <tr key={index}>
                         <td colSpan={2} className='py-2'>
                           {index === 2 && (
                             <div className='flex justify-center'>
-                              <Loader color='pink' size='lg' type='dots' />
+                              <DotsLoader color='#c2255c' size='lg' />
                             </div>
                           )}
                         </td>
@@ -72,7 +72,7 @@ const LandingPageCharts: React.FC = () => {
                     />
                   ))}
             </tbody>
-            <caption className='mb-2 mt-1 caption-bottom text-sm text-gray-300'>
+            <caption className='mt-1 mb-2 caption-bottom text-sm text-gray-300'>
               Source: Top 100 Japan YouTube
             </caption>
           </table>
@@ -101,7 +101,7 @@ const SongRow = ({ song, onPlayClick }: SongRowProps) => {
     const checkOverflow = () => {
       if (textRef.current && containerRef.current) {
         setIsOverflowing(
-          textRef.current.scrollWidth > containerRef.current.clientWidth,
+          textRef.current.scrollWidth > containerRef.current.clientWidth
         )
       }
     }
@@ -115,7 +115,7 @@ const SongRow = ({ song, onPlayClick }: SongRowProps) => {
   }, [song.title])
 
   return (
-    <tr className='playlist-item h-13 bg-card/80 text-accent-foreground hover:bg-muted-foreground/20'>
+    <tr className='playlist-item bg-card/80 text-accent-foreground hover:bg-muted-foreground/20'>
       <td className='p-2'>
         <div
           ref={containerRef}
@@ -133,9 +133,9 @@ const SongRow = ({ song, onPlayClick }: SongRowProps) => {
         <Button
           variant='link'
           size='icon'
-          className='flex-shrink-0 bg-secondary'
+          className='shrink-0 bg-secondary'
           onClick={onPlayClick(song.vidURL)}>
-          <PlayArrowIcon className='h-4 w-4' />
+          <PlayIcon className='size-6 shrink-0 fill-current' />
         </Button>
       </td>
     </tr>

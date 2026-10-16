@@ -1,8 +1,4 @@
-import { useOverflow } from '@/hooks/useOverflow'
-import { InfiniteScrollGalleryProps } from '@/types'
-import { cn } from '@/utils/cn'
-import { Loader } from '@mantine/core'
-import { AnimatePresence, motion } from 'framer-motion'
+import { AnimatePresence, motion } from 'motion/react'
 import React, {
   memo,
   useCallback,
@@ -11,41 +7,48 @@ import React, {
   useRef,
   useState,
 } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router'
 
-// Get responsive columns based on screen width (matching your CSS classes)
+import DotsLoader from '@/components/shared/DotsLoader'
+import { useOverflow } from '@/hooks/useOverflow'
+import type { InfiniteScrollGalleryProps } from '@/types'
+import { cn } from '@/utils/cn'
+
 const useResponsiveColumns = () => {
-  const [columns, setColumns] = useState(3) // Default to 3 since most screens show 3
+  const [columns, setColumns] = useState(3)
 
   useEffect(() => {
     const updateColumns = () => {
       const width = window.innerWidth
-      if (width < 640)
-        setColumns(1) // sm: w-full (1 column)
-      else if (width < 1024)
-        setColumns(2) // sm: w-1/2 (2 columns)
-      else if (width < 1536)
-        setColumns(3) // lg/xl: w-1/3 (3 columns)
-      else setColumns(4) // 2xl: w-1/4 (4 columns)
+      if (width < 640) {
+        setColumns(1)
+      } else if (width < 1024) {
+        setColumns(2)
+      } else if (width < 1536) {
+        setColumns(3)
+      } else {
+        setColumns(4)
+      }
     }
 
     updateColumns()
     window.addEventListener('resize', updateColumns)
-    return () => window.removeEventListener('resize', updateColumns)
+    return () => {
+      window.removeEventListener('resize', updateColumns)
+    }
   }, [])
 
   return columns
 }
 
-// Virtual Grid Hook - NO THROTTLING, immediate updates
 const useVirtualGrid = ({
   items,
   containerHeight,
   estimatedRowHeight = 280,
   columnsPerRow,
-  overscan = 6, // Large overscan for fast scrolling
+  overscan = 6,
 }: {
-  items: any[]
+  items: unknown[]
   containerHeight: number
   estimatedRowHeight?: number
   columnsPerRow: number
@@ -55,14 +58,12 @@ const useVirtualGrid = ({
 
   const totalRows = Math.ceil(items.length / columnsPerRow)
 
-  // Aggressive overscan calculation for smooth fast scrolling
   const visibleRange = useMemo(() => {
     const visibleRows = Math.ceil(containerHeight / estimatedRowHeight)
 
-    // Large buffer zones to prevent blank spaces during fast scrolling
     const startRow = Math.max(
       0,
-      Math.floor(scrollTop / estimatedRowHeight) - overscan,
+      Math.floor(scrollTop / estimatedRowHeight) - overscan
     )
     const endRow = Math.min(startRow + visibleRows + overscan * 2, totalRows)
 
@@ -112,10 +113,9 @@ export const VirtualInfiniteScrollGallery = ({
       containerHeight,
       estimatedRowHeight: 280,
       columnsPerRow: columns,
-      overscan: 6, // Large overscan for smooth scrolling
+      overscan: 6,
     })
 
-  // Update container height on mount and resize
   useEffect(() => {
     const updateHeight = () => {
       if (containerRef.current) {
@@ -125,10 +125,11 @@ export const VirtualInfiniteScrollGallery = ({
 
     updateHeight()
     window.addEventListener('resize', updateHeight)
-    return () => window.removeEventListener('resize', updateHeight)
+    return () => {
+      window.removeEventListener('resize', updateHeight)
+    }
   }, [])
 
-  // Measure actual content height after render
   useEffect(() => {
     if (contentRef.current) {
       setActualContentHeight(contentRef.current.offsetHeight)
@@ -137,20 +138,18 @@ export const VirtualInfiniteScrollGallery = ({
 
   const handleGalleryItemClick = useCallback(
     (videoId: string) => () => {
-      navigate(`/v/${videoId}`, { state: { videoId: videoId } })
+      navigate(`/v/${videoId}`, { state: { videoId } })
     },
-    [navigate],
+    [navigate]
   )
 
-  // IMMEDIATE scroll updates - NO throttling for responsive scrolling
   const handleScroll = useCallback(
     (e: React.UIEvent<HTMLDivElement>) => {
-      const scrollTop = e.currentTarget.scrollTop
-      setScrollTop(scrollTop) // Update immediately on every scroll event
+      const { scrollTop } = e.currentTarget
+      setScrollTop(scrollTop)
 
-      // Check if we need to fetch more data (infinite scroll)
-      const scrollHeight = e.currentTarget.scrollHeight
-      const clientHeight = e.currentTarget.clientHeight
+      const { scrollHeight } = e.currentTarget
+      const { clientHeight } = e.currentTarget
       const scrollBottom = scrollTop + clientHeight
 
       if (
@@ -161,19 +160,16 @@ export const VirtualInfiniteScrollGallery = ({
         fetchNextPage()
       }
     },
-    [setScrollTop, hasNextPage, isFetchingNextPage, fetchNextPage],
+    [setScrollTop, hasNextPage, isFetchingNextPage, fetchNextPage]
   )
 
-  // Get visible items
   const visibleItems = items.slice(
     visibleRange.startIndex,
-    visibleRange.endIndex,
+    visibleRange.endIndex
   )
 
-  // Calculate offset for virtual positioning
   const offsetY = visibleRange.startRow * estimatedRowHeight
 
-  // Calculate total height including loading indicator
   const totalHeightWithLoader = totalHeight + (isFetchingNextPage ? 80 : 0)
 
   return (
@@ -182,9 +178,7 @@ export const VirtualInfiniteScrollGallery = ({
       className={cn('custom-scrollbar overflow-auto px-4', className)}
       onScroll={handleScroll}
       style={{ height: '100%' }}>
-      {/* Virtual container with total height including loader */}
       <div style={{ height: totalHeightWithLoader, position: 'relative' }}>
-        {/* Visible items container - positioned to maintain scroll illusion */}
         <div
           ref={contentRef}
           className='flex flex-wrap py-2 pt-4'
@@ -196,10 +190,14 @@ export const VirtualInfiniteScrollGallery = ({
             const actualIndex = visibleRange.startIndex + index
             return (
               <div
-                key={item?.videoId} // Stable key to prevent remounting
+                key={item?.videoId}
                 className='relative w-full p-3 sm:w-1/2 lg:w-1/3 xl:w-1/3 2xl:w-1/4'
-                onMouseEnter={() => setHoveredIndex(actualIndex)}
-                onMouseLeave={() => setHoveredIndex(null)}
+                onMouseEnter={() => {
+                  setHoveredIndex(actualIndex)
+                }}
+                onMouseLeave={() => {
+                  setHoveredIndex(null)
+                }}
                 onClick={handleGalleryItemClick(item?.videoId)}>
                 <AnimatePresence>
                   {hoveredIndex === actualIndex && (
@@ -234,15 +232,14 @@ export const VirtualInfiniteScrollGallery = ({
           })}
         </div>
 
-        {/* Loading indicator positioned immediately after actual content */}
         {isFetchingNextPage && (
           <div
-            className='absolute left-0 right-0 flex items-center justify-center py-4'
+            className='absolute right-0 left-0 flex items-center justify-center py-4'
             style={{
               top: actualContentHeight + offsetY,
               height: '80px',
             }}>
-            <Loader color='white' size='xl' type='dots' />
+            <DotsLoader size='xl' />
           </div>
         )}
       </div>
@@ -250,26 +247,23 @@ export const VirtualInfiniteScrollGallery = ({
   )
 }
 
-// Keep existing Card components exactly the same
-export const Card = ({
+const Card = ({
   className,
   children,
 }: {
   className?: string
   children: React.ReactNode
-}) => {
-  return (
-    <div
-      className={cn(
-        'playlist-item border-muted-foreground relative z-20 w-full overflow-hidden rounded-xl border bg-card p-4 transition-colors duration-500 hover:border-ring',
-        className,
-      )}>
-      {children}
-    </div>
-  )
-}
+}) => (
+  <div
+    className={cn(
+      'relative z-20 w-full playlist-item overflow-hidden rounded-xl border bg-card p-4 transition-colors duration-500 hover:border-ring',
+      className
+    )}>
+    {children}
+  </div>
+)
 
-export const CardTitle = memo(
+const CardTitle = memo(
   ({ className, children }: { className?: string; children: string }) => {
     const textRef = useRef<HTMLSpanElement>(null)
     const containerRef = useRef<HTMLDivElement>(null)
@@ -280,31 +274,13 @@ export const CardTitle = memo(
       <div
         ref={containerRef}
         className={cn(
-          'marquee unhighlightable font-bold tracking-wide text-zinc-100',
-          className,
+          'marquee font-bold tracking-wide text-zinc-100 unhighlightable',
+          className
         )}>
         <span ref={textRef} className='whitespace-nowrap'>
           {children}
         </span>
       </div>
     )
-  },
+  }
 )
-
-export const CardDescription = ({
-  className,
-  children,
-}: {
-  className?: string
-  children: React.ReactNode
-}) => {
-  return (
-    <p
-      className={cn(
-        'mt-8 text-sm leading-relaxed tracking-wide text-zinc-400',
-        className,
-      )}>
-      {children}
-    </p>
-  )
-}

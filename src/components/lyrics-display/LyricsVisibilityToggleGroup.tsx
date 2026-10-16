@@ -1,4 +1,10 @@
+import { useAtom } from 'jotai'
+import { ChevronsUpIcon } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router'
+
 import { Button } from '@/components/ui/button'
+import { Separator } from '@/components/ui/separator'
 import { Slider } from '@/components/ui/slider'
 import {
   ToastAction,
@@ -8,13 +14,9 @@ import {
 import { ToggleGroup } from '@/components/ui/toggle-group'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { useToast } from '@/components/ui/use-toast'
-
-import { LyricsVisibilityControlButton } from './LyricsVisibilityControlButton'
-
 import {
   addFavoriteAtom,
   currentVideoAtom,
-  favoritesAtom,
   fontSizeMultiplierAtomWithPersistence,
   isFavoriteAtom,
   lyricsControlVisibilityAtom,
@@ -25,31 +27,26 @@ import {
   translationIsEnglishAtom,
   translationVisibilityAtom,
 } from '@/context/atoms'
-import { Divider } from '@mantine/core'
-import KeyboardDoubleArrowUpIcon from '@mui/icons-material/KeyboardDoubleArrowUp'
-import { useAtom } from 'jotai'
-import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+
+import { LyricsThemePicker } from './LyricsThemePicker'
+import { LyricsVisibilityControlButton } from './LyricsVisibilityControlButton'
 
 const LyricsVisibilityToggleGroup = () => {
   const navigate = useNavigate()
   const { toast } = useToast()
   const [isOpen, setIsOpen] = useState(true)
-  const [hoveredButton, setHoveredButton] = useState(null)
+  const [hoveredButton] = useState(null)
 
   const [fontSizeMultiplier, setFontSizeMultiplier] = useAtom(
-    fontSizeMultiplierAtomWithPersistence,
+    fontSizeMultiplierAtomWithPersistence
   )
 
   const [currentVideo] = useAtom(currentVideoAtom)
-  const [favorites] = useAtom(favoritesAtom)
   const [, addFavorite] = useAtom(addFavoriteAtom)
   const [, removeFavorite] = useAtom(removeFavoriteAtom)
   const [isFavorite] = useAtom(isFavoriteAtom)
 
-  const [lyricsControlVisible, setLyricsControlVisible] = useAtom(
-    lyricsControlVisibilityAtom,
-  )
+  const [, setLyricsControlVisible] = useAtom(lyricsControlVisibilityAtom)
 
   const [lyricsToggleValues, setLyricsToggleValues] = useState([
     'returnHomeButton',
@@ -63,13 +60,13 @@ const LyricsVisibilityToggleGroup = () => {
   const [isLyricsVisible, setLyricsVisible] = useAtom(lyricsVisibilityAtom)
   const [isRomajiVisible, setRomajiVisible] = useAtom(romajiVisibilityAtom)
   const [isLyricsDisplayBottom, setIsLyricsDisplayBottom] = useAtom(
-    lyricsDisplayBottomAtom,
+    lyricsDisplayBottomAtom
   )
   const [isTranslationVisible, setTranslationVisible] = useAtom(
-    translationVisibilityAtom,
+    translationVisibilityAtom
   )
   const [isTranslationEnglish, setTranslationIsEnglish] = useAtom(
-    translationIsEnglishAtom,
+    translationIsEnglishAtom
   )
 
   const handleFontSizeChange = (value) => {
@@ -82,7 +79,7 @@ const LyricsVisibilityToggleGroup = () => {
 
   const handleToggleDrawer = () => {
     setIsOpen(!isOpen)
-    setLyricsControlVisible(true) // Ensure controls remain visible when drawer is open
+    setLyricsControlVisible(true)
   }
 
   const handleShare = async () => {
@@ -92,7 +89,7 @@ const LyricsVisibilityToggleGroup = () => {
         title: 'Copied URL to clipboard',
         duration: 1500,
       })
-    } catch (err) {
+    } catch {
       toast({
         title: 'Error',
         description: 'Failed to copy link to clipboard',
@@ -103,7 +100,9 @@ const LyricsVisibilityToggleGroup = () => {
   }
 
   const handleBookmark = () => {
-    if (!currentVideo) return
+    if (!currentVideo) {
+      return
+    }
 
     if (isFavorite(currentVideo.videoId)) {
       const videoToRemove = currentVideo
@@ -116,10 +115,6 @@ const LyricsVisibilityToggleGroup = () => {
             altText='Undo removal'
             onClick={() => {
               addFavorite(videoToRemove)
-              // toast({
-              //   title: 'Restored Bookmark',
-              //   duration: 1500,
-              // })
             }}>
             Undo
           </ToastAction>
@@ -137,10 +132,6 @@ const LyricsVisibilityToggleGroup = () => {
             altText='Undo add'
             onClick={() => {
               removeFavorite(videoToAdd.videoId)
-              // toast({
-              //   title: 'Bookmark Removed',
-              //   duration: 1500,
-              // })
             }}>
             Undo
           </ToastAction>
@@ -154,16 +145,20 @@ const LyricsVisibilityToggleGroup = () => {
     setLyricsToggleValues(
       ['lyrics', 'romaji', 'translation'].filter((value) => {
         switch (value) {
-          case 'lyrics':
+          case 'lyrics': {
             return isLyricsVisible
-          case 'romaji':
+          }
+          case 'romaji': {
             return isRomajiVisible
-          case 'translation':
+          }
+          case 'translation': {
             return isTranslationVisible
-          default:
+          }
+          default: {
             return false
+          }
         }
-      }),
+      })
     )
   }, [isLyricsVisible, isRomajiVisible, isTranslationVisible])
 
@@ -185,39 +180,9 @@ const LyricsVisibilityToggleGroup = () => {
     setTranslationIsEnglish(!isTranslationEnglish)
   }
 
-  const excludedButtons = [
-    'translationLanguage',
-    'lyricsPosition',
-    'returnHomeButton',
-    'shareButton',
-    'bookmarkButton',
-  ]
-
-  const getButtonStyle = (buttonId) => {
-    const isHovered = hoveredButton === buttonId
-    const isActive = lyricsToggleValues.includes(buttonId)
-    const isExcludedButton = excludedButtons.includes(buttonId)
-
-    // Special handling for bookmark button when currentVideo doesn't exist
-    if (buttonId === 'bookmarkButton' && !currentVideo) {
-      return {
-        opacity: 0.3, // Matches disabled button opacity
-        cursor: 'not-allowed',
-        transform: 'scale(1)',
-        transition: 'opacity 0.15s ease-in-out, transform 0.15s ease-in-out',
-      }
-    }
-
-    return {
-      opacity: isExcludedButton || isActive ? 1 : isHovered ? 0.6 : 0.4,
-      transform: isHovered ? 'scale(1.1)' : 'scale(1)',
-      transition: 'opacity 0.15s ease-in-out, transform 0.15s ease-in-out',
-    }
-  }
-
   return (
     <ToastProvider>
-      <div className='fixed left-0 top-1/2 z-50 -translate-y-1/2 transform'>
+      <div className='fixed top-1/2 left-0 z-50 -translate-y-1/2 transform'>
         <div
           className={`flex transform items-center transition-transform duration-300 ease-in-out ${
             isOpen ? 'translate-x-0' : '-translate-x-[calc(100%-2.5rem)]'
@@ -245,14 +210,17 @@ const LyricsVisibilityToggleGroup = () => {
                     isTranslationVisible={isTranslationVisible}
                   />
 
-                  <Divider size='sm' className='w-full border-primary' />
+                  <Separator
+                    decorative={false}
+                    className='h-0.5 w-full bg-primary'
+                  />
 
                   <LyricsVisibilityControlButton
                     id='translationLanguage'
                     value='translationLanguage'
                     onClick={handleTranslationLanguageToggle}
                     isActive={lyricsToggleValues.includes(
-                      'translationLanguage',
+                      'translationLanguage'
                     )}
                     isHovered={hoveredButton === 'translationLanguage'}
                     currentVideo={currentVideo}
@@ -321,7 +289,10 @@ const LyricsVisibilityToggleGroup = () => {
                     isTranslationVisible={isTranslationVisible}
                   />
 
-                  <Divider size='sm' className='w-full border-primary' />
+                  <Separator
+                    decorative={false}
+                    className='h-0.5 w-full bg-primary'
+                  />
 
                   <LyricsVisibilityControlButton
                     id='bookmarkButton'
@@ -356,30 +327,35 @@ const LyricsVisibilityToggleGroup = () => {
               </div>
             </TooltipProvider>
           </div>
-          <div className='flex h-56 flex-col items-center justify-center space-y-2'>
-            <span className='unselectable text-2xl font-semibold text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]'>
-              A
-            </span>
-            <Slider
-              className='V cursor-pointer rounded-lg'
-              min={0.4}
-              max={1.6}
-              step={0.01}
-              value={[fontSizeMultiplier]}
-              onValueChange={handleFontSizeChange}
-              orientation='vertical'
-            />
-            <span className='unselectable text-sm font-semibold text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]'>
-              A
-            </span>
+          <div className='flex flex-col items-center space-y-4'>
+            <div className='flex h-56 flex-col items-center justify-center space-y-2'>
+              <span className='unselectable text-2xl font-semibold text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]'>
+                A
+              </span>
+              <Slider
+                className='V cursor-pointer rounded-lg'
+                min={0.4}
+                max={1.6}
+                step={0.01}
+                value={[fontSizeMultiplier]}
+                onValueChange={handleFontSizeChange}
+                orientation='vertical'
+              />
+              <span className='unselectable text-sm font-semibold text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]'>
+                A
+              </span>
+            </div>
+            <TooltipProvider delayDuration={190}>
+              <LyricsThemePicker />
+            </TooltipProvider>
           </div>
-          {/* Toggle button */}
           <Button
             variant='ghost'
             onClick={handleToggleDrawer}
             className='ml-1 h-10 w-10 transition-transform duration-300 hover:scale-110 hover:bg-transparent hover:outline-primary'>
-            <KeyboardDoubleArrowUpIcon
-              className={`transform stroke-primary stroke-1 transition-transform duration-300 ${
+            <ChevronsUpIcon
+              strokeWidth={2.5}
+              className={`size-6 shrink-0 transform text-primary transition-transform duration-300 ${
                 isOpen ? '-rotate-90' : 'rotate-90'
               }`}
             />

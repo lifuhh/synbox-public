@@ -1,6 +1,7 @@
-import { streamAnnotateVideoById } from '@/lib/synbox-flask/api'
 import { useMutation } from '@tanstack/react-query'
 import { useCallback, useEffect, useRef, useState } from 'react'
+
+import { streamAnnotateVideoById } from '@/lib/synbox-flask/api'
 
 interface AnnotationMutationVariables {
   vidId: string
@@ -15,7 +16,9 @@ export const useStreamAnnotateApi = () => {
   const [engTranslation, setEngTranslation] = useState<string[] | null>(null)
   const [chiTranslation, setChiTranslation] = useState<string[] | null>(null)
   const [romajiLyrics, setRomajiLyrics] = useState<string[] | null>(null)
-  const [kanjiAnnotations, setKanjiAnnotations] = useState<string[] | null>(null)
+  const [kanjiAnnotations, setKanjiAnnotations] = useState<string[] | null>(
+    null
+  )
   const [error, setError] = useState<string | null>(null)
   const [currentTask, setCurrentTask] = useState<string | null>(null)
 
@@ -23,10 +26,12 @@ export const useStreamAnnotateApi = () => {
   const streamTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const retryCountRef = useRef(0)
   const currentRequestRef = useRef<AnnotationMutationVariables | null>(null)
-  const mutateRef = useRef<((params: AnnotationMutationVariables) => void) | null>(null)
+  const mutateRef = useRef<
+    ((params: AnnotationMutationVariables) => void) | null
+  >(null)
 
   const MAX_RETRIES = 3
-  const STREAM_TIMEOUT = 300000 // 6mins
+  const STREAM_TIMEOUT = 300_000
 
   const resetStream = useCallback(() => {
     setIsStreaming(false)
@@ -75,7 +80,6 @@ export const useStreamAnnotateApi = () => {
         mutateRef.current
       ) {
         retryCountRef.current++
-        // console.log(`Retrying stream (attempt ${retryCountRef.current})...`)
         mutateRef.current(currentRequestRef.current)
       } else {
         handleError('Stream timeout reached after multiple retries')
@@ -84,7 +88,11 @@ export const useStreamAnnotateApi = () => {
   }, [handleError])
 
   const mutation = useMutation({
-    mutationFn: async ({ vidId, lyrics, timestampedLyrics }: AnnotationMutationVariables) => {
+    mutationFn: async ({
+      vidId,
+      lyrics,
+      timestampedLyrics,
+    }: AnnotationMutationVariables) => {
       resetStream()
       currentRequestRef.current = { vidId, lyrics, timestampedLyrics }
       setIsStreaming(true)
@@ -98,26 +106,27 @@ export const useStreamAnnotateApi = () => {
           lyrics,
           timestampedLyrics,
           (message) => {
-            // console.log('Stream update:', message)
             setUpdateMessages((prev) => [...prev, message])
           },
           (info) => {
-            // console.log('Received annotation info:', info)
             switch (info.type) {
-              case 'eng_translation':
+              case 'eng_translation': {
                 setEngTranslation(info.data)
                 break
-              case 'chi_translation':
+              }
+              case 'chi_translation': {
                 setChiTranslation(info.data)
                 break
-              case 'romaji_lyrics':
+              }
+              case 'romaji_lyrics': {
                 setRomajiLyrics(info.data)
                 break
-              case 'kanji_annotations':
+              }
+              case 'kanji_annotations': {
                 setKanjiAnnotations(info.data)
                 break
+              }
             }
-            // Reset timeout when we receive data
             if (streamTimeoutRef.current) {
               clearTimeout(streamTimeoutRef.current)
             }
@@ -127,15 +136,12 @@ export const useStreamAnnotateApi = () => {
             handleError(err)
           },
           (task) => {
-            // console.log('Task update:', task)
             setCurrentTask(task)
           },
           abortControllerRef.current.signal
         )
       } catch (err) {
-        if (err instanceof Error && err.name === 'AbortError') {
-          // console.log('Stream was aborted')
-        } else {
+        if (!(err instanceof Error && err.name === 'AbortError')) {
           console.error('Mutation error:', err)
           handleError(err)
         }
@@ -148,25 +154,24 @@ export const useStreamAnnotateApi = () => {
     onError: (err: unknown) => {
       console.error('Mutation error:', err)
       handleError(err)
-    }
+    },
   })
 
-  // Store mutation.mutate in ref to avoid dependency cycles
   useEffect(() => {
     mutateRef.current = mutation.mutate
   }, [mutation.mutate])
 
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
+  useEffect(
+    () => () => {
       if (streamTimeoutRef.current) {
         clearTimeout(streamTimeoutRef.current)
       }
       if (abortControllerRef.current) {
         abortControllerRef.current.abort()
       }
-    }
-  }, [])
+    },
+    []
+  )
 
   return {
     isStreaming,

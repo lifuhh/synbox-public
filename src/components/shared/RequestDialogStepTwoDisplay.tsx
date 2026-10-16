@@ -1,3 +1,7 @@
+import { ChevronDown, ChevronUp, PartyPopper } from 'lucide-react'
+import React, { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router'
+
 import { Button } from '@/components/ui/button'
 import {
   Collapsible,
@@ -5,9 +9,7 @@ import {
   CollapsibleTrigger,
 } from '@/components/ui/collapsible'
 import { useStreamTranscriptionApi } from '@/hooks/useStreamTranscriptionApi'
-import { ChevronDown, ChevronUp, PartyPopper } from 'lucide-react'
-import React, { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+
 import RequestDialogLyricsDisplay from './RequestDialogLyricsDisplay'
 import UpdateMessagesDisplay from './UpdateMessagesDisplay'
 
@@ -68,7 +70,6 @@ const RequestDialogStepTwoDisplay: React.FC<
     setTranscriptionComplete(false)
 
     if (id && subtitleInfo) {
-      // console.log('Initiating transcription for id:', id)
       mutate({
         id,
         subtitleInfo,
@@ -84,23 +85,12 @@ const RequestDialogStepTwoDisplay: React.FC<
       lyricsInfo.lyrics &&
       lyricsInfo.timestamped_lyrics
     ) {
-      // console.log('Processing received lyrics info')
-      // console.log(lyricsInfo)
       setCurrentLyrics(lyricsInfo.lyrics)
       setCurrentTimestampedLyrics(lyricsInfo.timestamped_lyrics)
       onLyricsUpdate(lyricsInfo.lyrics, lyricsInfo.timestamped_lyrics)
       setTranscriptionComplete(true)
     }
   }, [isStreaming, lyricsInfo, onLyricsUpdate])
-
-  const handleLyricsChange = (
-    updatedLyrics: string[],
-    updatedTimestampedLyrics: Lyric[],
-  ) => {
-    setCurrentLyrics(updatedLyrics)
-    setCurrentTimestampedLyrics(updatedTimestampedLyrics)
-    onLyricsUpdate(updatedLyrics, updatedTimestampedLyrics)
-  }
 
   const handleRetry = () => {
     if (vidInfo && vidInfo.full_vid_info) {
@@ -113,14 +103,6 @@ const RequestDialogStepTwoDisplay: React.FC<
   }
 
   const renderContent = () => {
-    // Debug log the current render state
-    // console.log('Rendering content with state:', {
-    //   isStreaming,
-    //   error,
-    //   transcriptionComplete,
-    //   hasLyrics: currentLyrics.length > 0,
-    // })
-
     if (error) {
       return (
         <div className='mb-4 text-center text-red-500'>
@@ -142,7 +124,6 @@ const RequestDialogStepTwoDisplay: React.FC<
               ? [updateMessages[updateMessages.length - 1]]
               : ['Processing...']
           }
-          loaderType='dots'
           loaderSize='md'
           textSize='md'
           verticalMargin={2}
@@ -189,10 +170,8 @@ const RequestDialogStepTwoDisplay: React.FC<
             <CollapsibleContent className='space-y-2'>
               <div className='min-h-[300px]'>
                 <RequestDialogLyricsDisplay
-                  lyrics={currentLyrics}
                   timestampedLyrics={currentTimestampedLyrics}
                   isAiGenerated={isAiGenerated}
-                  onLyricsChange={handleLyricsChange}
                 />
               </div>
             </CollapsibleContent>

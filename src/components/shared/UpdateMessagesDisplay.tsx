@@ -1,14 +1,23 @@
-import { Loader, Text } from '@mantine/core'
 import React from 'react'
+
+import DotsLoader from '@/components/shared/DotsLoader'
+import type { DotsLoaderSize } from '@/components/shared/DotsLoader'
+
+const TEXT_SIZE_CLASS = {
+  xs: 'text-xs leading-[1.4]',
+  sm: 'text-sm leading-[1.45]',
+  md: 'text-base leading-[1.55]',
+  lg: 'text-lg leading-[1.6]',
+  xl: 'text-xl leading-[1.65]',
+} as const
 
 interface UpdateMessagesDisplayProps {
   isStreaming: boolean
   showLoader: boolean
   updateMessages: string[]
   loaderColor?: string
-  loaderType?: 'bars' | 'oval' | 'dots'
-  loaderSize?: number | 'xs' | 'sm' | 'md' | 'lg' | 'xl'
-  textSize?: 'xs' | 'sm' | 'md' | 'lg' | 'xl'
+  loaderSize?: DotsLoaderSize
+  textSize?: keyof typeof TEXT_SIZE_CLASS
   verticalMargin?: number | string
 }
 
@@ -16,13 +25,12 @@ const UpdateMessagesDisplay: React.FC<UpdateMessagesDisplayProps> = ({
   isStreaming,
   showLoader,
   updateMessages,
-  loaderColor = 'white',
-  loaderType = 'dots',
+  loaderColor = '#fff',
   loaderSize = 'lg',
   textSize = 'lg',
   verticalMargin = 4,
 }) => {
-  const lastMessage = updateMessages.slice(-1)[0] as string
+  const lastMessage = updateMessages.slice(-1)[0]
 
   const marginClass =
     typeof verticalMargin === 'number'
@@ -32,18 +40,19 @@ const UpdateMessagesDisplay: React.FC<UpdateMessagesDisplayProps> = ({
   return (
     <>
       {showLoader && (
-        <div className={`flex-center mt-10 flex flex-col ${marginClass}`}>
+        <div className={`mt-10 flex-center flex flex-col ${marginClass}`}>
           {isStreaming ? (
             updateMessages.length > 0 ? (
-              <Text size={textSize}>{lastMessage}</Text>
+              <p className={TEXT_SIZE_CLASS[textSize]}>{lastMessage}</p>
             ) : (
-              //? This seems to only be activated by transcription
-              <Text size={textSize}>Waiting for updates...</Text>
+              <p className={TEXT_SIZE_CLASS[textSize]}>
+                Waiting for updates...
+              </p>
             )
           ) : (
-            <Text size={textSize}>Cleaning up...</Text>
+            <p className={TEXT_SIZE_CLASS[textSize]}>Cleaning up...</p>
           )}
-          <Loader color={loaderColor} type={loaderType} size={loaderSize} />
+          <DotsLoader color={loaderColor} size={loaderSize} />
         </div>
       )}
     </>
