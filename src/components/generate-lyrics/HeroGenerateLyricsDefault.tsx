@@ -1,5 +1,4 @@
-import { useSetAtom } from 'jotai'
-import { ArrowRightIcon, Info, PlayIcon } from 'lucide-react'
+import { ArrowRightIcon, Info, PlayIcon, SearchIcon } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router'
 
@@ -11,7 +10,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
-import { dialogStepAtom } from '@/context/atoms'
+import useRequestDialog from '@/hooks/useRequestDialog'
 import { useGetLyricsBySongId } from '@/lib/react-query/queriesAndMutations'
 import { YouTubeUrlOrIdValidation } from '@/lib/validation'
 import { extractVideoId } from '@/utils'
@@ -26,17 +25,28 @@ interface HeroGenerateLyricsDefaultProps {
   inputVideoId: string
 }
 
+// A bare 11-character word only counts as a video id when it has a digit, - or _, or mixed case.
+const looksLikeYoutubeLink = (value: string) => {
+  const text = value.trim()
+  if (/youtube\.com|youtu\.be|https?:\/\//u.test(text)) {
+    return true
+  }
+  return (
+    /^[\w-]{11}$/u.test(text) &&
+    (/[\d_-]/u.test(text) || (/[a-z]/u.test(text) && /[A-Z]/u.test(text)))
+  )
+}
+
 const HeroGenerateLyricsDefault = ({
   setInputVideoId,
-  inputVideoId,
 }: HeroGenerateLyricsDefaultProps) => {
   const [inputValue, setInputValue] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
   const [validationSuccess, setValidationSuccess] = useState(false)
-  const [dialogOpen, setDialogOpen] = useState(false)
-  const [dialogKey, setDialogKey] = useState(0)
-  const setDialogStepAtom = useSetAtom(dialogStepAtom)
+  const dialog = useRequestDialog()
   const navigate = useNavigate()
+  const isSearch =
+    inputValue.trim().length > 0 && !looksLikeYoutubeLink(inputValue)
 
   const extractedVideoId = useMemo(() => {
     if (!inputValue) {
@@ -59,7 +69,7 @@ const HeroGenerateLyricsDefault = ({
     const { value } = e.target
     setInputValue(value)
 
-    if (!value) {
+    if (!value || !looksLikeYoutubeLink(value)) {
       setErrorMessage('')
       setValidationSuccess(false)
       return
@@ -84,6 +94,10 @@ const HeroGenerateLyricsDefault = ({
   }
 
   const handleOpenLandingPageDialog = () => {
+    if (isSearch) {
+      navigate(`/search?q=${encodeURIComponent(inputValue.trim())}`)
+      return
+    }
     if (validationSuccess && extractedVideoId) {
       setInputVideoId(extractedVideoId)
 
@@ -92,19 +106,9 @@ const HeroGenerateLyricsDefault = ({
           state: { videoId: extractedVideoId },
         })
       } else {
-        setDialogStepAtom(0)
-        setDialogOpen(false)
-        setDialogKey((prev) => prev + 1)
-        requestAnimationFrame(() => {
-          setDialogOpen(true)
-        })
+        dialog.openFor(extractedVideoId)
       }
     }
-  }
-
-  const handleDialogClose = () => {
-    setDialogOpen(false)
-    setDialogStepAtom(0)
   }
 
   return (
@@ -122,7 +126,12 @@ const HeroGenerateLyricsDefault = ({
           <Input
             value={inputValue}
             onChange={handleInputChange}
-            placeholder='Paste YouTube URL here'
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && isSearch) {
+                handleOpenLandingPageDialog()
+              }
+            }}
+            placeholder='Paste a YouTube URL or search for a song'
             className={`border-2 bg-input/40 py-6 text-white invisible-ring ${
               inputValue.length > 0
                 ? validationSuccess
@@ -132,7 +141,7 @@ const HeroGenerateLyricsDefault = ({
             } `}
           />
           <div className='absolute -bottom-20 left-0 h-20 w-full py-6 pt-2 text-center md:text-left lg:py-2'>
-            {inputValue.length > 0 && (
+            {inputValue.length > 0 && !isSearch && (
               <div className={errorMessage ? 'text-red-500' : 'text-green-500'}>
                 {errorMessage
                   ? errorMessage
@@ -146,12 +155,14 @@ const HeroGenerateLyricsDefault = ({
               </div>
             )}
           </div>
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <Dialog open={dialog.open} onOpenChange={dialog.handleOpenChange}>
             <DialogTrigger asChild>
               <Button
                 onClick={(e) => {
-                  if (inputValue?.length === 0) {
+                  if (inputValue?.length === 0 || isSearch) {
                     e.preventDefault()
+                  }
+                  if (inputValue?.length === 0) {
                     return
                   }
                   handleOpenLandingPageDialog()
@@ -163,14 +174,18 @@ const HeroGenerateLyricsDefault = ({
                 }
                 variant='default'
                 className='w-full gap-2 border-2 border-primary/90 bg-primary/90 py-6 text-foreground hover:border-primary hover:bg-primary md:w-1/2 lg:w-1/4'>
-                {isCheckingLyrics ? (
+                {isSearch ? (
+                  <p className='text-[16px]'>Search</p>
+                ) : isCheckingLyrics ? (
                   <p className='text-[16px]'>Searching ...</p>
                 ) : existingLyrics ? (
                   <p className='text-[16px]'>Play Video</p>
                 ) : (
                   <p className='text-[16px]'>Try Now</p>
                 )}
-                {isCheckingLyrics ? (
+                {isSearch ? (
+                  <SearchIcon className='size-6 shrink-0' />
+                ) : isCheckingLyrics ? (
                   ''
                 ) : existingLyrics ? (
                   <PlayIcon className='size-6 shrink-0 fill-current' />
@@ -180,9 +195,9 @@ const HeroGenerateLyricsDefault = ({
               </Button>
             </DialogTrigger>
             <RequestDialog
-              key={dialogKey}
-              videoId={inputVideoId}
-              handleClose={handleDialogClose}
+              key={dialog.dialogKey}
+              videoId={dialog.videoId}
+              handleClose={dialog.close}
             />
           </Dialog>
         </div>

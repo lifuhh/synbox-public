@@ -230,6 +230,12 @@ const RequestDialog = ({ videoId, handleClose }: RequestDialogProps) => {
             await queryClient.invalidateQueries({
               queryKey: [QUERY_KEYS.GET_LYRICS_BY_SONG_ID, videoId],
             })
+            await queryClient.invalidateQueries({
+              queryKey: [QUERY_KEYS.SEARCH_VIDEOS],
+            })
+            await queryClient.invalidateQueries({
+              queryKey: [QUERY_KEYS.SEARCH_LIBRARY],
+            })
             await new Promise((resolve) => setTimeout(resolve, 5000))
             await refetchLyrics()
             setIsUploading(false)

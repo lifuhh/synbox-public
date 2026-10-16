@@ -5,4 +5,7 @@ export enum QUERY_KEYS {
   GET_YOUTUBE_VIDEO_INFO = 'getYoutubeVideoInfo',
   GET_LYRICS_BY_SONG_ID = 'getLyricsBySongId',
   GET_SONG_INFO_BY_SONG_ID = 'getSongInfoBySongId',
+  SEARCH_VIDEOS = 'searchVideos',
+  SEARCH_LIBRARY = 'searchLibrary',
+  GET_SIMILAR_SONGS = 'getSimilarSongs',
 }

@@ -17,6 +17,11 @@ import {
   uploadLyricsToAppwrite,
 } from '../appwrite/api'
 import {
+  getSimilarSongs,
+  searchLibrary,
+  searchVideos,
+} from '../synbox-flask/discovery'
+import {
   getChartsPlaylist,
   getInfiniteGalleryPlaylist,
   getLandingPagePlaylist,
@@ -134,4 +139,31 @@ export const useUploadLyricsToAppwrite = () =>
       songId: string
       lyricsData: LyricsDataInterface
     }) => uploadLyricsToAppwrite(songId, lyricsData),
+  })
+
+export const useSearchVideos = (query: string) =>
+  useQuery({
+    queryKey: [QUERY_KEYS.SEARCH_VIDEOS, query],
+    queryFn: ({ signal }) => searchVideos(query, signal),
+    enabled: query.length > 0,
+    staleTime: 1000 * 60 * 5,
+    retry: false,
+  })
+
+export const useSearchLibrary = (query: string) =>
+  useQuery({
+    queryKey: [QUERY_KEYS.SEARCH_LIBRARY, query],
+    queryFn: ({ signal }) => searchLibrary(query, signal),
+    enabled: query.length > 0,
+    staleTime: 1000 * 60 * 5,
+    retry: false,
+  })
+
+export const useGetSimilarSongs = (videoId: string) =>
+  useQuery({
+    queryKey: [QUERY_KEYS.GET_SIMILAR_SONGS, videoId],
+    queryFn: ({ signal }) => getSimilarSongs(videoId, signal),
+    enabled: videoId.length > 0,
+    staleTime: 1000 * 60 * 10,
+    retry: false,
   })
