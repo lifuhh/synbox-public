@@ -1,24 +1,25 @@
-import { MantineProvider } from '@mantine/core'
+import './instrument'
+import { reactErrorHandler } from '@sentry/react'
 import ReactDOM from 'react-dom/client'
-import { HelmetProvider } from 'react-helmet-async'
-import { BrowserRouter } from 'react-router-dom'
+import { BrowserRouter } from 'react-router'
+
 import App from './App'
+import ErrorBoundary from './components/shared/ErrorBoundary'
 import AppProvider from './context/AppContext'
 import { QueryProvider } from './lib/react-query/QueryProvider'
-import ErrorBoundary from './test_stuff/ErrorBoundary'
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
+ReactDOM.createRoot(document.getElementById('root')!, {
+  onCaughtError: reactErrorHandler(),
+  onRecoverableError: reactErrorHandler(),
+  onUncaughtError: reactErrorHandler(),
+}).render(
   <BrowserRouter>
-    <HelmetProvider>
-      <MantineProvider forceColorScheme='dark'>
-        <AppProvider>
-          <QueryProvider>
-            <ErrorBoundary>
-              <App />
-            </ErrorBoundary>
-          </QueryProvider>
-        </AppProvider>
-      </MantineProvider>
-    </HelmetProvider>
-  </BrowserRouter>,
+    <AppProvider>
+      <QueryProvider>
+        <ErrorBoundary>
+          <App />
+        </ErrorBoundary>
+      </QueryProvider>
+    </AppProvider>
+  </BrowserRouter>
 )

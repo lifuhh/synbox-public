@@ -1,8 +1,7 @@
 import { useEffect } from 'react'
 
-// Hook to use in components that need to lock scroll on hover
 export const useLockBodyScrollOnHover = (
-  ref: React.RefObject<HTMLElement>,
+  ref: React.RefObject<HTMLElement | null>,
   breakpointWidth: number
 ) => {
   useEffect(() => {
@@ -33,13 +32,12 @@ export const useLockBodyScrollOnHover = (
       node.addEventListener('mouseleave', disableScrollLock)
       window.addEventListener('resize', checkWidthAndDisableScrollLock)
 
-      // Ensure scroll lock is disabled when the component is unmounted or the user navigates away
       return () => {
-        disableScrollLock() // Clean up the scroll lock
+        disableScrollLock()
         node.removeEventListener('mouseenter', enableScrollLock)
         node.removeEventListener('mouseleave', disableScrollLock)
         window.removeEventListener('resize', checkWidthAndDisableScrollLock)
       }
     }
-  }, [ref, breakpointWidth]) // Ensure the effect runs again if the ref changes
+  }, [ref, breakpointWidth])
 }

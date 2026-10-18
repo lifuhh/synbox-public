@@ -1,90 +1,87 @@
 import { Dock, DockIcon } from '@/components/magicui/dock'
+import { Separator } from '@/components/ui/separator'
 import { handleRedirect } from '@/utils'
-import { Divider } from '@mantine/core'
 
-export type IconProps = React.HTMLAttributes<SVGElement>
+type IconProps = React.HTMLAttributes<SVGElement>
 
-const HomeFooter = () => {
-  return (
-    <div className='landing-footer flex-between bottom-0 left-0 z-50 h-14 w-full flex-col pt-2'>
-      <div className='flex-around pb-2'>
-        <div className='flex'>
-          <h1 className=' unselectable whitespace-nowrap text-pretty font-semibold'>
-            Built With
-          </h1>
-        </div>
-        {/* //TODO: Maybe add tooltip? */}
-        {/* //TODO: Also, perhaps change/replace some icons -- use stripe, remove shadcn e.g. dunno think about it */}
-        <Dock className='mt-0 border-none'>
-          <DockIcon
-            onClick={() => handleRedirect('https://react.dev/')}
-            className='cursor-pointer bg-card-foreground'>
-            <Icons.react className='text-primary-light h-6 w-6' />
-          </DockIcon>
-          <DockIcon
-            onClick={() => handleRedirect('https://tailwindcss.com/')}
-            className='cursor-pointer bg-card-foreground'>
-            <Icons.tailwind className='text-primary-light h-6 w-6' />
-          </DockIcon>
-          <DockIcon
-            onClick={() => handleRedirect('https://ui.shadcn.com/')}
-            className='cursor-pointer bg-card-foreground'>
-            <Icons.shadcn className='text-primary-light h-6 w-6 ' />
-          </DockIcon>
-          <DockIcon
-            onClick={() =>
-              handleRedirect('https://platform.openai.com/docs/overview/')
-            }
-            className='cursor-pointer bg-card-foreground'>
-            <Icons.openai className='text-primary-light h-6 w-6' />
-          </DockIcon>
-          <DockIcon
-            onClick={() =>
-              handleRedirect('https://developers.google.com/youtube/v3/')
-            }
-            className='cursor-pointer bg-card-foreground'>
-            <Icons.gcloud className='text-primary-light h-6 w-6' />
-          </DockIcon>
-          {/* <DockIcon
-            onClick={() =>
-              handleRedirect('https://docs.stripe.com/api?lang=node')
-            }>
-            <Icons.stripe className='h-8 w-8' />
-          </DockIcon> */}
-        </Dock>
-        <Divider
-          orientation='vertical'
-          size='sm'
-          className=' mx-4 my-2 border-foreground'
-        />
-        <div className='flex'>
-          {/* <h1 className='whitespace-nowrap text-center'>Visit Me At </h1> */}
-        </div>
-        <Dock className='mt-0 border-none'>
-          <DockIcon
-            onClick={() =>
-              handleRedirect('https://www.linkedin.com/in/lifuhh/')
-            }
-            className='cursor-pointer bg-card-foreground'>
-            <Icons.linkedin className='text-primary-light h-6 w-6' />
-          </DockIcon>
-          <DockIcon
-            onClick={() => handleRedirect('https://github.com/lifuhh/')}
-            className='cursor-pointer bg-card-foreground'>
-            <Icons.gitHub className='text-primary-light h-6 w-6' />
-          </DockIcon>
-        </Dock>
+const HomeFooter = () => (
+  <div className='landing-footer bottom-0 left-0 z-50 flex-between h-14 w-full flex-col pt-2'>
+    <div className='flex-around pb-2'>
+      <div className='flex'>
+        <h1 className='unselectable font-semibold text-pretty whitespace-nowrap'>
+          Built With
+        </h1>
       </div>
+      <Dock className='mt-0 border-none'>
+        <DockIcon
+          onClick={() => {
+            handleRedirect('https://react.dev/')
+          }}
+          className='cursor-pointer bg-card-foreground'>
+          <Icons.react className='h-6 w-6 text-primary-light' />
+        </DockIcon>
+        <DockIcon
+          onClick={() => {
+            handleRedirect('https://tailwindcss.com/')
+          }}
+          className='cursor-pointer bg-card-foreground'>
+          <Icons.tailwind className='h-6 w-6 text-primary-light' />
+        </DockIcon>
+        <DockIcon
+          onClick={() => {
+            handleRedirect('https://ui.shadcn.com/')
+          }}
+          className='cursor-pointer bg-card-foreground'>
+          <Icons.shadcn className='h-6 w-6 text-primary-light' />
+        </DockIcon>
+        <DockIcon
+          onClick={() => {
+            handleRedirect('https://platform.openai.com/docs/overview/')
+          }}
+          className='cursor-pointer bg-card-foreground'>
+          <Icons.openai className='h-6 w-6 text-primary-light' />
+        </DockIcon>
+        <DockIcon
+          onClick={() => {
+            handleRedirect('https://developers.google.com/youtube/v3/')
+          }}
+          className='cursor-pointer bg-card-foreground'>
+          <Icons.gcloud className='h-6 w-6 text-primary-light' />
+        </DockIcon>
+      </Dock>
+      <Separator
+        decorative={false}
+        orientation='vertical'
+        className='mx-4 my-2 h-auto w-0.5 self-stretch bg-foreground'
+      />
+      <div className='flex'></div>
+      <Dock className='mt-0 border-none'>
+        <DockIcon
+          onClick={() => {
+            handleRedirect('https://www.linkedin.com/in/lifuhh/')
+          }}
+          className='cursor-pointer bg-card-foreground'>
+          <Icons.linkedin className='h-6 w-6 text-primary-light' />
+        </DockIcon>
+        <DockIcon
+          onClick={() => {
+            handleRedirect('https://github.com/lifuhh/')
+          }}
+          className='cursor-pointer bg-card-foreground'>
+          <Icons.gitHub className='h-6 w-6 text-primary-light' />
+        </DockIcon>
+      </Dock>
     </div>
-  )
-}
+  </div>
+)
 
 const Icons = {
   gitHub: (props: IconProps) => (
     <svg viewBox='0 0 438.549 438.549' {...props}>
       <path
         fill='currentColor'
-        d='M409.132 114.573c-19.608-33.596-46.205-60.194-79.798-79.8-33.598-19.607-70.277-29.408-110.063-29.408-39.781 0-76.472 9.804-110.063 29.408-33.596 19.605-60.192 46.204-79.8 79.8C9.803 148.168 0 184.854 0 224.63c0 47.78 13.94 90.745 41.827 128.906 27.884 38.164 63.906 64.572 108.063 79.227 5.14.954 8.945.283 11.419-1.996 2.475-2.282 3.711-5.14 3.711-8.562 0-.571-.049-5.708-.144-15.417a2549.81 2549.81 0 01-.144-25.406l-6.567 1.136c-4.187.767-9.469 1.092-15.846 1-6.374-.089-12.991-.757-19.842-1.999-6.854-1.231-13.229-4.086-19.13-8.559-5.898-4.473-10.085-10.328-12.56-17.556l-2.855-6.57c-1.903-4.374-4.899-9.233-8.992-14.559-4.093-5.331-8.232-8.945-12.419-10.848l-1.999-1.431c-1.332-.951-2.568-2.098-3.711-3.429-1.142-1.331-1.997-2.663-2.568-3.997-.572-1.335-.098-2.43 1.427-3.289 1.525-.859 4.281-1.276 8.28-1.276l5.708.853c3.807.763 8.516 3.042 14.133 6.851 5.614 3.806 10.229 8.754 13.846 14.842 4.38 7.806 9.657 13.754 15.846 17.847 6.184 4.093 12.419 6.136 18.699 6.136 6.28 0 11.704-.476 16.274-1.423 4.565-.952 8.848-2.383 12.847-4.285 1.713-12.758 6.377-22.559 13.988-29.41-10.848-1.14-20.601-2.857-29.264-5.14-8.658-2.286-17.605-5.996-26.835-11.14-9.235-5.137-16.896-11.516-22.985-19.126-6.09-7.614-11.088-17.61-14.987-29.979-3.901-12.374-5.852-26.648-5.852-42.826 0-23.035 7.52-42.637 22.557-58.817-7.044-17.318-6.379-36.732 1.997-58.24 5.52-1.715 13.706-.428 24.554 3.853 10.85 4.283 18.794 7.952 23.84 10.994 5.046 3.041 9.089 5.618 12.135 7.708 17.705-4.947 35.976-7.421 54.818-7.421s37.117 2.474 54.823 7.421l10.849-6.849c7.419-4.57 16.18-8.758 26.262-12.565 10.088-3.805 17.802-4.853 23.134-3.138 8.562 21.509 9.325 40.922 2.279 58.24 15.036 16.18 22.559 35.787 22.559 58.817 0 16.178-1.958 30.497-5.853 42.966-3.9 12.471-8.941 22.457-15.125 29.979-6.191 7.521-13.901 13.85-23.131 18.986-9.232 5.14-18.182 8.85-26.84 11.136-8.662 2.286-18.415 4.004-29.263 5.146 9.894 8.562 14.842 22.077 14.842 40.539v60.237c0 3.422 1.19 6.279 3.572 8.562 2.379 2.279 6.136 2.95 11.276 1.995 44.163-14.653 80.185-41.062 108.068-79.226 27.88-38.161 41.825-81.126 41.825-128.906-.01-39.771-9.818-76.454-29.414-110.049z'></path>
+        d='M409.132 114.573c-19.608-33.596-46.205-60.194-79.798-79.8-33.598-19.607-70.277-29.408-110.063-29.408-39.781 0-76.472 9.804-110.063 29.408-33.596 19.605-60.192 46.204-79.8 79.8C9.803 148.168 0 184.854 0 224.63c0 47.78 13.94 90.745 41.827 128.906 27.884 38.164 63.906 64.572 108.063 79.227 5.14.954 8.945.283 11.419-1.996 2.475-2.282 3.711-5.14 3.711-8.562 0-.571-.049-5.708-.144-15.417a2549.81 2549.81 0 01-.144-25.406l-6.567 1.136c-4.187.767-9.469 1.092-15.846 1-6.374-.089-12.991-.757-19.842-1.999-6.854-1.231-13.229-4.086-19.13-8.559-5.898-4.473-10.085-10.328-12.56-17.556l-2.855-6.57c-1.903-4.374-4.899-9.233-8.992-14.559-4.093-5.331-8.232-8.945-12.419-10.848l-1.999-1.431c-1.332-.951-2.568-2.098-3.711-3.429-1.142-1.331-1.997-2.663-2.568-3.997-.572-1.335-.098-2.43 1.427-3.289 1.525-.859 4.281-1.276 8.28-1.276l5.708.853c3.807.763 8.516 3.042 14.133 6.851 5.614 3.806 10.229 8.754 13.846 14.842 4.38 7.806 9.657 13.754 15.846 17.847 6.184 4.093 12.419 6.136 18.699 6.136 6.28 0 11.704-.476 16.274-1.423 4.565-.952 8.848-2.383 12.847-4.285 1.713-12.758 6.377-22.559 13.988-29.41-10.848-1.14-20.601-2.857-29.264-5.14-8.658-2.286-17.605-5.996-26.835-11.14-9.235-5.137-16.896-11.516-22.985-19.126-6.09-7.614-11.088-17.61-14.987-29.979-3.901-12.374-5.852-26.648-5.852-42.826 0-23.035 7.52-42.637 22.557-58.817-7.044-17.318-6.379-36.732 1.997-58.24 5.52-1.715 13.706-.428 24.554 3.853 10.85 4.283 18.794 7.952 23.84 10.994 5.046 3.041 9.089 5.618 12.135 7.708 17.705-4.947 35.976-7.421 54.818-7.421s37.117 2.474 54.823 7.421l10.849-6.849c7.419-4.57 16.18-8.758 26.262-12.565 10.088-3.805 17.802-4.853 23.134-3.138 8.562 21.509 9.325 40.922 2.279 58.24 15.036 16.18 22.559 35.787 22.559 58.817 0 16.178-1.958 30.497-5.853 42.966-3.9 12.471-8.941 22.457-15.125 29.979-6.191 7.521-13.901 13.85-23.131 18.986-9.232 5.14-18.182 8.85-26.84 11.136-8.662 2.286-18.415 4.004-29.263 5.146 9.894 8.562 14.842 22.077 14.842 40.539v60.237c0 3.422 1.19 6.279 3.572 8.562 2.379 2.279 6.136 2.95 11.276 1.995 44.163-14.653 80.185-41.062 108.068-79.226 27.88-38.161 41.825-81.126 41.825-128.906-.01-39.771-9.818-76.454-29.414-110.049z'
+      />
     </svg>
   ),
   openai: (props: IconProps) => (
@@ -117,16 +114,6 @@ const Icons = {
       <path d='M12.001 4.8c-3.2 0-5.2 1.6-6 4.8 1.2-1.6 2.6-2.2 4.2-1.8.913.228 1.565.89 2.288 1.624C13.666 10.618 15.027 12 18.001 12c3.2 0 5.2-1.6 6-4.8-1.2 1.6-2.6 2.2-4.2 1.8-.913-.228-1.565-.89-2.288-1.624C16.337 6.182 14.976 4.8 12.001 4.8zm-6 7.2c-3.2 0-5.2 1.6-6 4.8 1.2-1.6 2.6-2.2 4.2-1.8.913.228 1.565.89 2.288 1.624 1.177 1.194 2.538 2.576 5.512 2.576 3.2 0 5.2-1.6 6-4.8-1.2 1.6-2.6 2.2-4.2 1.8-.913-.228-1.565-.89-2.288-1.624C10.337 13.382 8.976 12 6.001 12z' />
     </svg>
   ),
-  youtube: (props: IconProps) => (
-    <svg
-      fill='currentColor'
-      viewBox='0 0 16 16'
-      height='1em'
-      width='1em'
-      {...props}>
-      <path d='M8.051 1.999h.089c.822.003 4.987.033 6.11.335a2.01 2.01 0 011.415 1.42c.101.38.172.883.22 1.402l.01.104.022.26.008.104c.065.914.073 1.77.074 1.957v.075c-.001.194-.01 1.108-.082 2.06l-.008.105-.009.104c-.05.572-.124 1.14-.235 1.558a2.007 2.007 0 01-1.415 1.42c-1.16.312-5.569.334-6.18.335h-.142c-.309 0-1.587-.006-2.927-.052l-.17-.006-.087-.004-.171-.007-.171-.007c-1.11-.049-2.167-.128-2.654-.26a2.007 2.007 0 01-1.415-1.419c-.111-.417-.185-.986-.235-1.558L.09 9.82l-.008-.104A31.4 31.4 0 010 7.68v-.123c.002-.215.01-.958.064-1.778l.007-.103.003-.052.008-.104.022-.26.01-.104c.048-.519.119-1.023.22-1.402a2.007 2.007 0 011.415-1.42c.487-.13 1.544-.21 2.654-.26l.17-.007.172-.006.086-.003.171-.007A99.788 99.788 0 017.858 2h.193zM6.4 5.209v4.818l4.157-2.408L6.4 5.209z' />
-    </svg>
-  ),
   linkedin: (props: IconProps) => (
     <svg
       viewBox='0 0 1024 1024'
@@ -144,7 +131,7 @@ const Icons = {
       height='1em'
       width='1em'
       {...props}>
-      <rect width='256' height='256' fill='none'></rect>
+      <rect width='256' height='256' fill='none' />
       <line
         x1='208'
         y1='128'
@@ -154,7 +141,8 @@ const Icons = {
         stroke='currentColor'
         strokeLinecap='round'
         strokeLinejoin='round'
-        strokeWidth='16'></line>
+        strokeWidth='16'
+      />
       <line
         x1='192'
         y1='40'
@@ -164,27 +152,8 @@ const Icons = {
         stroke='currentColor'
         strokeLinecap='round'
         strokeLinejoin='round'
-        strokeWidth='16'></line>
-    </svg>
-  ),
-  python: (props: IconProps) => (
-    <svg
-      viewBox='0 0 448 512'
-      fill='currentColor'
-      height='1em'
-      width='1em'
-      {...props}>
-      <path d='M439.8 200.5c-7.7-30.9-22.3-54.2-53.4-54.2h-40.1v47.4c0 36.8-31.2 67.8-66.8 67.8H172.7c-29.2 0-53.4 25-53.4 54.3v101.8c0 29 25.2 46 53.4 54.3 33.8 9.9 66.3 11.7 106.8 0 26.9-7.8 53.4-23.5 53.4-54.3v-40.7H226.2v-13.6h160.2c31.1 0 42.6-21.7 53.4-54.2 11.2-33.5 10.7-65.7 0-108.6zM286.2 404c11.1 0 20.1 9.1 20.1 20.3 0 11.3-9 20.4-20.1 20.4-11 0-20.1-9.2-20.1-20.4.1-11.3 9.1-20.3 20.1-20.3zM167.8 248.1h106.8c29.7 0 53.4-24.5 53.4-54.3V91.9c0-29-24.4-50.7-53.4-55.6-35.8-5.9-74.7-5.6-106.8.1-45.2 8-53.4 24.7-53.4 55.6v40.7h106.9v13.6h-147c-31.1 0-58.3 18.7-66.8 54.2-9.8 40.7-10.2 66.1 0 108.6 7.6 31.6 25.7 54.2 56.8 54.2H101v-48.8c0-35.3 30.5-66.4 66.8-66.4zm-6.7-142.6c-11.1 0-20.1-9.1-20.1-20.3.1-11.3 9-20.4 20.1-20.4 11 0 20.1 9.2 20.1 20.4s-9 20.3-20.1 20.3z' />
-    </svg>
-  ),
-  stripe: (props: IconProps) => (
-    <svg
-      viewBox='0 0 640 512'
-      fill='currentColor'
-      height='1em'
-      width='1em'
-      {...props}>
-      <path d='M165 144.7l-43.3 9.2-.2 142.4c0 26.3 19.8 43.3 46.1 43.3 14.6 0 25.3-2.7 31.2-5.9v-33.8c-5.7 2.3-33.7 10.5-33.7-15.7V221h33.7v-37.8h-33.7zm89.1 51.6l-2.7-13.1H213v153.2h44.3V233.3c10.5-13.8 28.2-11.1 33.9-9.3v-40.8c-6-2.1-26.7-6-37.1 13.1zm92.3-72.3l-44.6 9.5v36.2l44.6-9.5zM44.9 228.3c0-6.9 5.8-9.6 15.1-9.7 13.5 0 30.7 4.1 44.2 11.4v-41.8c-14.7-5.8-29.4-8.1-44.1-8.1-36 0-60 18.8-60 50.2 0 49.2 67.5 41.2 67.5 62.4 0 8.2-7.1 10.9-17 10.9-14.7 0-33.7-6.1-48.6-14.2v40c16.5 7.1 33.2 10.1 48.5 10.1 36.9 0 62.3-15.8 62.3-47.8 0-52.9-67.9-43.4-67.9-63.4zM640 261.6c0-45.5-22-81.4-64.2-81.4s-67.9 35.9-67.9 81.1c0 53.5 30.3 78.2 73.5 78.2 21.2 0 37.1-4.8 49.2-11.5v-33.4c-12.1 6.1-26 9.8-43.6 9.8-17.3 0-32.5-6.1-34.5-26.9h86.9c.2-2.3.6-11.6.6-15.9zm-87.9-16.8c0-20 12.3-28.4 23.4-28.4 10.9 0 22.5 8.4 22.5 28.4zm-112.9-64.6c-17.4 0-28.6 8.2-34.8 13.9l-2.3-11H363v204.8l44.4-9.4.1-50.2c6.4 4.7 15.9 11.2 31.4 11.2 31.8 0 60.8-23.2 60.8-79.6.1-51.6-29.3-79.7-60.5-79.7zm-10.6 122.5c-10.4 0-16.6-3.8-20.9-8.4l-.3-66c4.6-5.1 11-8.8 21.2-8.8 16.2 0 27.4 18.2 27.4 41.4.1 23.9-10.9 41.8-27.4 41.8zm-126.7 33.7h44.6V183.2h-44.6z' />
+        strokeWidth='16'
+      />
     </svg>
   ),
   gcloud: (props: IconProps) => (

@@ -1,3 +1,13 @@
+import { useAtom } from 'jotai'
+import {
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  RotateCcwClockIcon,
+} from 'lucide-react'
+import React, { useEffect, useState } from 'react'
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,15 +33,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { historyAtom } from '@/context/atoms'
-import HistoryIcon from '@mui/icons-material/History'
-import { useAtom } from 'jotai'
-import {
-  ChevronLeft,
-  ChevronRight,
-  ChevronsLeft,
-  ChevronsRight,
-} from 'lucide-react'
-import React, { useEffect, useState } from 'react'
+
 import HistoryDropdownItem from './HistoryDropdownItem'
 
 interface HistoryDropdownButtonProps {
@@ -39,11 +41,11 @@ interface HistoryDropdownButtonProps {
 }
 
 const ITEMS_PER_PAGE = 7
-const MAX_HEIGHT = 620 // Maximum height in pixels
-const ITEM_HEIGHT = 68 // Approximate height of each history item
-const HEADER_HEIGHT = 65 // Height of the header section
-const PAGINATION_HEIGHT = 57 // Height of the pagination section
-const MIN_HEIGHT = 150 // Minimum height for the dropdown
+const MAX_HEIGHT = 620
+const ITEM_HEIGHT = 68
+const HEADER_HEIGHT = 65
+const PAGINATION_HEIGHT = 57
+const MIN_HEIGHT = 150
 
 const PaginationContainer: React.FC<{ children: React.ReactNode }> = ({
   children,
@@ -81,7 +83,6 @@ const HistoryDropdownButton: React.FC<HistoryDropdownButtonProps> = ({
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const [isAlertOpen, setIsAlertOpen] = useState(false)
 
-  // Calculate dynamic height based on number of items
   const calculateDropdownHeight = () => {
     const contentHeight = Math.min(
       MAX_HEIGHT,
@@ -89,8 +90,8 @@ const HistoryDropdownButton: React.FC<HistoryDropdownButtonProps> = ({
         MIN_HEIGHT,
         HEADER_HEIGHT +
           paginatedItems.length * ITEM_HEIGHT +
-          (showPagination ? PAGINATION_HEIGHT : 0),
-      ),
+          (showPagination ? PAGINATION_HEIGHT : 0)
+      )
     )
     return contentHeight
   }
@@ -141,14 +142,16 @@ const HistoryDropdownButton: React.FC<HistoryDropdownButtonProps> = ({
       items.push(
         <PaginationItem
           key={pageNum}
-          className='unhighlightable cursor-pointer'>
+          className='cursor-pointer unhighlightable'>
           <PaginationLink
-            onClick={() => handlePageChange(pageNum)}
+            onClick={() => {
+              handlePageChange(pageNum)
+            }}
             isActive={currentPage === pageNum}
-            className={`${currentPage === pageNum ? 'bg-primary' : ''}`}>
+            className={currentPage === pageNum ? 'bg-primary' : ''}>
             {pageNum}
           </PaginationLink>
-        </PaginationItem>,
+        </PaginationItem>
       )
     }
 
@@ -160,7 +163,7 @@ const HistoryDropdownButton: React.FC<HistoryDropdownButtonProps> = ({
         items.push(
           <PaginationItem key={`left-padding-${i}`} className='invisible'>
             <span className='flex h-8 w-8 items-center justify-center'>0</span>
-          </PaginationItem>,
+          </PaginationItem>
         )
       }
 
@@ -172,7 +175,7 @@ const HistoryDropdownButton: React.FC<HistoryDropdownButtonProps> = ({
         items.push(
           <PaginationItem key={`right-padding-${i}`} className='invisible'>
             <span className='flex h-8 w-8 items-center justify-center'>0</span>
-          </PaginationItem>,
+          </PaginationItem>
         )
       }
     } else if (currentPage > totalPages - VISIBLE_PAGES) {
@@ -201,13 +204,13 @@ const HistoryDropdownButton: React.FC<HistoryDropdownButtonProps> = ({
               <Button
                 variant='outline'
                 size='icon'
-                className={`invisible-ring border-primary/80 hover:border-white ${buttonVisibility}`}>
-                <HistoryIcon className='h-6 w-6' />
+                className={`border-primary/80 invisible-ring hover:border-white ${buttonVisibility}`}>
+                <RotateCcwClockIcon className='h-6 w-6 shrink-0' />
                 <span className='sr-only'>View History</span>
               </Button>
             </TooltipTrigger>
           </DropdownMenuTrigger>
-          <TooltipContent className='unhighlightable border-none bg-accent'>
+          <TooltipContent className='border-none bg-accent unhighlightable'>
             View History
           </TooltipContent>
         </Tooltip>
@@ -241,11 +244,11 @@ const HistoryDropdownButton: React.FC<HistoryDropdownButtonProps> = ({
                   ))}
                 </div>
               ) : (
-                <div className=' flex h-full flex-col items-center justify-center py-2 text-center'>
+                <div className='flex h-full flex-col items-center justify-center py-2 text-center'>
                   <p className='text-lg font-medium text-muted-foreground'>
                     Your history is empty.
                   </p>
-                  <p className='pb-4 pt-2 text-sm text-muted-foreground'>
+                  <p className='pt-2 pb-4 text-sm text-muted-foreground'>
                     Videos you viewed will appear here
                   </p>
                 </div>
@@ -259,7 +262,9 @@ const HistoryDropdownButton: React.FC<HistoryDropdownButtonProps> = ({
                     <Button
                       variant='ghost'
                       size='icon'
-                      onClick={() => handlePageChange(1)}
+                      onClick={() => {
+                        handlePageChange(1)
+                      }}
                       disabled={currentPage === 1}
                       className='h-8 w-8'>
                       <ChevronsLeft className='h-4 w-4' />
@@ -269,9 +274,9 @@ const HistoryDropdownButton: React.FC<HistoryDropdownButtonProps> = ({
                     <Button
                       variant='ghost'
                       size='icon'
-                      onClick={() =>
+                      onClick={() => {
                         handlePageChange(Math.max(1, currentPage - 1))
-                      }
+                      }}
                       disabled={currentPage === 1}
                       className='h-8 w-8'>
                       <ChevronLeft className='h-4 w-4' />
@@ -282,9 +287,9 @@ const HistoryDropdownButton: React.FC<HistoryDropdownButtonProps> = ({
                     <Button
                       variant='ghost'
                       size='icon'
-                      onClick={() =>
+                      onClick={() => {
                         handlePageChange(Math.min(totalPages, currentPage + 1))
-                      }
+                      }}
                       disabled={currentPage === totalPages}
                       className='h-8 w-8'>
                       <ChevronRight className='h-4 w-4' />
@@ -294,7 +299,9 @@ const HistoryDropdownButton: React.FC<HistoryDropdownButtonProps> = ({
                     <Button
                       variant='ghost'
                       size='icon'
-                      onClick={() => handlePageChange(totalPages)}
+                      onClick={() => {
+                        handlePageChange(totalPages)
+                      }}
                       disabled={currentPage === totalPages}
                       className='h-8 w-8'>
                       <ChevronsRight className='h-4 w-4' />

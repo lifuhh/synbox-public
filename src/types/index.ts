@@ -1,9 +1,8 @@
-import { InfiniteData, UseInfiniteQueryResult } from '@tanstack/react-query'
+import type {
+  InfiniteData,
+  UseInfiniteQueryResult,
+} from '@tanstack/react-query'
 
-//! Appwrite Types
-
-//! Youtube Types
-//? Youtube Playlist
 export interface formattedYoutubeVideoItemForCarousel {
   title: string
   channel: string
@@ -12,7 +11,6 @@ export interface formattedYoutubeVideoItemForCarousel {
   videoId: string
 }
 
-// YouTube API Types
 export interface YoutubePlaylistApiResponse {
   kind: string
   etag: string
@@ -28,7 +26,7 @@ export interface YoutubePlaylistItem {
   snippet: YoutubePlaylistItemSnippet
 }
 
-export interface YoutubePlaylistItemSnippet {
+interface YoutubePlaylistItemSnippet {
   publishedAt: string
   channelId: string
   title: string
@@ -42,7 +40,7 @@ export interface YoutubePlaylistItemSnippet {
   videoOwnerChannelId: string
 }
 
-export interface Thumbnails {
+interface Thumbnails {
   default: ThumbnailInfo
   medium: ThumbnailInfo
   high: ThumbnailInfo
@@ -50,18 +48,18 @@ export interface Thumbnails {
   maxres?: ThumbnailInfo
 }
 
-export interface ThumbnailInfo {
+interface ThumbnailInfo {
   url: string
   width: number
   height: number
 }
 
-export interface ResourceId {
+interface ResourceId {
   kind: string
   videoId: string
 }
 
-export interface PageInfo {
+interface PageInfo {
   totalResults: number
   resultsPerPage: number
 }
@@ -79,8 +77,7 @@ export interface TransformedYoutubePlaylistPage {
 }
 
 export type InfiniteGalleryQueryResult = UseInfiniteQueryResult<
-  InfiniteData<TransformedYoutubePlaylistPage>,
-  Error
+  InfiniteData<TransformedYoutubePlaylistPage>
 >
 
 export interface FetchInfiniteGalleryPlaylistParams {
@@ -88,16 +85,8 @@ export interface FetchInfiniteGalleryPlaylistParams {
 }
 
 export type FormatYoutubeResponseFunction = (
-  data: YoutubePlaylistApiResponse,
+  data: YoutubePlaylistApiResponse
 ) => InfiniteGalleryVideoItem[]
-
-// InfiniteScrollGallery Types
-export interface InfiniteGalleryVideoItem {
-  title: string
-  channel: string
-  thumbnailUrl: string
-  videoId: string
-}
 
 export interface InfiniteScrollGalleryProps {
   items: InfiniteGalleryVideoItem[]
@@ -107,87 +96,6 @@ export interface InfiniteScrollGalleryProps {
   isFetchingNextPage: boolean
 }
 
-// API Function Types
-export interface FetchInfiniteGalleryPlaylistParams {
-  pageParam?: string
-}
-
-export interface InfiniteGalleryVideoItem {
-  title: string
-  channel: string
-  thumbnailUrl: string
-  videoId: string
-}
-
-export interface TransformedYoutubePlaylistPage {
-  items: InfiniteGalleryVideoItem[]
-  nextPageToken?: string
-}
-
-export interface FetchInfiniteGalleryPlaylistParams {
-  pageParam?: string
-}
-
-export interface YoutubePlaylistApiResponse {
-  kind: string
-  etag: string
-  items: YoutubePlaylistItem[]
-  pageInfo: PageInfo
-}
-
-export interface YoutubePlaylistItem {
-  kind: string
-  etag: string
-  id: string
-  snippet: YoutubePlaylistItemSnippet
-}
-
-export interface PageInfo {
-  totalResults: number
-  resultsPerPage: number
-}
-
-export interface YoutubePlaylistItemSnippet {
-  publishedAt: string
-  channelId: string
-  title: string
-  description: string
-  thumbnails: Thumbnails
-  channelTitle: string
-  playlistId: string
-  position: number
-  resourceId: ResourceId
-  videoOwnerChannelTitle: string
-  videoOwnerChannelId: string
-}
-
-export interface ResourceId {
-  kind: string
-  videoId: string
-}
-
-export interface Thumbnails {
-  default: ThumbnailInfo
-  medium: ThumbnailInfo
-  high: ThumbnailInfo
-  standard?: ThumbnailInfo
-  maxres?: ThumbnailInfo
-}
-
-export interface ThumbnailInfo {
-  url: string
-  width: number
-  height: number
-}
-
-export interface formattedSearchResult {
-  title: string
-  channel: string
-  thumbnailUrl: string
-  videoId: string
-}
-
-//? Youtube Search
 export interface YoutubeSearchApiResponse {
   kind: string
   etag: string
@@ -197,13 +105,13 @@ export interface YoutubeSearchApiResponse {
   pageInfo: PageInfo
 }
 
-export interface YoutubeVideoStatistics {
+interface YoutubeVideoStatistics {
   viewCount: string
   likeCount: string
   commentCount: string
 }
 
-export interface YoutubeSearchItem {
+interface YoutubeSearchItem {
   kind: string
   etag: string
   id:
@@ -219,7 +127,7 @@ export interface YoutubeSearchItem {
   statistics?: YoutubeVideoStatistics
 }
 
-export interface YoutubeSearchItemSnippet {
+interface YoutubeSearchItemSnippet {
   publishedAt: string
   channelId: string
   title: string
@@ -244,15 +152,7 @@ export interface YoutubeSearchResultInfo {
   statistics?: YoutubeVideoStatistics
 }
 
-//* Lyrics Processing Types
-export interface UploadedSrtLine {
-  index: number
-  startTime: string
-  endTime: string
-  text: string
-}
-
-export interface FullVideoInfo {
+interface FullVideoInfo {
   id: string
   thumbnail: string
   duration: number
@@ -262,7 +162,7 @@ export interface FullVideoInfo {
   channel_name: string
 }
 
-export interface VideoInfoForValidation {
+interface VideoInfoForValidation {
   title: string
   channel_name: string
 }

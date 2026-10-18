@@ -1,22 +1,24 @@
-// src/App.tsx
+import { Navigate, Route, Routes } from 'react-router'
+
 import { Toaster } from '@/components/ui/toaster'
 import useKeyboardNavigation from '@/hooks/useKeyboardNavigation'
-import '@mantine/core/styles.css'
-import { Navigate, Route, Routes } from 'react-router-dom'
+
+import { AboutPage, LandingPage, PlayerPage, SearchPage } from './_root/pages'
 import RootLayout from './_root/RootLayout'
-import { AboutPage, LandingPage, PlayerPage } from './_root/pages'
+
 import './globals.css'
 
 const App = () => {
   useKeyboardNavigation()
 
   return (
-    <main className={`flex h-screen bg-background`}>
+    <main className='flex h-screen bg-background'>
       <Routes>
         <Route element={<RootLayout />}>
           <Route index element={<LandingPage />} />
           <Route path='/v/:videoId' element={<PlayerPage />} />
           <Route path='/about' element={<AboutPage />} />
+          <Route path='/search' element={<SearchPage />} />
           <Route path='*' element={<Navigate to='/' replace />} />
         </Route>
       </Routes>

@@ -1,6 +1,8 @@
-import { useGetLyricsBySongId } from '@/lib/react-query/queriesAndMutations'
 import { useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router'
+
+import { useGetLyricsBySongId } from '@/lib/react-query/queriesAndMutations'
+
 import { Button } from '../ui/button'
 
 interface RequestDialogFinalDisplayProps {
@@ -30,7 +32,6 @@ const RequestDialogFinalDisplay = ({
     }
   }, [vidInfo, navigate])
 
-  // Only show loading or error state when we have valid video info
   if (!vidInfo?.full_vid_info) {
     return null
   }
@@ -60,7 +61,7 @@ const RequestDialogFinalDisplay = ({
           <Button
             onClick={handlePlayClick}
             variant='default'
-            className=' mt-4 w-32'>
+            className='mt-4 w-32'>
             Play Video
           </Button>
         ) : (

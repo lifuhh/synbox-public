@@ -1,8 +1,10 @@
+import { useEffect, useState } from 'react'
+
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useStreamAnnotateApi } from '@/hooks/useStreamAnnotateApi'
-import { Text } from '@mantine/core'
-import { useEffect, useState } from 'react'
-import { ProgressUpdate, Step } from './ProgressUpdate'
+
+import type { Step } from './ProgressUpdate'
+import { ProgressUpdate } from './ProgressUpdate'
 import UpdateMessagesDisplay from './UpdateMessagesDisplay'
 
 const RequestDialogAnnotateDisplay = ({
@@ -42,7 +44,7 @@ const RequestDialogAnnotateDisplay = ({
   }, [isStreaming, isBuffering])
 
   useEffect(() => {
-    onStreamingStatusChange(isStreaming || isBuffering) // Call this when streaming status changes
+    onStreamingStatusChange(isStreaming || isBuffering)
   }, [isStreaming, isBuffering, onStreamingStatusChange])
 
   useEffect(() => {
@@ -53,10 +55,12 @@ const RequestDialogAnnotateDisplay = ({
           engTranslation,
           chiTranslation,
           romajiLyrics,
-          kanjiAnnotations,
+          kanjiAnnotations
         )
       }, 2000)
-      return () => clearTimeout(timer)
+      return () => {
+        clearTimeout(timer)
+      }
     }
   }, [
     isDataComplete,
@@ -74,9 +78,11 @@ const RequestDialogAnnotateDisplay = ({
   }, [error, onError])
 
   const renderScrollableContent = (content) => {
-    if (!content) return null
+    if (!content) {
+      return null
+    }
     return (
-      <div className='h-80 overflow-y-auto rounded border border-gray-300 p-2'>
+      <div className='h-80 overflow-y-auto rounded-sm border border-gray-300 p-2'>
         {content.map((line, index) => (
           <p key={index} className='whitespace-pre-wrap'>
             {line}
@@ -88,9 +94,9 @@ const RequestDialogAnnotateDisplay = ({
 
   const renderTabs = () => (
     <>
-      <Text className='mb-4' ta='center' size='lg' fw={700}>
+      <p className='mb-4 text-center text-lg leading-[1.6] font-bold'>
         Preview
-      </Text>
+      </p>
       <Tabs defaultValue='lyrics' className='w-full'>
         <TabsList className='grid w-full grid-cols-4'>
           <TabsTrigger value='lyrics'>Lyrics</TabsTrigger>

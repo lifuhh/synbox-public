@@ -1,29 +1,27 @@
+import { useAtom } from 'jotai'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import YouTubeVideo from 'youtube-video-element/react'
+
 import { useAppContext } from '@/context/AppContext'
 import { mutedAtom } from '@/context/atoms'
 import { isValidVideoId } from '@/utils/routeHandler'
-import { LoadingOverlay } from '@mantine/core'
-import { useAtom } from 'jotai'
-import { ForwardedRef, useEffect, useState } from 'react'
-import ReactPlayer from 'react-player'
+
 import ExternalLinkHandler from './ExternalLinkHandler'
 import PlayerMutedOverlay from './PlayerMutedOverlay'
 
 interface VideoPlayerProps {
-  videoId: string // The video ID to play
-  playing: boolean // Whether the video is currently playing
-  loop: boolean // Whether the video should loop on end
-  volume: number // The volume level of the video (0-1)
+  videoId: string
+  playing: boolean
+  loop: boolean
+  volume: number
   handlePlay: () => void
   handleDuration: (duration: number) => void
   handleProgress: () => void
   handleStart: () => void
   handleEnded: () => void
   handleInitMutedPlay: () => void
-  handlePlayPause: () => void
   setIsPlayerReady: React.Dispatch<React.SetStateAction<boolean>>
-  playerRef: ForwardedRef<ReactPlayer>
-  // Add methods for handling playback control (play, pause, seek)
-  // and volume control (setVolume, toggleMute)
+  playerRef: React.RefObject<HTMLVideoElement | null>
 }
 
 const VideoPlayer: React.FC<VideoPlayerProps> = ({
@@ -34,25 +32,56 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   handleEnded,
   handleStart,
   handleInitMutedPlay,
-  handlePlayPause,
   handleDuration,
   handleProgress,
   setIsPlayerReady,
   volume,
   playerRef,
 }: VideoPlayerProps) => {
-  // const handlePlayerReady = () => {}
   const {
     setPlayerControlsVisible,
     playerOverlayVisible,
     playerOverlayVisibleHandler,
   } = useAppContext()
-  const [videoEnded, setVideoEnded] = useState(false)
   const [muted, setMuted] = useAtom(mutedAtom)
   const [isInitialized, setIsInitialized] = useState(false)
   const [videoError, setVideoError] = useState<Error | null>(null)
+  const hasStartedRef = useRef(false)
 
-  // Validate video ID
+  const setPlayerElement = useCallback(
+    (element: HTMLVideoElement | null) => {
+      playerRef.current = element
+    },
+    [playerRef]
+  )
+
+  // No deps on purpose: mirrors react-player, which re-applied `playing`/`volume` on every render
+  useEffect(() => {
+    const player = playerRef.current
+    if (!player) {
+      return
+    }
+    if (playing && player.paused) {
+      void player.play()
+    }
+    if (!playing && !player.paused) {
+      player.pause()
+    }
+    player.volume = volume
+  })
+
+  const handleLoadStart = () => {
+    hasStartedRef.current = false
+  }
+
+  const handlePlayEvent = () => {
+    if (!hasStartedRef.current) {
+      hasStartedRef.current = true
+      handleStart()
+    }
+    handlePlay()
+  }
+
   useEffect(() => {
     if (!isValidVideoId(videoId)) {
       setVideoError(new Error('Invalid video ID'))
@@ -61,33 +90,24 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     setVideoError(null)
   }, [videoId])
 
-  // Type guard for playerRef remains the same
-  if (!playerRef || typeof playerRef === 'function') {
-    throw new Error('playerRef must be a MutableRefObject')
-  }
-
-  //? Handle delay in dismissing bottom bar controls visibility when playing video
   useEffect(() => {
-    let timer: ReturnType<typeof setTimeout> // Declare timer to use it inside clearTimeout
+    let timer: ReturnType<typeof setTimeout>
 
     const showControlsTemporarily = () => {
-      clearTimeout(timer) // Clear any existing timer on mouse move
-      setPlayerControlsVisible(true) // Show the controls on mouse move
+      clearTimeout(timer)
+      setPlayerControlsVisible(true)
 
-      //? Used to set timer to hide the controls after X milliseconds of no mouse movement
       if (playing) {
-        // Check if the video is playing
         timer = setTimeout(() => {
           setPlayerControlsVisible(false)
         }, 3000)
       }
     }
 
-    showControlsTemporarily() // Show the controls initially when the video starts playing
+    showControlsTemporarily()
 
     document.addEventListener('mousemove', showControlsTemporarily)
 
-    // Cleanup function to remove the event listener and clear the timeout when the component unmounts or before the effect runs again
     return () => {
       document.removeEventListener('mousemove', showControlsTemporarily)
       clearTimeout(timer)
@@ -108,25 +128,21 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     isInitialized,
   ])
 
-  const handlePause = () => {
-    // console.log('VideoPlayer.tsx player has been paused')
-  }
-
   const handleReady = () => {
-    if (!playerRef.current) return
+    if (!playerRef.current) {
+      return
+    }
 
     try {
-      if (playerRef.current.getInternalPlayer()) {
-        const isMuted = playerRef.current.getInternalPlayer().isMuted()
-        setMuted(isMuted)
-        setIsPlayerReady(true)
-        setIsInitialized(true)
-        setVideoError(null)
+      // Before the YouTube API loads the element reports its muted attribute, so trust the atom
+      const isMuted = muted
+      setMuted(isMuted)
+      setIsPlayerReady(true)
+      setIsInitialized(true)
+      setVideoError(null)
 
-        // Auto-start if not muted
-        if (!isMuted) {
-          handlePlay()
-        }
+      if (!isMuted) {
+        handlePlay()
       }
     } catch (error) {
       handleError(error)
@@ -135,77 +151,62 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
   const handleVideoEnded = () => {
     handleEnded()
-    setVideoEnded(playing)
   }
 
-  const handleError = (error: any) => {
+  const handleError = (error: unknown) => {
     console.error('Video player error:', error)
+    const mediaErrorMessage = playerRef.current?.error?.message
     setVideoError(
-      error instanceof Error ? error : new Error('Video playback error'),
+      error instanceof Error
+        ? error
+        : new Error(mediaErrorMessage || 'Video playback error')
     )
     setIsPlayerReady(false)
   }
 
   return (
     <>
-      <LoadingOverlay
-        visible={playerOverlayVisible || !!videoError}
-        zIndex={100}
-        overlayProps={{ radius: 'sm', blur: 15 }}
-        loaderProps={{
-          children: videoError ? (
-            <div className='flex flex-col items-center justify-center text-red-500'>
-              <p>Error loading video</p>
-              <p className='text-sm'>{videoError.message}</p>
-            </div>
-          ) : (
-            <PlayerMutedOverlay handleInitMutedPlay={handleInitMutedPlay} />
-          ),
-          style: { width: '100%', height: '100%' },
-        }}
-        styles={{
-          root: { position: 'relative', height: '100%', width: '100%' },
-          loader: {
-            width: '100%',
-            height: '100%',
-            '& > *': { width: '100%', height: '100%' },
-          },
-        }}
-      />
+      {(playerOverlayVisible || !!videoError) && (
+        <div className='relative z-100 flex h-full w-full items-center justify-center overflow-hidden'>
+          <div className='relative z-101 h-full w-full'>
+            {videoError ? (
+              <div className='flex flex-col items-center justify-center text-red-500'>
+                <p>Error loading video</p>
+                <p className='text-sm'>{videoError.message}</p>
+              </div>
+            ) : (
+              <PlayerMutedOverlay handleInitMutedPlay={handleInitMutedPlay} />
+            )}
+          </div>
+          <div className='absolute inset-0 z-100 rounded-[0.25rem] bg-[rgb(59_59_59/0.75)] backdrop-blur-[15px]' />
+        </div>
+      )}
       <ExternalLinkHandler>
-        <ReactPlayer
-          className='absolute left-0 right-0 top-0'
-          ref={playerRef}
+        {/* Rendered directly, not via react-player's lazy wrapper, which set `config` after the embed URL was built */}
+        <YouTubeVideo
+          className='absolute top-0 right-0 left-0'
+          ref={setPlayerElement}
+          style={{ display: 'block', width: '100%', height: '100%' }}
           config={{
-            youtube: {
-              playerVars: {
-                rel: 0,
-                hl: 'en',
-                disablekb: 1,
-                fs: 0,
-              },
-              embedOptions: {
-                nocookie: true,
-              },
-            },
+            rel: 0,
+            hl: 'en',
+            disablekb: 1,
+            fs: 0,
+            cc_load_policy: 0,
           }}
-          width='100%'
-          height='100%'
-          url={`https://www.youtube-nocookie.com/embed/${videoId}?enablejsapi=1&cc_load_policy=0&rel=0`}
+          src={`https://www.youtube-nocookie.com/embed/${videoId}`}
           muted={muted}
-          volume={volume}
-          playing={playing}
           loop={loop}
-          controls={true}
-          onReady={handleReady}
-          onStart={handleStart}
-          onPlay={handlePlay}
-          onSeek={(e) => console.log('onSeek', e)}
+          controls
+          onLoadStart={handleLoadStart}
+          onLoadedMetadata={handleReady}
+          onPlay={handlePlayEvent}
           onEnded={handleVideoEnded}
           onError={handleError}
-          onProgress={handleProgress}
-          onDuration={handleDuration}
-          onPause={handlePause}
+          onTimeUpdate={handleProgress}
+          onDurationChange={(e) => {
+            handleDuration(e.currentTarget.duration)
+          }}
         />
       </ExternalLinkHandler>
     </>

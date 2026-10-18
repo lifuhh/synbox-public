@@ -1,8 +1,10 @@
+import { PlayIcon } from 'lucide-react'
+import React, { useEffect, useRef, useState } from 'react'
+import { useNavigate } from 'react-router'
+
 import { DropdownMenuItem } from '@/components/ui/dropdown-menu'
 import { useOverflow } from '@/hooks/useOverflow'
-import PlayArrowIcon from '@mui/icons-material/PlayArrow'
-import React, { useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+
 import OptimizedThumbnail from '../shared/OptimizedThumbnail'
 import { Button } from '../ui/button'
 
@@ -32,7 +34,7 @@ const HistoryDropdownItem: React.FC<HistoryDropdownItemProps> = ({
     const checkOverflow = () => {
       if (textRef.current && containerRef.current) {
         setIsOverflowing(
-          textRef.current.scrollWidth > containerRef.current.clientWidth,
+          textRef.current.scrollWidth > containerRef.current.clientWidth
         )
       }
     }
@@ -53,14 +55,14 @@ const HistoryDropdownItem: React.FC<HistoryDropdownItemProps> = ({
 
   return (
     <DropdownMenuItem className='p-2'>
-      <div className='playlist-item flex h-full w-full items-center space-x-2'>
+      <div className='flex h-full w-full playlist-item items-center space-x-2'>
         <OptimizedThumbnail
           src={thumbnailUrl}
           alt={title}
           onClick={handleClick}
           className='cursor-pointer'
         />
-        <div className='min-w-0 flex-grow'>
+        <div className='min-w-0 grow'>
           <div
             ref={containerRef}
             className={`font-bold tracking-wide text-zinc-100 ${
@@ -80,9 +82,9 @@ const HistoryDropdownItem: React.FC<HistoryDropdownItemProps> = ({
         <Button
           variant='link'
           size='icon'
-          className='flex-shrink-0 bg-secondary'
+          className='shrink-0 bg-secondary'
           onClick={handleRowClick(videoId)}>
-          <PlayArrowIcon className='h-4 w-4' />
+          <PlayIcon className='size-6 shrink-0 fill-current' />
         </Button>
       </div>
     </DropdownMenuItem>

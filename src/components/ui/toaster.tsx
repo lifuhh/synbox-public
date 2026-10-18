@@ -9,6 +9,7 @@ import {
   ToastViewport,
 } from '@/components/ui/toast'
 import { TOAST_REMOVE_DELAY } from '@/components/ui/use-toast'
+
 import { useToast } from '../ui/use-toast'
 
 export function Toaster() {
@@ -16,27 +17,16 @@ export function Toaster() {
 
   return (
     <ToastProvider duration={TOAST_REMOVE_DELAY}>
-      {toasts.map(function ({
-        id,
-        title,
-        description,
-        action,
-        duration,
-        ...props
-      }) {
-        return (
-          <Toast key={id} duration={duration} {...props}>
-            <div className='grid gap-1'>
-              {title && <ToastTitle>{title}</ToastTitle>}
-              {description && (
-                <ToastDescription>{description}</ToastDescription>
-              )}
-            </div>
-            {action}
-            <ToastClose />
-          </Toast>
-        )
-      })}
+      {toasts.map(({ id, title, description, action, duration, ...props }) => (
+        <Toast key={id} duration={duration} {...props}>
+          <div className='grid gap-1'>
+            {title && <ToastTitle>{title}</ToastTitle>}
+            {description && <ToastDescription>{description}</ToastDescription>}
+          </div>
+          {action}
+          <ToastClose />
+        </Toast>
+      ))}
       <ToastViewport />
     </ToastProvider>
   )

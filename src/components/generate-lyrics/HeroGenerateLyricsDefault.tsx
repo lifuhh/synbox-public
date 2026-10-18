@@ -1,3 +1,7 @@
+import { ArrowRightIcon, Info, PlayIcon, SearchIcon } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { useNavigate } from 'react-router'
+
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -6,20 +10,14 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
-import { dialogStepAtom } from '@/context/atoms'
+import useRequestDialog from '@/hooks/useRequestDialog'
 import { useGetLyricsBySongId } from '@/lib/react-query/queriesAndMutations'
 import { YouTubeUrlOrIdValidation } from '@/lib/validation'
 import { extractVideoId } from '@/utils'
-import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
-import InfoIcon from '@mui/icons-material/Info'
-import PlayArrowIcon from '@mui/icons-material/PlayArrow'
-import { useSetAtom } from 'jotai'
-import { Info } from 'lucide-react'
-import { useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+
 import RequestDialog from '../shared/RequestDialog'
-import { Spotlight } from '../ui/Spotlight'
 import { Dialog, DialogTrigger } from '../ui/dialog'
+import { Spotlight } from '../ui/Spotlight'
 
 interface HeroGenerateLyricsDefaultProps {
   setProcessingStage: (stage: number) => void
@@ -27,25 +25,38 @@ interface HeroGenerateLyricsDefaultProps {
   inputVideoId: string
 }
 
+// A bare 11-character word only counts as a video id when it has a digit, - or _, or mixed case.
+const looksLikeYoutubeLink = (value: string) => {
+  const text = value.trim()
+  if (/youtube\.com|youtu\.be|https?:\/\//u.test(text)) {
+    return true
+  }
+  return (
+    /^[\w-]{11}$/u.test(text) &&
+    (/[\d_-]/u.test(text) || (/[a-z]/u.test(text) && /[A-Z]/u.test(text)))
+  )
+}
+
 const HeroGenerateLyricsDefault = ({
   setInputVideoId,
-  inputVideoId,
 }: HeroGenerateLyricsDefaultProps) => {
   const [inputValue, setInputValue] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
   const [validationSuccess, setValidationSuccess] = useState(false)
-  const [dialogOpen, setDialogOpen] = useState(false)
-  const [dialogKey, setDialogKey] = useState(0)
-  const setDialogStepAtom = useSetAtom(dialogStepAtom)
+  const dialog = useRequestDialog()
   const navigate = useNavigate()
-
-  // Remove previousInputRef as it's causing issues with dialog reopening
+  const isSearch =
+    inputValue.trim().length > 0 && !looksLikeYoutubeLink(inputValue)
 
   const extractedVideoId = useMemo(() => {
-    if (!inputValue) return ''
+    if (!inputValue) {
+      return ''
+    }
 
     const result = YouTubeUrlOrIdValidation.safeParse(inputValue)
-    if (!result.success) return ''
+    if (!result.success) {
+      return ''
+    }
 
     const id = extractVideoId(inputValue)
     return id || ''
@@ -55,10 +66,10 @@ const HeroGenerateLyricsDefault = ({
     useGetLyricsBySongId(validationSuccess ? extractedVideoId : '')
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value
+    const { value } = e.target
     setInputValue(value)
 
-    if (!value) {
+    if (!value || !looksLikeYoutubeLink(value)) {
       setErrorMessage('')
       setValidationSuccess(false)
       return
@@ -67,7 +78,7 @@ const HeroGenerateLyricsDefault = ({
     const result = YouTubeUrlOrIdValidation.safeParse(value)
     if (!result.success) {
       setErrorMessage(
-        result.error.errors.map((error) => error.message).join(', '),
+        result.error.issues.map((error) => error.message).join(', ')
       )
       setValidationSuccess(false)
     } else {
@@ -83,6 +94,10 @@ const HeroGenerateLyricsDefault = ({
   }
 
   const handleOpenLandingPageDialog = () => {
+    if (isSearch) {
+      navigate(`/search?q=${encodeURIComponent(inputValue.trim())}`)
+      return
+    }
     if (validationSuccess && extractedVideoId) {
       setInputVideoId(extractedVideoId)
 
@@ -91,39 +106,33 @@ const HeroGenerateLyricsDefault = ({
           state: { videoId: extractedVideoId },
         })
       } else {
-        setDialogStepAtom(0)
-        setDialogOpen(false)
-        // Increment the key to force dialog recreation
-        setDialogKey((prev) => prev + 1)
-        requestAnimationFrame(() => {
-          setDialogOpen(true)
-        })
+        dialog.openFor(extractedVideoId)
       }
     }
   }
 
-  const handleDialogClose = () => {
-    setDialogOpen(false)
-    setDialogStepAtom(0)
-  }
-
   return (
-    <div className='items-top bg-grid-white/[0.90] bg-dark-1/[0.15] relative flex w-full overflow-hidden rounded-md pt-10 antialiased md:h-[25rem] md:justify-center'>
+    <div className='items-top bg-grid-white/[0.90] bg-dark-1/[0.15] relative flex w-full overflow-hidden rounded-md pt-10 antialiased md:h-100 md:justify-center'>
       <Spotlight
         className='-top-8 left-10 md:-top-20 md:left-60'
         fill='#580a24'
       />
 
-      <div className='flex-between xl:flex-around z-10 mx-auto w-full max-w-7xl flex-col gap-4 p-4 lg:gap-0 xl:h-96'>
-        <h1 className='no-select bg-opacity-50 bg-gradient-to-b from-neutral-50 to-neutral-400 bg-clip-text pb-2 text-center text-4xl font-bold text-transparent md:text-6xl lg:text-7xl'>
+      <div className='z-10 mx-auto flex-between w-full max-w-7xl flex-col gap-4 p-4 lg:gap-0 xl:flex-around xl:h-96'>
+        <h1 className='bg-linear-to-b from-neutral-50 to-neutral-400 bg-clip-text pb-2 text-center text-4xl font-bold text-transparent no-select md:text-6xl lg:text-7xl'>
           AI-Powered Japanese Karaoke
         </h1>
-        <div className='flex-between relative flex w-full flex-col gap-4 overflow-visible sm:mx-auto sm:w-4/5 md:flex-row'>
+        <div className='relative flex-between flex w-full flex-col gap-4 overflow-visible sm:mx-auto sm:w-4/5 md:flex-row'>
           <Input
             value={inputValue}
             onChange={handleInputChange}
-            placeholder='Paste YouTube URL here'
-            className={`invisible-ring border-2 bg-input/40 py-6 text-white ${
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && isSearch) {
+                handleOpenLandingPageDialog()
+              }
+            }}
+            placeholder='Paste a YouTube URL or search for a song'
+            className={`border-2 bg-input/40 py-6 text-white invisible-ring ${
               inputValue.length > 0
                 ? validationSuccess
                   ? 'border-green-500 hover:border-foreground focus:border-green-500'
@@ -132,7 +141,7 @@ const HeroGenerateLyricsDefault = ({
             } `}
           />
           <div className='absolute -bottom-20 left-0 h-20 w-full py-6 pt-2 text-center md:text-left lg:py-2'>
-            {inputValue.length > 0 && (
+            {inputValue.length > 0 && !isSearch && (
               <div className={errorMessage ? 'text-red-500' : 'text-green-500'}>
                 {errorMessage
                   ? errorMessage
@@ -146,12 +155,14 @@ const HeroGenerateLyricsDefault = ({
               </div>
             )}
           </div>
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <Dialog open={dialog.open} onOpenChange={dialog.handleOpenChange}>
             <DialogTrigger asChild>
               <Button
                 onClick={(e) => {
-                  if (inputValue?.length === 0) {
+                  if (inputValue?.length === 0 || isSearch) {
                     e.preventDefault()
+                  }
+                  if (inputValue?.length === 0) {
                     return
                   }
                   handleOpenLandingPageDialog()
@@ -162,34 +173,37 @@ const HeroGenerateLyricsDefault = ({
                     : false || isCheckingLyrics
                 }
                 variant='default'
-                // role='combobox'
                 className='w-full gap-2 border-2 border-primary/90 bg-primary/90 py-6 text-foreground hover:border-primary hover:bg-primary md:w-1/2 lg:w-1/4'>
-                {isCheckingLyrics ? (
+                {isSearch ? (
+                  <p className='text-[16px]'>Search</p>
+                ) : isCheckingLyrics ? (
                   <p className='text-[16px]'>Searching ...</p>
                 ) : existingLyrics ? (
                   <p className='text-[16px]'>Play Video</p>
                 ) : (
                   <p className='text-[16px]'>Try Now</p>
                 )}
-                {isCheckingLyrics ? (
+                {isSearch ? (
+                  <SearchIcon className='size-6 shrink-0' />
+                ) : isCheckingLyrics ? (
                   ''
                 ) : existingLyrics ? (
-                  <PlayArrowIcon className='h-2 w-2' />
+                  <PlayIcon className='size-6 shrink-0 fill-current' />
                 ) : (
-                  <ArrowForwardIcon className='h-2 w-2' />
+                  <ArrowRightIcon className='size-6 shrink-0' />
                 )}
               </Button>
             </DialogTrigger>
             <RequestDialog
-              key={dialogKey}
-              videoId={inputVideoId}
-              handleClose={handleDialogClose}
+              key={dialog.dialogKey}
+              videoId={dialog.videoId}
+              handleClose={dialog.close}
             />
           </Dialog>
         </div>
 
         <div className='flex items-center justify-center gap-2'>
-          <p className='lg:w-7/10 no-select mx-auto mt-4 text-center text-base font-normal text-neutral-300 lg:mt-0'>
+          <p className='mx-auto mt-4 text-center text-base font-normal text-neutral-300 no-select lg:mt-0'>
             Transform YouTube videos into your personalized Japanese karaoke
             stage, with AI-transcribed, accurately synced lyrics and
             translations
@@ -206,7 +220,7 @@ const HeroGenerateLyricsDefault = ({
                 side='bottom'
                 sideOffset={10}
                 align='end'>
-                <p className='text-pretty text-center'>
+                <p className='text-center text-pretty'>
                   While AI strives for accuracy, occasional discrepancies in
                   transcription or syncing may occur.
                 </p>

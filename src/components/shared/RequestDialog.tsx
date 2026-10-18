@@ -1,3 +1,8 @@
+import { DialogDescription } from '@radix-ui/react-dialog'
+import { useQueryClient } from '@tanstack/react-query'
+import { useAtom } from 'jotai'
+import { useEffect, useState } from 'react'
+
 import {
   DialogClose,
   DialogContent,
@@ -5,27 +10,21 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { ToastProps } from '@/components/ui/toast'
 import { useToast } from '@/components/ui/use-toast'
 import { dialogStepAtom } from '@/context/atoms'
 import { useStreamValidationApi } from '@/hooks/useStreamValidationApi'
-import { DialogDescription } from '@radix-ui/react-dialog'
-import { useAtom } from 'jotai'
-import { useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import {
+  useGetLyricsBySongId,
+  useUploadLyricsToAppwrite,
+} from '@/lib/react-query/queriesAndMutations'
+import { QUERY_KEYS } from '@/lib/react-query/queryKeys'
+
 import { Button } from '../ui/button'
 import RequestDialogAnnotateDisplay from './RequestDialogAnnotateDisplay'
 import RequestDialogFinalDisplay from './RequestDialogFinalDisplay'
 import RequestDialogStepTwoDisplay from './RequestDialogStepTwoDisplay'
 import RequestDialogValidationDisplay from './RequestDialogValidationDisplay'
 import UpdateMessagesDisplay from './UpdateMessagesDisplay'
-
-import {
-  useGetLyricsBySongId,
-  useUploadLyricsToAppwrite,
-} from '@/lib/react-query/queriesAndMutations'
-import { QUERY_KEYS } from '@/lib/react-query/queryKeys'
-import { useQueryClient } from '@tanstack/react-query'
 
 interface RequestDialogProps {
   videoId: string
@@ -35,7 +34,6 @@ interface RequestDialogProps {
 type OutsideEvent = CustomEvent<{ originalEvent: PointerEvent | FocusEvent }>
 
 const RequestDialog = ({ videoId, handleClose }: RequestDialogProps) => {
-  const navigate = useNavigate()
   const [currentStep, setCurrentStep] = useAtom(dialogStepAtom)
   const [showLoader, setShowLoader] = useState(false)
   const [lyrics, setLyrics] = useState<string[]>([])
@@ -63,8 +61,7 @@ const RequestDialog = ({ videoId, handleClose }: RequestDialogProps) => {
     mutate,
   } = useStreamValidationApi()
 
-  const { toast, dismiss } = useToast()
-  const toastIdRef = useRef<string | null>(null)
+  const { toast } = useToast()
 
   const queryClient = useQueryClient()
   const { mutate: uploadLyricsToAppwrite } = useUploadLyricsToAppwrite()
@@ -90,12 +87,10 @@ const RequestDialog = ({ videoId, handleClose }: RequestDialogProps) => {
   }
 
   useEffect(() => {
-    // console.log('Starting validation for videoId:', videoId)
     if (videoId) {
       mutate(videoId)
     }
     return () => {
-      // console.log('Stopping stream for videoId:', videoId)
       resetStream()
     }
   }, [videoId, mutate, resetStream])
@@ -104,35 +99,46 @@ const RequestDialog = ({ videoId, handleClose }: RequestDialogProps) => {
     if (isStreaming) {
       setShowLoader(true)
     } else {
-      const timer = setTimeout(() => setShowLoader(false), 1000)
-      return () => clearTimeout(timer)
+      const timer = setTimeout(() => {
+        setShowLoader(false)
+      }, 1000)
+      return () => {
+        clearTimeout(timer)
+      }
     }
   }, [isStreaming])
 
   useEffect(() => {
     if (vidInfo && !error) {
-      const timer = setTimeout(() => setShowVidInfo(true), 1000)
-      // console.log('vid info is')
-      // console.log(vidInfo)
-      return () => clearTimeout(timer)
+      const timer = setTimeout(() => {
+        setShowVidInfo(true)
+      }, 1000)
+      return () => {
+        clearTimeout(timer)
+      }
     }
   }, [vidInfo, error, setShowVidInfo])
 
   const getDialogHeaderContent = () => {
     switch (currentStep) {
-      case 0:
+      case 0: {
         return { title: 'Step 1 - Validation', description: '' }
-      case 1:
+      }
+      case 1: {
         return { title: 'Step 2 - Transcription', description: '' }
-      case 2:
+      }
+      case 2: {
         return { title: 'Step 3 - Translation & Annotation', description: '' }
-      case 3:
+      }
+      case 3: {
         return { title: 'Upload Complete', description: 'Enjoy the video!' }
-      default:
+      }
+      default: {
         return {
           title: 'Transcription Completed',
           description: 'Enjoy the video!',
         }
+      }
     }
   }
 
@@ -144,7 +150,7 @@ const RequestDialog = ({ videoId, handleClose }: RequestDialogProps) => {
 
   const handleLyricsUpdate = (
     newLyrics: string[],
-    newTimestampedLyrics: unknown[],
+    newTimestampedLyrics: unknown[]
   ) => {
     setLyrics(newLyrics)
     setTimestampedLyrics(newTimestampedLyrics)
@@ -154,7 +160,7 @@ const RequestDialog = ({ videoId, handleClose }: RequestDialogProps) => {
     newEngTranslation: string[],
     newChiTranslation: string[],
     newRomajiLyrics: string[],
-    newKanjiAnnotations: string[],
+    newKanjiAnnotations: string[]
   ) => {
     setEngTranslation(newEngTranslation)
     setChiTranslation(newChiTranslation)
@@ -186,9 +192,8 @@ const RequestDialog = ({ videoId, handleClose }: RequestDialogProps) => {
       const convertToRuby = (annotatedLine: string) => {
         const rubyLines = annotatedLine.replace(
           /([一-龯々]+)\[([^\]]+)\]/g,
-          (match, kanji, reading) => {
-            return `<ruby>${kanji}<rp>(</rp><rt>${reading}</rt><rp>)</rp></ruby>`
-          },
+          (match, kanji, reading) =>
+            `<ruby>${kanji}<rp>(</rp><rt>${reading}</rt><rp>)</rp></ruby>`
         )
         return rubyLines.replace(/\[[^\]]+\]/g, '')
       }
@@ -201,7 +206,7 @@ const RequestDialog = ({ videoId, handleClose }: RequestDialogProps) => {
           endTime: formatTime(item.end_time),
           endSeconds: item.end_time,
           text: item.lyric,
-        }),
+        })
       )
 
       const labelledLyrics = adjustedTimestampedLyrics.map((item, index) => ({
@@ -225,23 +230,29 @@ const RequestDialog = ({ videoId, handleClose }: RequestDialogProps) => {
             await queryClient.invalidateQueries({
               queryKey: [QUERY_KEYS.GET_LYRICS_BY_SONG_ID, videoId],
             })
+            await queryClient.invalidateQueries({
+              queryKey: [QUERY_KEYS.SEARCH_VIDEOS],
+            })
+            await queryClient.invalidateQueries({
+              queryKey: [QUERY_KEYS.SEARCH_LIBRARY],
+            })
             await new Promise((resolve) => setTimeout(resolve, 5000))
             await refetchLyrics()
             setIsUploading(false)
             setUploadSuccess(true)
-            setCurrentStep(3) // Move to the final step
+            setCurrentStep(3)
           },
           onError: (error: any) => {
             setIsUploading(false)
-            setUploadError('Upload failed: ' + error.message)
+            setUploadError(`Upload failed: ${error.message}`)
             console.error('Upload failed:', error)
           },
-        },
+        }
       )
     } catch (err: any) {
       setIsUploading(false)
       setUploadError(
-        'An error occurred while processing the data: ' + err.message,
+        `An error occurred while processing the data: ${err.message}`
       )
       console.error('Error processing data:', err)
     }
@@ -255,7 +266,6 @@ const RequestDialog = ({ videoId, handleClose }: RequestDialogProps) => {
     }
   }
 
-  // Reset states when dialog closes
   const resetStates = () => {
     setCurrentStep(0)
     setShowLoader(false)
@@ -282,7 +292,6 @@ const RequestDialog = ({ videoId, handleClose }: RequestDialogProps) => {
     })
   }
 
-  // Handle all closing events
   const handleEscapeKeyDown = (event: KeyboardEvent) => {
     event.preventDefault()
     if (!isButtonDisabled) {
@@ -299,11 +308,7 @@ const RequestDialog = ({ videoId, handleClose }: RequestDialogProps) => {
 
   const renderStep = () => {
     switch (currentStep) {
-      case 0:
-        if (showVidInfo && !showLoader && !error && vidInfo) {
-          // console.log('Rendering vidInfo:', vidInfo)
-        }
-
+      case 0: {
         return (
           <>
             <UpdateMessagesDisplay
@@ -319,7 +324,8 @@ const RequestDialog = ({ videoId, handleClose }: RequestDialogProps) => {
             )}
           </>
         )
-      case 1:
+      }
+      case 1: {
         return (
           <RequestDialogStepTwoDisplay
             vidInfo={vidInfo}
@@ -328,7 +334,8 @@ const RequestDialog = ({ videoId, handleClose }: RequestDialogProps) => {
             forceAiTranscription={forceAiTranscription}
           />
         )
-      case 2:
+      }
+      case 2: {
         return isUploading ? (
           <UpdateMessagesDisplay
             isStreaming={true}
@@ -345,16 +352,19 @@ const RequestDialog = ({ videoId, handleClose }: RequestDialogProps) => {
             onStreamingStatusChange={handleStreamingStatusChange}
           />
         )
-      case 3:
+      }
+      case 3: {
         return vidInfo && <RequestDialogFinalDisplay vidInfo={vidInfo} />
-      default:
+      }
+      default: {
         return null
+      }
     }
   }
 
   return (
     <DialogContent
-      className='invisible-ring border-1 flex h-auto max-h-[90vh] flex-col border-accent border-opacity-60 bg-card sm:max-w-2xl [&>button]:hidden'
+      className='flex h-auto max-h-[90vh] flex-col border border-accent bg-card invisible-ring sm:max-w-2xl [&>button]:hidden'
       onEscapeKeyDown={handleEscapeKeyDown}
       onPointerDownOutside={handleOutsideEvent}
       onInteractOutside={handleOutsideEvent}>
@@ -363,10 +373,10 @@ const RequestDialog = ({ videoId, handleClose }: RequestDialogProps) => {
         <DialogDescription>{description}</DialogDescription>
       </DialogHeader>
 
-      <div className='mx-4 mt-2 flex-grow overflow-y-auto'>
+      <div className='mx-4 mt-2 grow overflow-y-auto'>
         {renderStep()}
         {(error || annotateError) && (
-          <div className='mt-4 text-primary-bright'>
+          <div className='text-primary-bright mt-4'>
             <h3 className='text-xl font-bold'>Error</h3>
             <p>{error || annotateError}</p>
           </div>
@@ -380,7 +390,7 @@ const RequestDialog = ({ videoId, handleClose }: RequestDialogProps) => {
               type='button'
               variant='ghost'
               onClick={handleCloseWithReset}
-              className='invisible-ring text-md text-light-1 w-full md:w-auto'>
+              className='text-md text-light-1 w-full invisible-ring md:w-auto'>
               Close
             </Button>
           </DialogClose>
@@ -392,7 +402,7 @@ const RequestDialog = ({ videoId, handleClose }: RequestDialogProps) => {
                   variant='ghost'
                   onClick={handlePreviousClick}
                   disabled={isButtonDisabled}
-                  className='invisible-ring text-md text-light-1 flex-1 hover:bg-gray-600 md:flex-initial'>
+                  className='text-md text-light-1 flex-1 invisible-ring hover:bg-gray-600 md:flex-initial'>
                   Previous Step
                 </Button>
               )}
@@ -400,7 +410,7 @@ const RequestDialog = ({ videoId, handleClose }: RequestDialogProps) => {
                 <Button
                   onClick={handleProceedClick}
                   disabled={isButtonDisabled}
-                  className='invisible-ring flex-1 text-white md:flex-initial'>
+                  className='flex-1 text-white invisible-ring md:flex-initial'>
                   {currentStep === 2 ? 'Proceed' : 'Next Step'}
                 </Button>
               )}

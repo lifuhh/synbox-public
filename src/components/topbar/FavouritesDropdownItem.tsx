@@ -1,10 +1,12 @@
-import { DropdownMenuItem } from '@/components/ui/dropdown-menu'
-import { removeFavoriteAtom } from '@/context/atoms'
-import { useOverflow } from '@/hooks/useOverflow'
 import { useAtom } from 'jotai'
 import { X } from 'lucide-react'
 import React, { useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router'
+
+import { DropdownMenuItem } from '@/components/ui/dropdown-menu'
+import { removeFavoriteAtom } from '@/context/atoms'
+import { useOverflow } from '@/hooks/useOverflow'
+
 import OptimizedThumbnail from '../shared/OptimizedThumbnail'
 import { Button } from '../ui/button'
 
@@ -31,7 +33,7 @@ const FavouritesDropdownItem: React.FC<FavouritesDropdownItemProps> = ({
     const checkOverflow = () => {
       if (textRef.current && containerRef.current) {
         setIsOverflowing(
-          textRef.current.scrollWidth > containerRef.current.clientWidth,
+          textRef.current.scrollWidth > containerRef.current.clientWidth
         )
       }
     }
@@ -57,14 +59,14 @@ const FavouritesDropdownItem: React.FC<FavouritesDropdownItemProps> = ({
 
   return (
     <DropdownMenuItem className='p-2'>
-      <div className='playlist-item flex h-full w-full items-center space-x-2'>
+      <div className='flex h-full w-full playlist-item items-center space-x-2'>
         <OptimizedThumbnail
           src={thumbnailUrl}
           alt={title}
           onClick={handleClick}
           className='cursor-pointer'
         />
-        <div className='min-w-0 flex-grow'>
+        <div className='min-w-0 grow'>
           <div
             ref={containerRef}
             className={`font-bold tracking-wide text-zinc-100 ${

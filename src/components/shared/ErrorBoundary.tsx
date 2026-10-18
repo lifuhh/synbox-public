@@ -1,6 +1,8 @@
+import type { ErrorInfo, ReactNode } from 'react'
+import { Component } from 'react'
+
 import TopBar from '@/components/shared/TopBar'
 import { Button } from '@/components/ui/button'
-import React, { Component, ErrorInfo, ReactNode } from 'react'
 
 interface Props {
   children: ReactNode
@@ -26,11 +28,9 @@ class ErrorBoundary extends Component<Props, State> {
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     this.setState({ errorInfo })
     console.error('Uncaught error:', error, errorInfo)
-    // You can also log the error to an error reporting service here
   }
 
-  private handleReturnHome = () => {
-    // Navigate to the home page
+  private readonly handleReturnHome = () => {
     window.location.href = '/'
   }
 
@@ -42,14 +42,14 @@ class ErrorBoundary extends Component<Props, State> {
           <div className='relative -my-14 flex min-h-screen flex-col items-center justify-center bg-background px-4 py-12 sm:px-6 lg:px-8'>
             <div className='mx-auto max-w-md text-center'>
               <div className='mx-auto h-12 w-12 text-primary' />
-              <h1 className='text-foreground mt-4 text-3xl font-bold tracking-tight sm:text-4xl'>
+              <h1 className='mt-4 text-3xl font-bold tracking-tight text-foreground sm:text-4xl'>
                 Something Went Wrong
               </h1>
-              <p className='text-muted-foreground mt-4'>
+              <p className='mt-4 text-muted-foreground'>
                 We're sorry — an unexpected error has occurred:
               </p>
               {this.state.error && (
-                <p className='text-muted-foreground mt-2'>
+                <p className='mt-2 text-muted-foreground'>
                   {this.state.error.toString()}
                 </p>
               )}

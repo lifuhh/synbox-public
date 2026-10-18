@@ -1,7 +1,8 @@
-import { streamValidateVideoById } from '@/lib/synbox-flask/api'
-import { VideoInfo } from '@/types'
 import { useMutation } from '@tanstack/react-query'
 import { useCallback, useEffect, useRef, useState } from 'react'
+
+import { streamValidateVideoById } from '@/lib/synbox-flask/api'
+import type { VideoInfo } from '@/types'
 
 export const useStreamValidationApi = () => {
   const [isStreaming, setIsStreaming] = useState(false)
@@ -16,7 +17,7 @@ export const useStreamValidationApi = () => {
   const mutateRef = useRef<((id: string) => void) | null>(null)
 
   const MAX_RETRIES = 3
-  const STREAM_TIMEOUT = 30000 // 30 seconds
+  const STREAM_TIMEOUT = 30_000
 
   const resetStream = useCallback(() => {
     setIsStreaming(false)
@@ -25,8 +26,7 @@ export const useStreamValidationApi = () => {
     setShowVidInfo(false)
     setError(null)
     retryCountRef.current = 0
-    
-    // Clean up any existing timeouts or abort controllers
+
     if (streamTimeoutRef.current) {
       clearTimeout(streamTimeoutRef.current)
       streamTimeoutRef.current = null
@@ -49,34 +49,38 @@ export const useStreamValidationApi = () => {
     setIsStreaming(false)
   }, [])
 
-  const handleVideoInfo = useCallback((info: unknown) => {
-    // console.log('Received video info:', info)
-    try {
-      if (!info || typeof info !== 'object') {
-        throw new Error('Invalid video info format')
+  const handleVideoInfo = useCallback(
+    (info: unknown) => {
+      try {
+        if (!info || typeof info !== 'object') {
+          throw new Error('Invalid video info format')
+        }
+        setVidInfo(info as VideoInfo)
+
+        if (streamTimeoutRef.current) {
+          clearTimeout(streamTimeoutRef.current)
+        }
+      } catch (err) {
+        console.error('Error processing video info:', err)
+        handleError(err)
       }
-      setVidInfo(info as VideoInfo)
-      
-      // Reset timeout when we receive valid data
-      if (streamTimeoutRef.current) {
-        clearTimeout(streamTimeoutRef.current)
-      }
-    } catch (err) {
-      console.error('Error processing video info:', err)
-      handleError(err)
-    }
-  }, [handleError])
+    },
+    [handleError]
+  )
 
   const startStreamTimeout = useCallback(() => {
     if (streamTimeoutRef.current) {
       clearTimeout(streamTimeoutRef.current)
     }
-    
+
     streamTimeoutRef.current = setTimeout(() => {
       console.warn('Stream timeout reached')
-      if (retryCountRef.current < MAX_RETRIES && currentIdRef.current && mutateRef.current) {
+      if (
+        retryCountRef.current < MAX_RETRIES &&
+        currentIdRef.current &&
+        mutateRef.current
+      ) {
         retryCountRef.current++
-        // console.log(`Retrying stream (attempt ${retryCountRef.current})...`)
         mutateRef.current(currentIdRef.current)
       } else {
         handleError('Stream timeout reached after multiple retries')
@@ -89,8 +93,7 @@ export const useStreamValidationApi = () => {
       resetStream()
       currentIdRef.current = id
       setIsStreaming(true)
-      
-      // Create new AbortController for this stream
+
       abortControllerRef.current = new AbortController()
       startStreamTimeout()
 
@@ -98,11 +101,9 @@ export const useStreamValidationApi = () => {
         await streamValidateVideoById(
           id,
           (message) => {
-            // console.log('Stream update:', message)
             setUpdateMessages((prev) => [...prev, message])
           },
           (info) => {
-            // console.log('Received info:', info)
             handleVideoInfo(info)
           },
           (err) => {
@@ -110,7 +111,6 @@ export const useStreamValidationApi = () => {
             handleError(err)
           },
           () => {
-            // console.log('Stream completed successfully')
             if (streamTimeoutRef.current) {
               clearTimeout(streamTimeoutRef.current)
             }
@@ -119,9 +119,7 @@ export const useStreamValidationApi = () => {
           abortControllerRef.current.signal
         )
       } catch (err) {
-        if (err instanceof Error && err.name === 'AbortError') {
-          console.log('Stream was aborted')
-        } else {
+        if (!(err instanceof Error && err.name === 'AbortError')) {
           console.error('Mutation error:', err)
           handleError(err)
         }
@@ -131,25 +129,24 @@ export const useStreamValidationApi = () => {
     onError: (err: unknown) => {
       console.error('Mutation error:', err)
       handleError(err)
-    }
+    },
   })
 
-  // Store mutation.mutate in ref to avoid dependency cycles
   useEffect(() => {
     mutateRef.current = mutation.mutate
   }, [mutation.mutate])
 
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
+  useEffect(
+    () => () => {
       if (streamTimeoutRef.current) {
         clearTimeout(streamTimeoutRef.current)
       }
       if (abortControllerRef.current) {
         abortControllerRef.current.abort()
       }
-    }
-  }, [])
+    },
+    []
+  )
 
   return {
     isStreaming,

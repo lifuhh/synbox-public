@@ -1,18 +1,21 @@
+import {
+  ArrowDownToLineIcon,
+  ArrowUpToLineIcon,
+  BookmarkCheckIcon,
+  BookmarkIcon,
+  HouseIcon,
+  LanguagesIcon,
+  MessageSquareTextIcon,
+  ReplyIcon,
+} from 'lucide-react'
+import React from 'react'
+
 import { ToggleGroupItem } from '@/components/ui/toggle-group'
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
-import BookmarkAddedIcon from '@mui/icons-material/BookmarkAdded'
-import BookmarkBorderIcon from '@mui/icons-material/BookmarkBorder'
-import HomeIcon from '@mui/icons-material/Home'
-import LyricsIcon from '@mui/icons-material/Lyrics'
-import ReplyIcon from '@mui/icons-material/Reply'
-import TranslateIcon from '@mui/icons-material/Translate'
-import VerticalAlignBottomIcon from '@mui/icons-material/VerticalAlignBottom'
-import VerticalAlignTopIcon from '@mui/icons-material/VerticalAlignTop'
-import React from 'react'
 
 type ButtonId =
   | 'returnHomeButton'
@@ -79,7 +82,7 @@ const getButtonProps = ({
       isDisabled ? 'cursor-not-allowed' : 'cursor-pointer'
     } ${
       !EXCLUDED_BUTTONS.includes(id)
-        ? 'bg-primary bg-opacity-100 data-[state=off]:bg-secondary/10'
+        ? 'bg-primary data-[state=off]:bg-secondary/10'
         : 'bg-primary text-white'
     }`,
     style: {
@@ -98,7 +101,7 @@ const getButtonProps = ({
 
   const buttonConfigs = {
     returnHomeButton: {
-      icon: <HomeIcon sx={{ fontSize: 24 }} />,
+      icon: <HouseIcon className='size-6 shrink-0' />,
       tooltip: 'Return to Home Page',
     },
     translationLanguage: {
@@ -112,11 +115,11 @@ const getButtonProps = ({
         : 'View English Translations',
     },
     translation: {
-      icon: <TranslateIcon sx={{ fontSize: 24 }} />,
+      icon: <LanguagesIcon className='size-6 shrink-0' />,
       tooltip: isTranslationVisible ? 'Hide Translations' : 'Show Translations',
     },
     lyrics: {
-      icon: <LyricsIcon sx={{ fontSize: 24 }} />,
+      icon: <MessageSquareTextIcon className='size-6 shrink-0' />,
       tooltip: isLyricsVisible ? 'Hide Lyrics' : 'Show Lyrics',
     },
     romaji: {
@@ -125,9 +128,9 @@ const getButtonProps = ({
     },
     lyricsPosition: {
       icon: isLyricsDisplayBottom ? (
-        <VerticalAlignTopIcon />
+        <ArrowUpToLineIcon className='size-6 shrink-0' />
       ) : (
-        <VerticalAlignBottomIcon />
+        <ArrowDownToLineIcon className='size-6 shrink-0' />
       ),
       tooltip: isLyricsDisplayBottom
         ? 'Align Lyrics Top'
@@ -136,24 +139,12 @@ const getButtonProps = ({
     bookmarkButton: {
       icon: currentVideo ? (
         isFavorite(currentVideo.videoId) ? (
-          <BookmarkAddedIcon />
+          <BookmarkCheckIcon className='size-6 shrink-0 fill-current [&>path:last-child]:stroke-background' />
         ) : (
-          <BookmarkBorderIcon
-            sx={{
-              fontSize: 24,
-              transform: 'scaleX(-1) rotate(0deg)',
-              transformOrigin: 'center',
-            }}
-          />
+          <BookmarkIcon className='size-6 shrink-0 -scale-x-100' />
         )
       ) : (
-        <BookmarkBorderIcon
-          sx={{
-            fontSize: 24,
-            transform: 'scaleX(-1) rotate(0deg)',
-            transformOrigin: 'center',
-          }}
-        />
+        <BookmarkIcon className='size-6 shrink-0 -scale-x-100' />
       ),
       tooltip: !currentVideo
         ? 'No video selected'
@@ -162,15 +153,7 @@ const getButtonProps = ({
           : 'Add to Bookmarks',
     },
     shareButton: {
-      icon: (
-        <ReplyIcon
-          sx={{
-            fontSize: 24,
-            transform: 'scaleX(-1) rotate(0deg)',
-            transformOrigin: 'center',
-          }}
-        />
-      ),
+      icon: <ReplyIcon className='size-6 shrink-0 -scale-x-100' />,
       tooltip: 'Copy URL',
     },
   }
@@ -227,7 +210,7 @@ export const LyricsVisibilityControlButton: React.FC<ButtonProps> = ({
         align='start'
         sideOffset={6}
         alignOffset={-4}
-        className='unhighlightable border-none bg-primary'>
+        className='border-none bg-primary unhighlightable'>
         {buttonProps.tooltip}
       </TooltipContent>
     </Tooltip>

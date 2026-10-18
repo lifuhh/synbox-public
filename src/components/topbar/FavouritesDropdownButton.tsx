@@ -1,3 +1,6 @@
+import { useAtom } from 'jotai'
+import { BookBookmarkIcon } from 'lucide-react'
+
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -13,9 +16,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { favoritesAtom } from '@/context/atoms'
-import BookmarksIcon from '@mui/icons-material/Bookmarks'
-import { useAtom } from 'jotai'
-import React from 'react'
+
 import FavouritesDropdownItem from './FavouritesDropdownItem'
 
 const FavouritesDropdownButton = ({ buttonVisibility }) => {
@@ -30,14 +31,14 @@ const FavouritesDropdownButton = ({ buttonVisibility }) => {
               <Button
                 variant='outline'
                 size='icon'
-                className={`invisible-ring border-primary/80 hover:border-white ${buttonVisibility}`}>
-                <BookmarksIcon className='h-6 w-6' />
+                className={`border-primary/80 invisible-ring hover:border-white ${buttonVisibility}`}>
+                <BookBookmarkIcon className='h-6 w-6 shrink-0' />
                 <span className='sr-only'>View Bookmarks</span>
               </Button>
             </TooltipTrigger>
           </DropdownMenuTrigger>
-          <TooltipContent className='unhighlightable border-none bg-accent'>
-            {'View Bookmarks'}
+          <TooltipContent className='border-none bg-accent unhighlightable'>
+            View Bookmarks
           </TooltipContent>
         </Tooltip>
         <DropdownMenuContent
@@ -45,7 +46,6 @@ const FavouritesDropdownButton = ({ buttonVisibility }) => {
           sideOffset={10}
           className='w-[400px] max-w-[400px] border border-primary bg-background p-0'>
           <div className='flex flex-col'>
-            {/* Fixed Header */}
             <div className='sticky top-0 z-10 bg-background/95 p-2'>
               <DropdownMenuLabel className='unselectable text-xl'>
                 Bookmarks
@@ -53,7 +53,6 @@ const FavouritesDropdownButton = ({ buttonVisibility }) => {
               <DropdownMenuSeparator />
             </div>
 
-            {/* Scrollable Content */}
             <div className='max-h-[600px] overflow-y-auto px-2'>
               {favorites.length > 0 ? (
                 <div className='space-y-1 pb-4'>
@@ -66,7 +65,7 @@ const FavouritesDropdownButton = ({ buttonVisibility }) => {
                   <p className='text-lg font-medium text-muted-foreground'>
                     Your bookmarks list is empty
                   </p>
-                  <p className='pb-4 pt-2 text-sm text-muted-foreground'>
+                  <p className='pt-2 pb-4 text-sm text-muted-foreground'>
                     Songs you bookmarked will appear here.
                   </p>
                 </div>

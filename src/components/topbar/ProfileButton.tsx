@@ -1,37 +1,20 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
+import { CircleQuestionMarkIcon, UserIcon } from 'lucide-react'
+import { useNavigate } from 'react-router'
+
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuShortcut,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-
-import { ToastAction } from '@/components/ui/toast'
-import { useToast } from '@/components/ui/use-toast'
-
-import AccountCircleIcon from '@mui/icons-material/AccountCircle'
-import CreditCardIcon from '@mui/icons-material/CreditCard'
-import HelpOutlineIcon from '@mui/icons-material/HelpOutline'
-import PersonIcon from '@mui/icons-material/Person'
-import ReportIcon from '@mui/icons-material/Report'
-import SettingsIcon from '@mui/icons-material/Settings'
-
 import { handleRedirect } from '@/utils'
-import { useNavigate } from 'react-router-dom'
+
 import { GitHubIcon } from '../svgicons'
 import { Button } from '../ui/button'
 
 const ProfileButtonDropdown = () => {
   const navigate = useNavigate()
-  const { toast } = useToast()
-
-  const handleReportIssue = () => {
-    //
-  }
 
   const handleAboutOnClick = () => {
     navigate('/about')
@@ -43,72 +26,31 @@ const ProfileButtonDropdown = () => {
         <Button
           variant='outline'
           size='icon'
-          className={` invisible-ring border-primary/80 hover:border-white`}>
-          <PersonIcon className='fill-white' />
+          className='border-primary/80 invisible-ring hover:border-white'>
+          <UserIcon className='size-6 shrink-0 fill-current' />
           <span className='sr-only'>Toggle Profile</span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent
         align='end'
         sideOffset={10}
-        className=' w-56 overflow-auto border-[1px] border-primary bg-popover bg-opacity-100'>
-        {/* <DropdownMenuLabel className='unselectable'>
-          My Account
-        </DropdownMenuLabel>
-        <DropdownMenuSeparator className=' unselectable bg-dark-2' /> */}
-        {/* <DropdownMenuGroup>
-          <DropdownMenuItem
-            className='cursor-pointer'
-            // onClick={() => {
-            //   toast({
-            //     title: 'Scheduled: Catch up ',
-            //     description: 'Friday, February 10, 2023 at 5:57 PM',
-            //     action: (
-            //       <ToastAction altText='Goto schedule to undo'>
-            //         Undo
-            //       </ToastAction>
-            //     ),
-            //   })
-            // }}
-            onClick={() => {
-              toast({
-                title: 'Coming Soon...',
-                // description: 'This feature is coming soon',
-                // action: (
-                //   <ToastAction altText='Dismiss Toast'>Dismiss</ToastAction>
-                // ),
-              })
-            }}>
-            <AccountCircleIcon fontSize='small' className='mr-2 h-4 w-4' />
-            <span>Profile</span>
-          </DropdownMenuItem>
-        </DropdownMenuGroup> */}
-        {/* <DropdownMenuSeparator className='unselectable bg-dark-2 cursor-default' /> */}
+        className='w-56 overflow-auto border border-primary bg-popover'>
         <DropdownMenuGroup>
           <DropdownMenuItem
             className='cursor-pointer'
-            onClick={() => handleRedirect('https://github.com/lifuhh/')}>
-            <GitHubIcon className='ml-[3px] mr-2 h-4 w-4 fill-white' />
+            onClick={() => {
+              handleRedirect('https://github.com/lifuhh/')
+            }}>
+            <GitHubIcon className='mr-2 ml-[3px] h-4 w-4 fill-white' />
             <span>GitHub</span>
           </DropdownMenuItem>
-          {/* <DropdownMenuItem
-            className='cursor-pointer'
-            onClick={handleReportIssue}>
-            <ReportIcon className='mr-2 h-4 w-4' fontSize='small' />
-            <span>Report Issue</span>
-          </DropdownMenuItem> */}
           <DropdownMenuItem
             className='cursor-pointer'
             onClick={handleAboutOnClick}>
-            <HelpOutlineIcon className='mr-2 h-4 w-4' fontSize='small' />
+            <CircleQuestionMarkIcon className='mr-2 size-5 shrink-0' />
             <span>About Synbox</span>
           </DropdownMenuItem>
         </DropdownMenuGroup>
-        {/* TODO: Future Accounts */}
-        {/* <DropdownMenuSeparator className='unselectable cursor-default bg-dark-2' />
-
-        // TODO: for login
-        <LoginDropdownButton /> */}
       </DropdownMenuContent>
     </DropdownMenu>
   )
