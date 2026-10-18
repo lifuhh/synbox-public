@@ -2,6 +2,9 @@ import type { SubtitleInfo } from '@/types'
 
 const BE_ADDRESS = import.meta.env.VITE_SYNBOX_BE_URL
 
+// Aborts /translate-annotate when the stream goes this long without a byte
+const ANNOTATE_IDLE_TIMEOUT = 30_000
+
 export const streamValidateVideoById = async (
   videoId: string,
   onUpdate: (message: string) => void,
@@ -247,12 +250,25 @@ export const streamAnnotateVideoById = async (
   onAnnotationInfo: (info: any) => void,
   onError: (error: string) => void,
   onTaskUpdate: (task: string) => void,
+  onPersisted: () => void,
   signal?: AbortSignal
 ) => {
   const controller = new AbortController()
-  const timeoutId = setTimeout(() => {
+  let idleTimeoutId: ReturnType<typeof setTimeout> | undefined
+  const resetIdleTimeout = () => {
+    clearTimeout(idleTimeoutId)
+    idleTimeoutId = setTimeout(() => {
+      controller.abort()
+    }, ANNOTATE_IDLE_TIMEOUT)
+  }
+  const forwardAbort = () => {
     controller.abort()
-  }, 30_000)
+  }
+  signal?.addEventListener('abort', forwardAbort, { once: true })
+  if (signal?.aborted === true) {
+    controller.abort()
+  }
+  resetIdleTimeout()
 
   try {
     const response = await fetch(`${BE_ADDRESS}/translate-annotate`, {
@@ -267,7 +283,7 @@ export const streamAnnotateVideoById = async (
         'Content-Type': 'application/json',
         Connection: 'keep-alive',
       },
-      signal: signal || controller.signal,
+      signal: controller.signal,
       keepalive: true,
     })
 
@@ -299,7 +315,8 @@ export const streamAnnotateVideoById = async (
               onUpdate,
               onAnnotationInfo,
               onError,
-              onTaskUpdate
+              onTaskUpdate,
+              onPersisted
             )
           } catch (e) {
             console.error('Error parsing final buffer:', e)
@@ -309,6 +326,7 @@ export const streamAnnotateVideoById = async (
       }
 
       hasReceivedData = true
+      resetIdleTimeout()
       buffer += decoder.decode(value, { stream: true })
 
       const lines = buffer.split('\n')
@@ -326,7 +344,8 @@ export const streamAnnotateVideoById = async (
             onUpdate,
             onAnnotationInfo,
             onError,
-            onTaskUpdate
+            onTaskUpdate,
+            onPersisted
           )
         } catch (e) {
           console.error('Error parsing line:', line)
@@ -346,7 +365,8 @@ export const streamAnnotateVideoById = async (
       onError('An unknown error occurred')
     }
   } finally {
-    clearTimeout(timeoutId)
+    clearTimeout(idleTimeoutId)
+    signal?.removeEventListener('abort', forwardAbort)
   }
 }
 
@@ -391,7 +411,8 @@ function processAnnotationContent(
   onUpdate: (message: string) => void,
   onAnnotationInfo: (info: any) => void,
   onError: (error: string) => void,
-  onTaskUpdate: (task: string) => void
+  onTaskUpdate: (task: string) => void,
+  onPersisted: () => void
 ) {
   if (!content || !content.type) {
     console.error('Invalid content received:', content)
@@ -413,6 +434,11 @@ function processAnnotationContent(
     }
     case 'task_update': {
       onTaskUpdate(content.data)
+      break
+    }
+    // The backend already wrote the lyrics and song-info documents
+    case 'persisted': {
+      onPersisted()
       break
     }
     case 'error': {

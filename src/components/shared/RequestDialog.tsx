@@ -43,6 +43,8 @@ const RequestDialog = ({ videoId, handleClose }: RequestDialogProps) => {
   const [chiTranslation, setChiTranslation] = useState<string[]>([])
   const [romajiLyrics, setRomajiLyrics] = useState<string[]>([])
   const [kanjiAnnotations, setKanjiAnnotations] = useState<string[]>([])
+  // /translate-annotate sent `persisted`: the backend wrote the documents
+  const [isPersistedByBackend, setIsPersistedByBackend] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
   const [uploadSuccess, setUploadSuccess] = useState(false)
   const [isTranscriptionStreaming, setIsTranscriptionStreaming] =
@@ -160,17 +162,55 @@ const RequestDialog = ({ videoId, handleClose }: RequestDialogProps) => {
     newEngTranslation: string[],
     newChiTranslation: string[],
     newRomajiLyrics: string[],
-    newKanjiAnnotations: string[]
+    newKanjiAnnotations: string[],
+    persisted: boolean
   ) => {
     setEngTranslation(newEngTranslation)
     setChiTranslation(newChiTranslation)
     setRomajiLyrics(newRomajiLyrics)
     setKanjiAnnotations(newKanjiAnnotations)
+    setIsPersistedByBackend(persisted)
+  }
+
+  const refreshAfterUpload = async () => {
+    await queryClient.invalidateQueries({
+      queryKey: [QUERY_KEYS.GET_LYRICS_BY_SONG_ID, videoId],
+    })
+    await queryClient.invalidateQueries({
+      queryKey: [QUERY_KEYS.SEARCH_VIDEOS],
+    })
+    await queryClient.invalidateQueries({
+      queryKey: [QUERY_KEYS.SEARCH_LIBRARY],
+    })
+    await new Promise((resolve) => setTimeout(resolve, 5000))
+    await refetchLyrics()
+    setIsUploading(false)
+    setUploadSuccess(true)
+    setCurrentStep(3)
   }
 
   const handleUpload = async () => {
     setIsUploading(true)
     setUploadError(null)
+
+    if (isPersistedByBackend) {
+      try {
+        // Song info and karaoke timing were written alongside the lyrics
+        await queryClient.invalidateQueries({
+          queryKey: [QUERY_KEYS.GET_SONG_INFO_BY_SONG_ID, videoId],
+        })
+        await queryClient.invalidateQueries({
+          queryKey: [QUERY_KEYS.GET_KARAOKE_BY_ID, videoId],
+        })
+        await refreshAfterUpload()
+      } catch (refreshError) {
+        setIsUploading(false)
+        setUploadError(
+          `Refreshing the saved lyrics failed: ${refreshError instanceof Error ? refreshError.message : String(refreshError)}`
+        )
+      }
+      return
+    }
 
     if (!Array.isArray(timestampedLyrics) || timestampedLyrics.length === 0) {
       setUploadError('Timestamped lyrics are missing or invalid')
@@ -226,22 +266,7 @@ const RequestDialog = ({ videoId, handleClose }: RequestDialogProps) => {
       await uploadLyricsToAppwrite(
         { songId: videoId, lyricsData },
         {
-          onSuccess: async () => {
-            await queryClient.invalidateQueries({
-              queryKey: [QUERY_KEYS.GET_LYRICS_BY_SONG_ID, videoId],
-            })
-            await queryClient.invalidateQueries({
-              queryKey: [QUERY_KEYS.SEARCH_VIDEOS],
-            })
-            await queryClient.invalidateQueries({
-              queryKey: [QUERY_KEYS.SEARCH_LIBRARY],
-            })
-            await new Promise((resolve) => setTimeout(resolve, 5000))
-            await refetchLyrics()
-            setIsUploading(false)
-            setUploadSuccess(true)
-            setCurrentStep(3)
-          },
+          onSuccess: refreshAfterUpload,
           onError: (error: any) => {
             setIsUploading(false)
             setUploadError(`Upload failed: ${error.message}`)
@@ -276,6 +301,7 @@ const RequestDialog = ({ videoId, handleClose }: RequestDialogProps) => {
     setChiTranslation([])
     setRomajiLyrics([])
     setKanjiAnnotations([])
+    setIsPersistedByBackend(false)
     setIsUploading(false)
     setUploadSuccess(false)
     setIsAnnotationStreaming(false)

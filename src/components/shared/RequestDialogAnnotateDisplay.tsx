@@ -26,6 +26,7 @@ const RequestDialogAnnotateDisplay = ({
     error,
     mutate,
     currentTask,
+    isPersisted,
   } = useStreamAnnotateApi()
 
   const [isBuffering, setIsBuffering] = useState(true)
@@ -55,7 +56,8 @@ const RequestDialogAnnotateDisplay = ({
           engTranslation,
           chiTranslation,
           romajiLyrics,
-          kanjiAnnotations
+          kanjiAnnotations,
+          isPersisted
         )
       }, 2000)
       return () => {
@@ -68,6 +70,7 @@ const RequestDialogAnnotateDisplay = ({
     chiTranslation,
     romajiLyrics,
     kanjiAnnotations,
+    isPersisted,
     onAnnotationsUpdate,
   ])
 

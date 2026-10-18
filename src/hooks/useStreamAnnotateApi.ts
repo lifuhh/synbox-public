@@ -21,6 +21,8 @@ export const useStreamAnnotateApi = () => {
   )
   const [error, setError] = useState<string | null>(null)
   const [currentTask, setCurrentTask] = useState<string | null>(null)
+  // The backend wrote the lyrics and song-info documents itself
+  const [isPersisted, setIsPersisted] = useState(false)
 
   const abortControllerRef = useRef<AbortController | null>(null)
   const streamTimeoutRef = useRef<NodeJS.Timeout | null>(null)
@@ -43,6 +45,7 @@ export const useStreamAnnotateApi = () => {
     setKanjiAnnotations(null)
     setError(null)
     setCurrentTask(null)
+    setIsPersisted(false)
     retryCountRef.current = 0
 
     if (streamTimeoutRef.current) {
@@ -138,6 +141,9 @@ export const useStreamAnnotateApi = () => {
           (task) => {
             setCurrentTask(task)
           },
+          () => {
+            setIsPersisted(true)
+          },
           abortControllerRef.current.signal
         )
       } catch (err) {
@@ -183,6 +189,7 @@ export const useStreamAnnotateApi = () => {
     kanjiAnnotations,
     error,
     currentTask,
+    isPersisted,
     resetStream,
     mutate: mutation.mutate,
   }
