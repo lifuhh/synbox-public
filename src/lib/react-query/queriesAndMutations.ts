@@ -16,6 +16,7 @@ import {
   getSongLyricsById,
   uploadLyricsToAppwrite,
 } from '../appwrite/api'
+import { getKaraoke } from '../synbox-flask/api'
 import {
   getSimilarSongs,
   searchLibrary,
@@ -106,6 +107,18 @@ export const useGetLyricsBySongId = (songId: string) =>
     // A 404 is the normal "no lyrics yet" answer, so retrying only adds delay
     retry: false,
     queryFn: () => getSongLyricsById(songId),
+  })
+
+// data is null when the song has no karaoke timing yet
+export const useGetKaraokeById = (videoId: string) =>
+  useQuery({
+    enabled: videoId.trim().length > 0,
+    gcTime: 1000 * 60 * 60,
+    queryFn: async ({ signal }) => await getKaraoke(videoId, signal),
+    queryKey: [QUERY_KEYS.GET_KARAOKE_BY_ID, videoId],
+    refetchOnWindowFocus: false,
+    retry: 1,
+    staleTime: 1000 * 60 * 60,
   })
 
 export const useAddSongInfoBySongId = () =>
