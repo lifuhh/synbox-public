@@ -335,13 +335,6 @@ layer(base);
     0 0 10px rgb(0 0 0 / 0.4),
     0 0 18px var(--lyric-glow, transparent);
 
-  & ruby rt {
-    text-shadow:
-      0 0 1px rgb(0 0 0 / 0.95),
-      0 0 2px rgb(0 0 0 / 0.8),
-      0 1px 2px rgb(0 0 0 / 0.6);
-  }
-
   .player-lyrics-overlay[data-backdrop='box'] & {
     width: fit-content;
     margin-inline: auto;
@@ -370,32 +363,27 @@ layer(base);
     line-height: 1;
   }
 
-  & ruby {
-    display: inline-flex;
-    flex-direction: column-reverse;
-    vertical-align: bottom;
-    font-size: inherit;
-    letter-spacing: var(--kanji-spacing, 0);
-  }
-
-  & rb {
-    display: inline-flex;
-    justify-content: center;
-    font-size: 1em;
-  }
-
-  & ruby rt {
-    transform: translateY(0.6em);
-    font-size: 0.45em;
-    text-align: center;
-    letter-spacing: -0.04em;
-    margin-top: 0;
-    padding-top: 0;
-    line-height: 1;
-  }
   transition:
     opacity 0.18s ease-out,
     transform 0.18s ease-out;
+}
+
+/* Furigana: native ruby layout keeps the kanji on the line's baseline and
+   the reading a fixed distance above it, whatever the line-height */
+@utility lyric-ruby {
+  ruby-align: center;
+  letter-spacing: var(--kanji-spacing, 0);
+}
+
+@utility lyric-ruby-text {
+  font-size: var(--furigana-size, 0.45em);
+  line-height: 1;
+  letter-spacing: -0.04em;
+  padding-bottom: var(--furigana-gap, 0);
+  text-shadow:
+    0 0 1px rgb(0 0 0 / 0.95),
+    0 0 2px rgb(0 0 0 / 0.8),
+    0 1px 2px rgb(0 0 0 / 0.6);
 }
 
 @utility lyric-text-line--secondary {

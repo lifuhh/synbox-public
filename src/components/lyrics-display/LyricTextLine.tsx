@@ -1,7 +1,9 @@
-import DOMPurify from 'dompurify'
 import React, { useMemo } from 'react'
 
+import { parseRubyHtml } from '@/lib/furigana'
 import { cn } from '@/utils/cn'
+
+import { RubyText } from './RubyText'
 
 interface LyricsTextLineProps {
   htmlContent: string
@@ -24,10 +26,7 @@ const LyricTextLine = ({
   isEnglish = false,
   tone = 'primary',
 }: LyricsTextLineProps) => {
-  const sanitizedHtmlContent = useMemo(
-    () => ({ __html: DOMPurify.sanitize(htmlContent) }),
-    [htmlContent]
-  )
+  const segments = useMemo(() => parseRubyHtml(htmlContent), [htmlContent])
 
   const pStyle: React.CSSProperties = {
     ...(!isEnglish && lang === 'ja' ? { '--kanji-spacing': kanjiSpacing } : {}),
@@ -73,9 +72,9 @@ const LyricTextLine = ({
             )
             .join(' ')
         )}
-        style={pStyle}
-        dangerouslySetInnerHTML={sanitizedHtmlContent}
-      />
+        style={pStyle}>
+        <RubyText segments={segments} />
+      </p>
     </div>
   )
 }
