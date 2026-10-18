@@ -4,7 +4,7 @@ import { BrowserRouter } from 'react-router'
 import App from './App'
 import AppProvider from './context/AppContext'
 import { QueryProvider } from './lib/react-query/QueryProvider'
-import ErrorBoundary from './test_stuff/ErrorBoundary'
+import ErrorBoundary from './components/shared/ErrorBoundary'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <BrowserRouter>
