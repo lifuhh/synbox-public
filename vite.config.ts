@@ -1,3 +1,4 @@
+import { sentryVitePlugin } from '@sentry/vite-plugin'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 import jotai from 'jotai-rolldown'
@@ -46,9 +47,24 @@ export default defineConfig({
         handler(level, log)
       },
     },
-    sourcemap: true,
+    // Maps go to Sentry, not to the deployed site
+    sourcemap: 'hidden',
   },
-  plugins: lazyPlugins(() => [tailwindcss(), react(), jotai()]),
+  plugins: lazyPlugins(() => [
+    tailwindcss(),
+    react(),
+    jotai(),
+    // Uploads source maps when SENTRY_AUTH_TOKEN is set (the Netlify build)
+    sentryVitePlugin({
+      authToken: process.env.SENTRY_AUTH_TOKEN,
+      disable: !process.env.SENTRY_AUTH_TOKEN,
+      org: 'edward-ve',
+      project: 'synbox-frontend',
+      release: { name: process.env.COMMIT_REF },
+      sourcemaps: { filesToDeleteAfterUpload: ['dist/**/*.map'] },
+      telemetry: false,
+    }),
+  ]),
   resolve: {
     alias: {
       '@': `${import.meta.dirname}/src`,

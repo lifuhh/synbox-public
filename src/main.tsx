@@ -1,12 +1,18 @@
+import './instrument'
+import { reactErrorHandler } from '@sentry/react'
 import ReactDOM from 'react-dom/client'
 import { BrowserRouter } from 'react-router'
 
 import App from './App'
+import ErrorBoundary from './components/shared/ErrorBoundary'
 import AppProvider from './context/AppContext'
 import { QueryProvider } from './lib/react-query/QueryProvider'
-import ErrorBoundary from './components/shared/ErrorBoundary'
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
+ReactDOM.createRoot(document.getElementById('root')!, {
+  onCaughtError: reactErrorHandler(),
+  onRecoverableError: reactErrorHandler(),
+  onUncaughtError: reactErrorHandler(),
+}).render(
   <BrowserRouter>
     <AppProvider>
       <QueryProvider>
