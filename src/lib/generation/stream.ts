@@ -215,9 +215,11 @@ export const validate = async (
   return found.video
 }
 
+// `regenerate` skips the backend's saved timing but keeps every lyrics source; `forceAi` also drops the
+// human lyrics and builds the text from the audio alone
 export const transcribe = async (
   videoId: string,
-  forceAi: boolean,
+  options: { forceAi: boolean; regenerate: boolean },
   signal: AbortSignal,
   onProgress: OnProgress
 ) => {
@@ -225,7 +227,11 @@ export const transcribe = async (
   const progress = forwardProgress(onProgress)
   await readStream(
     '/transcribev2',
-    { force_ai_transcription: forceAi, id: videoId },
+    {
+      force_ai_transcription: options.forceAi,
+      id: videoId,
+      regenerate: options.regenerate,
+    },
     signal,
     (message) => {
       progress(message)

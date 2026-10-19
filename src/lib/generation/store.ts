@@ -131,7 +131,12 @@ const run = async (job: Job, signal: AbortSignal) => {
     )
     updateJob(id, (current) => ({ ...current, video }))
     await runPhase(id, 'transcribe', signal, () =>
-      transcribe(videoId, job.forceAi, signal, progress)
+      transcribe(
+        videoId,
+        { forceAi: job.forceAi, regenerate: job.mode === 'regenerate' },
+        signal,
+        progress
+      )
     )
     const outcome = await runPhase(id, 'translate', signal, () =>
       translate(videoId, signal, progress)
