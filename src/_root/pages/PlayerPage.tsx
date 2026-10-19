@@ -78,19 +78,18 @@ const PlayerPage = () => {
     }
     const { id } = toast({
       title: (
-        <div className='flex items-center gap-2'>
-          <p>Video added to Watch History</p>
-          <RotateCcwClockIcon className='h-6 w-6 shrink-0' />
-        </div>
+        <span className='flex items-center gap-2'>
+          <RotateCcwClockIcon className='size-4 shrink-0 text-primary' />
+          Added to Watch History
+        </span>
       ) as unknown as ToastProps['title'],
       description: (
-        <div className='flex justify-start'>
-          <button
-            className='text-primary hover:underline'
-            onClick={handleToastDismiss}>
-            Do not show again
-          </button>
-        </div>
+        <button
+          type='button'
+          className='pl-6 text-white/60 underline-offset-2 hover:text-white hover:underline'
+          onClick={handleToastDismiss}>
+          Don't Show Again
+        </button>
       ),
       duration: 2800,
     })
