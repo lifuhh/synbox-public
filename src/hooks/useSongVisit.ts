@@ -1,0 +1,72 @@
+import { useSetAtom } from 'jotai'
+import { useEffect } from 'react'
+
+import { addToHistoryAtom, currentVideoAtom } from '@/context/atoms'
+import {
+  useAddSongInfoBySongId,
+  useGetSongInfoBySongId,
+  useGetYoutubeVideoInfo,
+} from '@/lib/react-query/queriesAndMutations'
+
+// Publishes the song being watched (currentVideoAtom: title, bookmarks) and
+// records it in watch history. A song with no song_info row yet gets one from
+// its YouTube metadata.
+export const useSongVisit = (videoId: string) => {
+  const setCurrentVideo = useSetAtom(currentVideoAtom)
+  const addToHistory = useSetAtom(addToHistoryAtom)
+  const {
+    data: songInfo,
+    isLoading: isLoadingSongInfo,
+    isError: isSongInfoMissing,
+  } = useGetSongInfoBySongId(videoId)
+  const { data: youtubeInfo, isLoading: isLoadingYoutubeInfo } =
+    useGetYoutubeVideoInfo(videoId)
+  const { mutate: addSongInfo } = useAddSongInfoBySongId()
+
+  useEffect(() => {
+    setCurrentVideo(null)
+    return () => {
+      setCurrentVideo(null)
+    }
+  }, [videoId, setCurrentVideo])
+
+  useEffect(() => {
+    if (!videoId || isLoadingYoutubeInfo || isLoadingSongInfo) {
+      return
+    }
+    if (isSongInfoMissing && youtubeInfo) {
+      const info = {
+        videoId,
+        title: youtubeInfo.title,
+        author: youtubeInfo.channelTitle,
+        thumbnailUrl: youtubeInfo.thumbnail,
+      }
+      addSongInfo(info, {
+        onSuccess: () => {
+          setCurrentVideo(info)
+          addToHistory(info)
+        },
+      })
+      return
+    }
+    if (songInfo) {
+      setCurrentVideo(songInfo)
+      addToHistory({
+        videoId: songInfo.videoId,
+        title: songInfo.title,
+        author: songInfo.author,
+        thumbnailUrl: songInfo.thumbnailUrl,
+      })
+    }
+  }, [
+    videoId,
+    songInfo,
+    youtubeInfo,
+    isSongInfoMissing,
+    isLoadingSongInfo,
+    isLoadingYoutubeInfo,
+    addSongInfo,
+    addToHistory,
+    setCurrentVideo,
+  ])
+}
