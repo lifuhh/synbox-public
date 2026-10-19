@@ -10,4 +10,5 @@ export enum QUERY_KEYS {
   SEARCH_VIDEOS = 'searchVideos',
   SEARCH_LIBRARY = 'searchLibrary',
   GET_SIMILAR_SONGS = 'getSimilarSongs',
+  GET_KARAOKE_BY_ID = 'getKaraokeById',
 }

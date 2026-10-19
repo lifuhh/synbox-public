@@ -24,6 +24,7 @@ export const useStreamTranscriptionApi = () => {
   const mutateRef = useRef<((params: TranscriptionParams) => void) | null>(null)
 
   const MAX_RETRIES = 3
+  // Idle timeout: restarted by every stream message until a clear point
   const STREAM_TIMEOUT = 300_000
 
   const resetStream = useCallback(() => {
@@ -62,6 +63,7 @@ export const useStreamTranscriptionApi = () => {
     }
 
     streamTimeoutRef.current = setTimeout(() => {
+      streamTimeoutRef.current = null
       console.warn('Stream timeout reached')
       if (
         retryCountRef.current < MAX_RETRIES &&
@@ -75,6 +77,20 @@ export const useStreamTranscriptionApi = () => {
       }
     }, STREAM_TIMEOUT)
   }, [handleError])
+
+  // Only extends a running timer; once a clear point disarmed it, it stays off
+  const touchStreamTimeout = useCallback(() => {
+    if (streamTimeoutRef.current) {
+      startStreamTimeout()
+    }
+  }, [startStreamTimeout])
+
+  const clearStreamTimeout = useCallback(() => {
+    if (streamTimeoutRef.current) {
+      clearTimeout(streamTimeoutRef.current)
+      streamTimeoutRef.current = null
+    }
+  }, [])
 
   const mutation = useMutation({
     mutationFn: async ({
@@ -94,19 +110,19 @@ export const useStreamTranscriptionApi = () => {
           id,
           subtitleInfo,
           (message) => {
+            touchStreamTimeout()
             setUpdateMessages((prev) => [...prev, message])
           },
           (info) => {
             setLyricsInfo(info)
-            if (streamTimeoutRef.current) {
-              clearTimeout(streamTimeoutRef.current)
-            }
+            clearStreamTimeout()
           },
           (err) => {
             console.error('Stream error:', err)
             handleError(err)
           },
           (aiGenerated) => {
+            touchStreamTimeout()
             setIsAiGenerated(aiGenerated)
           },
           abortControllerRef.current.signal,

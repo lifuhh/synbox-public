@@ -15,7 +15,6 @@ import {
 import {
   lyricsBackdropAtom,
   lyricsCustomHueAtom,
-  lyricsDisplayBottomAtom,
   lyricsThemeIdAtom,
 } from '@/context/atoms'
 import type { LyricsThemeColors } from '@/lib/lyricsThemes'
@@ -89,7 +88,6 @@ export const LyricsThemePicker = () => {
   const [themeId, setThemeId] = useAtom(lyricsThemeIdAtom)
   const [customHue, setCustomHue] = useAtom(lyricsCustomHueAtom)
   const [backdrop, setBackdrop] = useAtom(lyricsBackdropAtom)
-  const isLyricsDisplayBottom = useAtomValue(lyricsDisplayBottomAtom)
 
   const isDefault =
     themeId === DEFAULT_LYRICS_THEME_ID && backdrop === DEFAULT_LYRICS_BACKDROP
@@ -129,7 +127,7 @@ export const LyricsThemePicker = () => {
       <PopoverContent
         side='right'
         // Grow away from the lyrics so changes stay visible while picking
-        align={isLyricsDisplayBottom ? 'end' : 'start'}
+        align='end'
         sideOffset={14}
         className='z-300 w-[300px] rounded-[10px] p-0 shadow-[0_12px_32px_rgb(0_0_0/0.5)]'>
         <div className='flex flex-col gap-4 p-4 unhighlightable'>

@@ -1,50 +1,37 @@
 import { useAtom, useAtomValue } from 'jotai'
 import { RotateCcwClockIcon } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useNavigate, useParams } from 'react-router'
+import { useNavigate, useParams, useSearchParams } from 'react-router'
 
-import LyricsDisplayOverlay from '@/components/lyrics-display/LyricsDisplayOverlay'
 import LyricsVisibilityToggleGroup from '@/components/lyrics-display/LyricsVisibilityToggleGroup'
-import VersionPreviewBanner from '@/components/lyrics-display/VersionPreviewBanner'
-import VideoPlayer from '@/components/shared/VideoPlayer'
+import VersionPreviewBanner, {
+  parsePreviewVersion,
+} from '@/components/lyrics-display/VersionPreviewBanner'
+import { PlayerStage } from '@/components/player-stage/PlayerStage'
+import { StageLyrics } from '@/components/player-stage/StageLyrics'
+import { DEFAULT_YOUTUBE_QUIRKS } from '@/components/player-stage/youtubeQuirks'
 import type { ToastProps } from '@/components/ui/toast'
 import { useToast } from '@/components/ui/use-toast'
-import { useAppContext } from '@/context/AppContext'
-import {
-  currentVideoAtom,
-  lyricsControlVisibilityAtom,
-  lyricsVisibilityAtom,
-  mutedAtom,
-  romajiVisibilityAtom,
-  translationVisibilityAtom,
-} from '@/context/atoms'
-import { showWatchHistoryToastAtom } from '@/context/atoms'
+import { currentVideoAtom, showWatchHistoryToastAtom } from '@/context/atoms'
+import { useLyricsReady } from '@/hooks/useLyricsReady'
+import { useSongVisit } from '@/hooks/useSongVisit'
 import { handleVideoRoute } from '@/utils/routeHandler.ts'
 
 const PlayerPage = () => {
   const navigate = useNavigate()
-  const { videoId } = useParams<{ videoId: string }>()
-  const { volume, playerOverlayVisibleHandler } = useAppContext()
+  const { videoId = '' } = useParams<{ videoId: string }>()
+  const [searchParams] = useSearchParams()
+  const previewVersion = parsePreviewVersion(searchParams.get('version'))
 
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [stateVideoId, setStateVideoId] = useState<string | null>(null)
-  const [isPlayerReady, setIsPlayerReady] = useState(false)
-  const [playing, setPlaying] = useState<boolean>(false)
-  // Values unread, but these subscriptions re-render VideoPlayer, which re-applies `playing` each render
-  const [, setPlayed] = useState<number>(0)
-  const [, setDuration] = useState<number>(0)
-  const [, setLyricsControlVisibility] = useAtom(lyricsControlVisibilityAtom)
+  const [stageVideoId, setStageVideoId] = useState<string | null>(null)
 
-  const playerRef = useRef<HTMLVideoElement>(null)
-
-  const [muted, setMuted] = useAtom(mutedAtom)
-  const lyricsVisibility = useAtomValue(lyricsVisibilityAtom)
-  const romajiVisibility = useAtomValue(romajiVisibilityAtom)
-  const translationVisibility = useAtomValue(translationVisibilityAtom)
+  useSongVisit(videoId)
   const currentVideo = useAtomValue(currentVideoAtom)
-
-  const title = currentVideo && currentVideo.title
+  // Autoplay waits for the lyrics so a song that starts singing at once never
+  // plays ahead of them; useLyricsReady gives up after LYRICS_WAIT_MS
+  const lyricsReady = useLyricsReady(videoId)
 
   const { toast, dismiss } = useToast()
   const toastIdRef = useRef<string | null>(null)
@@ -54,7 +41,6 @@ const PlayerPage = () => {
 
   useEffect(() => {
     let mounted = true
-
     handleVideoRoute({
       navigate,
       videoId,
@@ -70,22 +56,46 @@ const PlayerPage = () => {
       },
       setStateVideoId: (id) => {
         if (mounted) {
-          setStateVideoId(id)
+          setStageVideoId(id)
         }
       },
-      onSuccess: () => {
-        if (mounted) {
-          setIsPlayerReady(false)
-          setPlaying(false)
-          setPlayed(0)
-        }
-      },
+      onSuccess: () => {},
     })
-
     return () => {
       mounted = false
     }
   }, [videoId, navigate])
+
+  const handleFirstPlay = useCallback(() => {
+    if (!showWatchHistoryToast) {
+      return
+    }
+    const handleToastDismiss = () => {
+      setShowWatchHistoryToast(false)
+      if (toastIdRef.current) {
+        dismiss(toastIdRef.current)
+      }
+    }
+    const { id } = toast({
+      title: (
+        <div className='flex items-center gap-2'>
+          <p>Video added to Watch History</p>
+          <RotateCcwClockIcon className='h-6 w-6 shrink-0' />
+        </div>
+      ) as unknown as ToastProps['title'],
+      description: (
+        <div className='flex justify-start'>
+          <button
+            className='text-primary hover:underline'
+            onClick={handleToastDismiss}>
+            Do not show again
+          </button>
+        </div>
+      ),
+      duration: 2800,
+    })
+    toastIdRef.current = id
+  }, [dismiss, setShowWatchHistoryToast, showWatchHistoryToast, toast])
 
   if (error) {
     return (
@@ -101,115 +111,7 @@ const PlayerPage = () => {
     )
   }
 
-  const handlePlayPause = useCallback(() => {
-    const newPlayingState = !playing
-    setPlaying(newPlayingState)
-    setLyricsControlVisibility(!newPlayingState)
-  }, [playing, setLyricsControlVisibility])
-
-  const handlePlay = useCallback(() => {
-    setPlaying(true)
-    if (muted) {
-      setMuted(false)
-    }
-    setLyricsControlVisibility(false)
-  }, [muted, setMuted, setLyricsControlVisibility])
-
-  const handleInitMutedPlay = useCallback(() => {
-    setMuted(false)
-    playerOverlayVisibleHandler.close()
-    handlePlay()
-    setLyricsControlVisibility(false)
-
-    const handleToastDismiss = () => {
-      setShowWatchHistoryToast(false)
-      if (toastIdRef.current) {
-        dismiss(toastIdRef.current)
-      }
-    }
-
-    if (showWatchHistoryToast) {
-      const { id } = toast({
-        title: (
-          <div className='flex items-center gap-2'>
-            <p>Video added to Watch History</p>
-            <RotateCcwClockIcon className='h-6 w-6 shrink-0' />
-          </div>
-        ) as unknown as ToastProps['title'],
-        description: (
-          <div className='flex justify-start'>
-            <button
-              className='text-primary hover:underline'
-              onClick={handleToastDismiss}>
-              Do not show again
-            </button>
-          </div>
-        ),
-        duration: 2800,
-      })
-
-      toastIdRef.current = id
-    }
-  }, [
-    setLyricsControlVisibility,
-    handlePlay,
-    playerOverlayVisibleHandler,
-    dismiss,
-    setShowWatchHistoryToast,
-    setMuted,
-    toast,
-    showWatchHistoryToast,
-  ])
-
-  const handleStart = useCallback(() => {
-    setPlaying(true)
-  }, [])
-
-  const handleProgress = useCallback(() => {
-    if (!playerRef.current) {
-      return null
-    }
-    const secondsLapsed = playerRef.current.currentTime
-    const curPlayed = Math.floor(parseInt(secondsLapsed.toFixed(0)))
-    setPlayed(curPlayed)
-  }, [])
-
-  const handleEnded = useCallback(() => {
-    setPlaying(false)
-  }, [])
-
-  const handleDuration = useCallback((duration: number) => {
-    setDuration(duration)
-  }, [])
-
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === ' ' || event.code === 'Space') {
-        event.preventDefault()
-        handlePlayPause()
-      }
-    }
-
-    document.addEventListener('keydown', handleKeyDown, true)
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown, true)
-    }
-  }, [handlePlayPause])
-
-  useEffect(() => {
-    const preventSpacebarScroll = (e: KeyboardEvent) => {
-      if (e.key === ' ' || e.code === 'Space') {
-        e.preventDefault()
-      }
-    }
-
-    window.addEventListener('keydown', preventSpacebarScroll)
-    return () => {
-      window.removeEventListener('keydown', preventSpacebarScroll)
-    }
-  }, [])
-
-  if (isLoading) {
+  if (isLoading || stageVideoId === null) {
     return (
       <div className='flex h-screen items-center justify-center'>
         Loading...
@@ -219,39 +121,24 @@ const PlayerPage = () => {
 
   return (
     <>
-      <title>{`${title ? title : 'Player Page'} | Synbox`}</title>
+      <title>{`${currentVideo?.title ?? 'Player Page'} | Synbox`}</title>
       <LyricsVisibilityToggleGroup />
-      {videoId !== undefined && <VersionPreviewBanner videoId={videoId} />}
-
-      {isPlayerReady && (
-        <LyricsDisplayOverlay
-          playerRef={playerRef}
-          lyricsVisibility={lyricsVisibility}
-          romajiVisibility={romajiVisibility}
-          translationVisibility={translationVisibility}
-          playing={playing}
-        />
-      )}
-
-      <div className='relative aspect-video h-full w-full border-none'>
-        {stateVideoId && (
-          <VideoPlayer
-            videoId={stateVideoId}
-            playerRef={playerRef}
-            loop={false}
-            playing={playing}
-            volume={volume}
-            handleInitMutedPlay={handleInitMutedPlay}
-            handlePlay={handlePlay}
-
-            handleProgress={handleProgress}
-            handleDuration={handleDuration}
-            handleStart={handleStart}
-            handleEnded={handleEnded}
-            setIsPlayerReady={setIsPlayerReady}
+      <VersionPreviewBanner videoId={stageVideoId} />
+      <PlayerStage
+        key={stageVideoId}
+        videoId={stageVideoId}
+        quirks={DEFAULT_YOUTUBE_QUIRKS}
+        autoplay={lyricsReady}
+        onFirstPlay={handleFirstPlay}
+        renderLyrics={(player, layout) => (
+          <StageLyrics
+            videoId={stageVideoId}
+            player={player}
+            layout={layout}
+            version={previewVersion}
           />
         )}
-      </div>
+      />
     </>
   )
 }

@@ -19,8 +19,6 @@ import {
   currentVideoAtom,
   fontSizeMultiplierAtomWithPersistence,
   isFavoriteAtom,
-  lyricsControlVisibilityAtom,
-  lyricsDisplayBottomAtom,
   lyricsVisibilityAtom,
   removeFavoriteAtom,
   romajiVisibilityAtom,
@@ -46,7 +44,6 @@ const LyricsVisibilityToggleGroup = () => {
   const [, removeFavorite] = useAtom(removeFavoriteAtom)
   const [isFavorite] = useAtom(isFavoriteAtom)
 
-  const [, setLyricsControlVisible] = useAtom(lyricsControlVisibilityAtom)
 
   const [lyricsToggleValues, setLyricsToggleValues] = useState([
     'returnHomeButton',
@@ -54,14 +51,10 @@ const LyricsVisibilityToggleGroup = () => {
     'romaji',
     'translation',
     'translationLanguage',
-    'lyricsPosition',
   ])
 
   const [isLyricsVisible, setLyricsVisible] = useAtom(lyricsVisibilityAtom)
   const [isRomajiVisible, setRomajiVisible] = useAtom(romajiVisibilityAtom)
-  const [isLyricsDisplayBottom, setIsLyricsDisplayBottom] = useAtom(
-    lyricsDisplayBottomAtom
-  )
   const [isTranslationVisible, setTranslationVisible] = useAtom(
     translationVisibilityAtom
   )
@@ -73,13 +66,8 @@ const LyricsVisibilityToggleGroup = () => {
     setFontSizeMultiplier(value[0])
   }
 
-  const handleLyricsPositionToggle = () => {
-    setIsLyricsDisplayBottom(!isLyricsDisplayBottom)
-  }
-
   const handleToggleDrawer = () => {
     setIsOpen(!isOpen)
-    setLyricsControlVisible(true)
   }
 
   const handleShare = async () => {
@@ -203,7 +191,6 @@ const LyricsVisibilityToggleGroup = () => {
                     isHovered={hoveredButton === 'returnHomeButton'}
                     currentVideo={currentVideo}
                     isFavorite={isFavorite}
-                    isLyricsDisplayBottom={isLyricsDisplayBottom}
                     isTranslationEnglish={isTranslationEnglish}
                     isRomajiVisible={isRomajiVisible}
                     isLyricsVisible={isLyricsVisible}
@@ -225,7 +212,6 @@ const LyricsVisibilityToggleGroup = () => {
                     isHovered={hoveredButton === 'translationLanguage'}
                     currentVideo={currentVideo}
                     isFavorite={isFavorite}
-                    isLyricsDisplayBottom={isLyricsDisplayBottom}
                     isTranslationEnglish={isTranslationEnglish}
                     isRomajiVisible={isRomajiVisible}
                     isLyricsVisible={isLyricsVisible}
@@ -239,7 +225,6 @@ const LyricsVisibilityToggleGroup = () => {
                     isHovered={hoveredButton === 'translation'}
                     currentVideo={currentVideo}
                     isFavorite={isFavorite}
-                    isLyricsDisplayBottom={isLyricsDisplayBottom}
                     isTranslationEnglish={isTranslationEnglish}
                     isRomajiVisible={isRomajiVisible}
                     isLyricsVisible={isLyricsVisible}
@@ -253,7 +238,6 @@ const LyricsVisibilityToggleGroup = () => {
                     isHovered={hoveredButton === 'lyrics'}
                     currentVideo={currentVideo}
                     isFavorite={isFavorite}
-                    isLyricsDisplayBottom={isLyricsDisplayBottom}
                     isTranslationEnglish={isTranslationEnglish}
                     isRomajiVisible={isRomajiVisible}
                     isLyricsVisible={isLyricsVisible}
@@ -267,22 +251,6 @@ const LyricsVisibilityToggleGroup = () => {
                     isHovered={hoveredButton === 'romaji'}
                     currentVideo={currentVideo}
                     isFavorite={isFavorite}
-                    isLyricsDisplayBottom={isLyricsDisplayBottom}
-                    isTranslationEnglish={isTranslationEnglish}
-                    isRomajiVisible={isRomajiVisible}
-                    isLyricsVisible={isLyricsVisible}
-                    isTranslationVisible={isTranslationVisible}
-                  />
-
-                  <LyricsVisibilityControlButton
-                    id='lyricsPosition'
-                    value='lyricsPosition'
-                    onClick={handleLyricsPositionToggle}
-                    isActive={lyricsToggleValues.includes('lyricsPosition')}
-                    isHovered={hoveredButton === 'lyricsPosition'}
-                    currentVideo={currentVideo}
-                    isFavorite={isFavorite}
-                    isLyricsDisplayBottom={isLyricsDisplayBottom}
                     isTranslationEnglish={isTranslationEnglish}
                     isRomajiVisible={isRomajiVisible}
                     isLyricsVisible={isLyricsVisible}
@@ -302,7 +270,6 @@ const LyricsVisibilityToggleGroup = () => {
                     isHovered={hoveredButton === 'bookmarkButton'}
                     currentVideo={currentVideo}
                     isFavorite={isFavorite}
-                    isLyricsDisplayBottom={isLyricsDisplayBottom}
                     isTranslationEnglish={isTranslationEnglish}
                     isRomajiVisible={isRomajiVisible}
                     isLyricsVisible={isLyricsVisible}
@@ -317,7 +284,6 @@ const LyricsVisibilityToggleGroup = () => {
                     isHovered={hoveredButton === 'shareButton'}
                     currentVideo={currentVideo}
                     isFavorite={isFavorite}
-                    isLyricsDisplayBottom={isLyricsDisplayBottom}
                     isTranslationEnglish={isTranslationEnglish}
                     isRomajiVisible={isRomajiVisible}
                     isLyricsVisible={isLyricsVisible}

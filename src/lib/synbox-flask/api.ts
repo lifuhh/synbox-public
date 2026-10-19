@@ -1,6 +1,56 @@
-import type { SubtitleInfo } from '@/types'
+import type { KaraokeDoc, SubtitleInfo } from '@/types'
 
 const BE_ADDRESS = import.meta.env.VITE_SYNBOX_BE_URL
+
+// Aborts /translate-annotate when the stream goes this long without a byte
+const ANNOTATE_IDLE_TIMEOUT = 30_000
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null
+
+// Shallow shape check: enough that rendering cannot throw on a malformed doc
+const KARAOKE_DOC_VERSIONS: readonly unknown[] = [1, 2]
+
+export const isKaraokeDoc = (value: unknown): value is KaraokeDoc =>
+  isRecord(value) &&
+  KARAOKE_DOC_VERSIONS.includes(value.version) &&
+  Array.isArray(value.lines) &&
+  value.lines.every(
+    (line: unknown) =>
+      isRecord(line) &&
+      typeof line.start === 'number' &&
+      typeof line.end === 'number' &&
+      Array.isArray(line.tokens) &&
+      line.tokens.every(
+        (token: unknown) =>
+          isRecord(token) &&
+          typeof token.surface === 'string' &&
+          Array.isArray(token.ruby) &&
+          Array.isArray(token.morae)
+      )
+  )
+
+// null when the song has no karaoke timing yet (404)
+export const getKaraoke = async (
+  id: string,
+  signal?: AbortSignal
+): Promise<KaraokeDoc | null> => {
+  const response = await fetch(
+    `${BE_ADDRESS}/karaoke/${encodeURIComponent(id)}`,
+    { headers: { Accept: 'application/json' }, signal }
+  )
+  if (response.status === 404) {
+    return null
+  }
+  if (!response.ok) {
+    throw new Error(`Karaoke request failed with status ${response.status}`)
+  }
+  const doc: unknown = await response.json()
+  if (!isKaraokeDoc(doc)) {
+    throw new Error('Unsupported karaoke document')
+  }
+  return doc
+}
 
 export const streamValidateVideoById = async (
   videoId: string,
@@ -247,12 +297,25 @@ export const streamAnnotateVideoById = async (
   onAnnotationInfo: (info: any) => void,
   onError: (error: string) => void,
   onTaskUpdate: (task: string) => void,
+  onPersisted: () => void,
   signal?: AbortSignal
 ) => {
   const controller = new AbortController()
-  const timeoutId = setTimeout(() => {
+  let idleTimeoutId: ReturnType<typeof setTimeout> | undefined
+  const resetIdleTimeout = () => {
+    clearTimeout(idleTimeoutId)
+    idleTimeoutId = setTimeout(() => {
+      controller.abort()
+    }, ANNOTATE_IDLE_TIMEOUT)
+  }
+  const forwardAbort = () => {
     controller.abort()
-  }, 30_000)
+  }
+  signal?.addEventListener('abort', forwardAbort, { once: true })
+  if (signal?.aborted === true) {
+    controller.abort()
+  }
+  resetIdleTimeout()
 
   try {
     const response = await fetch(`${BE_ADDRESS}/translate-annotate`, {
@@ -267,7 +330,7 @@ export const streamAnnotateVideoById = async (
         'Content-Type': 'application/json',
         Connection: 'keep-alive',
       },
-      signal: signal || controller.signal,
+      signal: controller.signal,
       keepalive: true,
     })
 
@@ -299,7 +362,8 @@ export const streamAnnotateVideoById = async (
               onUpdate,
               onAnnotationInfo,
               onError,
-              onTaskUpdate
+              onTaskUpdate,
+              onPersisted
             )
           } catch (e) {
             console.error('Error parsing final buffer:', e)
@@ -309,6 +373,7 @@ export const streamAnnotateVideoById = async (
       }
 
       hasReceivedData = true
+      resetIdleTimeout()
       buffer += decoder.decode(value, { stream: true })
 
       const lines = buffer.split('\n')
@@ -326,7 +391,8 @@ export const streamAnnotateVideoById = async (
             onUpdate,
             onAnnotationInfo,
             onError,
-            onTaskUpdate
+            onTaskUpdate,
+            onPersisted
           )
         } catch (e) {
           console.error('Error parsing line:', line)
@@ -346,7 +412,8 @@ export const streamAnnotateVideoById = async (
       onError('An unknown error occurred')
     }
   } finally {
-    clearTimeout(timeoutId)
+    clearTimeout(idleTimeoutId)
+    signal?.removeEventListener('abort', forwardAbort)
   }
 }
 
@@ -391,7 +458,8 @@ function processAnnotationContent(
   onUpdate: (message: string) => void,
   onAnnotationInfo: (info: any) => void,
   onError: (error: string) => void,
-  onTaskUpdate: (task: string) => void
+  onTaskUpdate: (task: string) => void,
+  onPersisted: () => void
 ) {
   if (!content || !content.type) {
     console.error('Invalid content received:', content)
@@ -413,6 +481,11 @@ function processAnnotationContent(
     }
     case 'task_update': {
       onTaskUpdate(content.data)
+      break
+    }
+    // The backend already wrote the lyrics and song-info documents
+    case 'persisted': {
+      onPersisted()
       break
     }
     case 'error': {

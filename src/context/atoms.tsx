@@ -9,13 +9,10 @@ import {
 } from '@/lib/lyricsThemes'
 import type { CurrentPlayingInfo } from '@/types'
 
-export const mutedAtom = atom(true)
-
 export const lyricsVisibilityAtom = atom(true)
 export const romajiVisibilityAtom = atom(true)
 export const translationVisibilityAtom = atom(true)
 export const translationIsEnglishAtom = atom(true)
-export const lyricsDisplayBottomAtom = atom(true)
 
 const DEFAULT_FONT_SIZE = 1
 const getInitialFontSize = () => {
@@ -45,7 +42,12 @@ export const lyricsBackdropAtom = atomWithStorage<LyricsBackdrop>(
   DEFAULT_LYRICS_BACKDROP
 )
 
-export const lyricsControlVisibilityAtom = atom(true)
+export const playerVolumeAtom = atomWithStorage('playerVolume', {
+  level: 0.5,
+  muted: false,
+})
+// 0 pins the lyrics block to the top of the stage, 1 to the bottom
+export const lyricsAnchorAtom = atomWithStorage('lyricsAnchor', 0.85)
 
 export const dialogStepAtom = atom(0)
 

@@ -1,6 +1,4 @@
 import {
-  ArrowDownToLineIcon,
-  ArrowUpToLineIcon,
   BookmarkCheckIcon,
   BookmarkIcon,
   HouseIcon,
@@ -23,7 +21,6 @@ type ButtonId =
   | 'translation'
   | 'lyrics'
   | 'romaji'
-  | 'lyricsPosition'
   | 'bookmarkButton'
   | 'shareButton'
 
@@ -32,7 +29,6 @@ interface ButtonState {
     videoId: string
   } | null
   isFavorite: (videoId: string) => boolean
-  isLyricsDisplayBottom: boolean
   isTranslationEnglish: boolean
   isRomajiVisible: boolean
   isLyricsVisible: boolean
@@ -57,7 +53,6 @@ const BASE_STYLES = 'invisible-ring h-10 w-10 cursor-pointer rounded-lg'
 
 const EXCLUDED_BUTTONS: ButtonId[] = [
   'translationLanguage',
-  'lyricsPosition',
   'returnHomeButton',
   'shareButton',
   'bookmarkButton',
@@ -69,7 +64,6 @@ const getButtonProps = ({
   isHovered,
   currentVideo,
   isFavorite,
-  isLyricsDisplayBottom,
   isTranslationEnglish,
   isRomajiVisible,
   isLyricsVisible,
@@ -126,16 +120,6 @@ const getButtonProps = ({
       icon: <h1 className='text-xl'>R</h1>,
       tooltip: isRomajiVisible ? 'Hide Romaji' : 'Show Romaji',
     },
-    lyricsPosition: {
-      icon: isLyricsDisplayBottom ? (
-        <ArrowUpToLineIcon className='size-6 shrink-0' />
-      ) : (
-        <ArrowDownToLineIcon className='size-6 shrink-0' />
-      ),
-      tooltip: isLyricsDisplayBottom
-        ? 'Align Lyrics Top'
-        : 'Align Lyrics Bottom',
-    },
     bookmarkButton: {
       icon: currentVideo ? (
         isFavorite(currentVideo.videoId) ? (
@@ -172,7 +156,6 @@ export const LyricsVisibilityControlButton: React.FC<ButtonProps> = ({
   isHovered,
   currentVideo,
   isFavorite,
-  isLyricsDisplayBottom,
   isTranslationEnglish,
   isRomajiVisible,
   isLyricsVisible,
@@ -184,7 +167,6 @@ export const LyricsVisibilityControlButton: React.FC<ButtonProps> = ({
     isHovered,
     currentVideo,
     isFavorite,
-    isLyricsDisplayBottom,
     isTranslationEnglish,
     isRomajiVisible,
     isLyricsVisible,

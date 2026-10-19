@@ -17,6 +17,7 @@ export const useStreamValidationApi = () => {
   const mutateRef = useRef<((id: string) => void) | null>(null)
 
   const MAX_RETRIES = 3
+  // Idle timeout: restarted by every stream message until a clear point
   const STREAM_TIMEOUT = 30_000
 
   const resetStream = useCallback(() => {
@@ -59,6 +60,7 @@ export const useStreamValidationApi = () => {
 
         if (streamTimeoutRef.current) {
           clearTimeout(streamTimeoutRef.current)
+          streamTimeoutRef.current = null
         }
       } catch (err) {
         console.error('Error processing video info:', err)
@@ -74,6 +76,7 @@ export const useStreamValidationApi = () => {
     }
 
     streamTimeoutRef.current = setTimeout(() => {
+      streamTimeoutRef.current = null
       console.warn('Stream timeout reached')
       if (
         retryCountRef.current < MAX_RETRIES &&
@@ -88,6 +91,20 @@ export const useStreamValidationApi = () => {
     }, STREAM_TIMEOUT)
   }, [handleError])
 
+  // Only extends a running timer; once a clear point disarmed it, it stays off
+  const touchStreamTimeout = useCallback(() => {
+    if (streamTimeoutRef.current) {
+      startStreamTimeout()
+    }
+  }, [startStreamTimeout])
+
+  const clearStreamTimeout = useCallback(() => {
+    if (streamTimeoutRef.current) {
+      clearTimeout(streamTimeoutRef.current)
+      streamTimeoutRef.current = null
+    }
+  }, [])
+
   const mutation = useMutation({
     mutationFn: async (id: string) => {
       resetStream()
@@ -101,6 +118,7 @@ export const useStreamValidationApi = () => {
         await streamValidateVideoById(
           id,
           (message) => {
+            touchStreamTimeout()
             setUpdateMessages((prev) => [...prev, message])
           },
           (info) => {
@@ -111,9 +129,7 @@ export const useStreamValidationApi = () => {
             handleError(err)
           },
           () => {
-            if (streamTimeoutRef.current) {
-              clearTimeout(streamTimeoutRef.current)
-            }
+            clearStreamTimeout()
             setIsStreaming(false)
           },
           abortControllerRef.current.signal

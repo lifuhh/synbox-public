@@ -2,12 +2,8 @@ import React from 'react'
 import { Outlet } from 'react-router'
 
 import TopBar from '@/components/shared/TopBar'
-import { useAppContext } from '@/context/AppContext'
 
 const RootLayout: React.FC = () => {
-  const { playerControlsVisible } = useAppContext()
-  const shouldHideCursor = !playerControlsVisible
-
   return (
     <div className='relative min-h-screen w-full'>
       <div className='fixed inset-0 isolate overflow-hidden'>
@@ -36,7 +32,7 @@ const RootLayout: React.FC = () => {
       </div>
 
       <div
-        className={`relative h-screen w-full ${shouldHideCursor ? 'cursor-none' : ''} bg-muted/20`}>
+        className='relative h-screen w-full bg-muted/20'>
         <TopBar />
         <section className='flex h-full flex-1 bg-[#150406]/75'>
           <Outlet />
