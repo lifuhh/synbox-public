@@ -7,7 +7,12 @@ import type { Job } from '@/lib/generation/store'
 import { setGenerationExpanded } from '@/lib/generation/store'
 import { cn } from '@/utils/cn'
 
-import { SURFACE_LAYOUT_ID, SURFACE_SPRING, surfacePlacement } from './surface'
+import {
+  outcomeCopy,
+  SURFACE_LAYOUT_ID,
+  SURFACE_SPRING,
+  surfacePlacement,
+} from './surface'
 import type { Presentation } from './usePresentation'
 
 const SIZE = 52
@@ -58,7 +63,9 @@ const GenerationFab = ({ job, view, raised }: GenerationFabProps) => {
                 : (step.detail ?? 'Starting')
           }`,
         ]
-      : LABELS[state]
+      : state === 'done'
+        ? [outcomeCopy(job)?.title ?? LABELS.done[0], LABELS.done[1]]
+        : LABELS[state]
   const ref = useRef<HTMLButtonElement>(null)
   useEffect(() => {
     ref.current?.focus({ preventScroll: true })

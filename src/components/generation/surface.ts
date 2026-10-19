@@ -34,4 +34,33 @@ export const hidePlaceholderImage = (event: {
   }
 }
 
+// What a finished job says. A regeneration of a song whose saved lyrics come out the same is a no-op on
+// the backend (the cached timing, existing translations, an identical version rejected), so it says so.
+export const outcomeCopy = (job: Job) => {
+  if (job.status.kind !== 'complete') {
+    return null
+  }
+  const { outcome } = job.status
+  if (outcome.kind === 'version') {
+    return {
+      detail:
+        'The current lyrics stay until you make this version the default.',
+      title: `Saved as Version ${outcome.version}`,
+    }
+  }
+  if (outcome.kind === 'unchanged') {
+    return job.mode === 'regenerate'
+      ? {
+          detail:
+            'The result was identical to the current lyrics, so nothing new was saved.',
+          title: 'No Changes',
+        }
+      : { detail: 'These lyrics were already saved.', title: 'Lyrics Ready' }
+  }
+  return {
+    detail: 'Synced, translated and ready to sing along.',
+    title: 'Lyrics Ready',
+  }
+}
+
 export const titleOf = (job: Job) => job.video?.title ?? job.title

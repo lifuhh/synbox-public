@@ -18,6 +18,7 @@ import {
   hideBrokenImage,
   hidePlaceholderImage,
   SURFACE_LAYOUT_ID,
+  outcomeCopy,
   SURFACE_SPRING,
   surfacePlacement,
   thumbnailOf,
@@ -82,6 +83,7 @@ const DoneView = ({ job }: { job: Job }) => {
     return null
   }
   const { outcome } = job.status
+  const copy = outcomeCopy(job)
   const close = () => {
     dismissGeneration()
   }
@@ -100,18 +102,8 @@ const DoneView = ({ job }: { job: Job }) => {
         <Check className='size-7' strokeWidth={3} aria-hidden />
       </motion.span>
       <div className='space-y-1'>
-        <p className='text-lg font-semibold text-white'>
-          {outcome.kind === 'version'
-            ? `Saved as Version ${outcome.version}`
-            : 'Lyrics Ready'}
-        </p>
-        <p className='text-sm text-white/60'>
-          {outcome.kind === 'version'
-            ? 'The current lyrics stay until you make this version the default.'
-            : outcome.kind === 'unchanged'
-              ? 'These lyrics were already saved.'
-              : 'Synced, translated and ready to sing along.'}
-        </p>
+        <p className='text-lg font-semibold text-white'>{copy?.title}</p>
+        <p className='text-sm text-white/60'>{copy?.detail}</p>
       </div>
       <div className='flex w-full flex-col gap-2'>
         {outcome.kind === 'version' ? (
