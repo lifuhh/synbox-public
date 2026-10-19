@@ -1,6 +1,6 @@
 import { useAtom } from 'jotai'
 import type { CSSProperties, ReactNode } from 'react'
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 
 import { lyricsAnchorAtom } from '@/context/atoms'
 import { cn } from '@/utils/cn'
@@ -9,6 +9,7 @@ import type { StageLayout } from './PlayerStage'
 import { CONTROLS_FADE_MS } from './StageControls'
 
 const TAP_SLOP_PX = 4
+const LIFT_MS = 200
 
 interface DragStart {
   pointerY: number
@@ -26,10 +27,13 @@ interface DraggableLyricsProps {
 }
 
 // `anchor` is where the viewer put the lyrics (0 = top, 1 = bottom of the
-// stage) and is what persists. While the controls cover the bottom of the
-// stage, the block is lifted just clear of them, and drops back once they have
-// faded out. Only the text box is grabbable; a press without a drag does
-// nothing, and the empty band beside the text passes clicks to the video
+// stage) and is what persists. Flex spacers split the free space above and
+// below the block by the anchor, so a taller or shorter line keeps its place
+// without measuring or animating. The bottom spacer never shrinks below the
+// controls, which lifts the block just clear of them; only that lift animates,
+// and it drops back once the controls have faded out. Only the text box is
+// grabbable; a press without a drag does nothing, and the empty band beside
+// the text passes clicks to the video
 export const DraggableLyrics = ({
   children,
   layout,
@@ -41,36 +45,21 @@ export const DraggableLyrics = ({
   const blockRef = useRef<HTMLDivElement>(null)
   const dragRef = useRef<DragStart | null>(null)
   const [dragging, setDragging] = useState(false)
-  const [size, setSize] = useState({ layer: 0, block: 0 })
 
-  useEffect(() => {
+  const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
     const block = blockRef.current
     const layer = block?.parentElement
     if (!(block && layer)) {
       return
     }
-    const observer = new ResizeObserver(() => {
-      setSize({ layer: layer.clientHeight, block: block.offsetHeight })
-    })
-    observer.observe(block)
-    observer.observe(layer)
-    return () => {
-      observer.disconnect()
-    }
-  }, [])
-
-  const room = Math.max(0, size.layer - size.block)
-  const placed = anchor * room
-  const offset = Math.max(0, Math.min(placed, room - layout.bottomObstruction))
-
-  const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
     // Capture keeps the drag alive while the pointer crosses the iframe
     event.currentTarget.setPointerCapture(event.pointerId)
     // Start from where the block is drawn, which is above the saved anchor
     // while the controls lift it
+    const room = layer.clientHeight - block.offsetHeight
     dragRef.current = {
       pointerY: event.clientY,
-      anchor: room > 0 ? offset / room : anchor,
+      anchor: room > 0 ? block.offsetTop / room : anchor,
       range: Math.max(1, room),
       moved: false,
     }
@@ -106,39 +95,42 @@ export const DraggableLyrics = ({
   }
 
   return (
-    <div
-      ref={blockRef}
-      className={cn(
-        'player-lyrics-overlay pointer-events-none absolute inset-x-0 top-0 py-[1cqh] select-none',
-        !dragging && 'transition-transform duration-200 ease-out',
-        size.layer === 0 && 'invisible'
-      )}
-      style={
-        {
-          transform: `translateY(${offset}px)`,
-          // Lift at once when the controls appear; drop only after they fade.
-          // Never while dragging: a delay alone holds the old position
-          transitionDelay:
-            dragging || layout.bottomObstruction > 0
-              ? '0ms'
-              : `${CONTROLS_FADE_MS}ms`,
-          '--lyric-scale': scale,
-          ...style,
-        } as CSSProperties
-      }
-      data-backdrop={backdrop}>
+    <div className='pointer-events-none absolute inset-0 flex flex-col'>
+      <div style={{ flexGrow: anchor }} />
       <div
-        data-testid='lyrics-handle'
-        className={cn(
-          'pointer-events-auto mx-auto w-fit max-w-full cursor-grab touch-none rounded-xl px-[1cqw] ring-white/25 transition-[background-color,box-shadow] hover:bg-white/5 hover:ring-1',
-          dragging && 'cursor-grabbing bg-white/5 ring-1'
-        )}
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-        onPointerCancel={handlePointerUp}>
-        {children}
+        ref={blockRef}
+        className='player-lyrics-overlay relative isolate shrink-0 py-[1cqh] select-none'
+        style={
+          {
+            '--lyric-scale': scale,
+            ...style,
+          } as CSSProperties
+        }
+        data-backdrop={backdrop}>
+        <div
+          data-testid='lyrics-handle'
+          className={cn(
+            'pointer-events-auto mx-auto w-fit max-w-full cursor-grab touch-none rounded-xl px-[1cqw] ring-white/25 transition-[background-color,box-shadow] hover:bg-white/5 hover:ring-1',
+            dragging && 'cursor-grabbing bg-white/5 ring-1'
+          )}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          onPointerCancel={handlePointerUp}>
+          {children}
+        </div>
       </div>
+      <div
+        style={{
+          flexGrow: 1 - anchor,
+          minHeight: layout.bottomObstruction,
+          // Lift at once when the controls appear; drop only after they fade.
+          // Never while dragging: the block follows the pointer exactly
+          transition: dragging ? 'none' : `min-height ${LIFT_MS}ms ease-out`,
+          transitionDelay:
+            layout.bottomObstruction > 0 ? '0ms' : `${CONTROLS_FADE_MS}ms`,
+        }}
+      />
     </div>
   )
 }

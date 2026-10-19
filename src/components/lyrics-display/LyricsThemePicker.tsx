@@ -1,4 +1,4 @@
-import { useAtom, useAtomValue } from 'jotai'
+import { useAtom } from 'jotai'
 import { CheckIcon, PaletteIcon } from 'lucide-react'
 import { useState } from 'react'
 
@@ -7,12 +7,10 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover'
+import { Slider } from '@/components/ui/slider'
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip'
-import {
+  DEFAULT_FONT_SIZE,
+  fontSizeMultiplierAtomWithPersistence,
   lyricsBackdropAtom,
   lyricsCustomHueAtom,
   lyricsThemeIdAtom,
@@ -27,6 +25,8 @@ import {
   getLyricsThemeCssVars,
 } from '@/lib/lyricsThemes'
 import { cn } from '@/utils/cn'
+
+import { RailButton, RailTooltip } from './RailButton'
 
 const HUE_TRACK = `linear-gradient(to right, ${Array.from(
   { length: 13 },
@@ -83,16 +83,31 @@ const ThemeSwatch = ({
   </button>
 )
 
-export const LyricsThemePicker = () => {
-  const [opened, setOpened] = useState(false)
+// A discrete pick (a preset colour, a backdrop) applies and closes, like a
+// menu. Size and the custom hue are adjusted by dragging and previewed live, so
+// those keep the popover open until Done, Escape or a click outside
+export const LyricsThemePicker = ({
+  onOpenChange,
+}: {
+  onOpenChange?: (open: boolean) => void
+}) => {
+  const [opened, setOpenedState] = useState(false)
+  const setOpened = (next: boolean) => {
+    setOpenedState(next)
+    onOpenChange?.(next)
+  }
+  const [fontSize, setFontSize] = useAtom(fontSizeMultiplierAtomWithPersistence)
   const [themeId, setThemeId] = useAtom(lyricsThemeIdAtom)
   const [customHue, setCustomHue] = useAtom(lyricsCustomHueAtom)
   const [backdrop, setBackdrop] = useAtom(lyricsBackdropAtom)
 
   const isDefault =
-    themeId === DEFAULT_LYRICS_THEME_ID && backdrop === DEFAULT_LYRICS_BACKDROP
+    fontSize === DEFAULT_FONT_SIZE &&
+    themeId === DEFAULT_LYRICS_THEME_ID &&
+    backdrop === DEFAULT_LYRICS_BACKDROP
 
   const handleReset = () => {
+    setFontSize(DEFAULT_FONT_SIZE)
     setThemeId(DEFAULT_LYRICS_THEME_ID)
     setBackdrop(DEFAULT_LYRICS_BACKDROP)
   }
@@ -101,28 +116,15 @@ export const LyricsThemePicker = () => {
 
   return (
     <Popover open={opened} onOpenChange={setOpened} modal>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <span className='inline-flex'>
-            <PopoverTrigger asChild>
-              <button
-                type='button'
-                aria-label='Lyrics Style'
-                className='flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-white invisible-ring transition-transform duration-150 hover:scale-110'>
-                <PaletteIcon className='size-[22px] shrink-0' />
-              </button>
-            </PopoverTrigger>
-          </span>
-        </TooltipTrigger>
-        {!opened && (
-          <TooltipContent
-            side='right'
-            sideOffset={6}
-            className='border-none bg-primary unhighlightable'>
-            Lyrics Style
-          </TooltipContent>
-        )}
-      </Tooltip>
+      <RailTooltip label='Lyrics Style' hidden={opened}>
+        <PopoverTrigger asChild>
+          <RailButton
+            label='Lyrics Style'
+            className={cn(opened && 'bg-white/10')}>
+            <PaletteIcon className='size-5 shrink-0' />
+          </RailButton>
+        </PopoverTrigger>
+      </RailTooltip>
 
       <PopoverContent
         side='right'
@@ -144,6 +146,37 @@ export const LyricsThemePicker = () => {
 
           <section className='flex flex-col gap-2'>
             <h3 className='text-xs font-medium tracking-wide text-muted-foreground uppercase'>
+              Size
+            </h3>
+            <div className='flex items-center gap-3'>
+              <span
+                aria-hidden='true'
+                className='text-xs font-semibold text-muted-foreground'>
+                A
+              </span>
+              <Slider
+                aria-label='Lyrics Size'
+                min={0.4}
+                max={1.6}
+                step={0.01}
+                value={[fontSize]}
+                onValueChange={([value]) => {
+                  if (value !== undefined) {
+                    setFontSize(value)
+                  }
+                }}
+                className='flex-1 cursor-pointer'
+              />
+              <span
+                aria-hidden='true'
+                className='text-lg font-semibold text-muted-foreground'>
+                A
+              </span>
+            </div>
+          </section>
+
+          <section className='flex flex-col gap-2'>
+            <h3 className='text-xs font-medium tracking-wide text-muted-foreground uppercase'>
               Colour
             </h3>
             <div
@@ -158,6 +191,7 @@ export const LyricsThemePicker = () => {
                   selected={themeId === theme.id}
                   onSelect={() => {
                     setThemeId(theme.id)
+                    setOpened(false)
                   }}
                 />
               ))}
@@ -172,9 +206,24 @@ export const LyricsThemePicker = () => {
             </div>
 
             {themeId === 'custom' && (
-              <label className='mt-1 flex flex-col gap-2'>
-                <span className='text-xs text-muted-foreground'>Hue</span>
+              <div className='mt-1 flex flex-col gap-2'>
+                <div className='flex items-center justify-between'>
+                  <label
+                    htmlFor='lyrics-custom-hue'
+                    className='text-xs text-muted-foreground'>
+                    Hue
+                  </label>
+                  <button
+                    type='button'
+                    onClick={() => {
+                      setOpened(false)
+                    }}
+                    className='rounded-md bg-primary px-2.5 py-1 text-xs font-medium text-white transition-colors hover:bg-primary/85'>
+                    Done
+                  </button>
+                </div>
                 <input
+                  id='lyrics-custom-hue'
                   type='range'
                   min={0}
                   max={359}
@@ -186,7 +235,7 @@ export const LyricsThemePicker = () => {
                   className='lyrics-hue-slider'
                   style={{ background: HUE_TRACK }}
                 />
-              </label>
+              </div>
             )}
           </section>
 
@@ -206,6 +255,7 @@ export const LyricsThemePicker = () => {
                   aria-checked={backdrop === option.id}
                   onClick={() => {
                     setBackdrop(option.id)
+                    setOpened(false)
                   }}
                   className={cn(
                     'rounded-md py-1.5 text-xs font-medium transition-colors focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-hidden',

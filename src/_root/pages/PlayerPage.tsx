@@ -3,7 +3,7 @@ import { RotateCcwClockIcon } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router'
 
-import LyricsVisibilityToggleGroup from '@/components/lyrics-display/LyricsVisibilityToggleGroup'
+import PlayerRail from '@/components/lyrics-display/PlayerRail'
 import VersionPreviewBanner, {
   parsePreviewVersion,
 } from '@/components/lyrics-display/VersionPreviewBanner'
@@ -121,7 +121,7 @@ const PlayerPage = () => {
   return (
     <>
       <title>{`${currentVideo?.title ?? 'Player Page'} | Synbox`}</title>
-      <LyricsVisibilityToggleGroup />
+      <PlayerRail />
       <VersionPreviewBanner videoId={stageVideoId} />
       <PlayerStage
         key={stageVideoId}
