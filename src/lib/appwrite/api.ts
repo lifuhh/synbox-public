@@ -1,7 +1,35 @@
+import { AppwriteException } from 'appwrite'
+
 import type { CurrentPlayingInfo } from '@/types'
-import { createAppwriteIdFromYoutubeId } from '@/utils'
+import {
+  createAppwriteIdFromYoutubeId,
+  legacyAppwriteIdFromYoutubeId,
+} from '@/utils'
 
 import { appwriteConfig, databases } from './config'
+
+// Reads fall back to the pre-migration id, so a song is found while its row is being moved.
+const getSongDocument = async (collectionId: string, songId: string) => {
+  const id = createAppwriteIdFromYoutubeId(songId)
+  const legacyId = legacyAppwriteIdFromYoutubeId(songId)
+  try {
+    return await databases.getDocument(
+      appwriteConfig.databaseId,
+      collectionId,
+      id
+    )
+  } catch (error) {
+    const isNotFound = error instanceof AppwriteException && error.code === 404
+    if (!isNotFound || legacyId === id) {
+      throw error
+    }
+    return await databases.getDocument(
+      appwriteConfig.databaseId,
+      collectionId,
+      legacyId
+    )
+  }
+}
 
 export async function addSongInfoBySongId(songInfo: CurrentPlayingInfo) {
   const { videoId, title, author, thumbnailUrl } = songInfo
@@ -33,13 +61,7 @@ export async function getSongInfoBySongId(
   }
 
   try {
-    const appwriteId = createAppwriteIdFromYoutubeId(songId)
-
-    const songInfo = await databases.getDocument(
-      appwriteConfig.databaseId,
-      appwriteConfig.songInfoId,
-      appwriteId
-    )
+    const songInfo = await getSongDocument(appwriteConfig.songInfoId, songId)
 
     if (!songInfo) {
       throw new Error('No song info found')
@@ -73,13 +95,7 @@ export async function getSongLyricsById(songId: string) {
   }
 
   try {
-    const appwriteId = createAppwriteIdFromYoutubeId(songId)
-
-    const lyrics = await databases.getDocument(
-      appwriteConfig.databaseId,
-      appwriteConfig.lyricsId,
-      appwriteId
-    )
+    const lyrics = await getSongDocument(appwriteConfig.lyricsId, songId)
 
     if (!lyrics) {
       return new Error('No lyrics found')

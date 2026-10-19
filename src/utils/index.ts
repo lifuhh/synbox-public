@@ -112,28 +112,23 @@ export const extractVideoId = (input: string): string | null => {
   return null
 }
 
+// Appwrite ids may hold '-' and '_' but not start with one, so only a leading '-' or '_' is encoded.
+// Same as the backend's AppwriteService.create_appwrite_id, and reversible.
 export const createAppwriteIdFromYoutubeId = (id: string): string => {
-  if (!id) {
-    return ''
+  if (id.startsWith('-')) {
+    return `yt_h${id.slice(1)}`
   }
-
-  if (validateYoutubeIdForAppwrite(id)) {
-    return id
+  if (id.startsWith('_')) {
+    return `yt_u${id.slice(1)}`
   }
-
-  return encodeYoutubeIdForAppwrite(id)
+  return id
 }
 
-const validateYoutubeIdForAppwrite = (id: string): boolean => {
-  const validChars = /^[a-zA-Z0-9_]{1,36}$/
-  return validChars.test(id) && !id.startsWith('_')
-}
-
-const encodeYoutubeIdForAppwrite = (id: string): string => {
-  const prefix = 'yt_'
-  const encodedId = id.replace(/-/g, '_')
-  return `${prefix}${encodedId}`
-}
+// Rows saved before the 2026-10 id migration used 'yt_' + id with every '-' as '_'.
+export const legacyAppwriteIdFromYoutubeId = (id: string): string =>
+  /^[a-zA-Z0-9_]{1,36}$/u.test(id) && !id.startsWith('_')
+    ? id
+    : `yt_${id.split('-').join('_')}`
 
 export const delayApiResponse = (ms: number) =>
   new Promise((resolve) => setTimeout(resolve, ms))
