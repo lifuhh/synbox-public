@@ -31,8 +31,7 @@ const RootLayout: React.FC = () => {
         </div>
       </div>
 
-      <div
-        className='relative h-screen w-full bg-muted/20'>
+      <div className='relative h-screen w-full bg-muted/20'>
         <TopBar />
         <section className='flex h-full flex-1 bg-[#150406]/75'>
           <Outlet />

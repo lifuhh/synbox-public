@@ -13,11 +13,7 @@ import { playerVolumeAtom } from '@/context/atoms'
 import { cn } from '@/utils/cn'
 
 import { StageControls } from './StageControls'
-import type {
-  PlayerVolume,
-  StagePhase,
-  StagePlayer,
-} from './useYouTubePlayer'
+import type { PlayerVolume, StagePhase, StagePlayer } from './useYouTubePlayer'
 import { useYouTubePlayer } from './useYouTubePlayer'
 import type { YouTubeQuirks } from './youtubeQuirks'
 
