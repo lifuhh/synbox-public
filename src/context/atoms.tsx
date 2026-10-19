@@ -42,6 +42,9 @@ export const lyricsBackdropAtom = atomWithStorage<LyricsBackdrop>(
   DEFAULT_LYRICS_BACKDROP
 )
 
+// The player rail's open state; the top bar's icons follow it on /v/:id
+export const playerChromeOpenAtom = atom(true)
+
 export const playerVolumeAtom = atomWithStorage('playerVolume', {
   level: 0.5,
   muted: false,
