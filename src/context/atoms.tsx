@@ -14,7 +14,7 @@ export const romajiVisibilityAtom = atom(true)
 export const translationVisibilityAtom = atom(true)
 export const translationIsEnglishAtom = atom(true)
 
-const DEFAULT_FONT_SIZE = 1
+export const DEFAULT_FONT_SIZE = 1
 const getInitialFontSize = () => {
   const stored = localStorage.getItem('fontSizeMultiplier')
   return stored ? parseFloat(stored) : DEFAULT_FONT_SIZE

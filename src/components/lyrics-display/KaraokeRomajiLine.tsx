@@ -44,7 +44,7 @@ export const KaraokeRomajiLine = ({
   return (
     <p
       className={cn(
-        'lyric-text-line align-middle font_noto_sans_jp_black_900 text-2vw leading-normal text-balance',
+        'lyric-text-line align-middle font_noto_sans_jp_black_900 leading-normal text-balance',
         className
       )}>
       <span className='lyric-karaoke-line'>
