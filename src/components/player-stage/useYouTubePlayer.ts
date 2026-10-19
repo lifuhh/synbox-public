@@ -312,20 +312,28 @@ export const useYouTubePlayer = ({
     }
   }, [])
 
-  const play = useCallback(() => {
-    const player = playerRef.current
-    if (!player) {
-      return
-    }
-    if (phaseRef.current.kind === 'ended') {
-      player.seekTo(0, true)
-    }
-    if (phaseRef.current.kind === 'ready') {
-      setPhase({ kind: 'starting' })
-    }
-    maskCenter('command')
-    player.playVideo()
-  }, [maskCenter])
+  // `muted` mutes YouTube before asking it to play: browsers only allow an
+  // autoplay without a user gesture when it is silent
+  const play = useCallback(
+    ({ muted = false }: { muted?: boolean } = {}) => {
+      const player = playerRef.current
+      if (!player) {
+        return
+      }
+      if (muted) {
+        player.mute()
+      }
+      if (phaseRef.current.kind === 'ended') {
+        player.seekTo(0, true)
+      }
+      if (phaseRef.current.kind === 'ready') {
+        setPhase({ kind: 'starting' })
+      }
+      maskCenter('command')
+      player.playVideo()
+    },
+    [maskCenter]
+  )
 
   const pause = useCallback(() => {
     const player = playerRef.current
@@ -343,7 +351,9 @@ export const useYouTubePlayer = ({
 
   const togglePlay = useCallback(() => {
     const { kind } = phaseRef.current
-    if (kind === 'playing' || kind === 'buffering' || kind === 'starting') {
+    // 'starting' is not playing yet: a click there must (re)start playback,
+    // which also gives the browser the user gesture an unmuted start needs
+    if (kind === 'playing' || kind === 'buffering') {
       pause()
     } else {
       play()

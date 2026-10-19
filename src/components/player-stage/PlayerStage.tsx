@@ -155,6 +155,17 @@ export const PlayerStage = ({
     phaseKindRef.current = phase.kind
   }, [phase.kind])
   const isReady = phase.kind === 'ready'
+  // The check lives in a ref, not the effect's cleanup: play() moves the phase
+  // off 'ready', which re-runs this effect and would cancel the check
+  const autoplayCheckRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(
+    () => () => {
+      if (autoplayCheckRef.current) {
+        clearTimeout(autoplayCheckRef.current)
+      }
+    },
+    []
+  )
   useEffect(() => {
     if (!(autoplay && isReady) || autoplayedRef.current) {
       return
@@ -162,16 +173,13 @@ export const PlayerStage = ({
     autoplayedRef.current = true
     play()
     // A blocked unmuted play leaves YouTube unstarted without an error
-    const check = setTimeout(() => {
+    autoplayCheckRef.current = setTimeout(() => {
       const kind = phaseKindRef.current
       if (kind !== 'playing' && kind !== 'buffering') {
         setAutoplayMuted(true)
-        play()
+        play({ muted: true })
       }
     }, AUTOPLAY_CHECK_MS)
-    return () => {
-      clearTimeout(check)
-    }
   }, [autoplay, isReady, play])
 
   const firstPlayRef = useRef(false)
@@ -337,8 +345,8 @@ export const PlayerStage = ({
           onClick={() => {
             setVolume({ ...storedVolume, muted: false })
           }}
-          className='absolute top-4 left-1/2 z-40 flex -translate-x-1/2 items-center gap-2 rounded-full bg-black/70 px-4 py-2 text-sm font-medium text-white shadow-lg backdrop-blur-sm transition-colors hover:bg-black/85'>
-          <VolumeXIcon className='size-4' aria-hidden='true' />
+          className='absolute top-18 left-1/2 z-40 flex -translate-x-1/2 items-center gap-2.5 rounded-full bg-black/60 px-5 py-2.5 text-base font-medium text-white shadow-lg ring-1 ring-white/20 backdrop-blur-md transition-colors hover:bg-black/80'>
+          <VolumeXIcon className='size-5' aria-hidden='true' />
           Tap to Unmute
         </button>
       )}
