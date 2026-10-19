@@ -1,0 +1,31 @@
+import type { Job } from '@/lib/generation/store'
+
+// The panel and the button are one surface: motion morphs between them through the shared layout id
+export const SURFACE_LAYOUT_ID = 'generation-surface'
+export const SURFACE_SPRING = {
+  damping: 30,
+  stiffness: 340,
+  type: 'spring',
+} as const
+
+// YouTube's thumbnail is known from the id alone, so the song shows from the first frame
+export const thumbnailOf = (job: Job) =>
+  job.video !== null && job.video.thumbnail !== ''
+    ? job.video.thumbnail
+    : `https://i.ytimg.com/vi/${job.videoId}/mqdefault.jpg`
+
+// A thumbnail that fails to load hides, leaving the gradient drawn behind it. For an unknown or removed
+// video YouTube answers 200 with a grey 120 px placeholder instead of an error, so that hides too.
+export const hideBrokenImage = (event: { currentTarget: HTMLImageElement }) => {
+  event.currentTarget.style.visibility = 'hidden'
+}
+
+export const hidePlaceholderImage = (event: {
+  currentTarget: HTMLImageElement
+}) => {
+  if (event.currentTarget.naturalWidth <= 120) {
+    hideBrokenImage(event)
+  }
+}
+
+export const titleOf = (job: Job) => job.video?.title ?? job.title

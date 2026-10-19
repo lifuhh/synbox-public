@@ -21,7 +21,7 @@ const pushText = (segments: RubySegment[], text: string) => {
 }
 
 // Bracket format shared with the backend and karaoke.json lines[].furigana:
-// 輝[かがや]く. Same rules as convertToRuby in RequestDialog.tsx.
+// 輝[かがや]く. Same rules as the backend's convert_to_ruby (services/lyrics/doc.py).
 export const parseFurigana = (annotated: string): RubySegment[] => {
   const segments: RubySegment[] = []
   let cursor = 0

@@ -14,7 +14,6 @@ import {
   addSongInfoBySongId,
   getSongInfoBySongId,
   getSongLyricsById,
-  uploadLyricsToAppwrite,
 } from '../appwrite/api'
 import { getKaraoke } from '../synbox-flask/api'
 import {
@@ -24,11 +23,9 @@ import {
 } from '../synbox-flask/discovery'
 import {
   activateLyricsVersion,
-  addLyricsVersion,
   getLyricsVersion,
   listLyricsVersions,
 } from '../synbox-flask/lyrics-versions'
-import type { LyricsFields } from '../synbox-flask/lyrics-versions'
 import {
   getChartsPlaylist,
   getInfiniteGalleryPlaylist,
@@ -144,25 +141,6 @@ export const useGetSongInfoBySongId = (songId: string) =>
     queryFn: () => getSongInfoBySongId(songId),
   })
 
-interface LyricsDataInterface {
-  full_lyrics: string
-  plain_lyrics: string
-  romaji: string
-  eng_translation: string
-  chi_translation: string
-  labelled_full_lyrics: string
-}
-export const useUploadLyricsToAppwrite = () =>
-  useMutation({
-    mutationFn: ({
-      songId,
-      lyricsData,
-    }: {
-      songId: string
-      lyricsData: LyricsDataInterface
-    }) => uploadLyricsToAppwrite(songId, lyricsData),
-  })
-
 export const useSearchVideos = (query: string) =>
   useQuery({
     queryKey: [QUERY_KEYS.SEARCH_VIDEOS, query],
@@ -205,17 +183,6 @@ export const useGetLyricsVersion = (videoId: string, version: number | null) =>
     queryKey: [QUERY_KEYS.GET_LYRICS_VERSION, videoId, version],
     retry: false,
     staleTime: Infinity,
-  })
-
-export const useAddLyricsVersion = () =>
-  useMutation({
-    mutationFn: ({
-      fields,
-      videoId,
-    }: {
-      fields: LyricsFields
-      videoId: string
-    }) => addLyricsVersion(videoId, fields),
   })
 
 export const useActivateLyricsVersion = () =>

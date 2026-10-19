@@ -10,13 +10,11 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
-import useRequestDialog from '@/hooks/useRequestDialog'
+import { startGeneration } from '@/lib/generation/store'
 import { useGetLyricsBySongId } from '@/lib/react-query/queriesAndMutations'
 import { YouTubeUrlOrIdValidation } from '@/lib/validation'
 import { extractVideoId } from '@/utils'
 
-import RequestDialog from '../shared/RequestDialog'
-import { Dialog, DialogTrigger } from '../ui/dialog'
 import { Spotlight } from '../ui/Spotlight'
 
 interface HeroGenerateLyricsDefaultProps {
@@ -43,7 +41,6 @@ const HeroGenerateLyricsDefault = ({
   const [inputValue, setInputValue] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
   const [validationSuccess, setValidationSuccess] = useState(false)
-  const dialog = useRequestDialog()
   const navigate = useNavigate()
   const isSearch =
     inputValue.trim().length > 0 && !looksLikeYoutubeLink(inputValue)
@@ -106,7 +103,7 @@ const HeroGenerateLyricsDefault = ({
           state: { videoId: extractedVideoId },
         })
       } else {
-        dialog.openFor(extractedVideoId)
+        startGeneration({ mode: 'new', videoId: extractedVideoId })
       }
     }
   }
@@ -155,51 +152,39 @@ const HeroGenerateLyricsDefault = ({
               </div>
             )}
           </div>
-          <Dialog open={dialog.open} onOpenChange={dialog.handleOpenChange}>
-            <DialogTrigger asChild>
-              <Button
-                onClick={(e) => {
-                  if (inputValue?.length === 0 || isSearch) {
-                    e.preventDefault()
-                  }
-                  if (inputValue?.length === 0) {
-                    return
-                  }
-                  handleOpenLandingPageDialog()
-                }}
-                disabled={
-                  errorMessage && errorMessage != ''
-                    ? true
-                    : false || isCheckingLyrics
-                }
-                variant='default'
-                className='w-full gap-2 border-2 border-primary/90 bg-primary/90 py-6 text-foreground hover:border-primary hover:bg-primary md:w-1/2 lg:w-1/4'>
-                {isSearch ? (
-                  <p className='text-[16px]'>Search</p>
-                ) : isCheckingLyrics ? (
-                  <p className='text-[16px]'>Searching ...</p>
-                ) : existingLyrics ? (
-                  <p className='text-[16px]'>Play Video</p>
-                ) : (
-                  <p className='text-[16px]'>Try Now</p>
-                )}
-                {isSearch ? (
-                  <SearchIcon className='size-6 shrink-0' />
-                ) : isCheckingLyrics ? (
-                  ''
-                ) : existingLyrics ? (
-                  <PlayIcon className='size-6 shrink-0 fill-current' />
-                ) : (
-                  <ArrowRightIcon className='size-6 shrink-0' />
-                )}
-              </Button>
-            </DialogTrigger>
-            <RequestDialog
-              key={dialog.dialogKey}
-              videoId={dialog.videoId}
-              handleClose={dialog.close}
-            />
-          </Dialog>
+          <Button
+            onClick={() => {
+              if (inputValue?.length === 0) {
+                return
+              }
+              handleOpenLandingPageDialog()
+            }}
+            disabled={
+              errorMessage && errorMessage != ''
+                ? true
+                : false || isCheckingLyrics
+            }
+            variant='default'
+            className='w-full gap-2 border-2 border-primary/90 bg-primary/90 py-6 text-foreground hover:border-primary hover:bg-primary md:w-1/2 lg:w-1/4'>
+            {isSearch ? (
+              <p className='text-[16px]'>Search</p>
+            ) : isCheckingLyrics ? (
+              <p className='text-[16px]'>Searching ...</p>
+            ) : existingLyrics ? (
+              <p className='text-[16px]'>Play Video</p>
+            ) : (
+              <p className='text-[16px]'>Try Now</p>
+            )}
+            {isSearch ? (
+              <SearchIcon className='size-6 shrink-0' />
+            ) : isCheckingLyrics ? (
+              ''
+            ) : existingLyrics ? (
+              <PlayIcon className='size-6 shrink-0 fill-current' />
+            ) : (
+              <ArrowRightIcon className='size-6 shrink-0' />
+            )}
+          </Button>
         </div>
 
         <div className='flex items-center justify-center gap-2'>

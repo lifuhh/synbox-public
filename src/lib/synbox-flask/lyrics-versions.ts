@@ -66,16 +66,6 @@ export const getLyricsVersion = async (videoId: string, version: number) => {
   return { ...body.fields, videoId }
 }
 
-export const addLyricsVersion = async (videoId: string, fields: LyricsFields) =>
-  await request<{ version: number; active: number | null }>(
-    `/lyrics/${encodeURIComponent(videoId)}/versions`,
-    {
-      body: JSON.stringify({ fields }),
-      headers: { 'Content-Type': 'application/json' },
-      method: 'POST',
-    }
-  )
-
 export const activateLyricsVersion = async (
   videoId: string,
   version: number,
