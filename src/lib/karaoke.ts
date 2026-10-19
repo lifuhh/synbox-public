@@ -1,38 +1,60 @@
 import type { KaraokeDocLine } from '@/types'
 
+// When one mora's share of the width fills: a ramp in seconds
 export interface FillSpan {
   start: number
   end: number
   // Share of the part's width: the characters this mora is written with
   weight: number
-  // Latin words fill across their whole span; morae light from their onset
-  linear?: boolean
 }
 
-// A mora lights over this long from its onset (or its whole length, if
-// shorter), so the fill leads with the sound instead of crawling behind it.
-// Tune by eye; measured mora lengths: median 180 ms, p90 280 ms.
-export const FILL_WINDOW = 0.09
+// Each mora wipes across its own length, up to the next mora's onset, so the
+// fill runs continuously through a phrase instead of dashing and freezing.
+// It starts FILL_LEAD early so the edge is not behind the voice, and its
+// length is held between FILL_MIN and FILL_MAX: a very short mora doesn't
+// flash, and a held note (or one that absorbed a rest) doesn't crawl.
+// Measured on M5_foAv6AqQ (942 morae): no freeze between contiguous morae,
+// a mora half-lit a median 30 ms after its onset (p90 80 ms).
+export const FILL_LEAD = 0.06
+export const FILL_MIN = 0.08
+export const FILL_MAX = 0.5
 
-// Fill p in [0, 1] for one part: each mora lights its weighted share of the
-// width, linearly over FILL_WINDOW from its start. A gap holds the reached share.
-export const fillProgress = (
-  spans: readonly FillSpan[],
-  time: number,
-  window = FILL_WINDOW
-) => {
+// Fill p in [0, 1] for one part: each mora fills its weighted share linearly
+// over its ramp. A rest between ramps holds the reached share.
+export const fillProgress = (spans: readonly FillSpan[], time: number) => {
   let total = 0
   let filled = 0
-  for (const { start, end, weight, linear } of spans) {
+  for (const { start, end, weight } of spans) {
     total += weight
-    const length = linear === true ? end - start : Math.min(end - start, window)
-    if (time >= start + length) {
+    if (time >= end) {
       filled += weight
     } else if (time > start) {
-      filled += (weight * (time - start)) / length
+      filled += (weight * (time - start)) / (end - start)
     }
   }
   return total > 0 ? filled / total : 0
+}
+
+// Per token, each mora's ramp. A Latin word fills across its whole span.
+const lineRamps = (line: KaraokeDocLine) => {
+  const morae = line.tokens.flatMap((token, t) =>
+    token.morae.map((mora) => ({ latin: token.is_latin, mora, t }))
+  )
+  const ramps: { start: number; end: number }[][] = line.tokens.map(() => [])
+  for (const [i, { latin, mora, t }] of morae.entries()) {
+    if (latin) {
+      ramps[t].push({ end: mora.end, start: mora.start })
+      continue
+    }
+    const next = morae[i + 1]?.mora.start ?? mora.end
+    const sung = Math.min(mora.end, Math.max(next, mora.start)) - mora.start
+    const length = Math.min(Math.max(sung, FILL_MIN), FILL_MAX)
+    ramps[t].push({
+      end: mora.start - FILL_LEAD + length,
+      start: mora.start - FILL_LEAD,
+    })
+  }
+  return ramps
 }
 
 const SMALL_KANA = new Set('ゃゅょぁぃぅぇぉゎャュョァィゥェォヮ')
@@ -72,8 +94,9 @@ export interface FillPart {
 // end of the previous timed token, or at the line start, so they snap to
 // filled once the text before them has filled.
 export const tokenFillParts = (line: KaraokeDocLine): FillPart[][] => {
+  const ramps = lineRamps(line)
   let previousEnd = line.start
-  return line.tokens.map((token) => {
+  return line.tokens.map((token, t) => {
     if (token.morae.length === 0) {
       return [
         {
@@ -83,7 +106,7 @@ export const tokenFillParts = (line: KaraokeDocLine): FillPart[][] => {
         },
       ]
     }
-    previousEnd = Math.max(...token.morae.map(({ end }) => end))
+    previousEnd = Math.max(...ramps[t].map(({ end }) => end))
     const segments =
       token.is_latin || token.ruby.length === 0
         ? [{ base: token.surface, rt: '' }]
@@ -93,12 +116,7 @@ export const tokenFillParts = (line: KaraokeDocLine): FillPart[][] => {
       !token.is_latin &&
       counts.reduce((sum, c) => sum + c.length, 0) === token.morae.length
     if (!matched) {
-      const spans = token.morae.map(({ start, end }) => ({
-        end,
-        linear: token.is_latin,
-        start,
-        weight: 1,
-      }))
+      const spans = ramps[t].map((ramp) => ({ ...ramp, weight: 1 }))
       return segments.map(({ base, rt }) => ({ base, rt, spans }))
     }
     const firstMora = counts.map((_, i) =>
@@ -107,31 +125,35 @@ export const tokenFillParts = (line: KaraokeDocLine): FillPart[][] => {
     return segments.map(({ base, rt }, index) => ({
       base,
       rt,
-      spans: counts[index].map((weight, k) => {
-        const { start, end } = token.morae[firstMora[index] + k]
-        return { end, start, weight }
-      }),
+      spans: counts[index].map((weight, k) => ({
+        ...ramps[t][firstMora[index] + k],
+        weight,
+      })),
     }))
   })
 }
 
 // The romaji line, one part per sung word (as the backend's romaji_line joins
 // them), so it wipes on the same clock as the Japanese, mora by mora
-export const romajiFillParts = (line: KaraokeDocLine): FillPart[] =>
-  line.tokens
-    .filter((token) => token.morae.length > 0)
-    .map((token) => ({
-      base: token.is_latin
-        ? token.surface
-        : token.morae.map(({ romaji }) => romaji).join(''),
-      rt: '',
-      spans: token.morae.map(({ start, end, romaji }) => ({
-        end,
-        linear: token.is_latin,
-        start,
-        weight: Math.max(1, romaji.length),
-      })),
-    }))
+export const romajiFillParts = (line: KaraokeDocLine): FillPart[] => {
+  const ramps = lineRamps(line)
+  return line.tokens.flatMap((token, t) =>
+    token.morae.length === 0
+      ? []
+      : [
+          {
+            base: token.is_latin
+              ? token.surface
+              : token.morae.map(({ romaji }) => romaji).join(''),
+            rt: '',
+            spans: token.morae.map(({ romaji }, k) => ({
+              ...ramps[t][k],
+              weight: Math.max(1, romaji.length),
+            })),
+          },
+        ]
+  )
+}
 
 // A line shows this long before its first mora (unfilled, to be read before
 // the wipe), unless the line before it is still being sung

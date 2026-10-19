@@ -5,7 +5,9 @@ import type { KaraokeDocLine, KaraokeToken } from '@/types'
 import {
   advancePlaybackClock,
   currentLineIndex,
-  FILL_WINDOW,
+  FILL_LEAD,
+  FILL_MAX,
+  FILL_MIN,
   fillProgress,
   karaokeMatchesLyrics,
   LINE_LEAD_IN,
@@ -43,37 +45,19 @@ const line = (
   tokens,
 })
 
-const W = FILL_WINDOW
+const L = FILL_LEAD
 
 describe('fillProgress', () => {
-  // 誰: だ 30.8-31.05, れ 31.05-31.3
-  const dare = [
-    { end: 31.05, start: 30.8, weight: 1 },
-    { end: 31.3, start: 31.05, weight: 1 },
-  ]
-
-  test('a mora is fully lit FILL_WINDOW after its onset, not at its end', () => {
-    expect(fillProgress(dare, 30.8)).toBe(0)
-    expect(fillProgress(dare, 30.8 + W / 2)).toBeCloseTo(0.25)
-    expect(fillProgress(dare, 30.8 + W + 1e-9)).toBe(0.5)
-    expect(fillProgress(dare, 31.05 + W + 1e-9)).toBe(1)
-  })
-
-  test('a mora shorter than the window fills over its own length', () => {
-    const short = [{ end: 10.04, start: 10, weight: 1 }]
-    expect(fillProgress(short, 10.02)).toBeCloseTo(0.5)
-    expect(fillProgress(short, 10.04)).toBe(1)
-  })
-
-  test('weights split the width by characters, and Latin fills linearly', () => {
-    const kyoku = [
-      { end: 10.2, start: 10, weight: 2 },
-      { end: 10.4, start: 10.2, weight: 1 },
+  test('fills each share linearly over its ramp and holds across a rest', () => {
+    const spans = [
+      { end: 11, start: 10, weight: 1 },
+      { end: 13, start: 12, weight: 3 },
     ]
-    expect(fillProgress(kyoku, 10 + W + 1e-9)).toBeCloseTo(2 / 3)
-    expect(
-      fillProgress([{ end: 34, linear: true, start: 33, weight: 1 }], 33.5)
-    ).toBeCloseTo(0.5)
+    expect(fillProgress(spans, 10)).toBe(0)
+    expect(fillProgress(spans, 10.5)).toBeCloseTo(0.125)
+    expect(fillProgress(spans, 11.5)).toBe(0.25)
+    expect(fillProgress(spans, 12.5)).toBeCloseTo(0.625)
+    expect(fillProgress(spans, 13)).toBe(1)
   })
 })
 
@@ -97,12 +81,32 @@ describe('tokenFillParts', () => {
     [mora('の', 10, 10.2), mora('こ', 10.2, 10.4), mora('し', 10.4, 10.6)]
   )
 
-  test('a kanji and its furigana fill from that kanji’s own morae', () => {
+  test('sung morae fill continuously: the fill never stops between them', () => {
     const [[noko, shi]] = tokenFillParts(line([nokoshi]))
-    expect(noko.base).toBe('残')
-    expect(fillProgress(noko.spans, 10.2)).toBe(0.5) // の lit at its end, こ not yet
-    expect(fillProgress(noko.spans, 10.2 + W + 1e-9)).toBe(1)
-    expect(fillProgress(shi.spans, 10.2 + W + 1e-9)).toBe(0) // し waits for its own onset
+    const total = (time: number) =>
+      (2 * fillProgress(noko.spans, time) + fillProgress(shi.spans, time)) / 3
+    let previous = total(10 - L)
+    for (let time = 10 - L + 0.02; time < 10.6 - L; time += 0.02) {
+      expect(total(time)).toBeGreaterThan(previous)
+      previous = total(time)
+    }
+  })
+
+  test('the fill leads each mora by FILL_LEAD, so a kanji is half lit on time', () => {
+    const [[noko, shi]] = tokenFillParts(line([nokoshi]))
+    expect(fillProgress(noko.spans, 10 - L)).toBe(0)
+    expect(fillProgress(noko.spans, 10.2 - L)).toBe(0.5) // の done as こ begins
+    expect(fillProgress(noko.spans, 10.4 - L)).toBe(1)
+    expect(fillProgress(shi.spans, 10.4 - L)).toBe(0) // し waits for its own ramp
+  })
+
+  test('a held note fills in FILL_MAX, a very short mora in FILL_MIN', () => {
+    const held = token('あ', [{ base: 'あ', rt: '' }], [mora('あ', 10, 13)])
+    const [[part]] = tokenFillParts(line([held]))
+    expect(part.spans[0].end - part.spans[0].start).toBeCloseTo(FILL_MAX)
+    const quick = token('た', [{ base: 'た', rt: '' }], [mora('た', 10, 10.03)])
+    const [[fast]] = tokenFillParts(line([quick]))
+    expect(fast.spans[0].end - fast.spans[0].start).toBeCloseTo(FILL_MIN)
   })
 
   test('きょ counts as one mora across two characters', () => {
@@ -140,8 +144,8 @@ describe('tokenFillParts', () => {
     const at = (time: number) => parts.map(([p]) => fillProgress(p.spans, time))
     expect(at(29.9)).toEqual([0, 0, 0])
     expect(at(30)).toEqual([1, 0, 0])
-    expect(at(31.2)[2]).toBe(0)
-    expect(at(31.3)).toEqual([1, 1, 1])
+    expect(at(31.2 - L)[2]).toBe(0)
+    expect(at(31.3 - L)).toEqual([1, 1, 1])
   })
 })
 
@@ -159,7 +163,7 @@ describe('romajiFillParts', () => {
       ])
     )
     expect(parts.map((p) => p.base)).toEqual(['kimi', 'Lemon'])
-    expect(fillProgress(parts[0].spans, 10 + W + 1e-9)).toBe(0.5)
+    expect(fillProgress(parts[0].spans, 10.2 - L)).toBe(0.5)
     expect(fillProgress(parts[1].spans, 11.5)).toBeCloseTo(0.5)
   })
 })

@@ -3,7 +3,7 @@ import { act, createRef, Profiler } from 'react'
 import { createRoot } from 'react-dom/client'
 import { afterEach, describe, expect, test } from 'vite-plus/test'
 
-import { FILL_WINDOW } from '@/lib/karaoke'
+import { FILL_LEAD } from '@/lib/karaoke'
 import type { KaraokeDocLine, KaraokeToken } from '@/types'
 
 import type { KaraokeLineHandle } from './KaraokeLine'
@@ -117,14 +117,14 @@ describe('KaraokeLine', () => {
     expect(parts[5]?.querySelector('ruby')).toBeNull()
   })
 
-  test('setTime lights each mora from its onset, per part, without re-rendering', () => {
+  test('setTime fills the parts continuously, ahead by FILL_LEAD, without re-rendering', () => {
     const { fills, handle, renders } = renderLine()
     const rendersAfterMount = renders.count
 
-    handle.current?.setTime(30.8 + FILL_WINDOW + 0.001) // だ lit, れ not yet
+    handle.current?.setTime(31.05 - FILL_LEAD) // だ done, れ just starting
     expect(fills()).toEqual([0.5, 0, 0, 0, 0, 0])
 
-    handle.current?.setTime(32.4 + FILL_WINDOW + 0.001) // 輝 (か が や) done, く not started
+    handle.current?.setTime(32.6 - FILL_LEAD) // 輝 (か が や) done, く just starting
     expect(fills()).toEqual([1, 1, 1, 1, 0, 0])
 
     handle.current?.setTime(33.5) // Lemon fills across its whole span
