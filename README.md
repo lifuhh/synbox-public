@@ -6,7 +6,7 @@
 
 <p align="center">
   <a href="./LICENSE" target="_blank" rel="noopener noreferrer">
-    <img src="https://img.shields.io/badge/license-Personal_Use-red" alt="License Badge" />
+    <img src="https://img.shields.io/badge/license-PolyForm_Noncommercial-orange" alt="License Badge" />
   </a>
   <a href="#">
     <img src="https://img.shields.io/badge/version-1.0.0-blue?style=flat-square" alt="Version Badge" />
@@ -140,5 +140,6 @@ Feel free to reach out for feedback, issues, or contributions:
 
 ## **License**
 
-This project is licensed under a **Personal Use License**.  
-You may view and explore the codebase for personal learning purposes. Redistribution, modification, or commercial use is prohibited without explicit permission from the author.
+Synbox is a non-commercial passion and learning project. It has no monetization and never will.
+
+The code is licensed under the [PolyForm Noncommercial License 1.0.0](./LICENSE). You may read, run, fork and modify it for any non-commercial purpose, such as personal study, hobby projects or research. Commercial use is not permitted.
