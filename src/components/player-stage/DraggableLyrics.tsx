@@ -126,8 +126,7 @@ export const DraggableLyrics = ({
           ...style,
         } as CSSProperties
       }
-      data-backdrop={backdrop}
-      data-position={anchor >= 0.5 ? 'bottom' : 'top'}>
+      data-backdrop={backdrop}>
       <div
         data-testid='lyrics-handle'
         className={cn(
