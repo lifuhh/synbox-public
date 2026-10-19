@@ -14,7 +14,7 @@ import { cn } from '@/utils/cn'
 
 import { RailButton, RailTooltip } from './RailButton'
 
-// Regenerating keeps the current lyrics and saves the result as a new version to preview
+// A regeneration is saved as a new version and becomes the default; the versions page rolls back
 export const LyricsVersionsMenu = ({
   videoId,
   onOpenChange,
@@ -54,6 +54,16 @@ export const LyricsVersionsMenu = ({
               startGeneration({ mode: 'regenerate', videoId })
             }}>
             Regenerate Lyrics
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onSelect={() => {
+              startGeneration({
+                mode: 'regenerate',
+                skipUploaderLyrics: true,
+                videoId,
+              })
+            }}>
+            Regenerate Without Uploader Lyrics
           </DropdownMenuItem>
           <DropdownMenuItem asChild>
             <Link to={`/v/${videoId}/versions`}>

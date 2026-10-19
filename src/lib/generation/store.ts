@@ -24,8 +24,8 @@ export type JobStatus =
 export interface GenerationRequest {
   videoId: string
   mode: GenerationMode
-  // Skips the uploader's lyrics and the saved timing; the lyrics come from the audio
-  forceAi?: boolean
+  // Leaves the uploader's subtitles out; YouTube Music, LRCLIB and the audio still count
+  skipUploaderLyrics?: boolean
   // Shown until the backend sends the song's details
   title?: string
 }
@@ -133,7 +133,10 @@ const run = async (job: Job, signal: AbortSignal) => {
     await runPhase(id, 'transcribe', signal, () =>
       transcribe(
         videoId,
-        { forceAi: job.forceAi, regenerate: job.mode === 'regenerate' },
+        {
+          regenerate: job.mode === 'regenerate',
+          skipUploaderLyrics: job.skipUploaderLyrics,
+        },
         signal,
         progress
       )
@@ -170,9 +173,9 @@ export const startGeneration = (request: GenerationRequest): boolean => {
   controller?.abort()
   controller = new AbortController()
   const job: Job = {
-    forceAi: false,
     id: nextId++,
     runs: {},
+    skipUploaderLyrics: false,
     startedAt: Date.now(),
     status: { kind: 'running', phase: 'validate' },
     title: '',
@@ -188,8 +191,8 @@ export const retryGeneration = () => {
   const { job } = state
   if (job && job.status.kind === 'failed') {
     startGeneration({
-      forceAi: job.forceAi,
       mode: job.mode,
+      skipUploaderLyrics: job.skipUploaderLyrics,
       title: job.video?.title ?? job.title,
       videoId: job.videoId,
     })

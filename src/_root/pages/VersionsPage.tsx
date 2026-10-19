@@ -102,13 +102,26 @@ const VersionsPage = () => {
             }}>
             Regenerate
           </Button>
+          <Button
+            variant='outline'
+            onClick={() => {
+              startGeneration({
+                mode: 'regenerate',
+                skipUploaderLyrics: true,
+                title: songInfo?.title,
+                videoId,
+              })
+            }}>
+            Regenerate Without Uploader Lyrics
+          </Button>
         </div>
       </div>
 
       <p className='text-sm text-muted-foreground'>
-        Regenerating saves a new version and leaves the current lyrics in place.
-        Preview a version, then make it the default; making an older version the
-        default rolls back.
+        Regenerating saves a new version and makes it the default. Skip the
+        uploader&apos;s lyrics when their subtitles are wrong; the lyrics then
+        come from YouTube Music, LRCLIB or the audio. Making an older version
+        the default rolls back.
       </p>
 
       <label

@@ -215,11 +215,11 @@ export const validate = async (
   return found.video
 }
 
-// `regenerate` skips the backend's saved timing but keeps every lyrics source; `forceAi` also drops the
-// human lyrics and builds the text from the audio alone
+// `regenerate` redoes everything but vocal separation; `skipUploaderLyrics` leaves the uploader's subtitles
+// out while YouTube Music, LRCLIB and the audio still count
 export const transcribe = async (
   videoId: string,
-  options: { forceAi: boolean; regenerate: boolean },
+  options: { regenerate: boolean; skipUploaderLyrics: boolean },
   signal: AbortSignal,
   onProgress: OnProgress
 ) => {
@@ -228,9 +228,9 @@ export const transcribe = async (
   await readStream(
     '/transcribev2',
     {
-      force_ai_transcription: options.forceAi,
       id: videoId,
       regenerate: options.regenerate,
+      skip_uploader_lyrics: options.skipUploaderLyrics,
     },
     signal,
     (message) => {

@@ -141,19 +141,19 @@ const DoneView = ({ job }: { job: Job }) => {
           </Button>
         )}
       </div>
-      {!job.forceAi && (
+      {!job.skipUploaderLyrics && (
         <button
           type='button'
           className='text-xs text-white/50 underline-offset-4 hover:text-white/80 hover:underline'
           onClick={() => {
             startGeneration({
-              forceAi: true,
               mode: 'regenerate',
+              skipUploaderLyrics: true,
               title: titleOf(job),
               videoId: job.videoId,
             })
           }}>
-          Lyrics look wrong? Regenerate from the audio only
+          Lyrics look wrong? Regenerate without the uploader&apos;s lyrics
         </button>
       )}
     </motion.div>
