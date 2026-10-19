@@ -38,13 +38,17 @@ interface LyricsVersionResponse {
 
 const request = async <T>(path: string, init?: RequestInit): Promise<T> => {
   const response = await fetch(`${BE_ADDRESS}${path}`, init)
-  const body: unknown = await response.json().catch(() => ({}))
+  const body: unknown = await response.json().catch(() => null)
   if (!response.ok) {
     const message =
       typeof body === 'object' && body !== null && 'error' in body
         ? String(body.error)
         : `Request failed (HTTP ${response.status})`
     throw new Error(message)
+  }
+  // A host without the backend answers with the app's index.html and a 200
+  if (body === null) {
+    throw new Error('The lyrics server sent an unreadable response')
   }
   return body as T
 }
