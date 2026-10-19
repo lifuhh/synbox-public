@@ -109,11 +109,18 @@ const DoneView = ({ job }: { job: Job }) => {
         {outcome.kind === 'version' ? (
           <>
             <Button asChild className='w-full gap-2'>
+              {/* A version that is already the default plays as the song itself */}
               <Link
-                to={`/v/${job.videoId}?version=${outcome.version}`}
+                to={
+                  outcome.active
+                    ? `/v/${job.videoId}`
+                    : `/v/${job.videoId}?version=${outcome.version}`
+                }
                 onClick={close}>
                 <Play className='size-4 fill-current' />
-                Preview Version {outcome.version}
+                {outcome.active
+                  ? 'Play Now'
+                  : `Preview Version ${outcome.version}`}
               </Link>
             </Button>
             <Button

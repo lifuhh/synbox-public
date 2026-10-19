@@ -11,15 +11,16 @@ import GenerationFab from './GenerationFab'
 import GenerationPanel from './GenerationPanel'
 import { usePresentation } from './usePresentation'
 
-// What a saved song changes: its lyrics, song info and timing, its versions, and the searches listing it
-const SAVED_SONG_QUERIES = [
+// The saved song's own data. The lyrics query never refetches on mount, so these are reset rather
+// than invalidated: the next player to mount fetches the new lyrics instead of showing cached ones.
+const SONG_QUERIES = [
   QUERY_KEYS.GET_LYRICS_BY_SONG_ID,
-  QUERY_KEYS.GET_LYRICS_VERSIONS,
-  QUERY_KEYS.GET_SONG_INFO_BY_SONG_ID,
   QUERY_KEYS.GET_KARAOKE_BY_ID,
-  QUERY_KEYS.SEARCH_VIDEOS,
-  QUERY_KEYS.SEARCH_LIBRARY,
+  QUERY_KEYS.GET_SONG_INFO_BY_SONG_ID,
+  QUERY_KEYS.GET_LYRICS_VERSIONS,
 ]
+// Lists that may now include the song
+const LIST_QUERIES = [QUERY_KEYS.SEARCH_VIDEOS, QUERY_KEYS.SEARCH_LIBRARY]
 
 // Mounted once in the root layout, so the running generation follows the user from page to page
 const GenerationHost = () => {
@@ -29,13 +30,17 @@ const GenerationHost = () => {
   const onPlayer = useMatch('/v/:videoId') !== null
   const completed = job?.status.kind === 'complete'
 
+  const videoId = job?.videoId
   useEffect(() => {
-    if (completed) {
-      for (const key of SAVED_SONG_QUERIES) {
+    if (completed && videoId !== undefined) {
+      for (const key of SONG_QUERIES) {
+        void queryClient.resetQueries({ queryKey: [key, videoId] })
+      }
+      for (const key of LIST_QUERIES) {
         void queryClient.invalidateQueries({ queryKey: [key] })
       }
     }
-  }, [completed, job?.id, queryClient])
+  }, [completed, job?.id, videoId, queryClient])
 
   const announcement =
     !job || !view

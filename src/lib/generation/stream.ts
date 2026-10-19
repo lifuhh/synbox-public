@@ -255,7 +255,8 @@ export const transcribe = async (
 // How /translate-annotate's `persisted` message says the lyrics were saved
 export type SaveOutcome =
   | { kind: 'created' }
-  | { kind: 'version'; version: number }
+  // `active`: the backend made it the default (latest wins); older backends keep it aside
+  | { kind: 'version'; version: number; active: boolean }
   | { kind: 'unchanged' }
 
 const parseSaved = (data: unknown): SaveOutcome => {
@@ -263,7 +264,11 @@ const parseSaved = (data: unknown): SaveOutcome => {
     return { kind: 'created' }
   }
   if (isRecord(data) && typeof data.version === 'number') {
-    return { kind: 'version', version: data.version }
+    return {
+      active: data.active === true,
+      kind: 'version',
+      version: data.version,
+    }
   }
   return { kind: 'unchanged' }
 }

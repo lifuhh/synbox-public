@@ -43,8 +43,9 @@ export const outcomeCopy = (job: Job) => {
   const { outcome } = job.status
   if (outcome.kind === 'version') {
     return {
-      detail:
-        'The current lyrics stay until you make this version the default.',
+      detail: outcome.active
+        ? 'It is now the default. You can switch back on the versions page.'
+        : 'The current lyrics stay until you make this version the default.',
       title: `Saved as Version ${outcome.version}`,
     }
   }
