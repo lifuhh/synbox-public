@@ -164,7 +164,7 @@ const useEdgeReveal = (
       if (
         lastInputWasKey &&
         event.target instanceof Node &&
-        topCluster()?.contains(event.target)
+        topCluster()?.contains(event.target) === true
       ) {
         reveal()
       }

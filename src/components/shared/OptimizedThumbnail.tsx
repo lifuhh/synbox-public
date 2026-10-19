@@ -1,6 +1,19 @@
+import type { MouseEventHandler } from 'react'
 import { useState } from 'react'
 
-const OptimizedThumbnail = ({ src, alt, onClick, className }) => {
+interface OptimizedThumbnailProps {
+  src: string
+  alt: string
+  onClick?: MouseEventHandler<HTMLImageElement>
+  className?: string
+}
+
+const OptimizedThumbnail = ({
+  src,
+  alt,
+  onClick,
+  className,
+}: OptimizedThumbnailProps) => {
   const [isLoading, setIsLoading] = useState(true)
 
   return (
@@ -13,7 +26,7 @@ const OptimizedThumbnail = ({ src, alt, onClick, className }) => {
         alt={alt}
         className={`absolute inset-0 h-full w-full object-cover transition-opacity ${
           isLoading ? 'opacity-0' : 'opacity-100'
-        } ${className || ''}`}
+        } ${className ?? ''}`}
         onClick={onClick}
         onLoad={() => {
           setIsLoading(false)

@@ -1,8 +1,10 @@
 import { cn } from '@/utils/cn'
 
+type ThemeColor = 'primary' | 'secondary' | 'accent' | 'muted' | 'destructive'
+
 interface SpotlightProps {
   className?: string
-  fill?: 'primary' | 'secondary' | 'accent' | 'muted' | 'destructive' | string
+  fill?: ThemeColor | `hsl${string}` | `#${string}`
   opacity?: number
 }
 

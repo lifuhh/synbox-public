@@ -97,14 +97,16 @@ export const getLyricsThemeColors = (
   return LYRICS_THEMES.find((theme) => theme.id === themeId) ?? LYRICS_THEMES[0]
 }
 
+type LyricsThemeCssVars = CSSProperties &
+  Record<'--lyric-fill' | '--lyric-secondary' | '--lyric-glow', string>
+
 export const getLyricsThemeCssVars = (
   colors: LyricsThemeColors
-): CSSProperties =>
-  ({
-    '--lyric-fill': colors.fill,
-    '--lyric-secondary': colors.secondary,
-    '--lyric-glow': colors.glow,
-  }) as CSSProperties
+): LyricsThemeCssVars => ({
+  '--lyric-fill': colors.fill,
+  '--lyric-secondary': colors.secondary,
+  '--lyric-glow': colors.glow,
+})
 
 export const LYRICS_BACKDROPS: {
   id: LyricsBackdrop

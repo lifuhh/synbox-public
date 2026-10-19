@@ -5,7 +5,7 @@ import type {
   formattedYoutubeVideoItemForCarousel,
 } from '@/types'
 
-const shuffleArray = (array: unknown[]) => {
+const shuffleArray = <T>(array: T[]): T[] => {
   for (let i = array.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1))
     ;[array[i], array[j]] = [array[j], array[i]]
@@ -66,9 +66,7 @@ export function formatYoutubePlaylistResponse(
     }
   )
 
-  const shuffledResults = shuffleArray(
-    items
-  ) as formattedYoutubeVideoItemForCarousel[]
+  const shuffledResults = shuffleArray(items)
 
   return shuffledResults.slice(0, 50)
 }
@@ -110,7 +108,7 @@ export const extractVideoId = (input: string): string | null => {
 
     const parsedUrl = new URL(fullUrl)
     const videoId = parsedUrl.searchParams.get('v')
-    if (videoId && /^[\w-]{11}$/.test(videoId)) {
+    if (videoId !== null && /^[\w-]{11}$/.test(videoId)) {
       return videoId
     }
   } catch (error) {

@@ -68,7 +68,7 @@ export default defineConfig({
     // Uploads source maps when SENTRY_AUTH_TOKEN is set (the Netlify build)
     sentryVitePlugin({
       authToken: process.env.SENTRY_AUTH_TOKEN,
-      disable: !process.env.SENTRY_AUTH_TOKEN,
+      disable: (process.env.SENTRY_AUTH_TOKEN ?? '') === '',
       org: 'edward-ve',
       project: 'synbox-frontend',
       release: { name: process.env.COMMIT_REF },

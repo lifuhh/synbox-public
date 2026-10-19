@@ -1,9 +1,10 @@
 'use client'
 import { cva } from 'class-variance-authority'
 import type { VariantProps } from 'class-variance-authority'
+import type { MotionValue } from 'motion/react'
 import { motion, useMotionValue, useSpring, useTransform } from 'motion/react'
 import type { PropsWithChildren } from 'react'
-import React, { useRef } from 'react'
+import React, { cloneElement, isValidElement, useRef } from 'react'
 
 import { cn } from '@/utils/cn'
 
@@ -35,12 +36,10 @@ const Dock = React.forwardRef<HTMLDivElement, DockProps>(
     const mouseX = useMotionValue(Infinity)
 
     const renderChildren = () =>
-      React.Children.map(children, (child: any) =>
-        React.cloneElement(child, {
-          mouseX: mouseX,
-          magnification: magnification,
-          distance: distance,
-        })
+      React.Children.map(children, (child): React.ReactNode =>
+        isValidElement<DockIconProps>(child)
+          ? cloneElement(child, { distance, magnification, mouseX })
+          : child
       )
 
     return (
@@ -66,7 +65,7 @@ interface DockIconProps {
   size?: number
   magnification?: number
   distance?: number
-  mouseX?: any
+  mouseX?: MotionValue<number>
   className?: string
   onClick?: () => void
   children?: React.ReactNode
@@ -83,8 +82,9 @@ const DockIcon = ({
   ...props
 }: DockIconProps) => {
   const ref = useRef<HTMLDivElement>(null)
+  const fallbackMouseX = useMotionValue(Infinity)
 
-  const distanceCalc = useTransform(mouseX, (val: number) => {
+  const distanceCalc = useTransform(mouseX ?? fallbackMouseX, (val: number) => {
     const bounds = ref.current?.getBoundingClientRect() ?? { x: 0, width: 0 }
 
     return val - bounds.x - bounds.width / 2

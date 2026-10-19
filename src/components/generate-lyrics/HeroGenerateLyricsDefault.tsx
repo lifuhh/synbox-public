@@ -56,7 +56,7 @@ const HeroGenerateLyricsDefault = ({
     }
 
     const id = extractVideoId(inputValue)
-    return id || ''
+    return id ?? ''
   }, [inputValue])
 
   const { data: existingLyrics, isLoading: isCheckingLyrics } =
@@ -80,7 +80,7 @@ const HeroGenerateLyricsDefault = ({
       setValidationSuccess(false)
     } else {
       const vidId = extractVideoId(value)
-      if (vidId) {
+      if (vidId !== null && vidId !== '') {
         setValidationSuccess(true)
         setErrorMessage('')
       } else {

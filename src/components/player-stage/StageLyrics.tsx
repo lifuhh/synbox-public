@@ -48,6 +48,25 @@ const lyricsDocumentSchema = z.object({
   chi_translation: z.string(),
   romaji: z.string(),
 })
+// Fields read before (or without) a full parse; a missing or malformed field
+// reads as absent rather than failing the others
+const optionalText = z
+  .unknown()
+  .transform((value) => (typeof value === 'string' ? value : undefined))
+const lyricsTextSchema = z.object({
+  labelled_full_lyrics: optionalText,
+  plain_lyrics: optionalText,
+  romaji: optionalText,
+})
+export interface LyricsText {
+  labelled_full_lyrics?: string
+  plain_lyrics?: string
+  romaji?: string
+}
+export const parseLyricsText = (data: unknown): LyricsText => {
+  const result = lyricsTextSchema.safeParse(data)
+  return result.success ? result.data : {}
+}
 const parseJsonWith = <T,>(schema: z.ZodType<T>, raw: string): T | null => {
   try {
     const result = schema.safeParse(JSON.parse(raw))
@@ -144,8 +163,7 @@ export const StageLyrics = ({
 
   // v2 timing applies only when it was generated for exactly these lines
   const { data: karaokeDoc } = useGetKaraokeById(videoId)
-  const plainLyrics = (data as { plain_lyrics?: string } | undefined)
-    ?.plain_lyrics
+  const plainLyrics = useMemo(() => parseLyricsText(data).plain_lyrics, [data])
   const karaokeLines = useMemo(
     () =>
       karaokeDoc && karaokeMatchesLyrics(karaokeDoc.lines, plainLyrics)

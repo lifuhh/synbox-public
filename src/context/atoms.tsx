@@ -17,7 +17,9 @@ export const translationIsEnglishAtom = atom(true)
 export const DEFAULT_FONT_SIZE = 1
 const getInitialFontSize = () => {
   const stored = localStorage.getItem('fontSizeMultiplier')
-  return stored ? parseFloat(stored) : DEFAULT_FONT_SIZE
+  return stored === null || stored === ''
+    ? DEFAULT_FONT_SIZE
+    : parseFloat(stored)
 }
 export const fontSizeMultiplierAtom = atom(getInitialFontSize())
 

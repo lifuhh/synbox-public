@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router'
 
 import { parsePreviewVersion } from '@/components/lyrics-display/VersionPreviewBanner'
+import { parseLyricsText } from '@/components/player-stage/StageLyrics'
 import { loadLyricsFont } from '@/lib/lyricsFont'
 import {
   useGetKaraokeById,
@@ -27,13 +28,11 @@ export const useLyricsReady = (videoId: string) => {
 
   // Translations render in Noto Sans, so only the Japanese and romaji count
   const [fontsLoadedFor, setFontsLoadedFor] = useState<string | null>(null)
-  const doc = lyrics.data as
-    | { labelled_full_lyrics?: string; romaji?: string }
-    | undefined
+  const doc = parseLyricsText(lyrics.data)
   const fontText = settled
     ? [
-        doc?.labelled_full_lyrics,
-        doc?.romaji,
+        doc.labelled_full_lyrics,
+        doc.romaji,
         karaoke.data ? JSON.stringify(karaoke.data.lines) : undefined,
       ].join('')
     : null
