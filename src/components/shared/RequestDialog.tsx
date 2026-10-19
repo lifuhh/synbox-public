@@ -2,6 +2,7 @@ import { DialogDescription } from '@radix-ui/react-dialog'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAtom } from 'jotai'
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router'
 
 import {
   DialogClose,
@@ -14,6 +15,7 @@ import { useToast } from '@/components/ui/use-toast'
 import { dialogStepAtom } from '@/context/atoms'
 import { useStreamValidationApi } from '@/hooks/useStreamValidationApi'
 import {
+  useAddLyricsVersion,
   useGetLyricsBySongId,
   useUploadLyricsToAppwrite,
 } from '@/lib/react-query/queriesAndMutations'
@@ -29,11 +31,19 @@ import UpdateMessagesDisplay from './UpdateMessagesDisplay'
 interface RequestDialogProps {
   videoId: string
   handleClose: () => void
+  // 'regenerate' saves the result as a new lyrics version; the song keeps showing its current one.
+  mode?: 'new' | 'regenerate'
 }
 
 type OutsideEvent = CustomEvent<{ originalEvent: PointerEvent | FocusEvent }>
 
-const RequestDialog = ({ videoId, handleClose }: RequestDialogProps) => {
+const RequestDialog = ({
+  videoId,
+  handleClose,
+  mode = 'new',
+}: RequestDialogProps) => {
+  const [savedVersion, setSavedVersion] = useState<number | null>(null)
+  const { mutate: addLyricsVersion } = useAddLyricsVersion()
   const [currentStep, setCurrentStep] = useAtom(dialogStepAtom)
   const [showLoader, setShowLoader] = useState(false)
   const [lyrics, setLyrics] = useState<string[]>([])
@@ -131,7 +141,13 @@ const RequestDialog = ({ videoId, handleClose }: RequestDialogProps) => {
         return { title: 'Step 3 - Translation & Annotation', description: '' }
       }
       case 3: {
-        return { title: 'Upload Complete', description: 'Enjoy the video!' }
+        return savedVersion === null
+          ? { title: 'Upload Complete', description: 'Enjoy the video!' }
+          : {
+              description:
+                'The current lyrics stay until you make this version the default.',
+              title: `Saved as Version ${savedVersion}`,
+            }
       }
       default: {
         return {
@@ -221,6 +237,30 @@ const RequestDialog = ({ videoId, handleClose }: RequestDialogProps) => {
         eng_translation: JSON.stringify(engTranslation),
         chi_translation: JSON.stringify(chiTranslation),
         labelled_full_lyrics: JSON.stringify(labelledLyrics),
+      }
+
+      if (mode === 'regenerate') {
+        addLyricsVersion(
+          { fields: lyricsData, videoId },
+          {
+            onError: (saveError: Error) => {
+              setIsUploading(false)
+              setUploadError(
+                `Saving the new version failed: ${saveError.message}`
+              )
+            },
+            onSuccess: async ({ version }) => {
+              await queryClient.invalidateQueries({
+                queryKey: [QUERY_KEYS.GET_LYRICS_VERSIONS, videoId],
+              })
+              setSavedVersion(version)
+              setIsUploading(false)
+              setUploadSuccess(true)
+              setCurrentStep(3)
+            },
+          }
+        )
+        return
       }
 
       await uploadLyricsToAppwrite(
@@ -354,6 +394,20 @@ const RequestDialog = ({ videoId, handleClose }: RequestDialogProps) => {
         )
       }
       case 3: {
+        if (savedVersion !== null) {
+          return (
+            <div className='flex flex-col gap-3 py-4'>
+              <Button asChild>
+                <Link to={`/v/${videoId}?version=${savedVersion}`}>
+                  Preview Version {savedVersion}
+                </Link>
+              </Button>
+              <Button asChild variant='ghost'>
+                <Link to={`/v/${videoId}/versions`}>Compare Versions</Link>
+              </Button>
+            </div>
+          )
+        }
         return vidInfo && <RequestDialogFinalDisplay vidInfo={vidInfo} />
       }
       default: {
