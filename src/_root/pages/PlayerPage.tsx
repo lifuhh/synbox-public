@@ -1,5 +1,5 @@
-import { useAtom, useAtomValue } from 'jotai'
-import { RotateCcwClockIcon } from 'lucide-react'
+import { useAtom, useAtomValue, useSetAtom } from 'jotai'
+import { RotateCcwClockIcon, VolumeXIcon } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
 
@@ -16,15 +16,19 @@ import {
   lyricsVisibilityAtom,
   mutedAtom,
   romajiVisibilityAtom,
+  showWatchHistoryToastAtom,
   translationVisibilityAtom,
 } from '@/context/atoms'
-import { showWatchHistoryToastAtom } from '@/context/atoms'
+import { useLyricsReady } from '@/hooks/useLyricsReady'
 import { handleVideoRoute } from '@/utils/routeHandler.ts'
+
+// How long an unmuted autoplay gets to start before falling back to muted
+const AUTOPLAY_CHECK_MS = 1500
 
 const PlayerPage = () => {
   const navigate = useNavigate()
   const { videoId } = useParams<{ videoId: string }>()
-  const { volume, playerOverlayVisibleHandler } = useAppContext()
+  const { volume } = useAppContext()
 
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -38,7 +42,7 @@ const PlayerPage = () => {
 
   const playerRef = useRef<HTMLVideoElement>(null)
 
-  const [muted, setMuted] = useAtom(mutedAtom)
+  const setMuted = useSetAtom(mutedAtom)
   const lyricsVisibility = useAtomValue(lyricsVisibilityAtom)
   const romajiVisibility = useAtomValue(romajiVisibilityAtom)
   const translationVisibility = useAtomValue(translationVisibilityAtom)
@@ -87,20 +91,6 @@ const PlayerPage = () => {
     }
   }, [videoId, navigate])
 
-  if (error) {
-    return (
-      <div className='flex h-screen flex-col items-center justify-center gap-4'>
-        <p className='text-red-500'>{error}</p>
-        <p className='text-sm text-gray-600'>Video ID: {videoId}</p>
-        <button
-          onClick={() => navigate('/')}
-          className='rounded-sm bg-primary px-4 py-2 text-white transition-colors hover:bg-primary/90'>
-          Return Home
-        </button>
-      </div>
-    )
-  }
-
   const handlePlayPause = useCallback(() => {
     const newPlayingState = !playing
     setPlaying(newPlayingState)
@@ -109,57 +99,82 @@ const PlayerPage = () => {
 
   const handlePlay = useCallback(() => {
     setPlaying(true)
-    if (muted) {
-      setMuted(false)
+    setLyricsControlVisibility(false)
+  }, [setLyricsControlVisibility])
+
+  const showWatchHistoryToastOnce = useCallback(() => {
+    if (!showWatchHistoryToast) {
+      return
     }
-    setLyricsControlVisibility(false)
-  }, [muted, setMuted, setLyricsControlVisibility])
-
-  const handleInitMutedPlay = useCallback(() => {
-    setMuted(false)
-    playerOverlayVisibleHandler.close()
-    handlePlay()
-    setLyricsControlVisibility(false)
-
     const handleToastDismiss = () => {
       setShowWatchHistoryToast(false)
       if (toastIdRef.current) {
         dismiss(toastIdRef.current)
       }
     }
+    const { id } = toast({
+      title: (
+        <div className='flex items-center gap-2'>
+          <p>Video added to Watch History</p>
+          <RotateCcwClockIcon className='h-6 w-6 shrink-0' />
+        </div>
+      ) as unknown as ToastProps['title'],
+      description: (
+        <div className='flex justify-start'>
+          <button
+            className='text-primary hover:underline'
+            onClick={handleToastDismiss}>
+            Do not show again
+          </button>
+        </div>
+      ),
+      duration: 2800,
+    })
+    toastIdRef.current = id
+  }, [dismiss, setShowWatchHistoryToast, showWatchHistoryToast, toast])
 
-    if (showWatchHistoryToast) {
-      const { id } = toast({
-        title: (
-          <div className='flex items-center gap-2'>
-            <p>Video added to Watch History</p>
-            <RotateCcwClockIcon className='h-6 w-6 shrink-0' />
-          </div>
-        ) as unknown as ToastProps['title'],
-        description: (
-          <div className='flex justify-start'>
-            <button
-              className='text-primary hover:underline'
-              onClick={handleToastDismiss}>
-              Do not show again
-            </button>
-          </div>
-        ),
-        duration: 2800,
-      })
-
-      toastIdRef.current = id
+  // Autoplay once the player and the song's lyrics are both ready, so a song
+  // that starts singing at once never plays ahead of its lyrics. With sound if
+  // the browser allows it (the user has interacted with the site); otherwise
+  // muted, with a Tap to Unmute button rather than a blocking overlay.
+  const lyricsReady = useLyricsReady(videoId ?? '')
+  const [needsUnmute, setNeedsUnmute] = useState(false)
+  const autoplayedFor = useRef<string | null>(null)
+  useEffect(() => {
+    if (!isPlayerReady || !lyricsReady || !stateVideoId) {
+      return
+    }
+    if (autoplayedFor.current === stateVideoId) {
+      return
+    }
+    autoplayedFor.current = stateVideoId
+    setMuted(false)
+    handlePlay()
+    showWatchHistoryToastOnce()
+    // A blocked unmuted play() leaves the YouTube player paused without
+    // always rejecting, so check the outcome instead of the promise
+    const check = setTimeout(() => {
+      if (playerRef.current?.paused) {
+        setMuted(true)
+        setNeedsUnmute(true)
+      }
+    }, AUTOPLAY_CHECK_MS)
+    return () => {
+      clearTimeout(check)
     }
   }, [
-    setLyricsControlVisibility,
     handlePlay,
-    playerOverlayVisibleHandler,
-    dismiss,
-    setShowWatchHistoryToast,
+    isPlayerReady,
+    lyricsReady,
     setMuted,
-    toast,
-    showWatchHistoryToast,
+    showWatchHistoryToastOnce,
+    stateVideoId,
   ])
+
+  const handleUnmute = useCallback(() => {
+    setMuted(false)
+    setNeedsUnmute(false)
+  }, [setMuted])
 
   const handleStart = useCallback(() => {
     setPlaying(true)
@@ -209,6 +224,20 @@ const PlayerPage = () => {
     }
   }, [])
 
+  if (error) {
+    return (
+      <div className='flex h-screen flex-col items-center justify-center gap-4'>
+        <p className='text-red-500'>{error}</p>
+        <p className='text-sm text-gray-600'>Video ID: {videoId}</p>
+        <button
+          onClick={() => navigate('/')}
+          className='rounded-sm bg-primary px-4 py-2 text-white transition-colors hover:bg-primary/90'>
+          Return Home
+        </button>
+      </div>
+    )
+  }
+
   if (isLoading) {
     return (
       <div className='flex h-screen items-center justify-center'>
@@ -233,6 +262,16 @@ const PlayerPage = () => {
         />
       )}
 
+      {needsUnmute && (
+        <button
+          type='button'
+          onClick={handleUnmute}
+          className='absolute top-4 left-1/2 z-60 flex -translate-x-1/2 items-center gap-2 rounded-full bg-black/70 px-4 py-2 text-sm font-medium text-white shadow-lg backdrop-blur-sm transition-colors hover:bg-black/85'>
+          <VolumeXIcon className='size-4' aria-hidden='true' />
+          Tap to Unmute
+        </button>
+      )}
+
       <div className='relative aspect-video h-full w-full border-none'>
         {stateVideoId && (
           <VideoPlayer
@@ -241,7 +280,6 @@ const PlayerPage = () => {
             loop={false}
             playing={playing}
             volume={volume}
-            handleInitMutedPlay={handleInitMutedPlay}
             handlePlay={handlePlay}
 
             handleProgress={handleProgress}

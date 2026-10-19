@@ -1,4 +1,4 @@
-import { useAtom } from 'jotai'
+import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import YouTubeVideo from 'youtube-video-element/react'
 
@@ -7,7 +7,6 @@ import { mutedAtom } from '@/context/atoms'
 import { isValidVideoId } from '@/utils/routeHandler'
 
 import ExternalLinkHandler from './ExternalLinkHandler'
-import PlayerMutedOverlay from './PlayerMutedOverlay'
 
 interface VideoPlayerProps {
   videoId: string
@@ -19,7 +18,6 @@ interface VideoPlayerProps {
   handleProgress: () => void
   handleStart: () => void
   handleEnded: () => void
-  handleInitMutedPlay: () => void
   setIsPlayerReady: React.Dispatch<React.SetStateAction<boolean>>
   playerRef: React.RefObject<HTMLVideoElement | null>
 }
@@ -31,20 +29,14 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   handlePlay,
   handleEnded,
   handleStart,
-  handleInitMutedPlay,
   handleDuration,
   handleProgress,
   setIsPlayerReady,
   volume,
   playerRef,
 }: VideoPlayerProps) => {
-  const {
-    setPlayerControlsVisible,
-    playerOverlayVisible,
-    playerOverlayVisibleHandler,
-  } = useAppContext()
-  const [muted, setMuted] = useAtom(mutedAtom)
-  const [isInitialized, setIsInitialized] = useState(false)
+  const { setPlayerControlsVisible } = useAppContext()
+  const muted = useAtomValue(mutedAtom)
   const [videoError, setVideoError] = useState<Error | null>(null)
   const hasStartedRef = useRef(false)
 
@@ -114,39 +106,14 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     }
   }, [setPlayerControlsVisible, playing])
 
-  useEffect(() => {
-    if (muted && !playing && !playerOverlayVisible && !isInitialized) {
-      playerOverlayVisibleHandler.open()
-    } else if (!muted) {
-      playerOverlayVisibleHandler.close()
-    }
-  }, [
-    muted,
-    playing,
-    playerOverlayVisible,
-    playerOverlayVisibleHandler,
-    isInitialized,
-  ])
-
   const handleReady = () => {
     if (!playerRef.current) {
       return
     }
 
-    try {
-      // Before the YouTube API loads the element reports its muted attribute, so trust the atom
-      const isMuted = muted
-      setMuted(isMuted)
-      setIsPlayerReady(true)
-      setIsInitialized(true)
-      setVideoError(null)
-
-      if (!isMuted) {
-        handlePlay()
-      }
-    } catch (error) {
-      handleError(error)
-    }
+    // PlayerPage starts playback once the lyrics have loaded too
+    setIsPlayerReady(true)
+    setVideoError(null)
   }
 
   const handleVideoEnded = () => {
@@ -166,17 +133,13 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
   return (
     <>
-      {(playerOverlayVisible || !!videoError) && (
+      {videoError && (
         <div className='relative z-100 flex h-full w-full items-center justify-center overflow-hidden'>
           <div className='relative z-101 h-full w-full'>
-            {videoError ? (
-              <div className='flex flex-col items-center justify-center text-red-500'>
-                <p>Error loading video</p>
-                <p className='text-sm'>{videoError.message}</p>
-              </div>
-            ) : (
-              <PlayerMutedOverlay handleInitMutedPlay={handleInitMutedPlay} />
-            )}
+            <div className='flex flex-col items-center justify-center text-red-500'>
+              <p>Error loading video</p>
+              <p className='text-sm'>{videoError.message}</p>
+            </div>
           </div>
           <div className='absolute inset-0 z-100 rounded-[0.25rem] bg-[rgb(59_59_59/0.75)] backdrop-blur-[15px]' />
         </div>
