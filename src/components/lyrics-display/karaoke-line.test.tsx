@@ -3,6 +3,7 @@ import { act, createRef, Profiler } from 'react'
 import { createRoot } from 'react-dom/client'
 import { afterEach, describe, expect, test } from 'vite-plus/test'
 
+import { FILL_WINDOW } from '@/lib/karaoke'
 import type { KaraokeDocLine, KaraokeToken } from '@/types'
 
 import type { KaraokeLineHandle } from './KaraokeLine'
@@ -51,7 +52,12 @@ const line: KaraokeDocLine = {
         { base: '輝', rt: 'かがや' },
         { base: 'く', rt: '' },
       ],
-      [mora('か', 32, 32.2), mora('が', 32.2, 32.4), mora('や', 32.4, 32.6)]
+      [
+        mora('か', 32, 32.2),
+        mora('が', 32.2, 32.4),
+        mora('や', 32.4, 32.6),
+        mora('く', 32.6, 32.8),
+      ]
     ),
     token('Lemon', [], [mora('Lemon', 33, 34)], true),
   ],
@@ -80,21 +86,23 @@ const renderLine = () => {
       </Profiler>
     )
   })
-  const tokens = [
-    ...container.querySelectorAll<HTMLElement>('.lyric-karaoke-token'),
+  const parts = [
+    ...container.querySelectorAll<HTMLElement>('.lyric-karaoke-part'),
   ]
-  const fills = () => tokens.map((el) => el.style.getPropertyValue('--p'))
-  return { container, fills, handle, renders, tokens }
+  const fills = () =>
+    parts.map((el) => Number(el.style.getPropertyValue('--p') || 0))
+  return { container, fills, handle, parts, renders }
 }
 
 describe('KaraokeLine', () => {
-  test('renders one span per token, ruby only where a segment has rt', () => {
-    const { container: root, tokens } = renderLine()
-    expect(tokens.map((el) => el.textContent)).toEqual([
+  test('renders one part per ruby segment, ruby only where a segment has rt', () => {
+    const { container: root, parts } = renderLine()
+    expect(parts.map((el) => el.textContent)).toEqual([
       '空そら',
       'よりも',
       '、',
-      '輝かがやく',
+      '輝かがや',
+      'く',
       'Lemon',
     ])
     expect(
@@ -106,21 +114,21 @@ describe('KaraokeLine', () => {
       ['空', 'そら'],
       ['輝', 'かがや'],
     ])
-    expect(tokens[4]?.querySelector('ruby')).toBeNull()
+    expect(parts[5]?.querySelector('ruby')).toBeNull()
   })
 
-  test('setTime writes --p on the token elements without re-rendering', () => {
+  test('setTime lights each mora from its onset, per part, without re-rendering', () => {
     const { fills, handle, renders } = renderLine()
     const rendersAfterMount = renders.count
 
-    handle.current?.setTime(31.05)
-    expect(fills()).toEqual(['0.5', '0', '0', '0', '0'])
+    handle.current?.setTime(30.8 + FILL_WINDOW + 0.001) // だ lit, れ not yet
+    expect(fills()).toEqual([0.5, 0, 0, 0, 0, 0])
 
-    handle.current?.setTime(31.9)
-    expect(fills()).toEqual(['1', '1', '1', '0', '0'])
+    handle.current?.setTime(32.4 + FILL_WINDOW + 0.001) // 輝 (か が や) done, く not started
+    expect(fills()).toEqual([1, 1, 1, 1, 0, 0])
 
-    handle.current?.setTime(33.5)
-    expect(fills()).toEqual(['1', '1', '1', '1', '0.5'])
+    handle.current?.setTime(33.5) // Lemon fills across its whole span
+    expect(fills()[5]).toBeCloseTo(0.5)
 
     expect(renders.count).toBe(rendersAfterMount)
   })

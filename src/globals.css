@@ -386,7 +386,8 @@ layer(base);
     0 1px 2px rgb(0 0 0 / 0.6);
 }
 
-/* Karaoke fill. --p (0..1) is written per token by the overlay's animation
+/* Karaoke fill. --p (0..1) is written per part (a kanji with its furigana, or a
+   run of kana) by the overlay's animation
    loop; a hard-stop gradient clipped to the glyphs paints the filled part in
    the theme fill and the rest in the theme secondary. text-shadow would paint
    over a text-clipped background, so the edge comes from drop-shadow filters
@@ -402,7 +403,7 @@ layer(base);
     drop-shadow(0 0 10px var(--lyric-glow, transparent));
 }
 
-@utility lyric-karaoke-token {
+@utility lyric-karaoke-part {
   --karaoke-stop: calc(var(--p, 0) * 100%);
   --karaoke-gradient: linear-gradient(
     to right,
