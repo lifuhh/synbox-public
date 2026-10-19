@@ -69,7 +69,7 @@ const GenerationFab = ({ job, view }: { job: Job; view: Presentation }) => {
         setGenerationExpanded(true)
       }}
       aria-label={`Lyrics generation: ${title}, ${state === 'running' ? `${percent}%` : detail}. Open details`}
-      className='group fixed right-4 bottom-4 z-50 flex flex-row-reverse items-center bg-[#1b0812] text-left shadow-[0_10px_30px_-8px_rgb(0_0_0/0.75)] outline-none focus-visible:ring-2 focus-visible:ring-[#f785b3] focus-visible:ring-offset-2 focus-visible:ring-offset-black sm:right-6 sm:bottom-6'>
+      className='group fixed right-4 bottom-4 z-50 flex flex-row-reverse items-center bg-[#241019] text-left shadow-[0_10px_30px_-8px_rgb(0_0_0/0.75)] ring-1 ring-white/8 outline-none ring-inset focus-visible:ring-2 focus-visible:ring-[#f785b3] focus-visible:ring-offset-2 focus-visible:ring-offset-black sm:right-6 sm:bottom-6'>
       <span
         className='relative grid shrink-0 place-items-center'
         style={{ height: SIZE, width: SIZE }}>
