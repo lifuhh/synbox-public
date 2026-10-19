@@ -51,6 +51,17 @@ export default defineConfig({
     sourcemap: 'hidden',
   },
   plugins: lazyPlugins(() => [
+    // Without it the built site sends every backend call to its own host
+    {
+      apply: 'build',
+      configResolved({ env }) {
+        const url: unknown = env.VITE_SYNBOX_BE_URL
+        if (typeof url !== 'string' || url === '') {
+          throw new Error('VITE_SYNBOX_BE_URL must be set to build the site')
+        }
+      },
+      name: 'require-backend-url',
+    },
     tailwindcss(),
     react(),
     jotai(),
