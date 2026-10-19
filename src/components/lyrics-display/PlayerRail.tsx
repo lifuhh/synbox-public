@@ -23,6 +23,7 @@ import {
   romajiVisibilityAtom,
   translationIsEnglishAtom,
   translationVisibilityAtom,
+  playerChromeOpenAtom,
 } from '@/context/atoms'
 import { cn } from '@/utils/cn'
 
@@ -38,6 +39,24 @@ const LEAVE_MS = 600
 // open, it stays while the pointer is this close to the panel
 const REVEAL_EDGE_PX = 24
 const STAY_MARGIN_PX = 64
+
+// The top bar's icon cluster (TopBar.tsx) hides and shows with the rail
+const topCluster = () =>
+  document.querySelector<HTMLElement>('[data-player-chrome=top]')
+// An open dropdown in the cluster, or keyboard focus inside it, keeps
+// everything open. Focus only counts after a key press: a dropdown closed with
+// the mouse hands focus back to its button, which must not pin the chrome
+let lastInputWasKey = false
+const topClusterBusy = () => {
+  const cluster = topCluster()
+  if (!cluster) {
+    return false
+  }
+  return (
+    cluster.querySelector('[data-state=open]') !== null ||
+    (lastInputWasKey && cluster.contains(document.activeElement))
+  )
+}
 
 const near = (rect: DOMRect, x: number, y: number, margin: number) =>
   x >= rect.left - margin &&
@@ -62,7 +81,8 @@ const useEdgeReveal = (
   const collapseAfter = (ms: number) => {
     clearTimeout(timerRef.current)
     timerRef.current = setTimeout(() => {
-      if (!(insideRef.current || pinnedRef.current)) {
+      timerRef.current = undefined
+      if (!(insideRef.current || pinnedRef.current || topClusterBusy())) {
         openRef.current = false
         setOpen(false)
       }
@@ -70,6 +90,7 @@ const useEdgeReveal = (
   }
   const reveal = () => {
     clearTimeout(timerRef.current)
+    timerRef.current = undefined
     openRef.current = true
     setOpen(true)
   }
@@ -92,6 +113,9 @@ const useEdgeReveal = (
       if (insideRef.current) {
         insideRef.current = false
         collapseAfter(LEAVE_MS)
+      } else if (openRef.current && timerRef.current === undefined) {
+        // Held open by a top-bar dropdown that has since closed
+        collapseAfter(LEAVE_MS)
       }
     }
     const track = (event: PointerEvent) => {
@@ -100,10 +124,18 @@ const useEdgeReveal = (
         return
       }
       const rect = panel.getBoundingClientRect()
-      const inside = openRef.current
+      const nearRail = openRef.current
         ? near(rect, event.clientX, event.clientY, STAY_MARGIN_PX)
         : event.clientX <= REVEAL_EDGE_PX &&
           near(rect, rect.left, event.clientY, STAY_MARGIN_PX)
+      const top = topCluster()?.getBoundingClientRect()
+      const nearTop =
+        top !== undefined &&
+        (openRef.current
+          ? near(top, event.clientX, event.clientY, STAY_MARGIN_PX)
+          : event.clientY <= REVEAL_EDGE_PX &&
+            event.clientX >= top.left - STAY_MARGIN_PX)
+      const inside = nearRail || nearTop
       if (inside) {
         insideRef.current = true
         reveal()
@@ -121,14 +153,36 @@ const useEdgeReveal = (
         leave()
       }
     }
+    const markKey = () => {
+      lastInputWasKey = true
+    }
+    const markPointer = () => {
+      lastInputWasKey = false
+    }
+    // Tabbing onto a hidden top-bar icon brings everything back
+    const focusIn = (event: FocusEvent) => {
+      if (
+        lastInputWasKey &&
+        event.target instanceof Node &&
+        topCluster()?.contains(event.target)
+      ) {
+        reveal()
+      }
+    }
     window.addEventListener('pointermove', track)
     window.addEventListener('pointerdown', track)
     window.addEventListener('pointerout', out)
+    window.addEventListener('keydown', markKey, true)
+    window.addEventListener('pointerdown', markPointer, true)
+    window.addEventListener('focusin', focusIn)
     return () => {
       clearTimeout(timerRef.current)
       window.removeEventListener('pointermove', track)
       window.removeEventListener('pointerdown', track)
       window.removeEventListener('pointerout', out)
+      window.removeEventListener('keydown', markKey, true)
+      window.removeEventListener('pointerdown', markPointer, true)
+      window.removeEventListener('focusin', focusIn)
     }
   }, [panelRef])
 
@@ -148,6 +202,16 @@ const PlayerRail = () => {
   const { open, reveal } = useEdgeReveal(
     panelRef,
     styleOpen || versionsOpen || keyboardFocus
+  )
+  const setChromeOpen = useSetAtom(playerChromeOpenAtom)
+  useEffect(() => {
+    setChromeOpen(open)
+  }, [open, setChromeOpen])
+  useEffect(
+    () => () => {
+      setChromeOpen(true)
+    },
+    [setChromeOpen]
   )
 
   const currentVideo = useAtomValue(currentVideoAtom)
