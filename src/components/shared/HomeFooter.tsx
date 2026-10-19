@@ -5,7 +5,7 @@ import { handleRedirect } from '@/utils'
 type IconProps = React.HTMLAttributes<SVGElement>
 
 const HomeFooter = () => (
-  <div className='landing-footer bottom-0 left-0 z-50 flex-between h-14 w-full flex-col pt-2'>
+  <div className='bottom-0 left-0 z-50 flex-between h-14 w-full flex-col pt-2'>
     <div className='flex-around pb-2'>
       <div className='flex'>
         <h1 className='unselectable font-semibold text-pretty whitespace-nowrap'>

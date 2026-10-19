@@ -40,10 +40,11 @@ interface YoutubePlaylistItemSnippet {
   videoOwnerChannelId: string
 }
 
+// Empty for a private or deleted video in a playlist
 interface Thumbnails {
-  default: ThumbnailInfo
-  medium: ThumbnailInfo
-  high: ThumbnailInfo
+  default?: ThumbnailInfo
+  medium?: ThumbnailInfo
+  high?: ThumbnailInfo
   standard?: ThumbnailInfo
   maxres?: ThumbnailInfo
 }

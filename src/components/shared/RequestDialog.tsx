@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/dialog'
 import { useToast } from '@/components/ui/use-toast'
 import { dialogStepAtom } from '@/context/atoms'
+import type { PersistedLyrics } from '@/hooks/useStreamAnnotateApi'
 import { useStreamValidationApi } from '@/hooks/useStreamValidationApi'
 import {
   useAddLyricsVersion,
@@ -53,8 +54,8 @@ const RequestDialog = ({
   const [chiTranslation, setChiTranslation] = useState<string[]>([])
   const [romajiLyrics, setRomajiLyrics] = useState<string[]>([])
   const [kanjiAnnotations, setKanjiAnnotations] = useState<string[]>([])
-  // /translate-annotate sent `persisted`: the backend wrote the documents
-  const [isPersistedByBackend, setIsPersistedByBackend] = useState(false)
+  const [persistedByBackend, setPersistedByBackend] =
+    useState<PersistedLyrics | null>(null)
   const [isUploading, setIsUploading] = useState(false)
   const [uploadSuccess, setUploadSuccess] = useState(false)
   const [isTranscriptionStreaming, setIsTranscriptionStreaming] =
@@ -179,13 +180,13 @@ const RequestDialog = ({
     newChiTranslation: string[],
     newRomajiLyrics: string[],
     newKanjiAnnotations: string[],
-    persisted: boolean
+    persisted: PersistedLyrics | null
   ) => {
     setEngTranslation(newEngTranslation)
     setChiTranslation(newChiTranslation)
     setRomajiLyrics(newRomajiLyrics)
     setKanjiAnnotations(newKanjiAnnotations)
-    setIsPersistedByBackend(persisted)
+    setPersistedByBackend(persisted)
   }
 
   const refreshAfterUpload = async () => {
@@ -209,7 +210,19 @@ const RequestDialog = ({
     setIsUploading(true)
     setUploadError(null)
 
-    if (isPersistedByBackend) {
+    if (persistedByBackend?.version != null) {
+      // A regeneration: the backend saved a new version and the song keeps its current lyrics
+      await queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.GET_LYRICS_VERSIONS, videoId],
+      })
+      setSavedVersion(persistedByBackend.version)
+      setIsUploading(false)
+      setUploadSuccess(true)
+      setCurrentStep(3)
+      return
+    }
+
+    if (persistedByBackend) {
       try {
         // Song info and karaoke timing were written alongside the lyrics
         await queryClient.invalidateQueries({
@@ -341,7 +354,7 @@ const RequestDialog = ({
     setChiTranslation([])
     setRomajiLyrics([])
     setKanjiAnnotations([])
-    setIsPersistedByBackend(false)
+    setPersistedByBackend(null)
     setIsUploading(false)
     setUploadSuccess(false)
     setIsAnnotationStreaming(false)
@@ -385,6 +398,7 @@ const RequestDialog = ({
             {showVidInfo && !showLoader && !error && vidInfo && (
               <RequestDialogValidationDisplay
                 vidInfo={vidInfo}
+                forceAiTranscription={forceAiTranscription}
                 onForceAiChange={setForceAiTranscription}
               />
             )}
@@ -402,21 +416,27 @@ const RequestDialog = ({
         )
       }
       case 2: {
-        return isUploading ? (
-          <UpdateMessagesDisplay
-            isStreaming={true}
-            showLoader={true}
-            updateMessages={['Finalizing...']}
-          />
-        ) : (
-          <RequestDialogAnnotateDisplay
-            id={videoId}
-            lyrics={lyrics}
-            timestampedLyrics={timestampedLyrics}
-            onAnnotationsUpdate={handleAnnotationsUpdate}
-            onError={handleAnnotateError}
-            onStreamingStatusChange={handleStreamingStatusChange}
-          />
+        // Stays mounted while uploading: remounting would start the annotation stream again
+        return (
+          <>
+            {isUploading && (
+              <UpdateMessagesDisplay
+                isStreaming={true}
+                showLoader={true}
+                updateMessages={['Finalizing...']}
+              />
+            )}
+            <div className={isUploading ? 'hidden' : undefined}>
+              <RequestDialogAnnotateDisplay
+                id={videoId}
+                lyrics={lyrics}
+                timestampedLyrics={timestampedLyrics}
+                onAnnotationsUpdate={handleAnnotationsUpdate}
+                onError={handleAnnotateError}
+                onStreamingStatusChange={handleStreamingStatusChange}
+              />
+            </div>
+          </>
         )
       }
       case 3: {
@@ -460,22 +480,22 @@ const RequestDialog = ({
 
       <div className='mx-4 mt-2 grow overflow-y-auto'>
         {renderStep()}
-        {(error || annotateError) && (
-          <div className='text-primary-bright mt-4'>
+        {(error || annotateError || uploadError) && (
+          <div className='mt-4 text-destructive'>
             <h3 className='text-xl font-bold'>Error</h3>
-            <p>{error || annotateError}</p>
+            <p>{error || annotateError || uploadError}</p>
           </div>
         )}
       </div>
 
       {currentStep !== 3 && (
-        <DialogFooter className='bg-primary-600 flex w-full flex-col-reverse gap-4 p-4 md:flex-row md:justify-between'>
+        <DialogFooter className='flex w-full flex-col-reverse gap-4 p-4 md:flex-row md:justify-between'>
           <DialogClose asChild>
             <Button
               type='button'
               variant='ghost'
               onClick={handleCloseWithReset}
-              className='text-md text-light-1 w-full invisible-ring md:w-auto'>
+              className='w-full text-base invisible-ring md:w-auto'>
               Close
             </Button>
           </DialogClose>
@@ -487,7 +507,7 @@ const RequestDialog = ({
                   variant='ghost'
                   onClick={handlePreviousClick}
                   disabled={isButtonDisabled}
-                  className='text-md text-light-1 flex-1 invisible-ring hover:bg-gray-600 md:flex-initial'>
+                  className='flex-1 text-base invisible-ring hover:bg-gray-600 md:flex-initial'>
                   Previous Step
                 </Button>
               )}

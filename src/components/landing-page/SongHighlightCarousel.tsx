@@ -65,7 +65,8 @@ const SongHighlightCarousel = () => {
     let throttleTimeout: ReturnType<typeof setTimeout> | null = null
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (document?.activeElement?.tagName !== 'INPUT') {
+      // The Carousel already moved for an arrow pressed while focus is inside it
+      if (!e.defaultPrevented && document?.activeElement?.tagName !== 'INPUT') {
         switch (e.key) {
           case 'ArrowLeft': {
             api.scrollPrev()
@@ -103,16 +104,17 @@ const SongHighlightCarousel = () => {
 
     const emblaContainer = api.containerNode()
     emblaContainer.addEventListener('wheel', handleWheel, { passive: true })
-    api.on('select', () => {
-      const newIndex = api.selectedScrollSnap()
-      setCurrent(newIndex)
-    })
+    const handleSelect = () => {
+      setCurrent(api.selectedScrollSnap())
+    }
+    api.on('select', handleSelect)
 
     window.addEventListener('keydown', handleKeyDown)
 
     return () => {
       emblaContainer.removeEventListener('wheel', handleWheel)
       window.removeEventListener('keydown', handleKeyDown)
+      api.off('select', handleSelect)
     }
   }, [api])
 
@@ -137,11 +139,14 @@ const SongHighlightCarousel = () => {
   )
 
   return (
-    <div className='bg-dark-3 mt-2 flex h-96 w-full items-center justify-center rounded-md px-4 py-8 lg:w-7/12'>
+    // The ref sits on the wrapper that renders before the playlist, so the scroll lock attaches on first load
+    <div
+      ref={carouselRef}
+      className='mt-2 flex h-96 w-full items-center justify-center rounded-md px-4 py-8 lg:w-7/12'>
       {isPlaylistDataFetching || !playlistData ? (
         <SongHighlightCarouselSkeleton />
       ) : (
-        <div ref={carouselRef} className='overflow-hidden'>
+        <div className='overflow-hidden'>
           <Carousel
             opts={{
               loop: true,

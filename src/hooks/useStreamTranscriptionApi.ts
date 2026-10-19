@@ -1,6 +1,7 @@
 import { useMutation } from '@tanstack/react-query'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
+import type { TranscriptionInfo } from '@/lib/synbox-flask/api'
 import { streamTranscribeVideoById } from '@/lib/synbox-flask/api'
 import type { SubtitleInfo } from '@/types'
 
@@ -13,7 +14,7 @@ interface TranscriptionParams {
 export const useStreamTranscriptionApi = () => {
   const [isStreaming, setIsStreaming] = useState(false)
   const [updateMessages, setUpdateMessages] = useState<string[]>([])
-  const [lyricsInfo, setLyricsInfo] = useState<any>(null)
+  const [lyricsInfo, setLyricsInfo] = useState<TranscriptionInfo | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isAiGenerated, setIsAiGenerated] = useState(false)
 
@@ -55,6 +56,11 @@ export const useStreamTranscriptionApi = () => {
       setError('An unknown error occurred')
     }
     setIsStreaming(false)
+    // Otherwise the idle timer fires later and silently retries the request
+    if (streamTimeoutRef.current) {
+      clearTimeout(streamTimeoutRef.current)
+      streamTimeoutRef.current = null
+    }
   }, [])
 
   const startStreamTimeout = useCallback(() => {

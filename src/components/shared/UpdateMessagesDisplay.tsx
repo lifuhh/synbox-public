@@ -11,6 +11,12 @@ const TEXT_SIZE_CLASS = {
   xl: 'text-xl leading-[1.65]',
 } as const
 
+// Whole class names, so Tailwind can see them
+const MARGIN_CLASS = {
+  2: 'my-2',
+  4: 'my-4',
+} as const
+
 interface UpdateMessagesDisplayProps {
   isStreaming: boolean
   showLoader: boolean
@@ -18,7 +24,7 @@ interface UpdateMessagesDisplayProps {
   loaderColor?: string
   loaderSize?: DotsLoaderSize
   textSize?: keyof typeof TEXT_SIZE_CLASS
-  verticalMargin?: number | string
+  verticalMargin?: keyof typeof MARGIN_CLASS
 }
 
 const UpdateMessagesDisplay: React.FC<UpdateMessagesDisplayProps> = ({
@@ -32,15 +38,11 @@ const UpdateMessagesDisplay: React.FC<UpdateMessagesDisplayProps> = ({
 }) => {
   const lastMessage = updateMessages.slice(-1)[0]
 
-  const marginClass =
-    typeof verticalMargin === 'number'
-      ? `my-${verticalMargin}`
-      : `my-[${verticalMargin}]`
-
   return (
     <>
       {showLoader && (
-        <div className={`mt-10 flex-center flex flex-col ${marginClass}`}>
+        <div
+          className={`mt-10 flex-center flex flex-col ${MARGIN_CLASS[verticalMargin]}`}>
           {isStreaming ? (
             updateMessages.length > 0 ? (
               <p className={TEXT_SIZE_CLASS[textSize]}>{lastMessage}</p>

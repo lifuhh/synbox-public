@@ -7,7 +7,6 @@ import { TooltipProvider } from '../ui/tooltip'
 interface Lyric {
   start_time: number
   end_time: number
-  duration: number
   lyric: string
 }
 

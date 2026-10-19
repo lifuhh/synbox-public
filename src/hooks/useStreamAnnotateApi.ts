@@ -3,6 +3,11 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { streamAnnotateVideoById } from '@/lib/synbox-flask/api'
 
+// The backend wrote the lyrics itself; a regeneration also names the version it saved
+export interface PersistedLyrics {
+  version: number | null
+}
+
 interface AnnotationMutationVariables {
   vidId: string
   lyrics: string[]
@@ -21,8 +26,7 @@ export const useStreamAnnotateApi = () => {
   )
   const [error, setError] = useState<string | null>(null)
   const [currentTask, setCurrentTask] = useState<string | null>(null)
-  // The backend wrote the lyrics and song-info documents itself
-  const [isPersisted, setIsPersisted] = useState(false)
+  const [persisted, setPersisted] = useState<PersistedLyrics | null>(null)
 
   const abortControllerRef = useRef<AbortController | null>(null)
   const streamTimeoutRef = useRef<NodeJS.Timeout | null>(null)
@@ -45,7 +49,7 @@ export const useStreamAnnotateApi = () => {
     setKanjiAnnotations(null)
     setError(null)
     setCurrentTask(null)
-    setIsPersisted(false)
+    setPersisted(null)
     retryCountRef.current = 0
 
     if (streamTimeoutRef.current) {
@@ -68,6 +72,11 @@ export const useStreamAnnotateApi = () => {
       setError('An unknown error occurred')
     }
     setIsStreaming(false)
+    // Otherwise the idle timer fires later and silently retries the request
+    if (streamTimeoutRef.current) {
+      clearTimeout(streamTimeoutRef.current)
+      streamTimeoutRef.current = null
+    }
   }, [])
 
   const startStreamTimeout = useCallback(() => {
@@ -111,25 +120,14 @@ export const useStreamAnnotateApi = () => {
           (message) => {
             setUpdateMessages((prev) => [...prev, message])
           },
-          (info) => {
-            switch (info.type) {
-              case 'eng_translation': {
-                setEngTranslation(info.data)
-                break
-              }
-              case 'chi_translation': {
-                setChiTranslation(info.data)
-                break
-              }
-              case 'romaji_lyrics': {
-                setRomajiLyrics(info.data)
-                break
-              }
-              case 'kanji_annotations': {
-                setKanjiAnnotations(info.data)
-                break
-              }
+          (type, lines) => {
+            const setters = {
+              chi_translation: setChiTranslation,
+              eng_translation: setEngTranslation,
+              kanji_annotations: setKanjiAnnotations,
+              romaji_lyrics: setRomajiLyrics,
             }
+            setters[type](lines)
             if (streamTimeoutRef.current) {
               clearTimeout(streamTimeoutRef.current)
             }
@@ -141,8 +139,8 @@ export const useStreamAnnotateApi = () => {
           (task) => {
             setCurrentTask(task)
           },
-          () => {
-            setIsPersisted(true)
+          (version) => {
+            setPersisted({ version })
           },
           abortControllerRef.current.signal
         )
@@ -189,7 +187,7 @@ export const useStreamAnnotateApi = () => {
     kanjiAnnotations,
     error,
     currentTask,
-    isPersisted,
+    persisted,
     resetStream,
     mutate: mutation.mutate,
   }

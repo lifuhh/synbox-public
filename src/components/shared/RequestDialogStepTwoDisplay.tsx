@@ -16,7 +16,6 @@ import UpdateMessagesDisplay from './UpdateMessagesDisplay'
 interface Lyric {
   start_time: number
   end_time: number
-  duration: number
   lyric: string
 }
 
