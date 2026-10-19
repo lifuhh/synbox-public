@@ -390,34 +390,25 @@ layer(base);
 }
 
 @utility player-lyrics-overlay {
+  /* The Fade band travels with the draggable lyrics, so it feathers out on
+     both sides: half the block's height above and below, fully dark only
+     behind the block itself (25%..75% of the band), never a hard edge */
   &::before {
     content: '';
     position: absolute;
-    inset: 0;
+    inset: -50% 0;
     z-index: -1;
     opacity: 0;
     pointer-events: none;
-    transition: opacity 0.25s ease-out;
-  }
-
-  &[data-position='bottom']::before {
-    top: -35%;
-    background: linear-gradient(
-      to top,
-      rgb(0 0 0 / 0.6),
-      rgb(0 0 0 / 0.35) 55%,
-      transparent
-    );
-  }
-
-  &[data-position='top']::before {
-    bottom: -25%;
-    background: linear-gradient(
+    background: rgb(0 0 0 / 0.5);
+    mask-image: linear-gradient(
       to bottom,
-      rgb(0 0 0 / 0.6),
-      rgb(0 0 0 / 0.35) 55%,
+      transparent,
+      #000 25%,
+      #000 75%,
       transparent
     );
+    transition: opacity 0.25s ease-out;
   }
 
   &[data-backdrop='band']::before {
