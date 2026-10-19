@@ -24,13 +24,13 @@ import {
   karaokeMatchesLyrics,
 } from '@/lib/karaoke'
 import { getLyricsThemeColors, getLyricsThemeCssVars } from '@/lib/lyricsThemes'
-import type { ProbeSample } from '@/lib/timing-probe'
-import { summarizeProbe, timingProbeEnabled } from '@/lib/timing-probe'
 import {
   useGetKaraokeById,
   useGetLyricsBySongId,
   useGetLyricsVersion,
 } from '@/lib/react-query/queriesAndMutations'
+import type { ProbeSample } from '@/lib/timing-probe'
+import { summarizeProbe, timingProbeEnabled } from '@/lib/timing-probe'
 import { cn } from '@/utils/cn'
 
 import { DraggableLyrics } from './DraggableLyrics'

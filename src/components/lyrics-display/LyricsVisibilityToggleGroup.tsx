@@ -44,7 +44,6 @@ const LyricsVisibilityToggleGroup = () => {
   const [, removeFavorite] = useAtom(removeFavoriteAtom)
   const [isFavorite] = useAtom(isFavoriteAtom)
 
-
   const [lyricsToggleValues, setLyricsToggleValues] = useState([
     'returnHomeButton',
     'lyrics',
