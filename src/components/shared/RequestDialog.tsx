@@ -146,7 +146,7 @@ const RequestDialog = ({
           : {
               description:
                 'The current lyrics stay until you make this version the default.',
-              title: `Saved As Version ${savedVersion}`,
+              title: `Saved as Version ${savedVersion}`,
             }
       }
       default: {

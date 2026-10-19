@@ -71,7 +71,8 @@ const VersionsPage = () => {
           void queryClient.invalidateQueries({
             queryKey: [QUERY_KEYS.GET_LYRICS_VERSIONS, videoId],
           })
-          void queryClient.invalidateQueries({
+          // The player's lyrics query never refetches on mount, so drop it to load the new default.
+          queryClient.removeQueries({
             queryKey: [QUERY_KEYS.GET_LYRICS_BY_SONG_ID, videoId],
           })
         },

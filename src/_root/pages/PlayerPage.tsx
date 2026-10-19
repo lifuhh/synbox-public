@@ -5,6 +5,7 @@ import { useNavigate, useParams } from 'react-router'
 
 import LyricsDisplayOverlay from '@/components/lyrics-display/LyricsDisplayOverlay'
 import LyricsVisibilityToggleGroup from '@/components/lyrics-display/LyricsVisibilityToggleGroup'
+import VersionPreviewBanner from '@/components/lyrics-display/VersionPreviewBanner'
 import VideoPlayer from '@/components/shared/VideoPlayer'
 import type { ToastProps } from '@/components/ui/toast'
 import { useToast } from '@/components/ui/use-toast'
@@ -220,6 +221,7 @@ const PlayerPage = () => {
     <>
       <title>{`${title ? title : 'Player Page'} | Synbox`}</title>
       <LyricsVisibilityToggleGroup />
+      {videoId !== undefined && <VersionPreviewBanner videoId={videoId} />}
 
       {isPlayerReady && (
         <LyricsDisplayOverlay
