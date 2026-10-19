@@ -3,7 +3,7 @@
 import { isStageId } from './plan'
 import type { StageId } from './plan'
 
-const BE_ADDRESS = import.meta.env.VITE_SYNBOX_BE_URL
+const BE_ADDRESS = String(import.meta.env.VITE_SYNBOX_BE_URL)
 
 // The backend sends a heartbeat at least every 10 s while a job runs
 const IDLE_TIMEOUT_MS = 60_000
@@ -197,21 +197,22 @@ export const validate = async (
   signal: AbortSignal,
   onProgress: OnProgress
 ): Promise<VideoSummary> => {
-  let video: VideoSummary | null = null
+  // Filled in from the stream's callback, which control-flow narrowing cannot see into
+  const found: { video: VideoSummary | null } = { video: null }
   const progress = forwardProgress(onProgress)
   await readStream('/validate', { id: videoId }, signal, (message) => {
     progress(message)
     if (message.type === 'vid_info') {
-      video = parseVideo(message.data)
+      found.video = parseVideo(message.data)
     }
   })
-  if (!video) {
+  if (found.video === null) {
     throw new GenerationError(
       'The server closed the connection before sending the song details',
       true
     )
   }
-  return video
+  return found.video
 }
 
 export const transcribe = async (
@@ -220,7 +221,7 @@ export const transcribe = async (
   signal: AbortSignal,
   onProgress: OnProgress
 ) => {
-  let lines: number | null = null
+  const found: { lines: number | null } = { lines: null }
   const progress = forwardProgress(onProgress)
   await readStream(
     '/transcribev2',
@@ -230,17 +231,17 @@ export const transcribe = async (
       progress(message)
       if (message.type === 'transcription') {
         const lyrics = isRecord(message.data) ? message.data.lyrics : null
-        lines = Array.isArray(lyrics) ? lyrics.length : 0
+        found.lines = Array.isArray(lyrics) ? lyrics.length : 0
       }
     }
   )
-  if (lines === null) {
+  if (found.lines === null) {
     throw new GenerationError(
       'The server closed the connection before sending the lyrics',
       true
     )
   }
-  if (lines === 0) {
+  if (found.lines === 0) {
     throw new GenerationError('No lyrics were found for this video', false)
   }
 }
@@ -267,7 +268,7 @@ export const translate = async (
   signal: AbortSignal,
   onProgress: OnProgress
 ): Promise<SaveOutcome> => {
-  let saved: SaveOutcome | null = null
+  const found: { saved: SaveOutcome | null } = { saved: null }
   const progress = forwardProgress(onProgress)
   await readStream(
     '/translate-annotate',
@@ -276,15 +277,15 @@ export const translate = async (
     (message) => {
       progress(message)
       if (message.type === 'persisted') {
-        saved = parseSaved(message.data)
+        found.saved = parseSaved(message.data)
       }
     }
   )
-  if (!saved) {
+  if (found.saved === null) {
     throw new GenerationError(
       'The server closed the connection before saving the lyrics',
       true
     )
   }
-  return saved
+  return found.saved
 }

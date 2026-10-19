@@ -1,5 +1,5 @@
 import type { Phase, StageId, Step } from './plan'
-import { STAGE_INDEX, STAGES } from './plan'
+import { stageIndex, STAGES } from './plan'
 
 // How a stage's bar moves. A real fraction from the backend is the floor; between reports, and for stages
 // that report nothing, the bar eases from that floor towards CAP of what is left, covering 80 % of the way
@@ -26,7 +26,7 @@ export interface StageRun {
 
 export type Runs = Partial<Record<StageId, StageRun>>
 
-const spec = (id: StageId) => STAGES[STAGE_INDEX[id]]
+const spec = (id: StageId) => STAGES[stageIndex(id)]
 
 export const stageValue = (run: StageRun | undefined, now: number): number => {
   if (!run) {
@@ -72,7 +72,7 @@ export const beginStage = (
   now: number,
   update: { expectedS?: number; label?: string } = {}
 ): Runs => {
-  const next = finishBefore(runs, STAGE_INDEX[id], now)
+  const next = finishBefore(runs, stageIndex(id), now)
   const run = next[id]
   if (run) {
     next[id] = {
@@ -119,13 +119,20 @@ export const reportFraction = (
   }
 }
 
-const PHASE_END = Object.fromEntries(
-  STAGES.map((stage, index) => [stage.phase, index + 1])
-) as Record<Phase, number>
+// One past the phase's last stage
+const phaseEnd = (phase: Phase) => {
+  let end = 0
+  STAGES.forEach((stage, index) => {
+    if (stage.phase === phase) {
+      end = index + 1
+    }
+  })
+  return end
+}
 
 // A phase's stream ended well: every stage up to the phase's last is done
 export const completePhase = (runs: Runs, phase: Phase, now: number): Runs =>
-  finishBefore(runs, PHASE_END[phase], now)
+  finishBefore(runs, phaseEnd(phase), now)
 
 // The first stage of a phase whose request just went out, so its bar moves before the backend's first report
 export const startPhase = (runs: Runs, phase: Phase, now: number): Runs => {
@@ -169,7 +176,8 @@ export interface StepView {
 }
 
 export const stepView = (runs: Runs, step: Step, now: number): StepView => {
-  const stageRuns: (StageRun | undefined)[] = step.stages.map((id) => runs[id])
+  const ids: readonly StageId[] = step.stages
+  const stageRuns = ids.map((id) => runs[id])
   const fraction = weighted(runs, step.stages, now)
   if (stageRuns.every((run) => run !== undefined && run.doneAt !== null)) {
     return {

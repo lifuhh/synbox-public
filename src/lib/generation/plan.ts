@@ -63,12 +63,11 @@ export const STAGES = [
 export type StageId = (typeof STAGES)[number]['id']
 export type Phase = (typeof STAGES)[number]['phase']
 
-export const STAGE_INDEX = Object.fromEntries(
-  STAGES.map((stage, index) => [stage.id, index])
-) as Record<StageId, number>
+export const stageIndex = (id: StageId) =>
+  STAGES.findIndex((stage) => stage.id === id)
 
 export const isStageId = (value: unknown): value is StageId =>
-  typeof value === 'string' && value in STAGE_INDEX
+  STAGES.some((stage) => stage.id === value)
 
 // What the panel lists: one row and one bar per step
 export const STEPS = [
