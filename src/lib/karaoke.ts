@@ -81,3 +81,22 @@ export const advancePlaybackClock = (
       : Math.max(clock.time, predicted)
   return { anchoredAt, mediaTime: sample.mediaTime, time }
 }
+
+// karaoke.json holds the newest generation, while the song may show (or
+// preview) an older lyrics version: timing applies only to the same lines.
+export const karaokeMatchesLyrics = (
+  lines: readonly Pick<KaraokeDocLine, 'text'>[],
+  plainLyrics: string | undefined
+) => {
+  let shown: unknown
+  try {
+    shown = JSON.parse(plainLyrics ?? '')
+  } catch {
+    return false
+  }
+  return (
+    Array.isArray(shown) &&
+    shown.length === lines.length &&
+    lines.every((line, i) => line.text === shown[i])
+  )
+}

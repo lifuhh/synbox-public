@@ -2,7 +2,12 @@ import { describe, expect, test } from 'vite-plus/test'
 
 import type { KaraokeDocLine } from '@/types'
 
-import { advancePlaybackClock, fillProgress, tokenFillSpans } from './karaoke'
+import {
+  advancePlaybackClock,
+  fillProgress,
+  karaokeMatchesLyrics,
+  tokenFillSpans,
+} from './karaoke'
 
 // 誰: だ 30.8-31.05, れ 31.05-31.3; then a gap; 輝: か 31.5-31.7
 const dare = [
@@ -93,5 +98,26 @@ describe('advancePlaybackClock', () => {
       rate: 1,
     })
     expect(clock.time).toBe(3)
+  })
+})
+
+describe('karaokeMatchesLyrics', () => {
+  const lines = [{ text: '誰よりも' }, { text: '輝く君を' }]
+
+  test('applies timing only to the lyrics version it was made for', () => {
+    expect(
+      karaokeMatchesLyrics(lines, JSON.stringify(['誰よりも', '輝く君を']))
+    ).toBe(true)
+    expect(
+      karaokeMatchesLyrics(lines, JSON.stringify(['誰よりも', '輝く君を見て']))
+    ).toBe(false)
+    expect(karaokeMatchesLyrics(lines, JSON.stringify(['誰よりも']))).toBe(
+      false
+    )
+  })
+
+  test('is false for missing or malformed lyrics', () => {
+    expect(karaokeMatchesLyrics(lines, undefined)).toBe(false)
+    expect(karaokeMatchesLyrics(lines, 'not json')).toBe(false)
   })
 })

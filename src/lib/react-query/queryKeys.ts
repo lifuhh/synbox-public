@@ -4,6 +4,8 @@ export enum QUERY_KEYS {
   GET_INFINITE_GALLERY_PLAYLIST = 'getInfiniteGalleryPlaylist',
   GET_YOUTUBE_VIDEO_INFO = 'getYoutubeVideoInfo',
   GET_LYRICS_BY_SONG_ID = 'getLyricsBySongId',
+  GET_LYRICS_VERSION = 'getLyricsVersion',
+  GET_LYRICS_VERSIONS = 'getLyricsVersions',
   GET_SONG_INFO_BY_SONG_ID = 'getSongInfoBySongId',
   SEARCH_VIDEOS = 'searchVideos',
   SEARCH_LIBRARY = 'searchLibrary',

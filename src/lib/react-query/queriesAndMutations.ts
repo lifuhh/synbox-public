@@ -23,6 +23,13 @@ import {
   searchVideos,
 } from '../synbox-flask/discovery'
 import {
+  activateLyricsVersion,
+  addLyricsVersion,
+  getLyricsVersion,
+  listLyricsVersions,
+} from '../synbox-flask/lyrics-versions'
+import type { LyricsFields } from '../synbox-flask/lyrics-versions'
+import {
   getChartsPlaylist,
   getInfiniteGalleryPlaylist,
   getLandingPagePlaylist,
@@ -179,4 +186,45 @@ export const useGetSimilarSongs = (videoId: string) =>
     enabled: videoId.length > 0,
     staleTime: 1000 * 60 * 10,
     retry: false,
+  })
+
+export const useGetLyricsVersions = (videoId: string) =>
+  useQuery({
+    enabled: videoId.length > 0,
+    queryFn: () => listLyricsVersions(videoId),
+    queryKey: [QUERY_KEYS.GET_LYRICS_VERSIONS, videoId],
+    retry: false,
+  })
+
+export const useGetLyricsVersion = (videoId: string, version: number | null) =>
+  useQuery({
+    enabled: videoId.length > 0 && version !== null,
+    queryFn: () => getLyricsVersion(videoId, version ?? 0),
+    queryKey: [QUERY_KEYS.GET_LYRICS_VERSION, videoId, version],
+    retry: false,
+    staleTime: Infinity,
+  })
+
+export const useAddLyricsVersion = () =>
+  useMutation({
+    mutationFn: ({
+      fields,
+      videoId,
+    }: {
+      fields: LyricsFields
+      videoId: string
+    }) => addLyricsVersion(videoId, fields),
+  })
+
+export const useActivateLyricsVersion = () =>
+  useMutation({
+    mutationFn: ({
+      adminToken,
+      version,
+      videoId,
+    }: {
+      adminToken: string
+      version: number
+      videoId: string
+    }) => activateLyricsVersion(videoId, version, adminToken),
   })
