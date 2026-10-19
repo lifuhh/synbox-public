@@ -85,6 +85,20 @@ export const summarizeProbe = (
   }
 }
 
-export const timingProbeEnabled = () =>
-  typeof window !== 'undefined' &&
-  new URLSearchParams(window.location.search).get('timingProbe') === '1'
+// Read when the bundle loads: the router drops unknown query parameters before
+// the player mounts. localStorage.synboxTimingProbe = '1' also turns it on.
+const enabledAtLoad = (() => {
+  if (typeof window === 'undefined') {
+    return false
+  }
+  if (new URLSearchParams(window.location.search).get('timingProbe') === '1') {
+    return true
+  }
+  try {
+    return window.localStorage.getItem('synboxTimingProbe') === '1'
+  } catch {
+    return false
+  }
+})()
+
+export const timingProbeEnabled = () => enabledAtLoad
