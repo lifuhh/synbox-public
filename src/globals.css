@@ -87,7 +87,6 @@ layer(base);
   --animate-spotlight: spotlight 2s ease 0.75s 1 forwards;
   --animate-pulse: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   --animate-progress-stripes: progress-stripes 0.9s linear infinite;
-  --animate-vinyl: vinyl 14s linear infinite;
   --animate-breathe: breathe 2.4s ease-in-out infinite;
 
   @keyframes accordion-down {
@@ -123,11 +122,6 @@ layer(base);
     }
     to {
       background-position: 0 0;
-    }
-  }
-  @keyframes vinyl {
-    to {
-      transform: rotate(360deg);
     }
   }
   @keyframes breathe {
