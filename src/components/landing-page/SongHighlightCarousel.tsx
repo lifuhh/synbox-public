@@ -120,7 +120,9 @@ const SongHighlightCarousel = () => {
 
   const carouselItems = useMemo(
     () =>
-      playlistData && slidesNumber
+      playlistData !== undefined &&
+      slidesNumber !== undefined &&
+      slidesNumber > 0
         ? playlistData.map((item, itemIndex) => (
             <CarouselItem
               key={itemIndex}

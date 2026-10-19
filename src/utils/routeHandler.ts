@@ -17,7 +17,7 @@ export const handleVideoRoute = async ({
   setStateVideoId,
   onSuccess,
 }: VideoRouteConfig): Promise<void> => {
-  if (!videoId) {
+  if (videoId === undefined || videoId === '') {
     navigate('/', { replace: true })
     return
   }

@@ -158,7 +158,7 @@ export const VirtualInfiniteScrollGallery = ({
 
       if (
         scrollBottom >= scrollHeight - 400 &&
-        hasNextPage &&
+        hasNextPage === true &&
         !isFetchingNextPage
       ) {
         fetchNextPage()

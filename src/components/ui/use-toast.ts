@@ -5,7 +5,8 @@ import type { ToastActionElement, ToastProps } from '@/components/ui/toast'
 const TOAST_LIMIT = 1
 export const TOAST_REMOVE_DELAY = 2000
 
-type ToasterToast = ToastProps & {
+// ToastProps carries the HTML title attribute (a string); a toast title can be any node
+type ToasterToast = Omit<ToastProps, 'title'> & {
   id: string
   title?: React.ReactNode
   description?: React.ReactNode
@@ -89,12 +90,12 @@ const reducer = (state: State, action: Action): State => {
     case 'DISMISS_TOAST': {
       const { toastId } = action
 
-      if (toastId) {
-        addToRemoveQueue(toastId)
-      } else {
+      if (toastId === undefined) {
         state.toasts.forEach((toast) => {
           addToRemoveQueue(toast.id)
         })
+      } else {
+        addToRemoveQueue(toastId)
       }
 
       return {

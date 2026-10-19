@@ -10,7 +10,6 @@ import VersionPreviewBanner, {
 import { PlayerStage } from '@/components/player-stage/PlayerStage'
 import { StageLyrics } from '@/components/player-stage/StageLyrics'
 import { DEFAULT_YOUTUBE_QUIRKS } from '@/components/player-stage/youtubeQuirks'
-import type { ToastProps } from '@/components/ui/toast'
 import { useToast } from '@/components/ui/use-toast'
 import { currentVideoAtom, showWatchHistoryToastAtom } from '@/context/atoms'
 import { useLyricsReady } from '@/hooks/useLyricsReady'
@@ -72,7 +71,7 @@ const PlayerPage = () => {
     }
     const handleToastDismiss = () => {
       setShowWatchHistoryToast(false)
-      if (toastIdRef.current) {
+      if (toastIdRef.current !== null) {
         dismiss(toastIdRef.current)
       }
     }
@@ -82,7 +81,7 @@ const PlayerPage = () => {
           <RotateCcwClockIcon className='size-4 shrink-0 text-primary' />
           Added to Watch History
         </span>
-      ) as unknown as ToastProps['title'],
+      ),
       description: (
         <button
           type='button'
@@ -96,7 +95,7 @@ const PlayerPage = () => {
     toastIdRef.current = id
   }, [dismiss, setShowWatchHistoryToast, showWatchHistoryToast, toast])
 
-  if (error) {
+  if (error !== null && error !== '') {
     return (
       <div className='flex h-screen flex-col items-center justify-center gap-4'>
         <p className='text-red-500'>{error}</p>

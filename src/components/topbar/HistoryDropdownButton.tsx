@@ -69,7 +69,7 @@ const PaginationLink: React.FC<{
   <button
     onClick={onClick}
     className={`flex h-8 w-8 items-center justify-center rounded-md ${
-      isActive ? 'bg-primary text-primary-foreground' : ''
+      isActive === true ? 'bg-primary text-primary-foreground' : ''
     } ${className}`}>
     {children}
   </button>

@@ -1,3 +1,5 @@
+import type { ComponentProps } from 'react'
+
 export const SynboxLogo: React.FC = () => (
   <img
     src='/assets/icons/Synbox_logo_dark_1.svg'
@@ -5,7 +7,7 @@ export const SynboxLogo: React.FC = () => (
   />
 )
 
-export const GitHubIcon = ({ className, ...props }) => (
+export const GitHubIcon = ({ className, ...props }: ComponentProps<'svg'>) => (
   <svg
     xmlns='http://www.w3.org/2000/svg'
     viewBox='0 0 496 512'

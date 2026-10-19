@@ -1,4 +1,5 @@
 import { AppwriteException } from 'appwrite'
+import { z } from 'zod'
 
 import type { CurrentPlayingInfo } from '@/types'
 import {
@@ -7,6 +8,12 @@ import {
 } from '@/utils'
 
 import { appwriteConfig, databases } from './config'
+
+const songInfoDocumentSchema = z.object({
+  author: z.string(),
+  thumbnailUrl: z.string(),
+  title: z.string(),
+})
 
 // Reads fall back to the pre-migration id, so a song is found while its row is being moved.
 const getSongDocument = async (collectionId: string, songId: string) => {
@@ -61,17 +68,18 @@ export async function getSongInfoBySongId(
   }
 
   try {
-    const songInfo = await getSongDocument(appwriteConfig.songInfoId, songId)
+    const document = await getSongDocument(appwriteConfig.songInfoId, songId)
+    const songInfo = songInfoDocumentSchema.safeParse(document)
 
-    if (!songInfo) {
-      throw new Error('No song info found')
+    if (!songInfo.success) {
+      throw new Error('Song info is malformed')
     }
 
     const result = {
       videoId: songId,
-      title: songInfo.title,
-      author: songInfo.author,
-      thumbnailUrl: songInfo.thumbnailUrl,
+      title: songInfo.data.title,
+      author: songInfo.data.author,
+      thumbnailUrl: songInfo.data.thumbnailUrl,
     }
 
     return result

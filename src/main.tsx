@@ -8,7 +8,12 @@ import ErrorBoundary from './components/shared/ErrorBoundary'
 import AppProvider from './context/AppContext'
 import { QueryProvider } from './lib/react-query/QueryProvider'
 
-ReactDOM.createRoot(document.getElementById('root')!, {
+const rootElement = document.getElementById('root')
+if (rootElement === null) {
+  throw new Error('Missing #root element in index.html')
+}
+
+ReactDOM.createRoot(rootElement, {
   onCaughtError: reactErrorHandler(),
   onRecoverableError: reactErrorHandler(),
   onUncaughtError: reactErrorHandler(),

@@ -14,6 +14,29 @@ import {
 
 const YoutubeApiKey = import.meta.env.VITE_GOOGLE_API_KEY
 
+const resolutionOrder = [
+  'maxres',
+  'standard',
+  'high',
+  'medium',
+  'default',
+] as const
+
+const getHighestResThumbnail = (
+  thumbnails:
+    | Partial<Record<(typeof resolutionOrder)[number], { url: string }>>
+    | undefined
+): string => {
+  for (const res of resolutionOrder) {
+    const url = thumbnails?.[res]?.url
+    if (url !== undefined && url !== '') {
+      return url
+    }
+  }
+
+  return 'https://example.com/placeholder-thumbnail.jpg'
+}
+
 export async function getLandingPagePlaylist(): Promise<
   formattedYoutubeVideoItemForCarousel[]
 > {
@@ -28,10 +51,6 @@ export async function getLandingPagePlaylist(): Promise<
       },
     }
   )
-
-  if (!response) {
-    throw new Error('Failed to fetch playlist items')
-  }
 
   const processedResponse = formatYoutubePlaylistResponse(response.data)
 
@@ -52,10 +71,6 @@ export async function getChartsPlaylist(): Promise<
       },
     }
   )
-
-  if (!response) {
-    throw new Error('Failed to fetch playlist items')
-  }
 
   const processedResponse = formatYoutubeChartsResponse(response.data)
 
@@ -78,10 +93,6 @@ export const getInfiniteGalleryPlaylist = async ({
     }
   )
 
-  if (!response) {
-    throw new Error('Failed to fetch playlist items')
-  }
-
   return response.data
 }
 
@@ -99,10 +110,6 @@ export async function getYoutubeVideoInfo(
     }
   )
 
-  if (!response) {
-    throw new Error('Failed to fetch video info')
-  }
-
   const songResults = response.data.items
 
   if (songResults.length === 0) {
@@ -110,29 +117,18 @@ export async function getYoutubeVideoInfo(
   }
 
   const songInfo = songResults[0]
+  const duration = songInfo.contentDetails?.duration
   const songData = {
     id: songInfo.id,
     title: songInfo.snippet.title,
     channelTitle: songInfo.snippet.channelTitle,
     description: songInfo.snippet.description,
-    tags: songInfo.snippet.tags || [],
-    defaultAudioLanguage: songInfo.snippet.defaultAudioLanguage || '',
+    tags: songInfo.snippet.tags ?? [],
+    defaultAudioLanguage: songInfo.snippet.defaultAudioLanguage ?? '',
     thumbnail: getHighestResThumbnail(songInfo.snippet.thumbnails),
-    duration: songInfo.contentDetails?.duration || '-1',
+    duration: duration === undefined || duration === '' ? '-1' : duration,
     statistics: songInfo.statistics,
   }
 
   return songData
-}
-
-function getHighestResThumbnail(thumbnails: any) {
-  const resolutionOrder = ['maxres', 'standard', 'high', 'medium', 'default']
-
-  for (const res of resolutionOrder) {
-    if (thumbnails[res] && thumbnails[res].url) {
-      return thumbnails[res].url
-    }
-  }
-
-  return 'https://example.com/placeholder-thumbnail.jpg'
 }

@@ -52,7 +52,7 @@ const FavouritesDropdownItem: React.FC<FavouritesDropdownItemProps> = ({
     navigate(`/v/${videoId}`)
   }
 
-  const handleRemove = (e) => {
+  const handleRemove = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation()
     removeFavorite(videoId)
   }
