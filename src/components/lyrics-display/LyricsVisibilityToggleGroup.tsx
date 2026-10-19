@@ -1,7 +1,7 @@
 import { useAtom } from 'jotai'
 import { ChevronsUpIcon } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router'
+import { useNavigate, useParams } from 'react-router'
 
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
@@ -27,10 +27,12 @@ import {
 } from '@/context/atoms'
 
 import { LyricsThemePicker } from './LyricsThemePicker'
+import { LyricsVersionsMenu } from './LyricsVersionsMenu'
 import { LyricsVisibilityControlButton } from './LyricsVisibilityControlButton'
 
 const LyricsVisibilityToggleGroup = () => {
   const navigate = useNavigate()
+  const { videoId = '' } = useParams<{ videoId: string }>()
   const { toast } = useToast()
   const [isOpen, setIsOpen] = useState(true)
   const [hoveredButton] = useState(null)
@@ -288,6 +290,8 @@ const LyricsVisibilityToggleGroup = () => {
                     isLyricsVisible={isLyricsVisible}
                     isTranslationVisible={isTranslationVisible}
                   />
+
+                  {videoId !== '' && <LyricsVersionsMenu videoId={videoId} />}
                 </ToggleGroup>
               </div>
             </TooltipProvider>

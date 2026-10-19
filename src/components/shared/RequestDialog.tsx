@@ -424,12 +424,17 @@ const RequestDialog = ({
           return (
             <div className='flex flex-col gap-3 py-4'>
               <Button asChild>
-                <Link to={`/v/${videoId}?version=${savedVersion}`}>
+                {/* Opened from the player, this link keeps the same page mounted, dialog included */}
+                <Link
+                  to={`/v/${videoId}?version=${savedVersion}`}
+                  onClick={handleClose}>
                   Preview Version {savedVersion}
                 </Link>
               </Button>
               <Button asChild variant='ghost'>
-                <Link to={`/v/${videoId}/versions`}>Compare Versions</Link>
+                <Link to={`/v/${videoId}/versions`} onClick={handleClose}>
+                  Compare Versions
+                </Link>
               </Button>
             </div>
           )
