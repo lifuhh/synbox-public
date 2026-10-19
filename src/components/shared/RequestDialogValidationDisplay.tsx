@@ -28,15 +28,17 @@ interface DisplayVideoData {
 
 const RequestDialogValidationDisplay = ({
   vidInfo,
+  forceAiTranscription,
   onForceAiChange,
 }: {
   vidInfo: VideoInfo | null
-  onForceAiChange?: (forceAi: boolean) => void
+  // Owned by the dialog, so going back a step keeps the choice
+  forceAiTranscription: boolean
+  onForceAiChange: (forceAi: boolean) => void
 }) => {
   const navigate = useNavigate()
   const [error, setError] = useState<string | null>(null)
   const [videoData, setVideoData] = useState<DisplayVideoData | null>(null)
-  const [forceAiTranscription, setForceAiTranscription] = useState(false)
 
   useEffect(() => {
     if (!vidInfo) {
@@ -78,10 +80,6 @@ const RequestDialogValidationDisplay = ({
       )
     }
   }, [vidInfo])
-
-  useEffect(() => {
-    onForceAiChange?.(forceAiTranscription)
-  }, [forceAiTranscription, onForceAiChange])
 
   if (error) {
     return (
@@ -134,7 +132,7 @@ const RequestDialogValidationDisplay = ({
           />
           <InfoItem
             label='Likes'
-            value={likes ? likes.toLocaleString() : 'N/A'}
+            value={typeof likes === 'number' ? likes.toLocaleString() : 'N/A'}
           />
           {subtitleInfo.exist && (
             <div className='mt-6 flex w-full items-center space-x-2'>
@@ -142,10 +140,10 @@ const RequestDialogValidationDisplay = ({
                 id='forceAi'
                 checked={forceAiTranscription}
                 onCheckedChange={(checked) => {
-                  setForceAiTranscription(checked as boolean)
+                  onForceAiChange(checked === true)
                 }}
               />
-              <label htmlFor='forceAi' className='text-md'>
+              <label htmlFor='forceAi' className='text-base'>
                 Force AI Transcription
               </label>
               <TooltipProvider delayDuration={0}>
@@ -190,7 +188,7 @@ const InfoItem = ({
   <div className='flex flex-col'>
     <span className='text-sm text-gray-500'>{label}</span>
     <span className={`font-medium ${valueClassName} pt-px`}>
-      {typeof value === 'object' ? value : value || fallback}
+      {value === null || value === undefined || value === '' ? fallback : value}
     </span>
   </div>
 )

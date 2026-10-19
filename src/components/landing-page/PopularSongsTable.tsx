@@ -42,7 +42,7 @@ const LandingPageCharts: React.FC = () => {
     <div
       className='w-full rounded-md border border-primary/30 bg-background lg:mt-2 lg:ml-6 lg:w-5/12 xl:w-4/12'
       aria-busy={isChartsDataFetching}>
-      <div className='bg-dark-3 relative overflow-hidden rounded-md'>
+      <div className='relative overflow-hidden rounded-md'>
         <table
           className='w-full border-collapse'
           style={{ tableLayout: 'fixed' }}>

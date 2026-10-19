@@ -2,7 +2,6 @@ import type {
   FormatYoutubeResponseFunction,
   InfiniteGalleryVideoItem,
   YoutubePlaylistApiResponse,
-  YoutubePlaylistItem,
   formattedYoutubeVideoItemForCarousel,
 } from '@/types'
 
@@ -26,11 +25,18 @@ function trimLength(text: string, maxLength: number, trail: boolean) {
   return trail ? (tooLong ? `${editedText}...` : editedText) : editedText
 }
 
+// A private or deleted video stays in its playlist with no thumbnails
+const playableItems = (data: YoutubePlaylistApiResponse) =>
+  data.items.flatMap((item) => {
+    const thumbnailUrl = item.snippet.thumbnails.high?.url
+    return thumbnailUrl === undefined ? [] : [{ item, thumbnailUrl }]
+  })
+
 export function formatYoutubeChartsResponse(
   data: YoutubePlaylistApiResponse
 ): { title: string; id: string }[] {
-  const items = data.items.map(
-    (item: YoutubePlaylistItem): { title: string; id: string } => ({
+  const items = playableItems(data).map(
+    ({ item }): { title: string; id: string } => ({
       title: item.snippet.title,
       id: item.snippet.resourceId?.videoId,
     })
@@ -42,8 +48,8 @@ export function formatYoutubeChartsResponse(
 export function formatYoutubePlaylistResponse(
   data: YoutubePlaylistApiResponse
 ): formattedYoutubeVideoItemForCarousel[] {
-  const items = data.items.map(
-    (item: YoutubePlaylistItem): formattedYoutubeVideoItemForCarousel => {
+  const items = playableItems(data).map(
+    ({ item, thumbnailUrl }): formattedYoutubeVideoItemForCarousel => {
       const maxDescriptionLength = 80
 
       return {
@@ -54,7 +60,7 @@ export function formatYoutubePlaylistResponse(
           maxDescriptionLength,
           true
         ),
-        thumbnailUrl: item.snippet.thumbnails.high.url,
+        thumbnailUrl,
         videoId: item.snippet.resourceId?.videoId,
       }
     }
@@ -69,12 +75,14 @@ export function formatYoutubePlaylistResponse(
 
 export const formatYoutubeInfiniteGalleryResponse: FormatYoutubeResponseFunction =
   (data: YoutubePlaylistApiResponse): InfiniteGalleryVideoItem[] => {
-    const items = data.items.map((item): InfiniteGalleryVideoItem => ({
-      title: item.snippet.title,
-      channel: item.snippet.videoOwnerChannelTitle || 'Unknown',
-      thumbnailUrl: item.snippet.thumbnails.high.url,
-      videoId: item.snippet.resourceId?.videoId || '',
-    }))
+    const items = playableItems(data).map(
+      ({ item, thumbnailUrl }): InfiniteGalleryVideoItem => ({
+        title: item.snippet.title,
+        channel: item.snippet.videoOwnerChannelTitle || 'Unknown',
+        thumbnailUrl,
+        videoId: item.snippet.resourceId?.videoId || '',
+      })
+    )
 
     return items
   }

@@ -48,6 +48,11 @@ export const useStreamValidationApi = () => {
       setError('An unknown error occurred')
     }
     setIsStreaming(false)
+    // Otherwise the idle timer fires later and silently retries the request
+    if (streamTimeoutRef.current) {
+      clearTimeout(streamTimeoutRef.current)
+      streamTimeoutRef.current = null
+    }
   }, [])
 
   const handleVideoInfo = useCallback(

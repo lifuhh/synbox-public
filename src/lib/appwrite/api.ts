@@ -97,19 +97,16 @@ export async function getSongLyricsById(songId: string) {
   try {
     const lyrics = await getSongDocument(appwriteConfig.lyricsId, songId)
 
-    if (!lyrics) {
-      return new Error('No lyrics found')
-    }
-
     return {
       ...lyrics,
       videoId: songId,
     }
   } catch (error) {
+    // A song without lyrics yet is the normal answer, not a failure
+    if (error instanceof AppwriteException && error.code === 404) {
+      return null
+    }
     if (error instanceof Error) {
-      if (error.message === 'No Lyrics Found') {
-        return null
-      }
       console.error('API Error: ', error)
       throw error
     } else {

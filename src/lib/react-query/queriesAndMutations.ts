@@ -139,6 +139,8 @@ export const useGetSongInfoBySongId = (songId: string) =>
     enabled: !!songId,
     staleTime: 1000 * 60 * 60,
     gcTime: 1000 * 60 * 60,
+    // A 404 sends useGetYoutubeVideoInfo to YouTube; retrying would hold the title for seconds
+    retry: false,
     queryFn: () => getSongInfoBySongId(songId),
   })
 

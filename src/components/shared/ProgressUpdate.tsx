@@ -22,7 +22,7 @@ export function ProgressUpdate({ steps }: ProgressUpdateProps) {
               <CheckCircle className='h-5 w-5 text-green-500' />
             )}
             {step.status === 'active' && (
-              <Loader className='text-white-500 h-5 w-5 animate-spin' />
+              <Loader className='h-5 w-5 animate-spin text-white' />
             )}
             {step.status === 'pending' && (
               <div className='h-5 w-5 rounded-full border-2 border-gray-300' />
@@ -33,7 +33,7 @@ export function ProgressUpdate({ steps }: ProgressUpdateProps) {
               className={cn(
                 'text-sm font-medium',
                 step.status === 'completed' && 'text-green-500',
-                step.status === 'active' && 'text-white-500',
+                step.status === 'active' && 'text-white',
                 step.status === 'pending' && 'text-gray-500'
               )}>
               {step.title}

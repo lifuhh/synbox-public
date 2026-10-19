@@ -52,10 +52,136 @@ export const getKaraoke = async (
   return doc
 }
 
+interface StreamMessage {
+  type: string
+  data: unknown
+}
+
+export interface TimedLyric {
+  start_time: number
+  end_time: number
+  lyric: string
+}
+
+export interface TranscriptionInfo {
+  lyrics: string[]
+  timestamped_lyrics: TimedLyric[]
+}
+
+const isTimedLyric = (value: unknown): value is TimedLyric =>
+  isRecord(value) &&
+  typeof value.start_time === 'number' &&
+  typeof value.end_time === 'number' &&
+  typeof value.lyric === 'string'
+
+export type AnnotationType =
+  | 'eng_translation'
+  | 'chi_translation'
+  | 'romaji_lyrics'
+  | 'kanji_annotations'
+
+const ANNOTATION_TYPES: readonly string[] = [
+  'eng_translation',
+  'chi_translation',
+  'romaji_lyrics',
+  'kanji_annotations',
+] satisfies AnnotationType[]
+
+const isAnnotationType = (type: string): type is AnnotationType =>
+  ANNOTATION_TYPES.includes(type)
+
+const isStringArray = (value: unknown): value is string[] =>
+  Array.isArray(value) && value.every((item) => typeof item === 'string')
+
+const STREAM_HEADERS = {
+  Accept: 'application/x-ndjson, application/json, text/plain',
+  'Content-Type': 'application/json',
+  Connection: 'keep-alive',
+}
+
+// Returns the message types seen, so a caller can tell a stream that closed before its result
+// arrived from one that finished
+const readNdjsonStream = async (
+  response: Response,
+  onMessage: (message: StreamMessage) => void,
+  onChunk?: () => void
+): Promise<Set<string>> => {
+  if (!response.ok) {
+    throw new Error(`HTTP error! status: ${response.status}`)
+  }
+  // A host without the backend answers with the app's index.html and a 200
+  if (!(response.headers.get('content-type') ?? '').includes('ndjson')) {
+    throw new Error('The lyrics server sent an unreadable response')
+  }
+  if (!response.body) {
+    throw new Error('ReadableStream not supported')
+  }
+
+  const seen = new Set<string>()
+  const handleLine = (line: string) => {
+    if (line.trim() === '') {
+      return
+    }
+    let content: unknown
+    try {
+      content = JSON.parse(line)
+    } catch (e) {
+      console.error('Error parsing line:', line, e)
+      return
+    }
+    if (!isRecord(content) || typeof content.type !== 'string') {
+      console.error('Invalid content received:', content)
+      return
+    }
+    seen.add(content.type)
+    onMessage({ data: content.data, type: content.type })
+  }
+
+  const reader = response.body.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ''
+  let hasReceivedData = false
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) {
+      break
+    }
+    hasReceivedData = true
+    onChunk?.()
+    buffer += decoder.decode(value, { stream: true })
+    const lines = buffer.split('\n')
+    buffer = lines.pop() ?? ''
+    for (const line of lines) {
+      handleLine(line)
+    }
+  }
+  if (!hasReceivedData) {
+    throw new Error('Stream ended without receiving any data')
+  }
+  handleLine(buffer)
+  return seen
+}
+
+const reportStreamError = (
+  error: unknown,
+  onError: (error: string) => void,
+  signal: AbortSignal | undefined
+) => {
+  // The caller cancelled (dialog closed, or a retry replaced this request): nothing to report
+  if (signal?.aborted === true) {
+    return
+  }
+  if (error instanceof Error) {
+    onError(error.name === 'AbortError' ? 'Request timed out' : error.message)
+  } else {
+    onError('An unknown error occurred')
+  }
+}
+
 export const streamValidateVideoById = async (
   videoId: string,
   onUpdate: (message: string) => void,
-  onVidInfo: (info: any) => void,
+  onVidInfo: (info: unknown) => void,
   onError: (error: string) => void,
   onSuccess: () => void,
   signal?: AbortSignal
@@ -69,112 +195,41 @@ export const streamValidateVideoById = async (
     const response = await fetch(`${BE_ADDRESS}/validate`, {
       method: 'POST',
       body: JSON.stringify({ id: videoId }),
-      headers: {
-        Accept: 'application/x-ndjson, application/json, text/plain',
-        'Content-Type': 'application/json',
-        Connection: 'keep-alive',
-      },
+      headers: STREAM_HEADERS,
       signal: signal || controller.signal,
       keepalive: true,
     })
 
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`)
-    }
-
-    if (!response.body) {
-      throw new Error('ReadableStream not supported')
-    }
-
-    const reader = response.body.getReader()
-    const decoder = new TextDecoder()
-    let buffer = ''
-    let hasReceivedData = false
-
-    while (true) {
-      const { done, value } = await reader.read()
-
-      if (done) {
-        if (!hasReceivedData) {
-          throw new Error('Stream ended without receiving any data')
+    const seen = await readNdjsonStream(response, ({ type, data }) => {
+      switch (type) {
+        case 'update':
+        case 'data': {
+          onUpdate(String(data))
+          break
         }
-        if (buffer.trim()) {
-          try {
-            const content = JSON.parse(buffer)
-            processStreamContent(content, onUpdate, onVidInfo, onError)
-          } catch (e) {
-            console.error('Error parsing final buffer:', e)
-          }
+        case 'vid_info': {
+          onVidInfo(data)
+          break
         }
-        break
-      }
-
-      hasReceivedData = true
-      buffer += decoder.decode(value, { stream: true })
-
-      const lines = buffer.split('\n')
-      buffer = lines.pop() || ''
-
-      for (const line of lines) {
-        if (line.trim() === '') {
-          continue
+        case 'error': {
+          onError(String(data))
+          break
         }
-
-        try {
-          const content = JSON.parse(line)
-          processStreamContent(content, onUpdate, onVidInfo, onError)
-        } catch (e) {
-          console.error('Error parsing line:', line)
-          console.error('Parse error:', e)
-          continue
+        default: {
+          console.warn('Unknown message type:', type)
         }
       }
-    }
+    })
 
+    if (!seen.has('vid_info') && !seen.has('error')) {
+      onError('The server closed the connection before sending the video info')
+      return
+    }
     onSuccess()
   } catch (error) {
-    if (error instanceof Error) {
-      if (error.name === 'AbortError') {
-        onError('Request timed out')
-      } else {
-        onError(error.message)
-      }
-    } else {
-      onError('An unknown error occurred')
-    }
+    reportStreamError(error, onError, signal)
   } finally {
     clearTimeout(timeoutId)
-  }
-}
-
-function processStreamContent(
-  content: any,
-  onUpdate: (message: string) => void,
-  onVidInfo: (info: any) => void,
-  onError: (error: string) => void
-) {
-  if (!content || !content.type) {
-    console.error('Invalid content received:', content)
-    return
-  }
-
-  switch (content.type) {
-    case 'update':
-    case 'data': {
-      onUpdate(content.data)
-      break
-    }
-    case 'vid_info': {
-      onVidInfo(content.data)
-      break
-    }
-    case 'error': {
-      onError(content.data)
-      break
-    }
-    default: {
-      console.warn('Unknown message type:', content.type)
-    }
   }
 }
 
@@ -182,7 +237,7 @@ export const streamTranscribeVideoById = async (
   videoId: string,
   subtitleInfo: SubtitleInfo,
   onUpdate: (message: string) => void,
-  onLyricsInfo: (info: any) => void,
+  onLyricsInfo: (info: TranscriptionInfo) => void,
   onError: (error: string) => void,
   onAiGenerated: (isAiGenerated: boolean) => void,
   signal?: AbortSignal,
@@ -201,89 +256,55 @@ export const streamTranscribeVideoById = async (
         subtitle_info: subtitleInfo,
         force_ai_transcription: forceAiTranscription,
       }),
-      headers: {
-        Accept: 'application/x-ndjson, application/json, text/plain',
-        'Content-Type': 'application/json',
-        Connection: 'keep-alive',
-      },
+      headers: STREAM_HEADERS,
       signal: signal || controller.signal,
       keepalive: true,
     })
 
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`)
-    }
-
-    if (!response.body) {
-      throw new Error('ReadableStream not supported')
-    }
-
-    const reader = response.body.getReader()
-    const decoder = new TextDecoder()
-    let buffer = ''
-    let hasReceivedData = false
-
-    while (true) {
-      const { done, value } = await reader.read()
-
-      if (done) {
-        if (!hasReceivedData) {
-          throw new Error('Stream ended without receiving any data')
+    const seen = await readNdjsonStream(response, ({ type, data }) => {
+      switch (type) {
+        case 'update':
+        case 'data': {
+          onUpdate(String(data))
+          break
         }
-        if (buffer.trim()) {
-          try {
-            const content = JSON.parse(buffer)
-            processTranscriptionContent(
-              content,
-              onUpdate,
-              onLyricsInfo,
-              onError,
-              onAiGenerated
-            )
-          } catch (e) {
-            console.error('Error parsing final buffer:', e)
+        case 'transcription': {
+          if (
+            !isRecord(data) ||
+            !isStringArray(data.lyrics) ||
+            !Array.isArray(data.timestamped_lyrics) ||
+            !data.timestamped_lyrics.every(isTimedLyric)
+          ) {
+            onError('The server sent malformed lyrics')
+          } else if (data.lyrics.length === 0) {
+            onError('No lyrics were found for this video')
+          } else {
+            onLyricsInfo({
+              lyrics: data.lyrics,
+              timestamped_lyrics: data.timestamped_lyrics,
+            })
           }
+          break
         }
-        break
-      }
-
-      hasReceivedData = true
-      buffer += decoder.decode(value, { stream: true })
-
-      const lines = buffer.split('\n')
-      buffer = lines.pop() || ''
-
-      for (const line of lines) {
-        if (line.trim() === '') {
-          continue
+        case 'ai_generated': {
+          onAiGenerated(data === true)
+          break
         }
-
-        try {
-          const content = JSON.parse(line)
-          processTranscriptionContent(
-            content,
-            onUpdate,
-            onLyricsInfo,
-            onError,
-            onAiGenerated
-          )
-        } catch (e) {
-          console.error('Error parsing line:', line)
-          console.error('Parse error:', e)
-          continue
+        case 'error': {
+          onError(String(data))
+          break
+        }
+        default: {
+          console.warn('Unknown message type:', type)
         }
       }
+    })
+
+    if (!seen.has('transcription') && !seen.has('error')) {
+      onError('The server closed the connection before sending the lyrics')
     }
   } catch (error) {
-    if (error instanceof Error) {
-      if (error.name === 'AbortError') {
-        onError('Request timed out')
-      } else {
-        onError(error.message)
-      }
-    } else {
-      onError('An unknown error occurred')
-    }
+    reportStreamError(error, onError, signal)
   } finally {
     clearTimeout(timeoutId)
   }
@@ -294,10 +315,10 @@ export const streamAnnotateVideoById = async (
   lyrics: string[],
   timestampedLyrics: unknown[],
   onUpdate: (message: string) => void,
-  onAnnotationInfo: (info: any) => void,
+  onAnnotationInfo: (type: AnnotationType, lines: string[]) => void,
   onError: (error: string) => void,
   onTaskUpdate: (task: string) => void,
-  onPersisted: () => void,
+  onPersisted: (version: number | null) => void,
   signal?: AbortSignal
 ) => {
   const controller = new AbortController()
@@ -325,175 +346,65 @@ export const streamAnnotateVideoById = async (
         lyrics,
         timestamped_lyrics: timestampedLyrics,
       }),
-      headers: {
-        Accept: 'application/x-ndjson, application/json, text/plain',
-        'Content-Type': 'application/json',
-        Connection: 'keep-alive',
-      },
+      headers: STREAM_HEADERS,
       signal: controller.signal,
       keepalive: true,
     })
 
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`)
-    }
-
-    if (!response.body) {
-      throw new Error('ReadableStream not supported')
-    }
-
-    const reader = response.body.getReader()
-    const decoder = new TextDecoder()
-    let buffer = ''
-    let hasReceivedData = false
-
-    while (true) {
-      const { done, value } = await reader.read()
-
-      if (done) {
-        if (!hasReceivedData) {
-          throw new Error('Stream ended without receiving any data')
+    const seen = await readNdjsonStream(
+      response,
+      ({ type, data }) => {
+        if (isAnnotationType(type)) {
+          if (isStringArray(data)) {
+            onAnnotationInfo(type, data)
+          } else {
+            onError('The server sent malformed annotations')
+          }
+          return
         }
-        if (buffer.trim()) {
-          try {
-            const content = JSON.parse(buffer)
-            processAnnotationContent(
-              content,
-              onUpdate,
-              onAnnotationInfo,
-              onError,
-              onTaskUpdate,
-              onPersisted
+        switch (type) {
+          case 'update':
+          case 'data': {
+            onUpdate(String(data))
+            break
+          }
+          case 'task_update': {
+            onTaskUpdate(String(data))
+            break
+          }
+          // The backend already wrote the lyrics; a regeneration also names the version it saved
+          case 'persisted': {
+            onPersisted(
+              isRecord(data) && typeof data.version === 'number'
+                ? data.version
+                : null
             )
-          } catch (e) {
-            console.error('Error parsing final buffer:', e)
+            break
+          }
+          case 'error': {
+            onError(String(data))
+            break
+          }
+          default: {
+            console.warn('Unknown message type:', type)
           }
         }
-        break
-      }
+      },
+      resetIdleTimeout
+    )
 
-      hasReceivedData = true
-      resetIdleTimeout()
-      buffer += decoder.decode(value, { stream: true })
-
-      const lines = buffer.split('\n')
-      buffer = lines.pop() || ''
-
-      for (const line of lines) {
-        if (line.trim() === '') {
-          continue
-        }
-
-        try {
-          const content = JSON.parse(line)
-          processAnnotationContent(
-            content,
-            onUpdate,
-            onAnnotationInfo,
-            onError,
-            onTaskUpdate,
-            onPersisted
-          )
-        } catch (e) {
-          console.error('Error parsing line:', line)
-          console.error('Parse error:', e)
-          continue
-        }
-      }
+    if (
+      !seen.has('error') &&
+      ANNOTATION_TYPES.some((annotationType) => !seen.has(annotationType))
+    ) {
+      onError(
+        'The server closed the connection before sending every annotation'
+      )
     }
   } catch (error) {
-    if (error instanceof Error) {
-      if (error.name === 'AbortError') {
-        onError('Request timed out')
-      } else {
-        onError(error.message)
-      }
-    } else {
-      onError('An unknown error occurred')
-    }
+    reportStreamError(error, onError, signal)
   } finally {
     clearTimeout(idleTimeoutId)
     signal?.removeEventListener('abort', forwardAbort)
-  }
-}
-
-function processTranscriptionContent(
-  content: any,
-  onUpdate: (message: string) => void,
-  onLyricsInfo: (info: any) => void,
-  onError: (error: string) => void,
-  onAiGenerated: (isAiGenerated: boolean) => void
-) {
-  if (!content || !content.type) {
-    console.error('Invalid content received:', content)
-    return
-  }
-
-  switch (content.type) {
-    case 'update':
-    case 'data': {
-      onUpdate(content.data)
-      break
-    }
-    case 'transcription': {
-      onLyricsInfo(content.data)
-      break
-    }
-    case 'ai_generated': {
-      onAiGenerated(content.data)
-      break
-    }
-    case 'error': {
-      onError(content.data)
-      break
-    }
-    default: {
-      console.warn('Unknown message type:', content.type)
-    }
-  }
-}
-
-function processAnnotationContent(
-  content: any,
-  onUpdate: (message: string) => void,
-  onAnnotationInfo: (info: any) => void,
-  onError: (error: string) => void,
-  onTaskUpdate: (task: string) => void,
-  onPersisted: () => void
-) {
-  if (!content || !content.type) {
-    console.error('Invalid content received:', content)
-    return
-  }
-
-  switch (content.type) {
-    case 'update':
-    case 'data': {
-      onUpdate(content.data)
-      break
-    }
-    case 'eng_translation':
-    case 'chi_translation':
-    case 'romaji_lyrics':
-    case 'kanji_annotations': {
-      onAnnotationInfo(content)
-      break
-    }
-    case 'task_update': {
-      onTaskUpdate(content.data)
-      break
-    }
-    // The backend already wrote the lyrics and song-info documents
-    case 'persisted': {
-      onPersisted()
-      break
-    }
-    case 'error': {
-      onError(content.data)
-      break
-    }
-    default: {
-      console.warn('Unknown message type:', content.type)
-    }
   }
 }
