@@ -235,7 +235,8 @@ export interface KaraokeTranslation {
 }
 
 export interface KaraokeDoc {
-  version: 1
+  // 2 added text_report (how the lyrics were chosen); nothing the player reads changed
+  version: 1 | 2
   video_id: string
   text_source: string
   text_hash: string

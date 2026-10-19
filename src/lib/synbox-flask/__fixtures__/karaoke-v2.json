@@ -1,0 +1,114 @@
+{
+  "video_id": "abcdefghijk",
+  "text_source": "asr",
+  "text_hash": "25cfa7cf5e76a11a",
+  "aligner": {
+    "name": "default",
+    "separation": "vocals",
+    "version": "1"
+  },
+  "lines": [
+    {
+      "text": "明日へ走る",
+      "start": 10.0,
+      "end": 12.1,
+      "status": "verified",
+      "checks": ["anchor"],
+      "furigana": "明日[あした]へ走[はし]る",
+      "romaji": "ashita e hashiru",
+      "tokens": [
+        {
+          "surface": "明日",
+          "reading": "あした",
+          "ruby": [
+            {
+              "base": "明日",
+              "rt": "あした"
+            }
+          ],
+          "morae": [
+            {
+              "kana": "あ",
+              "romaji": "a",
+              "start": 10.0,
+              "end": 10.3
+            },
+            {
+              "kana": "し",
+              "romaji": "shi",
+              "start": 10.3,
+              "end": 10.6
+            },
+            {
+              "kana": "た",
+              "romaji": "ta",
+              "start": 10.6,
+              "end": 10.9
+            }
+          ],
+          "is_latin": false
+        },
+        {
+          "surface": "へ",
+          "reading": null,
+          "ruby": [
+            {
+              "base": "へ",
+              "rt": ""
+            }
+          ],
+          "morae": [
+            {
+              "kana": "え",
+              "romaji": "e",
+              "start": 10.9,
+              "end": 11.2
+            }
+          ],
+          "is_latin": false
+        },
+        {
+          "surface": "走る",
+          "reading": "はしる",
+          "ruby": [
+            {
+              "base": "走",
+              "rt": "はし"
+            },
+            {
+              "base": "る",
+              "rt": ""
+            }
+          ],
+          "morae": [
+            {
+              "kana": "は",
+              "romaji": "ha",
+              "start": 11.2,
+              "end": 11.5
+            },
+            {
+              "kana": "し",
+              "romaji": "shi",
+              "start": 11.5,
+              "end": 11.8
+            },
+            {
+              "kana": "る",
+              "romaji": "ru",
+              "start": 11.8,
+              "end": 12.1
+            }
+          ],
+          "is_latin": false
+        }
+      ]
+    }
+  ],
+  "translations": {},
+  "requested_by": null,
+  "text_report": {
+    "asr": ["scribe_v2"]
+  },
+  "version": 2
+}
