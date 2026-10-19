@@ -1,6 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { AnimatePresence, MotionConfig } from 'motion/react'
 import { useEffect } from 'react'
+import { useMatch } from 'react-router'
 
 import { STEPS } from '@/lib/generation/plan'
 import { useGeneration } from '@/lib/generation/store'
@@ -25,6 +26,7 @@ const GenerationHost = () => {
   const { job, expanded } = useGeneration()
   const view = usePresentation(job)
   const queryClient = useQueryClient()
+  const onPlayer = useMatch('/v/:videoId') !== null
   const completed = job?.status.kind === 'complete'
 
   useEffect(() => {
@@ -50,9 +52,14 @@ const GenerationHost = () => {
         {job &&
           view &&
           (expanded ? (
-            <GenerationPanel key='panel' job={job} view={view} />
+            <GenerationPanel
+              key='panel'
+              job={job}
+              view={view}
+              raised={onPlayer}
+            />
           ) : (
-            <GenerationFab key='fab' job={job} view={view} />
+            <GenerationFab key='fab' job={job} view={view} raised={onPlayer} />
           ))}
       </AnimatePresence>
       <p className='sr-only' aria-live='polite'>

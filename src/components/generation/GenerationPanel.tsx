@@ -11,6 +11,7 @@ import {
   setGenerationExpanded,
   startGeneration,
 } from '@/lib/generation/store'
+import { cn } from '@/utils/cn'
 
 import StepWheel from './StepWheel'
 import {
@@ -18,6 +19,7 @@ import {
   hidePlaceholderImage,
   SURFACE_LAYOUT_ID,
   SURFACE_SPRING,
+  surfacePlacement,
   thumbnailOf,
   titleOf,
 } from './surface'
@@ -162,9 +164,10 @@ const DoneView = ({ job }: { job: Job }) => {
 interface GenerationPanelProps {
   job: Job
   view: Presentation
+  raised: boolean
 }
 
-const GenerationPanel = ({ job, view }: GenerationPanelProps) => {
+const GenerationPanel = ({ job, view, raised }: GenerationPanelProps) => {
   const { status } = job
   const percent = Math.floor(view.overall * 100)
   const slow = view.views[view.index]?.slow ?? false
@@ -184,7 +187,10 @@ const GenerationPanel = ({ job, view }: GenerationPanelProps) => {
           else dismissGeneration()
         }
       }}
-      className='fixed right-4 bottom-4 z-50 w-[min(400px,calc(100vw-2rem))] overflow-hidden border border-white/10 bg-[#1b0812]/90 shadow-[0_24px_64px_-12px_rgb(0_0_0/0.7)] backdrop-blur-xl sm:right-6 sm:bottom-6'>
+      className={cn(
+        surfacePlacement(raised),
+        'fixed z-50 w-[min(400px,calc(100vw-2rem))] overflow-hidden border border-white/10 bg-[#1b0812]/90 shadow-[0_24px_64px_-12px_rgb(0_0_0/0.7)] backdrop-blur-xl'
+      )}>
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}

@@ -7,7 +7,7 @@ import type { Job } from '@/lib/generation/store'
 import { setGenerationExpanded } from '@/lib/generation/store'
 import { cn } from '@/utils/cn'
 
-import { SURFACE_LAYOUT_ID, SURFACE_SPRING } from './surface'
+import { SURFACE_LAYOUT_ID, SURFACE_SPRING, surfacePlacement } from './surface'
 import type { Presentation } from './usePresentation'
 
 const SIZE = 52
@@ -36,7 +36,13 @@ const LABELS: Record<Exclude<FabState, 'running'>, [string, string]> = {
 // The minimized job: one ring along the button's edge that fills with the overall progress, a softly
 // pulsing dot at its tip, and the number at the center. Hovering or focusing it slides out the current
 // step; when the job ends the label stays out, so the result is noticed without opening anything.
-const GenerationFab = ({ job, view }: { job: Job; view: Presentation }) => {
+interface GenerationFabProps {
+  job: Job
+  view: Presentation
+  raised: boolean
+}
+
+const GenerationFab = ({ job, view, raised }: GenerationFabProps) => {
   const state = fabState(job, view)
   const percent = Math.floor(view.overall * 100)
   const step = view.views[view.index]
@@ -69,7 +75,10 @@ const GenerationFab = ({ job, view }: { job: Job; view: Presentation }) => {
         setGenerationExpanded(true)
       }}
       aria-label={`Lyrics generation: ${title}, ${state === 'running' ? `${percent}%` : detail}. Open details`}
-      className='group fixed right-4 bottom-4 z-50 flex flex-row-reverse items-center bg-[#241019] text-left shadow-[0_10px_30px_-8px_rgb(0_0_0/0.75)] ring-1 ring-white/8 outline-none ring-inset focus-visible:ring-2 focus-visible:ring-[#f785b3] focus-visible:ring-offset-2 focus-visible:ring-offset-black sm:right-6 sm:bottom-6'>
+      className={cn(
+        surfacePlacement(raised),
+        'group fixed z-50 flex flex-row-reverse items-center bg-[#241019] text-left shadow-[0_10px_30px_-8px_rgb(0_0_0/0.75)] ring-1 ring-white/8 outline-none ring-inset focus-visible:ring-2 focus-visible:ring-[#f785b3] focus-visible:ring-offset-2 focus-visible:ring-offset-black'
+      )}>
       <span
         className='relative grid shrink-0 place-items-center'
         style={{ height: SIZE, width: SIZE }}>

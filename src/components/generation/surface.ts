@@ -9,6 +9,12 @@ export const SURFACE_SPRING = {
 } as const
 
 // YouTube's thumbnail is known from the id alone, so the song shows from the first frame
+// Bottom-right, except on the player, whose control bar keeps its buttons in the bottom 72 px
+export const surfacePlacement = (aboveStageControls: boolean) =>
+  aboveStageControls
+    ? 'right-4 bottom-24 sm:right-6'
+    : 'right-4 bottom-4 sm:right-6 sm:bottom-6'
+
 export const thumbnailOf = (job: Job) =>
   job.video !== null && job.video.thumbnail !== ''
     ? job.video.thumbnail
