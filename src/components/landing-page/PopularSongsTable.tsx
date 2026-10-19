@@ -2,10 +2,30 @@ import { PlayIcon } from 'lucide-react'
 import React, { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
 
-import DotsLoader from '@/components/shared/DotsLoader'
 import { Button } from '@/components/ui/button'
+import { Skeleton } from '@/components/ui/skeleton'
 import { useOverflow } from '@/hooks/useOverflow'
 import { useGetChartsPlaylist } from '@/lib/react-query/queriesAndMutations'
+
+// One per visible row (the body is six rows tall); varied so the column doesn't read as a block
+const SKELETON_TITLES = [
+  <Skeleton key='a' className='h-5 w-5/6' />,
+  <Skeleton key='b' className='h-5 w-2/3' />,
+  <Skeleton key='c' className='h-5 w-11/12' />,
+  <Skeleton key='d' className='h-5 w-3/5' />,
+  <Skeleton key='e' className='h-5 w-3/4' />,
+  <Skeleton key='f' className='h-5 w-7/12' />,
+]
+
+// Same row box as SongRow: p-2 cells around a 24px title line and a 40px icon button
+const SongRowSkeleton = ({ title }: { title: React.ReactNode }) => (
+  <tr className='bg-card/80'>
+    <td className='p-2'>{title}</td>
+    <td className='p-2'>
+      <Skeleton className='size-10' />
+    </td>
+  </tr>
+)
 
 const LandingPageCharts: React.FC = () => {
   const navigate = useNavigate()
@@ -19,7 +39,9 @@ const LandingPageCharts: React.FC = () => {
   const tableBodyHeight = 6 * 55
 
   return (
-    <div className='w-full rounded-md border border-primary/30 bg-background lg:mt-2 lg:ml-6 lg:w-5/12 xl:w-4/12'>
+    <div
+      className='w-full rounded-md border border-primary/30 bg-background lg:mt-2 lg:ml-6 lg:w-5/12 xl:w-4/12'
+      aria-busy={isChartsDataFetching}>
       <div className='bg-dark-3 relative overflow-hidden rounded-md'>
         <table
           className='w-full border-collapse'
@@ -48,19 +70,9 @@ const LandingPageCharts: React.FC = () => {
             </colgroup>
             <tbody>
               {isChartsDataFetching
-                ? Array(6)
-                    .fill(null)
-                    .map((_, index) => (
-                      <tr key={index}>
-                        <td colSpan={2} className='py-2'>
-                          {index === 2 && (
-                            <div className='flex justify-center'>
-                              <DotsLoader color='#c2255c' size='lg' />
-                            </div>
-                          )}
-                        </td>
-                      </tr>
-                    ))
+                ? SKELETON_TITLES.map((title) => (
+                    <SongRowSkeleton key={title.key} title={title} />
+                  ))
                 : chartsData?.map((song, index) => (
                     <SongRow
                       key={`${song.title}-${index}`}
