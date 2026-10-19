@@ -6,12 +6,10 @@ import {
   VideoResultCard,
 } from '@/components/search/SearchResultCards'
 import DotsLoader from '@/components/shared/DotsLoader'
-import RequestDialog from '@/components/shared/RequestDialog'
 import { Button } from '@/components/ui/button'
-import { Dialog } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import useRequestDialog from '@/hooks/useRequestDialog'
+import { startGeneration } from '@/lib/generation/store'
 import {
   useGetSimilarSongs,
   useSearchLibrary,
@@ -165,7 +163,6 @@ const SearchPage = () => {
   const query = (params.get('q') ?? '').trim()
   const tab: SearchTab = params.get('tab') === 'library' ? 'library' : 'youtube'
   const similarTo = params.get('similar') ?? ''
-  const dialog = useRequestDialog()
 
   const handlePlay = (videoId: string) => {
     void navigate(`/v/${videoId}`, { state: { videoId } })
@@ -175,7 +172,11 @@ const SearchPage = () => {
     if (result.processed) {
       handlePlay(result.video_id)
     } else {
-      dialog.openFor(result.video_id)
+      startGeneration({
+        mode: 'new',
+        title: result.title,
+        videoId: result.video_id,
+      })
     }
   }
 
@@ -243,16 +244,6 @@ const SearchPage = () => {
           )}
         </TabsContent>
       </Tabs>
-
-      <Dialog open={dialog.open} onOpenChange={dialog.handleOpenChange}>
-        {dialog.videoId !== '' && (
-          <RequestDialog
-            key={dialog.dialogKey}
-            videoId={dialog.videoId}
-            handleClose={dialog.close}
-          />
-        )}
-      </Dialog>
     </section>
   )
 }

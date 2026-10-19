@@ -52,8 +52,6 @@ export const playerVolumeAtom = atomWithStorage('playerVolume', {
 // 0 pins the lyrics block to the top of the stage, 1 to the bottom
 export const lyricsAnchorAtom = atomWithStorage('lyricsAnchor', 0.85)
 
-export const dialogStepAtom = atom(0)
-
 interface FavoriteItem {
   videoId: string
   title: string

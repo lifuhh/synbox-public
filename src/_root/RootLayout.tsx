@@ -1,6 +1,7 @@
 import React from 'react'
 import { Outlet } from 'react-router'
 
+import GenerationHost from '@/components/generation/GenerationHost'
 import TopBar from '@/components/shared/TopBar'
 
 const RootLayout: React.FC = () => {
@@ -36,6 +37,7 @@ const RootLayout: React.FC = () => {
         <section className='flex h-full flex-1 bg-[#150406]/75'>
           <Outlet />
         </section>
+        <GenerationHost />
       </div>
     </div>
   )

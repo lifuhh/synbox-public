@@ -2,11 +2,9 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Link, useParams } from 'react-router'
 
-import RequestDialog from '@/components/shared/RequestDialog'
 import { Button } from '@/components/ui/button'
-import { Dialog } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
-import useRequestDialog from '@/hooks/useRequestDialog'
+import { startGeneration } from '@/lib/generation/store'
 import {
   useActivateLyricsVersion,
   useGetLyricsVersions,
@@ -47,7 +45,6 @@ const COLUMNS: [keyof LyricsVersionSummary['summary'], string][] = [
 const VersionsPage = () => {
   const { videoId = '' } = useParams<{ videoId: string }>()
   const queryClient = useQueryClient()
-  const dialog = useRequestDialog()
   const [adminToken, setAdminToken] = useState(readToken)
   const [actionError, setActionError] = useState<string | null>(null)
   const { data, error, isLoading } = useGetLyricsVersions(videoId)
@@ -97,7 +94,11 @@ const VersionsPage = () => {
           </Button>
           <Button
             onClick={() => {
-              dialog.openFor(videoId)
+              startGeneration({
+                mode: 'regenerate',
+                title: songInfo?.title,
+                videoId,
+              })
             }}>
             Regenerate
           </Button>
@@ -206,17 +207,6 @@ const VersionsPage = () => {
           </table>
         </div>
       )}
-
-      <Dialog open={dialog.open} onOpenChange={dialog.handleOpenChange}>
-        {dialog.videoId !== '' && (
-          <RequestDialog
-            key={dialog.dialogKey}
-            videoId={dialog.videoId}
-            handleClose={dialog.close}
-            mode='regenerate'
-          />
-        )}
-      </Dialog>
     </div>
   )
 }

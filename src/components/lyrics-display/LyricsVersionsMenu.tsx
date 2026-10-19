@@ -2,15 +2,13 @@ import { WandSparklesIcon } from 'lucide-react'
 import { useState } from 'react'
 import { Link } from 'react-router'
 
-import RequestDialog from '@/components/shared/RequestDialog'
-import { Dialog } from '@/components/ui/dialog'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import useRequestDialog from '@/hooks/useRequestDialog'
+import { startGeneration } from '@/lib/generation/store'
 import { useGetLyricsVersions } from '@/lib/react-query/queriesAndMutations'
 import { cn } from '@/utils/cn'
 
@@ -25,13 +23,11 @@ export const LyricsVersionsMenu = ({
   onOpenChange?: (open: boolean) => void
 }) => {
   const [menuOpen, setMenuOpen] = useState(false)
-  const dialog = useRequestDialog()
   const { data } = useGetLyricsVersions(videoId)
   const count = data?.versions.length ?? 0
 
   return (
     <>
-      {/* Not modal: a modal menu closing as the dialog opens can leave the page unclickable */}
       <DropdownMenu
         modal={false}
         open={menuOpen}
@@ -55,7 +51,7 @@ export const LyricsVersionsMenu = ({
           className='border border-primary bg-background text-foreground'>
           <DropdownMenuItem
             onSelect={() => {
-              dialog.openFor(videoId)
+              startGeneration({ mode: 'regenerate', videoId })
             }}>
             Regenerate Lyrics
           </DropdownMenuItem>
@@ -66,16 +62,6 @@ export const LyricsVersionsMenu = ({
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-      <Dialog open={dialog.open} onOpenChange={dialog.handleOpenChange}>
-        {dialog.videoId !== '' && (
-          <RequestDialog
-            key={dialog.dialogKey}
-            videoId={dialog.videoId}
-            handleClose={dialog.close}
-            mode='regenerate'
-          />
-        )}
-      </Dialog>
     </>
   )
 }
