@@ -153,14 +153,6 @@ layer(base);
   @apply flex items-center justify-between;
 }
 
-@utility flex-start {
-  @apply flex items-center justify-start;
-}
-
-@utility flex-end {
-  @apply flex items-center justify-end;
-}
-
 @utility custom-scrollbar {
   &::-webkit-scrollbar {
     width: 6px;
@@ -236,10 +228,6 @@ layer(base);
   }
 }
 
-@utility font_noto_sans_jp_reg {
-  font-family: 'Noto Sans JP', sans-serif !important;
-}
-
 @utility font_noto_sans_jp_black_900 {
   font-family: 'Noto Sans JP', sans-serif !important;
   font-weight: 900 !important;
@@ -250,31 +238,9 @@ layer(base);
   }
 }
 
-@utility overlay-lyrics-text {
-  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
-  backdrop-filter: blur(1px);
-  background: linear-gradient(
-    to top,
-    rgba(0, 0, 0, 0.7) 0%,
-    rgba(0, 0, 0, 0.5) 40%,
-    rgba(0, 0, 0, 0.2) 70%,
-    rgba(0, 0, 0, 0) 100%,
-    rgba(0, 0, 0, 0.2) 70%,
-    rgba(0, 0, 0, 0.7) 0%
-  );
-
-  padding: 10px;
-}
-
 @utility invisible-ring {
   --tw-ring-color: rgba(0, 0, 0, 0);
   --tw-ring-offset-color: rgba(0, 0, 0, 0);
-}
-
-@utility text-input {
-  &:focus {
-    outline: 1px solid #aaa;
-  }
 }
 
 @layer components {
@@ -318,12 +284,6 @@ layer(base);
   -webkit-user-select: none;
   -moz-user-select: none;
   -ms-user-select: none;
-}
-
-@utility text-comparison-glow {
-  box-shadow:
-    0 0 10px var(--color-indigo-500),
-    0 0 20px var(--color-indigo-500);
 }
 
 @utility lyric-text-line {
@@ -526,14 +486,6 @@ layer(base);
     transform 0.18s ease-out;
 }
 
-@utility fade-in {
-  animation: fadeInUp 0.2s ease-out forwards;
-}
-
-@utility fade-out {
-  animation: fadeOutDown 0.1s ease-out forwards;
-}
-
 @layer base {
   :root {
     --background: 329 84% 95%;
@@ -627,27 +579,6 @@ layer(base);
     }
     100% {
       transform: translate(-100%, 0);
-    }
-  }
-  @keyframes fadeInUp {
-    from {
-      opacity: 0;
-      transform: translateY(10px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
-  @keyframes fadeOutDown {
-    from {
-      opacity: 1;
-      transform: translateY(0);
-    }
-    to {
-      opacity: 0;
-      transform: translateY(10px);
     }
   }
 }

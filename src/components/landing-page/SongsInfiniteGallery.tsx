@@ -1,12 +1,14 @@
 import React from 'react'
 
-import DotsLoader from '@/components/shared/DotsLoader'
 import { useGetInfiniteGalleryPlaylist } from '@/lib/react-query/queriesAndMutations'
 import type { InfiniteGalleryVideoItem } from '@/types'
 
 import HomeFooter from '../shared/HomeFooter'
 import { Spotlight } from '../ui/Spotlight'
-import { VirtualInfiniteScrollGallery } from './VirtualInfiniteScrollGallery'
+import {
+  VirtualInfiniteScrollGallery,
+  VirtualInfiniteScrollGallerySkeleton,
+} from './VirtualInfiniteScrollGallery'
 
 const SongsInfiniteGallery: React.FC = () => {
   const {
@@ -23,7 +25,10 @@ const SongsInfiniteGallery: React.FC = () => {
         className='-top-80 left-40 scale-x-[-1] md:top-20 md:-left-40'
         fill='#580a24'
       />
-      <div className='mx-auto h-[calc(100vh-200px)] max-w-full gap-2 px-8'>
+      <div className='mx-auto h-[calc(100vh-200px)] w-full max-w-full gap-2 px-8'>
+        {isInfiniteGallerySongDataFetching && (
+          <VirtualInfiniteScrollGallerySkeleton />
+        )}
         {infiniteGallerySongData && (
           <VirtualInfiniteScrollGallery
             items={infiniteGallerySongData.pages.flatMap((page) =>
@@ -38,11 +43,6 @@ const SongsInfiniteGallery: React.FC = () => {
             hasNextPage={hasNextPage}
             isFetchingNextPage={isFetchingNextPage}
           />
-        )}
-        {isInfiniteGallerySongDataFetching && (
-          <div className='my-0 flex w-full min-w-full items-center justify-center'>
-            <DotsLoader color='#c2255c' size='lg' />
-          </div>
         )}
         <HomeFooter />
       </div>

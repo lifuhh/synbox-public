@@ -10,6 +10,7 @@ import React, {
 import { useNavigate } from 'react-router'
 
 import DotsLoader from '@/components/shared/DotsLoader'
+import { Skeleton } from '@/components/ui/skeleton'
 import { useOverflow } from '@/hooks/useOverflow'
 import type { InfiniteScrollGalleryProps } from '@/types'
 import { cn } from '@/utils/cn'
@@ -90,6 +91,9 @@ const useVirtualGrid = ({
     estimatedRowHeight,
   }
 }
+
+const GALLERY_CELL_CLASS =
+  'relative w-full p-3 sm:w-1/2 lg:w-1/3 xl:w-1/3 2xl:w-1/4'
 
 export const VirtualInfiniteScrollGallery = ({
   items,
@@ -191,7 +195,7 @@ export const VirtualInfiniteScrollGallery = ({
             return (
               <div
                 key={item?.videoId}
-                className='relative w-full p-3 sm:w-1/2 lg:w-1/3 xl:w-1/3 2xl:w-1/4'
+                className={GALLERY_CELL_CLASS}
                 onMouseEnter={() => {
                   setHoveredIndex(actualIndex)
                 }}
@@ -283,4 +287,27 @@ const CardTitle = memo(
       </div>
     )
   }
+)
+
+// One page of the playlist (maxResults: 12) fills the first screen at every column count
+const SKELETON_CARD_COUNT = 12
+
+export const VirtualInfiniteScrollGallerySkeleton = () => (
+  <output
+    className='block custom-scrollbar h-full overflow-auto px-4'
+    aria-label='Loading gallery'>
+    <div className='flex flex-wrap py-2 pt-4'>
+      {Array.from({ length: SKELETON_CARD_COUNT }, (_, index) => (
+        // oxlint-disable-next-line no-array-index-key
+        <div key={index} className={GALLERY_CELL_CLASS}>
+          <Card className='bg-muted'>
+            <Skeleton className='mb-4 h-7 w-3/4' />
+            <div className='aspect-video overflow-hidden rounded-xl'>
+              <Skeleton className='size-full' />
+            </div>
+          </Card>
+        </div>
+      ))}
+    </div>
+  </output>
 )
