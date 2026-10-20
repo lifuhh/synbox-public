@@ -117,7 +117,7 @@ const sameText = (a: string, b: string) =>
 
 // Lyrics scale with the stage, but never below a size a phone can read
 const LYRIC_SIZE = {
-  primary: 'calc(max(3.5cqw, 1.375rem) * var(--lyric-scale))',
+  primary: 'calc(max(3.5cqw, 1.5rem) * var(--lyric-scale))',
   secondary: 'calc(max(2.4cqw, 0.9375rem) * var(--lyric-scale))',
 } as const
 
