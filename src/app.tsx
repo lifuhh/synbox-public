@@ -4,7 +4,7 @@ import { Navigate, Route, Routes, useLocation } from 'react-router'
 import AppNotices from '@/components/shared/app-notices'
 import { Toaster } from '@/components/ui/toaster'
 import useKeyboardNavigation from '@/hooks/use-keyboard-navigation'
-import { applyUpdateOnPageChange } from '@/lib/pwa'
+import { applyUpdateOnPageChange, OPENING_MS } from '@/lib/pwa'
 
 import LandingPage from './_root/pages/landing-page'
 import RootLayout from './_root/root-layout'
@@ -16,7 +16,7 @@ const StageLabPage = import.meta.env.DEV
   ? lazy(async () => await import('./lab/stage-lab-page'))
   : null
 
-// Only the landing page ships in the first bundle; the rest load on first visit, or earlier once the browser is idle
+// Only the landing page ships in the first bundle; the rest load on first visit, or once the opening is over
 const pageImports = {
   about: async () => await import('./_root/pages/about-page'),
   player: async () => await import('./_root/pages/player-page'),
@@ -42,14 +42,10 @@ const App = () => {
     // oxlint-disable-next-line react/exhaustive-effect-dependencies -- runs on each page change, which is what pathname marks
   }, [pathname])
 
+  // Not during the opening, when a waiting update may be swapped in: in Chromium, a new version told to take
+  // over while the old one serves these chunks stays waiting
   useEffect(() => {
-    if ('requestIdleCallback' in window) {
-      const id = requestIdleCallback(prefetchPages, { timeout: 5000 })
-      return () => {
-        cancelIdleCallback(id)
-      }
-    }
-    const id = setTimeout(prefetchPages, 2000)
+    const id = setTimeout(prefetchPages, OPENING_MS)
     return () => {
       clearTimeout(id)
     }

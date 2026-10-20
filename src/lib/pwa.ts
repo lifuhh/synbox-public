@@ -109,7 +109,7 @@ const UPDATE_CHECK_MS = 60 * 60 * 1000
 
 // Until the viewer has touched anything, applying a waiting version is invisible: the app opens on the
 // latest version, as a reload in a browser tab should
-const OPENING_MS = 4000
+export const OPENING_MS = 4000
 // Back after this long, the app counts as freshly opened, as a native app does. Not on a song page: the
 // reload would lose the place in the song
 const AWAY_MS = 30 * 60 * 1000
