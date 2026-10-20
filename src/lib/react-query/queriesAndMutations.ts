@@ -113,13 +113,22 @@ export const useGetLyricsBySongId = (songId: string) =>
     queryFn: () => getSongLyricsById(songId),
   })
 
-// data is null when the song has no karaoke timing yet
-export const useGetKaraokeById = (videoId: string) =>
+// data is null when the song has no karaoke timing yet. A previewed version
+// saved before timing was stored per version falls back to the live timing,
+// which the player only uses when its lines match.
+export const useGetKaraokeById = (
+  videoId: string,
+  version: number | null = null
+) =>
   useQuery({
     enabled: videoId.trim().length > 0,
     gcTime: 1000 * 60 * 60,
-    queryFn: async ({ signal }) => await getKaraoke(videoId, signal),
-    queryKey: [QUERY_KEYS.GET_KARAOKE_BY_ID, videoId],
+    queryFn: async ({ signal }) =>
+      version === null
+        ? await getKaraoke(videoId, null, signal)
+        : ((await getKaraoke(videoId, version, signal)) ??
+          (await getKaraoke(videoId, null, signal))),
+    queryKey: [QUERY_KEYS.GET_KARAOKE_BY_ID, videoId, version],
     refetchOnWindowFocus: false,
     retry: 1,
     staleTime: 1000 * 60 * 60,
