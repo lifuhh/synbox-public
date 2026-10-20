@@ -240,7 +240,14 @@ export const PlayerStage = ({
     },
   }
 
+  // A first tap on a touch screen only brings the controls back; it does not also pause
+  const revealOnlyRef = useRef(false)
+
   const toggleFullscreen = () => {
+    // iPhone Safari has no element fullscreen; the control is hidden there
+    if (!document.fullscreenEnabled) {
+      return
+    }
     if (document.fullscreenElement) {
       void document.exitFullscreen()
     } else {
@@ -329,8 +336,9 @@ export const PlayerStage = ({
         !controlsVisible && 'cursor-none',
         className
       )}>
+      {/* In portrait the video sits under the top bar and the lyrics get the space below it */}
       <div
-        className='absolute top-1/2 left-1/2 aspect-video -translate-1/2 overflow-hidden'
+        className='absolute top-1/2 left-1/2 aspect-video -translate-1/2 overflow-hidden portrait:top-(--topbar-h) portrait:translate-y-0'
         style={{ width: 'min(100cqw, 177.78cqh)' }}>
         <div
           ref={player.hostRef}
@@ -362,7 +370,15 @@ export const PlayerStage = ({
             'absolute inset-0 z-20',
             controlsVisible && 'cursor-pointer'
           )}
-          onClick={player.togglePlay}
+          onPointerDown={(event) => {
+            revealOnlyRef.current =
+              event.pointerType !== 'mouse' && !controlsVisible
+          }}
+          onClick={() => {
+            if (!revealOnlyRef.current) {
+              player.togglePlay()
+            }
+          }}
           onDoubleClick={toggleFullscreen}
         />
       )}
@@ -373,14 +389,14 @@ export const PlayerStage = ({
           onClick={() => {
             setVolume({ ...storedVolume, muted: false })
           }}
-          className='absolute top-18 left-1/2 z-40 flex -translate-x-1/2 items-center gap-2.5 rounded-full bg-black/60 px-5 py-2.5 text-base font-medium text-white shadow-lg ring-1 ring-white/20 backdrop-blur-md transition-colors hover:bg-black/80'>
+          className='absolute top-[calc(var(--topbar-h)+0.5rem+var(--notices-h,0px)+var(--preview-banner-h,0px))] left-1/2 z-40 flex -translate-x-1/2 items-center gap-2.5 rounded-full bg-black/60 px-5 py-2.5 text-base font-medium text-white shadow-lg ring-1 ring-white/20 backdrop-blur-md transition-colors hover:bg-black/80'>
           <VolumeXIcon className='size-5' aria-hidden='true' />
           Tap to Unmute
         </button>
       )}
 
       {renderLyrics && (
-        <div className='pointer-events-none absolute inset-0 z-25'>
+        <div className='pointer-events-none absolute inset-0 z-25 portrait:top-[calc(var(--stage-video-bottom)+4rem)]'>
           {renderLyrics(player, layout)}
         </div>
       )}

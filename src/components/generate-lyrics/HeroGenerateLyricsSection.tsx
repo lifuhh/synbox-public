@@ -35,7 +35,7 @@ const HeroGenerateLyricsSection = () => {
 
   return (
     <>
-      <section className='mt-14 px-4'>{renderComponent()}</section>
+      <section className='mt-(--topbar-h) px-4'>{renderComponent()}</section>
     </>
   )
 }

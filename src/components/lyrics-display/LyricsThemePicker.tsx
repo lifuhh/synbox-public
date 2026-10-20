@@ -18,6 +18,7 @@ import {
   lyricsStylePanelAtom,
   lyricsThemeIdAtom,
 } from '@/context/atoms'
+import { usePortrait } from '@/hooks/useMediaQuery'
 import type { LyricsThemeColors } from '@/lib/lyricsThemes'
 import {
   DEFAULT_LYRICS_BACKDROP,
@@ -78,7 +79,7 @@ const ThemeSwatch = ({
     </span>
     <span
       className={cn(
-        'text-[11px] leading-none',
+        'text-xs leading-none',
         selected ? 'text-foreground' : 'text-muted-foreground'
       )}>
       {name}
@@ -99,6 +100,7 @@ export const LyricsThemePicker = ({
   onPointerLeave: () => void
 }) => {
   const [panel, setPanel] = useAtom(lyricsStylePanelAtom)
+  const portrait = usePortrait()
   // Focus moves in, and back to the button on close, only for a panel opened from the keyboard; after a
   // hover or a click it would pop the button's tooltip and hold the player's UI open
   const fromKeyboardRef = useRef(false)
@@ -150,8 +152,9 @@ export const LyricsThemePicker = ({
 
       <PopoverContent
         data-player-chrome
-        side='right'
-        sideOffset={14}
+        side={portrait ? 'bottom' : 'right'}
+        sideOffset={portrait ? 8 : 14}
+        collisionPadding={8}
         // Follows the rail as it slides in, when a click on the lyrics opens both at once
         updatePositionStrategy='always'
         onOpenAutoFocus={(event) => {
@@ -176,7 +179,7 @@ export const LyricsThemePicker = ({
         }}
         onPointerEnter={onPointerEnter}
         onPointerLeave={onPointerLeave}
-        className='z-300 w-[300px] rounded-[10px] p-0 shadow-[0_12px_32px_rgb(0_0_0/0.5)]'>
+        className='z-300 max-h-(--radix-popover-content-available-height) w-[min(300px,calc(100vw-1rem))] overflow-y-auto rounded-[10px] p-0 shadow-[0_12px_32px_rgb(0_0_0/0.5)]'>
         <div className='flex flex-col gap-4 p-4 unhighlightable'>
           <div className='flex items-center justify-between'>
             <h2 className='text-sm font-semibold'>Lyrics Style</h2>
@@ -184,7 +187,7 @@ export const LyricsThemePicker = ({
               type='button'
               onClick={handleReset}
               disabled={isDefault}
-              className='text-xs text-muted-foreground transition-colors hover:text-foreground disabled:pointer-events-none disabled:opacity-0'>
+              className='-my-2 py-2 text-xs text-muted-foreground transition-colors hover:text-foreground disabled:pointer-events-none disabled:opacity-0 touch:text-sm'>
               Reset
             </button>
           </div>
@@ -263,7 +266,7 @@ export const LyricsThemePicker = ({
                     onClick={() => {
                       close()
                     }}
-                    className='rounded-md bg-primary px-2.5 py-1 text-xs font-medium text-white transition-colors hover:bg-primary/85'>
+                    className='rounded-md bg-primary px-2.5 py-1 text-xs font-medium text-white transition-colors hover:bg-primary/85 touch:px-3.5 touch:py-2 touch:text-sm'>
                     Done
                   </button>
                 </div>
@@ -303,7 +306,7 @@ export const LyricsThemePicker = ({
                     close()
                   }}
                   className={cn(
-                    'rounded-md py-1.5 text-xs font-medium transition-colors focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-hidden',
+                    'rounded-md py-1.5 text-xs font-medium transition-colors focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-hidden touch:py-2.5 touch:text-sm',
                     backdrop === option.id
                       ? 'bg-primary text-white'
                       : 'text-muted-foreground hover:text-foreground'

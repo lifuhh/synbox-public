@@ -24,6 +24,7 @@ import {
   playerChromeOpenAtom,
   lyricsStylePanelAtom,
 } from '@/context/atoms'
+import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { cn } from '@/utils/cn'
 
 import { LyricsThemePicker } from './LyricsThemePicker'
@@ -79,7 +80,9 @@ const usePeek = () => {
   return { enter, leave, panelOpen: panel !== 'closed' }
 }
 
-const Divider = () => <div className='my-0.5 h-px w-6 bg-white/15' />
+const Divider = () => (
+  <div className='my-0.5 h-px w-6 shrink-0 bg-white/15 portrait:mx-0.5 portrait:my-0 portrait:h-6 portrait:w-px short:col-span-2 short:mx-auto' />
+)
 
 const PlayerRail = () => {
   const { videoId = '' } = useParams<{ videoId: string }>()
@@ -100,8 +103,31 @@ const PlayerRail = () => {
     translationVisibilityAtom
   )
   const [english, setEnglish] = useAtom(translationIsEnglishAtom)
+  const touch = useMediaQuery('(pointer: coarse)')
+  const nativeShare = touch && 'share' in navigator
+  const shareLabel = nativeShare ? 'Share' : 'Copy URL'
 
   const handleShare = async () => {
+    // Phones share through the system sheet; an installed app has no address bar to copy from
+    if (nativeShare) {
+      try {
+        await navigator.share({
+          title: currentVideo?.title ?? 'Synbox',
+          url: window.location.href,
+        })
+      } catch (error) {
+        // Closing the sheet rejects with AbortError, which is not a failure
+        if (!(error instanceof DOMException && error.name === 'AbortError')) {
+          toast({
+            description: 'Failed to share link',
+            duration: 2000,
+            title: 'Error',
+            variant: 'destructive',
+          })
+        }
+      }
+      return
+    }
     try {
       await navigator.clipboard.writeText(window.location.href)
       toast({ title: 'Copied URL to clipboard', duration: 1500 })
@@ -165,20 +191,31 @@ const PlayerRail = () => {
     // the pointer is outside the window or over the YouTube iframe, so the label outlived the hidden rail
     <TooltipProvider delayDuration={190} disableHoverableContent>
       <RailTooltipsOff value={peek.panelOpen}>
-        <div className='pointer-events-none fixed top-1/2 left-0 z-50 -translate-y-1/2'>
+        {/* Left edge, vertically centred; in portrait a row under the video; on a phone on its side
+            two columns, which fit between the top bar and the controls */}
+        <div className='pointer-events-none fixed top-1/2 left-(--safe-left) z-50 -translate-y-1/2 portrait:top-[calc(var(--stage-video-bottom)+0.5rem)] portrait:left-1/2 portrait:-translate-x-1/2 portrait:translate-y-0'>
           <nav
             ref={panelRef}
             data-player-chrome
             aria-label='Player Controls'
-            onPointerEnter={() => {
-              peek.enter(true)
+            // A finger has no hover; on touch the panel opens from its button
+            onPointerEnter={(event) => {
+              if (event.pointerType === 'mouse') {
+                peek.enter(true)
+              }
             }}
-            onPointerLeave={() => {
-              peek.leave(true)
+            onPointerLeave={(event) => {
+              if (event.pointerType === 'mouse') {
+                peek.leave(true)
+              }
             }}
             className={cn(
-              'flex flex-col items-center gap-1 rounded-r-2xl border border-l-0 border-white/10 bg-black/55 p-1.5 shadow-[0_8px_24px_rgb(0_0_0/0.4)] backdrop-blur-md transition-transform duration-300 ease-out',
-              open ? 'pointer-events-auto translate-x-0' : '-translate-x-full'
+              'flex flex-col items-center gap-1 rounded-r-2xl border border-l-0 border-white/10 bg-black/55 p-1.5 shadow-[0_8px_24px_rgb(0_0_0/0.4)] backdrop-blur-md transition-[translate,opacity] duration-300 ease-out',
+              'portrait:no-scrollbar portrait:max-w-[calc(100vw-1rem)] portrait:flex-row portrait:gap-0 portrait:overflow-x-auto portrait:rounded-2xl portrait:border-l portrait:p-1',
+              'short:grid short:grid-cols-2',
+              open
+                ? 'pointer-events-auto translate-x-0'
+                : '-translate-x-full portrait:translate-x-0 portrait:opacity-0'
             )}>
             <RailTooltip label={showLyrics ? 'Hide Lyrics' : 'Show Lyrics'}>
               <RailButton
@@ -258,9 +295,9 @@ const PlayerRail = () => {
                 )}
               </RailButton>
             </RailTooltip>
-            <RailTooltip label='Copy URL'>
+            <RailTooltip label={shareLabel}>
               <RailButton
-                label='Copy URL'
+                label={shareLabel}
                 onClick={() => {
                   void handleShare()
                 }}>

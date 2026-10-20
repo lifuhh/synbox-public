@@ -62,7 +62,7 @@ const IconButton = ({ label, onClick, active, children }: IconButtonProps) => (
     aria-pressed={active}
     onClick={onClick}
     className={cn(
-      'grid size-9 place-items-center rounded-md text-white/85 transition-colors hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none',
+      'grid size-9 shrink-0 place-items-center rounded-md text-white/85 transition-colors hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none touch:size-10',
       active === true && 'text-primary hover:text-primary'
     )}>
     {children}
@@ -110,14 +110,19 @@ export const StageControls = ({
     if (!(bar && content)) {
       return
     }
-    // The gradient above the controls is see-through, so only the rows count
+    // Published for the generation button, which floats above the controls on the player
+    const root = document.documentElement
     const observer = new ResizeObserver(() => {
-      onHeightChange(bar.clientHeight - content.offsetTop + OBSTRUCTION_GAP_PX)
+      // The gradient above the controls is see-through, so only the rows count
+      const height = bar.clientHeight - content.offsetTop + OBSTRUCTION_GAP_PX
+      onHeightChange(height)
+      root.style.setProperty('--stage-controls-h', `${height}px`)
     })
     observer.observe(bar)
     observer.observe(content)
     return () => {
       observer.disconnect()
+      root.style.removeProperty('--stage-controls-h')
     }
   }, [onHeightChange])
 
@@ -132,7 +137,7 @@ export const StageControls = ({
       ref={barRef}
       style={{ transitionDuration: `${CONTROLS_FADE_MS}ms` }}
       className={cn(
-        'absolute inset-x-0 bottom-0 z-30 bg-linear-to-t from-black/80 via-black/40 to-transparent px-4 pt-10 pb-3 transition-opacity',
+        'absolute inset-x-0 bottom-0 z-30 bg-linear-to-t from-black/80 via-black/40 to-transparent pt-10 pr-[max(1rem,var(--safe-right))] pb-[max(0.75rem,var(--safe-bottom))] pl-[max(1rem,var(--safe-left))] transition-opacity',
         visible ? 'opacity-100' : 'pointer-events-none opacity-0'
       )}
       onPointerDown={(event) => {
@@ -156,7 +161,7 @@ export const StageControls = ({
           }}
           className='mb-2 cursor-pointer'
         />
-        <div className='flex items-center gap-1 text-sm text-white tabular-nums'>
+        <div className='flex items-center gap-1 text-sm text-white tabular-nums touch:gap-0.5'>
           <IconButton
             label={isPlaying ? 'Pause' : 'Play'}
             onClick={player.togglePlay}>
@@ -166,7 +171,8 @@ export const StageControls = ({
               <PlayIcon className='size-5' />
             )}
           </IconButton>
-          {/* The slider only opens while the volume button is hovered or focused */}
+          {/* The slider only opens while the volume button is hovered or focused, so touch screens
+              keep just the mute button and the device's own volume */}
           <div
             className='group/volume flex items-center'
             onWheel={(event) => {
@@ -184,7 +190,7 @@ export const StageControls = ({
               }}>
               <VolumeGlyph level={volume.level} muted={volume.muted} />
             </IconButton>
-            <div className='flex h-9 w-0 items-center overflow-hidden transition-[width] duration-200 ease-out group-focus-within/volume:w-24 group-hover/volume:w-24'>
+            <div className='flex h-9 w-0 items-center overflow-hidden transition-[width] duration-200 ease-out group-focus-within/volume:w-24 group-hover/volume:w-24 touch:hidden'>
               <div className='w-24 shrink-0 px-2.5'>
                 <Slider
                   aria-label='Volume'
@@ -202,10 +208,10 @@ export const StageControls = ({
               </div>
             </div>
           </div>
-          <span className='ml-2 whitespace-nowrap'>
+          <span className='ml-2 min-w-0 truncate whitespace-nowrap touch:ml-1'>
             {formatTime(scrub ?? time)} / {formatTime(duration)}
           </span>
-          <div className='ml-auto flex items-center gap-1'>
+          <div className='ml-auto flex shrink-0 items-center gap-1 touch:gap-0.5'>
             <IconButton
               label='Loop'
               active={loop}
@@ -222,15 +228,17 @@ export const StageControls = ({
               }}>
               <MousePointerClickIcon className='size-5' />
             </IconButton>
-            <IconButton
-              label={fullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
-              onClick={onToggleFullscreen}>
-              {fullscreen ? (
-                <MinimizeIcon className='size-5' />
-              ) : (
-                <MaximizeIcon className='size-5' />
-              )}
-            </IconButton>
+            {document.fullscreenEnabled && (
+              <IconButton
+                label={fullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
+                onClick={onToggleFullscreen}>
+                {fullscreen ? (
+                  <MinimizeIcon className='size-5' />
+                ) : (
+                  <MaximizeIcon className='size-5' />
+                )}
+              </IconButton>
+            )}
           </div>
         </div>
       </div>

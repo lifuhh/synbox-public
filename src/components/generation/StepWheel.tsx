@@ -131,7 +131,7 @@ const StepWheel = ({ views, index, failed }: StepWheelProps) => {
             <div className='flex w-24 flex-col items-end gap-1.5'>
               <span className='text-[15px] leading-none font-semibold text-white tabular-nums'>
                 {percent}
-                <span className='ml-px text-[11px] text-white/55'>%</span>
+                <span className='ml-px text-xs text-white/55'>%</span>
               </span>
               <ProgressBar
                 fraction={shownFraction}

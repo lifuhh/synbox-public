@@ -6,6 +6,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
+import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { cn } from '@/utils/cn'
 
 interface RailButtonProps extends ComponentProps<'button'> {
@@ -25,7 +26,7 @@ export const RailButton = ({
     aria-label={label}
     aria-pressed={pressed}
     className={cn(
-      'grid size-9 place-items-center rounded-lg text-white/85 transition-colors hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none disabled:pointer-events-none disabled:opacity-30',
+      'grid size-9 shrink-0 place-items-center rounded-lg text-white/85 transition-colors hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none disabled:pointer-events-none disabled:opacity-30 touch:size-10 short:size-9',
       pressed === true && 'bg-primary text-white hover:bg-primary/85',
       pressed === false && 'text-white/45',
       className
@@ -46,7 +47,9 @@ export const RailTooltip = ({
   hidden?: boolean
   children: ReactNode
 }) => {
-  const off = hidden || use(RailTooltipsOff)
+  // Labels are for hover; on a touch screen they would only cover the stage
+  const touch = useMediaQuery('(pointer: coarse)')
+  const off = hidden || touch || use(RailTooltipsOff)
   // Controlled, and closed while off, so a tooltip never reopens from state it had before
   const [open, setOpen] = useState(false)
   const [wasOff, setWasOff] = useState(off)

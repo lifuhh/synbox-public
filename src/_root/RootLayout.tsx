@@ -6,7 +6,7 @@ import TopBar from '@/components/shared/TopBar'
 
 const RootLayout: React.FC = () => {
   return (
-    <div className='relative min-h-screen w-full'>
+    <div className='relative min-h-dvh w-full'>
       <div className='fixed inset-0 isolate overflow-hidden'>
         <div
           aria-hidden='true'
@@ -32,7 +32,7 @@ const RootLayout: React.FC = () => {
         </div>
       </div>
 
-      <div className='relative h-screen w-full bg-muted/20'>
+      <div className='relative h-dvh w-full bg-muted/20'>
         <TopBar />
         <section className='flex h-full flex-1 bg-[#150406]/75'>
           <Outlet />

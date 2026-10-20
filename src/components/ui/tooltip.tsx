@@ -3,11 +3,25 @@
 import * as TooltipPrimitive from '@radix-ui/react-tooltip'
 import * as React from 'react'
 
+import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { cn } from '@/utils/cn'
 
 const TooltipProvider = TooltipPrimitive.Provider
 
-const Tooltip = TooltipPrimitive.Root
+// A touch screen has no hover to close a tooltip, and a menu returning focus to its trigger would
+// open one that then never leaves. Uncontrolled tooltips stay closed there; a controlled one decides
+const Tooltip = ({
+  open,
+  ...props
+}: React.ComponentProps<typeof TooltipPrimitive.Root>) => {
+  const touch = useMediaQuery('(pointer: coarse)')
+  return (
+    <TooltipPrimitive.Root
+      open={open ?? (touch ? false : undefined)}
+      {...props}
+    />
+  )
+}
 
 const TooltipTrigger = TooltipPrimitive.Trigger
 

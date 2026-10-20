@@ -115,15 +115,13 @@ const isLatinOnly = (html: string) => {
 const sameText = (a: string, b: string) =>
   a.trim().toLowerCase() === b.trim().toLowerCase()
 
-const LyricLine = ({
-  html,
-  size,
-  primary,
-}: {
-  html: string
-  size: number
-  primary: boolean
-}) => {
+// Lyrics scale with the stage, but never below a size a phone can read
+const LYRIC_SIZE = {
+  primary: 'calc(max(3.5cqw, 1.375rem) * var(--lyric-scale))',
+  secondary: 'calc(max(2.4cqw, 0.9375rem) * var(--lyric-scale))',
+} as const
+
+const LyricLine = ({ html, primary }: { html: string; primary: boolean }) => {
   const segments = useMemo(() => parseRubyHtml(html), [html])
   const latin = !primary || isLatinOnly(html)
   return (
@@ -133,7 +131,9 @@ const LyricLine = ({
         latin ? 'font_noto_sans_reg' : 'font_noto_sans_jp_black_900',
         !primary && 'lyric-text-line--secondary'
       )}
-      style={{ fontSize: `calc(${size}cqw * var(--lyric-scale))` }}>
+      style={{
+        fontSize: primary ? LYRIC_SIZE.primary : LYRIC_SIZE.secondary,
+      }}>
       <RubyText segments={segments} />
     </p>
   )
@@ -262,23 +262,21 @@ export const StageLyrics = ({
       backdrop={backdrop}
       style={themeVars}>
       {showTranslation && translation && !sameText(translation, text) && (
-        <LyricLine html={translation} size={2.4} primary={false} />
+        <LyricLine html={translation} primary={false} />
       )}
       {showLyrics &&
         (karaokeLine ? (
-          <div
-            className='text-center'
-            style={{ fontSize: 'calc(3.5cqw * var(--lyric-scale))' }}>
+          <div className='text-center' style={{ fontSize: LYRIC_SIZE.primary }}>
             <KaraokeLine key={index} ref={karaokeRef} line={karaokeLine} />
           </div>
         ) : (
-          <LyricLine html={text} size={3.5} primary />
+          <LyricLine html={text} primary />
         ))}
       {showRomaji &&
         (karaokeLine ? (
           <div
             className='text-center'
-            style={{ fontSize: 'calc(2.4cqw * var(--lyric-scale))' }}>
+            style={{ fontSize: LYRIC_SIZE.secondary }}>
             <KaraokeRomajiLine
               key={index}
               ref={karaokeRomajiRef}
@@ -287,9 +285,7 @@ export const StageLyrics = ({
           </div>
         ) : (
           romaji &&
-          !sameText(romaji, text) && (
-            <LyricLine html={romaji} size={2.4} primary={false} />
-          )
+          !sameText(romaji, text) && <LyricLine html={romaji} primary={false} />
         ))}
     </DraggableLyrics>
   )

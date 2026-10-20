@@ -97,7 +97,7 @@ const PlayerPage = () => {
 
   if (error !== null && error !== '') {
     return (
-      <div className='flex h-screen flex-col items-center justify-center gap-4'>
+      <div className='flex h-dvh w-full flex-col items-center justify-center gap-4 px-4 text-center'>
         <p className='text-red-500'>{error}</p>
         <p className='text-sm text-gray-600'>Video ID: {videoId}</p>
         <button
@@ -111,7 +111,7 @@ const PlayerPage = () => {
 
   if (isLoading || stageVideoId === null) {
     return (
-      <div className='flex h-screen items-center justify-center'>
+      <div className='flex h-dvh w-full items-center justify-center'>
         Loading...
       </div>
     )

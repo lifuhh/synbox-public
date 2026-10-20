@@ -13,7 +13,7 @@ const Slider = React.forwardRef<
     ref={ref}
     className={cn(
       'relative flex touch-none select-none',
-      "data-[orientation='horizontal']:h-2 data-[orientation='horizontal']:w-full data-[orientation='horizontal']:items-center",
+      "data-[orientation='horizontal']:h-2 data-[orientation='horizontal']:w-full data-[orientation='horizontal']:items-center touch:data-[orientation='horizontal']:h-8",
       "data-[orientation='vertical']:h-full data-[orientation='vertical']:w-2 data-[orientation='vertical']:justify-center",
       className
     )}
@@ -32,7 +32,7 @@ const Slider = React.forwardRef<
         )}
       />
     </SliderPrimitive.Track>
-    <SliderPrimitive.Thumb className='block h-5 w-5 rounded-full border-2 border-foreground bg-primary ring-offset-accent-foreground transition-colors focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:outline-hidden disabled:pointer-events-none disabled:opacity-50' />
+    <SliderPrimitive.Thumb className='block h-5 w-5 rounded-full border-2 border-foreground bg-primary ring-offset-accent-foreground transition-colors focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:outline-hidden disabled:pointer-events-none disabled:opacity-50 touch:h-6 touch:w-6' />
   </SliderPrimitive.Root>
 ))
 Slider.displayName = SliderPrimitive.Root.displayName

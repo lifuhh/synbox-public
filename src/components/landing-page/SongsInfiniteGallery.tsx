@@ -25,7 +25,7 @@ const SongsInfiniteGallery: React.FC = () => {
         className='-top-80 left-40 scale-x-[-1] md:top-20 md:-left-40'
         fill='#580a24'
       />
-      <div className='mx-auto h-[calc(100vh-200px)] w-full max-w-full gap-2 px-8'>
+      <div className='mx-auto h-[calc(100dvh-var(--topbar-h)-1rem)] w-full max-w-full gap-2 px-2 sm:px-8 md:h-[calc(100dvh-200px)]'>
         {isInfiniteGallerySongDataFetching && (
           <VirtualInfiniteScrollGallerySkeleton />
         )}

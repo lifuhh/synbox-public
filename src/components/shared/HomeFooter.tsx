@@ -5,9 +5,9 @@ import { handleRedirect } from '@/utils'
 type IconProps = React.HTMLAttributes<SVGElement>
 
 const HomeFooter = () => (
-  <div className='bottom-0 left-0 z-50 flex-between h-14 w-full flex-col pt-2'>
-    <div className='flex-around pb-2'>
-      <div className='flex'>
+  <div className='bottom-0 left-0 z-50 flex-between min-h-14 w-full flex-col pt-2 pb-(--safe-bottom)'>
+    <div className='flex flex-wrap items-center justify-center gap-x-1 gap-y-2 pb-2 sm:flex-around sm:flex-nowrap'>
+      <div className='flex w-full justify-center sm:w-auto'>
         <h1 className='unselectable font-semibold text-pretty whitespace-nowrap'>
           Built With
         </h1>
@@ -52,7 +52,7 @@ const HomeFooter = () => (
       <Separator
         decorative={false}
         orientation='vertical'
-        className='mx-4 my-2 h-auto w-0.5 self-stretch bg-foreground'
+        className='hidden mx-4 my-2 h-auto w-0.5 self-stretch bg-foreground sm:block'
       />
       <div className='flex'></div>
       <Dock className='mt-0 border-none'>

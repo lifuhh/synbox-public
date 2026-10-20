@@ -41,6 +41,8 @@ const HeroGenerateLyricsDefault = ({
   const [inputValue, setInputValue] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
   const [validationSuccess, setValidationSuccess] = useState(false)
+  // A tooltip only opens on hover or keyboard focus, so a tap toggles it too
+  const [infoOpen, setInfoOpen] = useState(false)
   const navigate = useNavigate()
   const isSearch =
     inputValue.trim().length > 0 && !looksLikeYoutubeLink(inputValue)
@@ -128,7 +130,7 @@ const HeroGenerateLyricsDefault = ({
                 handleOpenLandingPageDialog()
               }
             }}
-            placeholder='Paste a YouTube URL or search for a song'
+            placeholder='Search or paste a YouTube URL'
             className={`border-2 bg-input/40 py-6 text-white invisible-ring ${
               inputValue.length > 0
                 ? validationSuccess
@@ -194,14 +196,21 @@ const HeroGenerateLyricsDefault = ({
             translations
           </p>
           <TooltipProvider delayDuration={0}>
-            <Tooltip>
+            <Tooltip open={infoOpen} onOpenChange={setInfoOpen}>
               <TooltipTrigger asChild>
-                <button className='rounded-full'>
+                <button
+                  type='button'
+                  aria-label='About Accuracy'
+                  onClick={() => {
+                    setInfoOpen((open) => !open)
+                  }}
+                  className='-m-2 rounded-full p-2'>
                   <Info className='h-4 w-4 text-neutral-300' />
                 </button>
               </TooltipTrigger>
               <TooltipContent
-                className=''
+                className='max-w-[calc(100vw-2rem)]'
+                collisionPadding={16}
                 side='bottom'
                 sideOffset={10}
                 align='end'>

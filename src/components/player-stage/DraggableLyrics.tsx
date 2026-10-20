@@ -2,7 +2,12 @@ import { useAtom, useSetAtom } from 'jotai'
 import type { CSSProperties, ReactNode } from 'react'
 import { useRef, useState } from 'react'
 
-import { lyricsAnchorAtom, lyricsStylePanelAtom } from '@/context/atoms'
+import {
+  lyricsAnchorAtom,
+  lyricsAnchorPortraitAtom,
+  lyricsStylePanelAtom,
+} from '@/context/atoms'
+import { usePortrait } from '@/hooks/useMediaQuery'
 import { cn } from '@/utils/cn'
 
 import type { StageLayout } from './PlayerStage'
@@ -41,7 +46,9 @@ export const DraggableLyrics = ({
   backdrop,
   style,
 }: DraggableLyricsProps) => {
-  const [anchor, setAnchor] = useAtom(lyricsAnchorAtom)
+  const [anchor, setAnchor] = useAtom(
+    usePortrait() ? lyricsAnchorPortraitAtom : lyricsAnchorAtom
+  )
   const blockRef = useRef<HTMLDivElement>(null)
   const dragRef = useRef<DragStart | null>(null)
   const [dragging, setDragging] = useState(false)
@@ -102,7 +109,7 @@ export const DraggableLyrics = ({
       <div style={{ flexGrow: anchor }} />
       <div
         ref={blockRef}
-        className='player-lyrics-overlay relative isolate shrink-0 py-[1cqh] select-none'
+        className='player-lyrics-overlay relative isolate shrink-0 px-3 py-[1cqh] select-none'
         style={
           {
             '--lyric-scale': scale,

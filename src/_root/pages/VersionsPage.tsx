@@ -324,11 +324,11 @@ const VersionsPage = () => {
   }
 
   return (
-    <div className='mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 pt-20 pb-16'>
+    <div className='mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 pt-[calc(var(--topbar-h)+1.5rem)] pb-[calc(4rem+var(--safe-bottom))]'>
       <title>Lyrics Versions · Synbox</title>
       <Link
         to={`/v/${videoId}`}
-        className='flex w-fit items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground'>
+        className='-my-2.5 flex w-fit items-center gap-1.5 py-2.5 text-sm text-muted-foreground transition-colors hover:text-foreground'>
         <ArrowLeftIcon className='size-4' />
         Back to Song
       </Link>

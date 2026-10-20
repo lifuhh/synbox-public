@@ -8,7 +8,7 @@ import {
 import { Separator } from '@/components/ui/separator'
 
 const AboutPage = () => (
-  <section className='relative mt-14 flex-between flex custom-scrollbar max-h-screen flex-1 flex-col overflow-y-scroll px-4 pb-4 md:px-10'>
+  <section className='relative mt-(--topbar-h) flex-between flex custom-scrollbar max-h-[calc(100dvh-var(--topbar-h))] flex-1 flex-col overflow-y-scroll px-4 pb-[calc(1rem+var(--safe-bottom))] md:px-10'>
     <title>About | Synbox</title>
 
     <div className='mx-auto w-full max-w-6xl'>
