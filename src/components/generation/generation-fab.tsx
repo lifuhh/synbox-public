@@ -60,18 +60,68 @@ const GenerationFab = ({ job, count, view, raised }: GenerationFabProps) => {
   const percent = Math.floor(view.overall * 100)
   const step = view.views[view.index]
   const queueLabel = queueLabelOf(job)
-  const [title, detail] =
-    state === 'running'
-      ? [
-          STEPS[view.index].title,
-          queueLabel ??
-            `${percent}% · ${
-              step.state === 'done' ? 'Done' : (step.detail ?? 'Starting')
-            }`,
-        ]
-      : state === 'done'
-        ? [outcomeOf(job)?.title ?? LABELS.done[0], LABELS.done[1]]
-        : LABELS[state]
+  const labels = (): [string, string] => {
+    if (state === 'running') {
+      return [
+        STEPS[view.index].title,
+        queueLabel ??
+          `${percent}% · ${
+            step.state === 'done' ? 'Done' : (step.detail ?? 'Starting')
+          }`,
+      ]
+    }
+    if (state === 'done') {
+      return [outcomeOf(job)?.title ?? LABELS.done[0], LABELS.done[1]]
+    }
+    return LABELS[state]
+  }
+  const [title, detail] = labels()
+  const badge = () => {
+    if (state === 'done') {
+      return (
+        <motion.span
+          key='done'
+          className='col-start-1 row-start-1 grid place-items-center text-white'
+          initial={{ opacity: 0, scale: 0.3 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ damping: 12, stiffness: 300, type: 'spring' }}>
+          {/* Lucide's check sits half a pixel high in its box */}
+          <Check
+            className='size-5 translate-y-[0.5px]'
+            strokeWidth={3}
+            aria-hidden
+          />
+        </motion.span>
+      )
+    }
+    if (state === 'failed') {
+      return (
+        <motion.span
+          key='failed'
+          className={cn(
+            'col-start-1 row-start-1 text-lg font-bold text-red-300',
+            CAP_CENTERED
+          )}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}>
+          !
+        </motion.span>
+      )
+    }
+    return (
+      <motion.span
+        key='percent'
+        exit={{ opacity: 0, scale: 0.6 }}
+        className={cn(
+          'col-start-1 row-start-1 font-semibold text-white tabular-nums',
+          CAP_CENTERED,
+          // Measured: at 15 px the digits land half a pixel above the ring's center
+          percent === 100 ? 'text-[13px]' : 'translate-y-[0.5px] text-[15px]'
+        )}>
+        {percent}
+      </motion.span>
+    )
+  }
   const ref = useRef<HTMLButtonElement>(null)
   useEffect(() => {
     ref.current?.focus({ preventScroll: true })
@@ -145,46 +195,7 @@ const GenerationFab = ({ job, count, view, raised }: GenerationFabProps) => {
           </span>
         )}
         <AnimatePresence mode='popLayout' initial={false}>
-          {state === 'done' ? (
-            <motion.span
-              key='done'
-              className='col-start-1 row-start-1 grid place-items-center text-white'
-              initial={{ opacity: 0, scale: 0.3 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ damping: 12, stiffness: 300, type: 'spring' }}>
-              {/* Lucide's check sits half a pixel high in its box */}
-              <Check
-                className='size-5 translate-y-[0.5px]'
-                strokeWidth={3}
-                aria-hidden
-              />
-            </motion.span>
-          ) : state === 'failed' ? (
-            <motion.span
-              key='failed'
-              className={cn(
-                'col-start-1 row-start-1 text-lg font-bold text-red-300',
-                CAP_CENTERED
-              )}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}>
-              !
-            </motion.span>
-          ) : (
-            <motion.span
-              key='percent'
-              exit={{ opacity: 0, scale: 0.6 }}
-              className={cn(
-                'col-start-1 row-start-1 font-semibold text-white tabular-nums',
-                CAP_CENTERED,
-                // Measured: at 15 px the digits land half a pixel above the ring's center
-                percent === 100
-                  ? 'text-[13px]'
-                  : 'translate-y-[0.5px] text-[15px]'
-              )}>
-              {percent}
-            </motion.span>
-          )}
+          {badge()}
         </AnimatePresence>
       </span>
       <span

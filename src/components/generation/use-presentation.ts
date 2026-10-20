@@ -43,9 +43,6 @@ export const usePresentation = (job: Job | null) => {
   const ticking = job !== null && job.status.kind !== 'failed' && !revealed
 
   useEffect(() => {
-    if (!ticking) {
-      return undefined
-    }
     const step = () => {
       setTick((prev) => {
         const { current } = jobRef
@@ -68,11 +65,14 @@ export const usePresentation = (job: Job | null) => {
         }
       })
     }
-    step()
-    const timer = setInterval(step, TICK_MS)
-    return () => {
-      clearInterval(timer)
+    const start = () => {
+      step()
+      const timer = setInterval(step, TICK_MS)
+      return () => {
+        clearInterval(timer)
+      }
     }
+    return ticking ? start() : undefined
   }, [ticking, job?.id])
 
   if (!job) {
@@ -83,11 +83,8 @@ export const usePresentation = (job: Job | null) => {
   const failed = job.status.kind === 'failed'
   const lastIndex = views.length - 1
   const brokenIndex = views.findIndex((view) => view.state !== 'done')
-  const index = failed
-    ? brokenIndex === -1
-      ? lastIndex
-      : brokenIndex
-    : cursor.index
+  const failedIndex = brokenIndex === -1 ? lastIndex : brokenIndex
+  const index = failed ? failedIndex : cursor.index
   // 100 % shows once the wheel has reached the last step of a finished job
   const complete = job.status.kind === 'complete' && cursor.index === lastIndex
   return {

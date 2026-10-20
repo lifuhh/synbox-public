@@ -40,18 +40,18 @@ const timeLeft = (seconds: number) => {
   return `About ${minutes} min left`
 }
 
+const generatingLabel = (job: Job, running: boolean) => {
+  if (!running) {
+    return ''
+  }
+  return job.mode === 'regenerate' ? 'Regenerating Lyrics' : 'Generating Lyrics'
+}
+
 const SongHeader = ({ job, onClose }: { job: Job; onClose: () => void }) => {
   const running = isActive(job)
   const title = titleOf(job)
   const channel = job.video?.channel ?? ''
-  const subtitle =
-    channel === ''
-      ? running
-        ? job.mode === 'regenerate'
-          ? 'Regenerating Lyrics'
-          : 'Generating Lyrics'
-        : ''
-      : channel
+  const subtitle = channel === '' ? generatingLabel(job, running) : channel
   return (
     <div className='flex items-center gap-3'>
       <span className='h-10 w-[71px] shrink-0 overflow-hidden rounded-md bg-linear-to-br from-primary to-[#f785b3] ring-1 ring-white/10'>
@@ -216,6 +216,10 @@ const SongQueue = ({
   </div>
 )
 
+const minimize = () => {
+  setGenerationExpanded(false)
+}
+
 interface GenerationPanelProps {
   job: Job
   jobs: readonly Job[]
@@ -228,11 +232,14 @@ const GenerationPanel = ({ job, jobs, view, raised }: GenerationPanelProps) => {
   const active = isActive(job)
   const percent = Math.floor(view.overall * 100)
   const queueLabel = queueLabelOf(job)
-  const minimize = () => {
-    setGenerationExpanded(false)
-  }
   const dismiss = () => {
     dismissGeneration(job.id)
+  }
+  const progressNote = () => {
+    if (status.kind === 'failed') {
+      return 'Stopped'
+    }
+    return view.complete ? 'Done' : (queueLabel ?? timeLeft(view.remainingS))
   }
   let hint = 'Keep browsing. This carries on in the corner.'
   if (status.kind === 'complete') {
@@ -286,11 +293,7 @@ const GenerationPanel = ({ job, jobs, view, raised }: GenerationPanelProps) => {
                   <span className='ml-0.5 text-xl text-white/50'>%</span>
                 </span>
                 <span className='pb-1 text-xs text-white/55'>
-                  {status.kind === 'failed'
-                    ? 'Stopped'
-                    : view.complete
-                      ? 'Done'
-                      : (queueLabel ?? timeLeft(view.remainingS))}
+                  {progressNote()}
                 </span>
               </div>
               <StepWheel

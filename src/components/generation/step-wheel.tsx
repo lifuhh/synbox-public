@@ -137,6 +137,26 @@ interface StepWheelProps {
   failed: boolean
 }
 
+const rowTransition = (reduced: boolean, dragging: boolean) => {
+  if (reduced) {
+    return { duration: 0 }
+  }
+  return dragging ? HELD : SPRING
+}
+
+const rowDetail = (view: StepView, stopped: boolean) => {
+  if (stopped) {
+    return 'Stopped here'
+  }
+  if (view.state === 'done') {
+    return 'Done'
+  }
+  if (view.state === 'pending') {
+    return 'Waiting'
+  }
+  return view.detail ?? 'Starting…'
+}
+
 // The job's steps on a drum: the current one in the band at the center, finished ones rolled up out of the
 // way, the rest waiting below. Rows are rigid, so a roll only moves them: nothing in a row fades or swaps
 // as it is centered, which would empty the band halfway through every roll.
@@ -156,11 +176,8 @@ const StepWheel = ({ views, index, failed }: StepWheelProps) => {
         const view = views[i]
         const offset = i - index
         const centered = offset === 0
-        const shownFraction = centered
-          ? view.fraction
-          : view.state === 'done'
-            ? 1
-            : 0
+        const restingFraction = view.state === 'done' ? 1 : 0
+        const shownFraction = centered ? view.fraction : restingFraction
         const percent = Math.floor(shownFraction * 100)
         return (
           <motion.div
@@ -169,20 +186,14 @@ const StepWheel = ({ views, index, failed }: StepWheelProps) => {
             style={{ height: ROW_H, marginTop: -ROW_H / 2 }}
             initial={false}
             animate={place(i - focus, reduced)}
-            transition={reduced ? { duration: 0 } : dragging ? HELD : SPRING}>
+            transition={rowTransition(reduced, dragging)}>
             <Glyph view={view} failed={centered && failed} />
             <div className='min-w-0 flex-1'>
               <p className='truncate text-[15px] leading-5 font-semibold tracking-tight text-white'>
                 {step.title}
               </p>
               <p className='truncate text-xs leading-4 text-white/55'>
-                {centered && failed
-                  ? 'Stopped here'
-                  : view.state === 'done'
-                    ? 'Done'
-                    : view.state === 'pending'
-                      ? 'Waiting'
-                      : (view.detail ?? 'Starting…')}
+                {rowDetail(view, centered && failed)}
               </p>
             </div>
             <div className='flex w-24 flex-col items-end gap-1.5'>
