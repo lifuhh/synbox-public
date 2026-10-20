@@ -104,7 +104,7 @@ const onProgress = (id: number) => (event: ProgressEvent) => {
 }
 
 // Retries wait for the page to be on screen: a suspended page cannot reach the backend
-const untilVisible = async (signal: AbortSignal) =>
+const untilVisible = async (signal: AbortSignal) => {
   await new Promise<void>((resolve) => {
     if (document.visibilityState === 'visible' || signal.aborted) {
       resolve()
@@ -120,8 +120,9 @@ const untilVisible = async (signal: AbortSignal) =>
     document.addEventListener('visibilitychange', settle)
     signal.addEventListener('abort', settle)
   })
+}
 
-const sleep = async (ms: number, signal: AbortSignal) =>
+const sleep = async (ms: number, signal: AbortSignal) => {
   await new Promise<void>((resolve) => {
     const timer = setTimeout(resolve, ms)
     signal.addEventListener('abort', () => {
@@ -129,6 +130,7 @@ const sleep = async (ms: number, signal: AbortSignal) =>
       resolve()
     })
   })
+}
 
 // Runs one phase; a dropped connection asks again, which attaches to the backend's running job
 const runPhase = async <T>(
