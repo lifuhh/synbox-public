@@ -1,15 +1,12 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap')
-layer(base);
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100;200;300;400;500;600;700;800;900&display=swap')
-layer(base);
-@import url('https://fonts.googleapis.com/css2?family=Mochiy+Pop+One&display=swap')
-layer(base);
-
 @import 'tailwindcss';
 
 @import 'tw-animate-css';
 
 @custom-variant dark (&:is(.dark *));
+/* Finger-driven screens: bigger hit areas, no hover-only affordances */
+@custom-variant touch (@media (pointer: coarse));
+/* A phone on its side: too short for the player's vertical rail */
+@custom-variant short (@media (orientation: landscape) and (max-height: 500px));
 
 @utility container {
   margin-inline: auto;
@@ -240,10 +237,10 @@ layer(base);
 }
 
 @utility font_noto_sans_reg {
-  font-family: 'Noto Sans', sans-serif !important;
+  font-family: 'Noto Sans', 'Noto Sans JP', sans-serif !important;
 
   &.lyric-text-line {
-    font-family: 'Noto Sans', sans-serif !important;
+    font-family: 'Noto Sans', 'Noto Sans JP', sans-serif !important;
     font-weight: 900 !important;
   }
 }
@@ -325,7 +322,7 @@ layer(base);
   }
 
   &.font_noto_sans_reg {
-    font-family: 'Noto Sans', sans-serif !important;
+    font-family: 'Noto Sans', 'Noto Sans JP', sans-serif !important;
     font-weight: 900 !important;
   }
 
@@ -353,6 +350,9 @@ layer(base);
 @utility lyric-ruby {
   ruby-align: center;
   letter-spacing: var(--kanji-spacing, 0);
+  /* The reading sits on top of this box's line height, not the glyphs: a tight one keeps it close to
+     the kanji, while the line's own height still spaces wrapped lines apart */
+  line-height: 1;
 }
 
 @utility lyric-ruby-text {
@@ -374,9 +374,18 @@ layer(base);
    on the line instead. */
 @utility lyric-karaoke-ja {
   --kanji-spacing: 0.2em;
+
+  /* A phone fits far fewer characters a line; wide spacing would wrap most lines twice */
+  @media (width < 40rem) {
+    --kanji-spacing: 0.08em;
+  }
 }
 
 @utility lyric-karaoke-line {
+  /* iOS Safari clips a filter on an inline box to its glyphs, cutting off the furigana above them; as
+     a block the box spans the whole line height, readings included, and a wrapped line balances */
+  display: block;
+  text-wrap: balance;
   text-shadow: none;
   filter: drop-shadow(0 0 1px rgb(0 0 0 / 0.95))
     drop-shadow(0 1px 3px rgb(0 0 0 / 0.7))
@@ -390,19 +399,19 @@ layer(base);
     var(--lyric-fill, #f5f5f5) var(--karaoke-stop),
     var(--lyric-secondary, #d4d4d4) var(--karaoke-stop)
   );
+  text-shadow: none;
+
+  & .lyric-ruby-text {
+    text-shadow: none;
+  }
+}
+
+/* Each fill span paints the gradient its part resolved, across its own width */
+@utility lyric-karaoke-fill {
   background-image: var(--karaoke-gradient);
   background-clip: text;
   -webkit-background-clip: text;
   color: transparent;
-  text-shadow: none;
-
-  & .lyric-ruby-text {
-    background-image: var(--karaoke-gradient);
-    background-clip: text;
-    -webkit-background-clip: text;
-    color: transparent;
-    text-shadow: none;
-  }
 }
 
 @utility lyric-text-line--secondary {
@@ -548,12 +557,50 @@ layer(base);
     @apply m-0 box-border list-none scroll-smooth p-0 antialiased;
   }
 
+  :root {
+    /* The fixed top bar, plus the status bar it sits under in a standalone app */
+    --topbar-h: calc(3.5rem + env(safe-area-inset-top, 0px));
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-left: env(safe-area-inset-left, 0px);
+    --safe-right: env(safe-area-inset-right, 0px);
+    /* In portrait the player's video is full width, centred on the screen */
+    --stage-video-top: calc(50dvh - 100vw * 9 / 32);
+  }
+
+  /* The version preview banner and the player's Tap to Unmute both hang under the top bar */
+  :root:has([data-preview-banner]) {
+    --preview-banner-h: 3rem;
+  }
+
+  /* The iPhone stand-in for fullscreen: the player without the app's top bar */
+  html[data-immersive] [data-topbar] {
+    display: none;
+  }
+
+  /* The player is black edge to edge, including any strip a mobile browser's toolbar leaves */
+  html:has([data-player-stage]),
+  html:has([data-player-stage]) body {
+    background-color: #000;
+  }
+
   html {
     scroll-behavior: smooth;
   }
 
+  html,
   body {
-    @apply custom-scrollbar min-h-screen font-inter text-foreground;
+    overflow-x: hidden;
+    width: 100%;
+    position: relative;
+  }
+
+  /* Pinch zoom stays; double-tap zoom goes, so double-tapping the stage only toggles fullscreen */
+  * {
+    touch-action: manipulation;
+  }
+
+  body {
+    @apply custom-scrollbar min-h-dvh font-inter text-foreground;
 
     background-size: cover;
     background-position: center;

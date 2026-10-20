@@ -50,10 +50,12 @@ export const KaraokeLine = ({ line, className, ref }: KaraokeLineProps) => {
     <p
       lang={isLatinLine ? undefined : 'ja'}
       className={cn(
-        'lyric-text-line align-middle leading-normal text-balance',
+        'lyric-text-line align-middle text-balance',
+        // Japanese lines leave room above for furigana, so a wrapped line's
+        // readings never run into the line before it
         isLatinLine
-          ? 'font_noto_sans_reg'
-          : 'font_noto_sans_jp_black_900 lyric-karaoke-ja',
+          ? 'font_noto_sans_reg leading-normal'
+          : 'font_noto_sans_jp_black_900 leading-loose lyric-karaoke-ja',
         className
       )}>
       <span className='lyric-karaoke-line'>
@@ -71,13 +73,18 @@ export const KaraokeLine = ({ line, className, ref }: KaraokeLineProps) => {
                     partElements.current[own] = element
                   }}
                   className='lyric-karaoke-part'>
+                  {/* The fill sits on plain spans: iOS Safari does not paint a
+                      text-clipped background on an <rt>, which left the furigana
+                      showing only where it overlapped its parent's box */}
                   {part.rt ? (
                     <ruby className='lyric-ruby'>
-                      {part.base}
-                      <rt className='lyric-ruby-text'>{part.rt}</rt>
+                      <span className='lyric-karaoke-fill'>{part.base}</span>
+                      <rt className='lyric-ruby-text'>
+                        <span className='lyric-karaoke-fill'>{part.rt}</span>
+                      </rt>
                     </ruby>
                   ) : (
-                    part.base
+                    <span className='lyric-karaoke-fill'>{part.base}</span>
                   )}
                 </span>
               )

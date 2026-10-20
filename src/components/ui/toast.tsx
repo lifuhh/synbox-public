@@ -17,7 +17,7 @@ const ToastViewport = React.forwardRef<
   <ToastPrimitives.Viewport
     ref={ref}
     className={cn(
-      'fixed top-18 right-4 z-100 flex max-h-screen w-[calc(100%-2rem)] flex-col gap-2 sm:w-auto sm:max-w-sm',
+      'fixed top-[calc(var(--topbar-h)+0.5rem+var(--notices-h,0px))] right-[max(1rem,var(--safe-right))] z-100 flex max-h-dvh w-[calc(100%-2rem)] flex-col gap-2 sm:w-auto sm:max-w-sm',
       className
     )}
     {...props}
@@ -26,7 +26,7 @@ const ToastViewport = React.forwardRef<
 ToastViewport.displayName = ToastPrimitives.Viewport.displayName
 
 const toastVariants = cva(
-  'group pointer-events-auto relative flex w-full items-center justify-between gap-3 overflow-hidden rounded-lg border border-white/10 py-2.5 pr-9 pl-3.5 shadow-md backdrop-blur-md transition-all data-[state=closed]:animate-out data-[state=closed]:fade-out-80 data-[state=closed]:slide-out-to-right-full data-[state=open]:animate-in data-[state=open]:fade-in data-[state=open]:slide-in-from-right-4 data-[swipe=cancel]:translate-x-0 data-[swipe=end]:translate-x-(--radix-toast-swipe-end-x) data-[swipe=end]:animate-out data-[swipe=move]:translate-x-(--radix-toast-swipe-move-x) data-[swipe=move]:transition-none',
+  'group pointer-events-auto relative flex w-full items-center justify-between gap-3 overflow-hidden rounded-lg border border-white/10 py-2.5 pr-9 pl-3.5 shadow-md backdrop-blur-md transition-all data-[state=closed]:animate-out data-[state=closed]:fade-out-80 data-[state=closed]:slide-out-to-right-full data-[state=open]:animate-in data-[state=open]:fade-in data-[state=open]:slide-in-from-right-4 data-[swipe=cancel]:translate-x-0 data-[swipe=end]:translate-x-(--radix-toast-swipe-end-x) data-[swipe=end]:animate-out data-[swipe=move]:translate-x-(--radix-toast-swipe-move-x) data-[swipe=move]:transition-none touch:pr-11',
   {
     variants: {
       variant: {
@@ -61,7 +61,7 @@ const ToastAction = React.forwardRef<
   <ToastPrimitives.Action
     ref={ref}
     className={cn(
-      'inline-flex h-8 shrink-0 items-center justify-center rounded-md border bg-transparent px-3 text-sm font-medium ring-offset-background transition-colors group-[.destructive]:border-muted/90 hover:bg-primary-light hover:text-card-foreground hover:group-[.destructive]:border-destructive/90 hover:group-[.destructive]:bg-destructive hover:group-[.destructive]:text-destructive-foreground focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:outline-hidden focus:group-[.destructive]:ring-destructive disabled:pointer-events-none disabled:opacity-50',
+      'inline-flex h-8 shrink-0 items-center justify-center rounded-md border bg-transparent px-3 text-sm font-medium ring-offset-background transition-colors group-[.destructive]:border-muted/90 hover:bg-primary-light hover:text-card-foreground hover:group-[.destructive]:border-destructive/90 hover:group-[.destructive]:bg-destructive hover:group-[.destructive]:text-destructive-foreground focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:outline-hidden focus:group-[.destructive]:ring-destructive disabled:pointer-events-none disabled:opacity-50 touch:h-10',
       className
     )}
     {...props}
@@ -76,7 +76,7 @@ const ToastClose = React.forwardRef<
   <ToastPrimitives.Close
     ref={ref}
     className={cn(
-      'absolute top-1/2 right-2 -translate-y-1/2 rounded-md p-1 text-white/60 opacity-0 transition-opacity group-hover:opacity-100 group-[.destructive]:text-red-300 hover:text-primary/80 hover:group-[.destructive]:text-red-50 focus:opacity-100 focus:ring-2 focus:outline-hidden focus:group-[.destructive]:ring-red-400 focus:group-[.destructive]:ring-offset-red-600',
+      'absolute top-1/2 right-2 -translate-y-1/2 rounded-md p-1 text-white/60 opacity-0 transition-opacity group-hover:opacity-100 group-[.destructive]:text-red-300 hover:text-primary/80 hover:group-[.destructive]:text-red-50 focus:opacity-100 focus:ring-2 focus:outline-hidden focus:group-[.destructive]:ring-red-400 focus:group-[.destructive]:ring-offset-red-600 touch:right-0 touch:p-2.5 touch:opacity-100',
       className
     )}
     toast-close=''

@@ -8,6 +8,7 @@ import type { KaraokeDocLine, KaraokeToken } from '@/types'
 
 import type { KaraokeLineHandle } from './KaraokeLine'
 import { KaraokeLine } from './KaraokeLine'
+import { KaraokeRomajiLine } from './KaraokeRomajiLine'
 
 Reflect.set(globalThis, 'IS_REACT_ACT_ENVIRONMENT', true)
 
@@ -131,5 +132,32 @@ describe('KaraokeLine', () => {
     expect(fills()[5]).toBeCloseTo(0.5)
 
     expect(renders.count).toBe(rendersAfterMount)
+  })
+})
+
+// The fill gradient is painted by .lyric-karaoke-fill spans, not by the part that carries --p (iOS
+// Safari cannot paint a text-clipped background on <rt>). A line whose text sits outside a fill span
+// draws no karaoke at all, which the romaji line once shipped
+describe('karaoke fill spans', () => {
+  test('every character of both lines is inside a fill span', () => {
+    const container = document.createElement('div')
+    document.body.append(container)
+    act(() => {
+      createRoot(container).render(
+        <>
+          <KaraokeLine line={line} />
+          <KaraokeRomajiLine line={line} />
+        </>
+      )
+    })
+    for (const part of container.querySelectorAll('.lyric-karaoke-part')) {
+      const filled = [...part.querySelectorAll('.lyric-karaoke-fill')]
+        .map((fill) => fill.textContent)
+        .join('')
+      expect(filled).toBe(part.textContent)
+    }
+    expect(
+      container.querySelectorAll('p:last-child .lyric-karaoke-part').length
+    ).toBeGreaterThan(0)
   })
 })

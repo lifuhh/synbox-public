@@ -5,6 +5,8 @@ import {
   PauseIcon,
   PlayIcon,
   RepeatIcon,
+  RotateCcwIcon,
+  RotateCwIcon,
   Volume1Icon,
   Volume2Icon,
   VolumeXIcon,
@@ -12,8 +14,10 @@ import {
 import { useEffect, useRef, useState } from 'react'
 
 import { Slider } from '@/components/ui/slider'
+import { useArmed } from '@/hooks/useArmed'
 import { cn } from '@/utils/cn'
 
+import { TAP_SEEK_SEC } from './useStageTaps'
 import type { PlayerVolume, StagePlayer } from './useYouTubePlayer'
 
 const formatTime = (seconds: number) => {
@@ -47,14 +51,35 @@ const VolumeGlyph = ({ level, muted }: { level: number; muted: boolean }) => {
   )
 }
 
+// A circular arrow around the number of seconds it skips
+const SeekGlyph = ({ direction }: { direction: 'back' | 'forward' }) => (
+  <span className='relative grid size-6 place-items-center'>
+    {direction === 'back' ? (
+      <RotateCcwIcon className='absolute size-6' strokeWidth={1.75} />
+    ) : (
+      <RotateCwIcon className='absolute size-6' strokeWidth={1.75} />
+    )}
+    <span className='pt-px text-[0.5625rem] leading-none font-bold'>
+      {TAP_SEEK_SEC}
+    </span>
+  </span>
+)
+
 interface IconButtonProps {
   label: string
   onClick: () => void
   active?: boolean
+  className?: string
   children: React.ReactNode
 }
 
-const IconButton = ({ label, onClick, active, children }: IconButtonProps) => (
+const IconButton = ({
+  label,
+  onClick,
+  active,
+  className,
+  children,
+}: IconButtonProps) => (
   <button
     type='button'
     aria-label={label}
@@ -62,8 +87,9 @@ const IconButton = ({ label, onClick, active, children }: IconButtonProps) => (
     aria-pressed={active}
     onClick={onClick}
     className={cn(
-      'grid size-9 place-items-center rounded-md text-white/85 transition-colors hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none',
-      active === true && 'text-primary hover:text-primary'
+      'grid size-9 shrink-0 place-items-center rounded-md text-white/85 transition-colors hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none touch:size-10',
+      active === true && 'text-primary hover:text-primary',
+      className
     )}>
     {children}
   </button>
@@ -78,6 +104,7 @@ interface StageControlsProps {
   onInteractiveChange: (interactive: boolean) => void
   fullscreen: boolean
   onToggleFullscreen: () => void
+  onSeekBy: (seconds: number) => void
   // Height the controls occupy above the stage bottom, plus a small gap
   onHeightChange: (px: number) => void
   volume: PlayerVolume
@@ -100,10 +127,12 @@ export const StageControls = ({
   onInteractiveChange,
   fullscreen,
   onToggleFullscreen,
+  onSeekBy,
   onHeightChange,
   volume,
   onVolumeChange: setVolume,
 }: StageControlsProps) => {
+  const armed = useArmed(visible)
   const barRef = useRef<HTMLDivElement>(null)
   const contentRef = useRef<HTMLDivElement>(null)
 
@@ -113,14 +142,19 @@ export const StageControls = ({
     if (!(bar && content)) {
       return
     }
-    // The gradient above the controls is see-through, so only the rows count
+    // Published for the generation button, which floats above the controls on the player
+    const root = document.documentElement
     const observer = new ResizeObserver(() => {
-      onHeightChange(bar.clientHeight - content.offsetTop + OBSTRUCTION_GAP_PX)
+      // The gradient above the controls is see-through, so only the rows count
+      const height = bar.clientHeight - content.offsetTop + OBSTRUCTION_GAP_PX
+      onHeightChange(height)
+      root.style.setProperty('--stage-controls-h', `${height}px`)
     })
     observer.observe(bar)
     observer.observe(content)
     return () => {
       observer.disconnect()
+      root.style.removeProperty('--stage-controls-h')
     }
   }, [onHeightChange])
 
@@ -157,8 +191,9 @@ export const StageControls = ({
       ref={barRef}
       style={{ transitionDuration: `${CONTROLS_FADE_MS}ms` }}
       className={cn(
-        'absolute inset-x-0 bottom-0 z-30 bg-linear-to-t from-black/80 via-black/40 to-transparent px-4 pt-10 pb-3 transition-opacity',
-        visible ? 'opacity-100' : 'pointer-events-none opacity-0'
+        'absolute inset-x-0 bottom-0 z-30 bg-linear-to-t from-black/80 via-black/40 to-transparent pt-10 pr-[max(1rem,var(--safe-right))] pb-[max(0.75rem,var(--safe-bottom))] pl-[max(1rem,var(--safe-left))] transition-opacity short:pl-[calc(var(--safe-left)+3.5rem)]',
+        visible ? 'opacity-100' : 'opacity-0',
+        !armed && 'pointer-events-none'
       )}
       onPointerDown={(event) => {
         event.stopPropagation()
@@ -188,17 +223,34 @@ export const StageControls = ({
           }}
           className='mb-2 cursor-pointer'
         />
-        <div className='flex items-center gap-1 text-sm text-white tabular-nums'>
+        <div className='flex items-center gap-1 text-sm text-white tabular-nums touch:gap-0.5'>
+          {/* Touch screens play and pause from the button in the middle of the stage instead */}
           <IconButton
             label={isPlaying ? 'Pause' : 'Play'}
-            onClick={player.togglePlay}>
+            onClick={player.togglePlay}
+            className='touch:hidden'>
             {isPlaying ? (
               <PauseIcon className='size-5' />
             ) : (
               <PlayIcon className='size-5' />
             )}
           </IconButton>
-          {/* The slider only opens while the volume button is hovered or focused */}
+          <IconButton
+            label={`Back ${TAP_SEEK_SEC} Seconds`}
+            onClick={() => {
+              onSeekBy(-TAP_SEEK_SEC)
+            }}>
+            <SeekGlyph direction='back' />
+          </IconButton>
+          <IconButton
+            label={`Forward ${TAP_SEEK_SEC} Seconds`}
+            onClick={() => {
+              onSeekBy(TAP_SEEK_SEC)
+            }}>
+            <SeekGlyph direction='forward' />
+          </IconButton>
+          {/* The slider only opens while the volume button is hovered or focused, so touch screens
+              keep just the mute button and the device's own volume */}
           <div
             className='group/volume flex items-center'
             onWheel={(event) => {
@@ -216,7 +268,7 @@ export const StageControls = ({
               }}>
               <VolumeGlyph level={volume.level} muted={volume.muted} />
             </IconButton>
-            <div className='flex h-9 w-0 items-center overflow-hidden transition-[width] duration-200 ease-out group-focus-within/volume:w-24 group-hover/volume:w-24'>
+            <div className='flex h-9 w-0 items-center overflow-hidden transition-[width] duration-200 ease-out group-focus-within/volume:w-24 group-hover/volume:w-24 touch:hidden'>
               <div className='w-24 shrink-0 px-2.5'>
                 <Slider
                   aria-label='Volume'
@@ -234,10 +286,10 @@ export const StageControls = ({
               </div>
             </div>
           </div>
-          <span className='ml-2 whitespace-nowrap'>
+          <span className='ml-2 min-w-0 truncate whitespace-nowrap touch:ml-1'>
             {formatTime(shown)} / {formatTime(duration)}
           </span>
-          <div className='ml-auto flex items-center gap-1'>
+          <div className='ml-auto flex shrink-0 items-center gap-1 touch:gap-0.5'>
             <IconButton
               label='Loop'
               active={loop}

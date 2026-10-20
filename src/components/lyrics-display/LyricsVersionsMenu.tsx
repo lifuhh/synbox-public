@@ -8,6 +8,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { usePortrait } from '@/hooks/useMediaQuery'
 import { startGeneration } from '@/lib/generation/store'
 import { useGetLyricsVersions } from '@/lib/react-query/queriesAndMutations'
 import { cn } from '@/utils/cn'
@@ -17,6 +18,7 @@ import { RailButton, RailTooltip } from './RailButton'
 // A regeneration is saved as a new version and becomes the default; the versions page rolls back
 export const LyricsVersionsMenu = ({ videoId }: { videoId: string }) => {
   const [menuOpen, setMenuOpen] = useState(false)
+  const portrait = usePortrait()
   const { data } = useGetLyricsVersions(videoId)
   const count = data?.versions.length ?? 0
 
@@ -33,9 +35,10 @@ export const LyricsVersionsMenu = ({ videoId }: { videoId: string }) => {
           </DropdownMenuTrigger>
         </RailTooltip>
         <DropdownMenuContent
-          side='right'
-          align='start'
+          side={portrait ? 'bottom' : 'right'}
+          align={portrait ? 'center' : 'start'}
           sideOffset={8}
+          collisionPadding={8}
           className='border border-primary bg-background text-foreground'>
           <DropdownMenuItem
             onSelect={() => {

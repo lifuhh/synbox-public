@@ -177,7 +177,7 @@ const GenerationFab = ({ job, view, raised }: GenerationFabProps) => {
             <span className='block truncate text-[13px] leading-4 font-semibold text-white'>
               {title}
             </span>
-            <span className='block truncate text-[11px] leading-4 text-white/55'>
+            <span className='block truncate text-xs leading-4 text-white/55'>
               {detail}
             </span>
           </span>

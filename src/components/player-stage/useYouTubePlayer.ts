@@ -89,6 +89,30 @@ export const useYouTubePlayer = ({
   const phaseRef = useRef(phase)
   const stoppedByGuardRef = useRef(false)
 
+  // A phone suspends the page, and the embed with it, once the app leaves the screen: playback cannot
+  // continue there, and an embed that another app's audio interrupted can come back hung. So on a touch
+  // screen the player is torn down when the page hides and rebuilt, cued where it was, when it returns
+  const [suspended, setSuspended] = useState(false)
+  const resumeAtRef = useRef(0)
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (!matchMedia('(pointer: coarse)').matches) {
+        return
+      }
+      if (document.visibilityState === 'hidden') {
+        resumeAtRef.current = playerRef.current?.getCurrentTime() ?? 0
+        setPhase({ kind: 'loading' })
+        setSuspended(true)
+      } else {
+        setSuspended(false)
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibility)
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibility)
+    }
+  }, [])
+
   // Read inside long-lived YouTube callbacks without re-creating the player
   const latest = useRef({ quirks, loop, onEvent })
   useLayoutEffect(() => {
@@ -151,7 +175,7 @@ export const useYouTubePlayer = ({
 
   useEffect(() => {
     const host = hostRef.current
-    if (!host) {
+    if (!host || suspended) {
       return
     }
     let disposed = false
@@ -188,6 +212,7 @@ export const useYouTubePlayer = ({
           hl: 'en',
           enablejsapi: 1,
           origin: window.location.origin,
+          start: Math.floor(resumeAtRef.current),
         },
         events: {
           onReady: () => {
@@ -238,7 +263,7 @@ export const useYouTubePlayer = ({
       playerRef.current = null
       host.replaceChildren()
     }
-  }, [videoId, applyVolume, dropCaptions, log, maskCenter])
+  }, [videoId, suspended, applyVolume, dropCaptions, log, maskCenter])
 
   // Before onReady these only record the value; onReady applies it
   const { level, muted } = volume

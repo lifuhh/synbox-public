@@ -58,7 +58,7 @@ export const KaraokeRomajiLine = ({
                 partElements.current[index] = element
               }}
               className='lyric-karaoke-part'>
-              {part.base}
+              <span className='lyric-karaoke-fill'>{part.base}</span>
             </span>
           </span>
         ))}

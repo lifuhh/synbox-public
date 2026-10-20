@@ -2,25 +2,30 @@
 <html lang="en" class="dark">
   <head>
     <meta charset="UTF-8" />
-    <meta name="color-scheme" content="dark" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100;200;300;400;500;600;700;800;900&display=swap"
-      rel="stylesheet" />
-    <link rel="icon" type="image/svg+xml" href="/AppLogoV2.svg" />
     <meta
       name="viewport"
-      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+      content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="theme-color" content="#1f0a15" />
+    <meta
+      name="description"
+      content="Japanese karaoke for any YouTube video, with AI-transcribed, synced lyrics, furigana, romaji and translations." />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Synbox" />
+    <!-- The app draws under the status bar and pads itself by the safe-area insets -->
+    <meta
+      name="apple-mobile-web-app-status-bar-style"
+      content="black-translucent" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon-180x180.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!-- Noto Sans draws the latin lyric lines; phones do not ship it, so it is loaded like the rest -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans:wght@900&family=Noto+Sans+JP:wght@100..900&display=swap"
+      rel="stylesheet" />
     <title>Synbox</title>
-    <style>
-      html,
-      body {
-        overflow-x: hidden;
-        width: 100%;
-        position: relative;
-      }
-    </style>
   </head>
   <body>
     <div id="root"></div>

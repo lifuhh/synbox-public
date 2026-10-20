@@ -1,3 +1,15 @@
+# A stale service worker would pin every visitor to an old deploy
+[[headers]]
+for = "/sw.js"
+[headers.values]
+Cache-Control = "no-cache"
+
+[[headers]]
+for = "/manifest.webmanifest"
+[headers.values]
+Content-Type = "application/manifest+json"
+Cache-Control = "no-cache"
+
 [[redirects]]
 from = "/*"
 to = "/index.html"

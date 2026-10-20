@@ -40,7 +40,7 @@ const SongGallery = () => {
   const { data: songs, isLoading } = useGetGallerySongs()
 
   return (
-    <section className='relative px-8'>
+    <section className='relative px-4 sm:px-8'>
       <Spotlight
         className='-top-80 left-40 scale-x-[-1] md:top-20 md:-left-40'
         fill='#580a24'

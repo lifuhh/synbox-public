@@ -16,7 +16,10 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 export class GenerationError extends Error {
   constructor(
     message: string,
-    readonly retryable: boolean
+    readonly retryable: boolean,
+    // The page came back from the background: its connection is stale, not failed, so reconnecting is
+    // not a retry
+    readonly resumed = false
   ) {
     super(message)
   }
@@ -73,6 +76,22 @@ const readStream = async (
     }, IDLE_TIMEOUT_MS)
   }
   touch()
+  // A phone suspends a page in the background, and its connection with it. Time there doesn't count
+  // toward the idle limit, and on return the connection is replaced at once: asking again attaches to
+  // the same backend job, which replays its progress
+  const resumed = new AbortController()
+  let wasHidden = document.visibilityState === 'hidden'
+  const handleVisibility = () => {
+    if (document.visibilityState === 'hidden') {
+      wasHidden = true
+      clearTimeout(idleTimer)
+    } else if (wasHidden) {
+      resumed.abort()
+    }
+  }
+  document.addEventListener('visibilitychange', handleVisibility)
+  const stale = () =>
+    new GenerationError('Reconnecting to the lyrics server', true, true)
   try {
     let response: Response
     try {
@@ -83,11 +102,14 @@ const readStream = async (
           'Content-Type': 'application/json',
         },
         method: 'POST',
-        signal: AbortSignal.any([signal, idle.signal]),
+        signal: AbortSignal.any([signal, idle.signal, resumed.signal]),
       })
     } catch (error) {
       if (signal.aborted) {
         throw error
+      }
+      if (resumed.signal.aborted) {
+        throw stale()
       }
       // Also what a busy server looks like: Cloud Run turns away the CORS preflight with a 429 and no
       // CORS headers, which the browser reports as a network error
@@ -149,6 +171,9 @@ const readStream = async (
       if (error instanceof GenerationError || signal.aborted) {
         throw error
       }
+      if (resumed.signal.aborted) {
+        throw stale()
+      }
       throw new GenerationError(
         idle.signal.aborted
           ? 'The lyrics server stopped responding'
@@ -159,6 +184,7 @@ const readStream = async (
     handleLine(buffer)
   } finally {
     clearTimeout(idleTimer)
+    document.removeEventListener('visibilitychange', handleVisibility)
   }
 }
 
@@ -222,9 +248,15 @@ export const validate = async (
 
 // `regenerate` redoes everything but vocal separation; `skipUploaderLyrics` leaves the uploader's subtitles
 // out while YouTube Music, LRCLIB and the audio still count
+// `requestId` names one generation and is sent again on every reconnect: the backend replays a job it
+// already finished for that id instead of running (and paying for) the whole job a second time
 export const transcribe = async (
   videoId: string,
-  options: { regenerate: boolean; skipUploaderLyrics: boolean },
+  options: {
+    regenerate: boolean
+    skipUploaderLyrics: boolean
+    requestId: string
+  },
   signal: AbortSignal,
   onProgress: OnProgress
 ) => {
@@ -235,6 +267,7 @@ export const transcribe = async (
     {
       id: videoId,
       regenerate: options.regenerate,
+      request_id: options.requestId,
       skip_uploader_lyrics: options.skipUploaderLyrics,
     },
     signal,
@@ -281,6 +314,7 @@ const parseSaved = (data: unknown): SaveOutcome => {
 // Translates the saved timing and saves the song (the backend writes the rows, or a new lyrics version)
 export const translate = async (
   videoId: string,
+  requestId: string,
   signal: AbortSignal,
   onProgress: OnProgress
 ): Promise<SaveOutcome> => {
@@ -288,7 +322,7 @@ export const translate = async (
   const progress = forwardProgress(onProgress)
   await readStream(
     '/translate-annotate',
-    { id: videoId },
+    { id: videoId, request_id: requestId },
     signal,
     (message) => {
       progress(message)

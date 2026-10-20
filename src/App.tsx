@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react'
 import { Navigate, Route, Routes } from 'react-router'
 
+import AppNotices from '@/components/shared/AppNotices'
 import { Toaster } from '@/components/ui/toaster'
 import useKeyboardNavigation from '@/hooks/useKeyboardNavigation'
 
@@ -24,7 +25,7 @@ const App = () => {
   useKeyboardNavigation()
 
   return (
-    <main className='flex h-screen bg-background'>
+    <main className='flex h-dvh bg-background'>
       <Routes>
         {StageLabPage && (
           <Route
@@ -45,6 +46,7 @@ const App = () => {
           <Route path='*' element={<Navigate to='/' replace />} />
         </Route>
       </Routes>
+      <AppNotices />
       <Toaster />
     </main>
   )

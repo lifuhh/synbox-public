@@ -27,13 +27,15 @@ export const isKaraokeDoc = (value: unknown): value is KaraokeDoc =>
       )
   )
 
-// null when the song has no karaoke timing yet (404)
+// null when the song (or that saved version) has no karaoke timing (404)
 export const getKaraoke = async (
   id: string,
+  version: number | null,
   signal?: AbortSignal
 ): Promise<KaraokeDoc | null> => {
+  const query = version === null ? '' : `?version=${version}`
   const response = await fetch(
-    `${BE_ADDRESS}/karaoke/${encodeURIComponent(id)}`,
+    `${BE_ADDRESS}/karaoke/${encodeURIComponent(id)}${query}`,
     { headers: { Accept: 'application/json' }, signal }
   )
   if (response.status === 404) {

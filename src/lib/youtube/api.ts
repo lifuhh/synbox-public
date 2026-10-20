@@ -11,7 +11,9 @@ import {
   formatYoutubePlaylistResponse,
 } from '@/utils'
 
-const YoutubeApiKey = import.meta.env.VITE_GOOGLE_API_KEY
+// YouTube Data API reads go through our own /api/youtube proxy, which holds the key
+const LANDING_PLAYLIST = 'PLzJ1mqwxogpFxKR72a6M8br_UkLKFQASf'
+const CHARTS_PLAYLIST = 'PL4fGSI1pDJn4-UIb6RKHdxam-oAUULIGB'
 
 const resolutionOrder = [
   'maxres',
@@ -40,15 +42,7 @@ export async function getLandingPagePlaylist(): Promise<
   formattedYoutubeVideoItemForCarousel[]
 > {
   const response = await axios.get<YoutubePlaylistApiResponse>(
-    `https://www.googleapis.com/youtube/v3/playlistItems`,
-    {
-      params: {
-        key: YoutubeApiKey,
-        part: 'snippet',
-        playlistId: 'PLzJ1mqwxogpFxKR72a6M8br_UkLKFQASf',
-        maxResults: 50,
-      },
-    }
+    `/api/youtube/playlist/${LANDING_PLAYLIST}`
   )
 
   const processedResponse = formatYoutubePlaylistResponse(response.data)
@@ -66,16 +60,8 @@ export async function getChartsPlaylist(): Promise<
   let pageToken: string | undefined
   for (let page = 0; page < CHART_PAGES; page++) {
     const response = await axios.get<YoutubePlaylistApiResponse>(
-      `https://www.googleapis.com/youtube/v3/playlistItems`,
-      {
-        params: {
-          key: YoutubeApiKey,
-          part: 'snippet',
-          playlistId: 'PL4fGSI1pDJn4-UIb6RKHdxam-oAUULIGB',
-          maxResults: 50,
-          pageToken,
-        },
-      }
+      `/api/youtube/playlist/${CHARTS_PLAYLIST}`,
+      { params: { pageToken } }
     )
     songs.push(...formatYoutubeChartsResponse(response.data))
     pageToken = response.data.nextPageToken
@@ -90,14 +76,7 @@ export async function getYoutubeVideoInfo(
   videoId: string
 ): Promise<YoutubeSearchResultInfo> {
   const response = await axios.get<YoutubeSearchApiResponse>(
-    `https://www.googleapis.com/youtube/v3/videos`,
-    {
-      params: {
-        key: YoutubeApiKey,
-        part: 'snippet,statistics,contentDetails',
-        id: videoId,
-      },
-    }
+    `/api/youtube/video/${encodeURIComponent(videoId)}`
   )
 
   const songResults = response.data.items

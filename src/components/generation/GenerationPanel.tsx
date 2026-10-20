@@ -71,7 +71,7 @@ const SongHeader = ({ job, onClose }: { job: Job; onClose: () => void }) => {
       <Button
         variant='ghost'
         size='icon'
-        className='size-8 shrink-0 rounded-full text-white/70 hover:bg-white/10 hover:text-white'
+        className='size-8 shrink-0 rounded-full text-white/70 hover:bg-white/10 hover:text-white touch:size-10'
         aria-label={running ? 'Minimize' : 'Close'}
         onClick={onClose}>
         {running ? <Minus className='size-4' /> : <X className='size-4' />}
@@ -168,7 +168,9 @@ const GenerationPanel = ({ job, view, raised }: GenerationPanelProps) => {
       }}
       className={cn(
         surfacePlacement(raised),
-        'fixed z-50 w-[min(400px,calc(100vw-2rem))] overflow-hidden rounded-[20px] border border-white/10 bg-[#1b0812]/90 shadow-[0_24px_64px_-12px_rgb(0_0_0/0.7)] backdrop-blur-xl'
+        // Centred on a touch screen, like every other panel there
+        'touch:inset-x-0 touch:top-1/2 touch:bottom-auto touch:mx-auto touch:max-h-[calc(100dvh-var(--topbar-h)-2rem)] touch:-translate-y-1/2 touch:[--panel-origin:center]',
+        'fixed z-50 max-h-[calc(100dvh-var(--topbar-h)-var(--stage-controls-h,0px)-2rem)] w-[min(400px,calc(100vw-2rem))] overflow-x-hidden overflow-y-auto rounded-[20px] border border-white/10 bg-[#1b0812]/90 shadow-[0_24px_64px_-12px_rgb(0_0_0/0.7)] backdrop-blur-xl'
       )}>
       <div className='flex flex-col gap-4 p-4'>
         <SongHeader

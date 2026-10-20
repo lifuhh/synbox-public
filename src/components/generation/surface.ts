@@ -5,11 +5,12 @@ import type { Job } from '@/lib/generation/store'
 const ENTER = { duration: 0.22, ease: [0.16, 1, 0.3, 1] } as const
 const EXIT = { duration: 0.14, ease: [0.4, 0, 1, 1] } as const
 
+// On a touch screen the panel is a card in the middle of the screen, so it scales from its centre there
 export const PANEL_MOTION = {
   animate: { opacity: 1, scale: 1, transition: ENTER },
   exit: { opacity: 0, scale: 0.8, transition: EXIT },
   initial: { opacity: 0, scale: 0.8 },
-  style: { transformOrigin: 'bottom right' },
+  style: { transformOrigin: 'var(--panel-origin, bottom right)' },
 } as const
 
 export const FAB_MOTION = {
@@ -20,11 +21,11 @@ export const FAB_MOTION = {
 } as const
 
 // YouTube's thumbnail is known from the id alone, so the song shows from the first frame
-// Bottom-right, except on the player, whose control bar keeps its buttons in the bottom 72 px
+// Bottom-right, clear of the home indicator, and on the player just above its control bar
 export const surfacePlacement = (aboveStageControls: boolean) =>
   aboveStageControls
-    ? 'right-4 bottom-24 sm:right-6'
-    : 'right-4 bottom-4 sm:right-6 sm:bottom-6'
+    ? 'right-[max(1rem,var(--safe-right))] bottom-[calc(var(--stage-controls-h,5rem)+0.5rem)] sm:right-6'
+    : 'right-[max(1rem,var(--safe-right))] bottom-[max(1rem,var(--safe-bottom))] sm:right-6 sm:bottom-6'
 
 export const thumbnailOf = (job: Job) =>
   job.video !== null && job.video.thumbnail !== ''

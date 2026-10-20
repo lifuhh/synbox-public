@@ -217,7 +217,8 @@ const HistoryDropdownButton: React.FC<HistoryDropdownButtonProps> = ({
         <DropdownMenuContent
           align='end'
           sideOffset={10}
-          className='w-[400px] max-w-[400px] border border-primary bg-background p-0'
+          collisionPadding={8}
+          className='max-h-(--radix-dropdown-menu-content-available-height) w-[min(400px,calc(100vw-1rem))] border border-primary bg-background p-0'
           style={{ height: `${calculateDropdownHeight()}px` }}>
           <div className='flex h-full flex-col'>
             <div className='sticky top-0 z-10 m-2 bg-background/95'>

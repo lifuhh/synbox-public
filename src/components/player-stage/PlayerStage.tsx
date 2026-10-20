@@ -4,20 +4,26 @@ import {
   PauseIcon,
   PlayIcon,
   RotateCcwIcon,
+  RotateCwIcon,
   VolumeXIcon,
 } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
+import { useToast } from '@/components/ui/use-toast'
 import { playerChromeOpenAtom, playerVolumeAtom } from '@/context/atoms'
+import { useArmed } from '@/hooks/useArmed'
+import { useMediaQuery } from '@/hooks/useMediaQuery'
+import { isStandalone } from '@/lib/pwa'
 import { cn } from '@/utils/cn'
 
 import { StageControls } from './StageControls'
+import { useStageTaps } from './useStageTaps'
 import type { PlayerVolume, StagePhase, StagePlayer } from './useYouTubePlayer'
 import { useYouTubePlayer } from './useYouTubePlayer'
 import type { YouTubeQuirks } from './youtubeQuirks'
 
-const IDLE_MS = 2500
+const IDLE_MS = 1800
 // How long an unmuted autoplay gets to start before retrying muted
 const AUTOPLAY_CHECK_MS = 1500
 const SEEK_STEP_SEC = 5
@@ -31,15 +37,21 @@ const COVERED_PHASES = new Set<StagePhase['kind']>([
   'ended',
 ])
 
-// Anything marked data-player-chrome holds the floating UI open while the pointer rests on it, a menu from
-// it is open, or keyboard focus is inside it
-const chromeBusy = () =>
-  [...document.querySelectorAll('[data-player-chrome]')].some(
+// Anything marked data-player-chrome holds the floating UI open while a menu from it is open, and with a
+// mouse also while the pointer rests on it or keyboard focus is inside it. A touch screen counts menus
+// only: iOS keeps the last tapped element in :hover, and a dragged slider keeps its thumb focused, so
+// either would hold the UI open for good
+const chromeBusy = () => {
+  const canHover = matchMedia('(hover: hover)').matches
+  return [...document.querySelectorAll('[data-player-chrome]')].some(
     (element) =>
-      element.matches(':hover') ||
       // aria-expanded rather than data-state, which a tooltip on the same trigger overwrites
-      element.querySelector('[aria-expanded=true], :focus-visible') !== null
+      element.querySelector('[aria-expanded=true]') !== null ||
+      (canHover &&
+        (element.matches(':hover') ||
+          element.querySelector(':focus-visible') !== null))
   )
+}
 
 // Idle `ms` after the last pointer or key input anywhere in the window, and not while the UI is busy
 const useIdle = (ms: number) => {
@@ -136,7 +148,6 @@ interface PlayerStageProps {
   renderLyrics?: (player: StagePlayer, layout: StageLayout) => ReactNode
   // Start playing once this turns true (e.g. when the lyrics have loaded)
   autoplay?: boolean
-  onFirstPlay?: () => void
   onEvent?: (message: string) => void
   className?: string
 }
@@ -146,11 +157,9 @@ export const PlayerStage = ({
   quirks,
   renderLyrics,
   autoplay = false,
-  onFirstPlay,
   onEvent,
   className,
 }: PlayerStageProps) => {
-  const stageRef = useRef<HTMLDivElement>(null)
   const [storedVolume, setStoredVolume] = useAtom(playerVolumeAtom)
   // Browsers block unmuted autoplay until the viewer has interacted with the
   // site; the muted retry is temporary and never written to storedVolume
@@ -163,6 +172,8 @@ export const PlayerStage = ({
   const [loop, setLoop] = useState(false)
   const [interactive, setInteractive] = useState(false)
   const [fullscreen, setFullscreen] = useState(false)
+  // iPhone Safari has no fullscreen for a page; there the button hides the app's own top bar instead
+  const [immersive, setImmersive] = useState(false)
   const player = useYouTubePlayer({ videoId, quirks, volume, loop, onEvent })
   const { phase } = player
 
@@ -200,14 +211,7 @@ export const PlayerStage = ({
     }, AUTOPLAY_CHECK_MS)
   }, [autoplay, isReady, play])
 
-  const firstPlayRef = useRef(false)
   const isPlaying = phase.kind === 'playing'
-  useEffect(() => {
-    if (isPlaying && !firstPlayRef.current) {
-      firstPlayRef.current = true
-      onFirstPlay?.()
-    }
-  }, [isPlaying, onFirstPlay])
   const { idle, sleep } = useIdle(IDLE_MS)
   const [dragging, setDragging] = useState(false)
   const [controlsHeight, setControlsHeight] = useState(0)
@@ -219,6 +223,10 @@ export const PlayerStage = ({
     (COVERED_PHASES.has(phase.kind) ||
       (phase.kind === 'playing' && !phase.settled))
   const controlsVisible = !dragging && (!idle || phase.kind !== 'playing')
+  const { toast } = useToast()
+  const touch = useMediaQuery('(pointer: coarse)')
+  const centerControl = touch && controlsVisible
+  const centerArmed = useArmed(centerControl)
   const setChromeOpen = useSetAtom(playerChromeOpenAtom)
   useEffect(() => {
     setChromeOpen(controlsVisible)
@@ -240,17 +248,57 @@ export const PlayerStage = ({
     },
   }
 
+  // The whole page goes fullscreen, not just the stage, so the rail and the controls stay in reach.
+  // Nothing locks the orientation: the player turns with the phone, either way round
   const toggleFullscreen = () => {
+    if (!document.fullscreenEnabled) {
+      // In Safari, unlike the Home Screen app, the browser's own bars stay; say how to lose them
+      if (!immersive && !isStandalone()) {
+        toast({
+          description:
+            'Add Synbox to your Home Screen (Share › Add to Home Screen) to hide Safari’s bars too.',
+          duration: 5000,
+          title: 'Full Screen on iPhone',
+        })
+      }
+      setImmersive(!immersive)
+      return
+    }
     if (document.fullscreenElement) {
       void document.exitFullscreen()
     } else {
-      void stageRef.current?.requestFullscreen()
+      void document.documentElement.requestFullscreen()
     }
   }
 
+  const seekBy = (seconds: number) => {
+    const duration = player.getDuration()
+    const target = player.getTime() + seconds
+    player.seek(Math.max(0, duration > 0 ? Math.min(target, duration) : target))
+  }
+  const taps = useStageTaps({
+    controlsVisible,
+    hideControls: sleep,
+    seekBy,
+    showCover,
+    toggleFullscreen,
+    togglePlay: player.togglePlay,
+  })
+
+  useEffect(() => {
+    const root = document.documentElement
+    if (!immersive) {
+      return
+    }
+    root.dataset.immersive = ''
+    return () => {
+      delete root.dataset.immersive
+    }
+  }, [immersive])
+
   useEffect(() => {
     const sync = () => {
-      setFullscreen(document.fullscreenElement === stageRef.current)
+      setFullscreen(document.fullscreenElement !== null)
     }
     document.addEventListener('fullscreenchange', sync)
     return () => {
@@ -308,6 +356,13 @@ export const PlayerStage = ({
           toggleFullscreen()
           break
         }
+        case 'Escape': {
+          if (!immersive) {
+            return
+          }
+          setImmersive(false)
+          break
+        }
         default: {
           return
         }
@@ -322,7 +377,7 @@ export const PlayerStage = ({
 
   return (
     <div
-      ref={stageRef}
+      data-player-stage
       data-phase={phase.kind}
       className={cn(
         '[container-type:size] relative size-full overflow-hidden bg-black',
@@ -343,16 +398,29 @@ export const PlayerStage = ({
           style={{ top: -quirks.cropPx, bottom: -quirks.cropPx }}
         />
         {showCover && <StageCover videoId={videoId} phase={phase} />}
-        {!showCover && !handsOff && player.centerMasked && (
-          <div className='pointer-events-none absolute top-1/2 left-1/2 z-10 grid size-20 -translate-1/2 place-items-center rounded-full bg-black/85 text-white'>
-            {phase.kind === 'paused' ? (
-              <PlayIcon className='size-9 fill-current' />
-            ) : (
-              <PauseIcon className='size-9 fill-current' />
-            )}
-          </div>
-        )}
       </div>
+
+      {/* YouTube shows its own center button for about 4s after every play or seek; this covers that spot,
+          opaque so none of it shows through. On a touch screen it is also the play/pause control, shown
+          with the rest of the floating UI as in YouTube's own app. It sits outside the video box so it
+          draws above the lyrics; the video is always centred on the stage */}
+      {!showCover && !handsOff && (player.centerMasked || centerControl) && (
+        <button
+          type='button'
+          tabIndex={-1}
+          aria-label={isPlaying ? 'Pause' : 'Play'}
+          onClick={player.togglePlay}
+          className={cn(
+            'absolute top-1/2 left-1/2 z-26 grid size-20 -translate-1/2 place-items-center rounded-full bg-neutral-950 text-white shadow-[0_4px_16px_rgb(0_0_0/0.35)] ring-1 ring-white/10',
+            !centerArmed && 'pointer-events-none'
+          )}>
+          {phase.kind === 'paused' ? (
+            <PlayIcon className='size-9 fill-current' />
+          ) : (
+            <PauseIcon className='size-9 fill-current' />
+          )}
+        </button>
+      )}
 
       {quirks.blockIframeInput && !handsOff && (
         <div
@@ -362,9 +430,29 @@ export const PlayerStage = ({
             'absolute inset-0 z-20',
             controlsVisible && 'cursor-pointer'
           )}
-          onClick={player.togglePlay}
-          onDoubleClick={toggleFullscreen}
+          {...taps.handlers}
         />
+      )}
+
+      {taps.flash && (
+        <div
+          className={cn(
+            'pointer-events-none absolute inset-y-0 z-26 grid w-1/3 place-items-center',
+            taps.flash.side === 'back' ? 'left-0' : 'right-0'
+          )}>
+          <span
+            key={taps.flash.key}
+            className='flex animate-in items-center gap-1 rounded-full bg-black/55 px-4 py-2 text-base font-semibold text-white tabular-nums shadow-[0_4px_16px_rgb(0_0_0/0.35)] backdrop-blur-md zoom-in-90 fade-in'>
+            {taps.flash.side === 'back' ? (
+              <RotateCcwIcon className='size-4' aria-hidden />
+            ) : null}
+            {taps.flash.side === 'back' ? '−' : '+'}
+            {taps.flash.seconds}s
+            {taps.flash.side === 'forward' ? (
+              <RotateCwIcon className='size-4' aria-hidden />
+            ) : null}
+          </span>
+        </div>
       )}
 
       {autoplayMuted && (
@@ -373,14 +461,15 @@ export const PlayerStage = ({
           onClick={() => {
             setVolume({ ...storedVolume, muted: false })
           }}
-          className='absolute top-18 left-1/2 z-40 flex -translate-x-1/2 items-center gap-2.5 rounded-full bg-black/60 px-5 py-2.5 text-base font-medium text-white shadow-lg ring-1 ring-white/20 backdrop-blur-md transition-colors hover:bg-black/80'>
+          className='absolute top-[calc(var(--topbar-h)+0.5rem+var(--notices-h,0px)+var(--preview-banner-h,0px))] left-1/2 z-40 flex -translate-x-1/2 items-center gap-2.5 rounded-full bg-black/60 px-5 py-2.5 text-base font-medium text-white shadow-lg ring-1 ring-white/20 backdrop-blur-md transition-colors hover:bg-black/80'>
           <VolumeXIcon className='size-5' aria-hidden='true' />
           Tap to Unmute
         </button>
       )}
 
       {renderLyrics && (
-        <div className='pointer-events-none absolute inset-0 z-25'>
+        // In portrait the lyrics get the space between the video and the controls
+        <div className='pointer-events-none absolute inset-0 z-25 portrait:top-[calc(50cqh+28.125cqw+0.5rem)]'>
           {renderLyrics(player, layout)}
         </div>
       )}
@@ -392,8 +481,9 @@ export const PlayerStage = ({
         onLoopChange={setLoop}
         interactive={interactive}
         onInteractiveChange={setInteractive}
-        fullscreen={fullscreen}
+        fullscreen={fullscreen || immersive}
         onToggleFullscreen={toggleFullscreen}
+        onSeekBy={seekBy}
         onHeightChange={setControlsHeight}
         volume={volume}
         onVolumeChange={setVolume}

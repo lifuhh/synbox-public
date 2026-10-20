@@ -1,6 +1,5 @@
-import { useAtom, useAtomValue } from 'jotai'
-import { RotateCcwClockIcon } from 'lucide-react'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useAtomValue } from 'jotai'
+import { useEffect, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router'
 
 import PlayerRail from '@/components/lyrics-display/PlayerRail'
@@ -10,8 +9,7 @@ import VersionPreviewBanner, {
 import { PlayerStage } from '@/components/player-stage/PlayerStage'
 import { StageLyrics } from '@/components/player-stage/StageLyrics'
 import { DEFAULT_YOUTUBE_QUIRKS } from '@/components/player-stage/youtubeQuirks'
-import { useToast } from '@/components/ui/use-toast'
-import { currentVideoAtom, showWatchHistoryToastAtom } from '@/context/atoms'
+import { currentVideoAtom } from '@/context/atoms'
 import { useLyricsReady } from '@/hooks/useLyricsReady'
 import { useSongVisit } from '@/hooks/useSongVisit'
 import { handleVideoRoute } from '@/utils/routeHandler.ts'
@@ -31,12 +29,6 @@ const PlayerPage = () => {
   // Autoplay waits for the lyrics so a song that starts singing at once never
   // plays ahead of them; useLyricsReady gives up after LYRICS_WAIT_MS
   const lyricsReady = useLyricsReady(videoId)
-
-  const { toast, dismiss } = useToast()
-  const toastIdRef = useRef<string | null>(null)
-  const [showWatchHistoryToast, setShowWatchHistoryToast] = useAtom(
-    showWatchHistoryToastAtom
-  )
 
   useEffect(() => {
     let mounted = true
@@ -65,39 +57,9 @@ const PlayerPage = () => {
     }
   }, [videoId, navigate])
 
-  const handleFirstPlay = useCallback(() => {
-    if (!showWatchHistoryToast) {
-      return
-    }
-    const handleToastDismiss = () => {
-      setShowWatchHistoryToast(false)
-      if (toastIdRef.current !== null) {
-        dismiss(toastIdRef.current)
-      }
-    }
-    const { id } = toast({
-      title: (
-        <span className='flex items-center gap-2'>
-          <RotateCcwClockIcon className='size-4 shrink-0 text-primary' />
-          Added to Watch History
-        </span>
-      ),
-      description: (
-        <button
-          type='button'
-          className='pl-6 text-white/60 underline-offset-2 hover:text-white hover:underline'
-          onClick={handleToastDismiss}>
-          Don't Show Again
-        </button>
-      ),
-      duration: 2800,
-    })
-    toastIdRef.current = id
-  }, [dismiss, setShowWatchHistoryToast, showWatchHistoryToast, toast])
-
   if (error !== null && error !== '') {
     return (
-      <div className='flex h-screen flex-col items-center justify-center gap-4'>
+      <div className='flex h-dvh w-full flex-col items-center justify-center gap-4 px-4 text-center'>
         <p className='text-red-500'>{error}</p>
         <p className='text-sm text-gray-600'>Video ID: {videoId}</p>
         <button
@@ -111,7 +73,7 @@ const PlayerPage = () => {
 
   if (isLoading || stageVideoId === null) {
     return (
-      <div className='flex h-screen items-center justify-center'>
+      <div className='flex h-dvh w-full items-center justify-center'>
         Loading...
       </div>
     )
@@ -127,7 +89,6 @@ const PlayerPage = () => {
         videoId={stageVideoId}
         quirks={DEFAULT_YOUTUBE_QUIRKS}
         autoplay={lyricsReady}
-        onFirstPlay={handleFirstPlay}
         renderLyrics={(player, layout) => (
           <StageLyrics
             videoId={stageVideoId}

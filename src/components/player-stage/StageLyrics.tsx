@@ -102,6 +102,10 @@ export const parseLyricsDocument = (data: unknown): TimedLyrics | null => {
   return { lines, eng, chi, romaji }
 }
 
+// Everything the overlay draws runs this far ahead of the player's clock: on a device the lyrics read
+// 100–200 ms behind the voice, from the embed reporting its time late and the frame it takes to paint
+const LYRICS_LEAD_SEC = 0.15
+
 const findLineIndex = (lines: TimedLyrics['lines'], time: number) =>
   lines.findIndex((line) => time >= line.startSeconds && time < line.endSeconds)
 
@@ -115,25 +119,28 @@ const isLatinOnly = (html: string) => {
 const sameText = (a: string, b: string) =>
   a.trim().toLowerCase() === b.trim().toLowerCase()
 
-const LyricLine = ({
-  html,
-  size,
-  primary,
-}: {
-  html: string
-  size: number
-  primary: boolean
-}) => {
+// Lyrics scale with the stage, but never below a size a phone can read
+const LYRIC_SIZE = {
+  primary: 'calc(max(3.5cqw, 1.5rem) * var(--lyric-scale))',
+  secondary: 'calc(max(2.4cqw, 0.9375rem) * var(--lyric-scale))',
+} as const
+
+const LyricLine = ({ html, primary }: { html: string; primary: boolean }) => {
   const segments = useMemo(() => parseRubyHtml(html), [html])
   const latin = !primary || isLatinOnly(html)
   return (
     <p
       className={cn(
-        'lyric-text-line text-center leading-normal text-balance',
-        latin ? 'font_noto_sans_reg' : 'font_noto_sans_jp_black_900',
+        'lyric-text-line text-center text-balance',
+        // Room above a Japanese line for its furigana when it wraps
+        latin
+          ? 'font_noto_sans_reg leading-normal'
+          : 'font_noto_sans_jp_black_900 leading-loose',
         !primary && 'lyric-text-line--secondary'
       )}
-      style={{ fontSize: `calc(${size}cqw * var(--lyric-scale))` }}>
+      style={{
+        fontSize: primary ? LYRIC_SIZE.primary : LYRIC_SIZE.secondary,
+      }}>
       <RubyText segments={segments} />
     </p>
   )
@@ -162,7 +169,7 @@ export const StageLyrics = ({
   const [index, setIndex] = useState(-1)
 
   // v2 timing applies only when it was generated for exactly these lines
-  const { data: karaokeDoc } = useGetKaraokeById(videoId)
+  const { data: karaokeDoc } = useGetKaraokeById(videoId, version)
   const plainLyrics = useMemo(() => parseLyricsText(data).plain_lyrics, [data])
   const karaokeLines = useMemo(
     () =>
@@ -226,9 +233,9 @@ export const StageLyrics = ({
           playing: playingRef.current,
           rate: 1,
         })
-        const { time } = clockRef.current
+        const time = clockRef.current.time + LYRICS_LEAD_SEC
         probeRef.current?.push({
-          clock: time,
+          clock: clockRef.current.time,
           now: performance.now(),
           playing: playingRef.current,
           reported,
@@ -242,7 +249,7 @@ export const StageLyrics = ({
       return
     }
     return subscribeFrame((time) => {
-      setIndex(findLineIndex(lyrics.lines, time))
+      setIndex(findLineIndex(lyrics.lines, time + LYRICS_LEAD_SEC))
     })
   }, [lyrics, karaokeLines, subscribeFrame])
 
@@ -262,23 +269,21 @@ export const StageLyrics = ({
       backdrop={backdrop}
       style={themeVars}>
       {showTranslation && translation && !sameText(translation, text) && (
-        <LyricLine html={translation} size={2.4} primary={false} />
+        <LyricLine html={translation} primary={false} />
       )}
       {showLyrics &&
         (karaokeLine ? (
-          <div
-            className='text-center'
-            style={{ fontSize: 'calc(3.5cqw * var(--lyric-scale))' }}>
+          <div className='text-center' style={{ fontSize: LYRIC_SIZE.primary }}>
             <KaraokeLine key={index} ref={karaokeRef} line={karaokeLine} />
           </div>
         ) : (
-          <LyricLine html={text} size={3.5} primary />
+          <LyricLine html={text} primary />
         ))}
       {showRomaji &&
         (karaokeLine ? (
           <div
             className='text-center'
-            style={{ fontSize: 'calc(2.4cqw * var(--lyric-scale))' }}>
+            style={{ fontSize: LYRIC_SIZE.secondary }}>
             <KaraokeRomajiLine
               key={index}
               ref={karaokeRomajiRef}
@@ -287,9 +292,7 @@ export const StageLyrics = ({
           </div>
         ) : (
           romaji &&
-          !sameText(romaji, text) && (
-            <LyricLine html={romaji} size={2.4} primary={false} />
-          )
+          !sameText(romaji, text) && <LyricLine html={romaji} primary={false} />
         ))}
     </DraggableLyrics>
   )

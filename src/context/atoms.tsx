@@ -58,6 +58,11 @@ export const playerVolumeAtom = atomWithStorage('playerVolume', {
 })
 // 0 pins the lyrics block to the top of the stage, 1 to the bottom
 export const lyricsAnchorAtom = atomWithStorage('lyricsAnchor', 0.85)
+// In portrait the lyrics have their own band under the video, so they keep their own place in it
+export const lyricsAnchorPortraitAtom = atomWithStorage(
+  'lyricsAnchorPortrait',
+  0.5
+)
 
 interface FavoriteItem {
   videoId: string
@@ -120,9 +125,4 @@ export const addToHistoryAtom = atom(
 
     set(historyAtom, limitedHistory)
   }
-)
-
-export const showWatchHistoryToastAtom = atomWithStorage(
-  'showWatchHistoryToast',
-  true
 )

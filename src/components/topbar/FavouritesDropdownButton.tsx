@@ -43,8 +43,9 @@ const FavouritesDropdownButton = ({ buttonVisibility }) => {
         </Tooltip>
         <DropdownMenuContent
           align='end'
+          collisionPadding={8}
           sideOffset={10}
-          className='w-[400px] max-w-[400px] border border-primary bg-background p-0'>
+          className='max-h-(--radix-dropdown-menu-content-available-height) w-[min(400px,calc(100vw-1rem))] border border-primary bg-background p-0'>
           <div className='flex flex-col'>
             <div className='sticky top-0 z-10 bg-background/95 p-2'>
               <DropdownMenuLabel className='unselectable text-xl'>
@@ -53,7 +54,7 @@ const FavouritesDropdownButton = ({ buttonVisibility }) => {
               <DropdownMenuSeparator />
             </div>
 
-            <div className='max-h-[600px] overflow-y-auto px-2'>
+            <div className='max-h-[min(600px,calc(100dvh-var(--topbar-h)-6rem))] overflow-y-auto px-2'>
               {favorites.length > 0 ? (
                 <div className='space-y-1 pb-4'>
                   {[...favorites].reverse().map((item) => (

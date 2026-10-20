@@ -2,7 +2,12 @@ import { useAtom, useSetAtom } from 'jotai'
 import type { CSSProperties, ReactNode } from 'react'
 import { useRef, useState } from 'react'
 
-import { lyricsAnchorAtom, lyricsStylePanelAtom } from '@/context/atoms'
+import {
+  lyricsAnchorAtom,
+  lyricsAnchorPortraitAtom,
+  lyricsStylePanelAtom,
+} from '@/context/atoms'
+import { usePortrait } from '@/hooks/useMediaQuery'
 import { cn } from '@/utils/cn'
 
 import type { StageLayout } from './PlayerStage'
@@ -10,6 +15,19 @@ import { CONTROLS_FADE_MS } from './StageControls'
 
 const TAP_SLOP_PX = 4
 const LIFT_MS = 200
+const CLICK_AFTER_DRAG_MS = 400
+
+const swallow = (event: MouseEvent) => {
+  event.stopPropagation()
+  event.preventDefault()
+}
+
+const swallowNextClick = () => {
+  window.addEventListener('click', swallow, { capture: true, once: true })
+  setTimeout(() => {
+    window.removeEventListener('click', swallow, { capture: true })
+  }, CLICK_AFTER_DRAG_MS)
+}
 
 interface DragStart {
   pointerY: number
@@ -41,7 +59,9 @@ export const DraggableLyrics = ({
   backdrop,
   style,
 }: DraggableLyricsProps) => {
-  const [anchor, setAnchor] = useAtom(lyricsAnchorAtom)
+  const [anchor, setAnchor] = useAtom(
+    usePortrait() ? lyricsAnchorPortraitAtom : lyricsAnchorAtom
+  )
   const blockRef = useRef<HTMLDivElement>(null)
   const dragRef = useRef<DragStart | null>(null)
   const [dragging, setDragging] = useState(false)
@@ -59,10 +79,10 @@ export const DraggableLyrics = ({
     // while the controls lift it
     const room = layer.clientHeight - block.offsetHeight
     dragRef.current = {
-      pointerY: event.clientY,
       anchor: room > 0 ? block.offsetTop / room : anchor,
-      range: Math.max(1, room),
       moved: false,
+      pointerY: event.clientY,
+      range: Math.max(1, room),
     }
   }
 
@@ -92,17 +112,20 @@ export const DraggableLyrics = ({
     if (drag.moved) {
       setDragging(false)
       layout.onDragChange(false)
+      // A drag that ends over the video must not also count as a tap on it
+      swallowNextClick()
     } else {
       setStylePanel('pinned')
     }
   }
 
   return (
-    <div className='pointer-events-none absolute inset-0 flex flex-col'>
+    // A block taller than the room overflows upward, over the video, never down under the controls
+    <div className='pointer-events-none absolute inset-0 flex flex-col justify-end'>
       <div style={{ flexGrow: anchor }} />
       <div
         ref={blockRef}
-        className='player-lyrics-overlay relative isolate shrink-0 py-[1cqh] select-none'
+        className='player-lyrics-overlay relative isolate shrink-0 px-3 py-[1cqh] select-none'
         style={
           {
             '--lyric-scale': scale,
@@ -114,7 +137,7 @@ export const DraggableLyrics = ({
           data-testid='lyrics-handle'
           data-lyrics-style-toggle
           className={cn(
-            'pointer-events-auto mx-auto w-fit max-w-full cursor-grab touch-none rounded-xl px-[1cqw] ring-white/25 transition-[background-color,box-shadow] hover:bg-white/5 hover:ring-1',
+            'pointer-events-auto mx-auto w-fit max-w-full cursor-grab touch-none rounded-xl px-[1cqw] ring-white/25 transition-[background-color,box-shadow] hover:bg-white/5 hover:ring-1 touch:w-full',
             dragging && 'cursor-grabbing bg-white/5 ring-1'
           )}
           onPointerDown={handlePointerDown}
