@@ -30,13 +30,12 @@ const HeroGenerateLyricsSection = () => {
       case 404: {
         return <HeroGenerateLyricsError />
       }
+      default: {
+        return null
+      }
     }
   }
 
-  return (
-    <>
-      <section className='mt-(--topbar-h) px-4'>{renderComponent()}</section>
-    </>
-  )
+  return <section className='mt-(--topbar-h) px-4'>{renderComponent()}</section>
 }
 export default HeroGenerateLyricsSection

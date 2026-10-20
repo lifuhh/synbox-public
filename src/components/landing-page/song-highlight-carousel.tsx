@@ -1,4 +1,4 @@
-import Autoplay from 'embla-carousel-autoplay'
+import autoplay from 'embla-carousel-autoplay'
 import { useEffect, useMemo, useRef, useState } from 'react'
 
 import LoadError from '@/components/shared/load-error'
@@ -15,7 +15,7 @@ import SongHighlightCarouselItem, {
   SongHighlightCarouselItemSkeleton,
 } from './song-highlight-carousel-item'
 
-Autoplay.globalOptions = { delay: 7000 }
+autoplay.globalOptions = { delay: 7000 }
 
 // Embla centres the start slide; an overflowing `justify-center` row puts the middle
 // slide in the same place without waiting for Embla to initialise
@@ -60,44 +60,46 @@ const SongHighlightCarousel = () => {
   const [current, setCurrent] = useState(1)
 
   useEffect(() => {
-    if (!api) {
-      return
-    }
+    const bind = (embla: NonNullable<CarouselApi>) => {
+      setCurrent(embla.selectedScrollSnap())
 
-    setCurrent(api.selectedScrollSnap())
+      let accumulatedDeltaX = 0
+      const deltaXThreshold = 50
+      let throttleTimeout: ReturnType<typeof setTimeout> | null = null
 
-    let accumulatedDeltaX = 0
-    const deltaXThreshold = 50
-    let throttleTimeout: ReturnType<typeof setTimeout> | null = null
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // The Carousel already moved for an arrow pressed while focus is inside it
-      if (!e.defaultPrevented && document?.activeElement?.tagName !== 'INPUT') {
-        switch (e.key) {
-          case 'ArrowLeft': {
-            api.scrollPrev()
-            break
-          }
-          case 'ArrowRight': {
-            api.scrollNext()
-            break
-          }
-          default: {
-            break
+      const handleKeyDown = (e: KeyboardEvent) => {
+        // The Carousel already moved for an arrow pressed while focus is inside it
+        if (
+          !e.defaultPrevented &&
+          document?.activeElement?.tagName !== 'INPUT'
+        ) {
+          switch (e.key) {
+            case 'ArrowLeft': {
+              embla.scrollPrev()
+              break
+            }
+            case 'ArrowRight': {
+              embla.scrollNext()
+              break
+            }
+            default: {
+              break
+            }
           }
         }
       }
-    }
 
-    const handleWheel = (e: WheelEvent) => {
-      accumulatedDeltaX += e.deltaX
+      const handleWheel = (e: WheelEvent) => {
+        accumulatedDeltaX += e.deltaX
 
-      if (!throttleTimeout) {
+        if (throttleTimeout) {
+          return
+        }
         throttleTimeout = setTimeout(() => {
           if (accumulatedDeltaX > deltaXThreshold) {
-            api.scrollNext()
+            embla.scrollNext()
           } else if (accumulatedDeltaX < -deltaXThreshold) {
-            api.scrollPrev()
+            embla.scrollPrev()
           }
           accumulatedDeltaX = 0
           if (throttleTimeout) {
@@ -106,22 +108,23 @@ const SongHighlightCarousel = () => {
           throttleTimeout = null
         }, 100)
       }
-    }
 
-    const emblaContainer = api.containerNode()
-    emblaContainer.addEventListener('wheel', handleWheel, { passive: true })
-    const handleSelect = () => {
-      setCurrent(api.selectedScrollSnap())
-    }
-    api.on('select', handleSelect)
+      const emblaContainer = embla.containerNode()
+      emblaContainer.addEventListener('wheel', handleWheel, { passive: true })
+      const handleSelect = () => {
+        setCurrent(embla.selectedScrollSnap())
+      }
+      embla.on('select', handleSelect)
 
-    window.addEventListener('keydown', handleKeyDown)
+      window.addEventListener('keydown', handleKeyDown)
 
-    return () => {
-      emblaContainer.removeEventListener('wheel', handleWheel)
-      window.removeEventListener('keydown', handleKeyDown)
-      api.off('select', handleSelect)
+      return () => {
+        emblaContainer.removeEventListener('wheel', handleWheel)
+        window.removeEventListener('keydown', handleKeyDown)
+        embla.off('select', handleSelect)
+      }
     }
+    return api ? bind(api) : undefined
   }, [api])
 
   const carouselItems = useMemo(
@@ -132,7 +135,7 @@ const SongHighlightCarousel = () => {
         ? playlistData.map((item, itemIndex) => (
             <CarouselItem
               key={itemIndex}
-              className={`sm:basis-2/5 sm:px-3 ${current == itemIndex ? 'z-30' : 'z-10'} `}>
+              className={`sm:basis-2/5 sm:px-3 ${current === itemIndex ? 'z-30' : 'z-10'} `}>
               <SongHighlightCarouselItem
                 opacity={1}
                 index={itemIndex + 1}
@@ -174,7 +177,7 @@ const SongHighlightCarousel = () => {
                 startIndex: 1,
               }}
               setApi={setApi}
-              plugins={[Autoplay()]}>
+              plugins={[autoplay()]}>
               <CarouselContent className='-ml-3'>
                 {carouselItems}
               </CarouselContent>

@@ -94,20 +94,66 @@ const HeroGenerateLyricsDefault = ({
 
   const handleOpenLandingPageDialog = () => {
     if (isSearch) {
-      navigate(`/search?q=${encodeURIComponent(inputValue.trim())}`)
+      void navigate(`/search?q=${encodeURIComponent(inputValue.trim())}`)
       return
     }
     if (validationSuccess && extractedVideoId) {
       setInputVideoId(extractedVideoId)
 
       if (existingLyrics) {
-        navigate(`/v/${extractedVideoId}`, {
+        void navigate(`/v/${extractedVideoId}`, {
           state: { videoId: extractedVideoId },
         })
       } else {
         startGeneration({ mode: 'new', videoId: extractedVideoId })
       }
     }
+  }
+
+  const inputBorderClass = () => {
+    if (inputValue.length === 0) {
+      return 'border-foreground/60 hover:border-foreground/80 focus:border-foreground/90'
+    }
+    return validationSuccess
+      ? 'border-green-500 hover:border-foreground focus:border-green-500'
+      : 'border-red-800 hover:border-foreground focus:border-red-800'
+  }
+
+  const statusMessage = () => {
+    if (errorMessage) {
+      return errorMessage
+    }
+    if (isCheckingLyrics) {
+      return 'Valid URL - Searching for lyrics...'
+    }
+    if (existingLyrics) {
+      return 'Lyrics & translations found!'
+    }
+    return validationSuccess ? 'Valid YouTube URL' : ''
+  }
+
+  const buttonLabel = () => {
+    if (isSearch) {
+      return 'Search'
+    }
+    if (isCheckingLyrics) {
+      return 'Searching ...'
+    }
+    return existingLyrics ? 'Play Video' : 'Try Now'
+  }
+
+  const buttonIcon = () => {
+    if (isSearch) {
+      return <SearchIcon className='size-6 shrink-0' />
+    }
+    if (isCheckingLyrics) {
+      return ''
+    }
+    return existingLyrics ? (
+      <PlayIcon className='size-6 shrink-0 fill-current' />
+    ) : (
+      <ArrowRightIcon className='size-6 shrink-0' />
+    )
   }
 
   return (
@@ -131,26 +177,12 @@ const HeroGenerateLyricsDefault = ({
               }
             }}
             placeholder='Search or paste a YouTube URL'
-            className={`border-2 bg-input/40 py-6 text-white invisible-ring ${
-              inputValue.length > 0
-                ? validationSuccess
-                  ? 'border-green-500 hover:border-foreground focus:border-green-500'
-                  : 'border-red-800 hover:border-foreground focus:border-red-800'
-                : 'border-foreground/60 hover:border-foreground/80 focus:border-foreground/90'
-            } `}
+            className={`border-2 bg-input/40 py-6 text-white invisible-ring ${inputBorderClass()} `}
           />
           <div className='absolute -bottom-20 left-0 h-20 w-full py-6 pt-2 text-center md:text-left lg:py-2'>
             {inputValue.length > 0 && !isSearch && (
               <div className={errorMessage ? 'text-red-500' : 'text-green-500'}>
-                {errorMessage
-                  ? errorMessage
-                  : isCheckingLyrics
-                    ? 'Valid URL - Searching for lyrics...'
-                    : existingLyrics
-                      ? 'Lyrics & translations found!'
-                      : validationSuccess
-                        ? 'Valid YouTube URL'
-                        : ''}
+                {statusMessage()}
               </div>
             )}
           </div>
@@ -161,31 +193,11 @@ const HeroGenerateLyricsDefault = ({
               }
               handleOpenLandingPageDialog()
             }}
-            disabled={
-              errorMessage && errorMessage != ''
-                ? true
-                : false || isCheckingLyrics
-            }
+            disabled={errorMessage !== '' || isCheckingLyrics}
             variant='default'
             className='w-full gap-2 border-2 border-primary/90 bg-primary/90 py-6 text-foreground hover:border-primary hover:bg-primary md:w-1/2 lg:w-1/4'>
-            {isSearch ? (
-              <p className='text-[16px]'>Search</p>
-            ) : isCheckingLyrics ? (
-              <p className='text-[16px]'>Searching ...</p>
-            ) : existingLyrics ? (
-              <p className='text-[16px]'>Play Video</p>
-            ) : (
-              <p className='text-[16px]'>Try Now</p>
-            )}
-            {isSearch ? (
-              <SearchIcon className='size-6 shrink-0' />
-            ) : isCheckingLyrics ? (
-              ''
-            ) : existingLyrics ? (
-              <PlayIcon className='size-6 shrink-0 fill-current' />
-            ) : (
-              <ArrowRightIcon className='size-6 shrink-0' />
-            )}
+            <p className='text-[16px]'>{buttonLabel()}</p>
+            {buttonIcon()}
           </Button>
         </div>
 

@@ -70,7 +70,7 @@ const SongHighlightCarouselItem = ({
   const navigate = useNavigate()
 
   const handleNavigate = useCallback(() => {
-    navigate(`/v/${item.videoId}`, { state: { videoId: item.videoId } })
+    void navigate(`/v/${item.videoId}`, { state: { videoId: item.videoId } })
   }, [item.videoId, navigate])
 
   return (
