@@ -4,11 +4,13 @@ import { useEffect, useRef } from 'react'
 import { useMatch } from 'react-router'
 
 import { STEPS } from '@/lib/generation/plan'
+import type { Job } from '@/lib/generation/store'
 import { focusedJob, useGeneration } from '@/lib/generation/store'
 import { QUERY_KEYS } from '@/lib/react-query/query-keys'
 
 import GenerationFab from './generation-fab'
 import GenerationPanel from './generation-panel'
+import type { Presentation } from './use-presentation'
 import { usePresentation } from './use-presentation'
 
 // The saved song's own data. The lyrics query never refetches on mount, so these are reset rather
@@ -26,6 +28,16 @@ const LIST_QUERIES = [
   QUERY_KEYS.GET_GALLERY_SONGS,
   QUERY_KEYS.GET_SONGS_WITH_LYRICS,
 ]
+
+const announcementOf = (job: Job | null, view: Presentation | null) => {
+  if (!job || !view) {
+    return ''
+  }
+  if (job.status.kind === 'failed') {
+    return `Lyrics generation failed: ${job.status.message}`
+  }
+  return view.revealed ? 'Lyrics ready' : STEPS[view.index].title
+}
 
 // Mounted once in the root layout, so the generations follow the user from page to page
 const GenerationHost = () => {
@@ -53,14 +65,7 @@ const GenerationHost = () => {
     }
   }, [jobs, queryClient])
 
-  const announcement =
-    !job || !view
-      ? ''
-      : job.status.kind === 'failed'
-        ? `Lyrics generation failed: ${job.status.message}`
-        : view.revealed
-          ? 'Lyrics ready'
-          : STEPS[view.index].title
+  const announcement = announcementOf(job, view)
 
   return (
     <MotionConfig reducedMotion='user'>

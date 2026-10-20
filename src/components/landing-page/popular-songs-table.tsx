@@ -31,6 +31,76 @@ const SongRowSkeleton = ({ title }: { title: React.ReactNode }) => (
   </tr>
 )
 
+interface SongRowProps {
+  song: {
+    title: string
+    vidURL: string
+  }
+  // The song already has karaoke lyrics on the site
+  ready: boolean
+  onPlayClick: (videoId: string) => () => void
+}
+
+const SongRow = ({ song, ready, onPlayClick }: SongRowProps) => {
+  const [isOverflowing, setIsOverflowing] = useState(false)
+  const textRef = useRef<HTMLSpanElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  useOverflow(textRef, containerRef, 'marquee')
+
+  useEffect(() => {
+    const checkOverflow = () => {
+      if (textRef.current && containerRef.current) {
+        setIsOverflowing(
+          textRef.current.scrollWidth > containerRef.current.clientWidth
+        )
+      }
+    }
+
+    checkOverflow()
+    window.addEventListener('resize', checkOverflow)
+
+    return () => {
+      window.removeEventListener('resize', checkOverflow)
+    }
+  }, [song.title])
+
+  return (
+    <tr className='playlist-item bg-card/80 text-accent-foreground hover:bg-muted-foreground/20'>
+      <td className='p-2'>
+        <div className='flex items-center gap-1.5'>
+          {ready && (
+            <MicVocalIcon
+              className='size-3.5 shrink-0 text-primary'
+              aria-label='Lyrics ready'
+            />
+          )}
+          <div
+            ref={containerRef}
+            className={`min-w-0 flex-1 overflow-hidden ${isOverflowing ? 'marquee' : ''}`}>
+            <span
+              ref={textRef}
+              className={`unselectable inline-block whitespace-nowrap ${
+                isOverflowing ? 'marquee-content' : ''
+              }`}>
+              {song.title}
+            </span>
+          </div>
+        </div>
+      </td>
+      <td className='p-2'>
+        <Button
+          variant='link'
+          size='icon'
+          className='shrink-0 bg-secondary'
+          onClick={onPlayClick(song.vidURL)}>
+          <PlayIcon className='size-6 shrink-0 fill-current' />
+        </Button>
+      </td>
+    </tr>
+  )
+}
+
 const LandingPageCharts: React.FC = () => {
   const navigate = useNavigate()
   const {
@@ -45,7 +115,7 @@ const LandingPageCharts: React.FC = () => {
   )
 
   const handleRowClick = (videoId: string) => () => {
-    navigate(`/v/${videoId}`)
+    void navigate(`/v/${videoId}`)
   }
 
   const tableBodyHeight = 6 * 55
@@ -120,76 +190,6 @@ const LandingPageCharts: React.FC = () => {
         </div>
       </div>
     </div>
-  )
-}
-
-interface SongRowProps {
-  song: {
-    title: string
-    vidURL: string
-  }
-  // The song already has karaoke lyrics on the site
-  ready: boolean
-  onPlayClick: (videoId: string) => () => void
-}
-
-const SongRow = ({ song, ready, onPlayClick }: SongRowProps) => {
-  const [isOverflowing, setIsOverflowing] = useState(false)
-  const textRef = useRef<HTMLSpanElement>(null)
-  const containerRef = useRef<HTMLDivElement>(null)
-
-  useOverflow(textRef, containerRef, 'marquee')
-
-  useEffect(() => {
-    const checkOverflow = () => {
-      if (textRef.current && containerRef.current) {
-        setIsOverflowing(
-          textRef.current.scrollWidth > containerRef.current.clientWidth
-        )
-      }
-    }
-
-    checkOverflow()
-    window.addEventListener('resize', checkOverflow)
-
-    return () => {
-      window.removeEventListener('resize', checkOverflow)
-    }
-  }, [song.title])
-
-  return (
-    <tr className='playlist-item bg-card/80 text-accent-foreground hover:bg-muted-foreground/20'>
-      <td className='p-2'>
-        <div className='flex items-center gap-1.5'>
-          {ready && (
-            <MicVocalIcon
-              className='size-3.5 shrink-0 text-primary'
-              aria-label='Lyrics ready'
-            />
-          )}
-          <div
-            ref={containerRef}
-            className={`min-w-0 flex-1 overflow-hidden ${isOverflowing ? 'marquee' : ''}`}>
-            <span
-              ref={textRef}
-              className={`unselectable inline-block whitespace-nowrap ${
-                isOverflowing ? 'marquee-content' : ''
-              }`}>
-              {song.title}
-            </span>
-          </div>
-        </div>
-      </td>
-      <td className='p-2'>
-        <Button
-          variant='link'
-          size='icon'
-          className='shrink-0 bg-secondary'
-          onClick={onPlayClick(song.vidURL)}>
-          <PlayIcon className='size-6 shrink-0 fill-current' />
-        </Button>
-      </td>
-    </tr>
   )
 }
 

@@ -23,7 +23,10 @@ import {
   currentLineIndex,
   karaokeMatchesLyrics,
 } from '@/lib/karaoke'
-import { getLyricsThemeColors, getLyricsThemeCssVars } from '@/lib/lyrics-themes'
+import {
+  getLyricsThemeColors,
+  getLyricsThemeCssVars,
+} from '@/lib/lyrics-themes'
 import {
   useGetKaraokeById,
   useGetLyricsBySongId,
@@ -31,6 +34,7 @@ import {
 } from '@/lib/react-query/queries-and-mutations'
 import type { ProbeSample } from '@/lib/timing-probe'
 import { summarizeProbe, timingProbeEnabled } from '@/lib/timing-probe'
+import type { KaraokeDocLine } from '@/types'
 import { cn } from '@/utils/cn'
 
 import { DraggableLyrics } from './draggable-lyrics'
@@ -145,6 +149,21 @@ const LyricLine = ({ html, primary }: { html: string; primary: boolean }) => {
   )
 }
 
+const lineAt = (
+  lyrics: TimedLyrics | null,
+  karaokeLines: KaraokeDocLine[] | null,
+  index: number,
+  english: boolean,
+  placeholder: string | undefined
+) => {
+  const karaokeLine = karaokeLines?.[index]
+  const line = lyrics?.lines[index]
+  const text = karaokeLine?.text ?? line?.text ?? placeholder
+  const translation = (english ? lyrics?.eng : lyrics?.chi)?.[index] ?? ''
+  const romaji = lyrics?.romaji[index] ?? ''
+  return { karaokeLine, romaji, text, translation }
+}
+
 export const StageLyrics = ({
   videoId,
   player,
@@ -209,14 +228,22 @@ export const StageLyrics = ({
     const samples: ProbeSample[] = []
     probeRef.current = samples
     Reflect.set(window, '__synboxTimingProbe', {
-      player: () => ({
-        get currentTime() {
-          return player.getTime()
-        },
-        get paused() {
-          return !playingRef.current
-        },
-      }),
+      player: () =>
+        Object.defineProperties(
+          {},
+          {
+            currentTime: {
+              configurable: true,
+              enumerable: true,
+              get: () => player.getTime(),
+            },
+            paused: {
+              configurable: true,
+              enumerable: true,
+              get: () => !playingRef.current,
+            },
+          }
+        ),
       samples,
       summary: () => summarizeProbe(samples),
     })
@@ -244,22 +271,23 @@ export const StageLyrics = ({
         karaokeRomajiRef.current?.setTime(time)
       })
     }
-    if (!lyrics) {
-      return
-    }
-    return subscribeFrame((time) => {
-      setIndex(findLineIndex(lyrics.lines, time + LYRICS_LEAD_SEC))
-    })
+    return lyrics
+      ? subscribeFrame((time) => {
+          setIndex(findLineIndex(lyrics.lines, time + LYRICS_LEAD_SEC))
+        })
+      : undefined
   }, [lyrics, karaokeLines, subscribeFrame])
 
-  const karaokeLine = karaokeLines?.[index]
-  const line = lyrics?.lines[index]
-  const text = karaokeLine?.text ?? line?.text ?? placeholder
+  const { karaokeLine, text, translation, romaji } = lineAt(
+    lyrics,
+    karaokeLines,
+    index,
+    english,
+    placeholder
+  )
   if (text === undefined) {
     return null
   }
-  const translation = (english ? lyrics?.eng : lyrics?.chi)?.[index] ?? ''
-  const romaji = lyrics?.romaji[index] ?? ''
 
   return (
     <DraggableLyrics
