@@ -26,9 +26,15 @@ const CAP_CENTERED = '[text-box:trim-both_cap_alphabetic] leading-none'
 type FabState = 'running' | 'finishing' | 'done' | 'failed'
 
 const fabState = (job: Job, view: Presentation): FabState => {
-  if (job.status.kind === 'failed') return 'failed'
-  if (view.revealed) return 'done'
-  if (view.complete) return 'finishing'
+  if (job.status.kind === 'failed') {
+    return 'failed'
+  }
+  if (view.revealed) {
+    return 'done'
+  }
+  if (view.complete) {
+    return 'finishing'
+  }
   return 'running'
 }
 
