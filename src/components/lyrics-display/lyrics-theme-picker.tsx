@@ -39,6 +39,8 @@ const HUE_TRACK = `linear-gradient(to right, ${Array.from(
   (_, i) => `oklch(0.7 0.15 ${i * 30})`
 ).join(', ')})`
 
+const HALF_FILLED: CSSProperties & Record<'--p', number> = { '--p': 0.5 }
+
 interface ThemeSwatchProps {
   name: string
   colors: LyricsThemeColors
@@ -73,9 +75,7 @@ const ThemeSwatch = ({
       {/* Caught mid-wipe, so the swatch shows both the white and the theme's accent */}
       <span className='lyric-text-line font_noto_sans_jp_black_900 text-2xl leading-none'>
         <span className='lyric-karaoke-line'>
-          <span
-            className='lyric-karaoke-part'
-            style={{ '--p': 0.5 } as CSSProperties}>
+          <span className='lyric-karaoke-part' style={HALF_FILLED}>
             <span className='lyric-karaoke-fill'>あ</span>
           </span>
         </span>

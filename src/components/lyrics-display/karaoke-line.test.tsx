@@ -122,13 +122,16 @@ describe('KaraokeLine', () => {
     const { fills, handle, renders } = renderLine()
     const rendersAfterMount = renders.count
 
-    handle.current?.setTime(31.05 - FILL_LEAD) // だ done, れ just starting
+    // だ done, れ just starting
+    handle.current?.setTime(31.05 - FILL_LEAD)
     expect(fills()).toEqual([0.5, 0, 0, 0, 0, 0])
 
-    handle.current?.setTime(32.6 - FILL_LEAD) // 輝 (か が や) done, く just starting
+    // 輝 (か が や) done, く just starting
+    handle.current?.setTime(32.6 - FILL_LEAD)
     expect(fills()).toEqual([1, 1, 1, 1, 0, 0])
 
-    handle.current?.setTime(33.5) // Lemon fills across its whole span
+    // Lemon fills across its whole span
+    handle.current?.setTime(33.5)
     expect(fills()[5]).toBeCloseTo(0.5)
 
     expect(renders.count).toBe(rendersAfterMount)
@@ -140,24 +143,24 @@ describe('KaraokeLine', () => {
 // draws no karaoke at all, which the romaji line once shipped
 describe('karaoke fill spans', () => {
   test('every character of both lines is inside a fill span', () => {
-    const container = document.createElement('div')
-    document.body.append(container)
+    const host = document.createElement('div')
+    document.body.append(host)
     act(() => {
-      createRoot(container).render(
+      createRoot(host).render(
         <>
           <KaraokeLine line={line} />
           <KaraokeRomajiLine line={line} />
         </>
       )
     })
-    for (const part of container.querySelectorAll('.lyric-karaoke-part')) {
+    for (const part of host.querySelectorAll('.lyric-karaoke-part')) {
       const filled = [...part.querySelectorAll('.lyric-karaoke-fill')]
         .map((fill) => fill.textContent)
         .join('')
       expect(filled).toBe(part.textContent)
     }
     expect(
-      container.querySelectorAll('p:last-child .lyric-karaoke-part').length
+      host.querySelectorAll('p:last-child .lyric-karaoke-part').length
     ).toBeGreaterThan(0)
   })
 })

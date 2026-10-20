@@ -23,46 +23,44 @@ export const LyricsVersionsMenu = ({ videoId }: { videoId: string }) => {
   const count = data?.versions.length ?? 0
 
   return (
-    <>
-      <DropdownMenu modal={false} open={menuOpen} onOpenChange={setMenuOpen}>
-        <RailTooltip label='Lyrics Versions' hidden={menuOpen}>
-          <DropdownMenuTrigger asChild>
-            <RailButton
-              label='Lyrics Versions'
-              className={cn(menuOpen && 'bg-white/10')}>
-              <WandSparklesIcon className='size-5 shrink-0' />
-            </RailButton>
-          </DropdownMenuTrigger>
-        </RailTooltip>
-        <DropdownMenuContent
-          side={portrait ? 'bottom' : 'right'}
-          align={portrait ? 'center' : 'start'}
-          sideOffset={8}
-          collisionPadding={8}
-          className='border border-primary bg-background text-foreground'>
-          <DropdownMenuItem
-            onSelect={() => {
-              startGeneration({ mode: 'regenerate', videoId })
-            }}>
-            Regenerate Lyrics
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            onSelect={() => {
-              startGeneration({
-                mode: 'regenerate',
-                skipUploaderLyrics: true,
-                videoId,
-              })
-            }}>
-            Regenerate Without Uploader Lyrics
-          </DropdownMenuItem>
-          <DropdownMenuItem asChild>
-            <Link to={`/v/${videoId}/versions`}>
-              {count > 0 ? `All Versions (${count})` : 'All Versions'}
-            </Link>
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </>
+    <DropdownMenu modal={false} open={menuOpen} onOpenChange={setMenuOpen}>
+      <RailTooltip label='Lyrics Versions' hidden={menuOpen}>
+        <DropdownMenuTrigger asChild>
+          <RailButton
+            label='Lyrics Versions'
+            className={cn(menuOpen && 'bg-white/10')}>
+            <WandSparklesIcon className='size-5 shrink-0' />
+          </RailButton>
+        </DropdownMenuTrigger>
+      </RailTooltip>
+      <DropdownMenuContent
+        side={portrait ? 'bottom' : 'right'}
+        align={portrait ? 'center' : 'start'}
+        sideOffset={8}
+        collisionPadding={8}
+        className='border border-primary bg-background text-foreground'>
+        <DropdownMenuItem
+          onSelect={() => {
+            startGeneration({ mode: 'regenerate', videoId })
+          }}>
+          Regenerate Lyrics
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onSelect={() => {
+            startGeneration({
+              mode: 'regenerate',
+              skipUploaderLyrics: true,
+              videoId,
+            })
+          }}>
+          Regenerate Without Uploader Lyrics
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link to={`/v/${videoId}/versions`}>
+            {count > 0 ? `All Versions (${count})` : 'All Versions'}
+          </Link>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }
