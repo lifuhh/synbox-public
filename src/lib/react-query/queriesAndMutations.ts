@@ -101,7 +101,10 @@ export const useGetKaraokeById = (
           (await getKaraoke(videoId, null, signal))),
     queryKey: [QUERY_KEYS.GET_KARAOKE_BY_ID, videoId, version],
     refetchOnWindowFocus: false,
-    retry: 1,
+    // A busy server turns requests away for up to a minute while a lyrics job
+    // runs; giving up sooner leaves plain lyrics until something remounts
+    retry: 7,
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 20_000),
     staleTime: 1000 * 60 * 60,
   })
 
