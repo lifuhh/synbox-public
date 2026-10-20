@@ -32,3 +32,6 @@ bun.lockb
 
 # Local AI/LLM reference notes for large upgrades (not committed)
 .upgrade-log/
+
+# Local reports and visual write-ups (not committed); see AGENTS.md
+.reports/
