@@ -1,4 +1,4 @@
-import { Client, Databases } from 'appwrite'
+import { Client, TablesDB } from 'appwrite'
 
 export const appwriteConfig = {
   databaseId: import.meta.env.VITE_APPWRITE_DATABASE_ID,
@@ -13,4 +13,4 @@ const client = new Client()
 client.setProject(appwriteConfig.projectId)
 client.setEndpoint(appwriteConfig.url)
 
-export const databases = new Databases(client)
+export const tables = new TablesDB(client)

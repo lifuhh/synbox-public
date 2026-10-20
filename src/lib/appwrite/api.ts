@@ -10,7 +10,7 @@ import {
   youtubeIdFromAppwriteId,
 } from '@/utils'
 
-import { appwriteConfig, databases } from './config'
+import { appwriteConfig, tables } from './config'
 
 const songInfoDocumentSchema = z.object({
   author: z.string(),
@@ -19,45 +19,45 @@ const songInfoDocumentSchema = z.object({
 })
 
 // Reads fall back to the pre-migration id, so a song is found while its row is being moved.
-const getSongDocument = async (collectionId: string, songId: string) => {
+const getSongDocument = async (tableId: string, songId: string) => {
   const id = createAppwriteIdFromYoutubeId(songId)
   const legacyId = legacyAppwriteIdFromYoutubeId(songId)
   try {
-    return await databases.getDocument(
-      appwriteConfig.databaseId,
-      collectionId,
-      id
-    )
+    return await tables.getRow({
+      databaseId: appwriteConfig.databaseId,
+      rowId: id,
+      tableId,
+    })
   } catch (error) {
     const isNotFound = error instanceof AppwriteException && error.code === 404
     if (!isNotFound || legacyId === id) {
       throw error
     }
-    return await databases.getDocument(
-      appwriteConfig.databaseId,
-      collectionId,
-      legacyId
-    )
+    return await tables.getRow({
+      databaseId: appwriteConfig.databaseId,
+      rowId: legacyId,
+      tableId,
+    })
   }
 }
 
 export const addSongInfoBySongId = async (songInfo: CurrentPlayingInfo) => {
   const { videoId, title, author, thumbnailUrl } = songInfo
 
-  let songInfoUpload: Models.DefaultDocument | undefined
+  let songInfoUpload: Models.DefaultRow | undefined
   try {
     const appwriteId = createAppwriteIdFromYoutubeId(videoId)
 
-    songInfoUpload = await databases.createDocument(
-      appwriteConfig.databaseId,
-      appwriteConfig.songInfoId,
-      appwriteId,
-      {
+    songInfoUpload = await tables.createRow({
+      data: {
         author,
         thumbnailUrl,
         title,
-      }
-    )
+      },
+      databaseId: appwriteConfig.databaseId,
+      rowId: appwriteId,
+      tableId: appwriteConfig.songInfoId,
+    })
   } catch (error) {
     console.log('Add Song Info Error:', error)
   }
@@ -149,21 +149,21 @@ export const songsWithLyrics = async (videoIds: string[]) => {
   const pages = await Promise.all(
     chunks.map(
       async (chunk) =>
-        await databases.listDocuments({
-          collectionId: appwriteConfig.lyricsId,
+        await tables.listRows({
           databaseId: appwriteConfig.databaseId,
           queries: [
             Query.equal('$id', chunk),
             Query.select(['$id']),
             Query.limit(PAGE),
           ],
+          tableId: appwriteConfig.lyricsId,
           total: false,
         })
     )
   )
   return new Set(
     pages.flatMap((page) =>
-      page.documents.map((row) => youtubeIdFromAppwriteId(row.$id))
+      page.rows.map((row) => youtubeIdFromAppwriteId(row.$id))
     )
   )
 }
@@ -174,18 +174,18 @@ export const listGallerySongs = async (): Promise<GallerySong[]> => {
   const rows: z.infer<typeof galleryRowSchema>[] = []
   for (;;) {
     const last = rows.at(-1)
-    const page = await databases.listDocuments({
-      collectionId: appwriteConfig.songInfoId,
+    const page = await tables.listRows({
       databaseId: appwriteConfig.databaseId,
       queries: [
         Query.select(['$id', 'title', 'author', 'thumbnailUrl']),
         Query.limit(PAGE),
         ...(last ? [Query.cursorAfter(last.$id)] : []),
       ],
+      tableId: appwriteConfig.songInfoId,
       total: false,
     })
-    rows.push(...page.documents.map((row) => galleryRowSchema.parse(row)))
-    if (page.documents.length < PAGE) {
+    rows.push(...page.rows.map((row) => galleryRowSchema.parse(row)))
+    if (page.rows.length < PAGE) {
       break
     }
   }
