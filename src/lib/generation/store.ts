@@ -4,6 +4,8 @@
 
 import { useSyncExternalStore } from 'react'
 
+import type { KaraokeDoc } from '@/types'
+
 import type { Phase } from './plan'
 import type { Runs } from './progress'
 import {
@@ -21,7 +23,12 @@ export type JobStatus =
   // Started after MAX_RUNNING others; runs when one of them ends
   | { kind: 'waiting' }
   | { kind: 'running'; phase: Phase }
-  | { kind: 'complete'; at: number; outcome: SaveOutcome }
+  | {
+      kind: 'complete'
+      at: number
+      outcome: SaveOutcome
+      karaoke: KaraokeDoc | null
+    }
   | { kind: 'failed'; at: number; message: string }
 
 export interface GenerationRequest {
@@ -211,7 +218,7 @@ const run = async (job: Job, signal: AbortSignal) => {
       )
     })
     updateJob(id, (current) => ({ ...current, ahead: 0 }))
-    const outcome = await runPhase(
+    const { outcome, karaoke } = await runPhase(
       id,
       'translate',
       signal,
@@ -219,7 +226,7 @@ const run = async (job: Job, signal: AbortSignal) => {
     )
     updateJob(id, (current) => ({
       ...current,
-      status: { at: Date.now(), kind: 'complete', outcome },
+      status: { at: Date.now(), karaoke, kind: 'complete', outcome },
     }))
   } catch (error) {
     if (signal.aborted) {

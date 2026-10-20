@@ -1,6 +1,8 @@
 // The three generation endpoints of synbox-transcribe-whisper, read as NDJSON streams of {type, data}.
 
 import { BE_ADDRESS } from '@/lib/synbox-flask/address'
+import { isKaraokeDoc } from '@/lib/synbox-flask/api'
+import type { KaraokeDoc } from '@/types'
 
 import { isStageId } from './plan'
 import type { StageId } from './plan'
@@ -326,14 +328,20 @@ const parseSaved = (data: unknown): SaveOutcome => {
   return { kind: 'unchanged' }
 }
 
+export interface Saved {
+  outcome: SaveOutcome
+  // The song's live karaoke doc as saved, so the player need not fetch it; null from older backends
+  karaoke: KaraokeDoc | null
+}
+
 // Translates the saved timing and saves the song (the backend writes the rows, or a new lyrics version)
 export const translate = async (
   videoId: string,
   requestId: string,
   signal: AbortSignal,
   onProgress: OnProgress
-): Promise<SaveOutcome> => {
-  const found: { saved: SaveOutcome | null } = { saved: null }
+): Promise<Saved> => {
+  const found: { saved: Saved | null } = { saved: null }
   const progress = forwardProgress(onProgress)
   await readStream(
     '/translate-annotate',
@@ -342,7 +350,12 @@ export const translate = async (
     (message) => {
       progress(message)
       if (message.type === 'persisted') {
-        found.saved = parseSaved(message.data)
+        const { data } = message
+        found.saved = {
+          karaoke:
+            isRecord(data) && isKaraokeDoc(data.karaoke) ? data.karaoke : null,
+          outcome: parseSaved(data),
+        }
       }
     }
   )
