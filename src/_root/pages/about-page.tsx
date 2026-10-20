@@ -13,7 +13,7 @@ const AboutPage = () => (
 
     <div className='mx-auto w-full max-w-6xl'>
       <h1 className='my-8 text-center text-3xl font-bold'>About</h1>
-      <Separator decorative={false} className='my-5 bg-[#c2255c]' />
+      <Separator decorative={false} variant='brand' className='my-5' />
 
       <div className='space-y-6'>
         <p className='text-lg text-pretty'>
@@ -27,13 +27,11 @@ const AboutPage = () => (
       </div>
 
       <h1 className='my-8 text-center text-3xl font-bold'>FAQs</h1>
-      <Separator decorative={false} className='my-5 bg-[#c2255c]' />
+      <Separator decorative={false} variant='brand' className='my-5' />
       <div className='mb-8'>
         <Accordion type='multiple' className='w-full'>
           <AccordionItem value='item-1'>
-            <AccordionTrigger className='text-lg'>
-              How does Synbox work?
-            </AccordionTrigger>
+            <AccordionTrigger size='lg'>How does Synbox work?</AccordionTrigger>
             <AccordionContent>
               Synbox is your tool to better experience Japanese music. By
               providing a YouTube URL for a Japanese song, you can generate
@@ -43,7 +41,7 @@ const AboutPage = () => (
           </AccordionItem>
 
           <AccordionItem value='item-2'>
-            <AccordionTrigger className='text-lg'>
+            <AccordionTrigger size='lg'>
               What videos are supported by Synbox?
             </AccordionTrigger>
             <AccordionContent>
@@ -53,7 +51,7 @@ const AboutPage = () => (
           </AccordionItem>
 
           <AccordionItem value='item-3'>
-            <AccordionTrigger className='text-lg'>
+            <AccordionTrigger size='lg'>
               Why is the transcription quality sometimes poor for a song?
             </AccordionTrigger>
             <AccordionContent>
@@ -66,7 +64,7 @@ const AboutPage = () => (
           </AccordionItem>
 
           <AccordionItem value='item-4'>
-            <AccordionTrigger className='text-lg'>
+            <AccordionTrigger size='lg'>
               What’s next for Synbox?
             </AccordionTrigger>
             <AccordionContent>
@@ -127,7 +125,7 @@ const AboutPage = () => (
           </AccordionItem>
 
           <AccordionItem value='item-5'>
-            <AccordionTrigger className='text-lg'>
+            <AccordionTrigger size='lg'>
               What is Synbox built with?
             </AccordionTrigger>
             <AccordionContent>

@@ -36,10 +36,6 @@ import { historyAtom } from '@/context/atoms'
 
 import HistoryDropdownItem from './history-dropdown-item'
 
-interface HistoryDropdownButtonProps {
-  buttonVisibility?: boolean
-}
-
 const ITEMS_PER_PAGE = 7
 const MAX_HEIGHT = 620
 const ITEM_HEIGHT = 68
@@ -76,9 +72,7 @@ const PaginationLink: React.FC<{
   </button>
 )
 
-const HistoryDropdownButton: React.FC<HistoryDropdownButtonProps> = ({
-  buttonVisibility = true,
-}) => {
+const HistoryDropdownButton = () => {
   const [currentPage, setCurrentPage] = useState(1)
   const [historyItems, setHistoryItems] = useAtom(historyAtom)
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
@@ -202,36 +196,29 @@ const HistoryDropdownButton: React.FC<HistoryDropdownButtonProps> = ({
         <Tooltip>
           <DropdownMenuTrigger asChild>
             <TooltipTrigger asChild>
-              <Button
-                variant='outline'
-                size='icon'
-                className={`border-primary/80 invisible-ring hover:border-white ${buttonVisibility}`}>
+              <Button variant='outline-primary' size='icon'>
                 <RotateCcwClockIcon className='h-6 w-6 shrink-0' />
                 <span className='sr-only'>View History</span>
               </Button>
             </TooltipTrigger>
           </DropdownMenuTrigger>
-          <TooltipContent className='border-none bg-accent unhighlightable'>
-            View History
-          </TooltipContent>
+          <TooltipContent variant='accent'>View History</TooltipContent>
         </Tooltip>
         <DropdownMenuContent
           align='end'
           sideOffset={10}
           collisionPadding={8}
-          className='max-h-(--radix-dropdown-menu-content-available-height) w-[min(400px,calc(100vw-1rem))] border border-primary bg-background p-0'
+          variant='primary-panel'
+          className='max-h-(--radix-dropdown-menu-content-available-height) w-[min(400px,calc(100vw-1rem))]'
           style={{ height: `${calculateDropdownHeight()}px` }}>
           <div className='flex h-full flex-col'>
             <div className='sticky top-0 z-10 m-2 bg-background/95'>
               <div className='flex items-center justify-between'>
-                <DropdownMenuLabel className='unselectable text-xl'>
-                  History
-                </DropdownMenuLabel>
+                <DropdownMenuLabel variant='heading'>History</DropdownMenuLabel>
                 {historyItems.length > 0 && (
                   <Button
-                    variant='ghost'
-                    onClick={handleClearHistoryClick}
-                    className='text-sm text-accent-foreground hover:text-foreground'>
+                    variant='ghost-subtle'
+                    onClick={handleClearHistoryClick}>
                     Clear History
                   </Button>
                 )}

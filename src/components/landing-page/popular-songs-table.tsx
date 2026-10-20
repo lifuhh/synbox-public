@@ -90,9 +90,9 @@ const SongRow = ({ song, ready, onPlayClick }: SongRowProps) => {
       </td>
       <td className='p-2'>
         <Button
-          variant='link'
+          variant='secondary-link'
           size='icon'
-          className='shrink-0 bg-secondary'
+          className='shrink-0'
           onClick={onPlayClick(song.vidURL)}>
           <PlayIcon className='size-6 shrink-0 fill-current' />
         </Button>

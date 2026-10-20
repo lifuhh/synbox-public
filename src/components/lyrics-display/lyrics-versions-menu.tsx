@@ -38,7 +38,7 @@ export const LyricsVersionsMenu = ({ videoId }: { videoId: string }) => {
         align={portrait ? 'center' : 'start'}
         sideOffset={8}
         collisionPadding={8}
-        className='border border-primary bg-background text-foreground'>
+        variant='primary-surface'>
         <DropdownMenuItem
           onSelect={() => {
             startGeneration({ mode: 'regenerate', videoId })

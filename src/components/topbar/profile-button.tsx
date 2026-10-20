@@ -75,10 +75,7 @@ const ProfileButtonDropdown = () => {
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button
-            variant='outline'
-            size='icon'
-            className='border-primary/80 invisible-ring hover:border-white'>
+          <Button variant='outline-primary' size='icon'>
             <UserIcon className='size-6 shrink-0 fill-current' />
             <span className='sr-only'>Toggle Profile</span>
           </Button>
@@ -86,7 +83,8 @@ const ProfileButtonDropdown = () => {
         <DropdownMenuContent
           align='end'
           sideOffset={10}
-          className='w-56 overflow-auto border border-primary bg-popover'>
+          variant='primary'
+          className='w-56 overflow-auto'>
           <DropdownMenuGroup>
             <DropdownMenuItem
               className='cursor-pointer'

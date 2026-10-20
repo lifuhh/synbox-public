@@ -110,13 +110,11 @@ const HeroGenerateLyricsDefault = ({
     }
   }
 
-  const inputBorderClass = () => {
+  const inputState = () => {
     if (inputValue.length === 0) {
-      return 'border-foreground/60 hover:border-foreground/80 focus:border-foreground/90'
+      return 'empty'
     }
-    return validationSuccess
-      ? 'border-success hover:border-foreground focus:border-success'
-      : 'border-error-input hover:border-foreground focus:border-error-input'
+    return validationSuccess ? 'valid' : 'invalid'
   }
 
   const statusMessage = () => {
@@ -177,7 +175,8 @@ const HeroGenerateLyricsDefault = ({
               }
             }}
             placeholder='Search or paste a YouTube URL'
-            className={`border-2 bg-input/40 py-6 text-white invisible-ring ${inputBorderClass()} `}
+            variant='hero'
+            state={inputState()}
           />
           <div className='absolute -bottom-20 left-0 h-20 w-full py-6 pt-2 text-center md:text-left lg:py-2'>
             {inputValue.length > 0 && !isSearch && (
@@ -195,8 +194,10 @@ const HeroGenerateLyricsDefault = ({
               handleOpenLandingPageDialog()
             }}
             disabled={errorMessage !== '' || isCheckingLyrics}
-            variant='default'
-            className='w-full gap-2 border-2 border-primary/90 bg-primary/90 py-6 text-foreground hover:border-primary hover:bg-primary md:w-1/2 lg:w-1/4'>
+            variant='hero'
+            size='tall'
+            gap='md'
+            className='w-full md:w-1/2 lg:w-1/4'>
             <p className='text-body'>{buttonLabel()}</p>
             {buttonIcon()}
           </Button>

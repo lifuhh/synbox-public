@@ -135,7 +135,8 @@ const SongHighlightCarousel = () => {
         ? playlistData.map((item, itemIndex) => (
             <CarouselItem
               key={itemIndex}
-              className={`sm:basis-2/5 sm:px-3 ${current === itemIndex ? 'z-30' : 'z-10'} `}>
+              gutter='wide'
+              className={`sm:basis-2/5 ${current === itemIndex ? 'z-30' : 'z-10'} `}>
               <SongHighlightCarouselItem
                 opacity={1}
                 index={itemIndex + 1}

@@ -52,7 +52,7 @@ const SongGallery = () => {
             <div key={index} className={CARD}>
               <Skeleton className='mb-2 h-7 w-3/4' />
               <Skeleton className='mb-3 h-5 w-1/3' />
-              <Skeleton className='aspect-video w-full rounded-lg' />
+              <Skeleton shape='thumbnail' className='aspect-video w-full' />
             </div>
           ))}
         </output>

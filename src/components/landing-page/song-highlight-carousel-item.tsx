@@ -57,9 +57,6 @@ const SlideFrame = ({
   <div style={getSlideStyle(index, currentIndex, itemCount)}>{children}</div>
 )
 
-const CARD_BODY_CLASS =
-  'relative h-auto w-120 rounded-xl border border-primary/70 bg-muted p-6'
-
 const SongHighlightCarouselItem = ({
   opacity,
   index,
@@ -81,11 +78,13 @@ const SongHighlightCarouselItem = ({
         itemCount={itemCount}>
         <CardContainer>
           <CardBody
-            className={`group/card ${CARD_BODY_CLASS} transition-shadow duration-300 ease-in-out dark:hover:shadow-2xl dark:hover:shadow-primary/15`}>
+            variant='highlight'
+            className='group/card relative h-auto w-120'>
             <CardItem
               translateZ='50'
               as='button'
-              className='max-h-12 min-h-12 text-left text-xl font-bold text-card-foreground shadow-xs unhighlightable'
+              variant='title'
+              className='max-h-12 min-h-12 text-left'
               onClick={handleNavigate}>
               {item.title}
             </CardItem>
@@ -104,15 +103,10 @@ const SongHighlightCarouselItem = ({
               />
             </CardItem>
             <div className='mt-6 flex justify-between'>
-              <CardItem
-                translateZ={10}
-                className='unselectable rounded-xl px-4 py-1 text-base font-normal text-white'>
+              <CardItem translateZ={10} variant='caption'>
                 {item.channel}
               </CardItem>
-              <Button
-                className='rounded-xl bg-white px-4 py-2 text-sm font-bold text-primary/80 hover:bg-primary/80 hover:text-foreground [&:hover]:transition-none [&:hover]:duration-0'
-                onClick={handleNavigate}
-                variant='default'>
+              <Button onClick={handleNavigate} variant='inverse'>
                 <CardItem translateZ={10}>Watch Now</CardItem>
               </Button>
             </div>
@@ -132,7 +126,7 @@ export const SongHighlightCarouselItemSkeleton = ({
   <div className='scale-75'>
     <SlideFrame index={index} currentIndex={currentIndex} itemCount={itemCount}>
       <div className='flex items-center justify-center'>
-        <div className={`shrink-0 ${CARD_BODY_CLASS}`}>
+        <div className='relative h-auto w-120 shrink-0 rounded-xl border border-primary/70 bg-muted p-6'>
           <div className='flex h-12 items-center'>
             <Skeleton className='h-6 w-4/5' />
           </div>

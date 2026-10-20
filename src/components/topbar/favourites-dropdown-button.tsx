@@ -19,7 +19,7 @@ import { favoritesAtom } from '@/context/atoms'
 
 import FavouritesDropdownItem from './favourites-dropdown-item'
 
-const FavouritesDropdownButton = ({ buttonVisibility }) => {
+const FavouritesDropdownButton = () => {
   const [favorites] = useAtom(favoritesAtom)
 
   return (
@@ -28,29 +28,23 @@ const FavouritesDropdownButton = ({ buttonVisibility }) => {
         <Tooltip>
           <DropdownMenuTrigger asChild>
             <TooltipTrigger asChild>
-              <Button
-                variant='outline'
-                size='icon'
-                className={`border-primary/80 invisible-ring hover:border-white ${buttonVisibility}`}>
+              <Button variant='outline-primary' size='icon'>
                 <BookBookmarkIcon className='h-6 w-6 shrink-0' />
                 <span className='sr-only'>View Bookmarks</span>
               </Button>
             </TooltipTrigger>
           </DropdownMenuTrigger>
-          <TooltipContent className='border-none bg-accent unhighlightable'>
-            View Bookmarks
-          </TooltipContent>
+          <TooltipContent variant='accent'>View Bookmarks</TooltipContent>
         </Tooltip>
         <DropdownMenuContent
           align='end'
           collisionPadding={8}
           sideOffset={10}
-          className='max-h-(--radix-dropdown-menu-content-available-height) w-[min(400px,calc(100vw-1rem))] border border-primary bg-background p-0'>
+          variant='primary-panel'
+          className='max-h-(--radix-dropdown-menu-content-available-height) w-[min(400px,calc(100vw-1rem))]'>
           <div className='flex flex-col'>
             <div className='sticky top-0 z-10 bg-background/95 p-2'>
-              <DropdownMenuLabel className='unselectable text-xl'>
-                Bookmarks
-              </DropdownMenuLabel>
+              <DropdownMenuLabel variant='heading'>Bookmarks</DropdownMenuLabel>
               <DropdownMenuSeparator />
             </div>
 

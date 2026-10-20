@@ -1,3 +1,5 @@
+import { cva } from 'class-variance-authority'
+import type { VariantProps } from 'class-variance-authority'
 import React, {
   createContext,
   useContext,
@@ -61,22 +63,19 @@ export const CardContainer = ({
   return (
     <MouseEnterContext.Provider value={mouseEnter}>
       <div
-        className={cn('flex items-center justify-center', containerClassName)}
-        style={{
-          perspective: '1000px',
-        }}>
+        className={cn(
+          'flex items-center justify-center perspective-[1000px]',
+          containerClassName
+        )}>
         <div
           ref={containerRef}
           onMouseEnter={handleMouseEnter}
           onMouseMove={handleMouseMove}
           onMouseLeave={handleMouseLeave}
           className={cn(
-            'relative flex items-center justify-center transition-all duration-200 ease-linear',
+            'relative flex items-center justify-center transition-all duration-200 ease-linear transform-3d',
             className
-          )}
-          style={{
-            transformStyle: 'preserve-3d',
-          }}>
+          )}>
           {children}
         </div>
       </div>
@@ -84,17 +83,48 @@ export const CardContainer = ({
   )
 }
 
+const cardBodyVariants = cva('', {
+  defaultVariants: { variant: 'default' },
+  variants: {
+    variant: {
+      default: '',
+      // The landing carousel's card: a bordered panel that glows on hover
+      highlight:
+        'rounded-xl border border-primary/70 bg-muted p-6 transition-shadow duration-300 ease-in-out dark:hover:shadow-2xl dark:hover:shadow-primary/15',
+    },
+  },
+})
+
 export const CardBody = ({
   children,
   className,
+  variant,
 }: {
   children: React.ReactNode
   className?: string
-}) => (
-  <div className={cn('h-96 w-96 transform-3d *:transform-3d', className)}>
+} & VariantProps<typeof cardBodyVariants>) => (
+  <div
+    className={cn(
+      'h-96 w-96 transform-3d *:transform-3d',
+      cardBodyVariants({ variant }),
+      className
+    )}>
     {children}
   </div>
 )
+
+const cardItemVariants = cva('', {
+  defaultVariants: { variant: 'default' },
+  variants: {
+    variant: {
+      // A small label in a pill, such as the channel name
+      caption:
+        'unselectable rounded-xl px-4 py-1 text-base font-normal text-white',
+      default: '',
+      title: 'text-xl font-bold text-card-foreground shadow-xs unhighlightable',
+    },
+  },
+})
 
 export const CardItem = ({
   as: Tag = 'div',
@@ -106,6 +136,7 @@ export const CardItem = ({
   rotateX = 0,
   rotateY = 0,
   rotateZ = 0,
+  variant,
   ...rest
 }: {
   as?: React.ElementType
@@ -117,7 +148,8 @@ export const CardItem = ({
   rotateX?: number | string
   rotateY?: number | string
   rotateZ?: number | string
-} & React.HTMLAttributes<HTMLElement>) => {
+} & React.HTMLAttributes<HTMLElement> &
+  VariantProps<typeof cardItemVariants>) => {
   const ref = useRef<HTMLDivElement>(null)
   const [isMouseEntered] = useMouseEnter()
 
@@ -141,7 +173,11 @@ export const CardItem = ({
   return (
     <Tag
       ref={ref}
-      className={cn('w-fit transition duration-200 ease-linear', className)}
+      className={cn(
+        'w-fit transition duration-200 ease-linear',
+        cardItemVariants({ variant }),
+        className
+      )}
       {...rest}>
       {children}
     </Tag>

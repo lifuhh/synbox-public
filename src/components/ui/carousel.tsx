@@ -1,5 +1,7 @@
 'use client'
 
+import { cva } from 'class-variance-authority'
+import type { VariantProps } from 'class-variance-authority'
 import useEmblaCarousel from 'embla-carousel-react'
 import type { UseEmblaCarouselType } from 'embla-carousel-react'
 import * as React from 'react'
@@ -178,10 +180,22 @@ const CarouselContentRender: React.ForwardRefRenderFunction<
 const CarouselContent = React.forwardRef(CarouselContentRender)
 CarouselContent.displayName = 'CarouselContent'
 
+const carouselItemVariants = cva('', {
+  defaultVariants: { gutter: 'default' },
+  variants: {
+    // Extra space either side of a slide from the sm breakpoint
+    gutter: {
+      default: '',
+      wide: 'sm:px-3',
+    },
+  },
+})
+
 const CarouselItemRender: React.ForwardRefRenderFunction<
   HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
-> = ({ className, ...props }, ref) => {
+  React.HTMLAttributes<HTMLDivElement> &
+    VariantProps<typeof carouselItemVariants>
+> = ({ className, gutter, ...props }, ref) => {
   const { orientation } = useCarousel()
 
   return (
@@ -192,6 +206,7 @@ const CarouselItemRender: React.ForwardRefRenderFunction<
       className={cn(
         'min-w-0 shrink-0 grow-0 basis-full',
         orientation === 'horizontal' ? 'pl-4' : 'pt-4',
+        carouselItemVariants({ gutter }),
         className
       )}
       {...props}

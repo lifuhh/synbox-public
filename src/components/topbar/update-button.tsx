@@ -18,7 +18,7 @@ const UpdateButton = () => {
   }
   return (
     <Button
-      variant='outline'
+      variant='outline-primary'
       size='icon'
       aria-label='Update Synbox'
       title='Update Synbox'
@@ -27,7 +27,7 @@ const UpdateButton = () => {
         setApplying(true)
         void applyUpdate()
       }}
-      className='relative border-primary/80 invisible-ring hover:border-white'>
+      className='relative'>
       <RefreshCwIcon
         className={cn('size-5 shrink-0', applying && 'animate-spin')}
       />

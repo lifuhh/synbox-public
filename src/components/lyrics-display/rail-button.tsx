@@ -66,10 +66,7 @@ export const RailTooltip = ({
         }
       }}>
       <TooltipTrigger asChild>{children}</TooltipTrigger>
-      <TooltipContent
-        side='right'
-        sideOffset={10}
-        className='border-none bg-primary text-white unhighlightable'>
+      <TooltipContent side='right' sideOffset={10} variant='primary'>
         {label}
       </TooltipContent>
     </Tooltip>

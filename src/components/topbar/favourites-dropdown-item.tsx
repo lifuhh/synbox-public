@@ -58,7 +58,7 @@ const FavouritesDropdownItem: React.FC<FavouritesDropdownItemProps> = ({
   }
 
   return (
-    <DropdownMenuItem className='p-2'>
+    <DropdownMenuItem variant='media'>
       <div className='flex h-full w-full playlist-item items-center space-x-2'>
         <OptimizedThumbnail
           src={thumbnailUrl}
@@ -85,8 +85,9 @@ const FavouritesDropdownItem: React.FC<FavouritesDropdownItemProps> = ({
         </div>
         <Button
           onClick={handleRemove}
-          variant='ghost'
-          className='ml-2 cursor-pointer px-2 hover:bg-primary'>
+          variant='ghost-primary'
+          size='narrow'
+          className='ml-2 cursor-pointer'>
           <X className='h-4 w-4' />
         </Button>
       </div>

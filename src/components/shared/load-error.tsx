@@ -22,11 +22,7 @@ const LoadError = ({
       className
     )}>
     <p className='text-sm text-muted-foreground'>{message}</p>
-    <Button
-      variant='outline'
-      onClick={onRetry}
-      disabled={retrying}
-      className='gap-2'>
+    <Button variant='outline' onClick={onRetry} disabled={retrying} gap='md'>
       <RotateCwIcon
         className={cn('size-4', retrying && 'animate-spin')}
         aria-hidden

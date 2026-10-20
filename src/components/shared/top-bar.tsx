@@ -48,8 +48,8 @@ const TopBar = () => {
         )}
         <div data-player-chrome className={cn(cluster, 'mr-2 ml-auto')}>
           <UpdateButton />
-          <FavouritesDropdownButton buttonVisibility={true} />
-          <HistoryDropdownButton buttonVisibility={true} />
+          <FavouritesDropdownButton />
+          <HistoryDropdownButton />
           {!isVideoPlayer && <ProfileButton />}
         </div>
       </nav>

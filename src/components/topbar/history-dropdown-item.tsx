@@ -54,7 +54,7 @@ const HistoryDropdownItem: React.FC<HistoryDropdownItemProps> = ({
   }
 
   return (
-    <DropdownMenuItem className='p-2'>
+    <DropdownMenuItem variant='media'>
       <div className='flex h-full w-full playlist-item items-center space-x-2'>
         <OptimizedThumbnail
           src={thumbnailUrl}
@@ -80,9 +80,9 @@ const HistoryDropdownItem: React.FC<HistoryDropdownItemProps> = ({
           <div className='truncate text-sm text-song-meta'>{author}</div>
         </div>
         <Button
-          variant='link'
+          variant='secondary-link'
           size='icon'
-          className='shrink-0 bg-secondary'
+          className='shrink-0'
           onClick={handleRowClick(videoId)}>
           <PlayIcon className='size-6 shrink-0 fill-current' />
         </Button>

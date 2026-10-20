@@ -73,9 +73,9 @@ const SongHeader = ({ job, onClose }: { job: Job; onClose: () => void }) => {
         )}
       </div>
       <Button
-        variant='ghost'
+        variant='overlay-icon'
         size='icon'
-        className='size-8 shrink-0 rounded-full text-white/70 hover:bg-white/10 hover:text-white touch:size-10'
+        className='size-8 shrink-0 touch:size-10'
         aria-label={running ? 'Minimize' : 'Close'}
         onClick={onClose}>
         {running ? <Minus className='size-4' /> : <X className='size-4' />}
@@ -110,7 +110,7 @@ const DoneView = ({ job }: { job: Job }) => {
         <p className='text-lg font-semibold text-white'>{outcome.title}</p>
         <p className='text-sm text-white/60'>{outcome.detail}</p>
       </div>
-      <Button asChild className='w-full gap-2'>
+      <Button asChild gap='md' className='w-full'>
         <Link to={outcome.play.to} onClick={close}>
           <Play className='size-4 fill-current' />
           {outcome.play.label}
@@ -310,7 +310,8 @@ const GenerationPanel = ({ job, jobs, view, raised }: GenerationPanelProps) => {
                   </p>
                   <div className='flex gap-2'>
                     <Button
-                      className='flex-1 gap-2'
+                      gap='md'
+                      className='flex-1'
                       onClick={() => {
                         retryGeneration(job.id)
                       }}>
@@ -318,8 +319,8 @@ const GenerationPanel = ({ job, jobs, view, raised }: GenerationPanelProps) => {
                       Try Again
                     </Button>
                     <Button
-                      variant='ghost'
-                      className='flex-1 text-white/80 hover:bg-white/10'
+                      variant='overlay'
+                      className='flex-1'
                       onClick={dismiss}>
                       Close
                     </Button>
@@ -330,9 +331,9 @@ const GenerationPanel = ({ job, jobs, view, raised }: GenerationPanelProps) => {
                   <p className='text-xs text-white/45'>{hint}</p>
                   {active && (
                     <Button
-                      variant='ghost'
+                      variant='overlay-muted'
                       size='sm'
-                      className='shrink-0 text-white/60 hover:bg-white/10 hover:text-white'
+                      className='shrink-0'
                       onClick={() => {
                         cancelGeneration(job.id)
                       }}>

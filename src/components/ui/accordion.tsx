@@ -1,6 +1,8 @@
 'use client'
 
 import * as AccordionPrimitive from '@radix-ui/react-accordion'
+import { cva } from 'class-variance-authority'
+import type { VariantProps } from 'class-variance-authority'
 import { ChevronDown } from 'lucide-react'
 import * as React from 'react'
 
@@ -21,15 +23,27 @@ const AccordionItemRender: React.ForwardRefRenderFunction<
 const AccordionItem = React.forwardRef(AccordionItemRender)
 AccordionItem.displayName = 'AccordionItem'
 
+const accordionTriggerVariants = cva('', {
+  defaultVariants: { size: 'default' },
+  variants: {
+    size: {
+      default: '',
+      lg: 'text-lg',
+    },
+  },
+})
+
 const AccordionTriggerRender: React.ForwardRefRenderFunction<
   React.ComponentRef<typeof AccordionPrimitive.Trigger>,
-  React.ComponentPropsWithoutRef<typeof AccordionPrimitive.Trigger>
-> = ({ className, children, ...props }, ref) => (
+  React.ComponentPropsWithoutRef<typeof AccordionPrimitive.Trigger> &
+    VariantProps<typeof accordionTriggerVariants>
+> = ({ className, children, size, ...props }, ref) => (
   <AccordionPrimitive.Header className='flex'>
     <AccordionPrimitive.Trigger
       ref={ref}
       className={cn(
         'flex flex-1 items-center justify-between py-4 font-medium transition-all hover:underline [&[data-state=open]>svg]:rotate-180',
+        accordionTriggerVariants({ size }),
         className
       )}
       {...props}>

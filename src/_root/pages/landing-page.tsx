@@ -13,9 +13,9 @@ const SectionDivider = ({
   className?: string
 }) => (
   <div className={cn('flex items-center whitespace-nowrap', className)}>
-    <Separator className='flex-1 bg-[#424242]' />
+    <Separator variant='muted' className='flex-1' />
     <span className='mx-2.5'>{label}</span>
-    <Separator className='flex-1 bg-[#424242]' />
+    <Separator variant='muted' className='flex-1' />
   </div>
 )
 

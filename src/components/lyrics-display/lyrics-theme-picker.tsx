@@ -137,7 +137,7 @@ export const LyricsThemePicker = ({
   const activeBackdrop = LYRICS_BACKDROPS.find((b) => b.id === backdrop)
 
   const heading = touch ? (
-    <DialogTitle className='text-base font-semibold'>Lyrics Style</DialogTitle>
+    <DialogTitle size='sm'>Lyrics Style</DialogTitle>
   ) : (
     <h2 className='text-sm font-semibold'>Lyrics Style</h2>
   )
@@ -322,7 +322,8 @@ export const LyricsThemePicker = ({
           onOpenAutoFocus={(event) => {
             event.preventDefault()
           }}
-          className='max-w-sm gap-0 p-0'>
+          variant='bare'
+          className='max-w-sm'>
           {body}
         </DialogContent>
       </Dialog>
@@ -397,7 +398,8 @@ export const LyricsThemePicker = ({
         onPointerLeave={() => {
           peek.leave(false)
         }}
-        className='z-300 max-h-(--radix-popover-content-available-height) w-[min(300px,calc(100vw-1rem))] overflow-y-auto rounded-[10px] p-0 shadow-[0_12px_32px_rgb(0_0_0/0.5)]'>
+        variant='floating'
+        className='z-300 max-h-(--radix-popover-content-available-height) w-[min(300px,calc(100vw-1rem))] overflow-y-auto'>
         {body}
       </PopoverContent>
     </Popover>

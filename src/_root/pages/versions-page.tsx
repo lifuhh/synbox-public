@@ -181,7 +181,7 @@ const VersionCard = ({
         <Gaps summary={version.summary} />
       </div>
       <div className='flex shrink-0 gap-2'>
-        <Button asChild size='sm' variant='ghost' className='gap-1.5'>
+        <Button asChild size='sm' variant='ghost' gap='sm'>
           <Link
             to={
               isDefault
@@ -258,7 +258,7 @@ const MakeDefaultDialog = ({
           onClose()
         }
       }}>
-      <DialogContent className='max-w-md border-white/10'>
+      <DialogContent variant='subtle' className='max-w-md'>
         <form
           className='grid gap-4'
           onSubmit={(event) => {
@@ -293,7 +293,7 @@ const MakeDefaultDialog = ({
               {error}
             </p>
           )}
-          <DialogFooter className='gap-2'>
+          <DialogFooter gap='md'>
             <Button type='button' variant='ghost' onClick={onClose}>
               Cancel
             </Button>
@@ -344,16 +344,17 @@ const VersionsPage = () => {
         </div>
         <DropdownMenu modal={false}>
           <DropdownMenuTrigger asChild>
-            <Button className='w-fit shrink-0 gap-1.5'>
+            <Button gap='sm' className='w-fit shrink-0'>
               Regenerate
               <ChevronDownIcon className='size-4' />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent
             align='end'
-            className='w-72 border border-white/10 bg-background text-foreground'>
+            variant='subtle-surface'
+            className='w-72'>
             <DropdownMenuItem
-              className='flex-col items-start gap-0.5'
+              variant='stacked'
               onSelect={() => {
                 regenerate(false)
               }}>
@@ -363,7 +364,7 @@ const VersionsPage = () => {
               </span>
             </DropdownMenuItem>
             <DropdownMenuItem
-              className='flex-col items-start gap-0.5'
+              variant='stacked'
               onSelect={() => {
                 regenerate(true)
               }}>
@@ -383,8 +384,8 @@ const VersionsPage = () => {
 
       {isLoading && (
         <div className='flex flex-col gap-3'>
-          <Skeleton className='h-28 rounded-xl' />
-          <Skeleton className='h-28 rounded-xl' />
+          <Skeleton shape='card' className='h-28' />
+          <Skeleton shape='card' className='h-28' />
         </div>
       )}
       {error && (
