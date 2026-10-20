@@ -4,6 +4,7 @@
 
 import { useSyncExternalStore } from 'react'
 
+import { playsOutsideYouTube } from '@/lib/youtube/embed-check'
 import type { KaraokeDoc } from '@/types'
 
 import type { Phase } from './plan'
@@ -29,7 +30,8 @@ export type JobStatus =
       outcome: SaveOutcome
       karaoke: KaraokeDoc | null
     }
-  | { kind: 'failed'; at: number; message: string }
+  // `retry` is false when trying again cannot help, such as a video YouTube keeps to youtube.com
+  | { kind: 'failed'; at: number; message: string; retry: boolean }
 
 export interface GenerationRequest {
   videoId: string
@@ -191,16 +193,26 @@ const runPhase = async <T>(
   }
 }
 
+class YouTubeOnlyError extends Error {
+  constructor() {
+    super(
+      "YouTube only lets this video play on youtube.com (it's age-restricted), so it can't play here. Try another upload of this song."
+    )
+    this.name = 'YouTubeOnlyError'
+  }
+}
+
 const run = async (job: Job, signal: AbortSignal) => {
   const { id, videoId } = job
   const progress = onProgress(id)
   try {
-    const video = await runPhase(
-      id,
-      'validate',
-      signal,
-      async () => await validate(videoId, signal, progress)
-    )
+    const video = await runPhase(id, 'validate', signal, async () => {
+      // Before the backend spends minutes on a song our player could never play
+      if (!(await playsOutsideYouTube(videoId, signal))) {
+        throw new YouTubeOnlyError()
+      }
+      return await validate(videoId, signal, progress)
+    })
     updateJob(id, (current) => ({ ...current, video }))
     await runPhase(id, 'transcribe', signal, async () => {
       await transcribe(
@@ -237,7 +249,12 @@ const run = async (job: Job, signal: AbortSignal) => {
     updateJob(id, (current) => ({
       ...current,
       ahead: 0,
-      status: { at: Date.now(), kind: 'failed', message },
+      status: {
+        at: Date.now(),
+        kind: 'failed',
+        message,
+        retry: !(error instanceof YouTubeOnlyError),
+      },
     }))
   }
 }
