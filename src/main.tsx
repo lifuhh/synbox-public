@@ -8,7 +8,7 @@ import ErrorBoundary from './components/shared/ErrorBoundary'
 import AppProvider from './context/AppContext'
 import { QueryProvider } from './lib/react-query/QueryProvider'
 
-const rootElement = document.getElementById('root')
+const rootElement = document.querySelector('#root')
 if (rootElement === null) {
   throw new Error('Missing #root element in index.html')
 }
