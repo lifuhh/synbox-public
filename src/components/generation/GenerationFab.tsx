@@ -7,12 +7,7 @@ import type { Job } from '@/lib/generation/store'
 import { setGenerationExpanded } from '@/lib/generation/store'
 import { cn } from '@/utils/cn'
 
-import {
-  outcomeCopy,
-  SURFACE_LAYOUT_ID,
-  SURFACE_SPRING,
-  surfacePlacement,
-} from './surface'
+import { FAB_MOTION, outcomeCopy, surfacePlacement } from './surface'
 import type { Presentation } from './usePresentation'
 
 const SIZE = 52
@@ -75,16 +70,14 @@ const GenerationFab = ({ job, view, raised }: GenerationFabProps) => {
     <motion.button
       ref={ref}
       type='button'
-      layoutId={SURFACE_LAYOUT_ID}
-      transition={SURFACE_SPRING}
-      style={{ borderRadius: 9999 }}
+      {...FAB_MOTION}
       onClick={() => {
         setGenerationExpanded(true)
       }}
       aria-label={`Lyrics generation: ${title}, ${state === 'running' ? `${percent}%` : detail}. Open details`}
       className={cn(
         surfacePlacement(raised),
-        'group fixed z-50 flex flex-row-reverse items-center bg-[#241019] text-left shadow-[0_10px_30px_-8px_rgb(0_0_0/0.75)] ring-1 ring-white/8 outline-none ring-inset focus-visible:ring-2 focus-visible:ring-[#f785b3] focus-visible:ring-offset-2 focus-visible:ring-offset-black'
+        'group fixed z-50 flex flex-row-reverse items-center rounded-full bg-[#241019] text-left shadow-[0_10px_30px_-8px_rgb(0_0_0/0.75)] ring-1 ring-white/8 outline-none ring-inset focus-visible:ring-2 focus-visible:ring-[#f785b3] focus-visible:ring-offset-2 focus-visible:ring-offset-black'
       )}>
       <span
         className='relative grid shrink-0 place-items-center'

@@ -1,11 +1,22 @@
 import type { Job } from '@/lib/generation/store'
 
-// The panel and the button are one surface: motion morphs between them through the shared layout id
-export const SURFACE_LAYOUT_ID = 'generation-surface'
-export const SURFACE_SPRING = {
-  damping: 30,
-  stiffness: 340,
-  type: 'spring',
+// Both sit in the same corner. Minimizing tucks the panel into it while the button grows out of it, and
+// expanding runs the other way; each scales from that corner, so nothing travels across the screen.
+const ENTER = { duration: 0.22, ease: [0.16, 1, 0.3, 1] } as const
+const EXIT = { duration: 0.14, ease: [0.4, 0, 1, 1] } as const
+
+export const PANEL_MOTION = {
+  animate: { opacity: 1, scale: 1, transition: ENTER },
+  exit: { opacity: 0, scale: 0.8, transition: EXIT },
+  initial: { opacity: 0, scale: 0.8 },
+  style: { transformOrigin: 'bottom right' },
+} as const
+
+export const FAB_MOTION = {
+  animate: { opacity: 1, scale: 1, transition: { ...ENTER, delay: 0.06 } },
+  exit: { opacity: 0, scale: 0.6, transition: EXIT },
+  initial: { opacity: 0, scale: 0.6 },
+  style: { transformOrigin: 'bottom right' },
 } as const
 
 // YouTube's thumbnail is known from the id alone, so the song shows from the first frame
