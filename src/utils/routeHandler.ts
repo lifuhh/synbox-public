@@ -32,9 +32,9 @@ export const handleVideoRoute = async ({
 
     setStateVideoId(videoId)
     onSuccess?.()
-  } catch (err) {
-    console.error('Error processing video route:', err)
-    setError(err instanceof Error ? err.message : 'Failed to load video')
+  } catch (error) {
+    console.error('Error processing video route:', error)
+    setError(error instanceof Error ? error.message : 'Failed to load video')
     setStateVideoId(null)
   } finally {
     setIsLoading(false)
