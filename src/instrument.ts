@@ -6,6 +6,9 @@ import { BE_ADDRESS, LOOKUP_ADDRESS } from '@/lib/synbox-flask/address'
 Sentry.init({
   dsn: import.meta.env.VITE_SENTRY_DSN,
   environment: import.meta.env.MODE,
+  // The browser's note that a resize callback resized something again; harmless, and what Netlify's
+  // deploy bot reported on every deploy
+  ignoreErrors: [/ResizeObserver loop/u],
   integrations: [
     // Sentry has no React Router 8 integration yet, so transactions are named by URL
     Sentry.browserTracingIntegration(),
@@ -31,7 +34,12 @@ const addReplay = async () => {
   }
 }
 
-if (Sentry.getClient()?.getDsn() !== undefined) {
+// Only synbox.io records replays. Netlify's bot opens every deploy's own URL, and its visits and local
+// runs, not people, had used up the month's replays
+if (
+  Sentry.getClient()?.getDsn() !== undefined &&
+  window.location.hostname === 'synbox.io'
+) {
   window.addEventListener(
     'load',
     () => {
