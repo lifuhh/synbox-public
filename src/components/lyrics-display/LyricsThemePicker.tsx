@@ -17,11 +17,11 @@ import {
   lyricsBackdropAtom,
   lyricsCustomHueAtom,
   lyricsStylePanelAtom,
-  lyricsStyleSongAtom,
+  lyricsStyleSourceAtom,
   lyricsThemeIdAtom,
   resetSongLyricsStyleAtom,
-  songHasOwnLyricsStyleAtom,
 } from '@/context/atoms'
+import type { LyricsStyleSource } from '@/context/atoms'
 import { useMediaQuery, usePortrait } from '@/hooks/useMediaQuery'
 import type { LyricsThemeColors } from '@/lib/lyricsThemes'
 import {
@@ -96,6 +96,12 @@ const ThemeSwatch = ({
   </button>
 )
 
+const SOURCE_NOTES: Record<LyricsStyleSource, string> = {
+  default: 'This song uses your default style.',
+  shared: 'Showing the style this link was shared with.',
+  song: 'Style and position are saved for this song.',
+}
+
 // A discrete pick (a preset colour, a backdrop) applies and closes, like a menu. Size and the custom hue
 // are adjusted by dragging and previewed live, so those keep the panel open until Done, Escape or a click
 // outside. The panel centers on the rail (`anchorRef`) rather than on its button
@@ -121,8 +127,8 @@ export const LyricsThemePicker = ({
   const [themeId, setThemeId] = useAtom(lyricsThemeIdAtom)
   const [customHue, setCustomHue] = useAtom(lyricsCustomHueAtom)
   const [backdrop, setBackdrop] = useAtom(lyricsBackdropAtom)
-  const onSong = useAtomValue(lyricsStyleSongAtom) !== null
-  const ownStyle = useAtomValue(songHasOwnLyricsStyleAtom)
+  const source = useAtomValue(lyricsStyleSourceAtom)
+  const ownStyle = source === 'shared' || source === 'song'
   const resetSongStyle = useSetAtom(resetSongLyricsStyleAtom)
   const applyToAll = useSetAtom(applySongLyricsStyleToAllAtom)
 
@@ -272,12 +278,10 @@ export const LyricsThemePicker = ({
         <p className='text-xs text-muted-foreground'>{activeBackdrop?.hint}</p>
       </section>
 
-      {onSong && (
+      {source !== null && (
         <section className='flex items-center justify-between gap-3 border-t pt-3'>
           <p className='text-xs text-muted-foreground'>
-            {ownStyle
-              ? 'Style and position are saved for this song.'
-              : 'This song uses your default style.'}
+            {SOURCE_NOTES[source]}
           </p>
           <button
             type='button'

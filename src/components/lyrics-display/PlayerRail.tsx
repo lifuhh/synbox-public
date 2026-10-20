@@ -4,7 +4,8 @@ import {
   BookmarkIcon,
   LanguagesIcon,
   MessageSquareTextIcon,
-  ReplyIcon,
+  Share2Icon,
+  ShareIcon,
 } from 'lucide-react'
 import { useEffect, useRef } from 'react'
 import { useParams } from 'react-router'
@@ -22,10 +23,17 @@ import {
   translationIsEnglishAtom,
   translationVisibilityAtom,
   playerChromeOpenAtom,
+  lyricsStyleAtom,
   lyricsStylePanelAtom,
 } from '@/context/atoms'
 import { useArmed } from '@/hooks/useArmed'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
+import type { LyricsStyle } from '@/lib/lyricsStyle'
+import {
+  DEFAULT_LYRICS_STYLE,
+  encodeSharedStyle,
+  sameLyricsStyle,
+} from '@/lib/lyricsStyle'
 import { cn } from '@/utils/cn'
 
 import { LyricsThemePicker } from './LyricsThemePicker'
@@ -81,6 +89,23 @@ const usePeek = () => {
   return { enter, leave, panelOpen: panel !== 'closed' }
 }
 
+// Each platform's own share glyph: the box and arrow on Apple devices, the three linked dots elsewhere
+const PlatformShareIcon = /Mac|iPhone|iPad/u.test(navigator.userAgent)
+  ? ShareIcon
+  : Share2Icon
+
+// The song's link, carrying the lyrics style it is being watched with, so it opens looking the same.
+// Nothing to carry while the style is still the app's own
+const shareUrl = (style: LyricsStyle) => {
+  const url = new URL(window.location.href)
+  if (sameLyricsStyle(style, DEFAULT_LYRICS_STYLE)) {
+    url.searchParams.delete('style')
+  } else {
+    url.searchParams.set('style', encodeSharedStyle(style))
+  }
+  return url
+}
+
 const Divider = () => (
   <div className='my-0.5 h-px w-6 shrink-0 bg-white/15 portrait:my-0 portrait:h-6 portrait:w-px' />
 )
@@ -107,15 +132,17 @@ const PlayerRail = () => {
   const [english, setEnglish] = useAtom(translationIsEnglishAtom)
   const touch = useMediaQuery('(pointer: coarse)')
   const nativeShare = touch && 'share' in navigator
-  const shareLabel = nativeShare ? 'Share' : 'Copy URL'
+  const shareLabel = nativeShare ? 'Share' : 'Copy Link'
+  const lyricsStyle = useAtomValue(lyricsStyleAtom)
 
   const handleShare = async () => {
+    const url = shareUrl(lyricsStyle)
     // Phones share through the system sheet; an installed app has no address bar to copy from
     if (nativeShare) {
       try {
         await navigator.share({
           title: currentVideo?.title ?? 'Synbox',
-          url: window.location.href,
+          url: url.href,
         })
       } catch (error) {
         // Closing the sheet rejects with AbortError, which is not a failure
@@ -131,8 +158,14 @@ const PlayerRail = () => {
       return
     }
     try {
-      await navigator.clipboard.writeText(window.location.href)
-      toast({ title: 'Copied URL to clipboard', duration: 1500 })
+      await navigator.clipboard.writeText(url.href)
+      toast({
+        description: url.searchParams.has('style')
+          ? 'Opens with your lyrics style'
+          : undefined,
+        duration: 2000,
+        title: 'Link Copied',
+      })
     } catch {
       toast({
         title: 'Error',
@@ -305,7 +338,7 @@ const PlayerRail = () => {
                 onClick={() => {
                   void handleShare()
                 }}>
-                <ReplyIcon className='size-5 shrink-0 -scale-x-100' />
+                <PlatformShareIcon className='size-5 shrink-0' />
               </RailButton>
             </RailTooltip>
           </nav>
