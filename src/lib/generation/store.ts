@@ -1,5 +1,6 @@
-// The one lyrics generation the app runs at a time. It lives outside React so it carries on across pages;
-// components read it with useGeneration().
+// The lyrics generations the app runs. They live outside React so they carry on across pages; components
+// read them with useGeneration(). Up to MAX_RUNNING run at once and later ones wait their turn here; on the
+// backend, songs take turns on the CPU and each hears how many songs are ahead of it.
 
 import { useSyncExternalStore } from 'react'
 
@@ -17,6 +18,8 @@ import { GenerationError, transcribe, translate, validate } from './stream'
 export type GenerationMode = 'new' | 'regenerate'
 
 export type JobStatus =
+  // Started after MAX_RUNNING others; runs when one of them ends
+  | { kind: 'waiting' }
   | { kind: 'running'; phase: Phase }
   | { kind: 'complete'; at: number; outcome: SaveOutcome }
   | { kind: 'failed'; at: number; message: string }
@@ -40,10 +43,15 @@ export interface Job extends Required<GenerationRequest> {
   video: VideoSummary | null
   runs: Runs
   status: JobStatus
+  // Songs ahead of this one on the backend while it waits for the CPU; 0 when it is not waiting
+  ahead: number
 }
 
 export interface GenerationState {
-  job: Job | null
+  // In the order they were started
+  jobs: readonly Job[]
+  // The job the panel or the corner button shows
+  focusedId: number | null
   expanded: boolean
 }
 
@@ -52,9 +60,12 @@ const RETRIES = 2
 // that cannot replay would otherwise run (and charge for) the job again on every return
 const RECONNECTS = 6
 const RETRY_DELAY_MS = 1500
+// Each running job holds a stream open; more than this wait here rather than fill the backend's line, which
+// refuses songs past its own limit
+export const MAX_RUNNING = 3
 
-let state: GenerationState = { expanded: false, job: null }
-let controller: AbortController | null = null
+let state: GenerationState = { expanded: false, focusedId: null, jobs: [] }
+const controllers = new Map<number, AbortController>()
 let nextId = 1
 const listeners = new Set<() => void>()
 
@@ -65,12 +76,18 @@ const set = (next: GenerationState) => {
   }
 }
 
-// Applies `change` only while job `id` is still the current one
+// Applies `change` only while job `id` is still listed
 const updateJob = (id: number, change: (job: Job) => Job) => {
-  if (state.job?.id === id) {
-    set({ ...state, job: change(state.job) })
+  if (state.jobs.some((job) => job.id === id)) {
+    set({
+      ...state,
+      jobs: state.jobs.map((job) => (job.id === id ? change(job) : job)),
+    })
   }
 }
+
+export const focusedJob = ({ jobs, focusedId }: GenerationState) =>
+  jobs.find((job) => job.id === focusedId) ?? null
 
 const onProgress = (id: number) => (event: ProgressEvent) => {
   const now = Date.now()
@@ -177,9 +194,13 @@ const run = async (job: Job, signal: AbortSignal) => {
           skipUploaderLyrics: job.skipUploaderLyrics,
         },
         signal,
-        progress
+        progress,
+        (ahead) => {
+          updateJob(id, (current) => ({ ...current, ahead }))
+        }
       )
     )
+    updateJob(id, (current) => ({ ...current, ahead: 0 }))
     const outcome = await runPhase(id, 'translate', signal, () =>
       translate(videoId, job.requestId, signal, progress)
     )
@@ -195,41 +216,93 @@ const run = async (job: Job, signal: AbortSignal) => {
       error instanceof Error ? error.message : 'Something went wrong'
     updateJob(id, (current) => ({
       ...current,
+      ahead: 0,
       status: { at: Date.now(), kind: 'failed', message },
     }))
   }
 }
 
-export const isRunning = (job: Job | null) => job?.status.kind === 'running'
+// Not finished yet: running, or waiting for a free slot
+export const isActive = (job: Job | null) =>
+  job !== null &&
+  (job.status.kind === 'running' || job.status.kind === 'waiting')
 
-// Starts a generation and opens its panel. While another one runs, that one's panel opens instead and
-// this returns false.
+export const anyActive = ({ jobs }: GenerationState) => jobs.some(isActive)
+
+// Starts the waiting jobs, oldest first, while fewer than MAX_RUNNING run
+const pump = () => {
+  for (const job of state.jobs) {
+    if (controllers.size >= MAX_RUNNING) {
+      return
+    }
+    if (job.status.kind === 'waiting' && !controllers.has(job.id)) {
+      const controller = new AbortController()
+      controllers.set(job.id, controller)
+      updateJob(job.id, (current) => ({
+        ...current,
+        startedAt: Date.now(),
+        status: { kind: 'running', phase: 'validate' },
+      }))
+      const started = state.jobs.find((current) => current.id === job.id)
+      if (started) {
+        void (async () => {
+          await run(started, controller.signal)
+          controllers.delete(job.id)
+          pump()
+        })()
+      }
+    }
+  }
+}
+
+// Adds a generation and opens its panel. A song already generating is opened instead, and this returns false.
 export const startGeneration = (request: GenerationRequest): boolean => {
-  if (isRunning(state.job)) {
-    set({ ...state, expanded: true })
+  const same = state.jobs.find(
+    (job) => isActive(job) && job.videoId === request.videoId
+  )
+  if (same) {
+    set({ ...state, expanded: true, focusedId: same.id })
     return false
   }
-  controller?.abort()
-  controller = new AbortController()
   const job: Job = {
+    ahead: 0,
     id: nextId++,
     runs: {},
     skipUploaderLyrics: false,
     startedAt: Date.now(),
-    status: { kind: 'running', phase: 'validate' },
+    status: { kind: 'waiting' },
     title: '',
     video: null,
     ...request,
     requestId: request.requestId ?? crypto.randomUUID(),
   }
-  set({ expanded: true, job })
-  void run(job, controller.signal)
+  // A finished run of the same song gives way to the new one
+  const kept = state.jobs.filter(
+    (current) => isActive(current) || current.videoId !== job.videoId
+  )
+  set({ expanded: true, focusedId: job.id, jobs: [...kept, job] })
+  pump()
   return true
 }
 
-export const retryGeneration = () => {
-  const { job } = state
+const newest = (jobs: readonly Job[]) =>
+  jobs.length > 0 ? jobs[jobs.length - 1].id : null
+
+// Takes job `id` off the list; the panel moves on to the newest job still going, else the newest left
+const remove = (id: number) => {
+  const jobs = state.jobs.filter((job) => job.id !== id)
+  let next = state.focusedId
+  if (next === id) {
+    const active = jobs.filter(isActive)
+    next = newest(active.length > 0 ? active : jobs)
+  }
+  set({ expanded: next !== null && state.expanded, focusedId: next, jobs })
+}
+
+export const retryGeneration = (id: number) => {
+  const job = state.jobs.find((current) => current.id === id)
   if (job && job.status.kind === 'failed') {
+    remove(id)
     startGeneration({
       mode: job.mode,
       requestId: job.requestId,
@@ -241,20 +314,28 @@ export const retryGeneration = () => {
 }
 
 // Stops listening. A backend job already running finishes on its own and saves what it made.
-export const cancelGeneration = () => {
-  controller?.abort()
-  controller = null
-  set({ expanded: false, job: null })
+export const cancelGeneration = (id: number) => {
+  controllers.get(id)?.abort()
+  controllers.delete(id)
+  remove(id)
+  pump()
 }
 
-export const dismissGeneration = () => {
-  if (!isRunning(state.job)) {
-    set({ expanded: false, job: null })
+export const dismissGeneration = (id: number) => {
+  const job = state.jobs.find((current) => current.id === id)
+  if (job && !isActive(job)) {
+    remove(id)
+  }
+}
+
+export const focusGeneration = (id: number) => {
+  if (state.jobs.some((job) => job.id === id)) {
+    set({ ...state, expanded: true, focusedId: id })
   }
 }
 
 export const setGenerationExpanded = (expanded: boolean) => {
-  if (state.job) {
+  if (state.focusedId !== null) {
     set({ ...state, expanded })
   }
 }
@@ -266,4 +347,7 @@ const subscribe = (listener: () => void) => {
   }
 }
 
-export const useGeneration = () => useSyncExternalStore(subscribe, () => state)
+export const getGenerationState = () => state
+
+export const useGeneration = () =>
+  useSyncExternalStore(subscribe, getGenerationState)

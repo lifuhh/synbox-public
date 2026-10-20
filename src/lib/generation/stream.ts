@@ -1,9 +1,9 @@
 // The three generation endpoints of synbox-transcribe-whisper, read as NDJSON streams of {type, data}.
 
+import { BE_ADDRESS } from '@/lib/synbox-flask/address'
+
 import { isStageId } from './plan'
 import type { StageId } from './plan'
-
-const BE_ADDRESS = String(import.meta.env.VITE_SYNBOX_BE_URL)
 
 // The backend sends a heartbeat at least every 10 s while a job runs
 const IDLE_TIMEOUT_MS = 60_000
@@ -250,6 +250,8 @@ export const validate = async (
 // out while YouTube Music, LRCLIB and the audio still count
 // `requestId` names one generation and is sent again on every reconnect: the backend replays a job it
 // already finished for that id instead of running (and paying for) the whole job a second time
+// Songs take turns on the backend's CPU: `onQueue` hears how many are ahead while this one waits, and 0
+// when its turn comes
 export const transcribe = async (
   videoId: string,
   options: {
@@ -258,7 +260,8 @@ export const transcribe = async (
     requestId: string
   },
   signal: AbortSignal,
-  onProgress: OnProgress
+  onProgress: OnProgress,
+  onQueue: (ahead: number) => void
 ) => {
   const found: { lines: number | null } = { lines: null }
   const progress = forwardProgress(onProgress)
@@ -273,6 +276,12 @@ export const transcribe = async (
     signal,
     (message) => {
       progress(message)
+      if (message.type === 'queue') {
+        const ahead = isRecord(message.data) ? message.data.ahead : null
+        if (typeof ahead === 'number') {
+          onQueue(ahead)
+        }
+      }
       if (message.type === 'transcription') {
         const lyrics = isRecord(message.data) ? message.data.lyrics : null
         found.lines = Array.isArray(lyrics) ? lyrics.length : 0

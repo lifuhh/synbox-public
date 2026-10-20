@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-const BE_ADDRESS = import.meta.env.VITE_SYNBOX_BE_URL
+import { LOOKUP_ADDRESS } from './address'
 
 const lyricsFieldsSchema = z.object({
   chi_translation: z.string(),
@@ -49,7 +49,7 @@ const request = async <T>(
   schema: z.ZodType<T>,
   init?: RequestInit
 ): Promise<T> => {
-  const response = await fetch(`${BE_ADDRESS}${path}`, init)
+  const response = await fetch(`${LOOKUP_ADDRESS}${path}`, init)
   const body: unknown = await response.json().catch(() => null)
   if (!response.ok) {
     const message =

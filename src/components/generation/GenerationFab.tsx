@@ -7,7 +7,12 @@ import type { Job } from '@/lib/generation/store'
 import { setGenerationExpanded } from '@/lib/generation/store'
 import { cn } from '@/utils/cn'
 
-import { FAB_MOTION, outcomeOf, surfacePlacement } from './surface'
+import {
+  FAB_MOTION,
+  outcomeOf,
+  queueLabelOf,
+  surfacePlacement,
+} from './surface'
 import type { Presentation } from './usePresentation'
 
 const SIZE = 52
@@ -38,21 +43,25 @@ const LABELS: Record<Exclude<FabState, 'running'>, [string, string]> = {
 // step; when the job ends the label stays out, so the result is noticed without opening anything.
 interface GenerationFabProps {
   job: Job
+  // Songs in this tab's list, shown on a badge when there is more than one
+  count: number
   view: Presentation
   raised: boolean
 }
 
-const GenerationFab = ({ job, view, raised }: GenerationFabProps) => {
+const GenerationFab = ({ job, count, view, raised }: GenerationFabProps) => {
   const state = fabState(job, view)
   const percent = Math.floor(view.overall * 100)
   const step = view.views[view.index]
+  const queueLabel = queueLabelOf(job)
   const [title, detail] =
     state === 'running'
       ? [
           STEPS[view.index].title,
-          `${percent}% · ${
-            step.state === 'done' ? 'Done' : (step.detail ?? 'Starting')
-          }`,
+          queueLabel ??
+            `${percent}% · ${
+              step.state === 'done' ? 'Done' : (step.detail ?? 'Starting')
+            }`,
         ]
       : state === 'done'
         ? [outcomeOf(job)?.title ?? LABELS.done[0], LABELS.done[1]]
@@ -70,7 +79,7 @@ const GenerationFab = ({ job, view, raised }: GenerationFabProps) => {
       onClick={() => {
         setGenerationExpanded(true)
       }}
-      aria-label={`Lyrics generation: ${title}, ${state === 'running' ? `${percent}%` : detail}. Open details`}
+      aria-label={`Lyrics generation: ${title}, ${state === 'running' ? `${percent}%` : detail}${count > 1 ? `, ${count} songs` : ''}. Open details`}
       className={cn(
         surfacePlacement(raised),
         'group fixed z-50 flex flex-row-reverse items-center rounded-full bg-[#241019] text-left shadow-[0_10px_30px_-8px_rgb(0_0_0/0.75)] ring-1 ring-white/8 outline-none ring-inset focus-visible:ring-2 focus-visible:ring-[#f785b3] focus-visible:ring-offset-2 focus-visible:ring-offset-black'
@@ -122,6 +131,13 @@ const GenerationFab = ({ job, view, raised }: GenerationFabProps) => {
             </g>
           )}
         </svg>
+        {count > 1 && (
+          <span
+            aria-hidden
+            className='absolute -top-1 -right-1 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-[#f785b3] px-1 text-[11px] leading-none font-semibold text-[#241019] tabular-nums'>
+            {count}
+          </span>
+        )}
         <AnimatePresence mode='popLayout' initial={false}>
           {state === 'done' ? (
             <motion.span
