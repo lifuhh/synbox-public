@@ -127,33 +127,6 @@ export const useYouTubePlayer = ({
     latest.current = { quirks, loop, coverPause, onEvent }
   })
 
-  // YouTube times its center button from PLAYING, so a command arms the mask
-  // and the PLAYING that follows restarts the countdown
-  const [centerMasked, setCenterMasked] = useState(false)
-  const maskArmedRef = useRef(false)
-  const maskTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const maskCenter = useCallback((trigger: 'command' | 'playing') => {
-    const ms = latest.current.quirks.centerMaskMs
-    if (trigger === 'playing' && !maskArmedRef.current) {
-      return
-    }
-    if (maskTimerRef.current) {
-      clearTimeout(maskTimerRef.current)
-    }
-    maskArmedRef.current = ms > 0
-    setCenterMasked(ms > 0)
-    if (ms <= 0) {
-      return
-    }
-    maskTimerRef.current = setTimeout(
-      () => {
-        maskArmedRef.current = false
-        setCenterMasked(false)
-      },
-      trigger === 'playing' ? ms : ms * 3
-    )
-  }, [])
-
   const log = useCallback((message: string) => {
     latest.current.onEvent?.(message)
   }, [])
@@ -240,7 +213,6 @@ export const useYouTubePlayer = ({
             if (data === YTState.Playing) {
               stoppedByGuardRef.current = false
               dropCaptions(player)
-              maskCenter('playing')
               clearTimeout(settleTimer)
               settleTimer = setTimeout(
                 settle,
@@ -275,7 +247,7 @@ export const useYouTubePlayer = ({
       playerRef.current = null
       host.replaceChildren()
     }
-  }, [videoId, suspended, applyVolume, dropCaptions, log, maskCenter])
+  }, [videoId, suspended, applyVolume, dropCaptions, log])
 
   // Before onReady these only record the value; onReady applies it
   const { level, muted } = volume
@@ -351,26 +323,22 @@ export const useYouTubePlayer = ({
 
   // `muted` mutes YouTube before asking it to play: browsers only allow an
   // autoplay without a user gesture when it is silent
-  const play = useCallback(
-    ({ muted = false }: { muted?: boolean } = {}) => {
-      const player = playerRef.current
-      if (!player) {
-        return
-      }
-      if (muted) {
-        player.mute()
-      }
-      if (phaseRef.current.kind === 'ended') {
-        player.seekTo(0, true)
-      }
-      if (phaseRef.current.kind === 'ready') {
-        setPhase({ kind: 'starting' })
-      }
-      maskCenter('command')
-      player.playVideo()
-    },
-    [maskCenter]
-  )
+  const play = useCallback(({ muted = false }: { muted?: boolean } = {}) => {
+    const player = playerRef.current
+    if (!player) {
+      return
+    }
+    if (muted) {
+      player.mute()
+    }
+    if (phaseRef.current.kind === 'ended') {
+      player.seekTo(0, true)
+    }
+    if (phaseRef.current.kind === 'ready') {
+      setPhase({ kind: 'starting' })
+    }
+    player.playVideo()
+  }, [])
 
   const pause = useCallback(() => {
     const player = playerRef.current
@@ -404,11 +372,10 @@ export const useYouTubePlayer = ({
         return
       }
       stoppedByGuardRef.current = false
-      maskCenter('command')
       player.seekTo(seconds, true)
       dropCaptions(player)
     },
-    [dropCaptions, maskCenter]
+    [dropCaptions]
   )
 
   const getTime = useCallback(
@@ -422,7 +389,6 @@ export const useYouTubePlayer = ({
   return {
     hostRef,
     phase,
-    centerMasked,
     play,
     pause,
     togglePlay,

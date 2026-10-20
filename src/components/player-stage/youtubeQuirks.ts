@@ -7,7 +7,8 @@ export interface YouTubeQuirks {
   blockIframeInput: boolean
   // Extra iframe height above and below the visible frame. YouTube letterboxes
   // the video inside the taller iframe, so its title bar and logo land in the
-  // clipped bands while the picture stays whole
+  // clipped bands while the picture stays whole. Its top shade is up to 146px
+  // tall (big mode) and fades on YouTube's own timer after a play or seek
   cropPx: number
   // Where a pause shows our cover (touch screens), show it before asking
   // YouTube to pause, so the pause never lands a frame early
@@ -22,18 +23,13 @@ export interface YouTubeQuirks {
   // never shows its suggested-videos end screen. getDuration() is sometimes
   // rounded up to the next whole second, so this must be at least 1. 0 disables
   endGuardSec: number
-  // YouTube draws a center play/pause button for ~4s after every API play or
-  // seek, even with controls=0 and no pointer input reaching it. Cover that
-  // spot with our own button for this long after those commands. 0 disables
-  centerMaskMs: number
 }
 
 export const DEFAULT_YOUTUBE_QUIRKS: YouTubeQuirks = {
   blockIframeInput: true,
-  cropPx: 60,
+  cropPx: 150,
   coverBeforePause: true,
   coverHoldMs: 150,
   unloadCaptions: true,
   endGuardSec: 1,
-  centerMaskMs: 4500,
 }

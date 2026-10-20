@@ -236,8 +236,7 @@ export const PlayerStage = ({
       (phase.kind === 'playing' && !phase.settled))
   const controlsVisible = !dragging && (!idle || phase.kind !== 'playing')
   const { toast } = useToast()
-  const centerControl = touch && controlsVisible
-  const centerArmed = useArmed(centerControl)
+  const centerArmed = useArmed(controlsVisible)
   const setChromeOpen = useSetAtom(playerChromeOpenAtom)
   useEffect(() => {
     setChromeOpen(controlsVisible)
@@ -411,32 +410,29 @@ export const PlayerStage = ({
         {showCover && <StageCover videoId={videoId} phase={phase} />}
       </div>
 
-      {/* YouTube shows its own center button for about 4s after every play or seek; this covers that spot,
-          opaque so none of it shows through. On a touch screen it is also the play/pause control, shown
-          with the rest of the floating UI as in YouTube's own app. An uncovered pause shows it throughout:
-          YouTube's button stays up for a whole pause that starts within those seconds. It sits outside the
-          video box so it draws above the lyrics; the video is always centred on the stage */}
-      {!showCover &&
-        !handsOff &&
-        (player.centerMasked || centerControl || phase.kind === 'paused') && (
-          <button
-            type='button'
-            tabIndex={-1}
-            aria-label={isPlaying ? 'Pause' : 'Play'}
-            onClick={player.togglePlay}
-            className={cn(
-              'absolute top-1/2 left-1/2 z-26 grid size-20 -translate-1/2 place-items-center rounded-full bg-neutral-950 text-white shadow-[0_4px_16px_rgb(0_0_0/0.35)] ring-1 ring-white/10',
-              phase.kind === 'paused' &&
-                'animate-in duration-200 zoom-in-90 fade-in',
-              !centerArmed && 'pointer-events-none'
-            )}>
-            {phase.kind === 'paused' ? (
-              <PlayIcon className='size-9 fill-current' />
-            ) : (
-              <PauseIcon className='size-9 fill-current' />
-            )}
-          </button>
-        )}
+      {/* The play/pause control shows and hides with the rest of the floating UI. Opaque, so it also covers
+          the flash YouTube draws in the same spot on a play or pause, which comes from input that has just
+          shown the UI. It sits outside the video box so it draws above the lyrics; the video is always
+          centred on the stage */}
+      {!showCover && !handsOff && (
+        <button
+          type='button'
+          tabIndex={-1}
+          aria-label={isPlaying ? 'Pause' : 'Play'}
+          aria-hidden={!controlsVisible}
+          onClick={player.togglePlay}
+          className={cn(
+            'absolute top-1/2 left-1/2 z-26 grid size-20 -translate-1/2 place-items-center rounded-full bg-neutral-950 text-white shadow-[0_4px_16px_rgb(0_0_0/0.35)] ring-1 ring-white/10 transition-opacity duration-300',
+            controlsVisible ? 'opacity-100' : 'opacity-0',
+            !centerArmed && 'pointer-events-none'
+          )}>
+          {phase.kind === 'paused' ? (
+            <PlayIcon className='size-9 fill-current' />
+          ) : (
+            <PauseIcon className='size-9 fill-current' />
+          )}
+        </button>
+      )}
 
       {quirks.blockIframeInput && !handsOff && (
         <div
