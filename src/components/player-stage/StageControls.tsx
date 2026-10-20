@@ -87,6 +87,9 @@ interface StageControlsProps {
 export const CONTROLS_FADE_MS = 300
 const OBSTRUCTION_GAP_PX = 8
 const VOLUME_WHEEL_STEP = 0.05
+// The clock counts a seek as landed within this of its target
+const SEEK_SETTLED_SEC = 1
+const SEEK_HOLD_MAX_MS = 3000
 
 export const StageControls = ({
   player,
@@ -123,7 +126,29 @@ export const StageControls = ({
 
   const time = usePlaybackClock(player)
   const duration = player.getDuration()
-  const [scrub, setScrub] = useState<number | null>(null)
+  // What the seek bar shows in place of the clock: the value under the pointer while dragging, then the
+  // committed target until the clock reaches it, so the thumb never drops back to the old time for the
+  // frame before the player reports the seek
+  const [held, setHeld] = useState<{
+    value: number
+    committed: boolean
+  } | null>(null)
+  if (
+    held?.committed === true &&
+    Math.abs(time - held.value) < SEEK_SETTLED_SEC
+  ) {
+    setHeld(null)
+  }
+  const releaseRef = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined
+  )
+  useEffect(
+    () => () => {
+      clearTimeout(releaseRef.current)
+    },
+    []
+  )
+  const shown = held?.value ?? time
   const isPlaying =
     player.phase.kind === 'playing' || player.phase.kind === 'buffering'
 
@@ -144,15 +169,22 @@ export const StageControls = ({
           min={0}
           max={Math.max(duration, 1)}
           step={0.1}
-          value={[scrub ?? time]}
+          value={[shown]}
           onValueChange={([value]) => {
-            setScrub(value ?? null)
+            setHeld(value === undefined ? null : { committed: false, value })
           }}
           onValueCommit={([value]) => {
-            if (value !== undefined) {
-              player.seek(value)
+            if (value === undefined) {
+              setHeld(null)
+              return
             }
-            setScrub(null)
+            player.seek(value)
+            setHeld({ committed: true, value })
+            // A seek the player never reports lets go of the bar anyway
+            clearTimeout(releaseRef.current)
+            releaseRef.current = setTimeout(() => {
+              setHeld(null)
+            }, SEEK_HOLD_MAX_MS)
           }}
           className='mb-2 cursor-pointer'
         />
@@ -203,7 +235,7 @@ export const StageControls = ({
             </div>
           </div>
           <span className='ml-2 whitespace-nowrap'>
-            {formatTime(scrub ?? time)} / {formatTime(duration)}
+            {formatTime(shown)} / {formatTime(duration)}
           </span>
           <div className='ml-auto flex items-center gap-1'>
             <IconButton
