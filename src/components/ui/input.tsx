@@ -2,7 +2,7 @@ import * as React from 'react'
 
 import { cn } from '@/utils/cn'
 
-interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {}
+type InputProps = React.InputHTMLAttributes<HTMLInputElement>
 
 const InputRender: React.ForwardRefRenderFunction<
   HTMLInputElement,
