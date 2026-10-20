@@ -10,6 +10,7 @@ import { flushSync } from 'react-dom'
 import type { YTPlayer, YTStateCode } from '@/lib/youtube/iframe-api'
 import { loadYouTubeIframeApi, YTState } from '@/lib/youtube/iframe-api'
 
+import { clampSeek } from './seek-steps'
 import type { YouTubeQuirks } from './youtube-quirks'
 
 export type StagePhase =
@@ -378,7 +379,14 @@ export const useYouTubePlayer = ({
         return
       }
       stoppedByGuardRef.current = false
-      player.seekTo(seconds, true)
+      player.seekTo(
+        clampSeek(
+          seconds,
+          player.getDuration(),
+          latest.current.quirks.endGuardSec
+        ),
+        true
+      )
       dropCaptions(player)
     },
     [dropCaptions]
