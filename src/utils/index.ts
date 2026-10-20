@@ -1,7 +1,5 @@
-import type {
-  YoutubePlaylistApiResponse,
-  formattedYoutubeVideoItemForCarousel,
-} from '@/types'
+import type { YoutubePlaylist } from '@/lib/youtube/api'
+import type { formattedYoutubeVideoItemForCarousel } from '@/types'
 
 export const shuffleArray = <T>(array: T[]): T[] => {
   for (let i = array.length - 1; i > 0; i -= 1) {
@@ -24,7 +22,7 @@ const trimLength = (text: string, maxLength: number, trail: boolean) => {
 }
 
 // A private or deleted video stays in its playlist with no thumbnails
-const playableItems = (data: YoutubePlaylistApiResponse) =>
+const playableItems = (data: YoutubePlaylist) =>
   data.items.flatMap((item) => {
     const thumbnailUrl = item.snippet.thumbnails.high?.url
     return thumbnailUrl === undefined ? [] : [{ item, thumbnailUrl }]
@@ -45,7 +43,7 @@ const KOREAN_CHANNELS = new Set([
 ])
 
 export const formatYoutubeChartsResponse = (
-  data: YoutubePlaylistApiResponse
+  data: YoutubePlaylist
 ): { title: string; id: string }[] =>
   playableItems(data).flatMap(({ item }) => {
     const { title, videoOwnerChannelTitle: channel, resourceId } = item.snippet
@@ -55,7 +53,7 @@ export const formatYoutubeChartsResponse = (
   })
 
 export const formatYoutubePlaylistResponse = (
-  data: YoutubePlaylistApiResponse
+  data: YoutubePlaylist
 ): formattedYoutubeVideoItemForCarousel[] => {
   const items = playableItems(data).map(
     ({ item, thumbnailUrl }): formattedYoutubeVideoItemForCarousel => {

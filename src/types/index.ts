@@ -6,102 +6,10 @@ export interface formattedYoutubeVideoItemForCarousel {
   videoId: string
 }
 
-export interface YoutubePlaylistApiResponse {
-  kind: string
-  etag: string
-  nextPageToken?: string
-  items: YoutubePlaylistItem[]
-  pageInfo: PageInfo
-}
-
-export interface YoutubePlaylistItem {
-  kind: string
-  etag: string
-  id: string
-  snippet: YoutubePlaylistItemSnippet
-}
-
-interface YoutubePlaylistItemSnippet {
-  publishedAt: string
-  channelId: string
-  title: string
-  description: string
-  thumbnails: Thumbnails
-  channelTitle: string
-  playlistId: string
-  position: number
-  resourceId: ResourceId
-  videoOwnerChannelTitle: string
-  videoOwnerChannelId: string
-}
-
-// Empty for a private or deleted video in a playlist
-interface Thumbnails {
-  default?: ThumbnailInfo
-  medium?: ThumbnailInfo
-  high?: ThumbnailInfo
-  standard?: ThumbnailInfo
-  maxres?: ThumbnailInfo
-}
-
-interface ThumbnailInfo {
-  url: string
-  width: number
-  height: number
-}
-
-interface ResourceId {
-  kind: string
-  videoId: string
-}
-
-interface PageInfo {
-  totalResults: number
-  resultsPerPage: number
-}
-
-export interface YoutubeSearchApiResponse {
-  kind: string
-  etag: string
-  nextPageToken?: string
-  regionCode?: string
-  items: YoutubeSearchItem[]
-  pageInfo: PageInfo
-}
-
 interface YoutubeVideoStatistics {
   viewCount: string
   likeCount: string
   commentCount: string
-}
-
-interface YoutubeSearchItem {
-  kind: string
-  etag: string
-  id:
-    | string
-    | {
-        videoId: string
-        kind: string
-      }
-  snippet: YoutubeSearchItemSnippet
-  contentDetails?: {
-    duration: string
-  }
-  statistics?: YoutubeVideoStatistics
-}
-
-interface YoutubeSearchItemSnippet {
-  publishedAt: string
-  channelId: string
-  title: string
-  description: string
-  thumbnails?: Thumbnails
-  channelTitle: string
-  liveBroadcastContent: string
-  publishTime: string
-  tags?: string[]
-  defaultAudioLanguage?: string
 }
 
 export interface YoutubeSearchResultInfo {
