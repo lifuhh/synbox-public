@@ -5,10 +5,10 @@ import * as React from 'react'
 
 import { cn } from '@/utils/cn'
 
-const Slider = React.forwardRef<
+const SliderRender: React.ForwardRefRenderFunction<
   React.ComponentRef<typeof SliderPrimitive.Root>,
   React.ComponentPropsWithoutRef<typeof SliderPrimitive.Root>
->(({ className, ...props }, ref) => (
+> = ({ className, ...props }, ref) => (
   <SliderPrimitive.Root
     ref={ref}
     className={cn(
@@ -34,7 +34,8 @@ const Slider = React.forwardRef<
     </SliderPrimitive.Track>
     <SliderPrimitive.Thumb className='block h-5 w-5 rounded-full border-2 border-foreground bg-primary ring-offset-accent-foreground transition-colors focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:outline-hidden disabled:pointer-events-none disabled:opacity-50 touch:h-6 touch:w-6' />
   </SliderPrimitive.Root>
-))
+)
+const Slider = React.forwardRef(SliderRender)
 Slider.displayName = SliderPrimitive.Root.displayName
 
 export { Slider }

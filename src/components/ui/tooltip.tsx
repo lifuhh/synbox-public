@@ -32,10 +32,10 @@ const Tooltip = ({
 
 const TooltipTrigger = TooltipPrimitive.Trigger
 
-const TooltipContent = React.forwardRef<
+const TooltipContentRender: React.ForwardRefRenderFunction<
   React.ComponentRef<typeof TooltipPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof TooltipPrimitive.Content>
->(({ className, sideOffset = 4, ...props }, ref) => (
+> = ({ className, sideOffset = 4, ...props }, ref) => (
   // Rendered inline, the content joins its trigger's parent layout (gaps,
   // space-y margins) and shifts it
   <TooltipPrimitive.Portal>
@@ -49,7 +49,8 @@ const TooltipContent = React.forwardRef<
       {...props}
     />
   </TooltipPrimitive.Portal>
-))
+)
+const TooltipContent = React.forwardRef(TooltipContentRender)
 TooltipContent.displayName = TooltipPrimitive.Content.displayName
 
 export { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger }

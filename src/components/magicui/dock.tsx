@@ -22,42 +22,41 @@ const dockVariants = cva(
   'mx-auto mt-8 flex h-[58px] w-max items-end gap-2 rounded-2xl border p-2 dark:border-[#707070]'
 )
 
-const Dock = React.forwardRef<HTMLDivElement, DockProps>(
-  (
-    {
-      className,
-      children,
-      magnification = DEFAULT_MAGNIFICATION,
-      distance = DEFAULT_DISTANCE,
-      ...props
-    },
-    ref
-  ) => {
-    const mouseX = useMotionValue(Infinity)
+const DockRender: React.ForwardRefRenderFunction<HTMLDivElement, DockProps> = (
+  {
+    className,
+    children,
+    magnification = DEFAULT_MAGNIFICATION,
+    distance = DEFAULT_DISTANCE,
+    ...props
+  },
+  ref
+) => {
+  const mouseX = useMotionValue(Infinity)
 
-    const renderChildren = () =>
-      React.Children.map(children, (child): React.ReactNode =>
-        isValidElement<DockIconProps>(child)
-          ? cloneElement(child, { distance, magnification, mouseX })
-          : child
-      )
-
-    return (
-      <motion.div
-        ref={ref}
-        onMouseMove={(e) => {
-          mouseX.set(e.pageX)
-        }}
-        onMouseLeave={() => {
-          mouseX.set(Infinity)
-        }}
-        {...props}
-        className={cn(dockVariants({ className }), className)}>
-        {renderChildren()}
-      </motion.div>
+  const renderChildren = () =>
+    React.Children.map(children, (child): React.ReactNode =>
+      isValidElement<DockIconProps>(child)
+        ? cloneElement(child, { distance, magnification, mouseX })
+        : child
     )
-  }
-)
+
+  return (
+    <motion.div
+      ref={ref}
+      onMouseMove={(e) => {
+        mouseX.set(e.pageX)
+      }}
+      onMouseLeave={() => {
+        mouseX.set(Infinity)
+      }}
+      {...props}
+      className={cn(dockVariants({ className }), className)}>
+      {renderChildren()}
+    </motion.div>
+  )
+}
+const Dock = React.forwardRef(DockRender)
 
 Dock.displayName = 'Dock'
 
