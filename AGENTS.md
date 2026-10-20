@@ -1,8 +1,17 @@
 # Agent Notes
 
-- This repo is public. Never commit secrets or `.env`.
-- Every PR adds a change-log entry, `docs/log/YYYY-MM-DD-<branch>.md`, in the same PR. Shape and rules: `docs/log/README.md`. Write it while the work is fresh: problem, cause, change, expected behaviour, judgment calls (the alternatives that lost and why), verification. Before changing how something works, read its entries (`grep -l <area or song id> docs/log/*`) so an earlier fix is not undone.
-- Local reports and visual write-ups (HTML summaries, before/after screenshots, measurements) go in `.reports/YYYY-MM-DD-<slug>/`, one folder per report: an `index.html` with its images beside it, referenced by relative path so it opens offline. `.reports/` is gitignored; never commit a report. Anything the repo should keep belongs in `docs/log` instead.
+- **Never commit anything sensitive.** This repo is open source: every commit, commit message, branch, PR description and PR comment is public as soon as it is pushed, and stays in history after it is deleted. Sensitive means:
+  - secrets, API keys, tokens, cookies, `.env` contents, service-account files;
+  - personal data: emails, real names of private people, account ids;
+  - lyrics text and song audio (copyrighted; song titles and video ids are fine);
+  - the private change log (`docs/log/`) and session transcripts;
+  - open security weaknesses in production (for example storage or database permissions that are too open), until they are fixed;
+  - internal details of any employer.
+
+  Before every commit, read the staged diff and the message for these. Before every PR, read its description the same way. When unsure, leave it out and ask.
+
+- **Keep the private change log, never commit it.** `docs/log/` in the main checkout is gitignored working history: one entry per PR (problem, cause, change, expected behaviour, judgment calls, verification), in the shape set by its local `README.md`. From a worktree, write to `"$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")/docs/log/"`. Before changing how something works, read its entries (`grep -l <area or song id> docs/log/*`) so an earlier fix is not undone. If the folder is missing (a fresh clone), skip the log; never recreate it as tracked files.
+- Local reports and visual write-ups (HTML summaries, before/after screenshots, measurements) go in `.reports/YYYY-MM-DD-<slug>/`, one folder per report: an `index.html` with its images beside it, referenced by relative path so it opens offline. `.reports/` is gitignored; never commit a report. Anything worth keeping about why a change was made goes in the private change log instead.
 
 ## Shipping a change
 
