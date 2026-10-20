@@ -5,6 +5,7 @@ import {
   beginStage,
   CAP,
   completePhase,
+  FINISH_MS,
   MEASURED_SHARE,
   OVERALL_CAP,
   overallValue,
@@ -24,6 +25,24 @@ describe('a stage with no reports', () => {
     // The second half of the expected time adds less than the first
     expect(at(30) - at(15)).toBeLessThan(at(15))
     expect(at(600)).toBeLessThan(CAP + 1e-9)
+  })
+})
+
+describe('the song check', () => {
+  test('is past 85 % when it usually ends, then runs to full instead of jumping', () => {
+    // 3.5–7.7 s in production, against the backend's 5 s estimate
+    let runs = beginStage({}, 'check', 0, { expectedS: 5 })
+    expect(stageValue(runs.check, 3.5 * S)).toBeGreaterThan(0.85)
+    const shown = stageValue(runs.check, 4 * S)
+    runs = beginStage(runs, 'download', 4 * S)
+    expect(stageValue(runs.check, 4 * S)).toBeCloseTo(shown, 9)
+    let last = shown
+    for (let t = 0; t <= FINISH_MS; t += 50) {
+      const value = stageValue(runs.check, 4 * S + t)
+      expect(value).toBeGreaterThanOrEqual(last)
+      last = value
+    }
+    expect(last).toBe(1)
   })
 })
 
