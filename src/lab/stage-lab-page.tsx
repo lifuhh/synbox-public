@@ -24,13 +24,12 @@ const NUMBER_QUIRKS: { key: NumberQuirk; label: string; step: number }[] = [
   { key: 'cropPx', label: 'Crop (px)', step: 5 },
   { key: 'coverHoldMs', label: 'Cover Hold (ms)', step: 25 },
   { key: 'endGuardSec', label: 'End Guard (s)', step: 0.1 },
-  { key: 'centerMaskMs', label: 'Center Mask (ms)', step: 250 },
 ]
 
 const CHECKS = [
   'Hover the video: no YouTube title bar or logo',
   'Pause (click, space, k): the frame stays with our play button (touch: blurred cover); nothing from YouTube',
-  'Resume or seek: no title flash; our center button hides YouTube’s for ~4s',
+  'Resume or seek: no title flash or top shade; our center button hides with the rest of the controls',
   'Seek to the last seconds: stops with a replay cover, no end screen',
   'Volume slider, mute, arrow keys: change sticks, survives reload',
   'A video with auto-captions: none visible; untick Unload Captions to compare',

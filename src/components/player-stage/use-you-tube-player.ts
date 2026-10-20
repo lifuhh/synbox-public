@@ -76,9 +76,6 @@ const nextPhase = (
     case YTState.Cued: {
       return { kind: 'ready' }
     }
-    case YTState.Unstarted: {
-      return current
-    }
     default: {
       return current
     }
@@ -124,38 +121,11 @@ export const useYouTubePlayer = ({
   }, [])
 
   // Read inside long-lived YouTube callbacks without re-creating the player
-  const latest = useRef({ coverPause, loop, onEvent, quirks })
+  const latest = useRef({ quirks, loop, coverPause, onEvent })
   useLayoutEffect(() => {
     phaseRef.current = phase
-    latest.current = { coverPause, loop, onEvent, quirks }
+    latest.current = { quirks, loop, coverPause, onEvent }
   })
-
-  // YouTube times its center button from PLAYING, so a command arms the mask
-  // and the PLAYING that follows restarts the countdown
-  const [centerMasked, setCenterMasked] = useState(false)
-  const maskArmedRef = useRef(false)
-  const maskTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const maskCenter = useCallback((trigger: 'command' | 'playing') => {
-    const ms = latest.current.quirks.centerMaskMs
-    if (trigger === 'playing' && !maskArmedRef.current) {
-      return
-    }
-    if (maskTimerRef.current) {
-      clearTimeout(maskTimerRef.current)
-    }
-    maskArmedRef.current = ms > 0
-    setCenterMasked(ms > 0)
-    if (ms <= 0) {
-      return
-    }
-    maskTimerRef.current = setTimeout(
-      () => {
-        maskArmedRef.current = false
-        setCenterMasked(false)
-      },
-      trigger === 'playing' ? ms : ms * 3
-    )
-  }, [])
 
   const log = useCallback((message: string) => {
     latest.current.onEvent?.(message)
@@ -184,6 +154,15 @@ export const useYouTubePlayer = ({
   )
 
   useEffect(() => {
+    const host = hostRef.current
+    if (!host || suspended) {
+      return
+    }
+    let disposed = false
+    let settleTimer: ReturnType<typeof setTimeout> | undefined
+    const target = document.createElement('div')
+    host.append(target)
+
     const settle = () => {
       setPhase((current) =>
         current.kind === 'playing'
@@ -192,93 +171,83 @@ export const useYouTubePlayer = ({
       )
     }
 
-    const mount = (host: HTMLDivElement) => {
-      let disposed = false
-      let settleTimer: ReturnType<typeof setTimeout> | undefined
-      const target = document.createElement('div')
-      host.append(target)
-
-      const create = async () => {
-        const YT = await loadYouTubeIframeApi()
-        if (disposed) {
-          return
-        }
-        const player = new YT.Player(target, {
-          events: {
-            onError: ({ data }) => {
-              if (disposed) {
-                return
-              }
-              log(`error ${data}`)
-              setPhase({ code: data, kind: 'error' })
-            },
-            onReady: () => {
-              if (disposed) {
-                return
-              }
-              playerRef.current = player
-              applyVolume(player, volumeRef.current)
+    const create = async () => {
+      const YT = await loadYouTubeIframeApi()
+      if (disposed) {
+        return
+      }
+      const player = new YT.Player(target, {
+        videoId,
+        host: 'https://www.youtube-nocookie.com',
+        width: '100%',
+        height: '100%',
+        playerVars: {
+          controls: 0,
+          disablekb: 1,
+          fs: 0,
+          rel: 0,
+          iv_load_policy: 3,
+          playsinline: 1,
+          cc_load_policy: 0,
+          hl: 'en',
+          enablejsapi: 1,
+          origin: window.location.origin,
+          start: Math.floor(resumeAtRef.current),
+        },
+        events: {
+          onReady: () => {
+            if (disposed) {
+              return
+            }
+            playerRef.current = player
+            applyVolume(player, volumeRef.current)
+            dropCaptions(player)
+            log('ready')
+            setPhase({ kind: 'ready' })
+          },
+          onStateChange: ({ data }) => {
+            if (disposed) {
+              return
+            }
+            log(`state ${STATE_NAMES[data] ?? data}`)
+            if (data === YTState.Playing) {
+              stoppedByGuardRef.current = false
               dropCaptions(player)
-              log('ready')
-              setPhase({ kind: 'ready' })
-            },
-            onStateChange: ({ data }) => {
-              if (disposed) {
-                return
-              }
-              log(`state ${STATE_NAMES[data] ?? data}`)
-              if (data === YTState.Playing) {
-                stoppedByGuardRef.current = false
-                dropCaptions(player)
-                maskCenter('playing')
-                clearTimeout(settleTimer)
-                settleTimer = setTimeout(
-                  settle,
-                  latest.current.quirks.coverHoldMs
-                )
-              }
-              setPhase((current) =>
-                nextPhase(
-                  current,
-                  data,
-                  stoppedByGuardRef.current,
-                  latest.current.coverPause
-                )
+              clearTimeout(settleTimer)
+              settleTimer = setTimeout(
+                settle,
+                latest.current.quirks.coverHoldMs
               )
-            },
+            }
+            setPhase((current) =>
+              nextPhase(
+                current,
+                data,
+                stoppedByGuardRef.current,
+                latest.current.coverPause
+              )
+            )
           },
-          height: '100%',
-          host: 'https://www.youtube-nocookie.com',
-          playerVars: {
-            cc_load_policy: 0,
-            controls: 0,
-            disablekb: 1,
-            enablejsapi: 1,
-            fs: 0,
-            hl: 'en',
-            iv_load_policy: 3,
-            origin: window.location.origin,
-            playsinline: 1,
-            rel: 0,
-            start: Math.floor(resumeAtRef.current),
+          onError: ({ data }) => {
+            if (disposed) {
+              return
+            }
+            log(`error ${data}`)
+            setPhase({ kind: 'error', code: data })
           },
-          videoId,
-          width: '100%',
-        })
-      }
-      void create()
-
-      return () => {
-        disposed = true
-        clearTimeout(settleTimer)
-        playerRef.current?.destroy()
-        playerRef.current = null
-        host.replaceChildren()
-      }
+        },
+      })
     }
-    const hostNode = hostRef.current
-    return hostNode && !suspended ? mount(hostNode) : undefined
-  }, [videoId, suspended, applyVolume, dropCaptions, log, maskCenter])
+    void create()
+
+    return () => {
+      disposed = true
+      clearTimeout(settleTimer)
+      playerRef.current?.destroy()
+      playerRef.current = null
+      host.replaceChildren()
+    }
+  }, [videoId, suspended, applyVolume, dropCaptions, log])
 
   // Before onReady these only record the value; onReady applies it
   const { level, muted } = volume
@@ -354,26 +323,22 @@ export const useYouTubePlayer = ({
 
   // `muted` mutes YouTube before asking it to play: browsers only allow an
   // autoplay without a user gesture when it is silent
-  const play = useCallback(
-    ({ muted: silent = false }: { muted?: boolean } = {}) => {
-      const player = playerRef.current
-      if (!player) {
-        return
-      }
-      if (silent) {
-        player.mute()
-      }
-      if (phaseRef.current.kind === 'ended') {
-        player.seekTo(0, true)
-      }
-      if (phaseRef.current.kind === 'ready') {
-        setPhase({ kind: 'starting' })
-      }
-      maskCenter('command')
-      player.playVideo()
-    },
-    [maskCenter]
-  )
+  const play = useCallback(({ muted = false }: { muted?: boolean } = {}) => {
+    const player = playerRef.current
+    if (!player) {
+      return
+    }
+    if (muted) {
+      player.mute()
+    }
+    if (phaseRef.current.kind === 'ended') {
+      player.seekTo(0, true)
+    }
+    if (phaseRef.current.kind === 'ready') {
+      setPhase({ kind: 'starting' })
+    }
+    player.playVideo()
+  }, [])
 
   const pause = useCallback(() => {
     const player = playerRef.current
@@ -407,11 +372,10 @@ export const useYouTubePlayer = ({
         return
       }
       stoppedByGuardRef.current = false
-      maskCenter('command')
       player.seekTo(seconds, true)
       dropCaptions(player)
     },
-    [dropCaptions, maskCenter]
+    [dropCaptions]
   )
 
   const getTime = useCallback(
@@ -423,16 +387,15 @@ export const useYouTubePlayer = ({
     []
   )
   return {
-    centerMasked,
-    getDuration,
-    getTime,
     hostRef,
-    pause,
     phase,
     play,
-    seek,
-    subscribeFrame,
+    pause,
     togglePlay,
+    seek,
+    getTime,
+    getDuration,
+    subscribeFrame,
   }
 }
 

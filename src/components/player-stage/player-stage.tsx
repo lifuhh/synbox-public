@@ -15,11 +15,9 @@ import { playerChromeOpenAtom, playerVolumeAtom } from '@/context/atoms'
 import { useArmed } from '@/hooks/use-armed'
 import { useMediaQuery } from '@/hooks/use-media-query'
 import { isStandalone } from '@/lib/pwa'
-import type { CssVars } from '@/types'
 import { cn } from '@/utils/cn'
 
 import { StageControls } from './stage-controls'
-import type { SeekFlash } from './use-stage-taps'
 import { useStageTaps } from './use-stage-taps'
 import type {
   PlayerVolume,
@@ -42,18 +40,6 @@ const COVERED_PHASES = new Set<StagePhase['kind']>([
   'paused',
   'ended',
 ])
-
-const coversPhase = (phase: StagePhase, coverPause: boolean) =>
-  (COVERED_PHASES.has(phase.kind) && (coverPause || phase.kind !== 'paused')) ||
-  (phase.kind === 'playing' && !phase.settled)
-
-const markImmersive = () => {
-  const root = document.documentElement
-  root.dataset.immersive = ''
-  return () => {
-    delete root.dataset.immersive
-  }
-}
 
 // Anything marked data-player-chrome holds the floating UI open while a menu from it is open, and with a
 // mouse also while the pointer rests on it or keyboard focus is inside it. A touch screen counts menus
@@ -94,7 +80,6 @@ const useIdle = (ms: number) => {
   }
 
   useEffect(() => {
-    // oxlint-disable-next-line react/set-state-in-effect -- arriving on the stage counts as activity: show the controls and start the idle timer
     wake()
     window.addEventListener('pointermove', wake)
     window.addEventListener('pointerdown', wake)
@@ -108,65 +93,6 @@ const useIdle = (ms: number) => {
   }, [wake])
   return { idle, sleep }
 }
-
-const centerButtonShown = (
-  showCover: boolean,
-  handsOff: boolean,
-  centerMasked: boolean,
-  centerControl: boolean,
-  phase: StagePhase
-) =>
-  !showCover &&
-  !handsOff &&
-  (centerMasked || centerControl || phase.kind === 'paused')
-
-const CenterPlayButton = ({
-  phase,
-  armed,
-  onToggle,
-}: {
-  phase: StagePhase
-  armed: boolean
-  onToggle: () => void
-}) => (
-  <button
-    type='button'
-    tabIndex={-1}
-    aria-label={phase.kind === 'playing' ? 'Pause' : 'Play'}
-    onClick={onToggle}
-    className={cn(
-      'absolute top-1/2 left-1/2 z-26 grid size-20 -translate-1/2 place-items-center rounded-full bg-stage text-white shadow-stage ring-1 ring-white/10',
-      phase.kind === 'paused' && 'animate-in duration-200 zoom-in-90 fade-in',
-      !armed && 'pointer-events-none'
-    )}>
-    {phase.kind === 'paused' ? (
-      <PlayIcon className='size-9 fill-current' />
-    ) : (
-      <PauseIcon className='size-9 fill-current' />
-    )}
-  </button>
-)
-
-const SeekFlashBadge = ({ flash }: { flash: SeekFlash }) => (
-  <div
-    className={cn(
-      'pointer-events-none absolute inset-y-0 z-26 grid w-1/3 place-items-center',
-      flash.side === 'back' ? 'left-0' : 'right-0'
-    )}>
-    <span
-      key={flash.key}
-      className='flex animate-in items-center gap-1 rounded-full bg-black/55 px-4 py-2 text-base font-semibold text-white tabular-nums shadow-stage backdrop-blur-md zoom-in-90 fade-in'>
-      {flash.side === 'back' ? (
-        <RotateCcwIcon className='size-4' aria-hidden />
-      ) : null}
-      {flash.side === 'back' ? '−' : '+'}
-      {flash.seconds}s
-      {flash.side === 'forward' ? (
-        <RotateCwIcon className='size-4' aria-hidden />
-      ) : null}
-    </span>
-  </div>
-)
 
 const clampVolume = (level: number) => ({
   level: Math.min(1, Math.max(0, level)),
@@ -196,11 +122,11 @@ const StageCover = ({
           setThumb('hqdefault')
         }}
         className={cn(
-          'absolute inset-0 size-full object-cover transition-filter-fade duration-300',
+          'absolute inset-0 size-full object-cover transition-[filter,opacity] duration-300',
           dimmed && 'scale-105 opacity-60 blur-md'
         )}
       />
-      <div className='relative text-white drop-shadow-stage'>
+      <div className='relative text-white drop-shadow-[0_2px_6px_rgb(0_0_0/0.8)]'>
         {(phase.kind === 'loading' || phase.kind === 'starting') && (
           <LoaderIcon className='size-14 animate-spin' />
         )}
@@ -257,14 +183,14 @@ export const PlayerStage = ({
   // shows the blurred cover
   const coverPause = touch
   const player = useYouTubePlayer({
-    coverPause,
-    loop,
-    onEvent,
-    quirks,
     videoId,
+    quirks,
     volume,
+    loop,
+    coverPause,
+    onEvent,
   })
-  const { phase, hostRef } = player
+  const { phase } = player
 
   const autoplayedRef = useRef(false)
   const { play } = player
@@ -300,18 +226,21 @@ export const PlayerStage = ({
     }, AUTOPLAY_CHECK_MS)
   }, [autoplay, isReady, play])
 
+  const isPlaying = phase.kind === 'playing'
   const { idle, sleep } = useIdle(IDLE_MS)
   const [dragging, setDragging] = useState(false)
   const [controlsHeight, setControlsHeight] = useState(0)
 
   // YouTube's own error screens (unavailable, sign-in, age gate) need its UI
   const handsOff = interactive || phase.kind === 'error'
-  const showCover = !handsOff && coversPhase(phase, coverPause)
+  const showCover =
+    !handsOff &&
+    ((COVERED_PHASES.has(phase.kind) &&
+      (coverPause || phase.kind !== 'paused')) ||
+      (phase.kind === 'playing' && !phase.settled))
   const controlsVisible = !dragging && (!idle || phase.kind !== 'playing')
-  const blockInput = quirks.blockIframeInput && !handsOff
   const { toast } = useToast()
-  const centerControl = touch && controlsVisible
-  const centerArmed = useArmed(centerControl)
+  const centerArmed = useArmed(controlsVisible)
   const setChromeOpen = useSetAtom(playerChromeOpenAtom)
   useEffect(() => {
     setChromeOpen(controlsVisible)
@@ -370,7 +299,16 @@ export const PlayerStage = ({
     togglePlay: player.togglePlay,
   })
 
-  useEffect(() => (immersive ? markImmersive() : undefined), [immersive])
+  useEffect(() => {
+    const root = document.documentElement
+    if (!immersive) {
+      return
+    }
+    root.dataset.immersive = ''
+    return () => {
+      delete root.dataset.immersive
+    }
+  }, [immersive])
 
   useEffect(() => {
     const sync = () => {
@@ -451,7 +389,6 @@ export const PlayerStage = ({
     }
   })
 
-  const cropVars: CssVars = { '--iframe-crop': `${-quirks.cropPx}px` }
   return (
     <div
       data-player-stage
@@ -461,40 +398,47 @@ export const PlayerStage = ({
         !controlsVisible && 'cursor-none',
         className
       )}>
-      <div className='absolute top-1/2 left-1/2 aspect-video w-[min(100cqw,177.78cqh)] -translate-1/2 overflow-hidden'>
+      <div
+        className='absolute top-1/2 left-1/2 aspect-video -translate-1/2 overflow-hidden'
+        style={{ width: 'min(100cqw, 177.78cqh)' }}>
         <div
-          ref={hostRef}
+          ref={player.hostRef}
           className={cn(
-            'absolute inset-x-0 top-(--iframe-crop) bottom-(--iframe-crop) [&>iframe]:size-full',
-            blockInput && '[&>iframe]:pointer-events-none'
+            'absolute inset-x-0 [&>iframe]:size-full',
+            quirks.blockIframeInput &&
+              !handsOff &&
+              '[&>iframe]:pointer-events-none'
           )}
-          style={cropVars}
+          style={{ top: -quirks.cropPx, bottom: -quirks.cropPx }}
         />
         {showCover && <StageCover videoId={videoId} phase={phase} />}
       </div>
 
-      {/* YouTube shows its own center button for about 4s after every play or seek; this covers that spot,
-          opaque so none of it shows through. On a touch screen it is also the play/pause control, shown
-          with the rest of the floating UI as in YouTube's own app. An uncovered pause shows it throughout:
-          YouTube's button stays up for a whole pause that starts within those seconds. It sits outside the
-          video box so it draws above the lyrics; the video is always centred on the stage */}
-      {centerButtonShown(
-        showCover,
-        handsOff,
-        player.centerMasked,
-        centerControl,
-        phase
-      ) && (
-        <CenterPlayButton
-          phase={phase}
-          armed={centerArmed}
-          onToggle={() => {
-            player.togglePlay()
-          }}
-        />
+      {/* The play/pause control shows and hides with the rest of the floating UI. Opaque, so it also covers
+          the flash YouTube draws in the same spot on a play or pause, which comes from input that has just
+          shown the UI. It sits outside the video box so it draws above the lyrics; the video is always
+          centred on the stage */}
+      {!showCover && !handsOff && (
+        <button
+          type='button'
+          tabIndex={-1}
+          aria-label={isPlaying ? 'Pause' : 'Play'}
+          aria-hidden={!controlsVisible}
+          onClick={player.togglePlay}
+          className={cn(
+            'absolute top-1/2 left-1/2 z-26 grid size-20 -translate-1/2 place-items-center rounded-full bg-neutral-950 text-white shadow-[0_4px_16px_rgb(0_0_0/0.35)] ring-1 ring-white/10 transition-opacity duration-300',
+            controlsVisible ? 'opacity-100' : 'opacity-0',
+            !centerArmed && 'pointer-events-none'
+          )}>
+          {phase.kind === 'paused' ? (
+            <PlayIcon className='size-9 fill-current' />
+          ) : (
+            <PauseIcon className='size-9 fill-current' />
+          )}
+        </button>
       )}
 
-      {blockInput && (
+      {quirks.blockIframeInput && !handsOff && (
         <div
           data-testid='stage-input'
           aria-hidden='true'
@@ -506,7 +450,26 @@ export const PlayerStage = ({
         />
       )}
 
-      {taps.flash && <SeekFlashBadge flash={taps.flash} />}
+      {taps.flash && (
+        <div
+          className={cn(
+            'pointer-events-none absolute inset-y-0 z-26 grid w-1/3 place-items-center',
+            taps.flash.side === 'back' ? 'left-0' : 'right-0'
+          )}>
+          <span
+            key={taps.flash.key}
+            className='flex animate-in items-center gap-1 rounded-full bg-black/55 px-4 py-2 text-base font-semibold text-white tabular-nums shadow-[0_4px_16px_rgb(0_0_0/0.35)] backdrop-blur-md zoom-in-90 fade-in'>
+            {taps.flash.side === 'back' ? (
+              <RotateCcwIcon className='size-4' aria-hidden />
+            ) : null}
+            {taps.flash.side === 'back' ? '−' : '+'}
+            {taps.flash.seconds}s
+            {taps.flash.side === 'forward' ? (
+              <RotateCwIcon className='size-4' aria-hidden />
+            ) : null}
+          </span>
+        </div>
+      )}
 
       {autoplayMuted && (
         <button

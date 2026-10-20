@@ -35,6 +35,23 @@ const looksLikeYoutubeLink = (value: string) => {
   )
 }
 
+// Search is a mode, not an error, so it gets its own colour; red is kept for a link that fails to parse.
+type InputMode = 'empty' | 'search' | 'valid' | 'invalid'
+
+const getInputMode = (
+  value: string,
+  isSearch: boolean,
+  isValidLink: boolean
+): InputMode => {
+  if (value.trim().length === 0) {
+    return 'empty'
+  }
+  if (isSearch) {
+    return 'search'
+  }
+  return isValidLink ? 'valid' : 'invalid'
+}
+
 const HeroGenerateLyricsDefault = ({
   setInputVideoId,
 }: HeroGenerateLyricsDefaultProps) => {
@@ -46,6 +63,7 @@ const HeroGenerateLyricsDefault = ({
   const navigate = useNavigate()
   const isSearch =
     inputValue.trim().length > 0 && !looksLikeYoutubeLink(inputValue)
+  const inputMode = getInputMode(inputValue, isSearch, validationSuccess)
 
   const extractedVideoId = useMemo(() => {
     if (!inputValue) {
@@ -110,13 +128,6 @@ const HeroGenerateLyricsDefault = ({
     }
   }
 
-  const inputState = () => {
-    if (inputValue.length === 0) {
-      return 'empty'
-    }
-    return validationSuccess ? 'valid' : 'invalid'
-  }
-
   const statusMessage = () => {
     if (errorMessage) {
       return errorMessage
@@ -176,9 +187,12 @@ const HeroGenerateLyricsDefault = ({
             }}
             placeholder='Search or paste a YouTube URL'
             variant='hero'
-            state={inputState()}
+            state={inputMode}
           />
           <div className='absolute -bottom-20 left-0 h-20 w-full py-6 pt-2 text-center md:text-left lg:py-2'>
+            {inputMode === 'search' && (
+              <div className='text-search'>Search by title, artist or mood</div>
+            )}
             {inputValue.length > 0 && !isSearch && (
               <div
                 className={errorMessage ? 'text-error-strong' : 'text-success'}>

@@ -14,6 +14,7 @@ const inputVariants = cva('', {
         'border-foreground/60 hover:border-foreground/80 focus:border-foreground/90',
       invalid:
         'border-error-input hover:border-foreground focus:border-error-input',
+      search: 'border-search hover:border-foreground focus:border-search',
       valid: 'border-success hover:border-foreground focus:border-success',
     },
     variant: {
