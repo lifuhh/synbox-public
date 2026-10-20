@@ -34,46 +34,46 @@ export const DEFAULT_LYRICS_CUSTOM_HUE = 200
 
 export const LYRICS_THEMES: LyricsTheme[] = [
   {
-    id: 'sakura',
-    name: 'Sakura',
     accent: '#FFBBD2',
     glow: '#CA1960',
+    id: 'sakura',
+    name: 'Sakura',
   },
   {
-    id: 'cinema',
-    name: 'Cinema',
     accent: '#B6D3FE',
     glow: 'transparent',
+    id: 'cinema',
+    name: 'Cinema',
   },
   {
-    id: 'amethyst',
-    name: 'Amethyst',
     accent: '#D5C7FE',
     glow: '#8A4DFF',
+    id: 'amethyst',
+    name: 'Amethyst',
   },
   {
-    id: 'aqua',
-    name: 'Aqua',
     accent: '#71E3FF',
     glow: '#0A8FB0',
+    id: 'aqua',
+    name: 'Aqua',
   },
   {
-    id: 'matcha',
-    name: 'Matcha',
     accent: '#7FED9E',
     glow: '#1E9450',
+    id: 'matcha',
+    name: 'Matcha',
   },
   {
-    id: 'lemon',
-    name: 'Lemon',
     accent: '#FFE15A',
     glow: '#B87500',
+    id: 'lemon',
+    name: 'Lemon',
   },
   {
-    id: 'sunset',
-    name: 'Sunset',
     accent: '#FEC29F',
     glow: '#E0521A',
+    id: 'sunset',
+    name: 'Sunset',
   },
 ]
 
@@ -109,18 +109,18 @@ export const LYRICS_BACKDROPS: {
   hint: string
 }[] = [
   {
+    hint: 'Soft dark edge, like streaming subtitles',
     id: 'shadow',
     name: 'Shadow',
-    hint: 'Soft dark edge, like streaming subtitles',
   },
   {
+    hint: 'Darkens the video behind the lyrics',
     id: 'band',
     name: 'Fade',
-    hint: 'Darkens the video behind the lyrics',
   },
   {
+    hint: 'Solid box, easiest to read',
     id: 'box',
     name: 'Box',
-    hint: 'Solid box, easiest to read',
   },
 ]

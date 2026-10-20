@@ -85,7 +85,7 @@ const DockIcon = ({
   const fallbackMouseX = useMotionValue(Infinity)
 
   const distanceCalc = useTransform(mouseX ?? fallbackMouseX, (val: number) => {
-    const bounds = ref.current?.getBoundingClientRect() ?? { x: 0, width: 0 }
+    const bounds = ref.current?.getBoundingClientRect() ?? { width: 0, x: 0 }
 
     return val - bounds.x - bounds.width / 2
   })
@@ -97,9 +97,9 @@ const DockIcon = ({
   )
 
   const width = useSpring(widthSync, {
+    damping: 12,
     mass: 0.1,
     stiffness: 150,
-    damping: 12,
   })
 
   return (

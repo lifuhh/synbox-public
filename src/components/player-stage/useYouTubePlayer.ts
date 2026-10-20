@@ -121,10 +121,10 @@ export const useYouTubePlayer = ({
   }, [])
 
   // Read inside long-lived YouTube callbacks without re-creating the player
-  const latest = useRef({ quirks, loop, coverPause, onEvent })
+  const latest = useRef({ coverPause, loop, onEvent, quirks })
   useLayoutEffect(() => {
     phaseRef.current = phase
-    latest.current = { quirks, loop, coverPause, onEvent }
+    latest.current = { coverPause, loop, onEvent, quirks }
   })
 
   // YouTube times its center button from PLAYING, so a command arms the mask
@@ -204,24 +204,14 @@ export const useYouTubePlayer = ({
         return
       }
       const player = new YT.Player(target, {
-        videoId,
-        host: 'https://www.youtube-nocookie.com',
-        width: '100%',
-        height: '100%',
-        playerVars: {
-          controls: 0,
-          disablekb: 1,
-          fs: 0,
-          rel: 0,
-          iv_load_policy: 3,
-          playsinline: 1,
-          cc_load_policy: 0,
-          hl: 'en',
-          enablejsapi: 1,
-          origin: window.location.origin,
-          start: Math.floor(resumeAtRef.current),
-        },
         events: {
+          onError: ({ data }) => {
+            if (disposed) {
+              return
+            }
+            log(`error ${data}`)
+            setPhase({ kind: 'error', code: data })
+          },
           onReady: () => {
             if (disposed) {
               return
@@ -256,14 +246,24 @@ export const useYouTubePlayer = ({
               )
             )
           },
-          onError: ({ data }) => {
-            if (disposed) {
-              return
-            }
-            log(`error ${data}`)
-            setPhase({ kind: 'error', code: data })
-          },
         },
+        height: '100%',
+        host: 'https://www.youtube-nocookie.com',
+        playerVars: {
+          cc_load_policy: 0,
+          controls: 0,
+          disablekb: 1,
+          enablejsapi: 1,
+          fs: 0,
+          hl: 'en',
+          iv_load_policy: 3,
+          origin: window.location.origin,
+          playsinline: 1,
+          rel: 0,
+          start: Math.floor(resumeAtRef.current),
+        },
+        videoId,
+        width: '100%',
       })
     }
     void create()
@@ -420,16 +420,16 @@ export const useYouTubePlayer = ({
     []
   )
   return {
-    hostRef,
-    phase,
     centerMasked,
-    play,
-    pause,
-    togglePlay,
-    seek,
-    getTime,
     getDuration,
+    getTime,
+    hostRef,
+    pause,
+    phase,
+    play,
+    seek,
     subscribeFrame,
+    togglePlay,
   }
 }
 

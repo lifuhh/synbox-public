@@ -15,11 +15,11 @@ export const Spotlight = ({
 }: SpotlightProps) => {
   const getColorValue = (color: string) => {
     const themeColors: Record<string, string> = {
+      accent: 'hsla(var(--accent))',
+      destructive: 'hsla(var(--destructive))',
+      muted: 'hsla(var(--muted))',
       primary: 'hsla(var(--primary))',
       secondary: 'hsla(var(--secondary))',
-      accent: 'hsla(var(--accent))',
-      muted: 'hsla(var(--muted))',
-      destructive: 'hsla(var(--destructive))',
     }
 
     if (color in themeColors) {

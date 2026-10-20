@@ -88,15 +88,15 @@ export async function getYoutubeVideoInfo(
   const songInfo = songResults[0]
   const duration = songInfo.contentDetails?.duration
   const songData = {
-    id: songInfo.id,
-    title: songInfo.snippet.title,
     channelTitle: songInfo.snippet.channelTitle,
-    description: songInfo.snippet.description,
-    tags: songInfo.snippet.tags ?? [],
     defaultAudioLanguage: songInfo.snippet.defaultAudioLanguage ?? '',
-    thumbnail: getHighestResThumbnail(songInfo.snippet.thumbnails),
+    description: songInfo.snippet.description,
     duration: duration === undefined || duration === '' ? '-1' : duration,
+    id: songInfo.id,
     statistics: songInfo.statistics,
+    tags: songInfo.snippet.tags ?? [],
+    thumbnail: getHighestResThumbnail(songInfo.snippet.thumbnails),
+    title: songInfo.snippet.title,
   }
 
   return songData

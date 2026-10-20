@@ -100,7 +100,7 @@ const DoneView = ({ job }: { job: Job }) => {
       transition={{ duration: 0.35, ease: 'easeOut' }}
       className='flex flex-col items-center gap-4 pt-3 text-center'>
       <motion.span
-        initial={{ scale: 0.4, rotate: -20 }}
+        initial={{ rotate: -20, scale: 0.4 }}
         animate={{ rotate: 0, scale: 1 }}
         transition={{ damping: 12, stiffness: 260, type: 'spring' }}
         className='flex size-12 items-center justify-center rounded-full bg-linear-to-br from-[#f785b3] to-primary text-white shadow-[0_0_32px_-6px_#eb6fce]'>

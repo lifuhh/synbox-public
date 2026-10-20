@@ -51,9 +51,9 @@ export async function addSongInfoBySongId(songInfo: CurrentPlayingInfo) {
       appwriteConfig.songInfoId,
       appwriteId,
       {
-        title,
         author,
         thumbnailUrl,
+        title,
       }
     )
     return songInfoUpload
@@ -78,10 +78,10 @@ export async function getSongInfoBySongId(
     }
 
     const result = {
-      videoId: songId,
-      title: songInfo.data.title,
       author: songInfo.data.author,
       thumbnailUrl: songInfo.data.thumbnailUrl,
+      title: songInfo.data.title,
+      videoId: songId,
     }
 
     return result

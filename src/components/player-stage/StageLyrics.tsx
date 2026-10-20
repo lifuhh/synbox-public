@@ -38,14 +38,14 @@ import type { StageLayout } from './PlayerStage'
 import type { StagePlayer } from './useYouTubePlayer'
 
 const lyricLineSchema = z.object({
-  startSeconds: z.number(),
   endSeconds: z.number(),
+  startSeconds: z.number(),
   text: z.string(),
 })
 const lyricsDocumentSchema = z.object({
-  labelled_full_lyrics: z.string(),
-  eng_translation: z.string(),
   chi_translation: z.string(),
+  eng_translation: z.string(),
+  labelled_full_lyrics: z.string(),
   romaji: z.string(),
 })
 // Fields read before (or without) a full parse; a missing or malformed field
@@ -99,7 +99,7 @@ export const parseLyricsDocument = (data: unknown): TimedLyrics | null => {
   if (!(lines && eng && chi && romaji)) {
     return null
   }
-  return { lines, eng, chi, romaji }
+  return { chi, eng, lines, romaji }
 }
 
 // Everything the overlay draws runs this far ahead of the player's clock: on a device the lyrics read

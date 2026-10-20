@@ -15,9 +15,9 @@ type ToasterToast = Omit<ToastProps, 'title'> & {
 
 const actionTypes = {
   ADD_TOAST: 'ADD_TOAST',
-  UPDATE_TOAST: 'UPDATE_TOAST',
   DISMISS_TOAST: 'DISMISS_TOAST',
   REMOVE_TOAST: 'REMOVE_TOAST',
+  UPDATE_TOAST: 'UPDATE_TOAST',
 } as const
 
 let count = 0
@@ -61,8 +61,8 @@ const addToRemoveQueue = (toastId: string) => {
   const timeout = setTimeout(() => {
     toastTimeouts.delete(toastId)
     dispatch({
-      type: 'REMOVE_TOAST',
       toastId,
+      type: 'REMOVE_TOAST',
     })
   }, TOAST_REMOVE_DELAY)
 
@@ -143,31 +143,31 @@ function toast({ ...props }: Toast) {
 
   const update = (props: ToasterToast) => {
     dispatch({
-      type: 'UPDATE_TOAST',
       toast: { ...props, id },
+      type: 'UPDATE_TOAST',
     })
   }
   const dismiss = () => {
-    dispatch({ type: 'DISMISS_TOAST', toastId: id })
+    dispatch({ toastId: id, type: 'DISMISS_TOAST' })
   }
 
   dispatch({
-    type: 'ADD_TOAST',
     toast: {
       ...props,
       id,
-      open: true,
       onOpenChange: (open) => {
         if (!open) {
           dismiss()
         }
       },
+      open: true,
     },
+    type: 'ADD_TOAST',
   })
 
   return {
-    id,
     dismiss,
+    id,
     update,
   }
 }
@@ -187,10 +187,10 @@ function useToast() {
 
   return {
     ...state,
-    toast,
     dismiss: (toastId?: string) => {
       dispatch({ type: 'DISMISS_TOAST', toastId })
     },
+    toast,
   }
 }
 

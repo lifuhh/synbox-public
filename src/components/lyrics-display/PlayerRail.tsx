@@ -168,10 +168,10 @@ const PlayerRail = () => {
       })
     } catch {
       toast({
-        title: 'Error',
         description: 'Failed to copy link to clipboard',
-        variant: 'destructive',
         duration: 2000,
+        title: 'Error',
+        variant: 'destructive',
       })
     }
   }
@@ -184,7 +184,6 @@ const PlayerRail = () => {
     if (bookmarked) {
       removeFavorite(video.videoId)
       toast({
-        description: 'Removed Bookmark',
         action: (
           <ToastAction
             altText='Undo removal'
@@ -194,12 +193,12 @@ const PlayerRail = () => {
             Undo
           </ToastAction>
         ),
+        description: 'Removed Bookmark',
         duration: 5000,
       })
     } else {
       addFavorite(video)
       toast({
-        description: 'Added to Bookmarks',
         action: (
           <ToastAction
             altText='Undo add'
@@ -209,6 +208,7 @@ const PlayerRail = () => {
             Undo
           </ToastAction>
         ),
+        description: 'Added to Bookmarks',
         duration: 5000,
       })
     }

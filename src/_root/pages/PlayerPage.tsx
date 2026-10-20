@@ -69,15 +69,15 @@ const PlayerPage = () => {
     let mounted = true
     handleVideoRoute({
       navigate,
-      videoId,
-      setIsLoading: (loading) => {
-        if (mounted) {
-          setIsLoading(loading)
-        }
-      },
+      onSuccess: () => {},
       setError: (err) => {
         if (mounted) {
           setError(err)
+        }
+      },
+      setIsLoading: (loading) => {
+        if (mounted) {
+          setIsLoading(loading)
         }
       },
       setStateVideoId: (id) => {
@@ -85,7 +85,7 @@ const PlayerPage = () => {
           setStageVideoId(id)
         }
       },
-      onSuccess: () => {},
+      videoId,
     })
     return () => {
       mounted = false

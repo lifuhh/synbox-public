@@ -16,13 +16,13 @@ interface State {
 
 class ErrorBoundary extends Component<Props, State> {
   public state: State = {
-    hasError: false,
     error: null,
     errorInfo: null,
+    hasError: false,
   }
 
   public static getDerivedStateFromError(error: Error): State {
-    return { hasError: true, error, errorInfo: null }
+    return { error, errorInfo: null, hasError: true }
   }
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {

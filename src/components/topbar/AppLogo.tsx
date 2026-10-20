@@ -14,7 +14,7 @@ const AppLogo: React.FC = () => {
         '.anchor-for-top-scroll'
       )
       if (landingPage !== null) {
-        landingPage.scrollTo({ top: 0, behavior: 'smooth' })
+        landingPage.scrollTo({ behavior: 'smooth', top: 0 })
       }
     } else {
       navigate('/')

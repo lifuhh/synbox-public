@@ -36,10 +36,10 @@ export const useSongVisit = (videoId: string) => {
     }
     if (isSongInfoMissing && youtubeInfo) {
       const info = {
-        videoId,
-        title: youtubeInfo.title,
         author: youtubeInfo.channelTitle,
         thumbnailUrl: youtubeInfo.thumbnail,
+        title: youtubeInfo.title,
+        videoId,
       }
       addSongInfo(info, {
         onSuccess: () => {
@@ -52,10 +52,10 @@ export const useSongVisit = (videoId: string) => {
     if (songInfo) {
       setCurrentVideo(songInfo)
       addToHistory({
-        videoId: songInfo.videoId,
-        title: songInfo.title,
         author: songInfo.author,
         thumbnailUrl: songInfo.thumbnailUrl,
+        title: songInfo.title,
+        videoId: songInfo.videoId,
       })
     }
   }, [

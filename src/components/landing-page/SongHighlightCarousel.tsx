@@ -168,9 +168,9 @@ const SongHighlightCarousel = () => {
           <div className='overflow-hidden'>
             <Carousel
               opts={{
-                loop: true,
-                dragFree: true,
                 containScroll: 'trimSnaps',
+                dragFree: true,
+                loop: true,
                 startIndex: 1,
               }}
               setApi={setApi}

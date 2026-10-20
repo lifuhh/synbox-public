@@ -28,15 +28,15 @@ ToastViewport.displayName = ToastPrimitives.Viewport.displayName
 const toastVariants = cva(
   'group pointer-events-auto relative flex w-full items-center justify-between gap-3 overflow-hidden rounded-lg border border-white/10 py-2.5 pr-9 pl-3.5 shadow-md backdrop-blur-md transition-all data-[state=closed]:animate-out data-[state=closed]:fade-out-80 data-[state=closed]:slide-out-to-right-full data-[state=open]:animate-in data-[state=open]:fade-in data-[state=open]:slide-in-from-right-4 data-[swipe=cancel]:translate-x-0 data-[swipe=end]:translate-x-(--radix-toast-swipe-end-x) data-[swipe=end]:animate-out data-[swipe=move]:translate-x-(--radix-toast-swipe-move-x) data-[swipe=move]:transition-none touch:pr-11',
   {
+    defaultVariants: {
+      variant: 'default',
+    },
     variants: {
       variant: {
         default: 'bg-black/75 text-white',
         destructive:
           'destructive group bg-destructive text-destructive-foreground',
       },
-    },
-    defaultVariants: {
-      variant: 'default',
     },
   }
 )

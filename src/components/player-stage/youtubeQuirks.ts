@@ -30,10 +30,10 @@ export interface YouTubeQuirks {
 
 export const DEFAULT_YOUTUBE_QUIRKS: YouTubeQuirks = {
   blockIframeInput: true,
-  cropPx: 60,
+  centerMaskMs: 4500,
   coverBeforePause: true,
   coverHoldMs: 150,
-  unloadCaptions: true,
+  cropPx: 60,
   endGuardSec: 1,
-  centerMaskMs: 4500,
+  unloadCaptions: true,
 }

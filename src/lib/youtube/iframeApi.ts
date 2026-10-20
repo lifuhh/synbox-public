@@ -2,12 +2,12 @@
 // Reference: https://developers.google.com/youtube/iframe_api_reference
 
 export const YTState = {
-  Unstarted: -1,
-  Ended: 0,
-  Playing: 1,
-  Paused: 2,
   Buffering: 3,
   Cued: 5,
+  Ended: 0,
+  Paused: 2,
+  Playing: 1,
+  Unstarted: -1,
 } as const
 export type YTStateCode = (typeof YTState)[keyof typeof YTState]
 

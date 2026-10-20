@@ -37,26 +37,26 @@ export const useGetLandingPagePlaylist = () =>
 
 export const useGetChartsPlaylist = () =>
   useQuery({
-    queryKey: [QUERY_KEYS.GET_CHARTS_PLAYLIST],
+    gcTime: 1000 * 60 * 60,
     queryFn: () => getChartsPlaylist(),
+    queryKey: [QUERY_KEYS.GET_CHARTS_PLAYLIST],
     retry: 1,
     staleTime: 1000 * 60 * 60 * 24,
-    gcTime: 1000 * 60 * 60,
   })
 
 // Fetched once a visit, so the shuffled order holds while the user browses
 export const useGetGallerySongs = () =>
   useQuery({
-    queryKey: [QUERY_KEYS.GET_GALLERY_SONGS],
     queryFn: listGallerySongs,
+    queryKey: [QUERY_KEYS.GET_GALLERY_SONGS],
     staleTime: Infinity,
   })
 
 export const useSongsWithLyrics = (videoIds: string[]) =>
   useQuery({
-    queryKey: [QUERY_KEYS.GET_SONGS_WITH_LYRICS, videoIds],
-    queryFn: () => songsWithLyrics(videoIds),
     enabled: videoIds.length > 0,
+    queryFn: () => songsWithLyrics(videoIds),
+    queryKey: [QUERY_KEYS.GET_SONGS_WITH_LYRICS, videoIds],
     staleTime: 1000 * 60 * 10,
   })
 
@@ -64,9 +64,9 @@ export const useGetYoutubeVideoInfo = (videoId: string) => {
   const { isError } = useGetSongInfoBySongId(videoId)
 
   return useQuery({
-    queryKey: [QUERY_KEYS.GET_YOUTUBE_VIDEO_INFO, videoId],
-    queryFn: () => getYoutubeVideoInfo(videoId),
     enabled: !!videoId && isError,
+    queryFn: () => getYoutubeVideoInfo(videoId),
+    queryKey: [QUERY_KEYS.GET_YOUTUBE_VIDEO_INFO, videoId],
   })
 }
 
@@ -126,29 +126,29 @@ export const useGetSongInfoBySongId = (songId: string) =>
 
 export const useSearchVideos = (query: string) =>
   useQuery({
-    queryKey: [QUERY_KEYS.SEARCH_VIDEOS, query],
-    queryFn: ({ signal }) => searchVideos(query, signal),
     enabled: query.length > 0,
-    staleTime: 1000 * 60 * 5,
+    queryFn: ({ signal }) => searchVideos(query, signal),
+    queryKey: [QUERY_KEYS.SEARCH_VIDEOS, query],
     retry: false,
+    staleTime: 1000 * 60 * 5,
   })
 
 export const useSearchLibrary = (query: string) =>
   useQuery({
-    queryKey: [QUERY_KEYS.SEARCH_LIBRARY, query],
-    queryFn: ({ signal }) => searchLibrary(query, signal),
     enabled: query.length > 0,
-    staleTime: 1000 * 60 * 5,
+    queryFn: ({ signal }) => searchLibrary(query, signal),
+    queryKey: [QUERY_KEYS.SEARCH_LIBRARY, query],
     retry: false,
+    staleTime: 1000 * 60 * 5,
   })
 
 export const useGetSimilarSongs = (videoId: string) =>
   useQuery({
-    queryKey: [QUERY_KEYS.GET_SIMILAR_SONGS, videoId],
-    queryFn: ({ signal }) => getSimilarSongs(videoId, signal),
     enabled: videoId.length > 0,
-    staleTime: 1000 * 60 * 10,
+    queryFn: ({ signal }) => getSimilarSongs(videoId, signal),
+    queryKey: [QUERY_KEYS.GET_SIMILAR_SONGS, videoId],
     retry: false,
+    staleTime: 1000 * 60 * 10,
   })
 
 export const useGetLyricsVersions = (videoId: string) =>

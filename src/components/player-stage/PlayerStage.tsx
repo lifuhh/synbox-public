@@ -179,12 +179,12 @@ export const PlayerStage = ({
   // shows the blurred cover
   const coverPause = touch
   const player = useYouTubePlayer({
-    videoId,
-    quirks,
-    volume,
-    loop,
     coverPause,
+    loop,
     onEvent,
+    quirks,
+    videoId,
+    volume,
   })
   const { phase } = player
 
@@ -406,7 +406,7 @@ export const PlayerStage = ({
               !handsOff &&
               '[&>iframe]:pointer-events-none'
           )}
-          style={{ top: -quirks.cropPx, bottom: -quirks.cropPx }}
+          style={{ bottom: -quirks.cropPx, top: -quirks.cropPx }}
         />
         {showCover && <StageCover videoId={videoId} phase={phase} />}
       </div>

@@ -63,7 +63,6 @@ export function formatYoutubePlaylistResponse(
       const maxDescriptionLength = 80
 
       return {
-        title: item.snippet.title,
         channel: item.snippet.videoOwnerChannelTitle || 'Unknown',
         description: trimLength(
           item.snippet.description,
@@ -71,6 +70,7 @@ export function formatYoutubePlaylistResponse(
           true
         ),
         thumbnailUrl,
+        title: item.snippet.title,
         videoId: item.snippet.resourceId?.videoId,
       }
     }

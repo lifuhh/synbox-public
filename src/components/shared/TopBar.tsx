@@ -34,7 +34,10 @@ const TopBar = () => {
       {/* The logo is taller than the bar and centred on it, so its waveform would start at the very
           top; with no bar behind it on the player, the row sits lower so the logo clears the edge */}
       <nav
-        className={cn('flex-between h-14 w-full sm:px-4', isVideoPlayer && 'mt-2')}>
+        className={cn(
+          'flex-between h-14 w-full sm:px-4',
+          isVideoPlayer && 'mt-2'
+        )}>
         {/* The logo is the way home on every page, the player included */}
         {isVideoPlayer ? (
           <div data-player-chrome className={cluster}>
