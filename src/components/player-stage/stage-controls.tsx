@@ -1,7 +1,6 @@
 import {
   MaximizeIcon,
   MinimizeIcon,
-  MousePointerClickIcon,
   PauseIcon,
   PlayIcon,
   RepeatIcon,
@@ -101,8 +100,6 @@ interface StageControlsProps {
   visible: boolean
   loop: boolean
   onLoopChange: (loop: boolean) => void
-  interactive: boolean
-  onInteractiveChange: (interactive: boolean) => void
   fullscreen: boolean
   onToggleFullscreen: () => void
   onSeekBy: (seconds: number) => void
@@ -125,8 +122,6 @@ export const StageControls = ({
   visible,
   loop,
   onLoopChange,
-  interactive,
-  onInteractiveChange,
   fullscreen,
   onToggleFullscreen,
   onSeekBy,
@@ -301,14 +296,6 @@ export const StageControls = ({
                 onLoopChange(!loop)
               }}>
               <RepeatIcon className='size-5' />
-            </IconButton>
-            <IconButton
-              label='Interact With YouTube'
-              active={interactive}
-              onClick={() => {
-                onInteractiveChange(!interactive)
-              }}>
-              <MousePointerClickIcon className='size-5' />
             </IconButton>
             <IconButton
               label={fullscreen ? 'Exit Fullscreen' : 'Fullscreen'}

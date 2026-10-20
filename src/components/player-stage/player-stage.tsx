@@ -241,7 +241,6 @@ export const PlayerStage = ({
     setStoredVolume(next)
   }
   const [loop, setLoop] = useState(false)
-  const [interactive, setInteractive] = useState(false)
   const [fullscreen, setFullscreen] = useState(false)
   // iPhone Safari has no fullscreen for a page; there the button hides the app's own top bar instead
   const [immersive, setImmersive] = useState(false)
@@ -298,7 +297,7 @@ export const PlayerStage = ({
   const [controlsHeight, setControlsHeight] = useState(0)
 
   // YouTube's own error screens (unavailable, sign-in, age gate) need its UI
-  const handsOff = interactive || phase.kind === 'error'
+  const handsOff = phase.kind === 'error'
   const showCover = !handsOff && coversPhase(phase, coverPause)
   const controlsVisible = !dragging && (!idle || phase.kind !== 'playing')
   const blockInput = quirks.blockIframeInput && !handsOff
@@ -538,8 +537,6 @@ export const PlayerStage = ({
         visible={controlsVisible}
         loop={loop}
         onLoopChange={setLoop}
-        interactive={interactive}
-        onInteractiveChange={setInteractive}
         fullscreen={fullscreen || immersive}
         onToggleFullscreen={toggleFullscreen}
         onSeekBy={seekBy}
