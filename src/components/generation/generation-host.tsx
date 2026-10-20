@@ -1,15 +1,20 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { AnimatePresence, MotionConfig } from 'motion/react'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useMatch } from 'react-router'
 
 import { STEPS } from '@/lib/generation/plan'
 import type { Job } from '@/lib/generation/store'
-import { focusedJob, useGeneration } from '@/lib/generation/store'
+import {
+  focusedJob,
+  setGenerationExpanded,
+  useGeneration,
+} from '@/lib/generation/store'
 import { QUERY_KEYS } from '@/lib/react-query/query-keys'
 
 import GenerationFab from './generation-fab'
 import GenerationPanel from './generation-panel'
+import type { PanelExit } from './surface'
 import type { Presentation } from './use-presentation'
 import { usePresentation } from './use-presentation'
 
@@ -48,6 +53,20 @@ const GenerationHost = () => {
   const queryClient = useQueryClient()
   const onPlayer = useMatch('/v/:videoId') !== null
 
+  // How the panel leaves next time. Set before collapsing, and back to quick each time it opens.
+  const [panelExit, setPanelExit] = useState<PanelExit>('quick')
+  const [wasExpanded, setWasExpanded] = useState(expanded)
+  if (expanded !== wasExpanded) {
+    setWasExpanded(expanded)
+    if (expanded) {
+      setPanelExit('quick')
+    }
+  }
+  const stepAside = () => {
+    setPanelExit('gentle')
+    setGenerationExpanded(false)
+  }
+
   // Every job that finishes refreshes its song, whichever one the panel shows
   const refreshed = useRef(new Set<number>())
   useEffect(() => {
@@ -69,7 +88,7 @@ const GenerationHost = () => {
 
   return (
     <MotionConfig reducedMotion='user'>
-      <AnimatePresence initial={false}>
+      <AnimatePresence initial={false} custom={panelExit}>
         {job &&
           view &&
           (expanded ? (
@@ -79,6 +98,7 @@ const GenerationHost = () => {
               jobs={jobs}
               view={view}
               raised={onPlayer}
+              onOutsideActivity={stepAside}
             />
           ) : (
             <GenerationFab

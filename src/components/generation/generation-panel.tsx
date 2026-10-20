@@ -1,5 +1,6 @@
 import { Check, Minus, Play, RotateCcw, X } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
+import { useRef } from 'react'
 import { Link } from 'react-router'
 
 import { Button } from '@/components/ui/button'
@@ -27,6 +28,7 @@ import {
   thumbnailOf,
   titleOf,
 } from './surface'
+import { useOutsideActivity } from './use-outside-activity'
 import type { Presentation } from './use-presentation'
 
 const timeLeft = (seconds: number) => {
@@ -225,9 +227,19 @@ interface GenerationPanelProps {
   jobs: readonly Job[]
   view: Presentation
   raised: boolean
+  // The listener got on with something else on the page; the panel steps aside to the corner
+  onOutsideActivity: () => void
 }
 
-const GenerationPanel = ({ job, jobs, view, raised }: GenerationPanelProps) => {
+const GenerationPanel = ({
+  job,
+  jobs,
+  view,
+  raised,
+  onOutsideActivity,
+}: GenerationPanelProps) => {
+  const ref = useRef<HTMLElement>(null)
+  useOutsideActivity(ref, onOutsideActivity)
   const { status } = job
   const active = isActive(job)
   const percent = Math.floor(view.overall * 100)
@@ -251,6 +263,7 @@ const GenerationPanel = ({ job, jobs, view, raised }: GenerationPanelProps) => {
   return (
     <motion.section
       {...PANEL_MOTION}
+      ref={ref}
       aria-label='Lyrics generation'
       onKeyDown={(event) => {
         if (event.key === 'Escape') {
