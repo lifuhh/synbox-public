@@ -16,7 +16,6 @@ const view = (state: StepView['state']): StepView => ({
   detail: null,
   fraction: state === 'done' ? 1 : 0.3,
   measured: false,
-  slow: false,
   state,
 })
 const allDone = Array.from({ length: 5 }, () => view('done'))
