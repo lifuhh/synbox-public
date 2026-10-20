@@ -139,7 +139,7 @@ export default defineConfig({
     react(),
     jotai(),
     VitePWA({
-      // UpdatePrompt asks before swapping in a new deploy, so a playing song is never reloaded
+      // src/lib/pwa.ts swaps a new deploy in only where a reload goes unnoticed, never during a song
       injectRegister: false,
       manifest: {
         background_color: '#1f0a15',

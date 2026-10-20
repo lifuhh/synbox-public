@@ -103,8 +103,7 @@ export const useOnline = () =>
   useSyncExternalStore(subscribeOnline, () => navigator.onLine)
 
 // A new deploy is downloaded in the background and waits for a moment when swapping it in goes unnoticed:
-// while the app opens, on the next page change, or on return after a long time away. At any other time
-// the top bar's update button applies it in place
+// while the app opens, on the next page change, or on return after a long time away
 const UPDATE_CHECK_MS = 60 * 60 * 1000
 
 // Until the viewer has touched anything, applying a waiting version is invisible: the app opens on the
@@ -115,7 +114,7 @@ export const OPENING_MS = 4000
 const AWAY_MS = 30 * 60 * 1000
 
 let updateReady = false
-const updateListeners = new Set<() => void>()
+let swapping = false
 
 let openedAt = 0
 let touched = false
@@ -134,16 +133,41 @@ const isOpening = () => !touched && performance.now() - openedAt < OPENING_MS
 const isGenerating = () => anyActive(getGenerationState())
 const isSongPage = () => /^\/v\/[^/]+\/?$/u.test(window.location.pathname)
 
-const applyServiceWorker = registerSW({
+// Activates the waiting version, then reloads onto it. The plugin reloads on a controller change instead,
+// which never comes for a page the old worker did not control (a hard reload while another tab is open)
+const swapIn = async () => {
+  if (!updateReady || swapping || isGenerating()) {
+    return
+  }
+  swapping = true
+  // Asked here: a version already waiting at load reports itself before onRegisteredSW runs
+  const registration = await navigator.serviceWorker.getRegistration()
+  const waiting = registration?.waiting
+  if (!waiting) {
+    window.location.reload()
+    return
+  }
+  waiting.addEventListener('statechange', () => {
+    if (waiting.state === 'activated') {
+      window.location.reload()
+    } else if (waiting.state === 'redundant') {
+      // A newer deploy replaced it; that one gets its own onNeedRefresh
+      swapping = false
+    }
+  })
+  // oxlint-disable-next-line unicorn/require-post-message-target-origin -- a worker's postMessage takes no origin
+  waiting.postMessage({ type: 'SKIP_WAITING' })
+}
+
+registerSW({
   onNeedRefresh: () => {
     updateReady = true
-    if (isOpening() && !isGenerating()) {
-      void applyServiceWorker(true)
-      return
+    if (isOpening()) {
+      void swapIn()
     }
-    for (const listener of updateListeners) {
-      listener()
-    }
+  },
+  onNeedReload: () => {
+    // swapIn reloads once the new version is active
   },
   onRegisteredSW: (_url, registration) => {
     if (!registration) {
@@ -174,29 +198,10 @@ document.addEventListener('visibilitychange', () => {
   // A version found by the check on return is applied too, if it arrives within the opening
   openedAt = performance.now()
   watchForTouch()
-  if (updateReady && !isGenerating()) {
-    void applyServiceWorker(true)
-  }
+  void swapIn()
 })
 
 // A page change already redraws the screen, so a waiting version is swapped in there, on the new page
 export const applyUpdateOnPageChange = () => {
-  if (updateReady && !isGenerating()) {
-    void applyServiceWorker(true)
-  }
-}
-
-const subscribeUpdate = (listener: () => void) => {
-  updateListeners.add(listener)
-  return () => {
-    updateListeners.delete(listener)
-  }
-}
-
-export const useUpdateReady = () =>
-  useSyncExternalStore(subscribeUpdate, () => updateReady)
-
-// Activates the waiting version and reloads the page the viewer is on
-export const applyUpdate = async () => {
-  await applyServiceWorker(true)
+  void swapIn()
 }
