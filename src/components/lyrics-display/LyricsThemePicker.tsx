@@ -1,4 +1,4 @@
-import { useAtom } from 'jotai'
+import { useAtom, useAtomValue, useSetAtom } from 'jotai'
 import { CheckIcon, PaletteIcon } from 'lucide-react'
 import type { CSSProperties, RefObject } from 'react'
 import { useRef } from 'react'
@@ -12,18 +12,19 @@ import {
 } from '@/components/ui/popover'
 import { Slider } from '@/components/ui/slider'
 import {
-  DEFAULT_FONT_SIZE,
-  fontSizeMultiplierAtomWithPersistence,
+  applySongLyricsStyleToAllAtom,
+  fontSizeMultiplierAtom,
   lyricsBackdropAtom,
   lyricsCustomHueAtom,
   lyricsStylePanelAtom,
+  lyricsStyleSongAtom,
   lyricsThemeIdAtom,
+  resetSongLyricsStyleAtom,
+  songHasOwnLyricsStyleAtom,
 } from '@/context/atoms'
 import { useMediaQuery, usePortrait } from '@/hooks/useMediaQuery'
 import type { LyricsThemeColors } from '@/lib/lyricsThemes'
 import {
-  DEFAULT_LYRICS_BACKDROP,
-  DEFAULT_LYRICS_THEME_ID,
   LYRICS_BACKDROPS,
   LYRICS_THEMES,
   getCustomThemeColors,
@@ -116,21 +117,14 @@ export const LyricsThemePicker = ({
   const close = () => {
     setPanel('closed')
   }
-  const [fontSize, setFontSize] = useAtom(fontSizeMultiplierAtomWithPersistence)
+  const [fontSize, setFontSize] = useAtom(fontSizeMultiplierAtom)
   const [themeId, setThemeId] = useAtom(lyricsThemeIdAtom)
   const [customHue, setCustomHue] = useAtom(lyricsCustomHueAtom)
   const [backdrop, setBackdrop] = useAtom(lyricsBackdropAtom)
-
-  const isDefault =
-    fontSize === DEFAULT_FONT_SIZE &&
-    themeId === DEFAULT_LYRICS_THEME_ID &&
-    backdrop === DEFAULT_LYRICS_BACKDROP
-
-  const handleReset = () => {
-    setFontSize(DEFAULT_FONT_SIZE)
-    setThemeId(DEFAULT_LYRICS_THEME_ID)
-    setBackdrop(DEFAULT_LYRICS_BACKDROP)
-  }
+  const onSong = useAtomValue(lyricsStyleSongAtom) !== null
+  const ownStyle = useAtomValue(songHasOwnLyricsStyleAtom)
+  const resetSongStyle = useSetAtom(resetSongLyricsStyleAtom)
+  const applyToAll = useSetAtom(applySongLyricsStyleToAllAtom)
 
   const activeBackdrop = LYRICS_BACKDROPS.find((b) => b.id === backdrop)
 
@@ -145,8 +139,8 @@ export const LyricsThemePicker = ({
         {heading}
         <button
           type='button'
-          onClick={handleReset}
-          disabled={isDefault}
+          onClick={resetSongStyle}
+          disabled={!ownStyle}
           className='-my-2 py-2 text-xs text-muted-foreground transition-colors hover:text-foreground disabled:pointer-events-none disabled:opacity-0 touch:text-sm'>
           Reset
         </button>
@@ -277,6 +271,23 @@ export const LyricsThemePicker = ({
         </div>
         <p className='text-xs text-muted-foreground'>{activeBackdrop?.hint}</p>
       </section>
+
+      {onSong && (
+        <section className='flex items-center justify-between gap-3 border-t pt-3'>
+          <p className='text-xs text-muted-foreground'>
+            {ownStyle
+              ? 'Style and position are saved for this song.'
+              : 'This song uses your default style.'}
+          </p>
+          <button
+            type='button'
+            onClick={applyToAll}
+            disabled={!ownStyle}
+            className='-my-2 shrink-0 py-2 text-xs font-medium text-primary transition-colors hover:text-primary/80 disabled:pointer-events-none disabled:opacity-0 touch:text-sm'>
+            Use For All Songs
+          </button>
+        </section>
+      )}
     </div>
   )
 

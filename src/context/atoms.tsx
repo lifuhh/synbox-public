@@ -1,6 +1,9 @@
+import type { Setter, WritableAtom } from 'jotai'
 import { atom } from 'jotai'
 import { atomWithStorage } from 'jotai/utils'
 
+import type { LyricsStyle, LyricsStyleOverrides } from '@/lib/lyricsStyle'
+import { readSongStyle, writeSongStyle } from '@/lib/lyricsStyle'
 import type { LyricsBackdrop, LyricsThemeId } from '@/lib/lyricsThemes'
 import {
   DEFAULT_LYRICS_BACKDROP,
@@ -15,34 +18,138 @@ export const translationVisibilityAtom = atom(true)
 export const translationIsEnglishAtom = atom(true)
 
 export const DEFAULT_FONT_SIZE = 1
-const getInitialFontSize = () => {
-  const stored = localStorage.getItem('fontSizeMultiplier')
-  return stored === null || stored === ''
-    ? DEFAULT_FONT_SIZE
-    : parseFloat(stored)
-}
-export const fontSizeMultiplierAtom = atom(getInitialFontSize())
 
-export const fontSizeMultiplierAtomWithPersistence = atom(
-  (get) => get(fontSizeMultiplierAtom),
-  (get, set, newValue: number) => {
-    set(fontSizeMultiplierAtom, newValue)
-    localStorage.setItem('fontSizeMultiplier', newValue.toString())
+// The viewer's defaults, which every song follows until it is given its own style. The keys predate
+// per-song styles, so a returning viewer's old settings become their defaults
+const initOptions = { getOnInit: true }
+const defaultLyricsStyleAtoms: {
+  [K in keyof LyricsStyle]: WritableAtom<LyricsStyle[K], [LyricsStyle[K]], void>
+} = {
+  anchor: atomWithStorage('lyricsAnchor', 0.85, undefined, initOptions),
+  anchorPortrait: atomWithStorage(
+    'lyricsAnchorPortrait',
+    0.5,
+    undefined,
+    initOptions
+  ),
+  backdrop: atomWithStorage<LyricsBackdrop>(
+    'lyricsBackdrop',
+    DEFAULT_LYRICS_BACKDROP,
+    undefined,
+    initOptions
+  ),
+  customHue: atomWithStorage(
+    'lyricsCustomHue',
+    DEFAULT_LYRICS_CUSTOM_HUE,
+    undefined,
+    initOptions
+  ),
+  fontSize: atomWithStorage(
+    'fontSizeMultiplier',
+    DEFAULT_FONT_SIZE,
+    undefined,
+    initOptions
+  ),
+  themeId: atomWithStorage<LyricsThemeId>(
+    'lyricsTheme',
+    DEFAULT_LYRICS_THEME_ID,
+    undefined,
+    initOptions
+  ),
+}
+
+const LYRICS_STYLE_KEYS = [
+  'anchor',
+  'anchorPortrait',
+  'backdrop',
+  'customHue',
+  'fontSize',
+  'themeId',
+] as const satisfies readonly (keyof LyricsStyle)[]
+
+// The song on the player and the style it was given on this device. null off the player, where a
+// style change goes to the defaults
+const songLyricsStyleAtom = atom<{
+  videoId: string
+  overrides: LyricsStyleOverrides
+} | null>(null)
+
+export const lyricsStyleSongAtom = atom(
+  (get) => get(songLyricsStyleAtom)?.videoId ?? null,
+  (_get, set, videoId: string | null) => {
+    set(
+      songLyricsStyleAtom,
+      videoId === null ? null : { overrides: readSongStyle(videoId), videoId }
+    )
   }
 )
 
-export const lyricsThemeIdAtom = atomWithStorage<LyricsThemeId>(
-  'lyricsTheme',
-  DEFAULT_LYRICS_THEME_ID
+const setSongOverrides = (
+  set: Setter,
+  videoId: string,
+  overrides: LyricsStyleOverrides
+) => {
+  set(songLyricsStyleAtom, { overrides, videoId })
+  writeSongStyle(videoId, overrides)
+}
+
+// Reads the song's own value, else the default; a change on the player is saved for that song only
+const lyricsStyleField = <K extends keyof LyricsStyle>(key: K) =>
+  atom(
+    (get) =>
+      get(songLyricsStyleAtom)?.overrides[key] ??
+      get(defaultLyricsStyleAtoms[key]),
+    (get, set, value: LyricsStyle[K]) => {
+      const song = get(songLyricsStyleAtom)
+      if (song === null) {
+        set(defaultLyricsStyleAtoms[key], value)
+        return
+      }
+      setSongOverrides(set, song.videoId, {
+        ...song.overrides,
+        [key]: value,
+      })
+    }
+  )
+
+export const fontSizeMultiplierAtom = lyricsStyleField('fontSize')
+export const lyricsThemeIdAtom = lyricsStyleField('themeId')
+export const lyricsCustomHueAtom = lyricsStyleField('customHue')
+export const lyricsBackdropAtom = lyricsStyleField('backdrop')
+export const lyricsAnchorAtom = lyricsStyleField('anchor')
+export const lyricsAnchorPortraitAtom = lyricsStyleField('anchorPortrait')
+
+export const songHasOwnLyricsStyleAtom = atom(
+  (get) => Object.keys(get(songLyricsStyleAtom)?.overrides ?? {}).length > 0
 )
-export const lyricsCustomHueAtom = atomWithStorage<number>(
-  'lyricsCustomHue',
-  DEFAULT_LYRICS_CUSTOM_HUE
-)
-export const lyricsBackdropAtom = atomWithStorage<LyricsBackdrop>(
-  'lyricsBackdrop',
-  DEFAULT_LYRICS_BACKDROP
-)
+
+// Back to the defaults
+export const resetSongLyricsStyleAtom = atom(null, (get, set) => {
+  const song = get(songLyricsStyleAtom)
+  if (song !== null) {
+    setSongOverrides(set, song.videoId, {})
+  }
+})
+
+// Makes the song's style the default for every song without one of its own
+export const applySongLyricsStyleToAllAtom = atom(null, (get, set) => {
+  const song = get(songLyricsStyleAtom)
+  if (song === null) {
+    return
+  }
+  const setDefault = <K extends keyof LyricsStyle>(
+    key: K,
+    value: LyricsStyle[K] | undefined
+  ) => {
+    if (value !== undefined) {
+      set(defaultLyricsStyleAtoms[key], value)
+    }
+  }
+  for (const key of LYRICS_STYLE_KEYS) {
+    setDefault(key, song.overrides[key])
+  }
+  setSongOverrides(set, song.videoId, {})
+})
 
 // Whether the player's floating UI shows: the rail, the top bar's buttons and the stage controls show and
 // hide together. PlayerStage owns it
@@ -56,13 +163,6 @@ export const playerVolumeAtom = atomWithStorage('playerVolume', {
   level: 0.5,
   muted: false,
 })
-// 0 pins the lyrics block to the top of the stage, 1 to the bottom
-export const lyricsAnchorAtom = atomWithStorage('lyricsAnchor', 0.85)
-// In portrait the lyrics have their own band under the video, so they keep their own place in it
-export const lyricsAnchorPortraitAtom = atomWithStorage(
-  'lyricsAnchorPortrait',
-  0.5
-)
 
 interface FavoriteItem {
   videoId: string
