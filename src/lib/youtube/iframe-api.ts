@@ -58,6 +58,7 @@ declare global {
 let apiPromise: Promise<YTNamespace> | null = null
 
 export const loadYouTubeIframeApi = async (): Promise<YTNamespace> => {
+  // oxlint-disable-next-line promise/avoid-new -- turns the iframe API's ready callback into a promise
   apiPromise ??= new Promise((resolve, reject) => {
     if (window.YT?.Player) {
       resolve(window.YT)

@@ -28,6 +28,7 @@ export const useSongVisit = (videoId: string) => {
     return () => {
       setCurrentVideo(null)
     }
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- a different video clears the current one
   }, [videoId, setCurrentVideo])
 
   useEffect(() => {

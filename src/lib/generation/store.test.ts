@@ -17,6 +17,7 @@ beforeEach(() => {
   vi.stubGlobal(
     'fetch',
     async (_url: string, init: RequestInit) =>
+      // oxlint-disable-next-line promise/avoid-new -- a fetch that only ends when aborted
       await new Promise((_resolve, reject) => {
         init.signal?.addEventListener('abort', () => {
           reject(new DOMException('Aborted', 'AbortError'))

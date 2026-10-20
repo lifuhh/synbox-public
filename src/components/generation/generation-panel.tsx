@@ -282,6 +282,7 @@ const GenerationPanel = ({ job, jobs, view, raised }: GenerationPanelProps) => {
               transition={{ duration: 0.2 }}
               className='flex flex-col gap-2'>
               <div
+                // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- a styled bar with progressbar semantics; <progress> cannot be styled the same in every browser
                 role='progressbar'
                 aria-label='Overall progress'
                 aria-valuemin={0}

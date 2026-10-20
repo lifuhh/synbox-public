@@ -14,7 +14,9 @@ if (rootElement === null) {
 }
 
 ReactDOM.createRoot(rootElement, {
-  onCaughtError: reactErrorHandler(),
+  onCaughtError: reactErrorHandler((caught: unknown, errorInfo) => {
+    console.error('Uncaught error:', caught, errorInfo)
+  }),
   onRecoverableError: reactErrorHandler(),
   onUncaughtError: reactErrorHandler(),
 }).render(

@@ -59,6 +59,7 @@ export const getChartsPlaylist = async (): Promise<
   const songs: { title: string; id: string }[] = []
   let pageToken: string | undefined
   for (let page = 0; page < CHART_PAGES; page += 1) {
+    // oxlint-disable-next-line eslint/no-await-in-loop -- each page needs the previous page's token
     const response = await axios.get<YoutubePlaylistApiResponse>(
       `/api/youtube/playlist/${CHARTS_PLAYLIST}`,
       { params: { pageToken } }

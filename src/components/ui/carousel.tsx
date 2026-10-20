@@ -106,6 +106,7 @@ const CarouselRender: React.ForwardRefRenderFunction<
 
   React.useEffect(() => {
     if (api) {
+      // oxlint-disable-next-line react/set-state-in-effect -- reads the starting position from Embla, an outside system, once its API exists
       onSelect(api)
       api.on('reInit', onSelect)
       api.on('select', onSelect)
@@ -200,6 +201,7 @@ const CarouselItemRender: React.ForwardRefRenderFunction<
   return (
     <div
       ref={ref}
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- the ARIA carousel pattern makes each slide a group with aria-roledescription='slide'; no HTML tag means that
       role='group'
       aria-roledescription='slide'
       className={cn(

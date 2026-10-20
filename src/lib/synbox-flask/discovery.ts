@@ -1,3 +1,4 @@
+/* oxlint-disable promise/prefer-await-to-then -- zod's .catch() sets a schema's fallback value; it is not a promise */
 import { z } from 'zod'
 
 import { LOOKUP_ADDRESS } from './address'

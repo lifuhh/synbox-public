@@ -1,4 +1,4 @@
-import type { ErrorInfo, ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import { Component } from 'react'
 
 import TopBar from '@/components/shared/top-bar'
@@ -28,10 +28,6 @@ class ErrorBoundary extends Component<Props, State> {
 
   public static getDerivedStateFromError(error: Error): State {
     return { error, hasError: true }
-  }
-
-  public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('Uncaught error:', error, errorInfo)
   }
 
   public render(): ReactNode {

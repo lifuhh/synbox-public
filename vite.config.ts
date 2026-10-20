@@ -39,6 +39,7 @@ const serveYoutube = async (
     }
     res.end(await response.text())
   } catch (error) {
+    // oxlint-disable-next-line node/callback-return -- Connect's next() ends the request; returning its void result breaks no-confusing-void-expression
     next(error)
   }
 }

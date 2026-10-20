@@ -6,7 +6,7 @@ import {
   ChevronsRight,
   RotateCcwClockIcon,
 } from 'lucide-react'
-import React, { useEffect, useState } from 'react'
+import React, { useState } from 'react'
 
 import {
   AlertDialog,
@@ -74,21 +74,16 @@ const PaginationLink: React.FC<{
 )
 
 const HistoryDropdownButton = () => {
-  const [currentPage, setCurrentPage] = useState(1)
+  const [requestedPage, setRequestedPage] = useState(1)
   const [historyItems, setHistoryItems] = useAtom(historyAtom)
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const [isAlertOpen, setIsAlertOpen] = useState(false)
 
-  useEffect(() => {
-    if (historyItems.length === 0) {
-      setCurrentPage(1)
-    } else {
-      const maxPage = Math.ceil(historyItems.length / ITEMS_PER_PAGE)
-      if (currentPage > maxPage) {
-        setCurrentPage(maxPage)
-      }
-    }
-  }, [historyItems.length, currentPage])
+  // A cleared or shortened history can leave the requested page past the last one
+  const currentPage = Math.min(
+    requestedPage,
+    Math.max(1, Math.ceil(historyItems.length / ITEMS_PER_PAGE))
+  )
 
   const handleClearHistoryClick = (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -97,7 +92,7 @@ const HistoryDropdownButton = () => {
 
   const handleClearHistory = () => {
     setHistoryItems([])
-    setCurrentPage(1)
+    setRequestedPage(1)
     setIsDropdownOpen(false)
     setIsAlertOpen(false)
   }
@@ -127,7 +122,7 @@ const HistoryDropdownButton = () => {
   }
 
   const handlePageChange = (page: number): void => {
-    setCurrentPage(page)
+    setRequestedPage(page)
   }
 
   const renderPaginationItems = () => {

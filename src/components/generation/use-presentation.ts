@@ -73,6 +73,7 @@ export const usePresentation = (job: Job | null) => {
       }
     }
     return ticking ? start() : undefined
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- a new job restarts the ticker
   }, [ticking, job?.id])
 
   if (!job) {

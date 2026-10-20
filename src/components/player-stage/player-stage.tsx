@@ -94,6 +94,7 @@ const useIdle = (ms: number) => {
   }
 
   useEffect(() => {
+    // oxlint-disable-next-line react/set-state-in-effect -- arriving on the stage counts as activity: show the controls and start the idle timer
     wake()
     window.addEventListener('pointermove', wake)
     window.addEventListener('pointerdown', wake)

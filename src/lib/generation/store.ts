@@ -105,6 +105,7 @@ const onProgress = (id: number) => (event: ProgressEvent) => {
 
 // Retries wait for the page to be on screen: a suspended page cannot reach the backend
 const untilVisible = async (signal: AbortSignal) => {
+  // oxlint-disable-next-line promise/avoid-new -- turns the visibilitychange and abort events into a promise
   await new Promise<void>((resolve) => {
     if (document.visibilityState === 'visible' || signal.aborted) {
       resolve()
@@ -123,6 +124,7 @@ const untilVisible = async (signal: AbortSignal) => {
 }
 
 const sleep = async (ms: number, signal: AbortSignal) => {
+  // oxlint-disable-next-line promise/avoid-new -- turns setTimeout into a promise; Promise.withResolvers is ES2024
   await new Promise<void>((resolve) => {
     const timer = setTimeout(resolve, ms)
     signal.addEventListener('abort', () => {
@@ -148,6 +150,7 @@ const runPhase = async <T>(
   let reconnects = 0
   for (;;) {
     try {
+      // oxlint-disable-next-line eslint/no-await-in-loop -- attempts run one after another
       const result = await call()
       updateJob(id, (job) => ({
         ...job,
@@ -172,8 +175,10 @@ const runPhase = async <T>(
           throw error
         }
         attempt += 1
+        // oxlint-disable-next-line eslint/no-await-in-loop -- a retry waits before the next attempt
         await sleep(RETRY_DELAY_MS, signal)
       }
+      // oxlint-disable-next-line eslint/no-await-in-loop -- a retry waits for the page to be on screen
       await untilVisible(signal)
     }
   }

@@ -56,6 +56,7 @@ const ThemeSwatch = ({
   return (
     <button
       type='button'
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- swatch buttons in an ARIA radio group; a native radio input is a different control
       role='radio'
       aria-checked={selected}
       aria-label={name}
@@ -258,6 +259,7 @@ export const LyricsThemePicker = ({
             <button
               key={option.id}
               type='button'
+              // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- swatch buttons in an ARIA radio group; a native radio input is a different control
               role='radio'
               aria-checked={backdrop === option.id}
               onClick={() => {

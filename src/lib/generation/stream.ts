@@ -160,6 +160,7 @@ const readStream = async (
     let buffer = ''
     try {
       while (true) {
+        // oxlint-disable-next-line eslint/no-await-in-loop -- a stream is read one chunk at a time, in order
         const { done, value } = await reader.read()
         if (done) {
           break

@@ -174,6 +174,7 @@ export const listGallerySongs = async (): Promise<GallerySong[]> => {
   const rows: z.infer<typeof galleryRowSchema>[] = []
   for (;;) {
     const last = rows.at(-1)
+    // oxlint-disable-next-line eslint/no-await-in-loop -- each page starts after the last row of the one before
     const page = await tables.listRows({
       databaseId: appwriteConfig.databaseId,
       queries: [
