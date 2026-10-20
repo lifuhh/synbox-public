@@ -4,13 +4,26 @@ import type { Job } from '@/lib/generation/store'
 // expanding runs the other way; each scales from that corner, so nothing travels across the screen.
 const ENTER = { duration: 0.22, ease: [0.16, 1, 0.3, 1] } as const
 const EXIT = { duration: 0.14, ease: [0.4, 0, 1, 1] } as const
+// Minimizing on its own, the panel tucks away slowly enough to be followed: the listener was looking elsewhere
+const GENTLE_EXIT = { duration: 0.34, ease: [0.4, 0, 0.2, 1] } as const
 
-// On a touch screen the panel is a card in the middle of the screen, so it scales from its centre there
+// 'gentle' when the panel minimizes itself, 'quick' when the listener closes it
+export type PanelExit = 'quick' | 'gentle'
+
+// On a touch screen the panel is a card in the middle of the screen, so it scales from its centre there.
+// The exit is a variant so AnimatePresence's `custom` can pick its pace after the panel has left the tree.
 export const PANEL_MOTION = {
-  animate: { opacity: 1, scale: 1, transition: ENTER },
-  exit: { opacity: 0, scale: 0.8, transition: EXIT },
-  initial: { opacity: 0, scale: 0.8 },
+  animate: 'shown',
+  exit: 'hidden',
+  initial: 'hidden',
   style: { transformOrigin: 'var(--panel-origin, bottom right)' },
+  variants: {
+    hidden: (exit: PanelExit = 'quick') =>
+      exit === 'gentle'
+        ? { opacity: 0, scale: 0.6, transition: GENTLE_EXIT }
+        : { opacity: 0, scale: 0.8, transition: EXIT },
+    shown: { opacity: 1, scale: 1, transition: ENTER },
+  },
 } as const
 
 export const FAB_MOTION = {
