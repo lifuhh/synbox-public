@@ -3,21 +3,27 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router'
 
 import PlayerRail from '@/components/lyrics-display/PlayerRail'
+import SharedStyleBanner from '@/components/lyrics-display/SharedStyleBanner'
 import VersionPreviewBanner, {
   parsePreviewVersion,
 } from '@/components/lyrics-display/VersionPreviewBanner'
 import { PlayerStage } from '@/components/player-stage/PlayerStage'
 import { StageLyrics } from '@/components/player-stage/StageLyrics'
 import { DEFAULT_YOUTUBE_QUIRKS } from '@/components/player-stage/youtubeQuirks'
-import { currentVideoAtom, lyricsStyleSongAtom } from '@/context/atoms'
+import {
+  currentVideoAtom,
+  lyricsStyleSongAtom,
+  showSharedLyricsStyleAtom,
+} from '@/context/atoms'
 import { useLyricsReady } from '@/hooks/useLyricsReady'
 import { useSongVisit } from '@/hooks/useSongVisit'
+import { decodeSharedStyle } from '@/lib/lyricsStyle'
 import { handleVideoRoute } from '@/utils/routeHandler.ts'
 
 const PlayerPage = () => {
   const navigate = useNavigate()
   const { videoId = '' } = useParams<{ videoId: string }>()
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const previewVersion = parsePreviewVersion(searchParams.get('version'))
 
   const [isLoading, setIsLoading] = useState(true)
@@ -37,6 +43,27 @@ const PlayerPage = () => {
       setLyricsStyleSong(null)
     }
   }, [stageVideoId, setLyricsStyleSong])
+
+  // A link's ?style= is shown for this visit and then leaves the address, so a reload or a copied
+  // address is the viewer's own style again
+  const sharedStyleParam = searchParams.get('style')
+  const showSharedStyle = useSetAtom(showSharedLyricsStyleAtom)
+  useEffect(() => {
+    if (stageVideoId === null || sharedStyleParam === null) {
+      return
+    }
+    const shared = decodeSharedStyle(sharedStyleParam)
+    if (shared !== null) {
+      showSharedStyle(shared)
+    }
+    setSearchParams(
+      (params) => {
+        params.delete('style')
+        return params
+      },
+      { replace: true }
+    )
+  }, [stageVideoId, sharedStyleParam, showSharedStyle, setSearchParams])
 
   useEffect(() => {
     let mounted = true
@@ -92,6 +119,7 @@ const PlayerPage = () => {
       <title>{`${currentVideo?.title ?? 'Player Page'} | Synbox`}</title>
       <PlayerRail />
       <VersionPreviewBanner videoId={stageVideoId} />
+      <SharedStyleBanner />
       <PlayerStage
         key={stageVideoId}
         videoId={stageVideoId}

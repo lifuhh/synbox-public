@@ -92,9 +92,12 @@ const lookUpSong = async (request: Request, videoId: string) => {
     if (!response.ok) {
       return null
     }
-    const { origin, pathname } = new URL(request.url)
+    // Keeps a shared lyrics style, since some apps open og:url rather than the link that was sent
+    const pageUrl = new URL(request.url)
+    const style = pageUrl.searchParams.get('style')
+    pageUrl.search = style === null ? '' : `?style=${encodeURIComponent(style)}`
     const body: unknown = await response.json()
-    return previewFromVideo(body, `${origin}${pathname}`)
+    return previewFromVideo(body, pageUrl.href)
   } catch {
     return null
   }

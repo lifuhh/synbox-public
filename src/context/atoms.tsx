@@ -1,15 +1,15 @@
-import type { Setter, WritableAtom } from 'jotai'
+import type { Getter, Setter, WritableAtom } from 'jotai'
 import { atom } from 'jotai'
 import { atomWithStorage } from 'jotai/utils'
 
 import type { LyricsStyle, LyricsStyleOverrides } from '@/lib/lyricsStyle'
-import { readSongStyle, writeSongStyle } from '@/lib/lyricsStyle'
-import type { LyricsBackdrop, LyricsThemeId } from '@/lib/lyricsThemes'
 import {
-  DEFAULT_LYRICS_BACKDROP,
-  DEFAULT_LYRICS_CUSTOM_HUE,
-  DEFAULT_LYRICS_THEME_ID,
-} from '@/lib/lyricsThemes'
+  DEFAULT_LYRICS_STYLE,
+  readSongStyle,
+  sameLyricsStyle,
+  writeSongStyle,
+} from '@/lib/lyricsStyle'
+import type { LyricsBackdrop, LyricsThemeId } from '@/lib/lyricsThemes'
 import type { CurrentPlayingInfo } from '@/types'
 
 export const lyricsVisibilityAtom = atom(true)
@@ -17,46 +17,58 @@ export const romajiVisibilityAtom = atom(true)
 export const translationVisibilityAtom = atom(true)
 export const translationIsEnglishAtom = atom(true)
 
-export const DEFAULT_FONT_SIZE = 1
-
 // The viewer's defaults, which every song follows until it is given its own style. The keys predate
 // per-song styles, so a returning viewer's old settings become their defaults
 const initOptions = { getOnInit: true }
 const defaultLyricsStyleAtoms: {
   [K in keyof LyricsStyle]: WritableAtom<LyricsStyle[K], [LyricsStyle[K]], void>
 } = {
-  anchor: atomWithStorage('lyricsAnchor', 0.85, undefined, initOptions),
+  anchor: atomWithStorage(
+    'lyricsAnchor',
+    DEFAULT_LYRICS_STYLE.anchor,
+    undefined,
+    initOptions
+  ),
   anchorPortrait: atomWithStorage(
     'lyricsAnchorPortrait',
-    0.5,
+    DEFAULT_LYRICS_STYLE.anchorPortrait,
     undefined,
     initOptions
   ),
   backdrop: atomWithStorage<LyricsBackdrop>(
     'lyricsBackdrop',
-    DEFAULT_LYRICS_BACKDROP,
+    DEFAULT_LYRICS_STYLE.backdrop,
     undefined,
     initOptions
   ),
   customHue: atomWithStorage(
     'lyricsCustomHue',
-    DEFAULT_LYRICS_CUSTOM_HUE,
+    DEFAULT_LYRICS_STYLE.customHue,
     undefined,
     initOptions
   ),
   fontSize: atomWithStorage(
     'fontSizeMultiplier',
-    DEFAULT_FONT_SIZE,
+    DEFAULT_LYRICS_STYLE.fontSize,
     undefined,
     initOptions
   ),
   themeId: atomWithStorage<LyricsThemeId>(
     'lyricsTheme',
-    DEFAULT_LYRICS_THEME_ID,
+    DEFAULT_LYRICS_STYLE.themeId,
     undefined,
     initOptions
   ),
 }
+
+const readDefaults = (get: Getter): LyricsStyle => ({
+  anchor: get(defaultLyricsStyleAtoms.anchor),
+  anchorPortrait: get(defaultLyricsStyleAtoms.anchorPortrait),
+  backdrop: get(defaultLyricsStyleAtoms.backdrop),
+  customHue: get(defaultLyricsStyleAtoms.customHue),
+  fontSize: get(defaultLyricsStyleAtoms.fontSize),
+  themeId: get(defaultLyricsStyleAtoms.themeId),
+})
 
 const LYRICS_STYLE_KEYS = [
   'anchor',
@@ -67,46 +79,79 @@ const LYRICS_STYLE_KEYS = [
   'themeId',
 ] as const satisfies readonly (keyof LyricsStyle)[]
 
-// The song on the player and the style it was given on this device. null off the player, where a
-// style change goes to the defaults
-const songLyricsStyleAtom = atom<{
+// The song on the player: the style it was given on this device, and a style from a shared link, shown
+// over it for this visit only until the viewer keeps it, dismisses it or tunes it. null off the player,
+// where a style change goes to the defaults
+interface SongLyricsStyle {
   videoId: string
   overrides: LyricsStyleOverrides
-} | null>(null)
+  shared: LyricsStyle | null
+}
+const songLyricsStyleAtom = atom<SongLyricsStyle | null>(null)
 
 export const lyricsStyleSongAtom = atom(
   (get) => get(songLyricsStyleAtom)?.videoId ?? null,
   (_get, set, videoId: string | null) => {
     set(
       songLyricsStyleAtom,
-      videoId === null ? null : { overrides: readSongStyle(videoId), videoId }
+      videoId === null
+        ? null
+        : { overrides: readSongStyle(videoId), shared: null, videoId }
     )
   }
 )
 
-const setSongOverrides = (
+// Saves the song's own style, dropping any shared one: keeping or tuning a shared style makes it the
+// viewer's own
+const saveSongOverrides = (
   set: Setter,
   videoId: string,
   overrides: LyricsStyleOverrides
 ) => {
-  set(songLyricsStyleAtom, { overrides, videoId })
+  set(songLyricsStyleAtom, { overrides, shared: null, videoId })
   writeSongStyle(videoId, overrides)
 }
 
-// Reads the song's own value, else the default; a change on the player is saved for that song only
+const ownOverrides = (song: SongLyricsStyle): LyricsStyleOverrides => ({
+  ...song.overrides,
+  ...song.shared,
+})
+
+const ownLyricsStyle = (get: Getter, song: SongLyricsStyle | null) => ({
+  ...readDefaults(get),
+  ...song?.overrides,
+})
+
+// What the lyrics look like right now, and what a shared link passes on
+export const lyricsStyleAtom = atom((get) => {
+  const song = get(songLyricsStyleAtom)
+  return song?.shared ?? ownLyricsStyle(get, song)
+})
+
+export type LyricsStyleSource = 'shared' | 'song' | 'default'
+export const lyricsStyleSourceAtom = atom<LyricsStyleSource | null>((get) => {
+  const song = get(songLyricsStyleAtom)
+  if (song === null) {
+    return null
+  }
+  if (song.shared !== null) {
+    return 'shared'
+  }
+  return Object.keys(song.overrides).length > 0 ? 'song' : 'default'
+})
+
+// A change on the player is saved for that song only
 const lyricsStyleField = <K extends keyof LyricsStyle>(key: K) =>
   atom(
-    (get) =>
-      get(songLyricsStyleAtom)?.overrides[key] ??
-      get(defaultLyricsStyleAtoms[key]),
+    (get) => get(lyricsStyleAtom)[key],
     (get, set, value: LyricsStyle[K]) => {
       const song = get(songLyricsStyleAtom)
       if (song === null) {
         set(defaultLyricsStyleAtoms[key], value)
         return
       }
-      setSongOverrides(set, song.videoId, {
-        ...song.overrides,
+      saveSongOverrides(set, song.videoId, {
+        ...ownOverrides(song),
         [key]: value,
       })
     }
@@ -119,24 +164,46 @@ export const lyricsBackdropAtom = lyricsStyleField('backdrop')
 export const lyricsAnchorAtom = lyricsStyleField('anchor')
 export const lyricsAnchorPortraitAtom = lyricsStyleField('anchorPortrait')
 
-export const songHasOwnLyricsStyleAtom = atom(
-  (get) => Object.keys(get(songLyricsStyleAtom)?.overrides ?? {}).length > 0
+// A shared style that matches the viewer's own changes nothing, so it is not shown as shared
+export const showSharedLyricsStyleAtom = atom(
+  null,
+  (get, set, shared: LyricsStyle) => {
+    const song = get(songLyricsStyleAtom)
+    if (song !== null && !sameLyricsStyle(shared, ownLyricsStyle(get, song))) {
+      set(songLyricsStyleAtom, { ...song, shared })
+    }
+  }
 )
+
+export const keepSharedLyricsStyleAtom = atom(null, (get, set) => {
+  const song = get(songLyricsStyleAtom)
+  if (song?.shared) {
+    saveSongOverrides(set, song.videoId, ownOverrides(song))
+  }
+})
+
+export const dismissSharedLyricsStyleAtom = atom(null, (get, set) => {
+  const song = get(songLyricsStyleAtom)
+  if (song !== null) {
+    set(songLyricsStyleAtom, { ...song, shared: null })
+  }
+})
 
 // Back to the defaults
 export const resetSongLyricsStyleAtom = atom(null, (get, set) => {
   const song = get(songLyricsStyleAtom)
   if (song !== null) {
-    setSongOverrides(set, song.videoId, {})
+    saveSongOverrides(set, song.videoId, {})
   }
 })
 
-// Makes the song's style the default for every song without one of its own
+// Makes the style on screen the default for every song without one of its own
 export const applySongLyricsStyleToAllAtom = atom(null, (get, set) => {
   const song = get(songLyricsStyleAtom)
   if (song === null) {
     return
   }
+  const overrides = ownOverrides(song)
   const setDefault = <K extends keyof LyricsStyle>(
     key: K,
     value: LyricsStyle[K] | undefined
@@ -146,9 +213,9 @@ export const applySongLyricsStyleToAllAtom = atom(null, (get, set) => {
     }
   }
   for (const key of LYRICS_STYLE_KEYS) {
-    setDefault(key, song.overrides[key])
+    setDefault(key, overrides[key])
   }
-  setSongOverrides(set, song.videoId, {})
+  saveSongOverrides(set, song.videoId, {})
 })
 
 // Whether the player's floating UI shows: the rail, the top bar's buttons and the stage controls show and
