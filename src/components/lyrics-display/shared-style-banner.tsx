@@ -1,5 +1,6 @@
 import { useAtomValue, useSetAtom } from 'jotai'
 import { XIcon } from 'lucide-react'
+import { useState } from 'react'
 
 import {
   dismissSharedLyricsStyleAtom,
@@ -10,15 +11,13 @@ import {
 import { getLyricsThemeColors } from '@/lib/lyrics-themes'
 import type { CssVars } from '@/types'
 
-// Shown while the lyrics wear the style a link was shared with. It applies for this visit only; Keep saves
-// it as this song's style, the cross puts the viewer's own back
-const SharedStyleBanner = () => {
-  const source = useAtomValue(lyricsStyleSourceAtom)
+const SharedStyleNotice = () => {
   const style = useAtomValue(lyricsStyleAtom)
   const keep = useSetAtom(keepSharedLyricsStyleAtom)
   const dismiss = useSetAtom(dismissSharedLyricsStyleAtom)
+  const [hidden, setHidden] = useState(false)
 
-  if (source !== 'shared') {
+  if (hidden) {
     return null
   }
 
@@ -29,17 +28,23 @@ const SharedStyleBanner = () => {
   return (
     <output
       data-preview-banner
-      className='fixed top-[calc(var(--topbar-h)+0.5rem+var(--notices-h,0px))] left-1/2 z-50 flex -translate-x-1/2 items-center gap-1 rounded-full bg-black/60 py-1 pr-1 pl-3.5 text-sm whitespace-nowrap text-white shadow-lg ring-1 ring-white/20 backdrop-blur-md'>
+      onAnimationEnd={(event) => {
+        if (event.target === event.currentTarget) {
+          setHidden(true)
+        }
+      }}
+      className='fixed top-[calc(var(--topbar-h)+0.5rem+var(--notices-h,0px))] left-1/2 z-50 flex -translate-x-1/2 auto-hide items-center rounded-full bg-black/60 py-1 pr-1 pl-4 text-sm whitespace-nowrap text-white shadow-lg ring-1 ring-white/20 backdrop-blur-md'>
       <span
         aria-hidden='true'
-        className='size-3 shrink-0 rounded-full bg-(--banner-swatch) ring-1 ring-white/40'
+        className='size-2.5 shrink-0 rounded-full bg-(--banner-swatch) ring-1 ring-white/40'
         style={swatchVars}
       />
-      <span className='ml-1 font-medium'>Shared Style</span>
+      <span className='ml-2 font-medium'>Shared Style</span>
+      <span aria-hidden='true' className='mx-2 h-4 w-px bg-white/20' />
       <button
         type='button'
         onClick={keep}
-        className='ml-2 rounded-full bg-primary px-3 py-1 font-medium transition-colors hover:bg-primary/85'>
+        className='rounded-full px-2.5 py-1.5 font-semibold text-brand-light transition-colors hover:bg-white/10 hover:text-white'>
         Keep
       </button>
       <button
@@ -47,11 +52,19 @@ const SharedStyleBanner = () => {
         aria-label='Use My Style'
         title='Use My Style'
         onClick={dismiss}
-        className='rounded-full p-1.5 text-white/70 transition-colors hover:bg-white/10 hover:text-white'>
+        className='rounded-full p-2 text-white/60 transition-colors hover:bg-white/10 hover:text-white'>
         <XIcon className='size-4 shrink-0' />
       </button>
     </output>
   )
+}
+
+// Shown while the lyrics wear the style a link was shared with. It applies for this visit only; Keep saves
+// it as this song's style, the cross puts the viewer's own back. Left alone, the banner fades out and the
+// shared style stays
+const SharedStyleBanner = () => {
+  const source = useAtomValue(lyricsStyleSourceAtom)
+  return source === 'shared' ? <SharedStyleNotice /> : null
 }
 
 export default SharedStyleBanner

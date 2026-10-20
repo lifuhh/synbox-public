@@ -333,6 +333,28 @@
   }
 }
 
+/* A notice that fades out on its own after a while. A pointer resting on it or focus inside holds the countdown;
+   the element ends at opacity 0 and the component removes it on animationend */
+@keyframes auto-hide {
+  to {
+    opacity: 0;
+  }
+}
+@utility auto-hide {
+  animation: auto-hide 0.3s ease-in 8s forwards;
+  &:focus-within {
+    animation-play-state: paused;
+  }
+  @media (hover: hover) {
+    &:hover {
+      animation-play-state: paused;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    animation-duration: 1ms;
+  }
+}
+
 @utility flex-around {
   @apply flex items-center justify-around;
 }
