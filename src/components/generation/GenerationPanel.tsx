@@ -45,13 +45,13 @@ const SongHeader = ({ job, onClose }: { job: Job; onClose: () => void }) => {
   const title = titleOf(job)
   const channel = job.video?.channel ?? ''
   const subtitle =
-    channel !== ''
-      ? channel
-      : running
+    channel === ''
+      ? running
         ? job.mode === 'regenerate'
           ? 'Regenerating Lyrics'
           : 'Generating Lyrics'
         : ''
+      : channel
   return (
     <div className='flex items-center gap-3'>
       <span className='h-10 w-[71px] shrink-0 overflow-hidden rounded-md bg-linear-to-br from-primary to-[#f785b3] ring-1 ring-white/10'>

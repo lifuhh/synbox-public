@@ -75,12 +75,7 @@ const HeroGenerateLyricsDefault = ({
     }
 
     const result = YouTubeUrlOrIdValidation.safeParse(value)
-    if (!result.success) {
-      setErrorMessage(
-        result.error.issues.map((error) => error.message).join(', ')
-      )
-      setValidationSuccess(false)
-    } else {
+    if (result.success) {
       const vidId = extractVideoId(value)
       if (vidId !== null && vidId !== '') {
         setValidationSuccess(true)
@@ -89,6 +84,11 @@ const HeroGenerateLyricsDefault = ({
         setErrorMessage('Invalid URL')
         setValidationSuccess(false)
       }
+    } else {
+      setErrorMessage(
+        result.error.issues.map((error) => error.message).join(', ')
+      )
+      setValidationSuccess(false)
     }
   }
 
