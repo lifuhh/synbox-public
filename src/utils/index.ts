@@ -4,7 +4,7 @@ import type {
 } from '@/types'
 
 export const shuffleArray = <T>(array: T[]): T[] => {
-  for (let i = array.length - 1; i > 0; i--) {
+  for (let i = array.length - 1; i > 0; i -= 1) {
     const j = Math.floor(Math.random() * (i + 1))
     ;[array[i], array[j]] = [array[j], array[i]]
   }
@@ -15,12 +15,12 @@ export const handleRedirect = (url: string) => {
   window.open(url, '_blank', 'noopener,noreferrer')
 }
 
-function trimLength(text: string, maxLength: number, trail: boolean) {
+const trimLength = (text: string, maxLength: number, trail: boolean) => {
   const tooLong = text.length > maxLength
 
-  const editedText = tooLong ? text.substring(0, maxLength) : text
+  const editedText = tooLong ? text.slice(0, maxLength) : text
 
-  return trail ? (tooLong ? `${editedText}...` : editedText) : editedText
+  return trail && tooLong ? `${editedText}...` : editedText
 }
 
 // A private or deleted video stays in its playlist with no thumbnails
@@ -44,20 +44,19 @@ const KOREAN_CHANNELS = new Set([
   'Stone Music Entertainment',
 ])
 
-export function formatYoutubeChartsResponse(
+export const formatYoutubeChartsResponse = (
   data: YoutubePlaylistApiResponse
-): { title: string; id: string }[] {
-  return playableItems(data).flatMap(({ item }) => {
+): { title: string; id: string }[] =>
+  playableItems(data).flatMap(({ item }) => {
     const { title, videoOwnerChannelTitle: channel, resourceId } = item.snippet
     const korean =
       KOREAN.test(title) || KOREAN.test(channel) || KOREAN_CHANNELS.has(channel)
     return korean ? [] : [{ id: resourceId.videoId, title }]
   })
-}
 
-export function formatYoutubePlaylistResponse(
+export const formatYoutubePlaylistResponse = (
   data: YoutubePlaylistApiResponse
-): formattedYoutubeVideoItemForCarousel[] {
+): formattedYoutubeVideoItemForCarousel[] => {
   const items = playableItems(data).map(
     ({ item, thumbnailUrl }): formattedYoutubeVideoItemForCarousel => {
       const maxDescriptionLength = 80
@@ -82,29 +81,29 @@ export function formatYoutubePlaylistResponse(
 }
 
 export const extractVideoId = (input: string): string | null => {
-  input = input.trim()
+  const trimmed = input.trim()
 
-  if (/^[\w-]{11}$/.test(input)) {
-    return input
+  if (/^[\w-]{11}$/u.test(trimmed)) {
+    return trimmed
   }
 
   const videoIdPattern =
-    /(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([^#&?]{11})(?:[#?&]|$)/
+    /(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))(?<id>[^#&?]{11})(?:[#?&]|$)/u
 
   const fullUrl =
-    input.startsWith('http://') || input.startsWith('https://')
-      ? input
-      : `https://${input}`
+    trimmed.startsWith('http://') || trimmed.startsWith('https://')
+      ? trimmed
+      : `https://${trimmed}`
 
   try {
-    const match = videoIdPattern.exec(fullUrl)
-    if (match && match[1]) {
-      return match[1]
+    const matchedId = videoIdPattern.exec(fullUrl)?.groups?.id
+    if (matchedId !== undefined && matchedId !== '') {
+      return matchedId
     }
 
     const parsedUrl = new URL(fullUrl)
     const videoId = parsedUrl.searchParams.get('v')
-    if (videoId !== null && /^[\w-]{11}$/.test(videoId)) {
+    if (videoId !== null && /^[\w-]{11}$/u.test(videoId)) {
       return videoId
     }
   } catch (error) {

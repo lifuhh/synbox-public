@@ -1,8 +1,3 @@
-import type {
-  InfiniteData,
-  UseInfiniteQueryResult,
-} from '@tanstack/react-query'
-
 export interface formattedYoutubeVideoItemForCarousel {
   title: string
   channel: string

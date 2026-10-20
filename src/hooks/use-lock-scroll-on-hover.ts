@@ -31,8 +31,10 @@ export const useLockBodyScrollOnHover = (
       node.addEventListener('mouseenter', enableScrollLock)
       node.addEventListener('mouseleave', disableScrollLock)
       window.addEventListener('resize', checkWidthAndDisableScrollLock)
+    }
 
-      return () => {
+    return () => {
+      if (node) {
         disableScrollLock()
         node.removeEventListener('mouseenter', enableScrollLock)
         node.removeEventListener('mouseleave', disableScrollLock)
