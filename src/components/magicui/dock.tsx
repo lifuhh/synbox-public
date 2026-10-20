@@ -109,13 +109,17 @@ const DockIcon = ({
     mass: 0.1,
     stiffness: 150,
   })
+  const widthPx = useTransform(width, (value) => `${value}px`)
+  const widthVars: Record<`--${string}`, MotionValue<string>> = {
+    '--dock-icon-w': widthPx,
+  }
 
   return (
     <motion.div
       ref={ref}
-      style={{ width }}
+      style={widthVars}
       className={cn(
-        'flex aspect-square cursor-pointer items-center justify-center rounded-full bg-dock-divider/40',
+        'flex aspect-square w-(--dock-icon-w) cursor-pointer items-center justify-center rounded-full bg-dock-divider/40',
         className
       )}
       {...props}>

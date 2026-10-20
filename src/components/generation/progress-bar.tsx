@@ -1,3 +1,4 @@
+import type { CssVars } from '@/types'
 import { cn } from '@/utils/cn'
 
 interface ProgressBarProps {
@@ -15,27 +16,30 @@ const ProgressBar = ({
   active = false,
   failed = false,
   className,
-}: ProgressBarProps) => (
-  <div
-    className={cn(
-      'relative overflow-hidden rounded-full bg-white/10',
-      className
-    )}>
+}: ProgressBarProps) => {
+  const clipVars: CssVars = {
+    '--progress-remaining': `${(1 - Math.min(Math.max(fraction, 0), 1)) * 100}%`,
+  }
+  return (
     <div
       className={cn(
-        'absolute inset-0 rounded-full transition-clip duration-450 ease-out',
-        failed
-          ? 'bg-error-border/80'
-          : 'bg-linear-to-r from-brand-light via-brand-glow to-primary'
-      )}
-      style={{
-        clipPath: `inset(0 ${(1 - Math.min(Math.max(fraction, 0), 1)) * 100}% 0 0 round 9999px)`,
-      }}>
-      {active && (
-        <div className='absolute inset-0 bg-stripes motion-safe:animate-progress-stripes' />
-      )}
+        'relative overflow-hidden rounded-full bg-white/10',
+        className
+      )}>
+      <div
+        className={cn(
+          'absolute inset-0 rounded-full transition-clip duration-450 ease-out clip-progress',
+          failed
+            ? 'bg-error-border/80'
+            : 'bg-linear-to-r from-brand-light via-brand-glow to-primary'
+        )}
+        style={clipVars}>
+        {active && (
+          <div className='absolute inset-0 bg-stripes motion-safe:animate-progress-stripes' />
+        )}
+      </div>
     </div>
-  </div>
-)
+  )
+}
 
 export default ProgressBar

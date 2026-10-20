@@ -1,5 +1,5 @@
 import { useAtom, useSetAtom } from 'jotai'
-import type { CSSProperties, ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import { useRef, useState } from 'react'
 
 import {
@@ -8,6 +8,8 @@ import {
   lyricsStylePanelAtom,
 } from '@/context/atoms'
 import { usePortrait } from '@/hooks/use-media-query'
+import type { LyricsThemeColors } from '@/lib/lyrics-themes'
+import type { CssVars } from '@/types'
 import { cn } from '@/utils/cn'
 
 import type { StageLayout } from './player-stage'
@@ -41,7 +43,7 @@ interface DraggableLyricsProps {
   layout: StageLayout
   scale: number
   backdrop: string
-  style?: CSSProperties
+  colors: LyricsThemeColors
 }
 
 // `anchor` is where the viewer put the lyrics (0 = top, 1 = bottom of the
@@ -57,7 +59,7 @@ export const DraggableLyrics = ({
   layout,
   scale,
   backdrop,
-  style,
+  colors,
 }: DraggableLyricsProps) => {
   const [anchor, setAnchor] = useAtom(
     usePortrait() ? lyricsAnchorPortraitAtom : lyricsAnchorAtom
@@ -119,19 +121,29 @@ export const DraggableLyrics = ({
     }
   }
 
+  const anchorVars: CssVars = { '--anchor-grow': anchor }
+  const blockVars: CssVars = {
+    '--lyric-accent': colors.accent,
+    '--lyric-glow': colors.glow,
+    '--lyric-scale': scale,
+  }
+  const liftVars: CssVars = {
+    '--lift-delay':
+      layout.bottomObstruction > 0 ? '0ms' : `${CONTROLS_FADE_MS}ms`,
+    '--lift-grow': 1 - anchor,
+    '--lift-min-h': `${layout.bottomObstruction}px`,
+    // Lift at once when the controls appear; drop only after they fade.
+    // Never while dragging: the block follows the pointer exactly
+    '--lift-transition': dragging ? 'none' : `min-height ${LIFT_MS}ms ease-out`,
+  }
   return (
     // A block taller than the room overflows upward, over the video, never down under the controls
     <div className='pointer-events-none absolute inset-0 flex flex-col justify-end'>
-      <div style={{ flexGrow: anchor }} />
+      <div className='grow-(--anchor-grow)' style={anchorVars} />
       <div
         ref={blockRef}
         className='player-lyrics-overlay relative isolate shrink-0 px-3 py-cqh select-none'
-        style={
-          {
-            '--lyric-scale': scale,
-            ...style,
-          } as CSSProperties
-        }
+        style={blockVars}
         data-backdrop={backdrop}>
         <div
           data-testid='lyrics-handle'
@@ -147,17 +159,7 @@ export const DraggableLyrics = ({
           {children}
         </div>
       </div>
-      <div
-        style={{
-          flexGrow: 1 - anchor,
-          minHeight: layout.bottomObstruction,
-          // Lift at once when the controls appear; drop only after they fade.
-          // Never while dragging: the block follows the pointer exactly
-          transition: dragging ? 'none' : `min-height ${LIFT_MS}ms ease-out`,
-          transitionDelay:
-            layout.bottomObstruction > 0 ? '0ms' : `${CONTROLS_FADE_MS}ms`,
-        }}
-      />
+      <div className='lyrics-lift' style={liftVars} />
     </div>
   )
 }

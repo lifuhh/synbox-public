@@ -217,6 +217,80 @@
   --spacing-controls-rail: calc(var(--safe-left) + 3.5rem);
   --spacing-cqw: 1cqw;
   --spacing-cqh: 1cqh;
+
+  /* The player's lyric lines: a share of the stage's width, with a floor, times the viewer's scale */
+  --text-lyric: calc(max(3.5cqw, 1.5rem) * var(--lyric-scale));
+  --text-lyric-secondary: calc(max(2.4cqw, 0.9375rem) * var(--lyric-scale));
+}
+
+/* The lyrics' theme swatch: the light and dark backgrounds a theme is shown against */
+@utility bg-theme-swatch {
+  background: linear-gradient(135deg, #ebe7e1 50%, #1c1820 50%);
+}
+
+/* The custom hue slider's track: every hue, at the lightness and chroma the theme uses */
+@utility bg-hue-track {
+  background: linear-gradient(
+    to right,
+    oklch(0.7 0.15 0),
+    oklch(0.7 0.15 30),
+    oklch(0.7 0.15 60),
+    oklch(0.7 0.15 90),
+    oklch(0.7 0.15 120),
+    oklch(0.7 0.15 150),
+    oklch(0.7 0.15 180),
+    oklch(0.7 0.15 210),
+    oklch(0.7 0.15 240),
+    oklch(0.7 0.15 270),
+    oklch(0.7 0.15 300),
+    oklch(0.7 0.15 330),
+    oklch(0.7 0.15 360)
+  );
+}
+
+/* The soft shape of each backdrop color blob */
+@utility clip-backdrop-blob {
+  clip-path: polygon(
+    74.1% 44.1%,
+    100% 61.6%,
+    97.5% 26.9%,
+    85.5% 0.1%,
+    80.7% 2%,
+    72.5% 32.5%,
+    60.2% 62.4%,
+    52.4% 68.1%,
+    47.5% 58.3%,
+    45.2% 34.5%,
+    27.5% 76.7%,
+    0.1% 64.9%,
+    17.9% 100%,
+    27.6% 76.8%,
+    76.1% 97.7%,
+    74.1% 44.1%
+  );
+}
+
+/* A progress bar's fill, clipped from the right by --progress-remaining */
+@utility clip-progress {
+  clip-path: inset(0 var(--progress-remaining) 0 0 round 9999px);
+}
+
+/* A landing carousel slide, scaled and faded by its distance from the current one */
+@utility carousel-slide {
+  opacity: var(--slide-opacity);
+  transform: var(--slide-transform);
+  transition:
+    transform 0.5s ease-in-out,
+    opacity 0.3s ease-in-out;
+}
+
+/* The spacer under the player's lyrics: its share of the free space, and the lift that keeps the lyrics
+   clear of the controls. One rule, so the delay always follows the transition shorthand */
+@utility lyrics-lift {
+  flex-grow: var(--lift-grow);
+  min-height: var(--lift-min-h);
+  transition: var(--lift-transition);
+  transition-delay: var(--lift-delay);
 }
 
 /* Fades the step wheel's rows out at its top and bottom edges */

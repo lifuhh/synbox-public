@@ -28,16 +28,11 @@ import {
   LYRICS_BACKDROPS,
   LYRICS_THEMES,
   getCustomThemeColors,
-  getLyricsThemeCssVars,
 } from '@/lib/lyrics-themes'
+import type { CssVars } from '@/types'
 import { cn } from '@/utils/cn'
 
 import { RailButton, RailTooltip } from './rail-button'
-
-const HUE_TRACK = `linear-gradient(to right, ${Array.from(
-  { length: 13 },
-  (_, i) => `oklch(0.7 0.15 ${i * 30})`
-).join(', ')})`
 
 const HALF_FILLED: CSSProperties & Record<'--p', number> = { '--p': 0.5 }
 
@@ -53,48 +48,51 @@ const ThemeSwatch = ({
   colors,
   selected,
   onSelect,
-}: ThemeSwatchProps) => (
-  <button
-    type='button'
-    role='radio'
-    aria-checked={selected}
-    aria-label={name}
-    onClick={onSelect}
-    className='group flex flex-col items-center gap-1 focus-visible:outline-hidden'>
-    <span
-      className={cn(
-        'relative flex h-11 w-14 items-center justify-center overflow-hidden rounded-md ring-2 ring-offset-2 ring-offset-popover transition-all duration-150',
-        selected
-          ? 'ring-primary'
-          : 'ring-transparent group-hover:ring-border group-focus-visible:ring-ring'
-      )}
-      style={{
-        background: 'linear-gradient(135deg, #ebe7e1 50%, #1c1820 50%)',
-        ...getLyricsThemeCssVars(colors),
-      }}>
-      {/* Caught mid-wipe, so the swatch shows both the white and the theme's accent */}
-      <span className='lyric-text-line font_noto_sans_jp_black_900 text-2xl leading-none'>
-        <span className='lyric-karaoke-line'>
-          <span className='lyric-karaoke-part' style={HALF_FILLED}>
-            <span className='lyric-karaoke-fill'>あ</span>
+}: ThemeSwatchProps) => {
+  const themeVars: CssVars = {
+    '--lyric-accent': colors.accent,
+    '--lyric-glow': colors.glow,
+  }
+  return (
+    <button
+      type='button'
+      role='radio'
+      aria-checked={selected}
+      aria-label={name}
+      onClick={onSelect}
+      className='group flex flex-col items-center gap-1 focus-visible:outline-hidden'>
+      <span
+        className={cn(
+          'relative flex h-11 w-14 items-center justify-center overflow-hidden rounded-md ring-2 ring-offset-2 ring-offset-popover transition-all duration-150 bg-theme-swatch',
+          selected
+            ? 'ring-primary'
+            : 'ring-transparent group-hover:ring-border group-focus-visible:ring-ring'
+        )}
+        style={themeVars}>
+        {/* Caught mid-wipe, so the swatch shows both the white and the theme's accent */}
+        <span className='lyric-text-line font_noto_sans_jp_black_900 text-2xl leading-none'>
+          <span className='lyric-karaoke-line'>
+            <span className='lyric-karaoke-part' style={HALF_FILLED}>
+              <span className='lyric-karaoke-fill'>あ</span>
+            </span>
           </span>
         </span>
+        {selected && (
+          <span className='absolute top-0.5 right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-white'>
+            <CheckIcon className='size-3 shrink-0' />
+          </span>
+        )}
       </span>
-      {selected && (
-        <span className='absolute top-0.5 right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-white'>
-          <CheckIcon className='size-3 shrink-0' />
-        </span>
-      )}
-    </span>
-    <span
-      className={cn(
-        'text-xs leading-none',
-        selected ? 'text-foreground' : 'text-muted-foreground'
-      )}>
-      {name}
-    </span>
-  </button>
-)
+      <span
+        className={cn(
+          'text-xs leading-none',
+          selected ? 'text-foreground' : 'text-muted-foreground'
+        )}>
+        {name}
+      </span>
+    </button>
+  )
+}
 
 const SOURCE_NOTES: Record<LyricsStyleSource, string> = {
   default: 'This song uses your default style.',
@@ -242,8 +240,7 @@ export const LyricsThemePicker = ({
               onChange={(e) => {
                 setCustomHue(Number(e.target.value))
               }}
-              className='lyrics-hue-slider'
-              style={{ background: HUE_TRACK }}
+              className='lyrics-hue-slider bg-hue-track'
             />
           </div>
         )}

@@ -8,7 +8,6 @@ import type { StepView } from '@/lib/generation/progress'
 
 import ProgressBar from './progress-bar'
 
-const ROW_H = 60
 // Rows further from the center sit closer together and turn away, like a picker drum. The last level is
 // out of sight, past the mask
 const ROW_SPACING = [0, 50, 86, 126]
@@ -168,10 +167,7 @@ const StepWheel = ({ views, index, failed }: StepWheelProps) => {
       {...handlers}
       className='relative h-[208px] cursor-grab touch-none overflow-hidden mask-fade-y select-none perspective-[700px] active:cursor-grabbing'
       aria-hidden>
-      <div
-        className='absolute inset-x-0 top-1/2 -translate-y-1/2 rounded-xl bg-white/[0.055] ring-1 ring-white/10 ring-inset'
-        style={{ height: ROW_H }}
-      />
+      <div className='absolute inset-x-0 top-1/2 h-15 -translate-y-1/2 rounded-xl bg-white/[0.055] ring-1 ring-white/10 ring-inset' />
       {STEPS.map((step, i) => {
         const view = views[i]
         const offset = i - index
@@ -182,8 +178,8 @@ const StepWheel = ({ views, index, failed }: StepWheelProps) => {
         return (
           <motion.div
             key={step.id}
-            className='absolute inset-x-0 top-1/2 flex items-center gap-3 px-3 transform-3d'
-            style={{ height: ROW_H, marginTop: -ROW_H / 2 }}
+            // A row is as tall as the band (h-15), centred on it by half that
+            className='absolute inset-x-0 top-1/2 -mt-7.5 flex h-15 items-center gap-3 px-3 transform-3d'
             initial={false}
             animate={place(i - focus, reduced)}
             transition={rowTransition(reduced, dragging)}>

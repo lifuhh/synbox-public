@@ -23,10 +23,7 @@ import {
   currentLineIndex,
   karaokeMatchesLyrics,
 } from '@/lib/karaoke'
-import {
-  getLyricsThemeColors,
-  getLyricsThemeCssVars,
-} from '@/lib/lyrics-themes'
+import { getLyricsThemeColors } from '@/lib/lyrics-themes'
 import {
   useGetKaraokeById,
   useGetLyricsBySongId,
@@ -124,11 +121,6 @@ const sameText = (a: string, b: string) =>
   a.trim().toLowerCase() === b.trim().toLowerCase()
 
 // Lyrics scale with the stage, but never below a size a phone can read
-const LYRIC_SIZE = {
-  primary: 'calc(max(3.5cqw, 1.5rem) * var(--lyric-scale))',
-  secondary: 'calc(max(2.4cqw, 0.9375rem) * var(--lyric-scale))',
-} as const
-
 const LyricLine = ({ html, primary }: { html: string; primary: boolean }) => {
   const segments = useMemo(() => parseRubyHtml(html), [html])
   const latin = !primary || isLatinOnly(html)
@@ -136,14 +128,12 @@ const LyricLine = ({ html, primary }: { html: string; primary: boolean }) => {
     <p
       className={cn(
         'lyric-text-line text-center text-balance',
+        primary ? 'text-lyric' : 'text-lyric-secondary',
         // Room above a Japanese line for its furigana when it wraps
         latin
           ? 'font_noto_sans_reg leading-normal'
           : 'font_noto_sans_jp_black_900 leading-loose'
-      )}
-      style={{
-        fontSize: primary ? LYRIC_SIZE.primary : LYRIC_SIZE.secondary,
-      }}>
+      )}>
       <RubyText segments={segments} />
     </p>
   )
@@ -213,8 +203,8 @@ export const StageLyrics = ({
   const backdrop = useAtomValue(lyricsBackdropAtom)
   const themeId = useAtomValue(lyricsThemeIdAtom)
   const hue = useAtomValue(lyricsCustomHueAtom)
-  const themeVars = useMemo(
-    () => getLyricsThemeCssVars(getLyricsThemeColors(themeId, hue)),
+  const colors = useMemo(
+    () => getLyricsThemeColors(themeId, hue),
     [themeId, hue]
   )
 
@@ -294,13 +284,13 @@ export const StageLyrics = ({
       layout={layout}
       scale={scale}
       backdrop={backdrop}
-      style={themeVars}>
+      colors={colors}>
       {showTranslation && translation && !sameText(translation, text) && (
         <LyricLine html={translation} primary={false} />
       )}
       {showLyrics &&
         (karaokeLine ? (
-          <div className='text-center' style={{ fontSize: LYRIC_SIZE.primary }}>
+          <div className='text-center text-lyric'>
             <KaraokeLine key={index} ref={karaokeRef} line={karaokeLine} />
           </div>
         ) : (
@@ -308,9 +298,7 @@ export const StageLyrics = ({
         ))}
       {showRomaji &&
         (karaokeLine ? (
-          <div
-            className='text-center'
-            style={{ fontSize: LYRIC_SIZE.secondary }}>
+          <div className='text-center text-lyric-secondary'>
             <KaraokeRomajiLine
               key={index}
               ref={karaokeRomajiRef}

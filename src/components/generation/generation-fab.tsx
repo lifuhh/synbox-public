@@ -5,6 +5,7 @@ import { useEffect, useRef } from 'react'
 import { STEPS } from '@/lib/generation/plan'
 import type { Job } from '@/lib/generation/store'
 import { setGenerationExpanded } from '@/lib/generation/store'
+import type { CssVars } from '@/types'
 import { cn } from '@/utils/cn'
 
 import {
@@ -20,6 +21,7 @@ const STROKE = 3
 // The ring runs along the button's edge
 const R = (SIZE - STROKE) / 2
 const C = 2 * Math.PI * R
+const SIZE_VARS: CssVars = { '--fab-size': `${SIZE}px` }
 // Trims the line box to the digits' cap height, so they center on the ring rather than on the font's box
 const CAP_CENTERED = '[text-box:trim-both_cap_alphabetic] leading-none'
 
@@ -127,6 +129,7 @@ const GenerationFab = ({ job, count, view, raised }: GenerationFabProps) => {
     ref.current?.focus({ preventScroll: true })
   }, [])
 
+  const turnVars: CssVars = { '--fab-turn': `rotate(${view.overall * 360}deg)` }
   return (
     <motion.button
       ref={ref}
@@ -141,24 +144,16 @@ const GenerationFab = ({ job, count, view, raised }: GenerationFabProps) => {
         'group fixed z-50 flex flex-row-reverse items-center rounded-full bg-generation-surface text-left shadow-fab ring-1 ring-white/8 outline-none ring-inset focus-visible:ring-2 focus-visible:ring-brand-light focus-visible:ring-offset-2 focus-visible:ring-offset-black'
       )}>
       <span
-        className='relative grid shrink-0 place-items-center'
-        style={{ height: SIZE, width: SIZE }}>
+        className='relative grid size-(--fab-size) shrink-0 place-items-center'
+        style={SIZE_VARS}>
         <svg
           viewBox={`0 0 ${SIZE} ${SIZE}`}
           className='absolute inset-0 -rotate-90'
           aria-hidden>
           <defs>
             <linearGradient id='fab-ring' x1='0' y1='0' x2='1' y2='1'>
-              <stop
-                offset='0%'
-                stopColor='currentColor'
-                className='text-brand-light'
-              />
-              <stop
-                offset='100%'
-                stopColor='currentColor'
-                className='text-brand-ring-stop'
-              />
+              <stop offset='0%' stopColor='var(--color-brand-light)' />
+              <stop offset='100%' stopColor='var(--color-brand-ring-stop)' />
             </linearGradient>
           </defs>
           <circle
@@ -184,8 +179,8 @@ const GenerationFab = ({ job, count, view, raised }: GenerationFabProps) => {
           {state === 'running' && view.overall > 0.01 && (
             // Turns with the same timing as the arc, so the dot stays on its tip
             <g
-              className='[transform-origin:center] transition-transform duration-450 ease-out [transform-box:view-box]'
-              style={{ transform: `rotate(${view.overall * 360}deg)` }}>
+              className='[transform-origin:center] transform-(--fab-turn) transition-transform duration-450 ease-out [transform-box:view-box]'
+              style={turnVars}>
               <circle
                 cx={SIZE / 2 + R}
                 cy={SIZE / 2}

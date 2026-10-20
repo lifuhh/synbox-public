@@ -15,6 +15,7 @@ import { playerChromeOpenAtom, playerVolumeAtom } from '@/context/atoms'
 import { useArmed } from '@/hooks/use-armed'
 import { useMediaQuery } from '@/hooks/use-media-query'
 import { isStandalone } from '@/lib/pwa'
+import type { CssVars } from '@/types'
 import { cn } from '@/utils/cn'
 
 import { StageControls } from './stage-controls'
@@ -449,6 +450,7 @@ export const PlayerStage = ({
     }
   })
 
+  const cropVars: CssVars = { '--iframe-crop': `${-quirks.cropPx}px` }
   return (
     <div
       data-player-stage
@@ -458,16 +460,14 @@ export const PlayerStage = ({
         !controlsVisible && 'cursor-none',
         className
       )}>
-      <div
-        className='absolute top-1/2 left-1/2 aspect-video -translate-1/2 overflow-hidden'
-        style={{ width: 'min(100cqw, 177.78cqh)' }}>
+      <div className='absolute top-1/2 left-1/2 aspect-video w-[min(100cqw,177.78cqh)] -translate-1/2 overflow-hidden'>
         <div
           ref={hostRef}
           className={cn(
-            'absolute inset-x-0 [&>iframe]:size-full',
+            'absolute inset-x-0 top-(--iframe-crop) bottom-(--iframe-crop) [&>iframe]:size-full',
             blockInput && '[&>iframe]:pointer-events-none'
           )}
-          style={{ bottom: -quirks.cropPx, top: -quirks.cropPx }}
+          style={cropVars}
         />
         {showCover && <StageCover videoId={videoId} phase={phase} />}
       </div>

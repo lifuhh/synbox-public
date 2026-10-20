@@ -1,8 +1,7 @@
-import type { CSSProperties } from 'react'
 import { useCallback } from 'react'
 import { useNavigate } from 'react-router'
 
-import type { formattedYoutubeVideoItemForCarousel } from '@/types'
+import type { CssVars, formattedYoutubeVideoItemForCarousel } from '@/types'
 
 import { CardBody, CardContainer, CardItem } from '../ui/3d-card'
 import { Button } from '../ui/button'
@@ -20,11 +19,11 @@ interface SongHighlightCarouselItemProps extends SlidePosition {
 }
 
 // Computed during render so a slide mounts at its final scale instead of animating from full size
-const getSlideStyle = (
+const getSlidePlacement = (
   index: number,
   currentIndex: number,
   itemCount: number
-): CSSProperties => {
+) => {
   const adjustedIndex = index - 1
   let distance = Math.abs(adjustedIndex - currentIndex)
 
@@ -41,11 +40,7 @@ const getSlideStyle = (
   const opacityDecrement = 0.18
   const opacityInRange = Math.max(1 - opacityDecrement * distance, 0.2)
 
-  return {
-    opacity: opacityInRange,
-    transform: `scale(${scale})`,
-    transition: 'transform 0.5s ease-in-out, opacity 0.3s ease-in-out',
-  }
+  return { opacity: opacityInRange, scale }
 }
 
 const SlideFrame = ({
@@ -53,9 +48,18 @@ const SlideFrame = ({
   currentIndex,
   itemCount,
   children,
-}: SlidePosition & { children: React.ReactNode }) => (
-  <div style={getSlideStyle(index, currentIndex, itemCount)}>{children}</div>
-)
+}: SlidePosition & { children: React.ReactNode }) => {
+  const { opacity, scale } = getSlidePlacement(index, currentIndex, itemCount)
+  const slideVars: CssVars = {
+    '--slide-opacity': opacity,
+    '--slide-transform': `scale(${scale})`,
+  }
+  return (
+    <div className='carousel-slide' style={slideVars}>
+      {children}
+    </div>
+  )
+}
 
 const SongHighlightCarouselItem = ({
   opacity,
@@ -70,8 +74,9 @@ const SongHighlightCarouselItem = ({
     void navigate(`/v/${item.videoId}`, { state: { videoId: item.videoId } })
   }, [item.videoId, navigate])
 
+  const cardVars: CssVars = { '--card-opacity': opacity }
   return (
-    <div style={{ opacity }} className='scale-75'>
+    <div className='scale-75 opacity-(--card-opacity)' style={cardVars}>
       <SlideFrame
         index={index}
         currentIndex={currentIndex}

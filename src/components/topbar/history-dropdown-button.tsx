@@ -33,6 +33,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { historyAtom } from '@/context/atoms'
+import type { CssVars } from '@/types'
 
 import HistoryDropdownItem from './history-dropdown-item'
 
@@ -190,6 +191,9 @@ const HistoryDropdownButton = () => {
     return items
   }
 
+  const menuVars: CssVars = {
+    '--history-menu-h': `${calculateDropdownHeight()}px`,
+  }
   return (
     <TooltipProvider>
       <DropdownMenu open={isDropdownOpen} onOpenChange={setIsDropdownOpen}>
@@ -209,8 +213,8 @@ const HistoryDropdownButton = () => {
           sideOffset={10}
           collisionPadding={8}
           variant='primary-panel'
-          className='max-h-(--radix-dropdown-menu-content-available-height) w-[min(400px,calc(100vw-1rem))]'
-          style={{ height: `${calculateDropdownHeight()}px` }}>
+          className='h-(--history-menu-h) max-h-(--radix-dropdown-menu-content-available-height) w-[min(400px,calc(100vw-1rem))]'
+          style={menuVars}>
           <div className='flex h-full flex-col'>
             <div className='sticky top-0 z-10 m-2 bg-background/95'>
               <div className='flex items-center justify-between'>

@@ -15,6 +15,7 @@ import { useEffect, useRef, useState } from 'react'
 
 import { Slider } from '@/components/ui/slider'
 import { useArmed } from '@/hooks/use-armed'
+import type { CssVars } from '@/types'
 import { cn } from '@/utils/cn'
 
 import { TAP_SEEK_SEC } from './use-stage-taps'
@@ -112,6 +113,7 @@ interface StageControlsProps {
 }
 
 export const CONTROLS_FADE_MS = 300
+const FADE_VARS: CssVars = { '--controls-fade': `${CONTROLS_FADE_MS}ms` }
 const OBSTRUCTION_GAP_PX = 8
 const VOLUME_WHEEL_STEP = 0.05
 // The clock counts a seek as landed within this of its target
@@ -189,9 +191,9 @@ export const StageControls = ({
   return (
     <div
       ref={barRef}
-      style={{ transitionDuration: `${CONTROLS_FADE_MS}ms` }}
+      style={FADE_VARS}
       className={cn(
-        'absolute inset-x-0 bottom-0 z-30 bg-linear-to-t from-black/80 via-black/40 to-transparent pt-10 pr-controls-right pb-controls-bottom pl-controls-left transition-opacity short:pl-controls-rail',
+        'absolute inset-x-0 bottom-0 z-30 bg-linear-to-t from-black/80 via-black/40 to-transparent pt-10 pr-controls-right pb-controls-bottom pl-controls-left transition-opacity duration-(--controls-fade) short:pl-controls-rail',
         visible ? 'opacity-100' : 'opacity-0',
         !armed && 'pointer-events-none'
       )}

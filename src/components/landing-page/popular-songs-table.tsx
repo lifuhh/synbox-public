@@ -10,6 +10,7 @@ import {
   useGetChartsPlaylist,
   useSongsWithLyrics,
 } from '@/lib/react-query/queries-and-mutations'
+import type { CssVars } from '@/types'
 
 // One per visible row (the body is six rows tall); varied so the column doesn't read as a block
 const SKELETON_TITLES = [
@@ -99,6 +100,9 @@ const SongRow = ({ song, ready, onPlayClick }: SongRowProps) => {
   )
 }
 
+// Six rows, so a list of any length scrolls inside the card
+const TABLE_BODY_VARS: CssVars = { '--table-body-h': `${6 * 55}px` }
+
 const LandingPageCharts: React.FC = () => {
   const navigate = useNavigate()
   const {
@@ -116,19 +120,15 @@ const LandingPageCharts: React.FC = () => {
     void navigate(`/v/${videoId}`)
   }
 
-  const tableBodyHeight = 6 * 55
-
   return (
     <div
       className='w-full rounded-md border border-primary/30 bg-background lg:mt-2 lg:ml-6 lg:w-5/12 xl:w-4/12'
       aria-busy={isChartsDataFetching}>
       <div className='relative overflow-hidden rounded-md'>
-        <table
-          className='w-full border-collapse'
-          style={{ tableLayout: 'fixed' }}>
+        <table className='w-full table-fixed border-collapse'>
           <colgroup>
-            <col style={{ width: 'calc(100% - 60px)' }} />
-            <col style={{ width: '60px' }} />
+            <col className='w-[calc(100%-60px)]' />
+            <col className='w-15' />
           </colgroup>
           <thead>
             <tr className='bg-muted text-white'>
@@ -139,8 +139,8 @@ const LandingPageCharts: React.FC = () => {
           </thead>
         </table>
         <div
-          className='no-scrollbar overflow-y-auto'
-          style={{ height: `${tableBodyHeight}px` }}>
+          className='no-scrollbar h-(--table-body-h) overflow-y-auto'
+          style={TABLE_BODY_VARS}>
           {isError && (
             <LoadError
               message="Couldn't load the YouTube charts."
@@ -153,11 +153,10 @@ const LandingPageCharts: React.FC = () => {
           )}
           <table
             hidden={isError}
-            className='w-full border-collapse'
-            style={{ tableLayout: 'fixed' }}>
+            className='w-full table-fixed border-collapse'>
             <colgroup>
-              <col style={{ width: 'calc(100% - 60px)' }} />
-              <col style={{ width: '60px' }} />
+              <col className='w-[calc(100%-60px)]' />
+              <col className='w-15' />
             </colgroup>
             <tbody>
               {isChartsDataFetching
