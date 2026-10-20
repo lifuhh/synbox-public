@@ -287,7 +287,9 @@ const PlayerRail = () => {
   })()
 
   return (
-    <TooltipProvider delayDuration={190}>
+    // Hoverable tooltips wait for a pointer move to close after the trigger is left, and none comes once
+    // the pointer is outside the window or over the YouTube iframe, so the label outlived the hidden rail
+    <TooltipProvider delayDuration={190} disableHoverableContent>
       <div className='pointer-events-none fixed top-1/2 left-0 z-50 -translate-y-1/2'>
         <nav
           ref={panelRef}
