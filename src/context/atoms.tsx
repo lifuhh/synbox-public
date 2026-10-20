@@ -126,8 +126,3 @@ export const addToHistoryAtom = atom(
     set(historyAtom, limitedHistory)
   }
 )
-
-export const showWatchHistoryToastAtom = atomWithStorage(
-  'showWatchHistoryToast',
-  true
-)

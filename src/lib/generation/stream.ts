@@ -248,9 +248,15 @@ export const validate = async (
 
 // `regenerate` redoes everything but vocal separation; `skipUploaderLyrics` leaves the uploader's subtitles
 // out while YouTube Music, LRCLIB and the audio still count
+// `requestId` names one generation and is sent again on every reconnect: the backend replays a job it
+// already finished for that id instead of running (and paying for) the whole job a second time
 export const transcribe = async (
   videoId: string,
-  options: { regenerate: boolean; skipUploaderLyrics: boolean },
+  options: {
+    regenerate: boolean
+    skipUploaderLyrics: boolean
+    requestId: string
+  },
   signal: AbortSignal,
   onProgress: OnProgress
 ) => {
@@ -261,6 +267,7 @@ export const transcribe = async (
     {
       id: videoId,
       regenerate: options.regenerate,
+      request_id: options.requestId,
       skip_uploader_lyrics: options.skipUploaderLyrics,
     },
     signal,
@@ -307,6 +314,7 @@ const parseSaved = (data: unknown): SaveOutcome => {
 // Translates the saved timing and saves the song (the backend writes the rows, or a new lyrics version)
 export const translate = async (
   videoId: string,
+  requestId: string,
   signal: AbortSignal,
   onProgress: OnProgress
 ): Promise<SaveOutcome> => {
@@ -314,7 +322,7 @@ export const translate = async (
   const progress = forwardProgress(onProgress)
   await readStream(
     '/translate-annotate',
-    { id: videoId },
+    { id: videoId, request_id: requestId },
     signal,
     (message) => {
       progress(message)

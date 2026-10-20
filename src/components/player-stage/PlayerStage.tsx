@@ -148,7 +148,6 @@ interface PlayerStageProps {
   renderLyrics?: (player: StagePlayer, layout: StageLayout) => ReactNode
   // Start playing once this turns true (e.g. when the lyrics have loaded)
   autoplay?: boolean
-  onFirstPlay?: () => void
   onEvent?: (message: string) => void
   className?: string
 }
@@ -158,7 +157,6 @@ export const PlayerStage = ({
   quirks,
   renderLyrics,
   autoplay = false,
-  onFirstPlay,
   onEvent,
   className,
 }: PlayerStageProps) => {
@@ -213,14 +211,7 @@ export const PlayerStage = ({
     }, AUTOPLAY_CHECK_MS)
   }, [autoplay, isReady, play])
 
-  const firstPlayRef = useRef(false)
   const isPlaying = phase.kind === 'playing'
-  useEffect(() => {
-    if (isPlaying && !firstPlayRef.current) {
-      firstPlayRef.current = true
-      onFirstPlay?.()
-    }
-  }, [isPlaying, onFirstPlay])
   const { idle, sleep } = useIdle(IDLE_MS)
   const [dragging, setDragging] = useState(false)
   const [controlsHeight, setControlsHeight] = useState(0)

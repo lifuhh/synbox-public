@@ -28,8 +28,12 @@ export interface GenerationRequest {
   skipUploaderLyrics?: boolean
   // Shown until the backend sends the song's details
   title?: string
+  // A retry keeps its failed job's id, so the backend can hand back a result that finished after all
+  requestId?: string
 }
 
+// `requestId` is sent with every request of a generation, so a reconnect replays the backend's
+// finished job instead of running it again
 export interface Job extends Required<GenerationRequest> {
   id: number
   startedAt: number
@@ -44,6 +48,9 @@ export interface GenerationState {
 }
 
 const RETRIES = 2
+// Coming back from the background reconnects without using a retry, but never without limit: a backend
+// that cannot replay would otherwise run (and charge for) the job again on every return
+const RECONNECTS = 6
 const RETRY_DELAY_MS = 1500
 
 let state: GenerationState = { expanded: false, job: null }
@@ -119,6 +126,7 @@ const runPhase = async <T>(
     status: { kind: 'running', phase },
   }))
   let attempt = 0
+  let reconnects = 0
   for (;;) {
     try {
       const result = await call()
@@ -132,7 +140,15 @@ const runPhase = async <T>(
         throw error
       }
       // Coming back from the background is not a failure: reconnect at once, without using a retry
-      if (!error.resumed) {
+      if (error.resumed) {
+        reconnects += 1
+        if (reconnects > RECONNECTS) {
+          throw new GenerationError(
+            'Lost the connection to the lyrics server too many times',
+            false
+          )
+        }
+      } else {
         if (!error.retryable || attempt >= RETRIES) {
           throw error
         }
@@ -157,6 +173,7 @@ const run = async (job: Job, signal: AbortSignal) => {
         videoId,
         {
           regenerate: job.mode === 'regenerate',
+          requestId: job.requestId,
           skipUploaderLyrics: job.skipUploaderLyrics,
         },
         signal,
@@ -164,7 +181,7 @@ const run = async (job: Job, signal: AbortSignal) => {
       )
     )
     const outcome = await runPhase(id, 'translate', signal, () =>
-      translate(videoId, signal, progress)
+      translate(videoId, job.requestId, signal, progress)
     )
     updateJob(id, (current) => ({
       ...current,
@@ -203,6 +220,7 @@ export const startGeneration = (request: GenerationRequest): boolean => {
     title: '',
     video: null,
     ...request,
+    requestId: request.requestId ?? crypto.randomUUID(),
   }
   set({ expanded: true, job })
   void run(job, controller.signal)
@@ -214,6 +232,7 @@ export const retryGeneration = () => {
   if (job && job.status.kind === 'failed') {
     startGeneration({
       mode: job.mode,
+      requestId: job.requestId,
       skipUploaderLyrics: job.skipUploaderLyrics,
       title: job.video?.title ?? job.title,
       videoId: job.videoId,
