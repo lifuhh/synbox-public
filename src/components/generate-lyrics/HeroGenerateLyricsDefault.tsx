@@ -14,6 +14,7 @@ import { startGeneration } from '@/lib/generation/store'
 import { useGetLyricsBySongId } from '@/lib/react-query/queriesAndMutations'
 import { YouTubeUrlOrIdValidation } from '@/lib/validation'
 import { extractVideoId } from '@/utils'
+import { cn } from '@/utils/cn'
 
 import { Spotlight } from '../ui/Spotlight'
 
@@ -35,6 +36,23 @@ const looksLikeYoutubeLink = (value: string) => {
   )
 }
 
+// Search is a mode, not an error, so it gets its own colour; red is kept for a link that fails to parse.
+type InputMode = 'empty' | 'search' | 'valid' | 'invalid'
+
+const getInputMode = (
+  value: string,
+  isSearch: boolean,
+  isValidLink: boolean
+): InputMode => {
+  if (value.trim().length === 0) {
+    return 'empty'
+  }
+  if (isSearch) {
+    return 'search'
+  }
+  return isValidLink ? 'valid' : 'invalid'
+}
+
 const HeroGenerateLyricsDefault = ({
   setInputVideoId,
 }: HeroGenerateLyricsDefaultProps) => {
@@ -46,6 +64,7 @@ const HeroGenerateLyricsDefault = ({
   const navigate = useNavigate()
   const isSearch =
     inputValue.trim().length > 0 && !looksLikeYoutubeLink(inputValue)
+  const inputMode = getInputMode(inputValue, isSearch, validationSuccess)
 
   const extractedVideoId = useMemo(() => {
     if (!inputValue) {
@@ -131,15 +150,22 @@ const HeroGenerateLyricsDefault = ({
               }
             }}
             placeholder='Search or paste a YouTube URL'
-            className={`border-2 bg-input/40 py-6 text-white invisible-ring ${
-              inputValue.length > 0
-                ? validationSuccess
-                  ? 'border-green-500 hover:border-foreground focus:border-green-500'
-                  : 'border-red-800 hover:border-foreground focus:border-red-800'
-                : 'border-foreground/60 hover:border-foreground/80 focus:border-foreground/90'
-            } `}
+            className={cn(
+              'border-2 bg-input/40 py-6 text-white invisible-ring',
+              inputMode === 'empty' &&
+                'border-foreground/60 hover:border-foreground/80 focus:border-foreground/90',
+              inputMode === 'search' &&
+                'border-search hover:border-foreground focus:border-search',
+              inputMode === 'valid' &&
+                'border-green-500 hover:border-foreground focus:border-green-500',
+              inputMode === 'invalid' &&
+                'border-red-800 hover:border-foreground focus:border-red-800'
+            )}
           />
           <div className='absolute -bottom-20 left-0 h-20 w-full py-6 pt-2 text-center md:text-left lg:py-2'>
+            {inputMode === 'search' && (
+              <div className='text-search'>Search by title, artist or mood</div>
+            )}
             {inputValue.length > 0 && !isSearch && (
               <div className={errorMessage ? 'text-red-500' : 'text-green-500'}>
                 {errorMessage
