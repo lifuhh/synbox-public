@@ -58,7 +58,7 @@ export async function addSongInfoBySongId(songInfo: CurrentPlayingInfo) {
     )
     return songInfoUpload
   } catch (error) {
-    console.log('Add Song Info Error: ', error)
+    console.log('Add Song Info Error:', error)
   }
 }
 
@@ -90,7 +90,7 @@ export async function getSongInfoBySongId(
       if (error.message === 'No Song Info found.') {
         return null
       }
-      console.error('API Error: ', error)
+      console.error('API Error:', error)
       throw error
     } else {
       console.error('An unexpected error occurred of unknown type:', error)
@@ -117,7 +117,7 @@ export async function getSongLyricsById(songId: string) {
       return null
     }
     if (error instanceof Error) {
-      console.error('API Error: ', error)
+      console.error('API Error:', error)
       throw error
     } else {
       console.error('An unexpected error occurred of unknown type:', error)
