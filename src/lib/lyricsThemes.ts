@@ -3,17 +3,20 @@ import type { CSSProperties } from 'react'
 // Lyrics are white until sung; a theme sets the colour the karaoke wipe paints and the glow behind every line.
 // The accent is the lit, sung part, so it sits near the white's lightness (OKLCH 0.86+) rather than darker than it.
 // Presets are WCAG-checked: accent >= 13:1 on the fixed dark edge (.lyric-text-line), glow >= 3:1 darker than the white
-export type LyricsThemeId =
-  | 'sakura'
-  | 'cinema'
-  | 'amethyst'
-  | 'aqua'
-  | 'matcha'
-  | 'lemon'
-  | 'sunset'
-  | 'custom'
+export const LYRICS_THEME_IDS = [
+  'sakura',
+  'cinema',
+  'amethyst',
+  'aqua',
+  'matcha',
+  'lemon',
+  'sunset',
+  'custom',
+] as const
+export type LyricsThemeId = (typeof LYRICS_THEME_IDS)[number]
 
-export type LyricsBackdrop = 'shadow' | 'band' | 'box'
+export const LYRICS_BACKDROP_IDS = ['shadow', 'band', 'box'] as const
+export type LyricsBackdrop = (typeof LYRICS_BACKDROP_IDS)[number]
 
 export interface LyricsThemeColors {
   accent: string

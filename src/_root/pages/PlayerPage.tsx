@@ -1,4 +1,4 @@
-import { useAtomValue } from 'jotai'
+import { useAtomValue, useSetAtom } from 'jotai'
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router'
 
@@ -9,7 +9,7 @@ import VersionPreviewBanner, {
 import { PlayerStage } from '@/components/player-stage/PlayerStage'
 import { StageLyrics } from '@/components/player-stage/StageLyrics'
 import { DEFAULT_YOUTUBE_QUIRKS } from '@/components/player-stage/youtubeQuirks'
-import { currentVideoAtom } from '@/context/atoms'
+import { currentVideoAtom, lyricsStyleSongAtom } from '@/context/atoms'
 import { useLyricsReady } from '@/hooks/useLyricsReady'
 import { useSongVisit } from '@/hooks/useSongVisit'
 import { handleVideoRoute } from '@/utils/routeHandler.ts'
@@ -29,6 +29,14 @@ const PlayerPage = () => {
   // Autoplay waits for the lyrics so a song that starts singing at once never
   // plays ahead of them; useLyricsReady gives up after LYRICS_WAIT_MS
   const lyricsReady = useLyricsReady(videoId)
+
+  const setLyricsStyleSong = useSetAtom(lyricsStyleSongAtom)
+  useEffect(() => {
+    setLyricsStyleSong(stageVideoId)
+    return () => {
+      setLyricsStyleSong(null)
+    }
+  }, [stageVideoId, setLyricsStyleSong])
 
   useEffect(() => {
     let mounted = true
