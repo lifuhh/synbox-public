@@ -42,8 +42,8 @@ const useCarousel = () => {
 }
 
 const CarouselRender: React.ForwardRefRenderFunction<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement> & CarouselProps
+  HTMLElement,
+  React.HTMLAttributes<HTMLElement> & CarouselProps
 > = (
   {
     orientation = 'horizontal',
@@ -84,7 +84,7 @@ const CarouselRender: React.ForwardRefRenderFunction<
   }, [api])
 
   const handleKeyDown = React.useCallback(
-    (event: React.KeyboardEvent<HTMLDivElement>) => {
+    (event: React.KeyboardEvent<HTMLElement>) => {
       if (event.key === 'ArrowLeft') {
         event.preventDefault()
         scrollPrev()
@@ -142,15 +142,14 @@ const CarouselRender: React.ForwardRefRenderFunction<
 
   return (
     <CarouselContext.Provider value={context}>
-      <div
+      <section
         ref={ref}
         onKeyDownCapture={handleKeyDown}
         className={cn('relative', className)}
-        role='region'
         aria-roledescription='carousel'
         {...props}>
         {children}
-      </div>
+      </section>
     </CarouselContext.Provider>
   )
 }

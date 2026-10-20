@@ -51,7 +51,7 @@ const FavouritesDropdownButton = () => {
             <div className='max-h-[min(600px,calc(100dvh-var(--topbar-h)-6rem))] overflow-y-auto px-2'>
               {favorites.length > 0 ? (
                 <div className='space-y-1 pb-4'>
-                  {[...favorites].reverse().map((item) => (
+                  {favorites.toReversed().map((item) => (
                     <FavouritesDropdownItem key={item.videoId} {...item} />
                   ))}
                 </div>

@@ -11,7 +11,6 @@ interface Props {
 interface State {
   hasError: boolean
   error: Error | null
-  errorInfo: ErrorInfo | null
 }
 
 const handleReturnHome = () => {
@@ -23,17 +22,15 @@ class ErrorBoundary extends Component<Props, State> {
     super(props)
     this.state = {
       error: null,
-      errorInfo: null,
       hasError: false,
     }
   }
 
   public static getDerivedStateFromError(error: Error): State {
-    return { error, errorInfo: null, hasError: true }
+    return { error, hasError: true }
   }
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    this.setState({ errorInfo })
     console.error('Uncaught error:', error, errorInfo)
   }
 

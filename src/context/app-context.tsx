@@ -7,7 +7,9 @@ interface AppContextType {
 
 const AppContext = createContext<AppContextType>({
   processingStage: 1,
-  setProcessingStage: () => {},
+  setProcessingStage: () => {
+    // Without a provider there is no stage to update
+  },
 })
 
 const AppProvider = ({ children }: { children: React.ReactNode }) => {

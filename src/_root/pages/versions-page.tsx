@@ -312,7 +312,7 @@ const VersionsPage = () => {
   const { data, error, isLoading } = useGetLyricsVersions(videoId)
   const { data: songInfo } = useGetSongInfoBySongId(videoId)
   const [confirming, setConfirming] = useState<number | null>(null)
-  const versions = data ? [...data.versions].reverse() : []
+  const versions = data ? data.versions.toReversed() : []
 
   const regenerate = (skipUploaderLyrics: boolean) => {
     startGeneration({

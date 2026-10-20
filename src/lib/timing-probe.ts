@@ -26,7 +26,7 @@ const quantile = (values: number[], q: number) => {
   if (values.length === 0) {
     return Number.NaN
   }
-  const sorted = [...values].sort((a, b) => a - b)
+  const sorted = values.toSorted((a, b) => a - b)
   return sorted[Math.min(sorted.length - 1, Math.floor(q * sorted.length))]
 }
 
