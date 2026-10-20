@@ -35,7 +35,6 @@ const CHECKS = [
   'A video with auto-captions: none visible; untick Unload Captions to compare',
   'Drag the lyrics over the video and out past the edges',
   'Click the lyrics without dragging: nothing happens; beside them: pauses',
-  'Interact With YouTube: clicks reach YouTube (ads, sign-in prompts)',
 ]
 
 const StageLabPage = () => {
