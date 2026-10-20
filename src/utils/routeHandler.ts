@@ -26,7 +26,7 @@ export const handleVideoRoute = async ({
     setIsLoading(true)
     setError(null)
 
-    if (!/^[a-zA-Z0-9_-]{11}$/.exec(videoId)) {
+    if (!/^[a-zA-Z0-9_-]{11}$/.test(videoId)) {
       throw new Error('Invalid video ID format')
     }
 
