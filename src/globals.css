@@ -760,9 +760,14 @@
     --safe-right: env(safe-area-inset-right, 0px);
     /* In portrait the player's video is full width, centred on the screen */
     --stage-video-top: calc(50dvh - 100vw * 9 / 32);
+    /* In portrait the player's rail sits on its control bar; notices and the generation button float above both */
+    --player-notices-bottom: calc(
+      var(--stage-controls-h, 5rem) + var(--player-rail-h, 0px) + 0.5rem
+    );
   }
 
-  /* The version preview banner and the player's Tap to Unmute both hang under the top bar */
+  /* The version preview banner and the player's Tap to Unmute both hang under the top bar (in portrait, both
+     stand above the rail) */
   :root:has([data-preview-banner]) {
     --preview-banner-h: 3rem;
   }

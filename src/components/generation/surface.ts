@@ -24,7 +24,7 @@ export const FAB_MOTION = {
 // Bottom-right, clear of the home indicator, and on the player just above its control bar
 export const surfacePlacement = (aboveStageControls: boolean) =>
   aboveStageControls
-    ? 'right-[max(1rem,var(--safe-right))] bottom-[calc(var(--stage-controls-h,5rem)+0.5rem)] sm:right-6'
+    ? 'right-[max(1rem,var(--safe-right))] bottom-[calc(var(--stage-controls-h,5rem)+0.5rem)] sm:right-6 portrait:bottom-(--player-notices-bottom)'
     : 'right-[max(1rem,var(--safe-right))] bottom-[max(1rem,var(--safe-bottom))] sm:right-6 sm:bottom-6'
 
 export const thumbnailOf = (job: Job) =>

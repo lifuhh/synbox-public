@@ -118,6 +118,24 @@ const PlayerRail = () => {
   const armed = useArmed(open)
   const peek = usePeek()
 
+  // Published so that in portrait, where the rail sits on the control bar, the notices, the lyrics and
+  // the generation button stay above it
+  useEffect(() => {
+    const observe = (panel: HTMLElement) => {
+      const root = document.documentElement
+      const observer = new ResizeObserver(() => {
+        root.style.setProperty('--player-rail-h', `${panel.offsetHeight}px`)
+      })
+      observer.observe(panel)
+      return () => {
+        observer.disconnect()
+        root.style.removeProperty('--player-rail-h')
+      }
+    }
+    const panel = panelRef.current
+    return panel ? observe(panel) : undefined
+  }, [])
+
   const currentVideo = useAtomValue(currentVideoAtom)
   const addFavorite = useSetAtom(addFavoriteAtom)
   const removeFavorite = useSetAtom(removeFavoriteAtom)
@@ -226,9 +244,9 @@ const PlayerRail = () => {
     // the pointer is outside the window or over the YouTube iframe, so the label outlived the hidden rail
     <TooltipProvider delayDuration={190} disableHoverableContent>
       <RailTooltipsOff value={peek.panelOpen}>
-        {/* Left edge, vertically centred; in portrait a row above the video; on a phone on its side a
-            compact column under the top bar, with the control bar starting to its right */}
-        <div className='pointer-events-none fixed top-1/2 left-(--safe-left) z-50 -translate-y-1/2 portrait:top-[calc(var(--stage-video-top)-0.5rem)] portrait:left-1/2 portrait:-translate-x-1/2 portrait:-translate-y-full short:top-[calc(var(--topbar-h)+0.25rem)] short:translate-y-0'>
+        {/* Left edge, vertically centred; in portrait a row on the control bar, in thumb reach; on a phone
+            on its side a compact column under the top bar, with the control bar starting to its right */}
+        <div className='pointer-events-none fixed top-1/2 left-(--safe-left) z-50 -translate-y-1/2 portrait:top-auto portrait:bottom-[var(--stage-controls-h,5rem)] portrait:left-1/2 portrait:-translate-x-1/2 portrait:translate-y-0 short:top-[calc(var(--topbar-h)+0.25rem)] short:translate-y-0'>
           <nav
             ref={panelRef}
             data-player-chrome
