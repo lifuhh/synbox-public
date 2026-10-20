@@ -22,13 +22,12 @@ const AppLogo: React.FC = () => {
 
   return (
     <div className='z-20 flex w-36 min-w-36 cursor-pointer justify-start py-2 align-middle sm:w-44 sm:min-w-44'>
-      <Link to='/' onClick={handleOnClick}>
-        <button
-          type='button'
-          aria-label='Home Button'
-          className='cursor-pointer'>
-          <SynboxLogo />
-        </button>
+      <Link
+        to='/'
+        onClick={handleOnClick}
+        aria-label='Synbox home'
+        className='inline-block'>
+        <SynboxLogo />
       </Link>
     </div>
   )
