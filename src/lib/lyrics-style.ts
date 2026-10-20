@@ -22,7 +22,7 @@ export interface LyricsStyle {
 }
 
 export const DEFAULT_LYRICS_STYLE: LyricsStyle = {
-  anchor: 0.85,
+  anchor: 1,
   anchorPortrait: 0.5,
   backdrop: DEFAULT_LYRICS_BACKDROP,
   customHue: DEFAULT_LYRICS_CUSTOM_HUE,

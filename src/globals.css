@@ -286,13 +286,17 @@
     opacity 0.3s ease-in-out;
 }
 
-/* The spacer under the player's lyrics: its share of the free space, and the lift that keeps the lyrics
-   clear of the controls. One rule, so the delay always follows the transition shorthand */
+/* The spacers above and below the player's lyrics split the free space by the anchor; the lower one also
+   lifts the lyrics clear of the controls */
+@utility anchor-spacer {
+  flex-grow: var(--anchor-grow);
+  transition: var(--anchor-transition);
+}
+
 @utility lyrics-lift {
   flex-grow: var(--lift-grow);
   min-height: var(--lift-min-h);
   transition: var(--lift-transition);
-  transition-delay: var(--lift-delay);
 }
 
 /* Fades the step wheel's rows out at its top and bottom edges */

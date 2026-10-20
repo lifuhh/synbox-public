@@ -35,7 +35,7 @@ test('a song keeps its own style; other songs follow the defaults', () => {
 
   store.set(lyricsStyleSongAtom, 'songB')
   expect(store.get(lyricsThemeIdAtom)).toBe('aqua')
-  expect(store.get(lyricsAnchorAtom)).toBe(0.85)
+  expect(store.get(lyricsAnchorAtom)).toBe(1)
   expect(store.get(lyricsStyleSourceAtom)).toBe('default')
 
   // A fresh store reads songA back from storage, as a reload would

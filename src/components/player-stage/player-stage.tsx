@@ -206,8 +206,9 @@ const StageCover = ({
 }
 
 export interface StageLayout {
-  // Stage pixels our controls cover from the bottom right now; 0 while hidden
-  bottomObstruction: number
+  // Stage pixels our controls cover from the bottom when they show, measured even while hidden
+  controlsHeight: number
+  controlsVisible: boolean
   // Controls stay hidden while dragging, so the drop position is the real one
   onDragChange: (dragging: boolean) => void
 }
@@ -314,7 +315,8 @@ export const PlayerStage = ({
     [setChromeOpen]
   )
   const layout: StageLayout = {
-    bottomObstruction: controlsVisible ? controlsHeight : 0,
+    controlsHeight,
+    controlsVisible,
     onDragChange: (next) => {
       setDragging(next)
       // After a drop, keep the controls away until the pointer moves again
