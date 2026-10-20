@@ -35,3 +35,6 @@ bun.lockb
 
 # Local reports and visual write-ups (not committed); see AGENTS.md
 .reports/
+
+# Private change log (local working history, never published)
+docs/log/
