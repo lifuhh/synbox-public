@@ -68,7 +68,7 @@ const ProfileButtonDropdown = () => {
   const [iosHelpOpen, setIosHelpOpen] = useState(false)
 
   const handleAboutOnClick = () => {
-    navigate('/about')
+    void navigate('/about')
   }
 
   return (

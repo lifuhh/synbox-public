@@ -18,7 +18,7 @@ export const handleVideoRoute = async ({
   onSuccess,
 }: VideoRouteConfig): Promise<void> => {
   if (videoId === undefined || videoId === '') {
-    navigate('/', { replace: true })
+    await navigate('/', { replace: true })
     return
   }
 
@@ -26,7 +26,7 @@ export const handleVideoRoute = async ({
     setIsLoading(true)
     setError(null)
 
-    if (!/^[a-zA-Z0-9_-]{11}$/.test(videoId)) {
+    if (!/^[a-zA-Z0-9_-]{11}$/u.test(videoId)) {
       throw new Error('Invalid video ID format')
     }
 
@@ -42,4 +42,4 @@ export const handleVideoRoute = async ({
 }
 
 export const isValidVideoId = (id: string): boolean =>
-  /^[a-zA-Z0-9_-]{11}$/.test(id)
+  /^[a-zA-Z0-9_-]{11}$/u.test(id)

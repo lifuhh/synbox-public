@@ -37,16 +37,20 @@ export const useLyricsReady = (videoId: string) => {
       ].join('')
     : null
   useEffect(() => {
-    if (fontText === null) {
-      return
-    }
     let current = true
-    const done = () => {
+    const load = async (text: string) => {
+      try {
+        await loadLyricsFont(text)
+      } catch {
+        // A font that fails to load counts as loaded
+      }
       if (current) {
         setFontsLoadedFor(videoId)
       }
     }
-    loadLyricsFont(fontText).then(done, done)
+    if (fontText !== null) {
+      void load(fontText)
+    }
     return () => {
       current = false
     }

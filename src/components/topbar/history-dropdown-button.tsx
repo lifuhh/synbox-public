@@ -67,6 +67,7 @@ const PaginationLink: React.FC<{
   children: React.ReactNode
 }> = ({ onClick, isActive, className = '', children }) => (
   <button
+    type='button'
     onClick={onClick}
     className={`flex h-8 w-8 items-center justify-center rounded-md ${
       isActive === true ? 'bg-primary text-primary-foreground' : ''
@@ -82,19 +83,6 @@ const HistoryDropdownButton: React.FC<HistoryDropdownButtonProps> = ({
   const [historyItems, setHistoryItems] = useAtom(historyAtom)
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const [isAlertOpen, setIsAlertOpen] = useState(false)
-
-  const calculateDropdownHeight = () => {
-    const contentHeight = Math.min(
-      MAX_HEIGHT,
-      Math.max(
-        MIN_HEIGHT,
-        HEADER_HEIGHT +
-          paginatedItems.length * ITEM_HEIGHT +
-          (showPagination ? PAGINATION_HEIGHT : 0)
-      )
-    )
-    return contentHeight
-  }
 
   useEffect(() => {
     if (historyItems.length === 0) {
@@ -130,6 +118,19 @@ const HistoryDropdownButton: React.FC<HistoryDropdownButtonProps> = ({
   const paginatedItems = historyItems.slice(startIndex, endIndex)
   const showPagination = historyItems.length > ITEMS_PER_PAGE
 
+  const calculateDropdownHeight = () => {
+    const contentHeight = Math.min(
+      MAX_HEIGHT,
+      Math.max(
+        MIN_HEIGHT,
+        HEADER_HEIGHT +
+          paginatedItems.length * ITEM_HEIGHT +
+          (showPagination ? PAGINATION_HEIGHT : 0)
+      )
+    )
+    return contentHeight
+  }
+
   const handlePageChange = (page: number): void => {
     setCurrentPage(page)
   }
@@ -159,7 +160,7 @@ const HistoryDropdownButton: React.FC<HistoryDropdownButtonProps> = ({
       const leftPadding = Math.floor((VISIBLE_PAGES - totalPages) / 2)
       const rightPadding = VISIBLE_PAGES - totalPages - leftPadding
 
-      for (let i = 0; i < leftPadding; i++) {
+      for (let i = 0; i < leftPadding; i += 1) {
         items.push(
           <PaginationItem key={`left-padding-${i}`} className='invisible'>
             <span className='flex h-8 w-8 items-center justify-center'>0</span>
@@ -167,11 +168,11 @@ const HistoryDropdownButton: React.FC<HistoryDropdownButtonProps> = ({
         )
       }
 
-      for (let i = 1; i <= totalPages; i++) {
+      for (let i = 1; i <= totalPages; i += 1) {
         addPageButton(i)
       }
 
-      for (let i = 0; i < rightPadding; i++) {
+      for (let i = 0; i < rightPadding; i += 1) {
         items.push(
           <PaginationItem key={`right-padding-${i}`} className='invisible'>
             <span className='flex h-8 w-8 items-center justify-center'>0</span>
@@ -179,14 +180,14 @@ const HistoryDropdownButton: React.FC<HistoryDropdownButtonProps> = ({
         )
       }
     } else if (currentPage > totalPages - VISIBLE_PAGES) {
-      for (let i = totalPages - VISIBLE_PAGES + 1; i <= totalPages; i++) {
+      for (let i = totalPages - VISIBLE_PAGES + 1; i <= totalPages; i += 1) {
         addPageButton(i)
       }
     } else {
       for (
         let i = currentPage;
         i < currentPage + VISIBLE_PAGES && i <= totalPages;
-        i++
+        i += 1
       ) {
         addPageButton(i)
       }

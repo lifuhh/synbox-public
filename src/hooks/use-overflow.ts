@@ -1,11 +1,11 @@
 import type { RefObject } from 'react'
 import { useEffect } from 'react'
 
-export function useOverflow(
+export const useOverflow = (
   textRef: RefObject<HTMLElement | null>,
   containerRef: RefObject<HTMLElement | null>,
   overflowClass: string
-) {
+) => {
   useEffect(() => {
     const checkIfOverflows = () => {
       const textWidth = textRef.current?.offsetWidth ?? 0
