@@ -178,7 +178,7 @@ const LandingPageCharts: React.FC = () => {
                     />
                   ))}
             </tbody>
-            <caption className='mt-1 mb-2 caption-bottom text-sm text-gray-300'>
+            <caption className='mt-1 mb-2 caption-bottom text-sm text-song-channel'>
               Source: YouTube Top 100 Songs Japan ·{' '}
               <MicVocalIcon
                 className='inline size-3.5 -translate-y-px text-primary'

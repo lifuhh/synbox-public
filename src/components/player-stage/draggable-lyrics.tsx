@@ -125,7 +125,7 @@ export const DraggableLyrics = ({
       <div style={{ flexGrow: anchor }} />
       <div
         ref={blockRef}
-        className='player-lyrics-overlay relative isolate shrink-0 px-3 py-[1cqh] select-none'
+        className='player-lyrics-overlay relative isolate shrink-0 px-3 py-cqh select-none'
         style={
           {
             '--lyric-scale': scale,
@@ -137,7 +137,7 @@ export const DraggableLyrics = ({
           data-testid='lyrics-handle'
           data-lyrics-style-toggle
           className={cn(
-            'pointer-events-auto mx-auto w-fit max-w-full cursor-grab touch-none rounded-xl px-[1cqw] ring-white/25 transition-[background-color,box-shadow] hover:bg-white/5 hover:ring-1 touch:w-full',
+            'pointer-events-auto mx-auto w-fit max-w-full cursor-grab touch-none rounded-xl px-cqw ring-white/25 transition-surface hover:bg-white/5 hover:ring-1 touch:w-full',
             dragging && 'cursor-grabbing bg-white/5 ring-1'
           )}
           onPointerDown={handlePointerDown}

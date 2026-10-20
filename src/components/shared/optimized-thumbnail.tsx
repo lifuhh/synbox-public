@@ -19,7 +19,7 @@ const OptimizedThumbnail = ({
   return (
     <div className='relative aspect-video h-[50px] w-[80px] shrink-0 overflow-hidden rounded-xs'>
       {isLoading && (
-        <div className='absolute inset-0 animate-pulse bg-gray-800' />
+        <div className='absolute inset-0 animate-pulse bg-thumbnail-placeholder' />
       )}
       <img
         src={src}

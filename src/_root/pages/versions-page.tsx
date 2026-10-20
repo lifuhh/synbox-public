@@ -117,7 +117,7 @@ const Gaps = ({ summary }: { summary: LyricsVersionSummary['summary'] }) => {
               key={key}
               className={cn(
                 'whitespace-nowrap',
-                (value === null || value < WEAK) && 'text-amber-300'
+                (value === null || value < WEAK) && 'text-warning'
               )}>
               {value === null || value === 0 ? (
                 `No ${label}`
@@ -289,7 +289,7 @@ const MakeDefaultDialog = ({
             />
           </label>
           {error !== null && (
-            <p role='alert' className='text-sm text-red-300'>
+            <p role='alert' className='text-sm text-error'>
               {error}
             </p>
           )}
@@ -324,7 +324,7 @@ const VersionsPage = () => {
   }
 
   return (
-    <div className='mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 pt-[calc(var(--topbar-h)+1.5rem)] pb-[calc(4rem+var(--safe-bottom))]'>
+    <div className='mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 pt-page-top pb-page-bottom-lg'>
       <title>Lyrics Versions · Synbox</title>
       <Link
         to={`/v/${videoId}`}
@@ -388,7 +388,7 @@ const VersionsPage = () => {
         </div>
       )}
       {error && (
-        <p role='alert' className='text-sm text-red-300'>
+        <p role='alert' className='text-sm text-error'>
           {error.message}
         </p>
       )}

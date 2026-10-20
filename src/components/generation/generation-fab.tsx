@@ -99,7 +99,7 @@ const GenerationFab = ({ job, count, view, raised }: GenerationFabProps) => {
         <motion.span
           key='failed'
           className={cn(
-            'col-start-1 row-start-1 text-lg font-bold text-red-300',
+            'col-start-1 row-start-1 text-lg font-bold text-error',
             CAP_CENTERED
           )}
           initial={{ opacity: 0 }}
@@ -116,7 +116,7 @@ const GenerationFab = ({ job, count, view, raised }: GenerationFabProps) => {
           'col-start-1 row-start-1 font-semibold text-white tabular-nums',
           CAP_CENTERED,
           // Measured: at 15 px the digits land half a pixel above the ring's center
-          percent === 100 ? 'text-[13px]' : 'translate-y-[0.5px] text-[15px]'
+          percent === 100 ? 'text-caption' : 'translate-y-[0.5px] text-label'
         )}>
         {percent}
       </motion.span>
@@ -138,7 +138,7 @@ const GenerationFab = ({ job, count, view, raised }: GenerationFabProps) => {
       aria-label={`Lyrics generation: ${title}, ${state === 'running' ? `${percent}%` : detail}${count > 1 ? `, ${count} songs` : ''}. Open details`}
       className={cn(
         surfacePlacement(raised),
-        'group fixed z-50 flex flex-row-reverse items-center rounded-full bg-[#241019] text-left shadow-[0_10px_30px_-8px_rgb(0_0_0/0.75)] ring-1 ring-white/8 outline-none ring-inset focus-visible:ring-2 focus-visible:ring-[#f785b3] focus-visible:ring-offset-2 focus-visible:ring-offset-black'
+        'group fixed z-50 flex flex-row-reverse items-center rounded-full bg-generation-surface text-left shadow-fab ring-1 ring-white/8 outline-none ring-inset focus-visible:ring-2 focus-visible:ring-brand-light focus-visible:ring-offset-2 focus-visible:ring-offset-black'
       )}>
       <span
         className='relative grid shrink-0 place-items-center'
@@ -149,8 +149,16 @@ const GenerationFab = ({ job, count, view, raised }: GenerationFabProps) => {
           aria-hidden>
           <defs>
             <linearGradient id='fab-ring' x1='0' y1='0' x2='1' y2='1'>
-              <stop offset='0%' stopColor='#f785b3' />
-              <stop offset='100%' stopColor='hsl(329 95% 50%)' />
+              <stop
+                offset='0%'
+                stopColor='currentColor'
+                className='text-brand-light'
+              />
+              <stop
+                offset='100%'
+                stopColor='currentColor'
+                className='text-brand-ring-stop'
+              />
             </linearGradient>
           </defs>
           <circle
@@ -171,7 +179,7 @@ const GenerationFab = ({ job, count, view, raised }: GenerationFabProps) => {
             stroke={state === 'failed' ? 'rgb(248 113 113)' : 'url(#fab-ring)'}
             strokeDasharray={C}
             strokeDashoffset={C * (1 - view.overall)}
-            className='transition-[stroke-dashoffset] duration-450 ease-out'
+            className='transition-dashoffset duration-450 ease-out'
           />
           {state === 'running' && view.overall > 0.01 && (
             // Turns with the same timing as the arc, so the dot stays on its tip
@@ -190,7 +198,7 @@ const GenerationFab = ({ job, count, view, raised }: GenerationFabProps) => {
         {count > 1 && (
           <span
             aria-hidden
-            className='absolute -top-1 -right-1 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-[#f785b3] px-1 text-[11px] leading-none font-semibold text-[#241019] tabular-nums'>
+            className='absolute -top-1 -right-1 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-brand-light px-1 text-badge leading-none font-semibold text-generation-surface tabular-nums'>
             {count}
           </span>
         )}
@@ -200,14 +208,14 @@ const GenerationFab = ({ job, count, view, raised }: GenerationFabProps) => {
       </span>
       <span
         className={cn(
-          'grid transition-[grid-template-columns] duration-300 ease-out',
+          'grid transition-grid-cols duration-300 ease-out',
           state === 'running'
             ? 'grid-cols-[0fr] group-hover:grid-cols-[1fr] group-focus-visible:grid-cols-[1fr]'
             : 'grid-cols-[1fr]'
         )}>
         <span className='overflow-hidden'>
           <span className='block max-w-[min(15rem,calc(100vw-7rem))] pr-1 pl-5'>
-            <span className='block truncate text-[13px] leading-4 font-semibold text-white'>
+            <span className='block truncate text-caption leading-4 font-semibold text-white'>
               {title}
             </span>
             <span className='block truncate text-xs leading-4 text-white/55'>

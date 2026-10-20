@@ -58,7 +58,7 @@ const StageLabPage = () => {
   }, [])
 
   return (
-    <div className='flex h-screen w-full bg-black text-neutral-200'>
+    <div className='flex h-screen w-full bg-black text-lab-foreground'>
       <div className='min-w-0 flex-1'>
         <PlayerStage
           key={videoId}
@@ -77,7 +77,7 @@ const StageLabPage = () => {
         />
       </div>
 
-      <aside className='flex w-80 shrink-0 flex-col gap-5 overflow-y-auto border-l border-white/10 bg-neutral-950 p-4 text-sm'>
+      <aside className='flex w-80 shrink-0 flex-col gap-5 overflow-y-auto border-l border-white/10 bg-stage p-4 text-sm'>
         <h1 className='text-base font-semibold text-white'>Player Stage Lab</h1>
 
         <form
@@ -172,7 +172,7 @@ const StageLabPage = () => {
 
         <section className='flex flex-col gap-1'>
           <h2 className='font-semibold text-white'>Checks</h2>
-          <ol className='list-decimal space-y-1 pl-5 text-neutral-400'>
+          <ol className='list-decimal space-y-1 pl-5 text-lab-muted'>
             {CHECKS.map((check) => (
               <li key={check}>{check}</li>
             ))}
@@ -183,7 +183,7 @@ const StageLabPage = () => {
           <h2 className='font-semibold text-white'>Player Events</h2>
           <pre
             data-testid='lab-log'
-            className='max-h-72 overflow-y-auto rounded-md bg-black p-2 font-mono text-xs leading-relaxed text-neutral-400'>
+            className='max-h-72 overflow-y-auto rounded-md bg-black p-2 font-mono text-xs leading-relaxed text-lab-muted'>
             {log.join('\n')}
           </pre>
         </section>

@@ -94,8 +94,8 @@ const PlayerPage = () => {
   if (error !== null && error !== '') {
     return (
       <div className='flex h-dvh w-full flex-col items-center justify-center gap-4 px-4 text-center'>
-        <p className='text-red-500'>{error}</p>
-        <p className='text-sm text-gray-600'>Video ID: {videoId}</p>
+        <p className='text-error-strong'>{error}</p>
+        <p className='text-sm text-faint'>Video ID: {videoId}</p>
         <button
           type='button'
           onClick={() => {

@@ -59,7 +59,7 @@ const SeekGlyph = ({ direction }: { direction: 'back' | 'forward' }) => (
     ) : (
       <RotateCwIcon className='absolute size-6' strokeWidth={1.75} />
     )}
-    <span className='pt-px text-[0.5625rem] leading-none font-bold'>
+    <span className='pt-px text-micro leading-none font-bold'>
       {TAP_SEEK_SEC}
     </span>
   </span>
@@ -191,7 +191,7 @@ export const StageControls = ({
       ref={barRef}
       style={{ transitionDuration: `${CONTROLS_FADE_MS}ms` }}
       className={cn(
-        'absolute inset-x-0 bottom-0 z-30 bg-linear-to-t from-black/80 via-black/40 to-transparent pt-10 pr-[max(1rem,var(--safe-right))] pb-[max(0.75rem,var(--safe-bottom))] pl-[max(1rem,var(--safe-left))] transition-opacity short:pl-[calc(var(--safe-left)+3.5rem)]',
+        'absolute inset-x-0 bottom-0 z-30 bg-linear-to-t from-black/80 via-black/40 to-transparent pt-10 pr-controls-right pb-controls-bottom pl-controls-left transition-opacity short:pl-controls-rail',
         visible ? 'opacity-100' : 'opacity-0',
         !armed && 'pointer-events-none'
       )}
@@ -270,7 +270,7 @@ export const StageControls = ({
               }}>
               <VolumeGlyph level={volume.level} muted={volume.muted} />
             </IconButton>
-            <div className='flex h-9 w-0 items-center overflow-hidden transition-[width] duration-200 ease-out group-focus-within/volume:w-24 group-hover/volume:w-24 touch:hidden'>
+            <div className='flex h-9 w-0 items-center overflow-hidden transition-width duration-200 ease-out group-focus-within/volume:w-24 group-hover/volume:w-24 touch:hidden'>
               <div className='w-24 shrink-0 px-2.5'>
                 <Slider
                   aria-label='Volume'

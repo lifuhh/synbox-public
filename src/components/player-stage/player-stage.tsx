@@ -133,7 +133,7 @@ const CenterPlayButton = ({
     aria-label={phase.kind === 'playing' ? 'Pause' : 'Play'}
     onClick={onToggle}
     className={cn(
-      'absolute top-1/2 left-1/2 z-26 grid size-20 -translate-1/2 place-items-center rounded-full bg-neutral-950 text-white shadow-[0_4px_16px_rgb(0_0_0/0.35)] ring-1 ring-white/10',
+      'absolute top-1/2 left-1/2 z-26 grid size-20 -translate-1/2 place-items-center rounded-full bg-stage text-white shadow-stage ring-1 ring-white/10',
       phase.kind === 'paused' && 'animate-in duration-200 zoom-in-90 fade-in',
       !armed && 'pointer-events-none'
     )}>
@@ -153,7 +153,7 @@ const SeekFlashBadge = ({ flash }: { flash: SeekFlash }) => (
     )}>
     <span
       key={flash.key}
-      className='flex animate-in items-center gap-1 rounded-full bg-black/55 px-4 py-2 text-base font-semibold text-white tabular-nums shadow-[0_4px_16px_rgb(0_0_0/0.35)] backdrop-blur-md zoom-in-90 fade-in'>
+      className='flex animate-in items-center gap-1 rounded-full bg-black/55 px-4 py-2 text-base font-semibold text-white tabular-nums shadow-stage backdrop-blur-md zoom-in-90 fade-in'>
       {flash.side === 'back' ? (
         <RotateCcwIcon className='size-4' aria-hidden />
       ) : null}
@@ -194,11 +194,11 @@ const StageCover = ({
           setThumb('hqdefault')
         }}
         className={cn(
-          'absolute inset-0 size-full object-cover transition-[filter,opacity] duration-300',
+          'absolute inset-0 size-full object-cover transition-filter-fade duration-300',
           dimmed && 'scale-105 opacity-60 blur-md'
         )}
       />
-      <div className='relative text-white drop-shadow-[0_2px_6px_rgb(0_0_0/0.8)]'>
+      <div className='relative text-white drop-shadow-stage'>
         {(phase.kind === 'loading' || phase.kind === 'starting') && (
           <LoaderIcon className='size-14 animate-spin' />
         )}

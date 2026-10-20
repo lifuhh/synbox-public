@@ -58,6 +58,69 @@
   --border-color-primary: hsl(var(--primary));
   --border-color-primary-bright: hsl(var(--primary-bright));
 
+  /* Status colors on the dark surfaces */
+  --color-error: var(--color-red-300);
+  --color-error-soft: var(--color-red-200);
+  --color-error-hover: var(--color-red-50);
+  --color-error-border: var(--color-red-400);
+  --color-error-strong: var(--color-red-500);
+  --color-error-ring-offset: var(--color-red-600);
+  --color-error-input: var(--color-red-800);
+  --color-success: var(--color-green-500);
+  --color-warning: var(--color-amber-300);
+
+  /* Neutral text and surfaces */
+  --color-hero-from: var(--color-neutral-50);
+  --color-hero-to: var(--color-neutral-400);
+  --color-tagline: var(--color-neutral-300);
+  --color-lab-foreground: var(--color-neutral-200);
+  --color-lab-muted: var(--color-neutral-400);
+  --color-dock-divider: var(--color-neutral-400);
+  --color-stage: var(--color-neutral-950);
+  --color-song-title: var(--color-zinc-100);
+  --color-song-meta: var(--color-gray-400);
+  --color-song-channel: var(--color-gray-300);
+  --color-faint: var(--color-gray-600);
+  --color-thumbnail-placeholder: var(--color-gray-800);
+  --color-divider: #424242;
+  --color-dock-border: #707070;
+
+  /* Brand accents */
+  --color-brand-light: #f785b3;
+  --color-brand-glow: #eb6fce;
+  --color-brand-divider: #c2255c;
+  --color-brand-ring-stop: hsl(329 95% 50%);
+  --color-backdrop-from: #ca195f;
+  --color-backdrop-to: #a81c95;
+  --color-backdrop-scrim: #150406;
+  --color-generation-surface: #241019;
+  --color-generation-panel: #1b0812;
+
+  --text-badge: 11px;
+  --text-caption: 13px;
+  --text-label: 15px;
+  --text-body: 16px;
+  --text-micro: 0.5625rem;
+
+  --radius-panel: 20px;
+
+  --shadow-fab: 0 10px 30px -8px rgb(0 0 0/0.75);
+  --shadow-panel: 0 24px 64px -12px rgb(0 0 0/0.7);
+  --shadow-glow: 0 0 32px -6px #eb6fce;
+  --shadow-glow-sm: 0 0 12px -2px #eb6fce;
+  --shadow-rail: 0 8px 24px rgb(0 0 0/0.4);
+  --shadow-stage: 0 4px 16px rgb(0 0 0/0.35);
+  --drop-shadow-stage: 0 2px 6px rgb(0 0 0/0.8);
+
+  --transition-property-dashoffset: stroke-dashoffset;
+  --transition-property-grid-cols: grid-template-columns;
+  --transition-property-clip: clip-path;
+  --transition-property-width: width;
+  --transition-property-translate-fade: translate, opacity;
+  --transition-property-fade-translate: opacity, translate;
+  --transition-property-filter-fade: filter, opacity;
+  --transition-property-surface: background-color, box-shadow;
+
   --breakpoint-xs: 480px;
 
   --width-420: 420px;
@@ -139,6 +202,42 @@
       opacity: 0.5;
     }
   }
+}
+
+/* Spacing that reads runtime variables, inlined so each element resolves them itself */
+@theme inline {
+  --spacing-safe-top: env(safe-area-inset-top);
+  --spacing-page-top: calc(var(--topbar-h) + 1.5rem);
+  --spacing-page-bottom-sm: calc(1rem + var(--safe-bottom));
+  --spacing-page-bottom: calc(2.5rem + var(--safe-bottom));
+  --spacing-page-bottom-lg: calc(4rem + var(--safe-bottom));
+  --spacing-controls-bottom: max(0.75rem, var(--safe-bottom));
+  --spacing-controls-left: max(1rem, var(--safe-left));
+  --spacing-controls-right: max(1rem, var(--safe-right));
+  --spacing-controls-rail: calc(var(--safe-left) + 3.5rem);
+  --spacing-cqw: 1cqw;
+  --spacing-cqh: 1cqh;
+}
+
+/* Fades the step wheel's rows out at its top and bottom edges */
+@utility mask-fade-y {
+  mask-image: linear-gradient(
+    to bottom,
+    transparent,
+    black 28%,
+    black 72%,
+    transparent
+  );
+}
+
+/* Diagonal stripes on a running progress bar; the size is one stripe period */
+@utility bg-stripes {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    rgb(255 255 255/0.22) 0 5px,
+    transparent 5px 10px
+  );
+  background-size: 14.14px 100%;
 }
 
 /* Tailwind v4 defaults borders to currentcolor; this keeps the v3 themed border */

@@ -65,7 +65,7 @@ const HistoryDropdownItem: React.FC<HistoryDropdownItemProps> = ({
         <div className='min-w-0 grow'>
           <div
             ref={containerRef}
-            className={`font-bold tracking-wide text-zinc-100 ${
+            className={`font-bold tracking-wide text-song-title ${
               isOverflowing ? 'marquee' : 'overflow-hidden'
             }`}
             onClick={handleClick}>
@@ -77,7 +77,7 @@ const HistoryDropdownItem: React.FC<HistoryDropdownItemProps> = ({
               {title}
             </span>
           </div>
-          <div className='truncate text-sm text-gray-400'>{author}</div>
+          <div className='truncate text-sm text-song-meta'>{author}</div>
         </div>
         <Button
           variant='link'

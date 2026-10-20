@@ -19,7 +19,7 @@ const TopBar = () => {
   const iconsShown = !isVideoPlayer || chromeOpen
   const armed = useArmed(iconsShown)
   const cluster = cn(
-    'flex items-center gap-2 transition-[opacity,translate] duration-300 ease-out sm:gap-3',
+    'flex items-center gap-2 transition-fade-translate duration-300 ease-out sm:gap-3',
     isVideoPlayer && armed && 'pointer-events-auto',
     !iconsShown && '-translate-y-2 opacity-0'
   )
@@ -28,7 +28,7 @@ const TopBar = () => {
     <section
       data-topbar
       className={cn(
-        'fixed top-0 right-0 left-0 z-50 pt-[env(safe-area-inset-top)] pr-(--safe-right) pl-(--safe-left)',
+        'fixed top-0 right-0 left-0 z-50 pt-safe-top pr-(--safe-right) pl-(--safe-left)',
         isVideoPlayer ? 'pointer-events-none' : 'bg-muted/80 backdrop-blur-md'
       )}>
       {/* The logo is taller than the bar and centred on it, so its waveform would start at the very

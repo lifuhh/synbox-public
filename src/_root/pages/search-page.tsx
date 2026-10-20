@@ -294,7 +294,7 @@ const SearchPage = () => {
   }
 
   return (
-    <section className='flex custom-scrollbar flex-1 flex-col gap-4 overflow-y-scroll px-4 pt-[calc(var(--topbar-h)+1.5rem)] pb-[calc(2.5rem+var(--safe-bottom))] md:px-10'>
+    <section className='flex custom-scrollbar flex-1 flex-col gap-4 overflow-y-scroll px-4 pt-page-top pb-page-bottom md:px-10'>
       <title>Search · Synbox</title>
       <form
         key={query}

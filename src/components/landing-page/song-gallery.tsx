@@ -19,7 +19,7 @@ const SongCard = ({ song }: { song: GallerySong }) => (
     to={`/v/${song.videoId}`}
     state={{ videoId: song.videoId }}
     className={`${CARD} transition-colors duration-300 hover:border-ring hover:bg-primary/10 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden`}>
-    <p className='truncate text-lg font-bold tracking-wide text-zinc-100'>
+    <p className='truncate text-lg font-bold tracking-wide text-song-title'>
       {song.title}
     </p>
     <p className='mb-3 truncate text-sm text-muted-foreground'>{song.author}</p>

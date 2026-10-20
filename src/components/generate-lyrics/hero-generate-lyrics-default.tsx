@@ -115,8 +115,8 @@ const HeroGenerateLyricsDefault = ({
       return 'border-foreground/60 hover:border-foreground/80 focus:border-foreground/90'
     }
     return validationSuccess
-      ? 'border-green-500 hover:border-foreground focus:border-green-500'
-      : 'border-red-800 hover:border-foreground focus:border-red-800'
+      ? 'border-success hover:border-foreground focus:border-success'
+      : 'border-error-input hover:border-foreground focus:border-error-input'
   }
 
   const statusMessage = () => {
@@ -164,7 +164,7 @@ const HeroGenerateLyricsDefault = ({
       />
 
       <div className='z-10 mx-auto flex-between w-full max-w-7xl flex-col gap-4 p-4 lg:gap-0 xl:flex-around xl:h-96'>
-        <h1 className='bg-linear-to-b from-neutral-50 to-neutral-400 bg-clip-text pb-2 text-center text-4xl font-bold text-transparent no-select md:text-6xl lg:text-7xl'>
+        <h1 className='bg-linear-to-b from-hero-from to-hero-to bg-clip-text pb-2 text-center text-4xl font-bold text-transparent no-select md:text-6xl lg:text-7xl'>
           AI-Powered Japanese Karaoke
         </h1>
         <div className='relative flex-between flex w-full flex-col gap-4 overflow-visible sm:mx-auto sm:w-4/5 md:flex-row'>
@@ -181,7 +181,8 @@ const HeroGenerateLyricsDefault = ({
           />
           <div className='absolute -bottom-20 left-0 h-20 w-full py-6 pt-2 text-center md:text-left lg:py-2'>
             {inputValue.length > 0 && !isSearch && (
-              <div className={errorMessage ? 'text-red-500' : 'text-green-500'}>
+              <div
+                className={errorMessage ? 'text-error-strong' : 'text-success'}>
                 {statusMessage()}
               </div>
             )}
@@ -196,13 +197,13 @@ const HeroGenerateLyricsDefault = ({
             disabled={errorMessage !== '' || isCheckingLyrics}
             variant='default'
             className='w-full gap-2 border-2 border-primary/90 bg-primary/90 py-6 text-foreground hover:border-primary hover:bg-primary md:w-1/2 lg:w-1/4'>
-            <p className='text-[16px]'>{buttonLabel()}</p>
+            <p className='text-body'>{buttonLabel()}</p>
             {buttonIcon()}
           </Button>
         </div>
 
         <div className='flex items-center justify-center gap-2'>
-          <p className='mx-auto mt-4 text-center text-base font-normal text-neutral-300 no-select lg:mt-0'>
+          <p className='mx-auto mt-4 text-center text-base font-normal text-tagline no-select lg:mt-0'>
             Transform YouTube videos into your personalized Japanese karaoke
             stage, with AI-transcribed, accurately synced lyrics and
             translations
@@ -217,7 +218,7 @@ const HeroGenerateLyricsDefault = ({
                     setInfoOpen((open) => !open)
                   }}
                   className='-m-2 rounded-full p-2'>
-                  <Info className='h-4 w-4 text-neutral-300' />
+                  <Info className='h-4 w-4 text-tagline' />
                 </button>
               </TooltipTrigger>
               <TooltipContent

@@ -92,14 +92,14 @@ const useDragFocus = (index: number, last: number) => {
 const Glyph = ({ view, failed }: { view: StepView; failed: boolean }) => {
   if (failed) {
     return (
-      <span className='flex size-7 items-center justify-center rounded-full bg-destructive/25 text-red-300'>
+      <span className='flex size-7 items-center justify-center rounded-full bg-destructive/25 text-error'>
         <TriangleAlert className='size-4' aria-hidden />
       </span>
     )
   }
   if (view.state === 'done') {
     return (
-      <span className='flex size-7 items-center justify-center rounded-full bg-linear-to-br from-[#f785b3] to-primary text-white shadow-[0_0_12px_-2px_#eb6fce]'>
+      <span className='flex size-7 items-center justify-center rounded-full bg-linear-to-br from-brand-light to-primary text-white shadow-glow-sm'>
         <Check className='size-4' strokeWidth={3} aria-hidden />
       </span>
     )
@@ -120,7 +120,7 @@ const Glyph = ({ view, failed }: { view: StepView; failed: boolean }) => {
           cx='14'
           cy='14'
           r={r}
-          className='fill-none stroke-[#f785b3] transition-[stroke-dashoffset] duration-450 ease-out'
+          className='fill-none stroke-brand-light transition-dashoffset duration-450 ease-out'
           strokeWidth='3'
           strokeLinecap='round'
           strokeDasharray={c}
@@ -166,7 +166,7 @@ const StepWheel = ({ views, index, failed }: StepWheelProps) => {
   return (
     <div
       {...handlers}
-      className='relative h-[208px] cursor-grab touch-none overflow-hidden mask-[linear-gradient(to_bottom,transparent,black_28%,black_72%,transparent)] select-none perspective-[700px] active:cursor-grabbing'
+      className='relative h-[208px] cursor-grab touch-none overflow-hidden mask-fade-y select-none perspective-[700px] active:cursor-grabbing'
       aria-hidden>
       <div
         className='absolute inset-x-0 top-1/2 -translate-y-1/2 rounded-xl bg-white/[0.055] ring-1 ring-white/10 ring-inset'
@@ -189,7 +189,7 @@ const StepWheel = ({ views, index, failed }: StepWheelProps) => {
             transition={rowTransition(reduced, dragging)}>
             <Glyph view={view} failed={centered && failed} />
             <div className='min-w-0 flex-1'>
-              <p className='truncate text-[15px] leading-5 font-semibold tracking-tight text-white'>
+              <p className='truncate text-label leading-5 font-semibold tracking-tight text-white'>
                 {step.title}
               </p>
               <p className='truncate text-xs leading-4 text-white/55'>
@@ -197,7 +197,7 @@ const StepWheel = ({ views, index, failed }: StepWheelProps) => {
               </p>
             </div>
             <div className='flex w-24 flex-col items-end gap-1.5'>
-              <span className='text-[15px] leading-none font-semibold text-white tabular-nums'>
+              <span className='text-label leading-none font-semibold text-white tabular-nums'>
                 {percent}
                 <span className='ml-px text-xs text-white/55'>%</span>
               </span>

@@ -19,7 +19,7 @@ const DEFAULT_MAGNIFICATION = 60
 const DEFAULT_DISTANCE = 140
 
 const dockVariants = cva(
-  'mx-auto mt-8 flex h-[58px] w-max items-end gap-2 rounded-2xl border p-2 dark:border-[#707070]'
+  'mx-auto mt-8 flex h-[58px] w-max items-end gap-2 rounded-2xl border p-2 dark:border-dock-border'
 )
 
 interface DockContextValue {
@@ -115,7 +115,7 @@ const DockIcon = ({
       ref={ref}
       style={{ width }}
       className={cn(
-        'flex aspect-square cursor-pointer items-center justify-center rounded-full bg-neutral-400/40',
+        'flex aspect-square cursor-pointer items-center justify-center rounded-full bg-dock-divider/40',
         className
       )}
       {...props}>
