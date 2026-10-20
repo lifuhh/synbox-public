@@ -104,15 +104,17 @@ const SOURCE_NOTES: Record<LyricsStyleSource, string> = {
 
 // A discrete pick (a preset colour, a backdrop) applies and closes, like a menu. Size and the custom hue
 // are adjusted by dragging and previewed live, so those keep the panel open until Done, Escape or a click
-// outside. The panel centers on the rail (`anchorRef`) rather than on its button
+// outside. The panel centers on the rail (`anchorRef`) rather than on its button. With a mouse, resting on
+// the button peeks the panel open (`peek`), and the panel stays while the pointer is on either
 export const LyricsThemePicker = ({
   anchorRef,
-  onPointerEnter,
-  onPointerLeave,
+  peek,
 }: {
   anchorRef: RefObject<HTMLElement | null>
-  onPointerEnter: () => void
-  onPointerLeave: () => void
+  peek: {
+    enter: (fromButton: boolean) => void
+    leave: (fromButton: boolean) => void
+  }
 }) => {
   const [panel, setPanel] = useAtom(lyricsStylePanelAtom)
   const portrait = usePortrait()
@@ -341,6 +343,16 @@ export const LyricsThemePicker = ({
           <RailButton
             label='Lyrics Style'
             className={cn(panel !== 'closed' && 'bg-white/10')}
+            onPointerEnter={(event) => {
+              if (event.pointerType === 'mouse') {
+                peek.enter(true)
+              }
+            }}
+            onPointerLeave={(event) => {
+              if (event.pointerType === 'mouse') {
+                peek.leave(true)
+              }
+            }}
             onClick={(event) => {
               // A click pins a panel the hover only peeked open
               event.preventDefault()
@@ -379,8 +391,12 @@ export const LyricsThemePicker = ({
             event.preventDefault()
           }
         }}
-        onPointerEnter={onPointerEnter}
-        onPointerLeave={onPointerLeave}
+        onPointerEnter={() => {
+          peek.enter(false)
+        }}
+        onPointerLeave={() => {
+          peek.leave(false)
+        }}
         className='z-300 max-h-(--radix-popover-content-available-height) w-[min(300px,calc(100vw-1rem))] overflow-y-auto rounded-[10px] p-0 shadow-[0_12px_32px_rgb(0_0_0/0.5)]'>
         {body}
       </PopoverContent>
