@@ -2,6 +2,7 @@ import React, {
   createContext,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from 'react'
@@ -11,6 +12,14 @@ import { cn } from '@/utils/cn'
 const MouseEnterContext = createContext<
   [boolean, React.Dispatch<React.SetStateAction<boolean>>] | undefined
 >(undefined)
+
+const useMouseEnter = () => {
+  const context = useContext(MouseEnterContext)
+  if (context === undefined) {
+    throw new Error('useMouseEnter must be used within a MouseEnterProvider')
+  }
+  return context
+}
 
 export const CardContainer = ({
   children,
@@ -23,6 +32,9 @@ export const CardContainer = ({
 }) => {
   const containerRef = useRef<HTMLDivElement>(null)
   const [isMouseEntered, setIsMouseEntered] = useState(false)
+  const mouseEnter = useMemo<
+    [boolean, React.Dispatch<React.SetStateAction<boolean>>]
+  >(() => [isMouseEntered, setIsMouseEntered], [isMouseEntered])
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!containerRef.current) {
@@ -47,7 +59,7 @@ export const CardContainer = ({
     containerRef.current.style.transform = `rotateY(0deg) rotateX(0deg)`
   }
   return (
-    <MouseEnterContext.Provider value={[isMouseEntered, setIsMouseEntered]}>
+    <MouseEnterContext.Provider value={mouseEnter}>
       <div
         className={cn('flex items-center justify-center', containerClassName)}
         style={{
@@ -110,19 +122,21 @@ export const CardItem = ({
   const [isMouseEntered] = useMouseEnter()
 
   useEffect(() => {
-    handleAnimations()
-  }, [isMouseEntered])
-
-  const handleAnimations = () => {
     if (!ref.current) {
       return
     }
-    if (isMouseEntered) {
-      ref.current.style.transform = `translateX(${translateX}px) translateY(${translateY}px) translateZ(${translateZ}px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) rotateZ(${rotateZ}deg)`
-    } else {
-      ref.current.style.transform = `translateX(0px) translateY(0px) translateZ(0px) rotateX(0deg) rotateY(0deg) rotateZ(0deg)`
-    }
-  }
+    ref.current.style.transform = isMouseEntered
+      ? `translateX(${translateX}px) translateY(${translateY}px) translateZ(${translateZ}px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) rotateZ(${rotateZ}deg)`
+      : `translateX(0px) translateY(0px) translateZ(0px) rotateX(0deg) rotateY(0deg) rotateZ(0deg)`
+  }, [
+    isMouseEntered,
+    rotateX,
+    rotateY,
+    rotateZ,
+    translateX,
+    translateY,
+    translateZ,
+  ])
 
   return (
     <Tag
@@ -132,12 +146,4 @@ export const CardItem = ({
       {children}
     </Tag>
   )
-}
-
-const useMouseEnter = () => {
-  const context = useContext(MouseEnterContext)
-  if (context === undefined) {
-    throw new Error('useMouseEnter must be used within a MouseEnterProvider')
-  }
-  return context
 }
