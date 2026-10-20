@@ -22,7 +22,7 @@ export const useLyricsReady = (videoId: string) => {
   const previewVersion = parsePreviewVersion(searchParams.get('version'))
   const active = useGetLyricsBySongId(previewVersion === null ? videoId : '')
   const preview = useGetLyricsVersion(videoId, previewVersion)
-  const karaoke = useGetKaraokeById(videoId)
+  const karaoke = useGetKaraokeById(videoId, previewVersion)
   const lyrics = previewVersion === null ? active : preview
   const settled = !lyrics.isPending && !karaoke.isPending
 

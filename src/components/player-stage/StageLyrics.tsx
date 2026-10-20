@@ -162,7 +162,7 @@ export const StageLyrics = ({
   const [index, setIndex] = useState(-1)
 
   // v2 timing applies only when it was generated for exactly these lines
-  const { data: karaokeDoc } = useGetKaraokeById(videoId)
+  const { data: karaokeDoc } = useGetKaraokeById(videoId, version)
   const plainLyrics = useMemo(() => parseLyricsText(data).plain_lyrics, [data])
   const karaokeLines = useMemo(
     () =>
