@@ -5,6 +5,7 @@ import {
   beginStage,
   CAP,
   completePhase,
+  MEASURED_SHARE,
   OVERALL_CAP,
   overallValue,
   reportFraction,
@@ -24,13 +25,6 @@ describe('a stage with no reports', () => {
     expect(at(30) - at(15)).toBeLessThan(at(15))
     expect(at(600)).toBeLessThan(CAP + 1e-9)
   })
-
-  test('says it is slow at twice its expected time', () => {
-    const runs = beginStage({}, 'listen', 0, { expectedS: 30 })
-    const [, , transcribeStep] = STEPS
-    expect(stepView(runs, transcribeStep, 59 * S).slow).toBe(false)
-    expect(stepView(runs, transcribeStep, 61 * S).slow).toBe(true)
-  })
 })
 
 describe('real fractions', () => {
@@ -46,10 +40,20 @@ describe('real fractions', () => {
     }
   })
 
-  test('a report above it raises the bar to it', () => {
+  test('a report above it raises the bar to its share of the stage', () => {
     let runs = beginStage({}, 'download', 0, { expectedS: 10 })
     runs = reportFraction(runs, 'download', 0.6, 1 * S)
-    expect(stageValue(runs.download, 1 * S)).toBe(0.6)
+    expect(stageValue(runs.download, 1 * S)).toBeCloseTo(
+      0.6 * MEASURED_SHARE,
+      9
+    )
+  })
+
+  test('a stage that works on after its last report does not sit at 99 %', () => {
+    // Separation on a 5.5-minute song: the last segment reports 97 %, then the vocals are written and uploaded
+    let runs = beginStage({}, 'separate', 0, { expectedS: 160 })
+    runs = reportFraction(runs, 'separate', 0.97, 150 * S)
+    expect(stageValue(runs.separate, 160 * S)).toBeLessThan(0.97)
   })
 })
 

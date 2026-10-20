@@ -17,7 +17,7 @@ import StepWheel from './StepWheel'
 import {
   hideBrokenImage,
   hidePlaceholderImage,
-  outcomeCopy,
+  outcomeOf,
   PANEL_MOTION,
   surfacePlacement,
   thumbnailOf,
@@ -25,10 +25,7 @@ import {
 } from './surface'
 import type { Presentation } from './usePresentation'
 
-const timeLeft = (seconds: number, slow: boolean) => {
-  if (slow) {
-    return 'Taking longer than usual'
-  }
+const timeLeft = (seconds: number) => {
   if (seconds < 20) {
     return 'Almost there'
   }
@@ -42,6 +39,15 @@ const timeLeft = (seconds: number, slow: boolean) => {
 const SongHeader = ({ job, onClose }: { job: Job; onClose: () => void }) => {
   const running = job.status.kind === 'running'
   const title = titleOf(job)
+  const channel = job.video?.channel ?? ''
+  const subtitle =
+    channel !== ''
+      ? channel
+      : running
+        ? job.mode === 'regenerate'
+          ? 'Regenerating Lyrics'
+          : 'Generating Lyrics'
+        : ''
   return (
     <div className='flex items-center gap-3'>
       <span className='h-10 w-[71px] shrink-0 overflow-hidden rounded-md bg-linear-to-br from-primary to-[#f785b3] ring-1 ring-white/10'>
@@ -58,12 +64,9 @@ const SongHeader = ({ job, onClose }: { job: Job; onClose: () => void }) => {
         <p className='truncate text-sm font-semibold text-white'>
           {title === '' ? 'Fetching Song Details…' : title}
         </p>
-        <p className='truncate text-xs text-white/55'>
-          {job.mode === 'regenerate' ? 'New Lyrics Version' : 'New Lyrics'}
-          {job.video !== null && job.video.channel !== ''
-            ? ` · ${job.video.channel}`
-            : ''}
-        </p>
+        {subtitle !== '' && (
+          <p className='truncate text-xs text-white/55'>{subtitle}</p>
+        )}
       </div>
       <Button
         variant='ghost'
@@ -78,11 +81,10 @@ const SongHeader = ({ job, onClose }: { job: Job; onClose: () => void }) => {
 }
 
 const DoneView = ({ job }: { job: Job }) => {
-  if (job.status.kind !== 'complete') {
+  const outcome = outcomeOf(job)
+  if (!outcome) {
     return null
   }
-  const { outcome } = job.status
-  const copy = outcomeCopy(job)
   const close = () => {
     dismissGeneration()
   }
@@ -92,68 +94,50 @@ const DoneView = ({ job }: { job: Job }) => {
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, ease: 'easeOut' }}
-      className='flex flex-col items-center gap-4 py-4 text-center'>
+      className='flex flex-col items-center gap-4 pt-3 text-center'>
       <motion.span
         initial={{ scale: 0.4, rotate: -20 }}
         animate={{ rotate: 0, scale: 1 }}
         transition={{ damping: 12, stiffness: 260, type: 'spring' }}
-        className='flex size-14 items-center justify-center rounded-full bg-linear-to-br from-[#f785b3] to-primary text-white shadow-[0_0_32px_-6px_#eb6fce]'>
-        <Check className='size-7' strokeWidth={3} aria-hidden />
+        className='flex size-12 items-center justify-center rounded-full bg-linear-to-br from-[#f785b3] to-primary text-white shadow-[0_0_32px_-6px_#eb6fce]'>
+        <Check className='size-6' strokeWidth={3} aria-hidden />
       </motion.span>
-      <div className='space-y-1'>
-        <p className='text-lg font-semibold text-white'>{copy?.title}</p>
-        <p className='text-sm text-white/60'>{copy?.detail}</p>
+      <div className='space-y-1 px-2'>
+        <p className='text-lg font-semibold text-white'>{outcome.title}</p>
+        <p className='text-sm text-white/60'>{outcome.detail}</p>
       </div>
-      <div className='flex w-full flex-col gap-2'>
-        {outcome.kind === 'version' ? (
-          <>
-            <Button asChild className='w-full gap-2'>
-              {/* A version that is already the default plays as the song itself */}
-              <Link
-                to={
-                  outcome.active
-                    ? `/v/${job.videoId}`
-                    : `/v/${job.videoId}?version=${outcome.version}`
-                }
-                onClick={close}>
-                <Play className='size-4 fill-current' />
-                {outcome.active
-                  ? 'Play Now'
-                  : `Preview Version ${outcome.version}`}
-              </Link>
-            </Button>
-            <Button
-              asChild
-              variant='ghost'
-              className='w-full text-white/80 hover:bg-white/10'>
-              <Link to={`/v/${job.videoId}/versions`} onClick={close}>
-                Compare Versions
-              </Link>
-            </Button>
-          </>
-        ) : (
-          <Button asChild className='w-full gap-2'>
-            <Link to={`/v/${job.videoId}`} onClick={close}>
-              <Play className='size-4 fill-current' />
-              Play Now
+      <Button asChild className='w-full gap-2'>
+        <Link to={outcome.play.to} onClick={close}>
+          <Play className='size-4 fill-current' />
+          {outcome.play.label}
+        </Link>
+      </Button>
+      {(outcome.versions || !job.skipUploaderLyrics) && (
+        <div className='flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs text-white/50'>
+          {outcome.versions && (
+            <Link
+              to={`/v/${job.videoId}/versions`}
+              onClick={close}
+              className='underline-offset-4 hover:text-white/80 hover:underline'>
+              See All Versions
             </Link>
-          </Button>
-        )}
-      </div>
-      {!job.skipUploaderLyrics && (
-        <button
-          type='button'
-          className='text-xs text-white/50 underline-offset-4 hover:text-white/80 hover:underline'
-          onClick={() => {
-            startGeneration({
-              mode: 'regenerate',
-              skipUploaderLyrics: true,
-              title: titleOf(job),
-              videoId: job.videoId,
-            })
-          }}>
-          Lyrics look wrong? Regenerate without the uploader&apos;s lyrics
-        </button>
+          )}
+          {!job.skipUploaderLyrics && (
+            <button
+              type='button'
+              className='underline-offset-4 hover:text-white/80 hover:underline'
+              onClick={() => {
+                startGeneration({
+                  mode: 'regenerate',
+                  skipUploaderLyrics: true,
+                  title: titleOf(job),
+                  videoId: job.videoId,
+                })
+              }}>
+              Lyrics look off? Try without the video&apos;s subtitles
+            </button>
+          )}
+        </div>
       )}
     </motion.div>
   )
@@ -168,7 +152,6 @@ interface GenerationPanelProps {
 const GenerationPanel = ({ job, view, raised }: GenerationPanelProps) => {
   const { status } = job
   const percent = Math.floor(view.overall * 100)
-  const slow = view.views[view.index]?.slow ?? false
   const minimize = () => {
     setGenerationExpanded(false)
   }
@@ -218,7 +201,7 @@ const GenerationPanel = ({ job, view, raised }: GenerationPanelProps) => {
                     ? 'Stopped'
                     : view.complete
                       ? 'Done'
-                      : timeLeft(view.remainingS, slow)}
+                      : timeLeft(view.remainingS)}
                 </span>
               </div>
               <StepWheel

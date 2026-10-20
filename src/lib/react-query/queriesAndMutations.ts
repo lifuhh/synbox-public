@@ -1,19 +1,13 @@
-import type { InfiniteData } from '@tanstack/react-query'
-import { useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query'
-import { useRef } from 'react'
+import { useMutation, useQuery } from '@tanstack/react-query'
 
-import type {
-  CurrentPlayingInfo,
-  InfiniteGalleryQueryResult,
-  TransformedYoutubePlaylistPage,
-  YoutubePlaylistApiResponse,
-} from '@/types'
-import { delayApiResponse, formatYoutubeInfiniteGalleryResponse } from '@/utils'
+import type { CurrentPlayingInfo } from '@/types'
 
 import {
   addSongInfoBySongId,
   getSongInfoBySongId,
   getSongLyricsById,
+  listGallerySongs,
+  songsWithLyrics,
 } from '../appwrite/api'
 import { getKaraoke } from '../synbox-flask/api'
 import {
@@ -28,7 +22,6 @@ import {
 } from '../synbox-flask/lyrics-versions'
 import {
   getChartsPlaylist,
-  getInfiniteGalleryPlaylist,
   getLandingPagePlaylist,
   getYoutubeVideoInfo,
 } from '../youtube/api'
@@ -48,46 +41,21 @@ export const useGetChartsPlaylist = () =>
     gcTime: 1000 * 60 * 60,
   })
 
-export const useGetInfiniteGalleryPlaylist = (): InfiniteGalleryQueryResult => {
-  const isFirstLoad = useRef(true)
-
-  return useInfiniteQuery<
-    YoutubePlaylistApiResponse,
-    Error,
-    InfiniteData<TransformedYoutubePlaylistPage>,
-    [string],
-    string
-  >({
-    queryKey: [QUERY_KEYS.GET_INFINITE_GALLERY_PLAYLIST],
-    queryFn: async ({ pageParam = '' }) => {
-      const result = await getInfiniteGalleryPlaylist({ pageParam })
-
-      if (!isFirstLoad.current) {
-        const randomDelay = Math.floor(Math.random() * (350 - 220 + 1) + 220)
-        await delayApiResponse(randomDelay)
-      } else {
-        isFirstLoad.current = false
-      }
-
-      return result
-    },
-    initialPageParam: '',
-    getNextPageParam: (lastPage) => lastPage.nextPageToken ?? undefined,
-
-    staleTime: 5 * 60 * 1000,
-    gcTime: 10 * 60 * 1000,
-    refetchOnWindowFocus: false,
-    refetchOnMount: false,
-    refetchOnReconnect: 'always',
-    select: (data) => ({
-      pages: data.pages.map((page) => ({
-        items: formatYoutubeInfiniteGalleryResponse(page),
-        nextPageToken: page.nextPageToken,
-      })),
-      pageParams: data.pageParams,
-    }),
+// Fetched once a visit, so the shuffled order holds while the user browses
+export const useGetGallerySongs = () =>
+  useQuery({
+    queryKey: [QUERY_KEYS.GET_GALLERY_SONGS],
+    queryFn: listGallerySongs,
+    staleTime: Infinity,
   })
-}
+
+export const useSongsWithLyrics = (videoIds: string[]) =>
+  useQuery({
+    queryKey: [QUERY_KEYS.GET_SONGS_WITH_LYRICS, videoIds],
+    queryFn: () => songsWithLyrics(videoIds),
+    enabled: videoIds.length > 0,
+    staleTime: 1000 * 60 * 10,
+  })
 
 export const useGetYoutubeVideoInfo = (videoId: string) => {
   const { isError } = useGetSongInfoBySongId(videoId)

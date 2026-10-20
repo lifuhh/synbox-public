@@ -123,9 +123,7 @@ const StepWheel = ({ views, index, failed }: StepWheelProps) => {
                     ? 'Done'
                     : view.state === 'pending'
                       ? 'Waiting'
-                      : view.slow
-                        ? 'Taking longer than usual…'
-                        : (view.detail ?? 'Starting…')}
+                      : (view.detail ?? 'Starting…')}
               </p>
             </div>
             <div className='flex w-24 flex-col items-end gap-1.5'>

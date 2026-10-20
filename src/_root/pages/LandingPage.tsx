@@ -1,7 +1,7 @@
 import HeroGenerateLyricsSection from '@/components/generate-lyrics/HeroGenerateLyricsSection'
 import LandingPageCharts from '@/components/landing-page/PopularSongsTable'
+import SongGallery from '@/components/landing-page/SongGallery'
 import SongHighlightCarousel from '@/components/landing-page/SongHighlightCarousel'
-import SongsInfiniteGallery from '@/components/landing-page/SongsInfiniteGallery'
 import { Separator } from '@/components/ui/separator'
 import { cn } from '@/utils/cn'
 
@@ -45,7 +45,7 @@ const LandingPage = () => (
       }
       className='my-2.5 px-8 py-2'
     />
-    <SongsInfiniteGallery />
+    <SongGallery />
   </section>
 )
 

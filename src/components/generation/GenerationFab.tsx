@@ -7,7 +7,7 @@ import type { Job } from '@/lib/generation/store'
 import { setGenerationExpanded } from '@/lib/generation/store'
 import { cn } from '@/utils/cn'
 
-import { FAB_MOTION, outcomeCopy, surfacePlacement } from './surface'
+import { FAB_MOTION, outcomeOf, surfacePlacement } from './surface'
 import type { Presentation } from './usePresentation'
 
 const SIZE = 52
@@ -28,7 +28,7 @@ const fabState = (job: Job, view: Presentation): FabState => {
 }
 
 const LABELS: Record<Exclude<FabState, 'running'>, [string, string]> = {
-  done: ['Lyrics Ready', 'Open to play'],
+  done: ['Ready to Sing', 'Open to play'],
   failed: ['Generation Failed', 'Open for details'],
   finishing: ['Finishing Up', 'Saving your song'],
 }
@@ -51,15 +51,11 @@ const GenerationFab = ({ job, view, raised }: GenerationFabProps) => {
       ? [
           STEPS[view.index].title,
           `${percent}% · ${
-            step.state === 'done'
-              ? 'Done'
-              : step.slow
-                ? 'Taking longer than usual'
-                : (step.detail ?? 'Starting')
+            step.state === 'done' ? 'Done' : (step.detail ?? 'Starting')
           }`,
         ]
       : state === 'done'
-        ? [outcomeCopy(job)?.title ?? LABELS.done[0], LABELS.done[1]]
+        ? [outcomeOf(job)?.title ?? LABELS.done[0], LABELS.done[1]]
         : LABELS[state]
   const ref = useRef<HTMLButtonElement>(null)
   useEffect(() => {

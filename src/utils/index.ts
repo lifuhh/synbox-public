@@ -1,11 +1,9 @@
 import type {
-  FormatYoutubeResponseFunction,
-  InfiniteGalleryVideoItem,
   YoutubePlaylistApiResponse,
   formattedYoutubeVideoItemForCarousel,
 } from '@/types'
 
-const shuffleArray = <T>(array: T[]): T[] => {
+export const shuffleArray = <T>(array: T[]): T[] => {
   for (let i = array.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1))
     ;[array[i], array[j]] = [array[j], array[i]]
@@ -32,17 +30,29 @@ const playableItems = (data: YoutubePlaylistApiResponse) =>
     return thumbnailUrl === undefined ? [] : [{ item, thumbnailUrl }]
   })
 
+// The Japan charts carry K-pop. Hangul in the title or channel catches most of it; the channels below post
+// in English or romanized Korean
+const KOREAN = /[\u1100-\u11FF\u3130-\u318F\uAC00-\uD7AF]/u
+const KOREAN_CHANNELS = new Set([
+  '1theK (원더케이)',
+  'BLACKPINK',
+  'HYBE LABELS',
+  'JYP Entertainment',
+  'KQ ENTERTAINMENT',
+  'ROSÉ',
+  'SMTOWN',
+  'Stone Music Entertainment',
+])
+
 export function formatYoutubeChartsResponse(
   data: YoutubePlaylistApiResponse
 ): { title: string; id: string }[] {
-  const items = playableItems(data).map(
-    ({ item }): { title: string; id: string } => ({
-      title: item.snippet.title,
-      id: item.snippet.resourceId?.videoId,
-    })
-  )
-
-  return items
+  return playableItems(data).flatMap(({ item }) => {
+    const { title, videoOwnerChannelTitle: channel, resourceId } = item.snippet
+    const korean =
+      KOREAN.test(title) || KOREAN.test(channel) || KOREAN_CHANNELS.has(channel)
+    return korean ? [] : [{ id: resourceId.videoId, title }]
+  })
 }
 
 export function formatYoutubePlaylistResponse(
@@ -70,20 +80,6 @@ export function formatYoutubePlaylistResponse(
 
   return shuffledResults.slice(0, 50)
 }
-
-export const formatYoutubeInfiniteGalleryResponse: FormatYoutubeResponseFunction =
-  (data: YoutubePlaylistApiResponse): InfiniteGalleryVideoItem[] => {
-    const items = playableItems(data).map(
-      ({ item, thumbnailUrl }): InfiniteGalleryVideoItem => ({
-        title: item.snippet.title,
-        channel: item.snippet.videoOwnerChannelTitle || 'Unknown',
-        thumbnailUrl,
-        videoId: item.snippet.resourceId?.videoId || '',
-      })
-    )
-
-    return items
-  }
 
 export const extractVideoId = (input: string): string | null => {
   input = input.trim()
@@ -120,6 +116,18 @@ export const extractVideoId = (input: string): string | null => {
 
 // Appwrite ids may hold '-' and '_' but not start with one, so only a leading '-' or '_' is encoded.
 // Same as the backend's AppwriteService.create_appwrite_id, and reversible.
+// The inverse of createAppwriteIdFromYoutubeId. Encoded ids are 14 characters, so an 11-character video
+// id that happens to start with yt_h stays as it is
+export const youtubeIdFromAppwriteId = (id: string): string => {
+  if (id.length === 14 && id.startsWith('yt_h')) {
+    return `-${id.slice(4)}`
+  }
+  if (id.length === 14 && id.startsWith('yt_u')) {
+    return `_${id.slice(4)}`
+  }
+  return id
+}
+
 export const createAppwriteIdFromYoutubeId = (id: string): string => {
   if (id.startsWith('-')) {
     return `yt_h${id.slice(1)}`
@@ -135,6 +143,3 @@ export const legacyAppwriteIdFromYoutubeId = (id: string): string =>
   /^[a-zA-Z0-9_]{1,36}$/u.test(id) && !id.startsWith('_')
     ? id
     : `yt_${id.split('-').join('_')}`
-
-export const delayApiResponse = (ms: number) =>
-  new Promise((resolve) => setTimeout(resolve, ms))
