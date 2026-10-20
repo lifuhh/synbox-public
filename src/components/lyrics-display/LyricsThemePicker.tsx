@@ -1,6 +1,6 @@
 import { useAtom } from 'jotai'
 import { CheckIcon, PaletteIcon } from 'lucide-react'
-import type { RefObject } from 'react'
+import type { CSSProperties, RefObject } from 'react'
 import { useRef } from 'react'
 
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
@@ -69,8 +69,15 @@ const ThemeSwatch = ({
         background: 'linear-gradient(135deg, #ebe7e1 50%, #1c1820 50%)',
         ...getLyricsThemeCssVars(colors),
       }}>
+      {/* Caught mid-wipe, so the swatch shows both the white and the theme's accent */}
       <span className='lyric-text-line font_noto_sans_jp_black_900 text-2xl leading-none'>
-        あ
+        <span className='lyric-karaoke-line'>
+          <span
+            className='lyric-karaoke-part'
+            style={{ '--p': 0.5 } as CSSProperties}>
+            <span className='lyric-karaoke-fill'>あ</span>
+          </span>
+        </span>
       </span>
       {selected && (
         <span className='absolute top-0.5 right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-white'>

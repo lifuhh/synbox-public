@@ -304,7 +304,7 @@
 }
 
 @utility lyric-text-line {
-  color: var(--lyric-fill, #f5f5f5);
+  color: #f5f5f5;
   text-shadow:
     0 0 1px rgb(0 0 0 / 0.95),
     0 0 2px rgb(0 0 0 / 0.85),
@@ -368,8 +368,8 @@
 
 /* Karaoke fill. --p (0..1) is written per part (a kanji with its furigana, or a
    run of kana) by the overlay's animation
-   loop; a hard-stop gradient clipped to the glyphs paints the filled part in
-   the theme fill and the rest in the theme secondary. text-shadow would paint
+   loop; a hard-stop gradient clipped to the glyphs paints the sung part in
+   the theme accent and the rest in the lyrics' white. text-shadow would paint
    over a text-clipped background, so the edge comes from drop-shadow filters
    on the line instead. */
 @utility lyric-karaoke-ja {
@@ -396,8 +396,8 @@
   --karaoke-stop: calc(var(--p, 0) * 100%);
   --karaoke-gradient: linear-gradient(
     to right,
-    var(--lyric-fill, #f5f5f5) var(--karaoke-stop),
-    var(--lyric-secondary, #d4d4d4) var(--karaoke-stop)
+    var(--lyric-accent, #a3a3a3) var(--karaoke-stop),
+    #f5f5f5 var(--karaoke-stop)
   );
   text-shadow: none;
 
@@ -412,10 +412,6 @@
   background-clip: text;
   -webkit-background-clip: text;
   color: transparent;
-}
-
-@utility lyric-text-line--secondary {
-  color: var(--lyric-secondary, #d4d4d4);
 }
 
 @utility player-lyrics-overlay {

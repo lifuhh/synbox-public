@@ -39,8 +39,8 @@ export const KaraokeRomajiLine = ({
     }
   }, [parts])
 
-  // Same type as the plain romaji line (LyricTextLine, tone secondary); the
-  // fill paints the secondary colour until each word is sung
+  // Same type as the plain romaji line; the fill paints each word in the
+  // theme accent as it is sung
   return (
     <p
       className={cn(
