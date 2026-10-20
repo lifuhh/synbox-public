@@ -124,11 +124,11 @@ export const reportFraction = (
 // One past the phase's last stage
 const phaseEnd = (phase: Phase) => {
   let end = 0
-  STAGES.forEach((stage, index) => {
+  for (const [index, stage] of STAGES.entries()) {
     if (stage.phase === phase) {
       end = index + 1
     }
-  })
+  }
   return end
 }
 

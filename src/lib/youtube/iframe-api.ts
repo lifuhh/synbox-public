@@ -12,23 +12,23 @@ export const YTState = {
 export type YTStateCode = (typeof YTState)[keyof typeof YTState]
 
 export interface YTPlayer {
-  playVideo(): void
-  pauseVideo(): void
-  seekTo(seconds: number, allowSeekAhead: boolean): void
-  cueVideoById(videoId: string): void
-  getCurrentTime(): number
-  getDuration(): number
-  getPlayerState(): YTStateCode
-  setVolume(volume: number): void
-  getVolume(): number
-  mute(): void
-  unMute(): void
-  isMuted(): boolean
-  getIframe(): HTMLIFrameElement
-  destroy(): void
+  playVideo: () => void
+  pauseVideo: () => void
+  seekTo: (seconds: number, allowSeekAhead: boolean) => void
+  cueVideoById: (videoId: string) => void
+  getCurrentTime: () => number
+  getDuration: () => number
+  getPlayerState: () => YTStateCode
+  setVolume: (volume: number) => void
+  getVolume: () => number
+  mute: () => void
+  unMute: () => void
+  isMuted: () => boolean
+  getIframe: () => HTMLIFrameElement
+  destroy: () => void
   // Not in the documented API; used by most custom-controls players to drop captions
-  loadModule?(name: string): void
-  unloadModule?(name: string): void
+  loadModule?: (name: string) => void
+  unloadModule?: (name: string) => void
 }
 
 export interface YTPlayerOptions {
@@ -78,5 +78,5 @@ export const loadYouTubeIframeApi = async (): Promise<YTNamespace> => {
     })
     document.head.append(script)
   })
-  return apiPromise
+  return await apiPromise
 }

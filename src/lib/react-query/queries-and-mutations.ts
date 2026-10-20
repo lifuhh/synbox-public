@@ -29,8 +29,8 @@ import { QUERY_KEYS } from './query-keys'
 
 export const useGetLandingPagePlaylist = () =>
   useQuery({
+    queryFn: async () => await getLandingPagePlaylist(),
     queryKey: [QUERY_KEYS.GET_LANDING_PAGE_PLAYLIST],
-    queryFn: () => getLandingPagePlaylist(),
     // One retry, so a rejected API key shows the error and its Retry button in seconds, not ~7s
     retry: 1,
   })
@@ -38,7 +38,7 @@ export const useGetLandingPagePlaylist = () =>
 export const useGetChartsPlaylist = () =>
   useQuery({
     gcTime: 1000 * 60 * 60,
-    queryFn: () => getChartsPlaylist(),
+    queryFn: async () => await getChartsPlaylist(),
     queryKey: [QUERY_KEYS.GET_CHARTS_PLAYLIST],
     retry: 1,
     staleTime: 1000 * 60 * 60 * 24,
@@ -55,9 +55,20 @@ export const useGetGallerySongs = () =>
 export const useSongsWithLyrics = (videoIds: string[]) =>
   useQuery({
     enabled: videoIds.length > 0,
-    queryFn: () => songsWithLyrics(videoIds),
+    queryFn: async () => await songsWithLyrics(videoIds),
     queryKey: [QUERY_KEYS.GET_SONGS_WITH_LYRICS, videoIds],
     staleTime: 1000 * 60 * 10,
+  })
+
+export const useGetSongInfoBySongId = (songId: string) =>
+  useQuery({
+    enabled: !!songId,
+    gcTime: 1000 * 60 * 60,
+    queryFn: async () => await getSongInfoBySongId(songId),
+    queryKey: [QUERY_KEYS.GET_SONG_INFO_BY_SONG_ID, songId],
+    // A 404 sends useGetYoutubeVideoInfo to YouTube; retrying would hold the title for seconds
+    retry: false,
+    staleTime: 1000 * 60 * 60,
   })
 
 export const useGetYoutubeVideoInfo = (videoId: string) => {
@@ -65,23 +76,23 @@ export const useGetYoutubeVideoInfo = (videoId: string) => {
 
   return useQuery({
     enabled: !!videoId && isError,
-    queryFn: () => getYoutubeVideoInfo(videoId),
+    queryFn: async () => await getYoutubeVideoInfo(videoId),
     queryKey: [QUERY_KEYS.GET_YOUTUBE_VIDEO_INFO, videoId],
   })
 }
 
 export const useGetLyricsBySongId = (songId: string) =>
   useQuery({
-    queryKey: [QUERY_KEYS.GET_LYRICS_BY_SONG_ID, songId],
     enabled: Boolean(songId?.trim()),
-    staleTime: 1000 * 60 * 60,
     gcTime: 1000 * 60 * 60,
-    refetchOnWindowFocus: false,
+    queryFn: async () => await getSongLyricsById(songId),
+    queryKey: [QUERY_KEYS.GET_LYRICS_BY_SONG_ID, songId],
     refetchOnMount: false,
     refetchOnReconnect: false,
+    refetchOnWindowFocus: false,
     // A 404 is the normal "no lyrics yet" answer, so retrying only adds delay
     retry: false,
-    queryFn: () => getSongLyricsById(songId),
+    staleTime: 1000 * 60 * 60,
   })
 
 // data is null when the song has no karaoke timing yet. A previewed version
@@ -110,24 +121,14 @@ export const useGetKaraokeById = (
 
 export const useAddSongInfoBySongId = () =>
   useMutation({
-    mutationFn: (songInfo: CurrentPlayingInfo) => addSongInfoBySongId(songInfo),
-  })
-
-export const useGetSongInfoBySongId = (songId: string) =>
-  useQuery({
-    queryKey: [QUERY_KEYS.GET_SONG_INFO_BY_SONG_ID, songId],
-    enabled: !!songId,
-    staleTime: 1000 * 60 * 60,
-    gcTime: 1000 * 60 * 60,
-    // A 404 sends useGetYoutubeVideoInfo to YouTube; retrying would hold the title for seconds
-    retry: false,
-    queryFn: () => getSongInfoBySongId(songId),
+    mutationFn: async (songInfo: CurrentPlayingInfo) =>
+      await addSongInfoBySongId(songInfo),
   })
 
 export const useSearchVideos = (query: string) =>
   useQuery({
     enabled: query.length > 0,
-    queryFn: ({ signal }) => searchVideos(query, signal),
+    queryFn: async ({ signal }) => await searchVideos(query, signal),
     queryKey: [QUERY_KEYS.SEARCH_VIDEOS, query],
     retry: false,
     staleTime: 1000 * 60 * 5,
@@ -136,7 +137,7 @@ export const useSearchVideos = (query: string) =>
 export const useSearchLibrary = (query: string) =>
   useQuery({
     enabled: query.length > 0,
-    queryFn: ({ signal }) => searchLibrary(query, signal),
+    queryFn: async ({ signal }) => await searchLibrary(query, signal),
     queryKey: [QUERY_KEYS.SEARCH_LIBRARY, query],
     retry: false,
     staleTime: 1000 * 60 * 5,
@@ -145,7 +146,7 @@ export const useSearchLibrary = (query: string) =>
 export const useGetSimilarSongs = (videoId: string) =>
   useQuery({
     enabled: videoId.length > 0,
-    queryFn: ({ signal }) => getSimilarSongs(videoId, signal),
+    queryFn: async ({ signal }) => await getSimilarSongs(videoId, signal),
     queryKey: [QUERY_KEYS.GET_SIMILAR_SONGS, videoId],
     retry: false,
     staleTime: 1000 * 60 * 10,
@@ -154,7 +155,7 @@ export const useGetSimilarSongs = (videoId: string) =>
 export const useGetLyricsVersions = (videoId: string) =>
   useQuery({
     enabled: videoId.length > 0,
-    queryFn: () => listLyricsVersions(videoId),
+    queryFn: async () => await listLyricsVersions(videoId),
     queryKey: [QUERY_KEYS.GET_LYRICS_VERSIONS, videoId],
     retry: false,
   })
@@ -162,7 +163,7 @@ export const useGetLyricsVersions = (videoId: string) =>
 export const useGetLyricsVersion = (videoId: string, version: number | null) =>
   useQuery({
     enabled: videoId.length > 0 && version !== null,
-    queryFn: () => getLyricsVersion(videoId, version ?? 0),
+    queryFn: async () => await getLyricsVersion(videoId, version ?? 0),
     queryKey: [QUERY_KEYS.GET_LYRICS_VERSION, videoId, version],
     retry: false,
     staleTime: Infinity,
@@ -170,7 +171,7 @@ export const useGetLyricsVersion = (videoId: string, version: number | null) =>
 
 export const useActivateLyricsVersion = () =>
   useMutation({
-    mutationFn: ({
+    mutationFn: async ({
       adminToken,
       version,
       videoId,
@@ -178,5 +179,5 @@ export const useActivateLyricsVersion = () =>
       adminToken: string
       version: number
       videoId: string
-    }) => activateLyricsVersion(videoId, version, adminToken),
+    }) => await activateLyricsVersion(videoId, version, adminToken),
   })

@@ -38,9 +38,9 @@ const getHighestResThumbnail = (
   return 'https://example.com/placeholder-thumbnail.jpg'
 }
 
-export async function getLandingPagePlaylist(): Promise<
+export const getLandingPagePlaylist = async (): Promise<
   formattedYoutubeVideoItemForCarousel[]
-> {
+> => {
   const response = await axios.get<YoutubePlaylistApiResponse>(
     `/api/youtube/playlist/${LANDING_PLAYLIST}`
   )
@@ -53,12 +53,12 @@ export async function getLandingPagePlaylist(): Promise<
 // The chart is 100 songs, two pages of the API's maximum
 const CHART_PAGES = 2
 
-export async function getChartsPlaylist(): Promise<
+export const getChartsPlaylist = async (): Promise<
   { title: string; id: string }[]
-> {
+> => {
   const songs: { title: string; id: string }[] = []
   let pageToken: string | undefined
-  for (let page = 0; page < CHART_PAGES; page++) {
+  for (let page = 0; page < CHART_PAGES; page += 1) {
     const response = await axios.get<YoutubePlaylistApiResponse>(
       `/api/youtube/playlist/${CHARTS_PLAYLIST}`,
       { params: { pageToken } }
@@ -72,9 +72,9 @@ export async function getChartsPlaylist(): Promise<
   return songs
 }
 
-export async function getYoutubeVideoInfo(
+export const getYoutubeVideoInfo = async (
   videoId: string
-): Promise<YoutubeSearchResultInfo> {
+): Promise<YoutubeSearchResultInfo> => {
   const response = await axios.get<YoutubeSearchApiResponse>(
     `/api/youtube/video/${encodeURIComponent(videoId)}`
   )
@@ -85,7 +85,7 @@ export async function getYoutubeVideoInfo(
     throw new Error('No video found for this video ID')
   }
 
-  const songInfo = songResults[0]
+  const [songInfo] = songResults
   const duration = songInfo.contentDetails?.duration
   const songData = {
     channelTitle: songInfo.snippet.channelTitle,

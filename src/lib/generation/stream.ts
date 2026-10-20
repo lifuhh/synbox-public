@@ -14,14 +14,16 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 // `retryable` failures are the connection's, and asking again attaches to the same backend job. The rest
 // (the backend's own `error` message, a refused request) would fail the same way, or pay twice.
 export class GenerationError extends Error {
-  constructor(
-    message: string,
-    readonly retryable: boolean,
-    // The page came back from the background: its connection is stale, not failed, so reconnecting is
-    // not a retry
-    readonly resumed = false
-  ) {
+  readonly retryable: boolean
+  // The page came back from the background: its connection is stale, not failed, so reconnecting is
+  // not a retry
+  readonly resumed: boolean
+
+  constructor(message: string, retryable: boolean, resumed = false) {
     super(message)
+    this.name = 'GenerationError'
+    this.retryable = retryable
+    this.resumed = resumed
   }
 }
 
@@ -60,6 +62,9 @@ const failedRequest = (status: number) =>
       )
     : new GenerationError(`The lyrics server answered ${status}`, status >= 500)
 
+const stale = () =>
+  new GenerationError('Reconnecting to the lyrics server', true, true)
+
 // Calls `onMessage` for every message and returns when the stream ends. A backend `error` message throws.
 const readStream = async (
   path: string,
@@ -90,8 +95,6 @@ const readStream = async (
     }
   }
   document.addEventListener('visibilitychange', handleVisibility)
-  const stale = () =>
-    new GenerationError('Reconnecting to the lyrics server', true, true)
   try {
     let response: Response
     try {
@@ -165,7 +168,9 @@ const readStream = async (
         buffer += decoder.decode(value, { stream: true })
         const lines = buffer.split('\n')
         buffer = lines.pop() ?? ''
-        lines.forEach(handleLine)
+        for (const line of lines) {
+          handleLine(line)
+        }
       }
     } catch (error) {
       if (error instanceof GenerationError || signal.aborted) {

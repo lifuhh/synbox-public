@@ -10,8 +10,8 @@ import {
 // Every request hangs until it is aborted, so started jobs stay running
 beforeEach(() => {
   vi.stubGlobal('document', {
-    addEventListener: () => undefined,
-    removeEventListener: () => undefined,
+    addEventListener: () => {},
+    removeEventListener: () => {},
     visibilityState: 'visible',
   })
   vi.stubGlobal(
