@@ -107,8 +107,23 @@ const UPDATE_CHECK_MS = 60 * 60 * 1000
 let updateReady = false
 const updateListeners = new Set<() => void>()
 
+// A version that finished downloading on an earlier visit is waiting as the app opens. Until the viewer
+// has touched anything, applying it is invisible: the app opens on the latest version, as a reload in a
+// browser tab should. Later, the update button asks first
+const OPENING_MS = 4000
+let touched = false
+const markTouched = () => {
+  touched = true
+}
+window.addEventListener('pointerdown', markTouched, { once: true })
+window.addEventListener('keydown', markTouched, { once: true })
+
 const applyServiceWorker = registerSW({
   onNeedRefresh: () => {
+    if (!touched && performance.now() < OPENING_MS) {
+      void applyServiceWorker(true)
+      return
+    }
     updateReady = true
     for (const listener of updateListeners) {
       listener()

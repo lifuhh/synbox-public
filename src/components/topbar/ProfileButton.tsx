@@ -117,6 +117,9 @@ const ProfileButtonDropdown = () => {
               </DropdownMenuItem>
             )}
           </DropdownMenuGroup>
+          <p className='px-2 pt-1 pb-1.5 text-xs text-muted-foreground'>
+            Version {__BUILD_ID__}
+          </p>
         </DropdownMenuContent>
       </DropdownMenu>
       <IosInstallDialog open={iosHelpOpen} onOpenChange={setIosHelpOpen} />

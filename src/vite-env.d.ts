@@ -1,6 +1,8 @@
 /// <reference types="vite/client" />
 /// <reference types="vite-plugin-pwa/vanillajs" />
 
+declare const __BUILD_ID__: string
+
 interface ImportMetaEnv {
   readonly VITE_APPWRITE_DATABASE_ID: string
   readonly VITE_APPWRITE_LYRICS_COLLECTION_ID: string

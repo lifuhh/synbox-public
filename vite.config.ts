@@ -69,6 +69,12 @@ export default defineConfig({
     options: { typeAware: true, typeCheck: true },
     rules: { 'vite-plus/prefer-vite-plus-imports': 'error' },
   },
+  // Netlify's commit for the build, shown in the profile menu so a tester can tell which one is running
+  define: {
+    __BUILD_ID__: JSON.stringify(
+      (process.env.COMMIT_REF ?? 'local').slice(0, 7)
+    ),
+  },
   build: {
     chunkSizeWarningLimit: 1000,
     rolldownOptions: {
