@@ -79,6 +79,27 @@ const onProgress = (id: number) => (event: ProgressEvent) => {
   })
 }
 
+// Retries wait for the page to be on screen: a suspended page cannot reach the backend
+const untilVisible = async (signal: AbortSignal) =>
+  await new Promise<void>((resolve) => {
+    if (document.visibilityState === 'visible' || signal.aborted) {
+      resolve()
+      return
+    }
+    const done = () => {
+      document.removeEventListener('visibilitychange', check)
+      signal.removeEventListener('abort', done)
+      resolve()
+    }
+    const check = () => {
+      if (document.visibilityState === 'visible') {
+        done()
+      }
+    }
+    document.addEventListener('visibilitychange', check)
+    signal.addEventListener('abort', done)
+  })
+
 const sleep = async (ms: number, signal: AbortSignal) =>
   await new Promise<void>((resolve) => {
     const timer = setTimeout(resolve, ms)
@@ -100,7 +121,8 @@ const runPhase = async <T>(
     runs: startPhase(job.runs, phase, Date.now()),
     status: { kind: 'running', phase },
   }))
-  for (let attempt = 0; ; attempt += 1) {
+  let attempt = 0
+  for (;;) {
     try {
       const result = await call()
       updateJob(id, (job) => ({
@@ -109,15 +131,18 @@ const runPhase = async <T>(
       }))
       return result
     } catch (error) {
-      const retry =
-        error instanceof GenerationError &&
-        error.retryable &&
-        attempt < RETRIES &&
-        !signal.aborted
-      if (!retry) {
+      if (!(error instanceof GenerationError) || signal.aborted) {
         throw error
       }
-      await sleep(RETRY_DELAY_MS, signal)
+      // Coming back from the background is not a failure: reconnect at once, without using a retry
+      if (!error.resumed) {
+        if (!error.retryable || attempt >= RETRIES) {
+          throw error
+        }
+        attempt += 1
+        await sleep(RETRY_DELAY_MS, signal)
+      }
+      await untilVisible(signal)
     }
   }
 }
