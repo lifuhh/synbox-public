@@ -1,6 +1,8 @@
 import { useSyncExternalStore } from 'react'
 import { registerSW } from 'virtual:pwa-register'
 
+import { anyActive, getGenerationState } from '@/lib/generation/store'
+
 // Chromium's install prompt event; not in the DOM typings
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>
@@ -100,31 +102,45 @@ const subscribeOnline = (listener: () => void) => {
 export const useOnline = () =>
   useSyncExternalStore(subscribeOnline, () => navigator.onLine)
 
-// A new deploy is downloaded in the background and waits. Closing the app applies it on the next
-// launch; while the app stays open, the top bar's update button applies it in place
+// A new deploy is downloaded in the background and waits for a moment when swapping it in goes unnoticed:
+// while the app opens, on the next page change, or on return after a long time away. At any other time
+// the top bar's update button applies it in place
 const UPDATE_CHECK_MS = 60 * 60 * 1000
+
+// Until the viewer has touched anything, applying a waiting version is invisible: the app opens on the
+// latest version, as a reload in a browser tab should
+export const OPENING_MS = 4000
+// Back after this long, the app counts as freshly opened, as a native app does. Not on a song page: the
+// reload would lose the place in the song
+const AWAY_MS = 30 * 60 * 1000
 
 let updateReady = false
 const updateListeners = new Set<() => void>()
 
-// A version that finished downloading on an earlier visit is waiting as the app opens. Until the viewer
-// has touched anything, applying it is invisible: the app opens on the latest version, as a reload in a
-// browser tab should. Later, the update button asks first
-const OPENING_MS = 4000
+let openedAt = 0
 let touched = false
 const markTouched = () => {
   touched = true
 }
-window.addEventListener('pointerdown', markTouched, { once: true })
-window.addEventListener('keydown', markTouched, { once: true })
+const watchForTouch = () => {
+  touched = false
+  window.addEventListener('pointerdown', markTouched, { once: true })
+  window.addEventListener('keydown', markTouched, { once: true })
+}
+watchForTouch()
+
+const isOpening = () => !touched && performance.now() - openedAt < OPENING_MS
+// A reload would cut a running generation's progress off
+const isGenerating = () => anyActive(getGenerationState())
+const isSongPage = () => /^\/v\/[^/]+\/?$/u.test(window.location.pathname)
 
 const applyServiceWorker = registerSW({
   onNeedRefresh: () => {
-    if (!touched && performance.now() < OPENING_MS) {
+    updateReady = true
+    if (isOpening() && !isGenerating()) {
       void applyServiceWorker(true)
       return
     }
-    updateReady = true
     for (const listener of updateListeners) {
       listener()
     }
@@ -145,6 +161,30 @@ const applyServiceWorker = registerSW({
     })
   },
 })
+
+let hiddenAt: number | null = null
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') {
+    hiddenAt = Date.now()
+    return
+  }
+  if (hiddenAt === null || Date.now() - hiddenAt < AWAY_MS || isSongPage()) {
+    return
+  }
+  // A version found by the check on return is applied too, if it arrives within the opening
+  openedAt = performance.now()
+  watchForTouch()
+  if (updateReady && !isGenerating()) {
+    void applyServiceWorker(true)
+  }
+})
+
+// A page change already redraws the screen, so a waiting version is swapped in there, on the new page
+export const applyUpdateOnPageChange = () => {
+  if (updateReady && !isGenerating()) {
+    void applyServiceWorker(true)
+  }
+}
 
 const subscribeUpdate = (listener: () => void) => {
   updateListeners.add(listener)
