@@ -94,7 +94,7 @@ export async function getSongInfoBySongId(
       throw error
     } else {
       console.error('An unexpected error occurred of unknown type:', error)
-      throw new Error('An unknown error occurred')
+      throw new Error('An unknown error occurred', { cause: error })
     }
   }
 }
@@ -121,7 +121,7 @@ export async function getSongLyricsById(songId: string) {
       throw error
     } else {
       console.error('An unexpected error occurred of unknown type:', error)
-      throw new Error('An unknown error occurred')
+      throw new Error('An unknown error occurred', { cause: error })
     }
   }
 }
