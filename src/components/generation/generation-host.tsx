@@ -78,6 +78,14 @@ const GenerationHost = () => {
       for (const key of SONG_QUERIES) {
         void queryClient.resetQueries({ queryKey: [key, done.videoId] })
       }
+      // The run hands over the timing it saved, so the player starts with karaoke even while the
+      // lookup service that answers GET /karaoke is still starting up
+      if (done.status.karaoke) {
+        queryClient.setQueryData(
+          [QUERY_KEYS.GET_KARAOKE_BY_ID, done.videoId, null],
+          done.status.karaoke
+        )
+      }
       for (const key of LIST_QUERIES) {
         void queryClient.invalidateQueries({ queryKey: [key] })
       }
