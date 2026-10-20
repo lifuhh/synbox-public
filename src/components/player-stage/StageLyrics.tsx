@@ -102,6 +102,10 @@ export const parseLyricsDocument = (data: unknown): TimedLyrics | null => {
   return { lines, eng, chi, romaji }
 }
 
+// Everything the overlay draws runs this far ahead of the player's clock: on a device the lyrics read
+// 100–200 ms behind the voice, from the embed reporting its time late and the frame it takes to paint
+const LYRICS_LEAD_SEC = 0.15
+
 const findLineIndex = (lines: TimedLyrics['lines'], time: number) =>
   lines.findIndex((line) => time >= line.startSeconds && time < line.endSeconds)
 
@@ -229,9 +233,9 @@ export const StageLyrics = ({
           playing: playingRef.current,
           rate: 1,
         })
-        const { time } = clockRef.current
+        const time = clockRef.current.time + LYRICS_LEAD_SEC
         probeRef.current?.push({
-          clock: time,
+          clock: clockRef.current.time,
           now: performance.now(),
           playing: playingRef.current,
           reported,
@@ -245,7 +249,7 @@ export const StageLyrics = ({
       return
     }
     return subscribeFrame((time) => {
-      setIndex(findLineIndex(lyrics.lines, time))
+      setIndex(findLineIndex(lyrics.lines, time + LYRICS_LEAD_SEC))
     })
   }, [lyrics, karaokeLines, subscribeFrame])
 

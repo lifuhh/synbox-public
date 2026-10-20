@@ -350,6 +350,9 @@
 @utility lyric-ruby {
   ruby-align: center;
   letter-spacing: var(--kanji-spacing, 0);
+  /* The reading sits on top of this box's line height, not the glyphs: a tight one keeps it close to
+     the kanji, while the line's own height still spaces wrapped lines apart */
+  line-height: 1;
 }
 
 @utility lyric-ruby-text {
