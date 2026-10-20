@@ -4,6 +4,7 @@ import {
   PauseIcon,
   PlayIcon,
   RotateCcwIcon,
+  RotateCwIcon,
   VolumeXIcon,
 } from 'lucide-react'
 import type { ReactNode } from 'react'
@@ -17,6 +18,7 @@ import { isStandalone } from '@/lib/pwa'
 import { cn } from '@/utils/cn'
 
 import { StageControls } from './StageControls'
+import { useStageTaps } from './useStageTaps'
 import type { PlayerVolume, StagePhase, StagePlayer } from './useYouTubePlayer'
 import { useYouTubePlayer } from './useYouTubePlayer'
 import type { YouTubeQuirks } from './youtubeQuirks'
@@ -160,7 +162,6 @@ export const PlayerStage = ({
   onEvent,
   className,
 }: PlayerStageProps) => {
-  const stageRef = useRef<HTMLDivElement>(null)
   const [storedVolume, setStoredVolume] = useAtom(playerVolumeAtom)
   // Browsers block unmuted autoplay until the viewer has interacted with the
   // site; the muted retry is temporary and never written to storedVolume
@@ -173,6 +174,8 @@ export const PlayerStage = ({
   const [loop, setLoop] = useState(false)
   const [interactive, setInteractive] = useState(false)
   const [fullscreen, setFullscreen] = useState(false)
+  // iPhone Safari has no fullscreen for a page; there the button hides the app's own top bar instead
+  const [immersive, setImmersive] = useState(false)
   const player = useYouTubePlayer({ videoId, quirks, volume, loop, onEvent })
   const { phase } = player
 
@@ -254,30 +257,57 @@ export const PlayerStage = ({
     },
   }
 
-  // A first tap on a touch screen only brings the controls back; it does not also pause
-  const revealOnlyRef = useRef(false)
-
+  // The whole page goes fullscreen, not just the stage, so the rail and the controls stay in reach.
+  // Nothing locks the orientation: the player turns with the phone, either way round
   const toggleFullscreen = () => {
-    // iPhone Safari cannot put a page in fullscreen; only the Home Screen app runs without its bars
     if (!document.fullscreenEnabled) {
-      toast({
-        description:
-          'Add Synbox to your Home Screen (Share › Add to Home Screen) to play without Safari’s bars.',
-        duration: 5000,
-        title: 'Full Screen on iPhone',
-      })
+      // In Safari, unlike the Home Screen app, the browser's own bars stay; say how to lose them
+      if (!immersive && !isStandalone()) {
+        toast({
+          description:
+            'Add Synbox to your Home Screen (Share › Add to Home Screen) to hide Safari’s bars too.',
+          duration: 5000,
+          title: 'Full Screen on iPhone',
+        })
+      }
+      setImmersive(!immersive)
       return
     }
     if (document.fullscreenElement) {
       void document.exitFullscreen()
     } else {
-      void stageRef.current?.requestFullscreen()
+      void document.documentElement.requestFullscreen()
     }
   }
 
+  const seekBy = (seconds: number) => {
+    const duration = player.getDuration()
+    const target = player.getTime() + seconds
+    player.seek(Math.max(0, duration > 0 ? Math.min(target, duration) : target))
+  }
+  const taps = useStageTaps({
+    controlsVisible,
+    hideControls: sleep,
+    seekBy,
+    showCover,
+    toggleFullscreen,
+    togglePlay: player.togglePlay,
+  })
+
+  useEffect(() => {
+    const root = document.documentElement
+    if (!immersive) {
+      return
+    }
+    root.dataset.immersive = ''
+    return () => {
+      delete root.dataset.immersive
+    }
+  }, [immersive])
+
   useEffect(() => {
     const sync = () => {
-      setFullscreen(document.fullscreenElement === stageRef.current)
+      setFullscreen(document.fullscreenElement !== null)
     }
     document.addEventListener('fullscreenchange', sync)
     return () => {
@@ -335,6 +365,13 @@ export const PlayerStage = ({
           toggleFullscreen()
           break
         }
+        case 'Escape': {
+          if (!immersive) {
+            return
+          }
+          setImmersive(false)
+          break
+        }
         default: {
           return
         }
@@ -349,7 +386,6 @@ export const PlayerStage = ({
 
   return (
     <div
-      ref={stageRef}
       data-player-stage
       data-phase={phase.kind}
       className={cn(
@@ -403,17 +439,29 @@ export const PlayerStage = ({
             'absolute inset-0 z-20',
             controlsVisible && 'cursor-pointer'
           )}
-          onPointerDown={(event) => {
-            revealOnlyRef.current =
-              event.pointerType !== 'mouse' && !controlsVisible
-          }}
-          onClick={() => {
-            if (!revealOnlyRef.current) {
-              player.togglePlay()
-            }
-          }}
-          onDoubleClick={toggleFullscreen}
+          {...taps.handlers}
         />
+      )}
+
+      {taps.flash && (
+        <div
+          className={cn(
+            'pointer-events-none absolute inset-y-0 z-26 grid w-1/3 place-items-center',
+            taps.flash.side === 'back' ? 'left-0' : 'right-0'
+          )}>
+          <span
+            key={taps.flash.key}
+            className='flex animate-in items-center gap-1 rounded-full bg-black/55 px-4 py-2 text-base font-semibold text-white tabular-nums shadow-[0_4px_16px_rgb(0_0_0/0.35)] backdrop-blur-md zoom-in-90 fade-in'>
+            {taps.flash.side === 'back' ? (
+              <RotateCcwIcon className='size-4' aria-hidden />
+            ) : null}
+            {taps.flash.side === 'back' ? '−' : '+'}
+            {taps.flash.seconds}s
+            {taps.flash.side === 'forward' ? (
+              <RotateCwIcon className='size-4' aria-hidden />
+            ) : null}
+          </span>
+        </div>
       )}
 
       {autoplayMuted && (
@@ -442,10 +490,9 @@ export const PlayerStage = ({
         onLoopChange={setLoop}
         interactive={interactive}
         onInteractiveChange={setInteractive}
-        fullscreen={fullscreen}
-        // The Home Screen app is already full screen where the page cannot go fullscreen itself
-        fullscreenAvailable={document.fullscreenEnabled || !isStandalone()}
+        fullscreen={fullscreen || immersive}
         onToggleFullscreen={toggleFullscreen}
+        onSeekBy={seekBy}
         onHeightChange={setControlsHeight}
         volume={volume}
         onVolumeChange={setVolume}

@@ -26,6 +26,7 @@ const TopBar = () => {
 
   return (
     <section
+      data-topbar
       className={cn(
         'fixed top-0 right-0 left-0 z-50 pt-[env(safe-area-inset-top)] pr-(--safe-right) pl-(--safe-left)',
         isVideoPlayer ? 'pointer-events-none' : 'bg-muted/80 backdrop-blur-md'

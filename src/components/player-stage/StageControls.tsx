@@ -5,6 +5,8 @@ import {
   PauseIcon,
   PlayIcon,
   RepeatIcon,
+  RotateCcwIcon,
+  RotateCwIcon,
   Volume1Icon,
   Volume2Icon,
   VolumeXIcon,
@@ -15,6 +17,7 @@ import { Slider } from '@/components/ui/slider'
 import { useArmed } from '@/hooks/useArmed'
 import { cn } from '@/utils/cn'
 
+import { TAP_SEEK_SEC } from './useStageTaps'
 import type { PlayerVolume, StagePlayer } from './useYouTubePlayer'
 
 const formatTime = (seconds: number) => {
@@ -47,6 +50,20 @@ const VolumeGlyph = ({ level, muted }: { level: number; muted: boolean }) => {
     <Volume2Icon className='size-5' />
   )
 }
+
+// A circular arrow around the number of seconds it skips
+const SeekGlyph = ({ direction }: { direction: 'back' | 'forward' }) => (
+  <span className='relative grid size-6 place-items-center'>
+    {direction === 'back' ? (
+      <RotateCcwIcon className='absolute size-6' strokeWidth={1.75} />
+    ) : (
+      <RotateCwIcon className='absolute size-6' strokeWidth={1.75} />
+    )}
+    <span className='pt-px text-[0.5625rem] leading-none font-bold'>
+      {TAP_SEEK_SEC}
+    </span>
+  </span>
+)
 
 interface IconButtonProps {
   label: string
@@ -86,8 +103,8 @@ interface StageControlsProps {
   interactive: boolean
   onInteractiveChange: (interactive: boolean) => void
   fullscreen: boolean
-  fullscreenAvailable: boolean
   onToggleFullscreen: () => void
+  onSeekBy: (seconds: number) => void
   // Height the controls occupy above the stage bottom, plus a small gap
   onHeightChange: (px: number) => void
   volume: PlayerVolume
@@ -109,8 +126,8 @@ export const StageControls = ({
   interactive,
   onInteractiveChange,
   fullscreen,
-  fullscreenAvailable,
   onToggleFullscreen,
+  onSeekBy,
   onHeightChange,
   volume,
   onVolumeChange: setVolume,
@@ -218,6 +235,20 @@ export const StageControls = ({
               <PlayIcon className='size-5' />
             )}
           </IconButton>
+          <IconButton
+            label={`Back ${TAP_SEEK_SEC} Seconds`}
+            onClick={() => {
+              onSeekBy(-TAP_SEEK_SEC)
+            }}>
+            <SeekGlyph direction='back' />
+          </IconButton>
+          <IconButton
+            label={`Forward ${TAP_SEEK_SEC} Seconds`}
+            onClick={() => {
+              onSeekBy(TAP_SEEK_SEC)
+            }}>
+            <SeekGlyph direction='forward' />
+          </IconButton>
           {/* The slider only opens while the volume button is hovered or focused, so touch screens
               keep just the mute button and the device's own volume */}
           <div
@@ -275,17 +306,15 @@ export const StageControls = ({
               }}>
               <MousePointerClickIcon className='size-5' />
             </IconButton>
-            {fullscreenAvailable && (
-              <IconButton
-                label={fullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
-                onClick={onToggleFullscreen}>
-                {fullscreen ? (
-                  <MinimizeIcon className='size-5' />
-                ) : (
-                  <MaximizeIcon className='size-5' />
-                )}
-              </IconButton>
-            )}
+            <IconButton
+              label={fullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
+              onClick={onToggleFullscreen}>
+              {fullscreen ? (
+                <MinimizeIcon className='size-5' />
+              ) : (
+                <MaximizeIcon className='size-5' />
+              )}
+            </IconButton>
           </div>
         </div>
       </div>

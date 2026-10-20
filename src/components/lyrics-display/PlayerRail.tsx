@@ -82,7 +82,7 @@ const usePeek = () => {
 }
 
 const Divider = () => (
-  <div className='my-0.5 h-px w-6 shrink-0 bg-white/15 portrait:mx-0.5 portrait:my-0 portrait:h-6 portrait:w-px' />
+  <div className='my-0.5 h-px w-6 shrink-0 bg-white/15 portrait:my-0 portrait:h-6 portrait:w-px' />
 )
 
 const PlayerRail = () => {
@@ -213,8 +213,8 @@ const PlayerRail = () => {
             }}
             className={cn(
               'flex flex-col items-center gap-1 rounded-r-2xl border border-l-0 border-white/10 bg-black/55 p-1.5 shadow-[0_8px_24px_rgb(0_0_0/0.4)] backdrop-blur-md transition-[translate,opacity] duration-300 ease-out',
-              'portrait:no-scrollbar portrait:max-w-[calc(100vw-1rem)] portrait:flex-row portrait:gap-0 portrait:overflow-x-auto portrait:rounded-2xl portrait:border-l portrait:p-1',
-              'short:gap-0 short:p-1',
+              'portrait:no-scrollbar portrait:max-w-[calc(100vw-0.5rem)] portrait:flex-row portrait:gap-1 portrait:overflow-x-auto portrait:rounded-2xl portrait:border-l portrait:p-1',
+              'short:gap-1 short:p-1',
               // Past the notch inset too, or a phone on its side shows the rail's edge beside it
               open && armed && 'pointer-events-auto',
               open

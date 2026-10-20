@@ -572,6 +572,11 @@
     --preview-banner-h: 3rem;
   }
 
+  /* The iPhone stand-in for fullscreen: the player without the app's top bar */
+  html[data-immersive] [data-topbar] {
+    display: none;
+  }
+
   /* The player is black edge to edge, including any strip a mobile browser's toolbar leaves */
   html:has([data-player-stage]),
   html:has([data-player-stage]) body {
