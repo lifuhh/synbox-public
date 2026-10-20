@@ -10,14 +10,12 @@ import {
   ToastTitle,
   ToastViewport,
 } from '@/components/ui/toast'
-import { TOAST_REMOVE_DELAY } from '@/components/ui/use-toast'
-
-import { useToast } from '../ui/use-toast'
+import { TOAST_REMOVE_DELAY, useToast } from '@/components/ui/use-toast'
 
 const hasContent = (node: ReactNode) =>
   node !== undefined && node !== null && node !== false && node !== ''
 
-export function Toaster() {
+export const Toaster = () => {
   const { toasts } = useToast()
 
   return (
