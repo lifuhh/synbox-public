@@ -9,7 +9,6 @@ import AppLogo from '../topbar/app-logo'
 import FavouritesDropdownButton from '../topbar/favourites-dropdown-button'
 import HistoryDropdownButton from '../topbar/history-dropdown-button'
 import ProfileButton from '../topbar/profile-button'
-import UpdateButton from '../topbar/update-button'
 
 const TopBar = () => {
   // The versions page under /v/:id is an ordinary page with an opaque bar
@@ -47,7 +46,6 @@ const TopBar = () => {
           <AppLogo />
         )}
         <div data-player-chrome className={cn(cluster, 'mr-2 ml-auto')}>
-          <UpdateButton />
           <FavouritesDropdownButton />
           <HistoryDropdownButton />
           {!isVideoPlayer && <ProfileButton />}
