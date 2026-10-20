@@ -40,14 +40,14 @@ import { LyricsThemePicker } from './LyricsThemePicker'
 import { LyricsVersionsMenu } from './LyricsVersionsMenu'
 import { RailButton, RailTooltip, RailTooltipsOff } from './RailButton'
 
-// The pointer has to rest on the rail this long before the style panel peeks open, so crossing it does not
+// The pointer has to rest on the style button this long before the panel peeks open, so crossing it does not
 const PEEK_DELAY_MS = 150
-// Grace after the pointer leaves the rail and the panel, so the gap between them can be crossed
+// Grace after the pointer leaves the button and the panel, so the gap between them can be crossed
 const PEEK_LEAVE_MS = 300
 
-// Hovering the rail peeks the style panel open, so the lyrics' look is found without hunting for it. A
-// panel closed while the pointer is on the rail or panel (a pick, a click elsewhere) stays closed until the
-// pointer has left the rail once
+// Hovering the style button peeks its panel open; the rail's other buttons only show their tooltips. A
+// panel closed while the pointer is on the button or panel (a pick, a click elsewhere) stays closed until
+// the pointer has left the button once
 const usePeek = () => {
   const [panel, setPanel] = useAtom(lyricsStylePanelAtom)
   const insideRef = useRef(false)
@@ -67,18 +67,18 @@ const usePeek = () => {
     [setPanel]
   )
 
-  const enter = (fromRail: boolean) => {
+  const enter = (fromButton: boolean) => {
     insideRef.current = true
     clearTimeout(timerRef.current)
-    if (fromRail && armedRef.current && panel === 'closed') {
+    if (fromButton && armedRef.current && panel === 'closed') {
       timerRef.current = setTimeout(() => {
         setPanel((current) => (current === 'closed' ? 'peek' : current))
       }, PEEK_DELAY_MS)
     }
   }
-  const leave = (fromRail: boolean) => {
+  const leave = (fromButton: boolean) => {
     insideRef.current = false
-    if (fromRail) {
+    if (fromButton) {
       armedRef.current = true
     }
     clearTimeout(timerRef.current)
@@ -233,17 +233,6 @@ const PlayerRail = () => {
             ref={panelRef}
             data-player-chrome
             aria-label='Player Controls'
-            // A finger has no hover; on touch the panel opens from its button
-            onPointerEnter={(event) => {
-              if (event.pointerType === 'mouse') {
-                peek.enter(true)
-              }
-            }}
-            onPointerLeave={(event) => {
-              if (event.pointerType === 'mouse') {
-                peek.leave(true)
-              }
-            }}
             className={cn(
               'flex flex-col items-center gap-1 rounded-r-2xl border border-l-0 border-white/10 bg-black/55 p-1.5 shadow-[0_8px_24px_rgb(0_0_0/0.4)] backdrop-blur-md transition-[translate,opacity] duration-300 ease-out',
               'portrait:no-scrollbar portrait:max-w-[calc(100vw-0.5rem)] portrait:flex-row portrait:gap-1 portrait:overflow-x-auto portrait:rounded-2xl portrait:border-l portrait:p-1',
@@ -307,15 +296,7 @@ const PlayerRail = () => {
                 </span>
               </RailButton>
             </RailTooltip>
-            <LyricsThemePicker
-              anchorRef={panelRef}
-              onPointerEnter={() => {
-                peek.enter(false)
-              }}
-              onPointerLeave={() => {
-                peek.leave(false)
-              }}
-            />
+            <LyricsThemePicker anchorRef={panelRef} peek={peek} />
             {videoId !== '' && <LyricsVersionsMenu videoId={videoId} />}
 
             <Divider />
