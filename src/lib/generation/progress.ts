@@ -14,12 +14,20 @@ export const OVERALL_CAP = 0.99
 // of it; the rest now eases in like an unreported stage
 export const MEASURED_SHARE = 0.9
 const EASE_K = Math.log(5)
+// The share of its expected time a stage takes to cover that 80 %. The song check is short and its time
+// varies little (3.5–7.7 s in production), so it goes fast from the start: about 85 % by half its expected
+// time and over 90 % by the time it usually ends, so the last stretch is a short run to full
+const PACE: Partial<Record<StageId, number>> = { check: 0.4 }
+// A finished stage's bar runs from where it was to full over this long, instead of jumping there
+export const FINISH_MS = 400
 
 export interface StageRun {
   label: string
   startedAt: number
   expectedS: number
-  // The floor: the latest real fraction, or what the bar showed when it arrived, whichever is higher
+  pace: number
+  // The floor: the latest real fraction, or what the bar showed when it arrived, whichever is higher. Once
+  // the stage is done, what the bar showed when it closed
   base: number
   baseAt: number
   reported: boolean
@@ -35,13 +43,21 @@ export const stageValue = (run: StageRun | undefined, now: number): number => {
     return 0
   }
   if (run.doneAt !== null) {
-    return 1
+    const t = Math.min(Math.max(now - run.doneAt, 0) / FINISH_MS, 1)
+    return run.base + (1 - run.base) * (1 - (1 - t) ** 3)
   }
-  const remainingS = Math.max(run.expectedS * (1 - run.base), 1)
+  const remainingS = Math.max(run.expectedS * run.pace * (1 - run.base), 1)
   const elapsedS = Math.max(now - run.baseAt, 0) / 1000
   const eased = 1 - Math.exp((-EASE_K * elapsedS) / remainingS)
   return run.base + (1 - run.base) * CAP * eased
 }
+
+const close = (run: StageRun, now: number): StageRun => ({
+  ...run,
+  base: stageValue(run, now),
+  baseAt: now,
+  doneAt: now,
+})
 
 // Closes every stage before `index`. One that never opened was skipped (a cached step) and counts as done.
 const finishBefore = (runs: Runs, index: number, now: number): Runs => {
@@ -55,11 +71,12 @@ const finishBefore = (runs: Runs, index: number, now: number): Runs => {
         doneAt: now,
         expectedS: 0,
         label: stage.label,
+        pace: 1,
         reported: false,
         startedAt: now,
       }
     } else if (run.doneAt === null) {
-      next[stage.id] = { ...run, doneAt: now }
+      next[stage.id] = close(run, now)
     }
   }
   return next
@@ -90,6 +107,7 @@ export const beginStage = (
     doneAt: null,
     expectedS: update.expectedS ?? spec(id).weight,
     label: update.label ?? spec(id).label,
+    pace: PACE[id] ?? 1,
     reported: false,
     startedAt: now,
   }
@@ -108,7 +126,7 @@ export const reportFraction = (
     return next
   }
   if (fraction >= 1) {
-    return { ...next, [id]: { ...run, doneAt: now } }
+    return { ...next, [id]: close(run, now) }
   }
   return {
     ...next,
@@ -183,7 +201,7 @@ export const stepView = (runs: Runs, step: Step, now: number): StepView => {
   if (stageRuns.every((run) => run !== undefined && run.doneAt !== null)) {
     return {
       detail: null,
-      fraction: 1,
+      fraction,
       measured: false,
       state: 'done',
     }
