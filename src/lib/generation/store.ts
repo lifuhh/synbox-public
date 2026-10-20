@@ -183,12 +183,15 @@ const run = async (job: Job, signal: AbortSignal) => {
   const { id, videoId } = job
   const progress = onProgress(id)
   try {
-    const video = await runPhase(id, 'validate', signal, () =>
-      validate(videoId, signal, progress)
+    const video = await runPhase(
+      id,
+      'validate',
+      signal,
+      async () => await validate(videoId, signal, progress)
     )
     updateJob(id, (current) => ({ ...current, video }))
-    await runPhase(id, 'transcribe', signal, () =>
-      transcribe(
+    await runPhase(id, 'transcribe', signal, async () => {
+      await transcribe(
         videoId,
         {
           regenerate: job.mode === 'regenerate',
@@ -201,10 +204,13 @@ const run = async (job: Job, signal: AbortSignal) => {
           updateJob(id, (current) => ({ ...current, ahead }))
         }
       )
-    )
+    })
     updateJob(id, (current) => ({ ...current, ahead: 0 }))
-    const outcome = await runPhase(id, 'translate', signal, () =>
-      translate(videoId, job.requestId, signal, progress)
+    const outcome = await runPhase(
+      id,
+      'translate',
+      signal,
+      async () => await translate(videoId, job.requestId, signal, progress)
     )
     updateJob(id, (current) => ({
       ...current,
@@ -266,9 +272,11 @@ export const startGeneration = (request: GenerationRequest): boolean => {
     set({ ...state, expanded: true, focusedId: same.id })
     return false
   }
+  const id = nextId
+  nextId += 1
   const job: Job = {
     ahead: 0,
-    id: nextId++,
+    id,
     runs: {},
     skipUploaderLyrics: false,
     startedAt: Date.now(),
@@ -287,8 +295,7 @@ export const startGeneration = (request: GenerationRequest): boolean => {
   return true
 }
 
-const newest = (jobs: readonly Job[]) =>
-  jobs.length > 0 ? jobs[jobs.length - 1].id : null
+const newest = (jobs: readonly Job[]) => jobs.at(-1)?.id ?? null
 
 // Takes job `id` off the list; the panel moves on to the newest job still going, else the newest left
 const remove = (id: number) => {

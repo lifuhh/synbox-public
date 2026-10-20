@@ -42,6 +42,7 @@ export const summarizeProbe = (
     (s, i) => i === 0 || s.reported !== playing[i - 1].reported
   )
   const intervals = reports.slice(1).map((s, i) => s.now - reports[i].now)
+  const last = playing.at(-1)
   const extrapolation = playing.map((s) => (s.clock - s.reported) * 1000)
   // Between two reports, true time ≈ the earlier report plus wall time elapsed;
   // the later report checks that assumption, so use both ends
@@ -79,8 +80,8 @@ export const summarizeProbe = (
       p90: round(quantile(intervals, 0.9)),
     },
     seconds:
-      playing.length > 1
-        ? round((playing[playing.length - 1].now - playing[0].now) / 1000)
+      playing.length > 1 && last !== undefined
+        ? round((last.now - playing[0].now) / 1000)
         : 0,
   }
 }
