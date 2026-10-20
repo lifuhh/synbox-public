@@ -75,7 +75,6 @@ const ReadyToSing = ({
         <LibrarySongCard
           key={song.video_id}
           song={song}
-          vocalUnknown={song.vocal_unknown}
           onPlay={onPlay}
           onMoreLikeThis={onMoreLikeThis}
         />
@@ -199,9 +198,9 @@ const SimilarSongs = ({
   const { data, error, isLoading } = useGetSimilarSongs(videoId)
   return (
     <div className='flex flex-col gap-3'>
-      <div className='flex items-center justify-between'>
-        <h2 className='text-lg font-semibold text-foreground'>
-          More Like This
+      <div className='flex items-center justify-between gap-4'>
+        <h2 className='min-w-0 truncate text-lg font-semibold text-foreground'>
+          More Like {data?.song?.title ?? 'This'}
         </h2>
         <Button variant='ghost' onClick={onBack}>
           Back To Results
