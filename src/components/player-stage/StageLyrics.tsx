@@ -135,8 +135,7 @@ const LyricLine = ({ html, primary }: { html: string; primary: boolean }) => {
         // Room above a Japanese line for its furigana when it wraps
         latin
           ? 'font_noto_sans_reg leading-normal'
-          : 'font_noto_sans_jp_black_900 leading-loose',
-        !primary && 'lyric-text-line--secondary'
+          : 'font_noto_sans_jp_black_900 leading-loose'
       )}
       style={{
         fontSize: primary ? LYRIC_SIZE.primary : LYRIC_SIZE.secondary,
