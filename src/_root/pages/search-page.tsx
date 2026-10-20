@@ -9,6 +9,7 @@ import {
 import DotsLoader from '@/components/shared/dots-loader'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Skeleton } from '@/components/ui/skeleton'
 import { startGeneration } from '@/lib/generation/store'
 import {
   useGetSimilarSongs,
@@ -47,6 +48,8 @@ const Section = ({
 )
 
 type LibraryQuery = UseQueryResult<LibrarySearchResponse>
+
+const SKELETON_CARDS = [0, 1, 2, 3] as const
 type VideosQuery = UseQueryResult<VideoSearchResponse>
 
 const ReadyToSing = ({
@@ -61,34 +64,67 @@ const ReadyToSing = ({
   onPlay: (videoId: string) => void
   onSelect: (result: VideoSearchResult) => void
   onMoreLikeThis: (videoId: string) => void
-}) => (
-  <Section title='Ready To Sing'>
-    {library.isLoading && <DotsLoader />}
-    {library.error && <Notice>{library.error.message}</Notice>}
-    {library.data?.mode === 'title_match' && (
-      <Notice>
-        Smart search is unavailable, so these match titles and artists only.
-      </Notice>
-    )}
-    <ResultGrid>
-      {library.data?.results.map((song) => (
-        <LibrarySongCard
-          key={song.video_id}
-          song={song}
-          onPlay={onPlay}
-          onMoreLikeThis={onMoreLikeThis}
-        />
-      ))}
-      {extra.map((result) => (
-        <VideoResultCard
-          key={result.video_id}
-          result={result}
-          onSelect={onSelect}
-        />
-      ))}
-    </ResultGrid>
-  </Section>
-)
+}) => {
+  // A retry after the library gave up has data already, so isLoading stays false while it waits again
+  const notReady = library.data?.ready === false
+  const searching = library.isLoading || (notReady && library.isFetching)
+  return (
+    <Section title='Ready To Sing'>
+      {searching && (
+        <div className='flex items-center gap-3 text-sm text-muted-foreground'>
+          <DotsLoader size='sm' />
+          Searching your library
+        </div>
+      )}
+      {library.error && <Notice>{library.error.message}</Notice>}
+      {notReady && !searching && (
+        <div className='flex flex-wrap items-center gap-3'>
+          <Notice>
+            Your library is taking longer than usual to load, so songs already
+            in Synbox may be missing.
+          </Notice>
+          <Button
+            variant='ghost'
+            onClick={() => {
+              void library.refetch()
+            }}>
+            Try Again
+          </Button>
+        </div>
+      )}
+      {library.data?.mode === 'title_match' && (
+        <Notice>
+          Smart search is unavailable, so these match titles and artists only.
+        </Notice>
+      )}
+      <ResultGrid>
+        {library.data?.results.map((song) => (
+          <LibrarySongCard
+            key={song.video_id}
+            song={song}
+            onPlay={onPlay}
+            onMoreLikeThis={onMoreLikeThis}
+          />
+        ))}
+        {extra.map((result) => (
+          <VideoResultCard
+            key={result.video_id}
+            result={result}
+            onSelect={onSelect}
+          />
+        ))}
+        {searching &&
+          SKELETON_CARDS.map((i) => (
+            <div key={i} className='flex flex-col gap-2 p-2'>
+              <Skeleton shape='thumbnail' className='aspect-video w-full' />
+              <Skeleton className='h-4 w-3/4' />
+              <Skeleton className='h-3 w-1/2' />
+            </div>
+          ))}
+      </ResultGrid>
+    </Section>
+  )
+}
 
 const AddFromYoutube = ({
   videos,
@@ -143,6 +179,7 @@ const SearchResults = ({
   const showReady =
     library.isLoading ||
     library.error !== null ||
+    library.data?.ready === false ||
     libraryIds.size + readyVideos.length > 0
   const showNew =
     videos.isLoading || videos.error !== null || newVideos.length > 0
@@ -157,12 +194,6 @@ const SearchResults = ({
           onSelect={onSelect}
           onMoreLikeThis={onMoreLikeThis}
         />
-      )}
-      {library.data?.ready === false && (
-        <Notice>
-          The library is still loading, so some songs already in Synbox may be
-          missing. Try again in a moment.
-        </Notice>
       )}
       {showNew && (
         <AddFromYoutube

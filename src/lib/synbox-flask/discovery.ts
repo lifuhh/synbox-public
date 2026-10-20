@@ -82,12 +82,41 @@ export const searchVideos = async (query: string, signal?: AbortSignal) =>
     signal
   )
 
-export const searchLibrary = async (query: string, signal?: AbortSignal) =>
-  await getJson(
+const LIBRARY_RETRY_MS = 3000
+const LIBRARY_WAIT_MS = 120_000
+
+const wait = async (ms: number, signal?: AbortSignal) => {
+  // oxlint-disable-next-line promise/avoid-new -- turns setTimeout into a promise
+  await new Promise<void>((resolve) => {
+    const timer = setTimeout(resolve, ms)
+    signal?.addEventListener('abort', () => {
+      clearTimeout(timer)
+      resolve()
+    })
+  })
+}
+
+// A backend that has just started answers `ready: false` for about a minute while it loads the library. Keep
+// asking, so the search stays loading instead of showing an empty library; give up after 2 minutes.
+const askLibrary = async (
+  query: string,
+  deadline: number,
+  signal?: AbortSignal
+): Promise<LibrarySearchResponse> => {
+  const response = await getJson(
     `/library/search?q=${encodeURIComponent(query)}`,
     librarySearchResponseSchema,
     signal
   )
+  if (response.ready || Date.now() >= deadline || signal?.aborted === true) {
+    return response
+  }
+  await wait(LIBRARY_RETRY_MS, signal)
+  return await askLibrary(query, deadline, signal)
+}
+
+export const searchLibrary = async (query: string, signal?: AbortSignal) =>
+  await askLibrary(query, Date.now() + LIBRARY_WAIT_MS, signal)
 
 export const getSimilarSongs = async (videoId: string, signal?: AbortSignal) =>
   await getJson(
