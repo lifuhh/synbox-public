@@ -1,4 +1,4 @@
-import { useAtom } from 'jotai'
+import { useAtom, useSetAtom } from 'jotai'
 import {
   LoaderIcon,
   PauseIcon,
@@ -7,9 +7,9 @@ import {
   VolumeXIcon,
 } from 'lucide-react'
 import type { ReactNode } from 'react'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
-import { playerVolumeAtom } from '@/context/atoms'
+import { playerChromeOpenAtom, playerVolumeAtom } from '@/context/atoms'
 import { cn } from '@/utils/cn'
 
 import { StageControls } from './StageControls'
@@ -31,33 +31,51 @@ const COVERED_PHASES = new Set<StagePhase['kind']>([
   'ended',
 ])
 
+// Anything marked data-player-chrome holds the floating UI open while the pointer rests on it, a menu from
+// it is open, or keyboard focus is inside it
+const chromeBusy = () =>
+  [...document.querySelectorAll('[data-player-chrome]')].some(
+    (element) =>
+      element.matches(':hover') ||
+      // aria-expanded rather than data-state, which a tooltip on the same trigger overwrites
+      element.querySelector('[aria-expanded=true], :focus-visible') !== null
+  )
+
+// Idle `ms` after the last pointer or key input anywhere in the window, and not while the UI is busy
 const useIdle = (ms: number) => {
   const [idle, setIdle] = useState(false)
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const wake = () => {
+  const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+
+  const wake = useCallback(() => {
     setIdle(false)
-    if (timerRef.current) {
-      clearTimeout(timerRef.current)
+    clearTimeout(timerRef.current)
+    const check = () => {
+      if (chromeBusy()) {
+        timerRef.current = setTimeout(check, ms)
+      } else {
+        setIdle(true)
+      }
     }
-    timerRef.current = setTimeout(() => {
-      setIdle(true)
-    }, ms)
-  }
+    timerRef.current = setTimeout(check, ms)
+  }, [ms])
   const sleep = () => {
-    if (timerRef.current) {
-      clearTimeout(timerRef.current)
-    }
+    clearTimeout(timerRef.current)
     setIdle(true)
   }
-  useEffect(
-    () => () => {
-      if (timerRef.current) {
-        clearTimeout(timerRef.current)
-      }
-    },
-    []
-  )
-  return { idle, wake, sleep }
+
+  useEffect(() => {
+    wake()
+    window.addEventListener('pointermove', wake)
+    window.addEventListener('pointerdown', wake)
+    window.addEventListener('keydown', wake)
+    return () => {
+      clearTimeout(timerRef.current)
+      window.removeEventListener('pointermove', wake)
+      window.removeEventListener('pointerdown', wake)
+      window.removeEventListener('keydown', wake)
+    }
+  }, [wake])
+  return { idle, sleep }
 }
 
 const clampVolume = (level: number) => ({
@@ -190,7 +208,7 @@ export const PlayerStage = ({
       onFirstPlay?.()
     }
   }, [isPlaying, onFirstPlay])
-  const { idle, wake, sleep } = useIdle(IDLE_MS)
+  const { idle, sleep } = useIdle(IDLE_MS)
   const [dragging, setDragging] = useState(false)
   const [controlsHeight, setControlsHeight] = useState(0)
 
@@ -201,6 +219,16 @@ export const PlayerStage = ({
     (COVERED_PHASES.has(phase.kind) ||
       (phase.kind === 'playing' && !phase.settled))
   const controlsVisible = !dragging && (!idle || phase.kind !== 'playing')
+  const setChromeOpen = useSetAtom(playerChromeOpenAtom)
+  useEffect(() => {
+    setChromeOpen(controlsVisible)
+  }, [controlsVisible, setChromeOpen])
+  useEffect(
+    () => () => {
+      setChromeOpen(true)
+    },
+    [setChromeOpen]
+  )
   const layout: StageLayout = {
     bottomObstruction: controlsVisible ? controlsHeight : 0,
     onDragChange: (next) => {
@@ -285,7 +313,6 @@ export const PlayerStage = ({
         }
       }
       event.preventDefault()
-      wake()
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => {
@@ -301,9 +328,7 @@ export const PlayerStage = ({
         '[container-type:size] relative size-full overflow-hidden bg-black',
         !controlsVisible && 'cursor-none',
         className
-      )}
-      onPointerMove={wake}
-      onPointerDown={wake}>
+      )}>
       <div
         className='absolute top-1/2 left-1/2 aspect-video -translate-1/2 overflow-hidden'
         style={{ width: 'min(100cqw, 177.78cqh)' }}>

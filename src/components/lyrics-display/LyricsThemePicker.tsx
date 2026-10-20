@@ -1,9 +1,11 @@
 import { useAtom } from 'jotai'
 import { CheckIcon, PaletteIcon } from 'lucide-react'
-import { useState } from 'react'
+import type { RefObject } from 'react'
+import { useRef } from 'react'
 
 import {
   Popover,
+  PopoverAnchor,
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover'
@@ -13,6 +15,7 @@ import {
   fontSizeMultiplierAtomWithPersistence,
   lyricsBackdropAtom,
   lyricsCustomHueAtom,
+  lyricsStylePanelAtom,
   lyricsThemeIdAtom,
 } from '@/context/atoms'
 import type { LyricsThemeColors } from '@/lib/lyricsThemes'
@@ -83,18 +86,24 @@ const ThemeSwatch = ({
   </button>
 )
 
-// A discrete pick (a preset colour, a backdrop) applies and closes, like a
-// menu. Size and the custom hue are adjusted by dragging and previewed live, so
-// those keep the popover open until Done, Escape or a click outside
+// A discrete pick (a preset colour, a backdrop) applies and closes, like a menu. Size and the custom hue
+// are adjusted by dragging and previewed live, so those keep the panel open until Done, Escape or a click
+// outside. The panel centers on the rail (`anchorRef`) rather than on its button
 export const LyricsThemePicker = ({
-  onOpenChange,
+  anchorRef,
+  onPointerEnter,
+  onPointerLeave,
 }: {
-  onOpenChange?: (open: boolean) => void
+  anchorRef: RefObject<HTMLElement | null>
+  onPointerEnter: () => void
+  onPointerLeave: () => void
 }) => {
-  const [opened, setOpenedState] = useState(false)
-  const setOpened = (next: boolean) => {
-    setOpenedState(next)
-    onOpenChange?.(next)
+  const [panel, setPanel] = useAtom(lyricsStylePanelAtom)
+  // Focus moves in, and back to the button on close, only for a panel opened from the keyboard; after a
+  // hover or a click it would pop the button's tooltip and hold the player's UI open
+  const fromKeyboardRef = useRef(false)
+  const close = () => {
+    setPanel('closed')
   }
   const [fontSize, setFontSize] = useAtom(fontSizeMultiplierAtomWithPersistence)
   const [themeId, setThemeId] = useAtom(lyricsThemeIdAtom)
@@ -115,22 +124,58 @@ export const LyricsThemePicker = ({
   const activeBackdrop = LYRICS_BACKDROPS.find((b) => b.id === backdrop)
 
   return (
-    <Popover open={opened} onOpenChange={setOpened} modal>
-      <RailTooltip label='Lyrics Style' hidden={opened}>
+    <Popover
+      open={panel !== 'closed'}
+      onOpenChange={(open) => {
+        if (!open) {
+          close()
+        }
+      }}>
+      <PopoverAnchor virtualRef={anchorRef} />
+      <RailTooltip label='Lyrics Style'>
         <PopoverTrigger asChild>
           <RailButton
             label='Lyrics Style'
-            className={cn(opened && 'bg-white/10')}>
+            className={cn(panel !== 'closed' && 'bg-white/10')}
+            onClick={(event) => {
+              // A click pins a panel the hover only peeked open
+              event.preventDefault()
+              fromKeyboardRef.current = event.detail === 0
+              setPanel(panel === 'pinned' ? 'closed' : 'pinned')
+            }}>
             <PaletteIcon className='size-5 shrink-0' />
           </RailButton>
         </PopoverTrigger>
       </RailTooltip>
 
       <PopoverContent
+        data-player-chrome
         side='right'
-        // Grow away from the lyrics so changes stay visible while picking
-        align='end'
         sideOffset={14}
+        // Follows the rail as it slides in, when a click on the lyrics opens both at once
+        updatePositionStrategy='always'
+        onOpenAutoFocus={(event) => {
+          if (!fromKeyboardRef.current) {
+            event.preventDefault()
+          }
+        }}
+        onCloseAutoFocus={(event) => {
+          if (!fromKeyboardRef.current) {
+            event.preventDefault()
+          }
+          fromKeyboardRef.current = false
+        }}
+        onInteractOutside={(event) => {
+          // A click on the lyrics opens the panel, so pressing them is not a click outside
+          if (
+            event.target instanceof Element &&
+            event.target.closest('[data-lyrics-style-toggle]') !== null
+          ) {
+            event.preventDefault()
+          }
+        }}
+        onPointerEnter={onPointerEnter}
+        onPointerLeave={onPointerLeave}
         className='z-300 w-[300px] rounded-[10px] p-0 shadow-[0_12px_32px_rgb(0_0_0/0.5)]'>
         <div className='flex flex-col gap-4 p-4 unhighlightable'>
           <div className='flex items-center justify-between'>
@@ -191,7 +236,7 @@ export const LyricsThemePicker = ({
                   selected={themeId === theme.id}
                   onSelect={() => {
                     setThemeId(theme.id)
-                    setOpened(false)
+                    close()
                   }}
                 />
               ))}
@@ -216,7 +261,7 @@ export const LyricsThemePicker = ({
                   <button
                     type='button'
                     onClick={() => {
-                      setOpened(false)
+                      close()
                     }}
                     className='rounded-md bg-primary px-2.5 py-1 text-xs font-medium text-white transition-colors hover:bg-primary/85'>
                     Done
@@ -255,7 +300,7 @@ export const LyricsThemePicker = ({
                   aria-checked={backdrop === option.id}
                   onClick={() => {
                     setBackdrop(option.id)
-                    setOpened(false)
+                    close()
                   }}
                   className={cn(
                     'rounded-md py-1.5 text-xs font-medium transition-colors focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-hidden',

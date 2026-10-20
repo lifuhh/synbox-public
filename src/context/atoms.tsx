@@ -44,8 +44,13 @@ export const lyricsBackdropAtom = atomWithStorage<LyricsBackdrop>(
   DEFAULT_LYRICS_BACKDROP
 )
 
-// The player rail's open state; the top bar's icons follow it on /v/:id
+// Whether the player's floating UI shows: the rail, the top bar's buttons and the stage controls show and
+// hide together. PlayerStage owns it
 export const playerChromeOpenAtom = atom(true)
+// The rail's lyrics style panel. 'peek' opened as the pointer came over the rail and closes when it
+// leaves; 'pinned' was asked for (its button, a click on the lyrics) and stays until dismissed
+export type LyricsStylePanel = 'closed' | 'peek' | 'pinned'
+export const lyricsStylePanelAtom = atom<LyricsStylePanel>('closed')
 
 export const playerVolumeAtom = atomWithStorage('playerVolume', {
   level: 0.5,

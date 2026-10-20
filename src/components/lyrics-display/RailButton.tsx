@@ -1,4 +1,5 @@
 import type { ComponentProps, ReactNode } from 'react'
+import { createContext, use, useState } from 'react'
 
 import {
   Tooltip,
@@ -33,6 +34,9 @@ export const RailButton = ({
   />
 )
 
+// Set while the rail's style panel is open: it covers the space the tooltips open into
+export const RailTooltipsOff = createContext(false)
+
 export const RailTooltip = ({
   label,
   hidden = false,
@@ -41,14 +45,30 @@ export const RailTooltip = ({
   label: string
   hidden?: boolean
   children: ReactNode
-}) => (
-  <Tooltip open={hidden ? false : undefined}>
-    <TooltipTrigger asChild>{children}</TooltipTrigger>
-    <TooltipContent
-      side='right'
-      sideOffset={10}
-      className='border-none bg-primary text-white unhighlightable'>
-      {label}
-    </TooltipContent>
-  </Tooltip>
-)
+}) => {
+  const off = hidden || use(RailTooltipsOff)
+  // Controlled, and closed while off, so a tooltip never reopens from state it had before
+  const [open, setOpen] = useState(false)
+  const [wasOff, setWasOff] = useState(off)
+  if (off !== wasOff) {
+    setWasOff(off)
+    setOpen(false)
+  }
+  return (
+    <Tooltip
+      open={open && !off}
+      onOpenChange={(next) => {
+        if (!off) {
+          setOpen(next)
+        }
+      }}>
+      <TooltipTrigger asChild>{children}</TooltipTrigger>
+      <TooltipContent
+        side='right'
+        sideOffset={10}
+        className='border-none bg-primary text-white unhighlightable'>
+        {label}
+      </TooltipContent>
+    </Tooltip>
+  )
+}
