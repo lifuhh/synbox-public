@@ -22,7 +22,8 @@ const json = (status: number, body: unknown, headers: HeadersInit = {}) =>
   Response.json(body, { headers, status })
 
 const upstreamUrl = (path: string, search: URLSearchParams) => {
-  const playlist = /^\/api\/youtube\/playlist\/([\w-]+)$/u.exec(path)?.[1]
+  const playlist = /^\/api\/youtube\/playlist\/(?<id>[\w-]+)$/u.exec(path)
+    ?.groups?.id
   if (playlist !== undefined && PLAYLISTS.has(playlist)) {
     const pageToken = search.get('pageToken')
     const params = new URLSearchParams({
@@ -35,7 +36,7 @@ const upstreamUrl = (path: string, search: URLSearchParams) => {
     }
     return { cdnSeconds: 60 * 60, url: `${API}/playlistItems?${params}` }
   }
-  const video = /^\/api\/youtube\/video\/([\w-]+)$/u.exec(path)?.[1]
+  const video = /^\/api\/youtube\/video\/(?<id>[\w-]+)$/u.exec(path)?.groups?.id
   if (video !== undefined && VIDEO_ID.test(video)) {
     const params = new URLSearchParams({
       id: video,

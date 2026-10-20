@@ -44,6 +44,28 @@ const serveYoutube = async (
 }
 
 export default defineConfig({
+  build: {
+    chunkSizeWarningLimit: 1000,
+    rolldownOptions: {
+      onLog(level, log, handler) {
+        if (
+          log.cause instanceof Error &&
+          log.cause.message === `Can't resolve original location of error.`
+        ) {
+          return
+        }
+        handler(level, log)
+      },
+    },
+    // Maps go to Sentry, not to the deployed site
+    sourcemap: 'hidden',
+  },
+  // Netlify's commit for the build, shown in the profile menu so a tester can tell which one is running
+  define: {
+    __BUILD_ID__: JSON.stringify(
+      (process.env.COMMIT_REF ?? 'local').slice(0, 7)
+    ),
+  },
   fmt: {
     ...ultraciteFmt,
     bracketSameLine: true,
@@ -68,28 +90,6 @@ export default defineConfig({
     ],
     options: { typeAware: true, typeCheck: true },
     rules: { 'vite-plus/prefer-vite-plus-imports': 'error' },
-  },
-  // Netlify's commit for the build, shown in the profile menu so a tester can tell which one is running
-  define: {
-    __BUILD_ID__: JSON.stringify(
-      (process.env.COMMIT_REF ?? 'local').slice(0, 7)
-    ),
-  },
-  build: {
-    chunkSizeWarningLimit: 1000,
-    rolldownOptions: {
-      onLog(level, log, handler) {
-        if (
-          log.cause instanceof Error &&
-          log.cause.message === `Can't resolve original location of error.`
-        ) {
-          return
-        }
-        handler(level, log)
-      },
-    },
-    // Maps go to Sentry, not to the deployed site
-    sourcemap: 'hidden',
   },
   plugins: lazyPlugins(() => [
     // Without it the built site sends every backend call to its own host
