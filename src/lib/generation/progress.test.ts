@@ -87,3 +87,14 @@ describe('the overall percentage', () => {
     expect(overallValue(runs, 2 * S, true)).toBe(1)
   })
 })
+
+describe('a step', () => {
+  test('stays active between two of its stages', () => {
+    let runs = beginStage({}, 'download', 0)
+    runs = reportFraction(runs, 'download', 1, 2 * S)
+    expect(stepView(runs, STEPS[0], 2 * S)).toMatchObject({
+      detail: "Checking it's a Japanese song",
+      state: 'active',
+    })
+  })
+})
