@@ -45,33 +45,53 @@ export const hidePlaceholderImage = (event: {
   }
 }
 
-// What a finished job says. A regeneration of a song whose saved lyrics come out the same is a no-op on
-// the backend (the cached timing, existing translations, an identical version rejected), so it says so.
-export const outcomeCopy = (job: Job) => {
+interface Outcome {
+  title: string
+  detail: string
+  play: { label: string; to: string }
+  versions: boolean
+}
+
+// What a finished job says, in the listener's terms: version numbers are for the versions page. A
+// regeneration whose lyrics come out the same saves nothing (the backend rejects an identical version)
+export const outcomeOf = (job: Job): Outcome | null => {
   if (job.status.kind !== 'complete') {
     return null
   }
   const { outcome } = job.status
+  const song = `/v/${job.videoId}`
   if (outcome.kind === 'version') {
-    return {
-      detail: outcome.active
-        ? 'It is now the default. You can switch back on the versions page.'
-        : 'The current lyrics stay until you make this version the default.',
-      title: `Saved as Version ${outcome.version}`,
-    }
-  }
-  if (outcome.kind === 'unchanged') {
-    return job.mode === 'regenerate'
+    return outcome.active
       ? {
           detail:
-            'The result was identical to the current lyrics, so nothing new was saved.',
-          title: 'No Changes',
+            'Everyone now gets the new lyrics. The old ones are kept in case you want them back.',
+          play: { label: 'Play Now', to: song },
+          title: 'Lyrics Updated',
+          versions: true,
         }
-      : { detail: 'These lyrics were already saved.', title: 'Lyrics Ready' }
+      : {
+          detail: 'Have a listen before they replace the current lyrics.',
+          play: { label: 'Preview', to: `${song}?version=${outcome.version}` },
+          title: 'New Lyrics Ready',
+          versions: true,
+        }
+  }
+  if (outcome.kind === 'unchanged' && job.mode === 'regenerate') {
+    return {
+      detail: 'This run came out the same as the current lyrics.',
+      play: { label: 'Play Now', to: song },
+      title: 'Already Up to Date',
+      versions: false,
+    }
   }
   return {
-    detail: 'Synced, translated and ready to sing along.',
-    title: 'Lyrics Ready',
+    detail:
+      outcome.kind === 'unchanged'
+        ? 'This song already had lyrics.'
+        : 'Synced, translated and ready to sing along.',
+    play: { label: 'Start Singing', to: song },
+    title: 'Ready to Sing',
+    versions: false,
   }
 }
 

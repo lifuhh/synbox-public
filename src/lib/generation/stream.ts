@@ -89,7 +89,12 @@ const readStream = async (
       if (signal.aborted) {
         throw error
       }
-      throw new GenerationError('Could not reach the lyrics server', true)
+      // Also what a busy server looks like: Cloud Run turns away the CORS preflight with a 429 and no
+      // CORS headers, which the browser reports as a network error
+      throw new GenerationError(
+        "Couldn't reach the lyrics server. It may be busy with another song, so try again in a minute.",
+        true
+      )
     }
     if (!response.ok) {
       throw failedRequest(response.status)
