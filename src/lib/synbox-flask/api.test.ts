@@ -13,7 +13,7 @@ describe('isKaraokeDoc', () => {
       throw new Error('the backend’s v2 doc was rejected')
     }
     const parts = tokenFillParts(doc.lines[0]).flat()
-    const end = doc.lines[0].end
+    const { end } = doc.lines[0]
     expect(parts.length).toBeGreaterThan(0)
     expect(parts.every((part) => fillProgress(part.spans, end) === 1)).toBe(
       true

@@ -48,7 +48,7 @@ export const usePresentation = (job: Job | null) => {
     }
     const step = () => {
       setTick((prev) => {
-        const current = jobRef.current
+        const { current } = jobRef
         if (!current) {
           return prev
         }
