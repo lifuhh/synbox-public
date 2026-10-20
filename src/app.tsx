@@ -1,9 +1,10 @@
 import { lazy, Suspense, useEffect } from 'react'
-import { Navigate, Route, Routes } from 'react-router'
+import { Navigate, Route, Routes, useLocation } from 'react-router'
 
 import AppNotices from '@/components/shared/app-notices'
 import { Toaster } from '@/components/ui/toaster'
 import useKeyboardNavigation from '@/hooks/use-keyboard-navigation'
+import { applyUpdateOnPageChange } from '@/lib/pwa'
 
 import LandingPage from './_root/pages/landing-page'
 import RootLayout from './_root/root-layout'
@@ -35,6 +36,11 @@ const prefetchPages = () => {
 
 const App = () => {
   useKeyboardNavigation()
+  const { pathname } = useLocation()
+  useEffect(() => {
+    applyUpdateOnPageChange()
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- runs on each page change, which is what pathname marks
+  }, [pathname])
 
   useEffect(() => {
     if ('requestIdleCallback' in window) {
