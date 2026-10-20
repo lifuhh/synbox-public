@@ -35,15 +35,21 @@ const COVERED_PHASES = new Set<StagePhase['kind']>([
   'ended',
 ])
 
-// Anything marked data-player-chrome holds the floating UI open while the pointer rests on it, a menu from
-// it is open, or keyboard focus is inside it
-const chromeBusy = () =>
-  [...document.querySelectorAll('[data-player-chrome]')].some(
+// Anything marked data-player-chrome holds the floating UI open while a menu from it is open, and with a
+// mouse also while the pointer rests on it or keyboard focus is inside it. A touch screen counts menus
+// only: iOS keeps the last tapped element in :hover, and a dragged slider keeps its thumb focused, so
+// either would hold the UI open for good
+const chromeBusy = () => {
+  const canHover = matchMedia('(hover: hover)').matches
+  return [...document.querySelectorAll('[data-player-chrome]')].some(
     (element) =>
-      element.matches(':hover') ||
       // aria-expanded rather than data-state, which a tooltip on the same trigger overwrites
-      element.querySelector('[aria-expanded=true], :focus-visible') !== null
+      element.querySelector('[aria-expanded=true]') !== null ||
+      (canHover &&
+        (element.matches(':hover') ||
+          element.querySelector(':focus-visible') !== null))
   )
+}
 
 // Idle `ms` after the last pointer or key input anywhere in the window, and not while the UI is busy
 const useIdle = (ms: number) => {
