@@ -1,6 +1,7 @@
 import Autoplay from 'embla-carousel-autoplay'
 import { useEffect, useMemo, useRef, useState } from 'react'
 
+import LoadError from '@/components/shared/LoadError'
 import {
   Carousel,
   CarouselContent,
@@ -41,8 +42,13 @@ const SongHighlightCarouselSkeleton = () => (
 )
 
 const SongHighlightCarousel = () => {
-  const { data: playlistData, isLoading: isPlaylistDataFetching } =
-    useGetLandingPagePlaylist()
+  const {
+    data: playlistData,
+    isLoading: isPlaylistDataFetching,
+    isError,
+    isFetching,
+    refetch,
+  } = useGetLandingPagePlaylist()
 
   const slidesNumber = useMemo(() => playlistData?.length, [playlistData])
 
@@ -145,23 +151,36 @@ const SongHighlightCarousel = () => {
     <div
       ref={carouselRef}
       className='mt-2 flex h-96 w-full items-center justify-center rounded-md px-4 py-8 lg:w-7/12'>
-      {isPlaylistDataFetching || !playlistData ? (
-        <SongHighlightCarouselSkeleton />
-      ) : (
-        <div className='overflow-hidden'>
-          <Carousel
-            opts={{
-              loop: true,
-              dragFree: true,
-              containScroll: 'trimSnaps',
-              startIndex: 1,
-            }}
-            setApi={setApi}
-            plugins={[Autoplay()]}>
-            <CarouselContent className='-ml-3'>{carouselItems}</CarouselContent>
-          </Carousel>
-        </div>
+      {isError && (
+        <LoadError
+          message="Couldn't load the recommendations."
+          retrying={isFetching}
+          onRetry={() => {
+            void refetch()
+          }}
+          className='size-full rounded-xl border border-primary/30'
+        />
       )}
+      {!isError &&
+        (isPlaylistDataFetching || !playlistData ? (
+          <SongHighlightCarouselSkeleton />
+        ) : (
+          <div className='overflow-hidden'>
+            <Carousel
+              opts={{
+                loop: true,
+                dragFree: true,
+                containScroll: 'trimSnaps',
+                startIndex: 1,
+              }}
+              setApi={setApi}
+              plugins={[Autoplay()]}>
+              <CarouselContent className='-ml-3'>
+                {carouselItems}
+              </CarouselContent>
+            </Carousel>
+          </div>
+        ))}
     </div>
   )
 }

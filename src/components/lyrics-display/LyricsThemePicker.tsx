@@ -3,6 +3,7 @@ import { CheckIcon, PaletteIcon } from 'lucide-react'
 import type { RefObject } from 'react'
 import { useRef } from 'react'
 
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import {
   Popover,
   PopoverAnchor,
@@ -18,7 +19,7 @@ import {
   lyricsStylePanelAtom,
   lyricsThemeIdAtom,
 } from '@/context/atoms'
-import { usePortrait } from '@/hooks/useMediaQuery'
+import { useMediaQuery, usePortrait } from '@/hooks/useMediaQuery'
 import type { LyricsThemeColors } from '@/lib/lyricsThemes'
 import {
   DEFAULT_LYRICS_BACKDROP,
@@ -101,6 +102,7 @@ export const LyricsThemePicker = ({
 }) => {
   const [panel, setPanel] = useAtom(lyricsStylePanelAtom)
   const portrait = usePortrait()
+  const touch = useMediaQuery('(pointer: coarse)')
   // Focus moves in, and back to the button on close, only for a panel opened from the keyboard; after a
   // hover or a click it would pop the button's tooltip and hold the player's UI open
   const fromKeyboardRef = useRef(false)
@@ -124,6 +126,184 @@ export const LyricsThemePicker = ({
   }
 
   const activeBackdrop = LYRICS_BACKDROPS.find((b) => b.id === backdrop)
+
+  const heading = touch ? (
+    <DialogTitle className='text-base font-semibold'>Lyrics Style</DialogTitle>
+  ) : (
+    <h2 className='text-sm font-semibold'>Lyrics Style</h2>
+  )
+  const body = (
+    <div className='flex flex-col gap-4 p-4 unhighlightable'>
+      <div className='flex items-center justify-between touch:pr-10'>
+        {heading}
+        <button
+          type='button'
+          onClick={handleReset}
+          disabled={isDefault}
+          className='-my-2 py-2 text-xs text-muted-foreground transition-colors hover:text-foreground disabled:pointer-events-none disabled:opacity-0 touch:text-sm'>
+          Reset
+        </button>
+      </div>
+
+      <section className='flex flex-col gap-2'>
+        <h3 className='text-xs font-medium tracking-wide text-muted-foreground uppercase'>
+          Size
+        </h3>
+        <div className='flex items-center gap-3'>
+          <span
+            aria-hidden='true'
+            className='text-xs font-semibold text-muted-foreground'>
+            A
+          </span>
+          <Slider
+            aria-label='Lyrics Size'
+            min={0.4}
+            max={1.6}
+            step={0.01}
+            value={[fontSize]}
+            onValueChange={([value]) => {
+              if (value !== undefined) {
+                setFontSize(value)
+              }
+            }}
+            className='flex-1 cursor-pointer'
+          />
+          <span
+            aria-hidden='true'
+            className='text-lg font-semibold text-muted-foreground'>
+            A
+          </span>
+        </div>
+      </section>
+
+      <section className='flex flex-col gap-2'>
+        <h3 className='text-xs font-medium tracking-wide text-muted-foreground uppercase'>
+          Colour
+        </h3>
+        <div
+          role='radiogroup'
+          aria-label='Lyrics colour'
+          className='grid grid-cols-4 gap-x-2 gap-y-3'>
+          {LYRICS_THEMES.map((theme) => (
+            <ThemeSwatch
+              key={theme.id}
+              name={theme.name}
+              colors={theme}
+              selected={themeId === theme.id}
+              onSelect={() => {
+                setThemeId(theme.id)
+                close()
+              }}
+            />
+          ))}
+          <ThemeSwatch
+            name='Custom'
+            colors={getCustomThemeColors(customHue)}
+            selected={themeId === 'custom'}
+            onSelect={() => {
+              setThemeId('custom')
+            }}
+          />
+        </div>
+
+        {themeId === 'custom' && (
+          <div className='mt-1 flex flex-col gap-2'>
+            <div className='flex items-center justify-between'>
+              <label
+                htmlFor='lyrics-custom-hue'
+                className='text-xs text-muted-foreground'>
+                Hue
+              </label>
+              <button
+                type='button'
+                onClick={() => {
+                  close()
+                }}
+                className='rounded-md bg-primary px-2.5 py-1 text-xs font-medium text-white transition-colors hover:bg-primary/85 touch:px-3.5 touch:py-2 touch:text-sm'>
+                Done
+              </button>
+            </div>
+            <input
+              id='lyrics-custom-hue'
+              type='range'
+              min={0}
+              max={359}
+              step={1}
+              value={customHue}
+              onChange={(e) => {
+                setCustomHue(Number(e.target.value))
+              }}
+              className='lyrics-hue-slider'
+              style={{ background: HUE_TRACK }}
+            />
+          </div>
+        )}
+      </section>
+
+      <section className='flex flex-col gap-2'>
+        <h3 className='text-xs font-medium tracking-wide text-muted-foreground uppercase'>
+          Backdrop
+        </h3>
+        <div
+          role='radiogroup'
+          aria-label='Lyrics backdrop'
+          className='grid grid-cols-3 gap-1 rounded-lg bg-secondary p-1'>
+          {LYRICS_BACKDROPS.map((option) => (
+            <button
+              key={option.id}
+              type='button'
+              role='radio'
+              aria-checked={backdrop === option.id}
+              onClick={() => {
+                setBackdrop(option.id)
+                close()
+              }}
+              className={cn(
+                'rounded-md py-1.5 text-xs font-medium transition-colors focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-hidden touch:py-2.5 touch:text-sm',
+                backdrop === option.id
+                  ? 'bg-primary text-white'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}>
+              {option.name}
+            </button>
+          ))}
+        </div>
+        <p className='text-xs text-muted-foreground'>{activeBackdrop?.hint}</p>
+      </section>
+    </div>
+  )
+
+  // On a touch screen the panel is a modal in the middle of the screen, opened only from its button. A
+  // pick, Done, or a tap outside closes it
+  if (touch) {
+    return (
+      <Dialog
+        open={panel !== 'closed'}
+        onOpenChange={(open) => {
+          if (!open) {
+            close()
+          }
+        }}>
+        <RailButton
+          label='Lyrics Style'
+          className={cn(panel !== 'closed' && 'bg-white/10')}
+          onClick={() => {
+            setPanel(panel === 'closed' ? 'pinned' : 'closed')
+          }}>
+          <PaletteIcon className='size-5 shrink-0' />
+        </RailButton>
+        <DialogContent
+          data-player-chrome
+          aria-describedby={undefined}
+          onOpenAutoFocus={(event) => {
+            event.preventDefault()
+          }}
+          className='max-w-sm gap-0 p-0'>
+          {body}
+        </DialogContent>
+      </Dialog>
+    )
+  }
 
   return (
     <Popover
@@ -180,146 +360,7 @@ export const LyricsThemePicker = ({
         onPointerEnter={onPointerEnter}
         onPointerLeave={onPointerLeave}
         className='z-300 max-h-(--radix-popover-content-available-height) w-[min(300px,calc(100vw-1rem))] overflow-y-auto rounded-[10px] p-0 shadow-[0_12px_32px_rgb(0_0_0/0.5)]'>
-        <div className='flex flex-col gap-4 p-4 unhighlightable'>
-          <div className='flex items-center justify-between'>
-            <h2 className='text-sm font-semibold'>Lyrics Style</h2>
-            <button
-              type='button'
-              onClick={handleReset}
-              disabled={isDefault}
-              className='-my-2 py-2 text-xs text-muted-foreground transition-colors hover:text-foreground disabled:pointer-events-none disabled:opacity-0 touch:text-sm'>
-              Reset
-            </button>
-          </div>
-
-          <section className='flex flex-col gap-2'>
-            <h3 className='text-xs font-medium tracking-wide text-muted-foreground uppercase'>
-              Size
-            </h3>
-            <div className='flex items-center gap-3'>
-              <span
-                aria-hidden='true'
-                className='text-xs font-semibold text-muted-foreground'>
-                A
-              </span>
-              <Slider
-                aria-label='Lyrics Size'
-                min={0.4}
-                max={1.6}
-                step={0.01}
-                value={[fontSize]}
-                onValueChange={([value]) => {
-                  if (value !== undefined) {
-                    setFontSize(value)
-                  }
-                }}
-                className='flex-1 cursor-pointer'
-              />
-              <span
-                aria-hidden='true'
-                className='text-lg font-semibold text-muted-foreground'>
-                A
-              </span>
-            </div>
-          </section>
-
-          <section className='flex flex-col gap-2'>
-            <h3 className='text-xs font-medium tracking-wide text-muted-foreground uppercase'>
-              Colour
-            </h3>
-            <div
-              role='radiogroup'
-              aria-label='Lyrics colour'
-              className='grid grid-cols-4 gap-x-2 gap-y-3'>
-              {LYRICS_THEMES.map((theme) => (
-                <ThemeSwatch
-                  key={theme.id}
-                  name={theme.name}
-                  colors={theme}
-                  selected={themeId === theme.id}
-                  onSelect={() => {
-                    setThemeId(theme.id)
-                    close()
-                  }}
-                />
-              ))}
-              <ThemeSwatch
-                name='Custom'
-                colors={getCustomThemeColors(customHue)}
-                selected={themeId === 'custom'}
-                onSelect={() => {
-                  setThemeId('custom')
-                }}
-              />
-            </div>
-
-            {themeId === 'custom' && (
-              <div className='mt-1 flex flex-col gap-2'>
-                <div className='flex items-center justify-between'>
-                  <label
-                    htmlFor='lyrics-custom-hue'
-                    className='text-xs text-muted-foreground'>
-                    Hue
-                  </label>
-                  <button
-                    type='button'
-                    onClick={() => {
-                      close()
-                    }}
-                    className='rounded-md bg-primary px-2.5 py-1 text-xs font-medium text-white transition-colors hover:bg-primary/85 touch:px-3.5 touch:py-2 touch:text-sm'>
-                    Done
-                  </button>
-                </div>
-                <input
-                  id='lyrics-custom-hue'
-                  type='range'
-                  min={0}
-                  max={359}
-                  step={1}
-                  value={customHue}
-                  onChange={(e) => {
-                    setCustomHue(Number(e.target.value))
-                  }}
-                  className='lyrics-hue-slider'
-                  style={{ background: HUE_TRACK }}
-                />
-              </div>
-            )}
-          </section>
-
-          <section className='flex flex-col gap-2'>
-            <h3 className='text-xs font-medium tracking-wide text-muted-foreground uppercase'>
-              Backdrop
-            </h3>
-            <div
-              role='radiogroup'
-              aria-label='Lyrics backdrop'
-              className='grid grid-cols-3 gap-1 rounded-lg bg-secondary p-1'>
-              {LYRICS_BACKDROPS.map((option) => (
-                <button
-                  key={option.id}
-                  type='button'
-                  role='radio'
-                  aria-checked={backdrop === option.id}
-                  onClick={() => {
-                    setBackdrop(option.id)
-                    close()
-                  }}
-                  className={cn(
-                    'rounded-md py-1.5 text-xs font-medium transition-colors focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-hidden touch:py-2.5 touch:text-sm',
-                    backdrop === option.id
-                      ? 'bg-primary text-white'
-                      : 'text-muted-foreground hover:text-foreground'
-                  )}>
-                  {option.name}
-                </button>
-              ))}
-            </div>
-            <p className='text-xs text-muted-foreground'>
-              {activeBackdrop?.hint}
-            </p>
-          </section>
-        </div>
+        {body}
       </PopoverContent>
     </Popover>
   )

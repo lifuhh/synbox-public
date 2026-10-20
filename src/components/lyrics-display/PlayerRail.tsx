@@ -24,6 +24,7 @@ import {
   playerChromeOpenAtom,
   lyricsStylePanelAtom,
 } from '@/context/atoms'
+import { useArmed } from '@/hooks/useArmed'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { cn } from '@/utils/cn'
 
@@ -81,7 +82,7 @@ const usePeek = () => {
 }
 
 const Divider = () => (
-  <div className='my-0.5 h-px w-6 shrink-0 bg-white/15 portrait:mx-0.5 portrait:my-0 portrait:h-6 portrait:w-px short:col-span-2 short:mx-auto' />
+  <div className='my-0.5 h-px w-6 shrink-0 bg-white/15 portrait:mx-0.5 portrait:my-0 portrait:h-6 portrait:w-px' />
 )
 
 const PlayerRail = () => {
@@ -89,6 +90,7 @@ const PlayerRail = () => {
   const { toast } = useToast()
   const panelRef = useRef<HTMLElement>(null)
   const open = useAtomValue(playerChromeOpenAtom)
+  const armed = useArmed(open)
   const peek = usePeek()
 
   const currentVideo = useAtomValue(currentVideoAtom)
@@ -191,9 +193,9 @@ const PlayerRail = () => {
     // the pointer is outside the window or over the YouTube iframe, so the label outlived the hidden rail
     <TooltipProvider delayDuration={190} disableHoverableContent>
       <RailTooltipsOff value={peek.panelOpen}>
-        {/* Left edge, vertically centred; in portrait a row under the video; on a phone on its side
-            two columns, which fit between the top bar and the controls */}
-        <div className='pointer-events-none fixed top-1/2 left-(--safe-left) z-50 -translate-y-1/2 portrait:top-[calc(var(--stage-video-bottom)+0.5rem)] portrait:left-1/2 portrait:-translate-x-1/2 portrait:translate-y-0'>
+        {/* Left edge, vertically centred; in portrait a row above the video; on a phone on its side a
+            compact column under the top bar, with the control bar starting to its right */}
+        <div className='pointer-events-none fixed top-1/2 left-(--safe-left) z-50 -translate-y-1/2 portrait:top-[calc(var(--stage-video-top)-0.5rem)] portrait:left-1/2 portrait:-translate-x-1/2 portrait:-translate-y-full short:top-[calc(var(--topbar-h)+0.25rem)] short:translate-y-0'>
           <nav
             ref={panelRef}
             data-player-chrome
@@ -212,10 +214,12 @@ const PlayerRail = () => {
             className={cn(
               'flex flex-col items-center gap-1 rounded-r-2xl border border-l-0 border-white/10 bg-black/55 p-1.5 shadow-[0_8px_24px_rgb(0_0_0/0.4)] backdrop-blur-md transition-[translate,opacity] duration-300 ease-out',
               'portrait:no-scrollbar portrait:max-w-[calc(100vw-1rem)] portrait:flex-row portrait:gap-0 portrait:overflow-x-auto portrait:rounded-2xl portrait:border-l portrait:p-1',
-              'short:grid short:grid-cols-2',
+              'short:gap-0 short:p-1',
+              // Past the notch inset too, or a phone on its side shows the rail's edge beside it
+              open && armed && 'pointer-events-auto',
               open
-                ? 'pointer-events-auto translate-x-0'
-                : '-translate-x-full portrait:translate-x-0 portrait:opacity-0'
+                ? 'translate-x-0'
+                : '-translate-x-[calc(100%+var(--safe-left))] portrait:translate-x-0 portrait:opacity-0'
             )}>
             <RailTooltip label={showLyrics ? 'Hide Lyrics' : 'Show Lyrics'}>
               <RailButton

@@ -31,12 +31,15 @@ export const useGetLandingPagePlaylist = () =>
   useQuery({
     queryKey: [QUERY_KEYS.GET_LANDING_PAGE_PLAYLIST],
     queryFn: () => getLandingPagePlaylist(),
+    // One retry, so a rejected API key shows the error and its Retry button in seconds, not ~7s
+    retry: 1,
   })
 
 export const useGetChartsPlaylist = () =>
   useQuery({
     queryKey: [QUERY_KEYS.GET_CHARTS_PLAYLIST],
     queryFn: () => getChartsPlaylist(),
+    retry: 1,
     staleTime: 1000 * 60 * 60 * 24,
     gcTime: 1000 * 60 * 60,
   })

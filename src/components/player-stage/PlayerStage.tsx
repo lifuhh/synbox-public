@@ -17,7 +17,7 @@ import type { PlayerVolume, StagePhase, StagePlayer } from './useYouTubePlayer'
 import { useYouTubePlayer } from './useYouTubePlayer'
 import type { YouTubeQuirks } from './youtubeQuirks'
 
-const IDLE_MS = 2500
+const IDLE_MS = 1800
 // How long an unmuted autoplay gets to start before retrying muted
 const AUTOPLAY_CHECK_MS = 1500
 const SEEK_STEP_SEC = 5
@@ -163,6 +163,8 @@ export const PlayerStage = ({
   const [loop, setLoop] = useState(false)
   const [interactive, setInteractive] = useState(false)
   const [fullscreen, setFullscreen] = useState(false)
+  // iPhone Safari has no element fullscreen, so there the stage covers the screen itself instead
+  const [coverScreen, setCoverScreen] = useState(false)
   const player = useYouTubePlayer({ videoId, quirks, volume, loop, onEvent })
   const { phase } = player
 
@@ -244,8 +246,8 @@ export const PlayerStage = ({
   const revealOnlyRef = useRef(false)
 
   const toggleFullscreen = () => {
-    // iPhone Safari has no element fullscreen; the control is hidden there
     if (!document.fullscreenEnabled) {
+      setCoverScreen((covered) => !covered)
       return
     }
     if (document.fullscreenElement) {
@@ -315,6 +317,13 @@ export const PlayerStage = ({
           toggleFullscreen()
           break
         }
+        case 'Escape': {
+          if (!coverScreen) {
+            return
+          }
+          setCoverScreen(false)
+          break
+        }
         default: {
           return
         }
@@ -330,15 +339,17 @@ export const PlayerStage = ({
   return (
     <div
       ref={stageRef}
+      data-player-stage
       data-phase={phase.kind}
       className={cn(
         '[container-type:size] relative size-full overflow-hidden bg-black',
+        // Above the top bar, the rail and the generation button, as real fullscreen would be
+        coverScreen && 'fixed inset-0 z-60',
         !controlsVisible && 'cursor-none',
         className
       )}>
-      {/* In portrait the video sits under the top bar and the lyrics get the space below it */}
       <div
-        className='absolute top-1/2 left-1/2 aspect-video -translate-1/2 overflow-hidden portrait:top-(--topbar-h) portrait:translate-y-0'
+        className='absolute top-1/2 left-1/2 aspect-video -translate-1/2 overflow-hidden'
         style={{ width: 'min(100cqw, 177.78cqh)' }}>
         <div
           ref={player.hostRef}
@@ -351,16 +362,19 @@ export const PlayerStage = ({
           style={{ top: -quirks.cropPx, bottom: -quirks.cropPx }}
         />
         {showCover && <StageCover videoId={videoId} phase={phase} />}
-        {!showCover && !handsOff && player.centerMasked && (
-          <div className='pointer-events-none absolute top-1/2 left-1/2 z-10 grid size-20 -translate-1/2 place-items-center rounded-full bg-black/85 text-white'>
-            {phase.kind === 'paused' ? (
-              <PlayIcon className='size-9 fill-current' />
-            ) : (
-              <PauseIcon className='size-9 fill-current' />
-            )}
-          </div>
-        )}
       </div>
+
+      {/* Covers YouTube's own center button, which it shows for about 4s after every play or seek. It
+          sits outside the video box so it draws above the lyrics; the video is always centred on the stage */}
+      {!showCover && !handsOff && player.centerMasked && (
+        <div className='pointer-events-none absolute top-1/2 left-1/2 z-26 grid size-20 -translate-1/2 place-items-center rounded-full bg-black/85 text-white shadow-[0_4px_16px_rgb(0_0_0/0.35)] ring-1 ring-white/10'>
+          {phase.kind === 'paused' ? (
+            <PlayIcon className='size-9 fill-current' />
+          ) : (
+            <PauseIcon className='size-9 fill-current' />
+          )}
+        </div>
+      )}
 
       {quirks.blockIframeInput && !handsOff && (
         <div
@@ -396,7 +410,8 @@ export const PlayerStage = ({
       )}
 
       {renderLyrics && (
-        <div className='pointer-events-none absolute inset-0 z-25 portrait:top-[calc(var(--stage-video-bottom)+4rem)]'>
+        // In portrait the lyrics get the space between the video and the controls
+        <div className='pointer-events-none absolute inset-0 z-25 portrait:top-[calc(50cqh+28.125cqw+0.5rem)]'>
           {renderLyrics(player, layout)}
         </div>
       )}
@@ -408,7 +423,7 @@ export const PlayerStage = ({
         onLoopChange={setLoop}
         interactive={interactive}
         onInteractiveChange={setInteractive}
-        fullscreen={fullscreen}
+        fullscreen={fullscreen || coverScreen}
         onToggleFullscreen={toggleFullscreen}
         onHeightChange={setControlsHeight}
         volume={volume}

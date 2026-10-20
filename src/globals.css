@@ -387,19 +387,19 @@
     var(--lyric-fill, #f5f5f5) var(--karaoke-stop),
     var(--lyric-secondary, #d4d4d4) var(--karaoke-stop)
   );
+  text-shadow: none;
+
+  & .lyric-ruby-text {
+    text-shadow: none;
+  }
+}
+
+/* Each fill span paints the gradient its part resolved, across its own width */
+@utility lyric-karaoke-fill {
   background-image: var(--karaoke-gradient);
   background-clip: text;
   -webkit-background-clip: text;
   color: transparent;
-  text-shadow: none;
-
-  & .lyric-ruby-text {
-    background-image: var(--karaoke-gradient);
-    background-clip: text;
-    -webkit-background-clip: text;
-    color: transparent;
-    text-shadow: none;
-  }
 }
 
 @utility lyric-text-line--secondary {
@@ -551,13 +551,19 @@
     --safe-bottom: env(safe-area-inset-bottom, 0px);
     --safe-left: env(safe-area-inset-left, 0px);
     --safe-right: env(safe-area-inset-right, 0px);
-    /* In portrait the player pins the video under the top bar, full width */
-    --stage-video-bottom: calc(var(--topbar-h) + 100vw * 9 / 16);
+    /* In portrait the player's video is full width, centred on the screen */
+    --stage-video-top: calc(50dvh - 100vw * 9 / 32);
   }
 
   /* The version preview banner and the player's Tap to Unmute both hang under the top bar */
   :root:has([data-preview-banner]) {
     --preview-banner-h: 3rem;
+  }
+
+  /* The player is black edge to edge, including any strip a mobile browser's toolbar leaves */
+  html:has([data-player-stage]),
+  html:has([data-player-stage]) body {
+    background-color: #000;
   }
 
   html {

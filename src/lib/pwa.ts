@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react'
+import { registerSW } from 'virtual:pwa-register'
 
 // Chromium's install prompt event; not in the DOM typings
 interface BeforeInstallPromptEvent extends Event {
@@ -98,3 +99,49 @@ const subscribeOnline = (listener: () => void) => {
 
 export const useOnline = () =>
   useSyncExternalStore(subscribeOnline, () => navigator.onLine)
+
+// A new deploy is downloaded in the background and waits. Closing the app applies it on the next
+// launch; while the app stays open, the top bar's update button applies it in place
+const UPDATE_CHECK_MS = 60 * 60 * 1000
+
+let updateReady = false
+const updateListeners = new Set<() => void>()
+
+const applyServiceWorker = registerSW({
+  onNeedRefresh: () => {
+    updateReady = true
+    for (const listener of updateListeners) {
+      listener()
+    }
+  },
+  onRegisteredSW: (_url, registration) => {
+    if (!registration) {
+      return
+    }
+    const check = () => {
+      void registration.update()
+    }
+    // An installed app is resumed rather than reloaded, so check whenever it comes back too
+    setInterval(check, UPDATE_CHECK_MS)
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        check()
+      }
+    })
+  },
+})
+
+const subscribeUpdate = (listener: () => void) => {
+  updateListeners.add(listener)
+  return () => {
+    updateListeners.delete(listener)
+  }
+}
+
+export const useUpdateReady = () =>
+  useSyncExternalStore(subscribeUpdate, () => updateReady)
+
+// Activates the waiting version and reloads the page the viewer is on
+export const applyUpdate = async () => {
+  await applyServiceWorker(true)
+}

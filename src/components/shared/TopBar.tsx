@@ -1,42 +1,15 @@
 import { useAtomValue } from 'jotai'
-import { HouseIcon } from 'lucide-react'
-import { Link, useMatch } from 'react-router'
+import { useMatch } from 'react-router'
 
-import { Button } from '@/components/ui/button'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip'
 import { playerChromeOpenAtom } from '@/context/atoms'
+import { useArmed } from '@/hooks/useArmed'
 import { cn } from '@/utils/cn'
 
 import AppLogo from '../topbar/AppLogo'
 import FavouritesDropdownButton from '../topbar/FavouritesDropdownButton'
 import HistoryDropdownButton from '../topbar/HistoryDropdownButton'
 import ProfileButton from '../topbar/ProfileButton'
-
-const HomeButton = () => (
-  <TooltipProvider>
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <Button
-          asChild
-          variant='outline'
-          size='icon'
-          className='border-primary/80 invisible-ring hover:border-white'>
-          <Link to='/' aria-label='Return to Home Page'>
-            <HouseIcon className='size-6 shrink-0' />
-          </Link>
-        </Button>
-      </TooltipTrigger>
-      <TooltipContent className='border-none bg-accent unhighlightable'>
-        Return to Home Page
-      </TooltipContent>
-    </Tooltip>
-  </TooltipProvider>
-)
+import UpdateButton from '../topbar/UpdateButton'
 
 const TopBar = () => {
   // The versions page under /v/:id is an ordinary page with an opaque bar
@@ -44,9 +17,10 @@ const TopBar = () => {
   // On the player the buttons show and hide with the rest of its floating UI
   const chromeOpen = useAtomValue(playerChromeOpenAtom)
   const iconsShown = !isVideoPlayer || chromeOpen
+  const armed = useArmed(iconsShown)
   const cluster = cn(
-    'flex items-center gap-3 transition-[opacity,translate] duration-300 ease-out',
-    isVideoPlayer && iconsShown && 'pointer-events-auto',
+    'flex items-center gap-2 transition-[opacity,translate] duration-300 ease-out sm:gap-3',
+    isVideoPlayer && armed && 'pointer-events-auto',
     !iconsShown && '-translate-y-2 opacity-0'
   )
 
@@ -57,14 +31,16 @@ const TopBar = () => {
         isVideoPlayer ? 'pointer-events-none' : 'bg-muted/80 backdrop-blur-md'
       )}>
       <nav className='flex-between h-14 w-full sm:px-4'>
+        {/* The logo is the way home on every page, the player included */}
         {isVideoPlayer ? (
-          <div data-player-chrome className={cn(cluster, 'ml-2')}>
-            <HomeButton />
+          <div data-player-chrome className={cluster}>
+            <AppLogo />
           </div>
         ) : (
           <AppLogo />
         )}
         <div data-player-chrome className={cn(cluster, 'mr-2 ml-auto')}>
+          <UpdateButton />
           <FavouritesDropdownButton buttonVisibility={true} />
           <HistoryDropdownButton buttonVisibility={true} />
           {!isVideoPlayer && <ProfileButton />}

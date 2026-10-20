@@ -15,12 +15,25 @@ import { CONTROLS_FADE_MS } from './StageControls'
 
 const TAP_SLOP_PX = 4
 const LIFT_MS = 200
+const CLICK_AFTER_DRAG_MS = 400
+
+const swallowNextClick = () => {
+  const swallow = (event: MouseEvent) => {
+    event.stopPropagation()
+    event.preventDefault()
+  }
+  window.addEventListener('click', swallow, { capture: true, once: true })
+  setTimeout(() => {
+    window.removeEventListener('click', swallow, { capture: true })
+  }, CLICK_AFTER_DRAG_MS)
+}
 
 interface DragStart {
   pointerY: number
   anchor: number
   range: number
   moved: boolean
+  touch: boolean
 }
 
 interface DraggableLyricsProps {
@@ -37,7 +50,7 @@ interface DraggableLyricsProps {
 // without measuring or animating. The bottom spacer never shrinks below the
 // controls, which lifts the block just clear of them; only that lift animates,
 // and it drops back once the controls have faded out. Only the text box is
-// grabbable; a press without a drag opens the rail's style panel, and the empty
+// grabbable; a mouse press without a drag opens the rail's style panel, and the empty
 // band beside the text passes clicks to the video
 export const DraggableLyrics = ({
   children,
@@ -66,10 +79,11 @@ export const DraggableLyrics = ({
     // while the controls lift it
     const room = layer.clientHeight - block.offsetHeight
     dragRef.current = {
-      pointerY: event.clientY,
       anchor: room > 0 ? block.offsetTop / room : anchor,
-      range: Math.max(1, room),
       moved: false,
+      pointerY: event.clientY,
+      range: Math.max(1, room),
+      touch: event.pointerType !== 'mouse',
     }
   }
 
@@ -99,7 +113,10 @@ export const DraggableLyrics = ({
     if (drag.moved) {
       setDragging(false)
       layout.onDragChange(false)
-    } else {
+      // A drag that ends over the video must not also count as a tap on it
+      swallowNextClick()
+    } else if (!drag.touch) {
+      // On a touch screen a tap on the lyrics is how the controls come back, not a request for the panel
       setStylePanel('pinned')
     }
   }
@@ -121,7 +138,7 @@ export const DraggableLyrics = ({
           data-testid='lyrics-handle'
           data-lyrics-style-toggle
           className={cn(
-            'pointer-events-auto mx-auto w-fit max-w-full cursor-grab touch-none rounded-xl px-[1cqw] ring-white/25 transition-[background-color,box-shadow] hover:bg-white/5 hover:ring-1',
+            'pointer-events-auto mx-auto w-fit max-w-full cursor-grab touch-none rounded-xl px-[1cqw] ring-white/25 transition-[background-color,box-shadow] hover:bg-white/5 hover:ring-1 touch:w-full',
             dragging && 'cursor-grabbing bg-white/5 ring-1'
           )}
           onPointerDown={handlePointerDown}

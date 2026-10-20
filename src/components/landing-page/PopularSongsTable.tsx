@@ -2,6 +2,7 @@ import { MicVocalIcon, PlayIcon } from 'lucide-react'
 import React, { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
 
+import LoadError from '@/components/shared/LoadError'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useOverflow } from '@/hooks/useOverflow'
@@ -32,8 +33,13 @@ const SongRowSkeleton = ({ title }: { title: React.ReactNode }) => (
 
 const LandingPageCharts: React.FC = () => {
   const navigate = useNavigate()
-  const { data: chartsData, isLoading: isChartsDataFetching } =
-    useGetChartsPlaylist()
+  const {
+    data: chartsData,
+    isLoading: isChartsDataFetching,
+    isError,
+    isFetching,
+    refetch,
+  } = useGetChartsPlaylist()
   const { data: withLyrics } = useSongsWithLyrics(
     chartsData?.map((song) => song.id) ?? []
   )
@@ -67,7 +73,18 @@ const LandingPageCharts: React.FC = () => {
         <div
           className='no-scrollbar overflow-y-auto'
           style={{ height: `${tableBodyHeight}px` }}>
+          {isError && (
+            <LoadError
+              message="Couldn't load the YouTube charts."
+              retrying={isFetching}
+              onRetry={() => {
+                void refetch()
+              }}
+              className='h-full'
+            />
+          )}
           <table
+            hidden={isError}
             className='w-full border-collapse'
             style={{ tableLayout: 'fixed' }}>
             <colgroup>

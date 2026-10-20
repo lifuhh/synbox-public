@@ -12,6 +12,7 @@ import {
 import { useEffect, useRef, useState } from 'react'
 
 import { Slider } from '@/components/ui/slider'
+import { useArmed } from '@/hooks/useArmed'
 import { cn } from '@/utils/cn'
 
 import type { PlayerVolume, StagePlayer } from './useYouTubePlayer'
@@ -104,6 +105,7 @@ export const StageControls = ({
   volume,
   onVolumeChange: setVolume,
 }: StageControlsProps) => {
+  const armed = useArmed(visible)
   const barRef = useRef<HTMLDivElement>(null)
   const contentRef = useRef<HTMLDivElement>(null)
 
@@ -162,8 +164,9 @@ export const StageControls = ({
       ref={barRef}
       style={{ transitionDuration: `${CONTROLS_FADE_MS}ms` }}
       className={cn(
-        'absolute inset-x-0 bottom-0 z-30 bg-linear-to-t from-black/80 via-black/40 to-transparent pt-10 pr-[max(1rem,var(--safe-right))] pb-[max(0.75rem,var(--safe-bottom))] pl-[max(1rem,var(--safe-left))] transition-opacity',
-        visible ? 'opacity-100' : 'pointer-events-none opacity-0'
+        'absolute inset-x-0 bottom-0 z-30 bg-linear-to-t from-black/80 via-black/40 to-transparent pt-10 pr-[max(1rem,var(--safe-right))] pb-[max(0.75rem,var(--safe-bottom))] pl-[max(1rem,var(--safe-left))] transition-opacity short:pl-[calc(var(--safe-left)+3.5rem)]',
+        visible ? 'opacity-100' : 'opacity-0',
+        !armed && 'pointer-events-none'
       )}
       onPointerDown={(event) => {
         event.stopPropagation()
@@ -260,17 +263,15 @@ export const StageControls = ({
               }}>
               <MousePointerClickIcon className='size-5' />
             </IconButton>
-            {document.fullscreenEnabled && (
-              <IconButton
-                label={fullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
-                onClick={onToggleFullscreen}>
-                {fullscreen ? (
-                  <MinimizeIcon className='size-5' />
-                ) : (
-                  <MaximizeIcon className='size-5' />
-                )}
-              </IconButton>
-            )}
+            <IconButton
+              label={fullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
+              onClick={onToggleFullscreen}>
+              {fullscreen ? (
+                <MinimizeIcon className='size-5' />
+              ) : (
+                <MaximizeIcon className='size-5' />
+              )}
+            </IconButton>
           </div>
         </div>
       </div>
