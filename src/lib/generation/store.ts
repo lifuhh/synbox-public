@@ -86,18 +86,15 @@ const untilVisible = async (signal: AbortSignal) =>
       resolve()
       return
     }
-    const done = () => {
-      document.removeEventListener('visibilitychange', check)
-      signal.removeEventListener('abort', done)
-      resolve()
-    }
-    const check = () => {
-      if (document.visibilityState === 'visible') {
-        done()
+    const settle = () => {
+      if (document.visibilityState === 'visible' || signal.aborted) {
+        document.removeEventListener('visibilitychange', settle)
+        signal.removeEventListener('abort', settle)
+        resolve()
       }
     }
-    document.addEventListener('visibilitychange', check)
-    signal.addEventListener('abort', done)
+    document.addEventListener('visibilitychange', settle)
+    signal.addEventListener('abort', settle)
   })
 
 const sleep = async (ms: number, signal: AbortSignal) =>
