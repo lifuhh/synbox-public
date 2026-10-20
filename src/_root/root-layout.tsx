@@ -1,0 +1,32 @@
+import React from 'react'
+import { Outlet } from 'react-router'
+
+import GenerationHost from '@/components/generation/generation-host'
+import TopBar from '@/components/shared/top-bar'
+
+const RootLayout: React.FC = () => (
+  <div className='relative min-h-dvh w-full'>
+    <div className='fixed inset-0 isolate overflow-hidden'>
+      <div
+        aria-hidden='true'
+        className='pointer-events-none absolute -left-40 -z-10 transform-gpu overflow-hidden blur-3xl'>
+        <div className='relative aspect-1155/678 w-160 rotate-40 bg-linear-to-tr from-backdrop-from to-backdrop-to opacity-60 clip-backdrop-blob' />
+      </div>
+      <div
+        aria-hidden='true'
+        className='pointer-events-none absolute right-10 -bottom-40 -z-10 transform-gpu overflow-hidden blur-3xl'>
+        <div className='relative aspect-1155/678 w-280 rotate-[-50deg] bg-linear-to-tr from-brand-glow to-brand-light opacity-95 clip-backdrop-blob' />
+      </div>
+    </div>
+
+    <div className='relative h-dvh w-full bg-muted/20'>
+      <TopBar />
+      <section className='flex h-full flex-1 bg-backdrop-scrim/75'>
+        <Outlet />
+      </section>
+      <GenerationHost />
+    </div>
+  </div>
+)
+
+export default RootLayout

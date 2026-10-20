@@ -71,11 +71,11 @@ export const isStageId = (value: unknown): value is StageId =>
 
 // What the panel lists: one row and one bar per step
 export const STEPS = [
-  { id: 'fetch', title: 'Fetch Song', stages: ['download', 'check', 'read'] },
-  { id: 'vocals', title: 'Isolate Vocals', stages: ['separate'] },
-  { id: 'transcribe', title: 'Transcribe', stages: ['listen', 'lyrics'] },
-  { id: 'sync', title: 'Sync Timing', stages: ['align', 'verify'] },
-  { id: 'translate', title: 'Translate', stages: ['translate', 'save'] },
+  { id: 'fetch', stages: ['download', 'check', 'read'], title: 'Fetch Song' },
+  { id: 'vocals', stages: ['separate'], title: 'Isolate Vocals' },
+  { id: 'transcribe', stages: ['listen', 'lyrics'], title: 'Transcribe' },
+  { id: 'sync', stages: ['align', 'verify'], title: 'Sync Timing' },
+  { id: 'translate', stages: ['translate', 'save'], title: 'Translate' },
 ] as const satisfies readonly {
   id: string
   title: string

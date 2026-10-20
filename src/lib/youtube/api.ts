@@ -38,9 +38,9 @@ const getHighestResThumbnail = (
   return 'https://example.com/placeholder-thumbnail.jpg'
 }
 
-export async function getLandingPagePlaylist(): Promise<
+export const getLandingPagePlaylist = async (): Promise<
   formattedYoutubeVideoItemForCarousel[]
-> {
+> => {
   const response = await axios.get<YoutubePlaylistApiResponse>(
     `/api/youtube/playlist/${LANDING_PLAYLIST}`
   )
@@ -53,12 +53,13 @@ export async function getLandingPagePlaylist(): Promise<
 // The chart is 100 songs, two pages of the API's maximum
 const CHART_PAGES = 2
 
-export async function getChartsPlaylist(): Promise<
+export const getChartsPlaylist = async (): Promise<
   { title: string; id: string }[]
-> {
+> => {
   const songs: { title: string; id: string }[] = []
   let pageToken: string | undefined
-  for (let page = 0; page < CHART_PAGES; page++) {
+  for (let page = 0; page < CHART_PAGES; page += 1) {
+    // oxlint-disable-next-line eslint/no-await-in-loop -- each page needs the previous page's token
     const response = await axios.get<YoutubePlaylistApiResponse>(
       `/api/youtube/playlist/${CHARTS_PLAYLIST}`,
       { params: { pageToken } }
@@ -72,9 +73,9 @@ export async function getChartsPlaylist(): Promise<
   return songs
 }
 
-export async function getYoutubeVideoInfo(
+export const getYoutubeVideoInfo = async (
   videoId: string
-): Promise<YoutubeSearchResultInfo> {
+): Promise<YoutubeSearchResultInfo> => {
   const response = await axios.get<YoutubeSearchApiResponse>(
     `/api/youtube/video/${encodeURIComponent(videoId)}`
   )
@@ -85,18 +86,18 @@ export async function getYoutubeVideoInfo(
     throw new Error('No video found for this video ID')
   }
 
-  const songInfo = songResults[0]
+  const [songInfo] = songResults
   const duration = songInfo.contentDetails?.duration
   const songData = {
-    id: songInfo.id,
-    title: songInfo.snippet.title,
     channelTitle: songInfo.snippet.channelTitle,
-    description: songInfo.snippet.description,
-    tags: songInfo.snippet.tags ?? [],
     defaultAudioLanguage: songInfo.snippet.defaultAudioLanguage ?? '',
-    thumbnail: getHighestResThumbnail(songInfo.snippet.thumbnails),
+    description: songInfo.snippet.description,
     duration: duration === undefined || duration === '' ? '-1' : duration,
+    id: songInfo.id,
     statistics: songInfo.statistics,
+    tags: songInfo.snippet.tags ?? [],
+    thumbnail: getHighestResThumbnail(songInfo.snippet.thumbnails),
+    title: songInfo.snippet.title,
   }
 
   return songData

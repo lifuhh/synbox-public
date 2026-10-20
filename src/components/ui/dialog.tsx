@@ -1,6 +1,8 @@
 'use client'
 
 import * as DialogPrimitive from '@radix-ui/react-dialog'
+import { cva } from 'class-variance-authority'
+import type { VariantProps } from 'class-variance-authority'
 import { X } from 'lucide-react'
 import * as React from 'react'
 
@@ -14,10 +16,10 @@ const DialogPortal = DialogPrimitive.Portal
 
 const DialogClose = DialogPrimitive.Close
 
-const DialogOverlay = React.forwardRef<
-  React.ElementRef<typeof DialogPrimitive.Overlay>,
+const DialogOverlayRender: React.ForwardRefRenderFunction<
+  React.ComponentRef<typeof DialogPrimitive.Overlay>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Overlay>
->(({ className, ...props }, ref) => (
+> = ({ className, ...props }, ref) => (
   <DialogPrimitive.Overlay
     ref={ref}
     className={cn(
@@ -26,19 +28,34 @@ const DialogOverlay = React.forwardRef<
     )}
     {...props}
   />
-))
+)
+const DialogOverlay = React.forwardRef(DialogOverlayRender)
 DialogOverlay.displayName = DialogPrimitive.Overlay.displayName
 
-const DialogContent = React.forwardRef<
-  React.ElementRef<typeof DialogPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
->(({ className, children, ...props }, ref) => (
+const dialogContentVariants = cva('', {
+  defaultVariants: { variant: 'default' },
+  variants: {
+    variant: {
+      // Edge to edge: the content lays out its own padding
+      bare: 'gap-0 p-0',
+      default: '',
+      subtle: 'border-white/10',
+    },
+  },
+})
+
+const DialogContentRender: React.ForwardRefRenderFunction<
+  React.ComponentRef<typeof DialogPrimitive.Content>,
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> &
+    VariantProps<typeof dialogContentVariants>
+> = ({ className, children, variant, ...props }, ref) => (
   <DialogPortal>
     <DialogOverlay />
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
         'fixed top-[50%] left-[50%] z-50 grid max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 overflow-y-auto rounded-lg border bg-background p-6 shadow-lg duration-200 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%]',
+        dialogContentVariants({ variant }),
         className
       )}
       {...props}>
@@ -49,7 +66,8 @@ const DialogContent = React.forwardRef<
       </DialogPrimitive.Close>
     </DialogPrimitive.Content>
   </DialogPortal>
-))
+)
+const DialogContent = React.forwardRef(DialogContentRender)
 DialogContent.displayName = DialogPrimitive.Content.displayName
 
 const DialogHeader = ({
@@ -66,13 +84,27 @@ const DialogHeader = ({
 )
 DialogHeader.displayName = 'DialogHeader'
 
+const dialogFooterVariants = cva('', {
+  defaultVariants: { gap: 'default' },
+  variants: {
+    // Space between buttons when they stack on a narrow screen
+    gap: {
+      default: '',
+      md: 'gap-2',
+    },
+  },
+})
+
 const DialogFooter = ({
   className,
+  gap,
   ...props
-}: React.HTMLAttributes<HTMLDivElement>) => (
+}: React.HTMLAttributes<HTMLDivElement> &
+  VariantProps<typeof dialogFooterVariants>) => (
   <div
     className={cn(
       'flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2',
+      dialogFooterVariants({ gap }),
       className
     )}
     {...props}
@@ -80,31 +112,45 @@ const DialogFooter = ({
 )
 DialogFooter.displayName = 'DialogFooter'
 
-const DialogTitle = React.forwardRef<
-  React.ElementRef<typeof DialogPrimitive.Title>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Title>
->(({ className, ...props }, ref) => (
+const dialogTitleVariants = cva('', {
+  defaultVariants: { size: 'default' },
+  variants: {
+    size: {
+      default: '',
+      sm: 'text-base font-semibold',
+    },
+  },
+})
+
+const DialogTitleRender: React.ForwardRefRenderFunction<
+  React.ComponentRef<typeof DialogPrimitive.Title>,
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Title> &
+    VariantProps<typeof dialogTitleVariants>
+> = ({ className, size, ...props }, ref) => (
   <DialogPrimitive.Title
     ref={ref}
     className={cn(
       'text-lg leading-none font-semibold tracking-tight',
+      dialogTitleVariants({ size }),
       className
     )}
     {...props}
   />
-))
+)
+const DialogTitle = React.forwardRef(DialogTitleRender)
 DialogTitle.displayName = DialogPrimitive.Title.displayName
 
-const DialogDescription = React.forwardRef<
-  React.ElementRef<typeof DialogPrimitive.Description>,
+const DialogDescriptionRender: React.ForwardRefRenderFunction<
+  React.ComponentRef<typeof DialogPrimitive.Description>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Description>
->(({ className, ...props }, ref) => (
+> = ({ className, ...props }, ref) => (
   <DialogPrimitive.Description
     ref={ref}
     className={cn('text-sm text-muted-foreground', className)}
     {...props}
   />
-))
+)
+const DialogDescription = React.forwardRef(DialogDescriptionRender)
 DialogDescription.displayName = DialogPrimitive.Description.displayName
 
 export {

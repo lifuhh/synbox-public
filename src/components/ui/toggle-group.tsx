@@ -12,28 +12,33 @@ const ToggleGroupContext = React.createContext<
   variant: 'default',
 })
 
-const ToggleGroup = React.forwardRef<
-  React.ElementRef<typeof ToggleGroupPrimitive.Root>,
+const ToggleGroupRender: React.ForwardRefRenderFunction<
+  React.ComponentRef<typeof ToggleGroupPrimitive.Root>,
   React.ComponentPropsWithoutRef<typeof ToggleGroupPrimitive.Root> &
     VariantProps<typeof toggleVariants>
->(({ className, variant, size, children, ...props }, ref) => (
-  <ToggleGroupPrimitive.Root
-    ref={ref}
-    className={cn('flex items-center justify-center gap-1', className)}
-    {...props}>
-    <ToggleGroupContext.Provider value={{ variant, size }}>
-      {children}
-    </ToggleGroupContext.Provider>
-  </ToggleGroupPrimitive.Root>
-))
+> = ({ className, variant, size, children, ...props }, ref) => {
+  const context = React.useMemo(() => ({ size, variant }), [size, variant])
+
+  return (
+    <ToggleGroupPrimitive.Root
+      ref={ref}
+      className={cn('flex items-center justify-center gap-1', className)}
+      {...props}>
+      <ToggleGroupContext.Provider value={context}>
+        {children}
+      </ToggleGroupContext.Provider>
+    </ToggleGroupPrimitive.Root>
+  )
+}
+const ToggleGroup = React.forwardRef(ToggleGroupRender)
 
 ToggleGroup.displayName = ToggleGroupPrimitive.Root.displayName
 
-const ToggleGroupItem = React.forwardRef<
-  React.ElementRef<typeof ToggleGroupPrimitive.Item>,
+const ToggleGroupItemRender: React.ForwardRefRenderFunction<
+  React.ComponentRef<typeof ToggleGroupPrimitive.Item>,
   React.ComponentPropsWithoutRef<typeof ToggleGroupPrimitive.Item> &
     VariantProps<typeof toggleVariants>
->(({ className, children, variant, size, ...props }, ref) => {
+> = ({ className, children, variant, size, ...props }, ref) => {
   const context = React.useContext(ToggleGroupContext)
 
   return (
@@ -41,8 +46,8 @@ const ToggleGroupItem = React.forwardRef<
       ref={ref}
       className={cn(
         toggleVariants({
-          variant: context.variant || variant,
-          size: context.size || size,
+          size: context.size ?? size,
+          variant: context.variant ?? variant,
         }),
         className
       )}
@@ -50,7 +55,8 @@ const ToggleGroupItem = React.forwardRef<
       {children}
     </ToggleGroupPrimitive.Item>
   )
-})
+}
+const ToggleGroupItem = React.forwardRef(ToggleGroupItemRender)
 
 ToggleGroupItem.displayName = ToggleGroupPrimitive.Item.displayName
 

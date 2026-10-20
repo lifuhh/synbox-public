@@ -39,11 +39,34 @@ const serveYoutube = async (
     }
     res.end(await response.text())
   } catch (error) {
+    // oxlint-disable-next-line node/callback-return -- Connect's next() ends the request; returning its void result breaks no-confusing-void-expression
     next(error)
   }
 }
 
 export default defineConfig({
+  build: {
+    chunkSizeWarningLimit: 1000,
+    rolldownOptions: {
+      onLog(level, log, handler) {
+        if (
+          log.cause instanceof Error &&
+          log.cause.message === `Can't resolve original location of error.`
+        ) {
+          return
+        }
+        handler(level, log)
+      },
+    },
+    // Maps go to Sentry, not to the deployed site
+    sourcemap: 'hidden',
+  },
+  // Netlify's commit for the build, shown in the profile menu so a tester can tell which one is running
+  define: {
+    __BUILD_ID__: JSON.stringify(
+      (process.env.COMMIT_REF ?? 'local').slice(0, 7)
+    ),
+  },
   fmt: {
     ...ultraciteFmt,
     bracketSameLine: true,
@@ -67,29 +90,11 @@ export default defineConfig({
       { name: 'vite-plus', specifier: 'vite-plus/oxlint-plugin' },
     ],
     options: { typeAware: true, typeCheck: true },
-    rules: { 'vite-plus/prefer-vite-plus-imports': 'error' },
-  },
-  // Netlify's commit for the build, shown in the profile menu so a tester can tell which one is running
-  define: {
-    __BUILD_ID__: JSON.stringify(
-      (process.env.COMMIT_REF ?? 'local').slice(0, 7)
-    ),
-  },
-  build: {
-    chunkSizeWarningLimit: 1000,
-    rolldownOptions: {
-      onLog(level, log, handler) {
-        if (
-          log.cause instanceof Error &&
-          log.cause.message === `Can't resolve original location of error.`
-        ) {
-          return
-        }
-        handler(level, log)
-      },
+    rules: {
+      // React 19's types require useRef's initial value, so `useRef<T | undefined>(undefined)` must pass it
+      'unicorn/no-useless-undefined': ['error', { checkArguments: false }],
+      'vite-plus/prefer-vite-plus-imports': 'error',
     },
-    // Maps go to Sentry, not to the deployed site
-    sourcemap: 'hidden',
   },
   plugins: lazyPlugins(() => [
     // Without it the built site sends every backend call to its own host

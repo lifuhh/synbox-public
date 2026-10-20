@@ -1,9 +1,11 @@
 'use client'
 
 import * as TooltipPrimitive from '@radix-ui/react-tooltip'
+import { cva } from 'class-variance-authority'
+import type { VariantProps } from 'class-variance-authority'
 import * as React from 'react'
 
-import { useMediaQuery } from '@/hooks/useMediaQuery'
+import { useMediaQuery } from '@/hooks/use-media-query'
 import { cn } from '@/utils/cn'
 
 const TooltipProvider = TooltipPrimitive.Provider
@@ -32,10 +34,23 @@ const Tooltip = ({
 
 const TooltipTrigger = TooltipPrimitive.Trigger
 
-const TooltipContent = React.forwardRef<
-  React.ElementRef<typeof TooltipPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof TooltipPrimitive.Content>
->(({ className, sideOffset = 4, ...props }, ref) => (
+const tooltipContentVariants = cva('', {
+  defaultVariants: { variant: 'default' },
+  variants: {
+    variant: {
+      // Borderless on a brand-colored or accent fill
+      accent: 'border-none bg-accent unhighlightable',
+      default: '',
+      primary: 'border-none bg-primary text-white unhighlightable',
+    },
+  },
+})
+
+const TooltipContentRender: React.ForwardRefRenderFunction<
+  React.ComponentRef<typeof TooltipPrimitive.Content>,
+  React.ComponentPropsWithoutRef<typeof TooltipPrimitive.Content> &
+    VariantProps<typeof tooltipContentVariants>
+> = ({ className, sideOffset = 4, variant, ...props }, ref) => (
   // Rendered inline, the content joins its trigger's parent layout (gaps,
   // space-y margins) and shifts it
   <TooltipPrimitive.Portal>
@@ -44,12 +59,14 @@ const TooltipContent = React.forwardRef<
       sideOffset={sideOffset}
       className={cn(
         'z-999 animate-in overflow-hidden rounded-md border bg-popover px-3 py-1.5 text-sm text-popover-foreground shadow-md fade-in-0 zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95',
+        tooltipContentVariants({ variant }),
         className
       )}
       {...props}
     />
   </TooltipPrimitive.Portal>
-))
+)
+const TooltipContent = React.forwardRef(TooltipContentRender)
 TooltipContent.displayName = TooltipPrimitive.Content.displayName
 
 export { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger }

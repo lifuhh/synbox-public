@@ -95,9 +95,11 @@ describe('tokenFillParts', () => {
   test('the fill leads each mora by FILL_LEAD, so a kanji is half lit on time', () => {
     const [[noko, shi]] = tokenFillParts(line([nokoshi]))
     expect(fillProgress(noko.spans, 10 - L)).toBe(0)
-    expect(fillProgress(noko.spans, 10.2 - L)).toBe(0.5) // の done as こ begins
+    // の done as こ begins
+    expect(fillProgress(noko.spans, 10.2 - L)).toBe(0.5)
     expect(fillProgress(noko.spans, 10.4 - L)).toBe(1)
-    expect(fillProgress(shi.spans, 10.4 - L)).toBe(0) // し waits for its own ramp
+    // し waits for its own ramp
+    expect(fillProgress(shi.spans, 10.4 - L)).toBe(0)
   })
 
   test('a held note fills in FILL_MAX, a very short mora in FILL_MIN', () => {
@@ -178,9 +180,11 @@ describe('currentLineIndex', () => {
   test('shows the next line LINE_LEAD_IN early, unless the previous one is still sung', () => {
     expect(currentLineIndex(lines, 9.4)).toBe(-1)
     expect(currentLineIndex(lines, 10 - LINE_LEAD_IN)).toBe(0)
-    expect(currentLineIndex(lines, 11.9)).toBe(0) // line 1's lead-in, but line 0 still sung
+    // line 1's lead-in, but line 0 still sung
+    expect(currentLineIndex(lines, 11.9)).toBe(0)
     expect(currentLineIndex(lines, 12.05)).toBe(1)
-    expect(currentLineIndex(lines, 17)).toBe(-1) // a gap between lines
+    // a gap between lines
+    expect(currentLineIndex(lines, 17)).toBe(-1)
     expect(currentLineIndex(lines, 20 - LINE_LEAD_IN)).toBe(2)
   })
 })

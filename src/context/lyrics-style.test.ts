@@ -6,7 +6,7 @@ import {
   DEFAULT_LYRICS_STYLE,
   decodeSharedStyle,
   encodeSharedStyle,
-} from '@/lib/lyricsStyle'
+} from '@/lib/lyrics-style'
 
 import {
   applySongLyricsStyleToAllAtom,

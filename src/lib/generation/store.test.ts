@@ -10,13 +10,14 @@ import {
 // Every request hangs until it is aborted, so started jobs stay running
 beforeEach(() => {
   vi.stubGlobal('document', {
-    addEventListener: () => undefined,
-    removeEventListener: () => undefined,
+    addEventListener: () => {},
+    removeEventListener: () => {},
     visibilityState: 'visible',
   })
   vi.stubGlobal(
     'fetch',
     async (_url: string, init: RequestInit) =>
+      // oxlint-disable-next-line promise/avoid-new -- a fetch that only ends when aborted
       await new Promise((_resolve, reject) => {
         init.signal?.addEventListener('abort', () => {
           reject(new DOMException('Aborted', 'AbortError'))

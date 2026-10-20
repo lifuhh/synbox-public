@@ -3,6 +3,7 @@ import type { ComponentProps } from 'react'
 export const SynboxLogo: React.FC = () => (
   <img
     src='/assets/icons/Synbox_logo_dark_1.svg'
+    alt=''
     className='pointer-events-none w-auto py-4'
   />
 )

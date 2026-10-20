@@ -1,9 +1,32 @@
+import { cva } from 'class-variance-authority'
+import type { VariantProps } from 'class-variance-authority'
+
 import { cn } from '@/utils/cn'
 
-const Skeleton = ({ className, ...props }: React.ComponentProps<'div'>) => (
+const skeletonVariants = cva('', {
+  defaultVariants: { shape: 'default' },
+  variants: {
+    // Matches the corners of what is loading
+    shape: {
+      card: 'rounded-xl',
+      default: '',
+      thumbnail: 'rounded-lg',
+    },
+  },
+})
+
+const Skeleton = ({
+  className,
+  shape,
+  ...props
+}: React.ComponentProps<'div'> & VariantProps<typeof skeletonVariants>) => (
   <div
     data-slot='skeleton'
-    className={cn('animate-pulse rounded-md bg-accent', className)}
+    className={cn(
+      'animate-pulse rounded-md bg-accent',
+      skeletonVariants({ shape }),
+      className
+    )}
     {...props}
   />
 )

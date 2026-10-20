@@ -9,9 +9,11 @@ import { isKaraokeDoc } from './api'
 describe('isKaraokeDoc', () => {
   test('accepts the backend’s version 2 doc, and the player can fill its lines', () => {
     const doc: unknown = karaokeV2
-    if (!isKaraokeDoc(doc)) throw new Error('the backend’s v2 doc was rejected')
+    if (!isKaraokeDoc(doc)) {
+      throw new Error('the backend’s v2 doc was rejected')
+    }
     const parts = tokenFillParts(doc.lines[0]).flat()
-    const end = doc.lines[0].end
+    const [{ end }] = doc.lines
     expect(parts.length).toBeGreaterThan(0)
     expect(parts.every((part) => fillProgress(part.spans, end) === 1)).toBe(
       true

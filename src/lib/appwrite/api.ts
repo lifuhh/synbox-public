@@ -1,4 +1,5 @@
 import { AppwriteException, Query } from 'appwrite'
+import type { Models } from 'appwrite'
 import { z } from 'zod'
 
 import type { CurrentPlayingInfo } from '@/types'
@@ -9,7 +10,7 @@ import {
   youtubeIdFromAppwriteId,
 } from '@/utils'
 
-import { appwriteConfig, databases } from './config'
+import { appwriteConfig, tables } from './config'
 
 const songInfoDocumentSchema = z.object({
   author: z.string(),
@@ -18,53 +19,54 @@ const songInfoDocumentSchema = z.object({
 })
 
 // Reads fall back to the pre-migration id, so a song is found while its row is being moved.
-const getSongDocument = async (collectionId: string, songId: string) => {
+const getSongDocument = async (tableId: string, songId: string) => {
   const id = createAppwriteIdFromYoutubeId(songId)
   const legacyId = legacyAppwriteIdFromYoutubeId(songId)
   try {
-    return await databases.getDocument(
-      appwriteConfig.databaseId,
-      collectionId,
-      id
-    )
+    return await tables.getRow({
+      databaseId: appwriteConfig.databaseId,
+      rowId: id,
+      tableId,
+    })
   } catch (error) {
     const isNotFound = error instanceof AppwriteException && error.code === 404
     if (!isNotFound || legacyId === id) {
       throw error
     }
-    return await databases.getDocument(
-      appwriteConfig.databaseId,
-      collectionId,
-      legacyId
-    )
+    return await tables.getRow({
+      databaseId: appwriteConfig.databaseId,
+      rowId: legacyId,
+      tableId,
+    })
   }
 }
 
-export async function addSongInfoBySongId(songInfo: CurrentPlayingInfo) {
+export const addSongInfoBySongId = async (songInfo: CurrentPlayingInfo) => {
   const { videoId, title, author, thumbnailUrl } = songInfo
 
+  let songInfoUpload: Models.DefaultRow | undefined
   try {
     const appwriteId = createAppwriteIdFromYoutubeId(videoId)
 
-    const songInfoUpload = await databases.createDocument(
-      appwriteConfig.databaseId,
-      appwriteConfig.songInfoId,
-      appwriteId,
-      {
-        title,
+    songInfoUpload = await tables.createRow({
+      data: {
         author,
         thumbnailUrl,
-      }
-    )
-    return songInfoUpload
+        title,
+      },
+      databaseId: appwriteConfig.databaseId,
+      rowId: appwriteId,
+      tableId: appwriteConfig.songInfoId,
+    })
   } catch (error) {
-    console.log('Add Song Info Error: ', error)
+    console.log('Add Song Info Error:', error)
   }
+  return songInfoUpload
 }
 
-export async function getSongInfoBySongId(
+export const getSongInfoBySongId = async (
   songId: string
-): Promise<CurrentPlayingInfo | null> {
+): Promise<CurrentPlayingInfo | null> => {
   if (!songId) {
     throw new Error('No Song Id!')
   }
@@ -78,10 +80,10 @@ export async function getSongInfoBySongId(
     }
 
     const result = {
-      videoId: songId,
-      title: songInfo.data.title,
       author: songInfo.data.author,
       thumbnailUrl: songInfo.data.thumbnailUrl,
+      title: songInfo.data.title,
+      videoId: songId,
     }
 
     return result
@@ -90,16 +92,16 @@ export async function getSongInfoBySongId(
       if (error.message === 'No Song Info found.') {
         return null
       }
-      console.error('API Error: ', error)
+      console.error('API Error:', error)
       throw error
     } else {
       console.error('An unexpected error occurred of unknown type:', error)
-      throw new Error('An unknown error occurred')
+      throw new Error('An unknown error occurred', { cause: error })
     }
   }
 }
 
-export async function getSongLyricsById(songId: string) {
+export const getSongLyricsById = async (songId: string) => {
   if (!songId) {
     throw new Error('No songId given')
   }
@@ -117,11 +119,11 @@ export async function getSongLyricsById(songId: string) {
       return null
     }
     if (error instanceof Error) {
-      console.error('API Error: ', error)
+      console.error('API Error:', error)
       throw error
     } else {
       console.error('An unexpected error occurred of unknown type:', error)
-      throw new Error('An unknown error occurred')
+      throw new Error('An unknown error occurred', { cause: error })
     }
   }
 }
@@ -145,22 +147,23 @@ export const songsWithLyrics = async (videoIds: string[]) => {
     ids.slice(i * PAGE, (i + 1) * PAGE)
   )
   const pages = await Promise.all(
-    chunks.map((chunk) =>
-      databases.listDocuments({
-        collectionId: appwriteConfig.lyricsId,
-        databaseId: appwriteConfig.databaseId,
-        queries: [
-          Query.equal('$id', chunk),
-          Query.select(['$id']),
-          Query.limit(PAGE),
-        ],
-        total: false,
-      })
+    chunks.map(
+      async (chunk) =>
+        await tables.listRows({
+          databaseId: appwriteConfig.databaseId,
+          queries: [
+            Query.equal('$id', chunk),
+            Query.select(['$id']),
+            Query.limit(PAGE),
+          ],
+          tableId: appwriteConfig.lyricsId,
+          total: false,
+        })
     )
   )
   return new Set(
     pages.flatMap((page) =>
-      page.documents.map((row) => youtubeIdFromAppwriteId(row.$id))
+      page.rows.map((row) => youtubeIdFromAppwriteId(row.$id))
     )
   )
 }
@@ -170,19 +173,20 @@ export const songsWithLyrics = async (videoIds: string[]) => {
 export const listGallerySongs = async (): Promise<GallerySong[]> => {
   const rows: z.infer<typeof galleryRowSchema>[] = []
   for (;;) {
-    const last = rows[rows.length - 1]
-    const page = await databases.listDocuments({
-      collectionId: appwriteConfig.songInfoId,
+    const last = rows.at(-1)
+    // oxlint-disable-next-line eslint/no-await-in-loop -- each page starts after the last row of the one before
+    const page = await tables.listRows({
       databaseId: appwriteConfig.databaseId,
       queries: [
         Query.select(['$id', 'title', 'author', 'thumbnailUrl']),
         Query.limit(PAGE),
         ...(last ? [Query.cursorAfter(last.$id)] : []),
       ],
+      tableId: appwriteConfig.songInfoId,
       total: false,
     })
-    rows.push(...page.documents.map((row) => galleryRowSchema.parse(row)))
-    if (page.documents.length < PAGE) {
+    rows.push(...page.rows.map((row) => galleryRowSchema.parse(row)))
+    if (page.rows.length < PAGE) {
       break
     }
   }
