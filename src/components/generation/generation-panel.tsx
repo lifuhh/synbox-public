@@ -51,7 +51,10 @@ const generatingLabel = (job: Job, running: boolean) => {
 
 const SongHeader = ({ job, onClose }: { job: Job; onClose: () => void }) => {
   const running = isActive(job)
-  const title = titleOf(job)
+  let title = titleOf(job)
+  if (title === '') {
+    title = running ? 'Fetching Song Details…' : 'Song Details Unavailable'
+  }
   const channel = job.video?.channel ?? ''
   const subtitle = channel === '' ? generatingLabel(job, running) : channel
   return (
@@ -67,9 +70,7 @@ const SongHeader = ({ job, onClose }: { job: Job; onClose: () => void }) => {
         />
       </span>
       <div className='min-w-0 flex-1'>
-        <p className='truncate text-sm font-semibold text-white'>
-          {title === '' ? 'Fetching Song Details…' : title}
-        </p>
+        <p className='truncate text-sm font-semibold text-white'>{title}</p>
         {subtitle !== '' && (
           <p className='truncate text-xs text-white/55'>{subtitle}</p>
         )}
@@ -323,15 +324,17 @@ const GenerationPanel = ({
                     {status.message}
                   </p>
                   <div className='flex gap-2'>
-                    <Button
-                      gap='md'
-                      className='flex-1'
-                      onClick={() => {
-                        retryGeneration(job.id)
-                      }}>
-                      <RotateCcw className='size-4' />
-                      Try Again
-                    </Button>
+                    {status.retry ? (
+                      <Button
+                        gap='md'
+                        className='flex-1'
+                        onClick={() => {
+                          retryGeneration(job.id)
+                        }}>
+                        <RotateCcw className='size-4' />
+                        Try Again
+                      </Button>
+                    ) : null}
                     <Button
                       variant='overlay'
                       className='flex-1'

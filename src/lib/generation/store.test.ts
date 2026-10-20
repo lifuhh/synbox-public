@@ -47,3 +47,36 @@ test('songs past the running limit wait, and start when a slot frees', () => {
   expect(kinds()).toEqual(['running', 'running', 'running'])
   expect(getGenerationState().focusedId).toBe(jobs[3].id)
 })
+
+// The player answers 150 for this id, as YouTube does for age-restricted videos
+const YOUTUBE_ONLY = 'x8VYWazR5mE'
+vi.mock('@/lib/youtube/embed-check', () => ({
+  playsOutsideYouTube: async (videoId: string) =>
+    await Promise.resolve(videoId !== YOUTUBE_ONLY),
+}))
+
+test('a video YouTube keeps to youtube.com fails before the backend is asked, with no retry', async () => {
+  vi.resetModules()
+  const store = await import('./store')
+  const fetchMock = vi.fn(globalThis.fetch)
+  vi.stubGlobal('fetch', fetchMock)
+
+  store.startGeneration({ mode: 'new', videoId: YOUTUBE_ONLY })
+  await vi.waitFor(() => {
+    expect(store.getGenerationState().jobs[0].status.kind).toBe('failed')
+  })
+  const [job] = store.getGenerationState().jobs
+  expect(job.status).toMatchObject({ kind: 'failed', retry: false })
+  expect(
+    fetchMock.mock.calls.filter(
+      ([, init]) =>
+        typeof init?.body === 'string' && init.body.includes(YOUTUBE_ONLY)
+    )
+  ).toEqual([])
+
+  // Any other video still goes to the backend
+  store.startGeneration({ mode: 'new', videoId: 'b'.repeat(11) })
+  await vi.waitFor(() => {
+    expect(fetchMock).toHaveBeenCalled()
+  })
+})
