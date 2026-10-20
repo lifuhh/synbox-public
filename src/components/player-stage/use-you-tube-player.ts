@@ -76,6 +76,9 @@ const nextPhase = (
     case YTState.Cued: {
       return { kind: 'ready' }
     }
+    case YTState.Unstarted: {
+      return current
+    }
     default: {
       return current
     }
@@ -181,15 +184,6 @@ export const useYouTubePlayer = ({
   )
 
   useEffect(() => {
-    const host = hostRef.current
-    if (!host || suspended) {
-      return
-    }
-    let disposed = false
-    let settleTimer: ReturnType<typeof setTimeout> | undefined
-    const target = document.createElement('div')
-    host.append(target)
-
     const settle = () => {
       setPhase((current) =>
         current.kind === 'playing'
@@ -198,83 +192,92 @@ export const useYouTubePlayer = ({
       )
     }
 
-    const create = async () => {
-      const YT = await loadYouTubeIframeApi()
-      if (disposed) {
-        return
-      }
-      const player = new YT.Player(target, {
-        events: {
-          onError: ({ data }) => {
-            if (disposed) {
-              return
-            }
-            log(`error ${data}`)
-            setPhase({ kind: 'error', code: data })
-          },
-          onReady: () => {
-            if (disposed) {
-              return
-            }
-            playerRef.current = player
-            applyVolume(player, volumeRef.current)
-            dropCaptions(player)
-            log('ready')
-            setPhase({ kind: 'ready' })
-          },
-          onStateChange: ({ data }) => {
-            if (disposed) {
-              return
-            }
-            log(`state ${STATE_NAMES[data] ?? data}`)
-            if (data === YTState.Playing) {
-              stoppedByGuardRef.current = false
-              dropCaptions(player)
-              maskCenter('playing')
-              clearTimeout(settleTimer)
-              settleTimer = setTimeout(
-                settle,
-                latest.current.quirks.coverHoldMs
-              )
-            }
-            setPhase((current) =>
-              nextPhase(
-                current,
-                data,
-                stoppedByGuardRef.current,
-                latest.current.coverPause
-              )
-            )
-          },
-        },
-        height: '100%',
-        host: 'https://www.youtube-nocookie.com',
-        playerVars: {
-          cc_load_policy: 0,
-          controls: 0,
-          disablekb: 1,
-          enablejsapi: 1,
-          fs: 0,
-          hl: 'en',
-          iv_load_policy: 3,
-          origin: window.location.origin,
-          playsinline: 1,
-          rel: 0,
-          start: Math.floor(resumeAtRef.current),
-        },
-        videoId,
-        width: '100%',
-      })
-    }
-    void create()
+    const mount = (host: HTMLDivElement) => {
+      let disposed = false
+      let settleTimer: ReturnType<typeof setTimeout> | undefined
+      const target = document.createElement('div')
+      host.append(target)
 
-    return () => {
-      disposed = true
-      clearTimeout(settleTimer)
-      playerRef.current?.destroy()
-      playerRef.current = null
-      host.replaceChildren()
+      const create = async () => {
+        const YT = await loadYouTubeIframeApi()
+        if (disposed) {
+          return
+        }
+        const player = new YT.Player(target, {
+          events: {
+            onError: ({ data }) => {
+              if (disposed) {
+                return
+              }
+              log(`error ${data}`)
+              setPhase({ code: data, kind: 'error' })
+            },
+            onReady: () => {
+              if (disposed) {
+                return
+              }
+              playerRef.current = player
+              applyVolume(player, volumeRef.current)
+              dropCaptions(player)
+              log('ready')
+              setPhase({ kind: 'ready' })
+            },
+            onStateChange: ({ data }) => {
+              if (disposed) {
+                return
+              }
+              log(`state ${STATE_NAMES[data] ?? data}`)
+              if (data === YTState.Playing) {
+                stoppedByGuardRef.current = false
+                dropCaptions(player)
+                maskCenter('playing')
+                clearTimeout(settleTimer)
+                settleTimer = setTimeout(
+                  settle,
+                  latest.current.quirks.coverHoldMs
+                )
+              }
+              setPhase((current) =>
+                nextPhase(
+                  current,
+                  data,
+                  stoppedByGuardRef.current,
+                  latest.current.coverPause
+                )
+              )
+            },
+          },
+          height: '100%',
+          host: 'https://www.youtube-nocookie.com',
+          playerVars: {
+            cc_load_policy: 0,
+            controls: 0,
+            disablekb: 1,
+            enablejsapi: 1,
+            fs: 0,
+            hl: 'en',
+            iv_load_policy: 3,
+            origin: window.location.origin,
+            playsinline: 1,
+            rel: 0,
+            start: Math.floor(resumeAtRef.current),
+          },
+          videoId,
+          width: '100%',
+        })
+      }
+      void create()
+
+      return () => {
+        disposed = true
+        clearTimeout(settleTimer)
+        playerRef.current?.destroy()
+        playerRef.current = null
+        host.replaceChildren()
+      }
     }
+    const hostNode = hostRef.current
+    return hostNode && !suspended ? mount(hostNode) : undefined
   }, [videoId, suspended, applyVolume, dropCaptions, log, maskCenter])
 
   // Before onReady these only record the value; onReady applies it
@@ -352,12 +355,12 @@ export const useYouTubePlayer = ({
   // `muted` mutes YouTube before asking it to play: browsers only allow an
   // autoplay without a user gesture when it is silent
   const play = useCallback(
-    ({ muted = false }: { muted?: boolean } = {}) => {
+    ({ muted: silent = false }: { muted?: boolean } = {}) => {
       const player = playerRef.current
       if (!player) {
         return
       }
-      if (muted) {
+      if (silent) {
         player.mute()
       }
       if (phaseRef.current.kind === 'ended') {

@@ -137,25 +137,25 @@ export const StageControls = ({
   const contentRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    const bar = barRef.current
-    const content = contentRef.current
-    if (!(bar && content)) {
-      return
+    const observe = (bar: HTMLDivElement, content: HTMLDivElement) => {
+      // Published for the generation button, which floats above the controls on the player
+      const root = document.documentElement
+      const observer = new ResizeObserver(() => {
+        // The gradient above the controls is see-through, so only the rows count
+        const height = bar.clientHeight - content.offsetTop + OBSTRUCTION_GAP_PX
+        onHeightChange(height)
+        root.style.setProperty('--stage-controls-h', `${height}px`)
+      })
+      observer.observe(bar)
+      observer.observe(content)
+      return () => {
+        observer.disconnect()
+        root.style.removeProperty('--stage-controls-h')
+      }
     }
-    // Published for the generation button, which floats above the controls on the player
-    const root = document.documentElement
-    const observer = new ResizeObserver(() => {
-      // The gradient above the controls is see-through, so only the rows count
-      const height = bar.clientHeight - content.offsetTop + OBSTRUCTION_GAP_PX
-      onHeightChange(height)
-      root.style.setProperty('--stage-controls-h', `${height}px`)
-    })
-    observer.observe(bar)
-    observer.observe(content)
-    return () => {
-      observer.disconnect()
-      root.style.removeProperty('--stage-controls-h')
-    }
+    const barNode = barRef.current
+    const contentNode = contentRef.current
+    return barNode && contentNode ? observe(barNode, contentNode) : undefined
   }, [onHeightChange])
 
   const time = usePlaybackClock(player)
@@ -227,7 +227,9 @@ export const StageControls = ({
           {/* Touch screens play and pause from the button in the middle of the stage instead */}
           <IconButton
             label={isPlaying ? 'Pause' : 'Play'}
-            onClick={player.togglePlay}
+            onClick={() => {
+              player.togglePlay()
+            }}
             className='touch:hidden'>
             {isPlaying ? (
               <PauseIcon className='size-5' />

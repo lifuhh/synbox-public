@@ -18,8 +18,13 @@ import { isStandalone } from '@/lib/pwa'
 import { cn } from '@/utils/cn'
 
 import { StageControls } from './stage-controls'
+import type { SeekFlash } from './use-stage-taps'
 import { useStageTaps } from './use-stage-taps'
-import type { PlayerVolume, StagePhase, StagePlayer } from './use-you-tube-player'
+import type {
+  PlayerVolume,
+  StagePhase,
+  StagePlayer,
+} from './use-you-tube-player'
 import { useYouTubePlayer } from './use-you-tube-player'
 import type { YouTubeQuirks } from './youtube-quirks'
 
@@ -36,6 +41,18 @@ const COVERED_PHASES = new Set<StagePhase['kind']>([
   'paused',
   'ended',
 ])
+
+const coversPhase = (phase: StagePhase, coverPause: boolean) =>
+  (COVERED_PHASES.has(phase.kind) && (coverPause || phase.kind !== 'paused')) ||
+  (phase.kind === 'playing' && !phase.settled)
+
+const markImmersive = () => {
+  const root = document.documentElement
+  root.dataset.immersive = ''
+  return () => {
+    delete root.dataset.immersive
+  }
+}
 
 // Anything marked data-player-chrome holds the floating UI open while a menu from it is open, and with a
 // mouse also while the pointer rests on it or keyboard focus is inside it. A touch screen counts menus
@@ -89,6 +106,65 @@ const useIdle = (ms: number) => {
   }, [wake])
   return { idle, sleep }
 }
+
+const centerButtonShown = (
+  showCover: boolean,
+  handsOff: boolean,
+  centerMasked: boolean,
+  centerControl: boolean,
+  phase: StagePhase
+) =>
+  !showCover &&
+  !handsOff &&
+  (centerMasked || centerControl || phase.kind === 'paused')
+
+const CenterPlayButton = ({
+  phase,
+  armed,
+  onToggle,
+}: {
+  phase: StagePhase
+  armed: boolean
+  onToggle: () => void
+}) => (
+  <button
+    type='button'
+    tabIndex={-1}
+    aria-label={phase.kind === 'playing' ? 'Pause' : 'Play'}
+    onClick={onToggle}
+    className={cn(
+      'absolute top-1/2 left-1/2 z-26 grid size-20 -translate-1/2 place-items-center rounded-full bg-neutral-950 text-white shadow-[0_4px_16px_rgb(0_0_0/0.35)] ring-1 ring-white/10',
+      phase.kind === 'paused' && 'animate-in duration-200 zoom-in-90 fade-in',
+      !armed && 'pointer-events-none'
+    )}>
+    {phase.kind === 'paused' ? (
+      <PlayIcon className='size-9 fill-current' />
+    ) : (
+      <PauseIcon className='size-9 fill-current' />
+    )}
+  </button>
+)
+
+const SeekFlashBadge = ({ flash }: { flash: SeekFlash }) => (
+  <div
+    className={cn(
+      'pointer-events-none absolute inset-y-0 z-26 grid w-1/3 place-items-center',
+      flash.side === 'back' ? 'left-0' : 'right-0'
+    )}>
+    <span
+      key={flash.key}
+      className='flex animate-in items-center gap-1 rounded-full bg-black/55 px-4 py-2 text-base font-semibold text-white tabular-nums shadow-[0_4px_16px_rgb(0_0_0/0.35)] backdrop-blur-md zoom-in-90 fade-in'>
+      {flash.side === 'back' ? (
+        <RotateCcwIcon className='size-4' aria-hidden />
+      ) : null}
+      {flash.side === 'back' ? '−' : '+'}
+      {flash.seconds}s
+      {flash.side === 'forward' ? (
+        <RotateCwIcon className='size-4' aria-hidden />
+      ) : null}
+    </span>
+  </div>
+)
 
 const clampVolume = (level: number) => ({
   level: Math.min(1, Math.max(0, level)),
@@ -186,7 +262,7 @@ export const PlayerStage = ({
     videoId,
     volume,
   })
-  const { phase } = player
+  const { phase, hostRef } = player
 
   const autoplayedRef = useRef(false)
   const { play } = player
@@ -222,19 +298,15 @@ export const PlayerStage = ({
     }, AUTOPLAY_CHECK_MS)
   }, [autoplay, isReady, play])
 
-  const isPlaying = phase.kind === 'playing'
   const { idle, sleep } = useIdle(IDLE_MS)
   const [dragging, setDragging] = useState(false)
   const [controlsHeight, setControlsHeight] = useState(0)
 
   // YouTube's own error screens (unavailable, sign-in, age gate) need its UI
   const handsOff = interactive || phase.kind === 'error'
-  const showCover =
-    !handsOff &&
-    ((COVERED_PHASES.has(phase.kind) &&
-      (coverPause || phase.kind !== 'paused')) ||
-      (phase.kind === 'playing' && !phase.settled))
+  const showCover = !handsOff && coversPhase(phase, coverPause)
   const controlsVisible = !dragging && (!idle || phase.kind !== 'playing')
+  const blockInput = quirks.blockIframeInput && !handsOff
   const { toast } = useToast()
   const centerControl = touch && controlsVisible
   const centerArmed = useArmed(centerControl)
@@ -296,16 +368,7 @@ export const PlayerStage = ({
     togglePlay: player.togglePlay,
   })
 
-  useEffect(() => {
-    const root = document.documentElement
-    if (!immersive) {
-      return
-    }
-    root.dataset.immersive = ''
-    return () => {
-      delete root.dataset.immersive
-    }
-  }, [immersive])
+  useEffect(() => (immersive ? markImmersive() : undefined), [immersive])
 
   useEffect(() => {
     const sync = () => {
@@ -399,12 +462,10 @@ export const PlayerStage = ({
         className='absolute top-1/2 left-1/2 aspect-video -translate-1/2 overflow-hidden'
         style={{ width: 'min(100cqw, 177.78cqh)' }}>
         <div
-          ref={player.hostRef}
+          ref={hostRef}
           className={cn(
             'absolute inset-x-0 [&>iframe]:size-full',
-            quirks.blockIframeInput &&
-              !handsOff &&
-              '[&>iframe]:pointer-events-none'
+            blockInput && '[&>iframe]:pointer-events-none'
           )}
           style={{ bottom: -quirks.cropPx, top: -quirks.cropPx }}
         />
@@ -416,29 +477,23 @@ export const PlayerStage = ({
           with the rest of the floating UI as in YouTube's own app. An uncovered pause shows it throughout:
           YouTube's button stays up for a whole pause that starts within those seconds. It sits outside the
           video box so it draws above the lyrics; the video is always centred on the stage */}
-      {!showCover &&
-        !handsOff &&
-        (player.centerMasked || centerControl || phase.kind === 'paused') && (
-          <button
-            type='button'
-            tabIndex={-1}
-            aria-label={isPlaying ? 'Pause' : 'Play'}
-            onClick={player.togglePlay}
-            className={cn(
-              'absolute top-1/2 left-1/2 z-26 grid size-20 -translate-1/2 place-items-center rounded-full bg-neutral-950 text-white shadow-[0_4px_16px_rgb(0_0_0/0.35)] ring-1 ring-white/10',
-              phase.kind === 'paused' &&
-                'animate-in duration-200 zoom-in-90 fade-in',
-              !centerArmed && 'pointer-events-none'
-            )}>
-            {phase.kind === 'paused' ? (
-              <PlayIcon className='size-9 fill-current' />
-            ) : (
-              <PauseIcon className='size-9 fill-current' />
-            )}
-          </button>
-        )}
+      {centerButtonShown(
+        showCover,
+        handsOff,
+        player.centerMasked,
+        centerControl,
+        phase
+      ) && (
+        <CenterPlayButton
+          phase={phase}
+          armed={centerArmed}
+          onToggle={() => {
+            player.togglePlay()
+          }}
+        />
+      )}
 
-      {quirks.blockIframeInput && !handsOff && (
+      {blockInput && (
         <div
           data-testid='stage-input'
           aria-hidden='true'
@@ -450,26 +505,7 @@ export const PlayerStage = ({
         />
       )}
 
-      {taps.flash && (
-        <div
-          className={cn(
-            'pointer-events-none absolute inset-y-0 z-26 grid w-1/3 place-items-center',
-            taps.flash.side === 'back' ? 'left-0' : 'right-0'
-          )}>
-          <span
-            key={taps.flash.key}
-            className='flex animate-in items-center gap-1 rounded-full bg-black/55 px-4 py-2 text-base font-semibold text-white tabular-nums shadow-[0_4px_16px_rgb(0_0_0/0.35)] backdrop-blur-md zoom-in-90 fade-in'>
-            {taps.flash.side === 'back' ? (
-              <RotateCcwIcon className='size-4' aria-hidden />
-            ) : null}
-            {taps.flash.side === 'back' ? '−' : '+'}
-            {taps.flash.seconds}s
-            {taps.flash.side === 'forward' ? (
-              <RotateCwIcon className='size-4' aria-hidden />
-            ) : null}
-          </span>
-        </div>
-      )}
+      {taps.flash && <SeekFlashBadge flash={taps.flash} />}
 
       {autoplayMuted && (
         <button
