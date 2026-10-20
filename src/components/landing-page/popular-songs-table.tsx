@@ -80,9 +80,7 @@ const SongRow = ({ song, ready, onPlayClick }: SongRowProps) => {
             className={`min-w-0 flex-1 overflow-hidden ${isOverflowing ? 'marquee' : ''}`}>
             <span
               ref={textRef}
-              className={`unselectable inline-block whitespace-nowrap ${
-                isOverflowing ? 'marquee-content' : ''
-              }`}>
+              className='unselectable inline-block whitespace-nowrap'>
               {song.title}
             </span>
           </div>

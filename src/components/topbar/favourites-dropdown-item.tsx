@@ -75,9 +75,7 @@ const FavouritesDropdownItem: React.FC<FavouritesDropdownItemProps> = ({
             onClick={handleClick}>
             <span
               ref={textRef}
-              className={`inline-block cursor-pointer whitespace-nowrap ${
-                isOverflowing ? 'marquee-content' : ''
-              }`}>
+              className='inline-block cursor-pointer whitespace-nowrap'>
               {title}
             </span>
           </div>

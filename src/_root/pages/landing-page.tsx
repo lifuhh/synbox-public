@@ -20,7 +20,9 @@ const SectionDivider = ({
 )
 
 const LandingPage = () => (
-  <section className='anchor-for-top-scroll flex custom-scrollbar flex-1 flex-col overflow-x-hidden overflow-y-scroll md:px-10'>
+  <section
+    data-scroll-top
+    className='flex custom-scrollbar flex-1 flex-col overflow-x-hidden overflow-y-scroll md:px-10'>
     <title>Synbox</title>
     <meta name='Synbox Homepage' content='Synbox - AI Powered Karaoke' />
     <HeroGenerateLyricsSection />

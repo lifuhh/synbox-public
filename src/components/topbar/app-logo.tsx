@@ -10,9 +10,8 @@ const AppLogo: React.FC = () => {
   const handleOnClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
     event.preventDefault()
     if (location.pathname === '/') {
-      const landingPage = document.querySelector<HTMLElement>(
-        '.anchor-for-top-scroll'
-      )
+      const landingPage =
+        document.querySelector<HTMLElement>('[data-scroll-top]')
       if (landingPage !== null) {
         landingPage.scrollTo({ behavior: 'smooth', top: 0 })
       }

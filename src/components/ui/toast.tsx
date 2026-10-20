@@ -35,8 +35,7 @@ const toastVariants = cva(
     variants: {
       variant: {
         default: 'bg-black/75 text-white',
-        destructive:
-          'destructive group bg-destructive text-destructive-foreground',
+        destructive: 'group bg-destructive text-destructive-foreground',
       },
     },
   }
@@ -49,6 +48,7 @@ const ToastRender: React.ForwardRefRenderFunction<
 > = ({ className, variant, ...props }, ref) => (
   <ToastPrimitives.Root
     ref={ref}
+    data-variant={variant ?? undefined}
     className={cn(toastVariants({ variant }), className)}
     {...props}
   />
@@ -63,7 +63,7 @@ const ToastActionRender: React.ForwardRefRenderFunction<
   <ToastPrimitives.Action
     ref={ref}
     className={cn(
-      'inline-flex h-8 shrink-0 items-center justify-center rounded-md border bg-transparent px-3 text-sm font-medium ring-offset-background transition-colors group-[.destructive]:border-muted/90 hover:bg-primary-light hover:text-card-foreground hover:group-[.destructive]:border-destructive/90 hover:group-[.destructive]:bg-destructive hover:group-[.destructive]:text-destructive-foreground focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:outline-hidden focus:group-[.destructive]:ring-destructive disabled:pointer-events-none disabled:opacity-50 touch:h-10',
+      'inline-flex h-8 shrink-0 items-center justify-center rounded-md border bg-transparent px-3 text-sm font-medium ring-offset-background transition-colors group-data-[variant=destructive]:border-muted/90 hover:bg-primary-light hover:text-card-foreground hover:group-data-[variant=destructive]:border-destructive/90 hover:group-data-[variant=destructive]:bg-destructive hover:group-data-[variant=destructive]:text-destructive-foreground focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:outline-hidden focus:group-data-[variant=destructive]:ring-destructive disabled:pointer-events-none disabled:opacity-50 touch:h-10',
       className
     )}
     {...props}
@@ -79,7 +79,7 @@ const ToastCloseRender: React.ForwardRefRenderFunction<
   <ToastPrimitives.Close
     ref={ref}
     className={cn(
-      'absolute top-1/2 right-2 -translate-y-1/2 rounded-md p-1 text-white/60 opacity-0 transition-opacity group-hover:opacity-100 group-[.destructive]:text-error hover:text-primary/80 hover:group-[.destructive]:text-error-hover focus:opacity-100 focus:ring-2 focus:outline-hidden focus:group-[.destructive]:ring-error-border focus:group-[.destructive]:ring-offset-error-ring-offset touch:right-0 touch:p-2.5 touch:opacity-100',
+      'absolute top-1/2 right-2 -translate-y-1/2 rounded-md p-1 text-white/60 opacity-0 transition-opacity group-hover:opacity-100 group-data-[variant=destructive]:text-error hover:text-primary/80 hover:group-data-[variant=destructive]:text-error-hover focus:opacity-100 focus:ring-2 focus:outline-hidden focus:group-data-[variant=destructive]:ring-error-border focus:group-data-[variant=destructive]:ring-offset-error-ring-offset touch:right-0 touch:p-2.5 touch:opacity-100',
       className
     )}
     toast-close=''
