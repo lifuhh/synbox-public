@@ -333,6 +333,28 @@
   }
 }
 
+/* A notice that fades out on its own after a while. A pointer resting on it or focus inside holds the countdown;
+   the element ends at opacity 0 and the component removes it on animationend */
+@keyframes auto-hide {
+  to {
+    opacity: 0;
+  }
+}
+@utility auto-hide {
+  animation: auto-hide 0.3s ease-in 8s forwards;
+  &:focus-within {
+    animation-play-state: paused;
+  }
+  @media (hover: hover) {
+    &:hover {
+      animation-play-state: paused;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    animation-duration: 1ms;
+  }
+}
+
 @utility flex-around {
   @apply flex items-center justify-around;
 }
@@ -738,9 +760,14 @@
     --safe-right: env(safe-area-inset-right, 0px);
     /* In portrait the player's video is full width, centred on the screen */
     --stage-video-top: calc(50dvh - 100vw * 9 / 32);
+    /* In portrait the player's rail sits on its control bar; notices and the generation button float above both */
+    --player-notices-bottom: calc(
+      var(--stage-controls-h, 5rem) + var(--player-rail-h, 0px) + 0.5rem
+    );
   }
 
-  /* The version preview banner and the player's Tap to Unmute both hang under the top bar */
+  /* The version preview banner and the player's Tap to Unmute both hang under the top bar (in portrait, both
+     stand above the rail) */
   :root:has([data-preview-banner]) {
     --preview-banner-h: 3rem;
   }
