@@ -17,11 +17,12 @@ const TAP_SLOP_PX = 4
 const LIFT_MS = 200
 const CLICK_AFTER_DRAG_MS = 400
 
+const swallow = (event: MouseEvent) => {
+  event.stopPropagation()
+  event.preventDefault()
+}
+
 const swallowNextClick = () => {
-  const swallow = (event: MouseEvent) => {
-    event.stopPropagation()
-    event.preventDefault()
-  }
   window.addEventListener('click', swallow, { capture: true, once: true })
   setTimeout(() => {
     window.removeEventListener('click', swallow, { capture: true })
@@ -33,7 +34,6 @@ interface DragStart {
   anchor: number
   range: number
   moved: boolean
-  touch: boolean
 }
 
 interface DraggableLyricsProps {
@@ -50,7 +50,7 @@ interface DraggableLyricsProps {
 // without measuring or animating. The bottom spacer never shrinks below the
 // controls, which lifts the block just clear of them; only that lift animates,
 // and it drops back once the controls have faded out. Only the text box is
-// grabbable; a mouse press without a drag opens the rail's style panel, and the empty
+// grabbable; a press without a drag opens the rail's style panel, and the empty
 // band beside the text passes clicks to the video
 export const DraggableLyrics = ({
   children,
@@ -83,7 +83,6 @@ export const DraggableLyrics = ({
       moved: false,
       pointerY: event.clientY,
       range: Math.max(1, room),
-      touch: event.pointerType !== 'mouse',
     }
   }
 
@@ -115,14 +114,14 @@ export const DraggableLyrics = ({
       layout.onDragChange(false)
       // A drag that ends over the video must not also count as a tap on it
       swallowNextClick()
-    } else if (!drag.touch) {
-      // On a touch screen a tap on the lyrics is how the controls come back, not a request for the panel
+    } else {
       setStylePanel('pinned')
     }
   }
 
   return (
-    <div className='pointer-events-none absolute inset-0 flex flex-col'>
+    // A block taller than the room overflows upward, over the video, never down under the controls
+    <div className='pointer-events-none absolute inset-0 flex flex-col justify-end'>
       <div style={{ flexGrow: anchor }} />
       <div
         ref={blockRef}

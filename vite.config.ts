@@ -1,3 +1,5 @@
+import type { IncomingMessage, ServerResponse } from 'node:http'
+
 import { sentryVitePlugin } from '@sentry/vite-plugin'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
@@ -7,7 +9,39 @@ import core from 'ultracite/oxlint/core'
 import ultraciteReact from 'ultracite/oxlint/react'
 import shadcn from 'ultracite/oxlint/shadcn'
 import { VitePWA } from 'vite-plugin-pwa'
-import { defineConfig, lazyPlugins } from 'vite-plus'
+import { defineConfig, lazyPlugins, loadEnv } from 'vite-plus'
+
+import { handleYoutube } from './netlify/youtube-proxy'
+
+// The dev server's stand-in for the Netlify function at /api/youtube
+const serveYoutube = async (
+  // Connect strips the mount path from url and keeps the full one here
+  req: IncomingMessage & { originalUrl?: string },
+  res: ServerResponse,
+  next: (error?: unknown) => void
+) => {
+  const { referer } = req.headers
+  const headers = new Headers(referer === undefined ? {} : { referer })
+  const env = loadEnv(process.env.NODE_ENV ?? 'development', process.cwd(), '')
+  // A local .env from before the proxy still works: its referrer-restricted browser key accepts the
+  // localhost page the request came from
+  const key = env.YOUTUBE_API_KEY || env.VITE_GOOGLE_API_KEY
+  try {
+    const response = await handleYoutube(
+      new Request(new URL(req.originalUrl ?? '', 'http://localhost'), {
+        headers,
+      }),
+      key
+    )
+    res.statusCode = response.status
+    for (const [name, value] of response.headers) {
+      res.setHeader(name, value)
+    }
+    res.end(await response.text())
+  } catch (error) {
+    next(error)
+  }
+}
 
 export default defineConfig({
   fmt: {
@@ -62,6 +96,16 @@ export default defineConfig({
         }
       },
       name: 'require-backend-url',
+    },
+    // Netlify serves /api/youtube from a function; the dev server answers with the same handler
+    {
+      apply: 'serve',
+      configureServer(server) {
+        server.middlewares.use('/api/youtube', (req, res, next) => {
+          void serveYoutube(req, res, next)
+        })
+      },
+      name: 'youtube-proxy',
     },
     tailwindcss(),
     react(),
@@ -130,6 +174,7 @@ export default defineConfig({
         ],
         globPatterns: ['**/*.{js,css,html,png,svg,woff2}'],
         navigateFallback: '/index.html',
+        navigateFallbackDenylist: [/^\/api\//u],
         runtimeCaching: [
           {
             handler: 'StaleWhileRevalidate',

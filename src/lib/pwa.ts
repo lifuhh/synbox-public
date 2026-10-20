@@ -12,7 +12,7 @@ const isInstallPrompt = (event: Event): event is BeforeInstallPromptEvent =>
 
 const standaloneQuery = window.matchMedia('(display-mode: standalone)')
 
-const readStandalone = () =>
+export const isStandalone = () =>
   standaloneQuery.matches ||
   // iOS before display-mode support
   ('standalone' in navigator && navigator.standalone === true)
@@ -43,7 +43,7 @@ const publish = (next: InstallMethod) => {
 }
 
 const readInstallMethod = (): InstallMethod => {
-  if (readStandalone()) {
+  if (isStandalone()) {
     return { kind: 'installed' }
   }
   const event = deferredPrompt

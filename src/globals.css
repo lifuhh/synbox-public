@@ -371,9 +371,18 @@
    on the line instead. */
 @utility lyric-karaoke-ja {
   --kanji-spacing: 0.2em;
+
+  /* A phone fits far fewer characters a line; wide spacing would wrap most lines twice */
+  @media (width < 40rem) {
+    --kanji-spacing: 0.08em;
+  }
 }
 
 @utility lyric-karaoke-line {
+  /* iOS Safari clips a filter on an inline box to its glyphs, cutting off the furigana above them; as
+     a block the box spans the whole line height, readings included, and a wrapped line balances */
+  display: block;
+  text-wrap: balance;
   text-shadow: none;
   filter: drop-shadow(0 0 1px rgb(0 0 0 / 0.95))
     drop-shadow(0 1px 3px rgb(0 0 0 / 0.7))

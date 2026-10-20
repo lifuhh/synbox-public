@@ -12,12 +12,19 @@ const TooltipProvider = TooltipPrimitive.Provider
 // open one that then never leaves. Uncontrolled tooltips stay closed there; a controlled one decides
 const Tooltip = ({
   open,
+  onOpenChange,
   ...props
 }: React.ComponentProps<typeof TooltipPrimitive.Root>) => {
   const touch = useMediaQuery('(pointer: coarse)')
+  // Always controlled, so a change of input device never flips it between modes
+  const [hovered, setHovered] = React.useState(false)
   return (
     <TooltipPrimitive.Root
-      open={open ?? (touch ? false : undefined)}
+      open={open ?? (!touch && hovered)}
+      onOpenChange={(next) => {
+        setHovered(next)
+        onOpenChange?.(next)
+      }}
       {...props}
     />
   )

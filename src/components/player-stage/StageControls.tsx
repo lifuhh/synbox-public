@@ -52,10 +52,17 @@ interface IconButtonProps {
   label: string
   onClick: () => void
   active?: boolean
+  className?: string
   children: React.ReactNode
 }
 
-const IconButton = ({ label, onClick, active, children }: IconButtonProps) => (
+const IconButton = ({
+  label,
+  onClick,
+  active,
+  className,
+  children,
+}: IconButtonProps) => (
   <button
     type='button'
     aria-label={label}
@@ -64,7 +71,8 @@ const IconButton = ({ label, onClick, active, children }: IconButtonProps) => (
     onClick={onClick}
     className={cn(
       'grid size-9 shrink-0 place-items-center rounded-md text-white/85 transition-colors hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none touch:size-10',
-      active === true && 'text-primary hover:text-primary'
+      active === true && 'text-primary hover:text-primary',
+      className
     )}>
     {children}
   </button>
@@ -78,6 +86,7 @@ interface StageControlsProps {
   interactive: boolean
   onInteractiveChange: (interactive: boolean) => void
   fullscreen: boolean
+  fullscreenAvailable: boolean
   onToggleFullscreen: () => void
   // Height the controls occupy above the stage bottom, plus a small gap
   onHeightChange: (px: number) => void
@@ -100,6 +109,7 @@ export const StageControls = ({
   interactive,
   onInteractiveChange,
   fullscreen,
+  fullscreenAvailable,
   onToggleFullscreen,
   onHeightChange,
   volume,
@@ -197,9 +207,11 @@ export const StageControls = ({
           className='mb-2 cursor-pointer'
         />
         <div className='flex items-center gap-1 text-sm text-white tabular-nums touch:gap-0.5'>
+          {/* Touch screens play and pause from the button in the middle of the stage instead */}
           <IconButton
             label={isPlaying ? 'Pause' : 'Play'}
-            onClick={player.togglePlay}>
+            onClick={player.togglePlay}
+            className='touch:hidden'>
             {isPlaying ? (
               <PauseIcon className='size-5' />
             ) : (
@@ -263,15 +275,17 @@ export const StageControls = ({
               }}>
               <MousePointerClickIcon className='size-5' />
             </IconButton>
-            <IconButton
-              label={fullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
-              onClick={onToggleFullscreen}>
-              {fullscreen ? (
-                <MinimizeIcon className='size-5' />
-              ) : (
-                <MaximizeIcon className='size-5' />
-              )}
-            </IconButton>
+            {fullscreenAvailable && (
+              <IconButton
+                label={fullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
+                onClick={onToggleFullscreen}>
+                {fullscreen ? (
+                  <MinimizeIcon className='size-5' />
+                ) : (
+                  <MaximizeIcon className='size-5' />
+                )}
+              </IconButton>
+            )}
           </div>
         </div>
       </div>

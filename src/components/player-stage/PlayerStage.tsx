@@ -9,7 +9,11 @@ import {
 import type { ReactNode } from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
+import { useToast } from '@/components/ui/use-toast'
 import { playerChromeOpenAtom, playerVolumeAtom } from '@/context/atoms'
+import { useArmed } from '@/hooks/useArmed'
+import { useMediaQuery } from '@/hooks/useMediaQuery'
+import { isStandalone } from '@/lib/pwa'
 import { cn } from '@/utils/cn'
 
 import { StageControls } from './StageControls'
@@ -163,8 +167,6 @@ export const PlayerStage = ({
   const [loop, setLoop] = useState(false)
   const [interactive, setInteractive] = useState(false)
   const [fullscreen, setFullscreen] = useState(false)
-  // iPhone Safari has no element fullscreen, so there the stage covers the screen itself instead
-  const [coverScreen, setCoverScreen] = useState(false)
   const player = useYouTubePlayer({ videoId, quirks, volume, loop, onEvent })
   const { phase } = player
 
@@ -221,6 +223,10 @@ export const PlayerStage = ({
     (COVERED_PHASES.has(phase.kind) ||
       (phase.kind === 'playing' && !phase.settled))
   const controlsVisible = !dragging && (!idle || phase.kind !== 'playing')
+  const { toast } = useToast()
+  const touch = useMediaQuery('(pointer: coarse)')
+  const centerControl = touch && controlsVisible
+  const centerArmed = useArmed(centerControl)
   const setChromeOpen = useSetAtom(playerChromeOpenAtom)
   useEffect(() => {
     setChromeOpen(controlsVisible)
@@ -246,8 +252,14 @@ export const PlayerStage = ({
   const revealOnlyRef = useRef(false)
 
   const toggleFullscreen = () => {
+    // iPhone Safari cannot put a page in fullscreen; only the Home Screen app runs without its bars
     if (!document.fullscreenEnabled) {
-      setCoverScreen((covered) => !covered)
+      toast({
+        description:
+          'Add Synbox to your Home Screen (Share › Add to Home Screen) to play without Safari’s bars.',
+        duration: 5000,
+        title: 'Full Screen on iPhone',
+      })
       return
     }
     if (document.fullscreenElement) {
@@ -317,13 +329,6 @@ export const PlayerStage = ({
           toggleFullscreen()
           break
         }
-        case 'Escape': {
-          if (!coverScreen) {
-            return
-          }
-          setCoverScreen(false)
-          break
-        }
         default: {
           return
         }
@@ -343,8 +348,6 @@ export const PlayerStage = ({
       data-phase={phase.kind}
       className={cn(
         '[container-type:size] relative size-full overflow-hidden bg-black',
-        // Above the top bar, the rail and the generation button, as real fullscreen would be
-        coverScreen && 'fixed inset-0 z-60',
         !controlsVisible && 'cursor-none',
         className
       )}>
@@ -364,16 +367,26 @@ export const PlayerStage = ({
         {showCover && <StageCover videoId={videoId} phase={phase} />}
       </div>
 
-      {/* Covers YouTube's own center button, which it shows for about 4s after every play or seek. It
-          sits outside the video box so it draws above the lyrics; the video is always centred on the stage */}
-      {!showCover && !handsOff && player.centerMasked && (
-        <div className='pointer-events-none absolute top-1/2 left-1/2 z-26 grid size-20 -translate-1/2 place-items-center rounded-full bg-black/85 text-white shadow-[0_4px_16px_rgb(0_0_0/0.35)] ring-1 ring-white/10'>
+      {/* YouTube shows its own center button for about 4s after every play or seek; this covers that spot,
+          opaque so none of it shows through. On a touch screen it is also the play/pause control, shown
+          with the rest of the floating UI as in YouTube's own app. It sits outside the video box so it
+          draws above the lyrics; the video is always centred on the stage */}
+      {!showCover && !handsOff && (player.centerMasked || centerControl) && (
+        <button
+          type='button'
+          tabIndex={-1}
+          aria-label={isPlaying ? 'Pause' : 'Play'}
+          onClick={player.togglePlay}
+          className={cn(
+            'absolute top-1/2 left-1/2 z-26 grid size-20 -translate-1/2 place-items-center rounded-full bg-neutral-950 text-white shadow-[0_4px_16px_rgb(0_0_0/0.35)] ring-1 ring-white/10',
+            !centerArmed && 'pointer-events-none'
+          )}>
           {phase.kind === 'paused' ? (
             <PlayIcon className='size-9 fill-current' />
           ) : (
             <PauseIcon className='size-9 fill-current' />
           )}
-        </div>
+        </button>
       )}
 
       {quirks.blockIframeInput && !handsOff && (
@@ -423,7 +436,9 @@ export const PlayerStage = ({
         onLoopChange={setLoop}
         interactive={interactive}
         onInteractiveChange={setInteractive}
-        fullscreen={fullscreen || coverScreen}
+        fullscreen={fullscreen}
+        // The Home Screen app is already full screen where the page cannot go fullscreen itself
+        fullscreenAvailable={document.fullscreenEnabled || !isStandalone()}
         onToggleFullscreen={toggleFullscreen}
         onHeightChange={setControlsHeight}
         volume={volume}
