@@ -1,7 +1,8 @@
 export enum QUERY_KEYS {
   GET_LANDING_PAGE_PLAYLIST = 'getLandingPagePlaylist',
   GET_CHARTS_PLAYLIST = 'getChartsPlaylist',
-  GET_INFINITE_GALLERY_PLAYLIST = 'getInfiniteGalleryPlaylist',
+  GET_GALLERY_SONGS = 'getGallerySongs',
+  GET_SONGS_WITH_LYRICS = 'getSongsWithLyrics',
   GET_YOUTUBE_VIDEO_INFO = 'getYoutubeVideoInfo',
   GET_LYRICS_BY_SONG_ID = 'getLyricsBySongId',
   GET_LYRICS_VERSION = 'getLyricsVersion',

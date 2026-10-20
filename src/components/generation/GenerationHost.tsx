@@ -20,7 +20,12 @@ const SONG_QUERIES = [
   QUERY_KEYS.GET_LYRICS_VERSIONS,
 ]
 // Lists that may now include the song
-const LIST_QUERIES = [QUERY_KEYS.SEARCH_VIDEOS, QUERY_KEYS.SEARCH_LIBRARY]
+const LIST_QUERIES = [
+  QUERY_KEYS.SEARCH_VIDEOS,
+  QUERY_KEYS.SEARCH_LIBRARY,
+  QUERY_KEYS.GET_GALLERY_SONGS,
+  QUERY_KEYS.GET_SONGS_WITH_LYRICS,
+]
 
 // Mounted once in the root layout, so the running generation follows the user from page to page
 const GenerationHost = () => {

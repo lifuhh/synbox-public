@@ -1,7 +1,6 @@
 import axios from 'axios'
 
 import type {
-  FetchInfiniteGalleryPlaylistParams,
   YoutubePlaylistApiResponse,
   YoutubeSearchApiResponse,
   YoutubeSearchResultInfo,
@@ -57,43 +56,34 @@ export async function getLandingPagePlaylist(): Promise<
   return processedResponse
 }
 
+// The chart is 100 songs, two pages of the API's maximum
+const CHART_PAGES = 2
+
 export async function getChartsPlaylist(): Promise<
   { title: string; id: string }[]
 > {
-  const response = await axios.get<YoutubePlaylistApiResponse>(
-    `https://www.googleapis.com/youtube/v3/playlistItems`,
-    {
-      params: {
-        key: YoutubeApiKey,
-        part: 'snippet',
-        playlistId: 'PL4fGSI1pDJn4-UIb6RKHdxam-oAUULIGB',
-        maxResults: 50,
-      },
+  const songs: { title: string; id: string }[] = []
+  let pageToken: string | undefined
+  for (let page = 0; page < CHART_PAGES; page++) {
+    const response = await axios.get<YoutubePlaylistApiResponse>(
+      `https://www.googleapis.com/youtube/v3/playlistItems`,
+      {
+        params: {
+          key: YoutubeApiKey,
+          part: 'snippet',
+          playlistId: 'PL4fGSI1pDJn4-UIb6RKHdxam-oAUULIGB',
+          maxResults: 50,
+          pageToken,
+        },
+      }
+    )
+    songs.push(...formatYoutubeChartsResponse(response.data))
+    pageToken = response.data.nextPageToken
+    if (pageToken === undefined) {
+      break
     }
-  )
-
-  const processedResponse = formatYoutubeChartsResponse(response.data)
-
-  return processedResponse
-}
-
-export const getInfiniteGalleryPlaylist = async ({
-  pageParam = '',
-}: FetchInfiniteGalleryPlaylistParams): Promise<YoutubePlaylistApiResponse> => {
-  const response = await axios.get<YoutubePlaylistApiResponse>(
-    `https://www.googleapis.com/youtube/v3/playlistItems`,
-    {
-      params: {
-        key: YoutubeApiKey,
-        part: 'snippet',
-        playlistId: 'PLzJ1mqwxogpHcS_hfWcEY_o8n_yBeGlAN',
-        maxResults: 12,
-        pageToken: pageParam,
-      },
-    }
-  )
-
-  return response.data
+  }
+  return songs
 }
 
 export async function getYoutubeVideoInfo(
