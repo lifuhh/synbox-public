@@ -40,9 +40,9 @@ const buttonVariants = cva(
           'text-accent-foreground hover:bg-accent hover:text-foreground',
         // Raised hero call to action
         hero: 'border-2 border-primary/90 bg-primary/90 text-foreground hover:border-primary hover:bg-primary',
-        // White pill on a brand-colored card
+        // White pill on a brand-colored card; solid brand text, as 80% falls under 4.5:1 contrast on white
         inverse:
-          'rounded-xl bg-white font-bold text-primary/80 hover:bg-primary/80 hover:text-foreground [&:hover]:transition-none [&:hover]:duration-0',
+          'rounded-xl bg-white font-bold text-primary hover:bg-primary/80 hover:text-foreground [&:hover]:transition-none [&:hover]:duration-0',
         link: 'text-primary underline-offset-4 hover:bg-primary hover:text-white hover:underline',
         outline:
           'border border-input bg-background hover:bg-accent hover:text-accent-foreground',

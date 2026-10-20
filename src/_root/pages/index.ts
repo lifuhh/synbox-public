@@ -1,5 +1,0 @@
-export { default as AboutPage } from './about-page'
-export { default as LandingPage } from './landing-page'
-export { default as PlayerPage } from './player-page'
-export { default as SearchPage } from './search-page'
-export { default as VersionsPage } from './versions-page'
