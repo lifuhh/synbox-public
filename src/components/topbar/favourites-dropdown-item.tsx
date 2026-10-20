@@ -1,6 +1,6 @@
 import { useAtom } from 'jotai'
 import { X } from 'lucide-react'
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useRef } from 'react'
 import { useNavigate } from 'react-router'
 
 import { DropdownMenuItem } from '@/components/ui/dropdown-menu'
@@ -26,27 +26,9 @@ const FavouritesDropdownItem: React.FC<FavouritesDropdownItemProps> = ({
   const navigate = useNavigate()
   const textRef = useRef<HTMLSpanElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
-  const [isOverflowing, setIsOverflowing] = useState(false)
   const [, removeFavorite] = useAtom(removeFavoriteAtom)
 
-  useEffect(() => {
-    const checkOverflow = () => {
-      if (textRef.current && containerRef.current) {
-        setIsOverflowing(
-          textRef.current.scrollWidth > containerRef.current.clientWidth
-        )
-      }
-    }
-
-    checkOverflow()
-    window.addEventListener('resize', checkOverflow)
-
-    return () => {
-      window.removeEventListener('resize', checkOverflow)
-    }
-  }, [title])
-
-  useOverflow(textRef, containerRef, 'marquee')
+  const isOverflowing = useOverflow(textRef, containerRef)
 
   const handleClick = () => {
     void navigate(`/v/${videoId}`)
@@ -58,12 +40,11 @@ const FavouritesDropdownItem: React.FC<FavouritesDropdownItemProps> = ({
   }
 
   return (
-    <DropdownMenuItem variant='media'>
+    <DropdownMenuItem variant='media' onSelect={handleClick}>
       <div className='flex h-full w-full playlist-item items-center space-x-2'>
         <OptimizedThumbnail
           src={thumbnailUrl}
           alt={title}
-          onClick={handleClick}
           className='cursor-pointer'
         />
         <div className='min-w-0 grow'>
@@ -71,8 +52,7 @@ const FavouritesDropdownItem: React.FC<FavouritesDropdownItemProps> = ({
             ref={containerRef}
             className={`font-bold tracking-wide text-song-title ${
               isOverflowing ? 'marquee' : 'overflow-hidden'
-            }`}
-            onClick={handleClick}>
+            }`}>
             <span
               ref={textRef}
               className='inline-block cursor-pointer whitespace-nowrap'>

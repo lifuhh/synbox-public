@@ -1,5 +1,5 @@
 import { MicVocalIcon, PlayIcon } from 'lucide-react'
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useRef } from 'react'
 import { useNavigate } from 'react-router'
 
 import LoadError from '@/components/shared/load-error'
@@ -43,28 +43,10 @@ interface SongRowProps {
 }
 
 const SongRow = ({ song, ready, onPlayClick }: SongRowProps) => {
-  const [isOverflowing, setIsOverflowing] = useState(false)
   const textRef = useRef<HTMLSpanElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
 
-  useOverflow(textRef, containerRef, 'marquee')
-
-  useEffect(() => {
-    const checkOverflow = () => {
-      if (textRef.current && containerRef.current) {
-        setIsOverflowing(
-          textRef.current.scrollWidth > containerRef.current.clientWidth
-        )
-      }
-    }
-
-    checkOverflow()
-    window.addEventListener('resize', checkOverflow)
-
-    return () => {
-      window.removeEventListener('resize', checkOverflow)
-    }
-  }, [song.title])
+  const isOverflowing = useOverflow(textRef, containerRef)
 
   return (
     <tr className='playlist-item bg-card/80 text-accent-foreground hover:bg-muted-foreground/20'>
@@ -92,6 +74,7 @@ const SongRow = ({ song, ready, onPlayClick }: SongRowProps) => {
           variant='secondary-link'
           size='icon'
           className='shrink-0'
+          aria-label={`Play ${song.title}`}
           onClick={onPlayClick(song.vidURL)}>
           <PlayIcon className='size-6 shrink-0 fill-current' />
         </Button>
