@@ -112,7 +112,7 @@ const findLineIndex = (lines: TimedLyrics['lines'], time: number) =>
 const JAPANESE = /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/u
 const LATIN = /[a-zA-Z]/u
 const isLatinOnly = (html: string) => {
-  const text = html.replace(/<[^>]*>/gu, '')
+  const text = html.replaceAll(/<[^>]*>/gu, '')
   return LATIN.test(text) && !JAPANESE.test(text)
 }
 
