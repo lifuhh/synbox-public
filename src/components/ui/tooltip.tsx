@@ -3,7 +3,7 @@
 import * as TooltipPrimitive from '@radix-ui/react-tooltip'
 import * as React from 'react'
 
-import { useMediaQuery } from '@/hooks/useMediaQuery'
+import { useMediaQuery } from '@/hooks/use-media-query'
 import { cn } from '@/utils/cn'
 
 const TooltipProvider = TooltipPrimitive.Provider

@@ -6,9 +6,9 @@ import { afterEach, describe, expect, test } from 'vite-plus/test'
 import { FILL_LEAD } from '@/lib/karaoke'
 import type { KaraokeDocLine, KaraokeToken } from '@/types'
 
-import type { KaraokeLineHandle } from './KaraokeLine'
-import { KaraokeLine } from './KaraokeLine'
-import { KaraokeRomajiLine } from './KaraokeRomajiLine'
+import type { KaraokeLineHandle } from './karaoke-line'
+import { KaraokeLine } from './karaoke-line'
+import { KaraokeRomajiLine } from './karaoke-romaji-line'
 
 Reflect.set(globalThis, 'IS_REACT_ACT_ENVIRONMENT', true)
 

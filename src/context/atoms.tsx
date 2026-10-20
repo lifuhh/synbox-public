@@ -2,14 +2,14 @@ import type { Getter, Setter, WritableAtom } from 'jotai'
 import { atom } from 'jotai'
 import { atomWithStorage } from 'jotai/utils'
 
-import type { LyricsStyle, LyricsStyleOverrides } from '@/lib/lyricsStyle'
+import type { LyricsStyle, LyricsStyleOverrides } from '@/lib/lyrics-style'
 import {
   DEFAULT_LYRICS_STYLE,
   readSongStyle,
   sameLyricsStyle,
   writeSongStyle,
-} from '@/lib/lyricsStyle'
-import type { LyricsBackdrop, LyricsThemeId } from '@/lib/lyricsThemes'
+} from '@/lib/lyrics-style'
+import type { LyricsBackdrop, LyricsThemeId } from '@/lib/lyrics-themes'
 import type { CurrentPlayingInfo } from '@/types'
 
 export const lyricsVisibilityAtom = atom(true)

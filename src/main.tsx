@@ -3,10 +3,10 @@ import { reactErrorHandler } from '@sentry/react'
 import ReactDOM from 'react-dom/client'
 import { BrowserRouter } from 'react-router'
 
-import App from './App'
-import ErrorBoundary from './components/shared/ErrorBoundary'
-import AppProvider from './context/AppContext'
-import { QueryProvider } from './lib/react-query/QueryProvider'
+import App from './app'
+import ErrorBoundary from './components/shared/error-boundary'
+import AppProvider from './context/app-context'
+import { QueryProvider } from './lib/react-query/query-provider'
 
 const rootElement = document.querySelector('#root')
 if (rootElement === null) {
