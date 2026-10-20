@@ -65,38 +65,6 @@ interface PageInfo {
   resultsPerPage: number
 }
 
-export interface InfiniteGalleryVideoItem {
-  title: string
-  channel: string
-  thumbnailUrl: string
-  videoId: string
-}
-
-export interface TransformedYoutubePlaylistPage {
-  items: InfiniteGalleryVideoItem[]
-  nextPageToken?: string
-}
-
-export type InfiniteGalleryQueryResult = UseInfiniteQueryResult<
-  InfiniteData<TransformedYoutubePlaylistPage>
->
-
-export interface FetchInfiniteGalleryPlaylistParams {
-  pageParam?: string
-}
-
-export type FormatYoutubeResponseFunction = (
-  data: YoutubePlaylistApiResponse
-) => InfiniteGalleryVideoItem[]
-
-export interface InfiniteScrollGalleryProps {
-  items: InfiniteGalleryVideoItem[]
-  className?: string
-  fetchNextPage: () => void
-  hasNextPage: boolean | undefined
-  isFetchingNextPage: boolean
-}
-
 export interface YoutubeSearchApiResponse {
   kind: string
   etag: string

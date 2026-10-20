@@ -1,10 +1,12 @@
-import { AppwriteException } from 'appwrite'
+import { AppwriteException, Query } from 'appwrite'
 import { z } from 'zod'
 
 import type { CurrentPlayingInfo } from '@/types'
 import {
   createAppwriteIdFromYoutubeId,
   legacyAppwriteIdFromYoutubeId,
+  shuffleArray,
+  youtubeIdFromAppwriteId,
 } from '@/utils'
 
 import { appwriteConfig, databases } from './config'
@@ -122,4 +124,74 @@ export async function getSongLyricsById(songId: string) {
       throw new Error('An unknown error occurred')
     }
   }
+}
+
+// Appwrite's largest page, and the most ids one equal() query takes
+const PAGE = 100
+
+const galleryRowSchema = songInfoDocumentSchema.extend({ $id: z.string() })
+
+export interface GallerySong {
+  videoId: string
+  title: string
+  author: string
+  thumbnailUrl: string
+}
+
+// Which of `videoIds` have saved lyrics: one query per hundred songs, run together
+export const songsWithLyrics = async (videoIds: string[]) => {
+  const ids = videoIds.map(createAppwriteIdFromYoutubeId)
+  const chunks = Array.from({ length: Math.ceil(ids.length / PAGE) }, (_, i) =>
+    ids.slice(i * PAGE, (i + 1) * PAGE)
+  )
+  const pages = await Promise.all(
+    chunks.map((chunk) =>
+      databases.listDocuments({
+        collectionId: appwriteConfig.lyricsId,
+        databaseId: appwriteConfig.databaseId,
+        queries: [
+          Query.equal('$id', chunk),
+          Query.select(['$id']),
+          Query.limit(PAGE),
+        ],
+        total: false,
+      })
+    )
+  )
+  return new Set(
+    pages.flatMap((page) =>
+      page.documents.map((row) => youtubeIdFromAppwriteId(row.$id))
+    )
+  )
+}
+
+// Every song with lyrics on the site, in a fresh order each visit. A song-info row is also written when a
+// song is only opened, so the rows are checked against the lyrics
+export const listGallerySongs = async (): Promise<GallerySong[]> => {
+  const rows: z.infer<typeof galleryRowSchema>[] = []
+  for (;;) {
+    const last = rows[rows.length - 1]
+    const page = await databases.listDocuments({
+      collectionId: appwriteConfig.songInfoId,
+      databaseId: appwriteConfig.databaseId,
+      queries: [
+        Query.select(['$id', 'title', 'author', 'thumbnailUrl']),
+        Query.limit(PAGE),
+        ...(last ? [Query.cursorAfter(last.$id)] : []),
+      ],
+      total: false,
+    })
+    rows.push(...page.documents.map((row) => galleryRowSchema.parse(row)))
+    if (page.documents.length < PAGE) {
+      break
+    }
+  }
+  const songs = rows.map(({ $id, author, thumbnailUrl, title }) => ({
+    author,
+    thumbnailUrl,
+    title,
+    videoId: youtubeIdFromAppwriteId($id),
+  }))
+  const ready = await songsWithLyrics(songs.map((song) => song.videoId))
+  return shuffleArray(songs.filter((song) => ready.has(song.videoId)))
 }

@@ -1,11 +1,14 @@
-import { PlayIcon } from 'lucide-react'
+import { MicVocalIcon, PlayIcon } from 'lucide-react'
 import React, { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
 
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useOverflow } from '@/hooks/useOverflow'
-import { useGetChartsPlaylist } from '@/lib/react-query/queriesAndMutations'
+import {
+  useGetChartsPlaylist,
+  useSongsWithLyrics,
+} from '@/lib/react-query/queriesAndMutations'
 
 // One per visible row (the body is six rows tall); varied so the column doesn't read as a block
 const SKELETON_TITLES = [
@@ -31,6 +34,9 @@ const LandingPageCharts: React.FC = () => {
   const navigate = useNavigate()
   const { data: chartsData, isLoading: isChartsDataFetching } =
     useGetChartsPlaylist()
+  const { data: withLyrics } = useSongsWithLyrics(
+    chartsData?.map((song) => song.id) ?? []
+  )
 
   const handleRowClick = (videoId: string) => () => {
     navigate(`/v/${videoId}`)
@@ -80,12 +86,18 @@ const LandingPageCharts: React.FC = () => {
                         title: song.title,
                         vidURL: song.id,
                       }}
+                      ready={withLyrics?.has(song.id) === true}
                       onPlayClick={handleRowClick}
                     />
                   ))}
             </tbody>
             <caption className='mt-1 mb-2 caption-bottom text-sm text-gray-300'>
-              Source: Top 100 Japan YouTube
+              Source: YouTube Top 100 Songs Japan ·{' '}
+              <MicVocalIcon
+                className='inline size-3.5 -translate-y-px text-primary'
+                aria-hidden
+              />{' '}
+              Lyrics ready
             </caption>
           </table>
         </div>
@@ -99,10 +111,12 @@ interface SongRowProps {
     title: string
     vidURL: string
   }
+  // The song already has karaoke lyrics on the site
+  ready: boolean
   onPlayClick: (videoId: string) => () => void
 }
 
-const SongRow = ({ song, onPlayClick }: SongRowProps) => {
+const SongRow = ({ song, ready, onPlayClick }: SongRowProps) => {
   const [isOverflowing, setIsOverflowing] = useState(false)
   const textRef = useRef<HTMLSpanElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -129,16 +143,24 @@ const SongRow = ({ song, onPlayClick }: SongRowProps) => {
   return (
     <tr className='playlist-item bg-card/80 text-accent-foreground hover:bg-muted-foreground/20'>
       <td className='p-2'>
-        <div
-          ref={containerRef}
-          className={`overflow-hidden ${isOverflowing ? 'marquee' : ''}`}>
-          <span
-            ref={textRef}
-            className={`unselectable inline-block whitespace-nowrap ${
-              isOverflowing ? 'marquee-content' : ''
-            }`}>
-            {song.title}
-          </span>
+        <div className='flex items-center gap-1.5'>
+          {ready && (
+            <MicVocalIcon
+              className='size-3.5 shrink-0 text-primary'
+              aria-label='Lyrics ready'
+            />
+          )}
+          <div
+            ref={containerRef}
+            className={`min-w-0 flex-1 overflow-hidden ${isOverflowing ? 'marquee' : ''}`}>
+            <span
+              ref={textRef}
+              className={`unselectable inline-block whitespace-nowrap ${
+                isOverflowing ? 'marquee-content' : ''
+              }`}>
+              {song.title}
+            </span>
+          </div>
         </div>
       </td>
       <td className='p-2'>

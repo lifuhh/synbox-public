@@ -9,9 +9,11 @@ import { stageIndex, STAGES } from './plan'
 export const CAP = 0.95
 // The overall percentage stops here until the job really ends
 export const OVERALL_CAP = 0.99
+// A reported fraction fills at most this much of its stage's bar. Stages keep working after their last
+// report (separation writes and uploads the vocals), and a bar that arrived at 97 % sat on 99 % through all
+// of it; the rest now eases in like an unreported stage
+export const MEASURED_SHARE = 0.9
 const EASE_K = Math.log(5)
-// A stage this many times over its expected time says so
-const SLOW_FACTOR = 2
 
 export interface StageRun {
   label: string
@@ -112,7 +114,7 @@ export const reportFraction = (
     ...next,
     [id]: {
       ...run,
-      base: Math.max(fraction, stageValue(run, now)),
+      base: Math.max(MEASURED_SHARE * fraction, stageValue(run, now)),
       baseAt: now,
       reported: true,
     },
@@ -172,7 +174,6 @@ export interface StepView {
   detail: string | null
   // The running stage reports real fractions, rather than easing on its expected time
   measured: boolean
-  slow: boolean
 }
 
 export const stepView = (runs: Runs, step: Step, now: number): StepView => {
@@ -184,7 +185,6 @@ export const stepView = (runs: Runs, step: Step, now: number): StepView => {
       detail: null,
       fraction: 1,
       measured: false,
-      slow: false,
       state: 'done',
     }
   }
@@ -199,7 +199,6 @@ export const stepView = (runs: Runs, step: Step, now: number): StepView => {
         detail: spec(next).label,
         fraction,
         measured: false,
-        slow: false,
         state: 'active',
       }
     }
@@ -207,17 +206,13 @@ export const stepView = (runs: Runs, step: Step, now: number): StepView => {
       detail: null,
       fraction,
       measured: false,
-      slow: false,
       state: 'pending',
     }
   }
-  const slow =
-    !open.reported && now - open.startedAt > SLOW_FACTOR * open.expectedS * 1000
   return {
     detail: open.label,
     fraction,
     measured: open.reported,
-    slow,
     state: 'active',
   }
 }
