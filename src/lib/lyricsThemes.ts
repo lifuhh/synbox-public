@@ -1,7 +1,8 @@
 import type { CSSProperties } from 'react'
 
 // Lyrics are white until sung; a theme sets the colour the karaoke wipe paints and the glow behind every line.
-// Presets are WCAG-checked: accent >= 8:1 on the fixed dark edge (.lyric-text-line), glow >= 3:1 darker than the white
+// The accent is the lit, sung part, so it sits near the white's lightness (OKLCH 0.86+) rather than darker than it.
+// Presets are WCAG-checked: accent >= 13:1 on the fixed dark edge (.lyric-text-line), glow >= 3:1 darker than the white
 export type LyricsThemeId =
   | 'sakura'
   | 'cinema'
@@ -32,31 +33,31 @@ export const LYRICS_THEMES: LyricsTheme[] = [
   {
     id: 'sakura',
     name: 'Sakura',
-    accent: '#FF8FBA',
+    accent: '#FFBBD2',
     glow: '#CA1960',
   },
   {
     id: 'cinema',
     name: 'Cinema',
-    accent: '#6EA8FF',
+    accent: '#B6D3FE',
     glow: 'transparent',
   },
   {
     id: 'amethyst',
     name: 'Amethyst',
-    accent: '#BBA0FF',
+    accent: '#D5C7FE',
     glow: '#8A4DFF',
   },
   {
     id: 'aqua',
     name: 'Aqua',
-    accent: '#5ED6F2',
+    accent: '#71E3FF',
     glow: '#0A8FB0',
   },
   {
     id: 'matcha',
     name: 'Matcha',
-    accent: '#7FE09A',
+    accent: '#7FED9E',
     glow: '#1E9450',
   },
   {
@@ -68,14 +69,14 @@ export const LYRICS_THEMES: LyricsTheme[] = [
   {
     id: 'sunset',
     name: 'Sunset',
-    accent: '#FFA36B',
+    accent: '#FEC29F',
     glow: '#E0521A',
   },
 ]
 
 // Only the hue is user-chosen; fixed OKLCH lightness/chroma keep every hue at preset contrast
 export const getCustomThemeColors = (hue: number): LyricsThemeColors => ({
-  accent: `oklch(0.82 0.12 ${hue})`,
+  accent: `oklch(0.86 0.1 ${hue})`,
   glow: `oklch(0.58 0.19 ${hue})`,
 })
 
