@@ -63,13 +63,13 @@ describe('the overall percentage', () => {
     // Separation was cached, so the backend went straight to listening
     runs = beginStage(runs, 'listen', 5 * S)
     expect(runs.read?.doneAt).toBe(5 * S)
-    expect(stepView(runs, STEPS[0], 5 * S).state).toBe('done')
-    expect(stepView(runs, STEPS[1], 5 * S)).toMatchObject({
+    expect(stepView(runs, STEPS[1], 5 * S).state).toBe('done')
+    expect(stepView(runs, STEPS[2], 5 * S)).toMatchObject({
       fraction: 1,
       state: 'done',
     })
-    expect(stepView(runs, STEPS[2], 5 * S).state).toBe('active')
-    expect(stepView(runs, STEPS[3], 5 * S).state).toBe('pending')
+    expect(stepView(runs, STEPS[3], 5 * S).state).toBe('active')
+    expect(stepView(runs, STEPS[4], 5 * S).state).toBe('pending')
   })
 
   test('a reconnect that replays the stream from the start changes nothing', () => {
@@ -93,11 +93,18 @@ describe('the overall percentage', () => {
 })
 
 describe('a step', () => {
+  test('the quick check clears as its own first step before the download starts', () => {
+    let runs = beginStage({}, 'check', 0)
+    runs = beginStage(runs, 'download', 3 * S)
+    expect(stepView(runs, STEPS[0], 3 * S).state).toBe('done')
+    expect(stepView(runs, STEPS[1], 3 * S).state).toBe('active')
+  })
+
   test('stays active between two of its stages', () => {
     let runs = beginStage({}, 'download', 0)
     runs = reportFraction(runs, 'download', 1, 2 * S)
-    expect(stepView(runs, STEPS[0], 2 * S)).toMatchObject({
-      detail: "Checking it's a Japanese song",
+    expect(stepView(runs, STEPS[1], 2 * S)).toMatchObject({
+      detail: 'Reading subtitles and song details',
       state: 'active',
     })
   })

@@ -4,16 +4,16 @@
 // overall bar can never move backwards.
 export const STAGES = [
   {
-    id: 'download',
-    label: 'Downloading the song',
-    phase: 'validate',
-    weight: 12,
-  },
-  {
     id: 'check',
     label: "Checking it's a Japanese song",
     phase: 'validate',
-    weight: 4,
+    weight: 5,
+  },
+  {
+    id: 'download',
+    label: 'Downloading the song',
+    phase: 'validate',
+    weight: 10,
   },
   {
     id: 'read',
@@ -69,9 +69,11 @@ export const stageIndex = (id: StageId) =>
 export const isStageId = (value: unknown): value is StageId =>
   STAGES.some((stage) => stage.id === value)
 
-// What the panel lists: one row and one bar per step
+// What the panel lists: one row and one bar per step. The first is the quick check, so the panel shows a
+// step clearing within seconds instead of one long first step
 export const STEPS = [
-  { id: 'fetch', stages: ['download', 'check', 'read'], title: 'Fetch Song' },
+  { id: 'check', stages: ['check'], title: 'Check Song' },
+  { id: 'fetch', stages: ['download', 'read'], title: 'Fetch Song' },
   { id: 'vocals', stages: ['separate'], title: 'Isolate Vocals' },
   { id: 'transcribe', stages: ['listen', 'lyrics'], title: 'Transcribe' },
   { id: 'sync', stages: ['align', 'verify'], title: 'Sync Timing' },
