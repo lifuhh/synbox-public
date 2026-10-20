@@ -1,9 +1,25 @@
 import { useQueryClient } from '@tanstack/react-query'
+import { ArrowLeftIcon, ChevronDownIcon, PlayIcon } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useParams } from 'react-router'
 
 import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
+import { Skeleton } from '@/components/ui/skeleton'
 import { startGeneration } from '@/lib/generation/store'
 import {
   useActivateLyricsVersion,
@@ -12,6 +28,7 @@ import {
 } from '@/lib/react-query/queriesAndMutations'
 import { QUERY_KEYS } from '@/lib/react-query/queryKeys'
 import type { LyricsVersionSummary } from '@/lib/synbox-flask/lyrics-versions'
+import { cn } from '@/utils/cn'
 
 const TOKEN_KEY = 'synbox-admin-token'
 
@@ -31,40 +48,194 @@ const saveToken = (token: string) => {
   }
 }
 
-const percent = (value: number | null) =>
-  value === null ? '–' : `${Math.round(value * 100)}%`
+// The backend's version sources (synbox-transcribe-whisper › services/lyrics_versions.py, lyrics/persist.py)
+const SOURCE_LABELS: Record<string, string> = {
+  'before versions': 'Original',
+  'edited row': 'Edited by Hand',
+  'lyrics-v2': 'Regenerated',
+}
+// Where a generation's lyrics text came from (services/lyrics/text_sources.py)
+const TEXT_SOURCES: Record<string, string> = {
+  asr: 'the audio',
+  comment: 'a YouTube comment',
+  description: 'the video description',
+  lrclib: 'LRCLIB',
+  uploader_ja: "the uploader's subtitles",
+  ytmusic: 'YouTube Music',
+}
 
-const COLUMNS: [keyof LyricsVersionSummary['summary'], string][] = [
-  ['timed', 'Timed'],
+// The backend's free-text note, e.g. "text from lrclib; 33 of 40 lines verified". The note on a saved
+// original repeats what its label says, so it is dropped, and an unknown shape shows as written.
+const describeNote = (note: string) => {
+  if (note === 'the lyrics shown before this change') {
+    return ''
+  }
+  const parts =
+    /^text from (?<source>\w+); (?<verified>\d+) of (?<total>\d+) lines verified$/u.exec(
+      note
+    )?.groups
+  if (!parts) {
+    return note
+  }
+  const { source = '', verified, total } = parts
+  return `Lyrics from ${TEXT_SOURCES[source] ?? source} · ${verified} of ${total} lines verified`
+}
+
+const COVERAGE: [keyof LyricsVersionSummary['summary'], string][] = [
+  ['timed', 'Timing'],
   ['english', 'English'],
   ['chinese', 'Chinese'],
   ['romaji', 'Romaji'],
-  ['readings', 'Readings'],
+  ['readings', 'Furigana'],
 ]
+// Below this, a gap is worth a second look
+const WEAK = 0.9
 
-const VersionsPage = () => {
-  const { videoId = '' } = useParams<{ videoId: string }>()
+const dateFormat = new Intl.DateTimeFormat(undefined, {
+  dateStyle: 'medium',
+  timeStyle: 'short',
+})
+
+// Only what falls short is listed: versions differ in their gaps, and a row of 100 %s hides them
+const Gaps = ({ summary }: { summary: LyricsVersionSummary['summary'] }) => {
+  const gaps = COVERAGE.filter(([key]) => (summary[key] ?? 0) < 1)
+  return (
+    <p className='flex flex-wrap gap-x-3 gap-y-1 text-sm text-muted-foreground'>
+      <span className='whitespace-nowrap'>
+        <span className='font-medium text-foreground tabular-nums'>
+          {summary.lines}
+        </span>{' '}
+        Lines
+      </span>
+      {gaps.length === 0 ? (
+        <span>Fully Timed and Translated</span>
+      ) : (
+        gaps.map(([key, label]) => {
+          const value = summary[key]
+          return (
+            <span
+              key={key}
+              className={cn(
+                'whitespace-nowrap',
+                (value === null || value < WEAK) && 'text-amber-300'
+              )}>
+              {value === null || value === 0 ? (
+                `No ${label}`
+              ) : (
+                <>
+                  {label}{' '}
+                  <span className='font-medium tabular-nums'>
+                    {Math.floor(value * 100)}%
+                  </span>
+                </>
+              )}
+            </span>
+          )
+        })
+      )}
+    </p>
+  )
+}
+
+interface VersionCardProps {
+  videoId: string
+  version: LyricsVersionSummary
+  isDefault: boolean
+  onMakeDefault: () => void
+}
+
+const VersionCard = ({
+  videoId,
+  version,
+  isDefault,
+  onMakeDefault,
+}: VersionCardProps) => {
+  const note = describeNote(version.note)
+  return (
+    <li
+      className={cn(
+        'flex flex-col gap-3 rounded-xl border bg-card/60 p-4 sm:flex-row sm:items-center sm:gap-6',
+        isDefault ? 'border-primary/60' : 'border-white/10'
+      )}>
+      <div className='min-w-0 flex-1 space-y-1.5'>
+        <div className='flex flex-wrap items-center gap-x-2 gap-y-1'>
+          <h2 className='font-semibold text-foreground'>
+            Version {version.version}
+          </h2>
+          <span className='text-muted-foreground'>·</span>
+          <span className='text-foreground/90'>
+            {SOURCE_LABELS[version.source] ?? version.source}
+          </span>
+          {isDefault && (
+            <span className='rounded-full bg-primary/20 px-2 py-0.5 text-xs font-medium text-primary'>
+              Default
+            </span>
+          )}
+        </div>
+        <p className='text-sm text-muted-foreground'>
+          <time dateTime={version.created_at}>
+            {dateFormat.format(new Date(version.created_at))}
+          </time>
+          {note === '' ? '' : ` · ${note}`}
+        </p>
+        <Gaps summary={version.summary} />
+      </div>
+      <div className='flex shrink-0 gap-2'>
+        <Button asChild size='sm' variant='ghost' className='gap-1.5'>
+          <Link
+            to={
+              isDefault
+                ? `/v/${videoId}`
+                : `/v/${videoId}?version=${version.version}`
+            }>
+            <PlayIcon className='size-3.5 fill-current' />
+            {isDefault ? 'Play' : 'Preview'}
+          </Link>
+        </Button>
+        {!isDefault && (
+          <Button size='sm' variant='outline' onClick={onMakeDefault}>
+            Make Default
+          </Button>
+        )}
+      </div>
+    </li>
+  )
+}
+
+interface MakeDefaultDialogProps {
+  videoId: string
+  version: number | null
+  onClose: () => void
+}
+
+// Changing what everyone hears is an admin action, so it asks for the token, kept for the session
+const MakeDefaultDialog = ({
+  videoId,
+  version,
+  onClose,
+}: MakeDefaultDialogProps) => {
   const queryClient = useQueryClient()
-  const [adminToken, setAdminToken] = useState(readToken)
-  const [actionError, setActionError] = useState<string | null>(null)
-  const { data, error, isLoading } = useGetLyricsVersions(videoId)
-  const { data: songInfo } = useGetSongInfoBySongId(videoId)
+  const [token, setToken] = useState(readToken)
+  const [error, setError] = useState<string | null>(null)
   const { isPending, mutate: activate } = useActivateLyricsVersion()
 
-  const handleActivate = (version: number) => {
-    setActionError(null)
-    if (adminToken === '') {
-      setActionError('Enter the admin token to change the default version.')
+  const submit = () => {
+    if (version === null) {
       return
     }
-    saveToken(adminToken)
+    if (token.trim() === '') {
+      setError('Enter the admin token.')
+      return
+    }
+    setError(null)
     activate(
-      { adminToken, version, videoId },
+      { adminToken: token, version, videoId },
       {
         onError: (activateError) => {
-          setActionError(activateError.message)
+          setError(activateError.message)
         },
         onSuccess: () => {
+          saveToken(token)
           void queryClient.invalidateQueries({
             queryKey: [QUERY_KEYS.GET_LYRICS_VERSIONS, videoId],
           })
@@ -72,154 +243,184 @@ const VersionsPage = () => {
           queryClient.removeQueries({
             queryKey: [QUERY_KEYS.GET_LYRICS_BY_SONG_ID, videoId],
           })
+          onClose()
         },
       }
     )
   }
 
   return (
-    <div className='mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-10'>
-      <div className='flex flex-col gap-2 md:flex-row md:items-end md:justify-between'>
-        <div>
+    <Dialog
+      open={version !== null}
+      onOpenChange={(open) => {
+        if (!open) {
+          setError(null)
+          onClose()
+        }
+      }}>
+      <DialogContent className='max-w-md border-white/10'>
+        <form
+          className='grid gap-4'
+          onSubmit={(event) => {
+            event.preventDefault()
+            submit()
+          }}>
+          <DialogHeader>
+            <DialogTitle>Make Version {version} the Default?</DialogTitle>
+            <DialogDescription>
+              Everyone who plays this song will get these lyrics. You can switch
+              back at any time.
+            </DialogDescription>
+          </DialogHeader>
+          <label
+            htmlFor='admin-token'
+            className='grid gap-1.5 text-sm text-muted-foreground'>
+            Admin Token
+            <Input
+              id='admin-token'
+              type='password'
+              autoComplete='off'
+              autoFocus
+              value={token}
+              onChange={(event) => {
+                setToken(event.target.value)
+                setError(null)
+              }}
+            />
+          </label>
+          {error !== null && (
+            <p role='alert' className='text-sm text-red-300'>
+              {error}
+            </p>
+          )}
+          <DialogFooter className='gap-2'>
+            <Button type='button' variant='ghost' onClick={onClose}>
+              Cancel
+            </Button>
+            <Button type='submit' disabled={isPending}>
+              {isPending ? 'Saving…' : 'Make Default'}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+const VersionsPage = () => {
+  const { videoId = '' } = useParams<{ videoId: string }>()
+  const { data, error, isLoading } = useGetLyricsVersions(videoId)
+  const { data: songInfo } = useGetSongInfoBySongId(videoId)
+  const [confirming, setConfirming] = useState<number | null>(null)
+  const versions = data ? [...data.versions].reverse() : []
+
+  const regenerate = (skipUploaderLyrics: boolean) => {
+    startGeneration({
+      mode: 'regenerate',
+      skipUploaderLyrics,
+      title: songInfo?.title,
+      videoId,
+    })
+  }
+
+  return (
+    <div className='mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 pt-20 pb-16'>
+      <title>Lyrics Versions · Synbox</title>
+      <Link
+        to={`/v/${videoId}`}
+        className='flex w-fit items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground'>
+        <ArrowLeftIcon className='size-4' />
+        Back to Song
+      </Link>
+
+      <header className='flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between'>
+        <div className='min-w-0 space-y-1'>
           <h1 className='text-2xl font-bold text-foreground'>
             Lyrics Versions
           </h1>
-          <p className='text-sm text-muted-foreground'>
+          <p className='truncate text-sm text-muted-foreground'>
             {songInfo?.title ?? videoId}
           </p>
         </div>
-        <div className='flex gap-2'>
-          <Button asChild variant='ghost'>
-            <Link to={`/v/${videoId}`}>Open Song</Link>
-          </Button>
-          <Button
-            onClick={() => {
-              startGeneration({
-                mode: 'regenerate',
-                title: songInfo?.title,
-                videoId,
-              })
-            }}>
-            Regenerate
-          </Button>
-          <Button
-            variant='outline'
-            onClick={() => {
-              startGeneration({
-                mode: 'regenerate',
-                skipUploaderLyrics: true,
-                title: songInfo?.title,
-                videoId,
-              })
-            }}>
-            Regenerate Without Uploader Lyrics
-          </Button>
-        </div>
-      </div>
+        <DropdownMenu modal={false}>
+          <DropdownMenuTrigger asChild>
+            <Button className='w-fit shrink-0 gap-1.5'>
+              Regenerate
+              <ChevronDownIcon className='size-4' />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            align='end'
+            className='w-72 border border-white/10 bg-background text-foreground'>
+            <DropdownMenuItem
+              className='flex-col items-start gap-0.5'
+              onSelect={() => {
+                regenerate(false)
+              }}>
+              <span>Regenerate</span>
+              <span className='text-xs text-muted-foreground'>
+                A fresh run with every lyrics source
+              </span>
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              className='flex-col items-start gap-0.5'
+              onSelect={() => {
+                regenerate(true)
+              }}>
+              <span>Regenerate Without Uploader Lyrics</span>
+              <span className='text-xs text-muted-foreground'>
+                For when the video&apos;s subtitles are wrong
+              </span>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </header>
 
-      <p className='text-sm text-muted-foreground'>
-        Regenerating saves a new version and makes it the default. Skip the
-        uploader&apos;s lyrics when their subtitles are wrong; the lyrics then
-        come from YouTube Music, LRCLIB or the audio. Making an older version
-        the default rolls back.
+      <p className='-mt-2 text-sm text-muted-foreground'>
+        Each regeneration is saved as a new version and becomes the default.
+        Make an older one the default to roll back.
       </p>
 
-      <label
-        htmlFor='admin-token'
-        className='flex max-w-md flex-col gap-1 text-sm text-muted-foreground'>
-        Admin Token
-        <Input
-          id='admin-token'
-          type='password'
-          autoComplete='off'
-          value={adminToken}
-          onChange={(event) => {
-            setAdminToken(event.target.value)
-          }}
-        />
-      </label>
-
-      {actionError !== null && (
-        <p role='alert' className='text-sm font-semibold text-foreground'>
-          {actionError}
-        </p>
+      {isLoading && (
+        <div className='flex flex-col gap-3'>
+          <Skeleton className='h-28 rounded-xl' />
+          <Skeleton className='h-28 rounded-xl' />
+        </div>
       )}
-      {isLoading && <p className='text-muted-foreground'>Loading Versions…</p>}
       {error && (
-        <p role='alert' className='font-semibold text-foreground'>
+        <p role='alert' className='text-sm text-red-300'>
           {error.message}
         </p>
       )}
       {data?.versions.length === 0 && (
-        <p className='text-muted-foreground'>
-          No versions yet. The first regeneration also saves today&apos;s lyrics
-          as Version 0.
+        <p className='rounded-xl border border-dashed border-white/15 p-6 text-center text-sm text-muted-foreground'>
+          No versions yet. The first regeneration also keeps the current lyrics
+          as the original version.
         </p>
       )}
-
-      {data && data.versions.length > 0 && (
-        <div className='overflow-x-auto rounded-md border border-accent'>
-          <table className='w-full text-left text-sm tabular-nums'>
-            <thead className='bg-card text-muted-foreground'>
-              <tr>
-                <th className='p-3'>Version</th>
-                <th className='p-3'>Source</th>
-                <th className='p-3'>Created</th>
-                <th className='p-3 text-right'>Lines</th>
-                {COLUMNS.map(([key, label]) => (
-                  <th key={key} className='p-3 text-right'>
-                    {label}
-                  </th>
-                ))}
-                <th className='p-3'>Status</th>
-                <th className='p-3'>
-                  <span className='sr-only'>Actions</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.versions.map((version) => {
-                const isActive = data.active === version.version
-                return (
-                  <tr
-                    key={version.version}
-                    className='border-t border-accent text-foreground'>
-                    <td className='p-3'>{version.version}</td>
-                    <td className='p-3' title={version.note}>
-                      {version.source}
-                    </td>
-                    <td className='p-3'>{version.created_at.slice(0, 10)}</td>
-                    <td className='p-3 text-right'>{version.summary.lines}</td>
-                    {COLUMNS.map(([key]) => (
-                      <td key={key} className='p-3 text-right'>
-                        {percent(version.summary[key])}
-                      </td>
-                    ))}
-                    <td className='p-3'>{isActive ? 'Default' : ''}</td>
-                    <td className='flex gap-2 p-3'>
-                      <Button asChild size='sm' variant='ghost'>
-                        <Link to={`/v/${videoId}?version=${version.version}`}>
-                          Preview
-                        </Link>
-                      </Button>
-                      {!isActive && (
-                        <Button
-                          size='sm'
-                          disabled={isPending}
-                          onClick={() => {
-                            handleActivate(version.version)
-                          }}>
-                          Make Default
-                        </Button>
-                      )}
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
+      {versions.length > 0 && (
+        <ul className='flex flex-col gap-3'>
+          {versions.map((version) => (
+            <VersionCard
+              key={version.version}
+              videoId={videoId}
+              version={version}
+              isDefault={data?.active === version.version}
+              onMakeDefault={() => {
+                setConfirming(version.version)
+              }}
+            />
+          ))}
+        </ul>
       )}
+
+      <MakeDefaultDialog
+        videoId={videoId}
+        version={confirming}
+        onClose={() => {
+          setConfirming(null)
+        }}
+      />
     </div>
   )
 }

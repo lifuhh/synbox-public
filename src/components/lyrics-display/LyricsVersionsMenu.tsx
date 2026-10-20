@@ -15,26 +15,14 @@ import { cn } from '@/utils/cn'
 import { RailButton, RailTooltip } from './RailButton'
 
 // A regeneration is saved as a new version and becomes the default; the versions page rolls back
-export const LyricsVersionsMenu = ({
-  videoId,
-  onOpenChange,
-}: {
-  videoId: string
-  onOpenChange?: (open: boolean) => void
-}) => {
+export const LyricsVersionsMenu = ({ videoId }: { videoId: string }) => {
   const [menuOpen, setMenuOpen] = useState(false)
   const { data } = useGetLyricsVersions(videoId)
   const count = data?.versions.length ?? 0
 
   return (
     <>
-      <DropdownMenu
-        modal={false}
-        open={menuOpen}
-        onOpenChange={(open) => {
-          setMenuOpen(open)
-          onOpenChange?.(open)
-        }}>
+      <DropdownMenu modal={false} open={menuOpen} onOpenChange={setMenuOpen}>
         <RailTooltip label='Lyrics Versions' hidden={menuOpen}>
           <DropdownMenuTrigger asChild>
             <RailButton

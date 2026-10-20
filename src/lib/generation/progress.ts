@@ -192,6 +192,17 @@ export const stepView = (runs: Runs, step: Step, now: number): StepView => {
     (run): run is StageRun => run !== undefined && run.doneAt === null
   )
   if (open === undefined) {
+    // Between two of its stages (one closed, the next not reported yet) the step is still running
+    const next = ids.find((id) => runs[id] === undefined)
+    if (stageRuns.some((run) => run !== undefined) && next !== undefined) {
+      return {
+        detail: spec(next).label,
+        fraction,
+        measured: false,
+        slow: false,
+        state: 'active',
+      }
+    }
     return {
       detail: null,
       fraction,

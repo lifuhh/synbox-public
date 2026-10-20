@@ -17,9 +17,8 @@ import StepWheel from './StepWheel'
 import {
   hideBrokenImage,
   hidePlaceholderImage,
-  SURFACE_LAYOUT_ID,
   outcomeCopy,
-  SURFACE_SPRING,
+  PANEL_MOTION,
   surfacePlacement,
   thumbnailOf,
   titleOf,
@@ -176,9 +175,7 @@ const GenerationPanel = ({ job, view, raised }: GenerationPanelProps) => {
 
   return (
     <motion.section
-      layoutId={SURFACE_LAYOUT_ID}
-      transition={SURFACE_SPRING}
-      style={{ borderRadius: 20 }}
+      {...PANEL_MOTION}
       aria-label='Lyrics generation'
       onKeyDown={(event) => {
         if (event.key === 'Escape') {
@@ -188,13 +185,9 @@ const GenerationPanel = ({ job, view, raised }: GenerationPanelProps) => {
       }}
       className={cn(
         surfacePlacement(raised),
-        'fixed z-50 w-[min(400px,calc(100vw-2rem))] overflow-hidden border border-white/10 bg-[#1b0812]/90 shadow-[0_24px_64px_-12px_rgb(0_0_0/0.7)] backdrop-blur-xl'
+        'fixed z-50 w-[min(400px,calc(100vw-2rem))] overflow-hidden rounded-[20px] border border-white/10 bg-[#1b0812]/90 shadow-[0_24px_64px_-12px_rgb(0_0_0/0.7)] backdrop-blur-xl'
       )}>
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.12, duration: 0.2 }}
-        className='flex flex-col gap-4 p-4'>
+      <div className='flex flex-col gap-4 p-4'>
         <SongHeader
           job={job}
           onClose={status.kind === 'running' ? minimize : dismissGeneration}
@@ -274,7 +267,7 @@ const GenerationPanel = ({ job, view, raised }: GenerationPanelProps) => {
             </motion.div>
           )}
         </AnimatePresence>
-      </motion.div>
+      </div>
     </motion.section>
   )
 }

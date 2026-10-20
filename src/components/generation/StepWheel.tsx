@@ -3,7 +3,6 @@ import { motion, useReducedMotion } from 'motion/react'
 
 import { STEPS } from '@/lib/generation/plan'
 import type { StepView } from '@/lib/generation/progress'
-import { cn } from '@/utils/cn'
 
 import ProgressBar from './ProgressBar'
 
@@ -77,8 +76,9 @@ interface StepWheelProps {
   failed: boolean
 }
 
-// The job's steps on a drum: the current one in the band at the center with its bar and percentage,
-// finished ones rolled up out of the way, the rest waiting below.
+// The job's steps on a drum: the current one in the band at the center, finished ones rolled up out of the
+// way, the rest waiting below. Rows are rigid, so a roll only moves them: nothing in a row fades or swaps
+// as it is centered, which would empty the band halfway through every roll.
 const StepWheel = ({ views, index, failed }: StepWheelProps) => {
   const reduced = useReducedMotion() ?? false
   return (
@@ -113,32 +113,22 @@ const StepWheel = ({ views, index, failed }: StepWheelProps) => {
             }>
             <Glyph view={view} failed={centered && failed} />
             <div className='min-w-0 flex-1'>
-              <p
-                className={cn(
-                  'truncate text-[15px] leading-5 font-semibold tracking-tight',
-                  centered ? 'text-white' : 'text-white/80'
-                )}>
+              <p className='truncate text-[15px] leading-5 font-semibold tracking-tight text-white'>
                 {step.title}
               </p>
-              <p
-                className={cn(
-                  'truncate text-xs leading-4 text-white/55 transition-opacity duration-300',
-                  centered ? 'opacity-100' : 'opacity-0'
-                )}>
-                {failed
+              <p className='truncate text-xs leading-4 text-white/55'>
+                {centered && failed
                   ? 'Stopped here'
                   : view.state === 'done'
                     ? 'Done'
-                    : view.slow
-                      ? 'Taking longer than usual…'
-                      : (view.detail ?? 'Up next')}
+                    : view.state === 'pending'
+                      ? 'Waiting'
+                      : view.slow
+                        ? 'Taking longer than usual…'
+                        : (view.detail ?? 'Starting…')}
               </p>
             </div>
-            <div
-              className={cn(
-                'flex w-24 flex-col items-end gap-1.5 transition-opacity duration-300',
-                centered ? 'opacity-100' : 'opacity-0'
-              )}>
+            <div className='flex w-24 flex-col items-end gap-1.5'>
               <span className='text-[15px] leading-none font-semibold text-white tabular-nums'>
                 {percent}
                 <span className='ml-px text-[11px] text-white/55'>%</span>

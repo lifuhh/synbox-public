@@ -138,7 +138,7 @@ export const StageControls = ({
       onPointerDown={(event) => {
         event.stopPropagation()
       }}>
-      <div ref={contentRef}>
+      <div ref={contentRef} data-player-chrome>
         <Slider
           aria-label='Seek'
           min={0}

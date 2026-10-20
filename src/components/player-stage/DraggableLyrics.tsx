@@ -1,8 +1,8 @@
-import { useAtom } from 'jotai'
+import { useAtom, useSetAtom } from 'jotai'
 import type { CSSProperties, ReactNode } from 'react'
 import { useRef, useState } from 'react'
 
-import { lyricsAnchorAtom } from '@/context/atoms'
+import { lyricsAnchorAtom, lyricsStylePanelAtom } from '@/context/atoms'
 import { cn } from '@/utils/cn'
 
 import type { StageLayout } from './PlayerStage'
@@ -32,8 +32,8 @@ interface DraggableLyricsProps {
 // without measuring or animating. The bottom spacer never shrinks below the
 // controls, which lifts the block just clear of them; only that lift animates,
 // and it drops back once the controls have faded out. Only the text box is
-// grabbable; a press without a drag does nothing, and the empty band beside
-// the text passes clicks to the video
+// grabbable; a press without a drag opens the rail's style panel, and the empty
+// band beside the text passes clicks to the video
 export const DraggableLyrics = ({
   children,
   layout,
@@ -45,6 +45,7 @@ export const DraggableLyrics = ({
   const blockRef = useRef<HTMLDivElement>(null)
   const dragRef = useRef<DragStart | null>(null)
   const [dragging, setDragging] = useState(false)
+  const setStylePanel = useSetAtom(lyricsStylePanelAtom)
 
   const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
     const block = blockRef.current
@@ -91,6 +92,8 @@ export const DraggableLyrics = ({
     if (drag.moved) {
       setDragging(false)
       layout.onDragChange(false)
+    } else {
+      setStylePanel('pinned')
     }
   }
 
@@ -109,6 +112,7 @@ export const DraggableLyrics = ({
         data-backdrop={backdrop}>
         <div
           data-testid='lyrics-handle'
+          data-lyrics-style-toggle
           className={cn(
             'pointer-events-auto mx-auto w-fit max-w-full cursor-grab touch-none rounded-xl px-[1cqw] ring-white/25 transition-[background-color,box-shadow] hover:bg-white/5 hover:ring-1',
             dragging && 'cursor-grabbing bg-white/5 ring-1'
