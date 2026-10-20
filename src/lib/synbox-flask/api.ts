@@ -1,6 +1,6 @@
 import type { KaraokeDoc } from '@/types'
 
-const BE_ADDRESS = import.meta.env.VITE_SYNBOX_BE_URL
+import { LOOKUP_ADDRESS } from './address'
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null
@@ -35,7 +35,7 @@ export const getKaraoke = async (
 ): Promise<KaraokeDoc | null> => {
   const query = version === null ? '' : `?version=${version}`
   const response = await fetch(
-    `${BE_ADDRESS}/karaoke/${encodeURIComponent(id)}${query}`,
+    `${LOOKUP_ADDRESS}/karaoke/${encodeURIComponent(id)}${query}`,
     { headers: { Accept: 'application/json' }, signal }
   )
   if (response.status === 404) {

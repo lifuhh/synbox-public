@@ -12,6 +12,8 @@ interface ImportMetaEnv {
   // Local runs without one leave Sentry disabled
   readonly VITE_SENTRY_DSN?: string
   readonly VITE_SYNBOX_BE_URL: string
+  // The backend's lookup service; unset sends its reads to VITE_SYNBOX_BE_URL
+  readonly VITE_SYNBOX_LOOKUP_URL?: string
 }
 
 interface ImportMeta {

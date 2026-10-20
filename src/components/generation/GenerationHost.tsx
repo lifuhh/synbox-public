@@ -1,10 +1,10 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { AnimatePresence, MotionConfig } from 'motion/react'
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useMatch } from 'react-router'
 
 import { STEPS } from '@/lib/generation/plan'
-import { useGeneration } from '@/lib/generation/store'
+import { focusedJob, useGeneration } from '@/lib/generation/store'
 import { QUERY_KEYS } from '@/lib/react-query/queryKeys'
 
 import GenerationFab from './GenerationFab'
@@ -27,25 +27,31 @@ const LIST_QUERIES = [
   QUERY_KEYS.GET_SONGS_WITH_LYRICS,
 ]
 
-// Mounted once in the root layout, so the running generation follows the user from page to page
+// Mounted once in the root layout, so the generations follow the user from page to page
 const GenerationHost = () => {
-  const { job, expanded } = useGeneration()
+  const generation = useGeneration()
+  const { jobs, expanded } = generation
+  const job = focusedJob(generation)
   const view = usePresentation(job)
   const queryClient = useQueryClient()
   const onPlayer = useMatch('/v/:videoId') !== null
-  const completed = job?.status.kind === 'complete'
 
-  const videoId = job?.videoId
+  // Every job that finishes refreshes its song, whichever one the panel shows
+  const refreshed = useRef(new Set<number>())
   useEffect(() => {
-    if (completed && videoId !== undefined) {
+    for (const done of jobs) {
+      if (done.status.kind !== 'complete' || refreshed.current.has(done.id)) {
+        continue
+      }
+      refreshed.current.add(done.id)
       for (const key of SONG_QUERIES) {
-        void queryClient.resetQueries({ queryKey: [key, videoId] })
+        void queryClient.resetQueries({ queryKey: [key, done.videoId] })
       }
       for (const key of LIST_QUERIES) {
         void queryClient.invalidateQueries({ queryKey: [key] })
       }
     }
-  }, [completed, job?.id, videoId, queryClient])
+  }, [jobs, queryClient])
 
   const announcement =
     !job || !view
@@ -65,11 +71,18 @@ const GenerationHost = () => {
             <GenerationPanel
               key='panel'
               job={job}
+              jobs={jobs}
               view={view}
               raised={onPlayer}
             />
           ) : (
-            <GenerationFab key='fab' job={job} view={view} raised={onPlayer} />
+            <GenerationFab
+              key='fab'
+              job={job}
+              count={jobs.length}
+              view={view}
+              raised={onPlayer}
+            />
           ))}
       </AnimatePresence>
       <p className='sr-only' aria-live='polite'>

@@ -97,3 +97,14 @@ export const outcomeOf = (job: Job): Outcome | null => {
 }
 
 export const titleOf = (job: Job) => job.video?.title ?? job.title
+
+// Where a job stands in line, or null once it is under way
+export const queueLabelOf = (job: Job) => {
+  if (job.status.kind === 'waiting') {
+    return 'Waiting to Start'
+  }
+  if (job.status.kind === 'running' && job.ahead > 0) {
+    return `In Line · ${job.ahead} ${job.ahead === 1 ? 'Song' : 'Songs'} Ahead`
+  }
+  return null
+}

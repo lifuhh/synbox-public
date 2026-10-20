@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-const BE_ADDRESS = import.meta.env.VITE_SYNBOX_BE_URL
+import { LOOKUP_ADDRESS } from './address'
 
 // A label value the backend adds later degrades to no badge instead of failing the search
 const videoSearchResultSchema = z.object({
@@ -72,7 +72,7 @@ const getJson = async <T>(
   schema: z.ZodType<T>,
   signal?: AbortSignal
 ): Promise<T> => {
-  const response = await fetch(`${BE_ADDRESS}${path}`, { signal })
+  const response = await fetch(`${LOOKUP_ADDRESS}${path}`, { signal })
   if (response.status === 404) {
     throw new Error('This song is not in the library yet')
   }

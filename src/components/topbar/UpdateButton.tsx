@@ -2,7 +2,7 @@ import { RefreshCwIcon } from 'lucide-react'
 import { useState } from 'react'
 
 import { Button } from '@/components/ui/button'
-import { isRunning, useGeneration } from '@/lib/generation/store'
+import { anyActive, useGeneration } from '@/lib/generation/store'
 import { applyUpdate, useUpdateReady } from '@/lib/pwa'
 import { cn } from '@/utils/cn'
 
@@ -10,10 +10,10 @@ import { cn } from '@/utils/cn'
 // Hidden while lyrics generate, since the reload would cut their progress off
 const UpdateButton = () => {
   const ready = useUpdateReady()
-  const { job } = useGeneration()
+  const generation = useGeneration()
   const [applying, setApplying] = useState(false)
 
-  if (!ready || isRunning(job)) {
+  if (!ready || anyActive(generation)) {
     return null
   }
   return (
