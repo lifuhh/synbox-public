@@ -4,7 +4,7 @@ import type { VariantProps } from 'class-variance-authority'
 import type { MotionValue } from 'motion/react'
 import { motion, useMotionValue, useSpring, useTransform } from 'motion/react'
 import type { PropsWithChildren } from 'react'
-import React, { cloneElement, isValidElement, useRef } from 'react'
+import React, { createContext, useContext, useMemo, useRef } from 'react'
 
 import { cn } from '@/utils/cn'
 
@@ -22,6 +22,14 @@ const dockVariants = cva(
   'mx-auto mt-8 flex h-[58px] w-max items-end gap-2 rounded-2xl border p-2 dark:border-[#707070]'
 )
 
+interface DockContextValue {
+  distance: number
+  magnification: number
+  mouseX: MotionValue<number>
+}
+
+const DockContext = createContext<DockContextValue | undefined>(undefined)
+
 const DockRender: React.ForwardRefRenderFunction<HTMLDivElement, DockProps> = (
   {
     className,
@@ -33,13 +41,10 @@ const DockRender: React.ForwardRefRenderFunction<HTMLDivElement, DockProps> = (
   ref
 ) => {
   const mouseX = useMotionValue(Infinity)
-
-  const renderChildren = () =>
-    React.Children.map(children, (child): React.ReactNode =>
-      isValidElement<DockIconProps>(child)
-        ? cloneElement(child, { distance, magnification, mouseX })
-        : child
-    )
+  const dock = useMemo(
+    () => ({ distance, magnification, mouseX }),
+    [distance, magnification, mouseX]
+  )
 
   return (
     <motion.div
@@ -52,7 +57,7 @@ const DockRender: React.ForwardRefRenderFunction<HTMLDivElement, DockProps> = (
       }}
       {...props}
       className={cn(dockVariants({ className }), className)}>
-      {renderChildren()}
+      <DockContext.Provider value={dock}>{children}</DockContext.Provider>
     </motion.div>
   )
 }
@@ -72,18 +77,22 @@ interface DockIconProps {
 }
 
 const DockIcon = ({
-  size,
-  magnification = DEFAULT_MAGNIFICATION,
-  distance = DEFAULT_DISTANCE,
-  mouseX,
+  size: _size,
+  magnification: magnificationProp = DEFAULT_MAGNIFICATION,
+  distance: distanceProp = DEFAULT_DISTANCE,
+  mouseX: mouseXProp,
   className,
   children,
   ...props
 }: DockIconProps) => {
   const ref = useRef<HTMLDivElement>(null)
   const fallbackMouseX = useMotionValue(Infinity)
+  const dock = useContext(DockContext)
+  const magnification = dock?.magnification ?? magnificationProp
+  const distance = dock?.distance ?? distanceProp
+  const mouseX = dock?.mouseX ?? mouseXProp ?? fallbackMouseX
 
-  const distanceCalc = useTransform(mouseX ?? fallbackMouseX, (val: number) => {
+  const distanceCalc = useTransform(mouseX, (val: number) => {
     const bounds = ref.current?.getBoundingClientRect() ?? { width: 0, x: 0 }
 
     return val - bounds.x - bounds.width / 2
