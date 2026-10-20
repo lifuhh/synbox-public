@@ -26,8 +26,8 @@ const HistoryDropdownItem: React.FC<HistoryDropdownItemProps> = ({
   const containerRef = useRef<HTMLDivElement>(null)
   const [isOverflowing, setIsOverflowing] = useState(false)
 
-  const handleRowClick = (videoId: string) => () => {
-    navigate(`/v/${videoId}`)
+  const handleRowClick = (id: string) => () => {
+    void navigate(`/v/${id}`)
   }
 
   useEffect(() => {
@@ -50,7 +50,7 @@ const HistoryDropdownItem: React.FC<HistoryDropdownItemProps> = ({
   useOverflow(textRef, containerRef, 'marquee')
 
   const handleClick = () => {
-    navigate(`/v/${videoId}`)
+    void navigate(`/v/${videoId}`)
   }
 
   return (

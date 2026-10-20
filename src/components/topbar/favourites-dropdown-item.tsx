@@ -49,7 +49,7 @@ const FavouritesDropdownItem: React.FC<FavouritesDropdownItemProps> = ({
   useOverflow(textRef, containerRef, 'marquee')
 
   const handleClick = () => {
-    navigate(`/v/${videoId}`)
+    void navigate(`/v/${videoId}`)
   }
 
   const handleRemove = (e: React.MouseEvent<HTMLButtonElement>) => {

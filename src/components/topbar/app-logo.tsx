@@ -17,14 +17,17 @@ const AppLogo: React.FC = () => {
         landingPage.scrollTo({ behavior: 'smooth', top: 0 })
       }
     } else {
-      navigate('/')
+      void navigate('/')
     }
   }
 
   return (
     <div className='z-20 flex w-36 min-w-36 cursor-pointer justify-start py-2 align-middle sm:w-44 sm:min-w-44'>
       <Link to='/' onClick={handleOnClick}>
-        <button aria-label='Home Button' className='cursor-pointer'>
+        <button
+          type='button'
+          aria-label='Home Button'
+          className='cursor-pointer'>
           <SynboxLogo />
         </button>
       </Link>

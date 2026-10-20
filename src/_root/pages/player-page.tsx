@@ -67,9 +67,8 @@ const PlayerPage = () => {
 
   useEffect(() => {
     let mounted = true
-    handleVideoRoute({
+    void handleVideoRoute({
       navigate,
-      onSuccess: () => {},
       setError: (err) => {
         if (mounted) {
           setError(err)
@@ -98,7 +97,10 @@ const PlayerPage = () => {
         <p className='text-red-500'>{error}</p>
         <p className='text-sm text-gray-600'>Video ID: {videoId}</p>
         <button
-          onClick={() => navigate('/')}
+          type='button'
+          onClick={() => {
+            void navigate('/')
+          }}
           className='rounded-sm bg-primary px-4 py-2 text-white transition-colors hover:bg-primary/90'>
           Return Home
         </button>

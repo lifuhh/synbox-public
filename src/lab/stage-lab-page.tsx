@@ -51,10 +51,9 @@ const StageLabPage = () => {
   const startRef = useRef<number | null>(null)
 
   const handleEvent = useCallback((message: string) => {
-    if (startRef.current === null) {
-      startRef.current = performance.now()
-    }
-    const at = ((performance.now() - startRef.current) / 1000).toFixed(2)
+    const start = startRef.current ?? performance.now()
+    startRef.current = start
+    const at = ((performance.now() - start) / 1000).toFixed(2)
     setLog((current) => [`${at}s  ${message}`, ...current].slice(0, LOG_LIMIT))
   }, [])
 

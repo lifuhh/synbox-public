@@ -14,11 +14,18 @@ interface State {
   errorInfo: ErrorInfo | null
 }
 
+const handleReturnHome = () => {
+  window.location.href = '/'
+}
+
 class ErrorBoundary extends Component<Props, State> {
-  public state: State = {
-    error: null,
-    errorInfo: null,
-    hasError: false,
+  public constructor(props: Props) {
+    super(props)
+    this.state = {
+      error: null,
+      errorInfo: null,
+      hasError: false,
+    }
   }
 
   public static getDerivedStateFromError(error: Error): State {
@@ -30,11 +37,7 @@ class ErrorBoundary extends Component<Props, State> {
     console.error('Uncaught error:', error, errorInfo)
   }
 
-  private readonly handleReturnHome = () => {
-    window.location.href = '/'
-  }
-
-  public render() {
+  public render(): ReactNode {
     if (this.state.hasError) {
       return (
         <div className='relative h-dvh w-full'>
@@ -46,7 +49,7 @@ class ErrorBoundary extends Component<Props, State> {
                 Something Went Wrong
               </h1>
               <p className='mt-4 text-muted-foreground'>
-                We're sorry — an unexpected error has occurred:
+                We&apos;re sorry — an unexpected error has occurred:
               </p>
               {this.state.error && (
                 <p className='mt-2 text-muted-foreground'>
@@ -54,7 +57,7 @@ class ErrorBoundary extends Component<Props, State> {
                 </p>
               )}
               <div className='mt-6'>
-                <Button onClick={this.handleReturnHome}>Return To Home</Button>
+                <Button onClick={handleReturnHome}>Return To Home</Button>
               </div>
             </div>
           </div>

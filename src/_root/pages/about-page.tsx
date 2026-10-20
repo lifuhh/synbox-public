@@ -178,8 +178,8 @@ const AboutPage = () => (
         Synbox is a personal project created to help me better understand and
         enjoy Japanese music videos. This is a non-commercial project with no
         monetization, intended solely for personal educational purposes. I
-        respect all artists' rights and will promptly remove any content upon
-        request from the copyright holders.
+        respect all artists&apos; rights and will promptly remove any content
+        upon request from the copyright holders.
       </p>
     </div>
 
