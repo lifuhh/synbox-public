@@ -1,23 +1,26 @@
 import React from 'react'
-import { Link, useLocation, useNavigate } from 'react-router'
+import { Link, useLocation } from 'react-router'
 
 import { SynboxLogo } from '../svgicons'
 
 const AppLogo: React.FC = () => {
-  const navigate = useNavigate()
   const location = useLocation()
 
   const handleOnClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
-    event.preventDefault()
-    if (location.pathname === '/') {
-      const landingPage =
-        document.querySelector<HTMLElement>('[data-scroll-top]')
-      if (landingPage !== null) {
-        landingPage.scrollTo({ behavior: 'smooth', top: 0 })
-      }
-    } else {
-      void navigate('/')
+    const isModifiedClick =
+      event.button !== 0 ||
+      event.metaKey ||
+      event.ctrlKey ||
+      event.shiftKey ||
+      event.altKey
+    if (isModifiedClick || location.pathname !== '/') {
+      return
     }
+
+    event.preventDefault()
+    document
+      .querySelector<HTMLElement>('[data-scroll-top]')
+      ?.scrollTo({ behavior: 'smooth', top: 0 })
   }
 
   return (
