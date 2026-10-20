@@ -174,7 +174,18 @@ export const PlayerStage = ({
   const [fullscreen, setFullscreen] = useState(false)
   // iPhone Safari has no fullscreen for a page; there the button hides the app's own top bar instead
   const [immersive, setImmersive] = useState(false)
-  const player = useYouTubePlayer({ videoId, quirks, volume, loop, onEvent })
+  const touch = useMediaQuery('(pointer: coarse)')
+  // With a mouse a pause leaves the frame in view, so a viewer can stop on a moment; a touch screen
+  // shows the blurred cover
+  const coverPause = touch
+  const player = useYouTubePlayer({
+    videoId,
+    quirks,
+    volume,
+    loop,
+    coverPause,
+    onEvent,
+  })
   const { phase } = player
 
   const autoplayedRef = useRef(false)
@@ -220,11 +231,11 @@ export const PlayerStage = ({
   const handsOff = interactive || phase.kind === 'error'
   const showCover =
     !handsOff &&
-    (COVERED_PHASES.has(phase.kind) ||
+    ((COVERED_PHASES.has(phase.kind) &&
+      (coverPause || phase.kind !== 'paused')) ||
       (phase.kind === 'playing' && !phase.settled))
   const controlsVisible = !dragging && (!idle || phase.kind !== 'playing')
   const { toast } = useToast()
-  const touch = useMediaQuery('(pointer: coarse)')
   const centerControl = touch && controlsVisible
   const centerArmed = useArmed(centerControl)
   const setChromeOpen = useSetAtom(playerChromeOpenAtom)
@@ -402,25 +413,30 @@ export const PlayerStage = ({
 
       {/* YouTube shows its own center button for about 4s after every play or seek; this covers that spot,
           opaque so none of it shows through. On a touch screen it is also the play/pause control, shown
-          with the rest of the floating UI as in YouTube's own app. It sits outside the video box so it
-          draws above the lyrics; the video is always centred on the stage */}
-      {!showCover && !handsOff && (player.centerMasked || centerControl) && (
-        <button
-          type='button'
-          tabIndex={-1}
-          aria-label={isPlaying ? 'Pause' : 'Play'}
-          onClick={player.togglePlay}
-          className={cn(
-            'absolute top-1/2 left-1/2 z-26 grid size-20 -translate-1/2 place-items-center rounded-full bg-neutral-950 text-white shadow-[0_4px_16px_rgb(0_0_0/0.35)] ring-1 ring-white/10',
-            !centerArmed && 'pointer-events-none'
-          )}>
-          {phase.kind === 'paused' ? (
-            <PlayIcon className='size-9 fill-current' />
-          ) : (
-            <PauseIcon className='size-9 fill-current' />
-          )}
-        </button>
-      )}
+          with the rest of the floating UI as in YouTube's own app. An uncovered pause shows it throughout:
+          YouTube's button stays up for a whole pause that starts within those seconds. It sits outside the
+          video box so it draws above the lyrics; the video is always centred on the stage */}
+      {!showCover &&
+        !handsOff &&
+        (player.centerMasked || centerControl || phase.kind === 'paused') && (
+          <button
+            type='button'
+            tabIndex={-1}
+            aria-label={isPlaying ? 'Pause' : 'Play'}
+            onClick={player.togglePlay}
+            className={cn(
+              'absolute top-1/2 left-1/2 z-26 grid size-20 -translate-1/2 place-items-center rounded-full bg-neutral-950 text-white shadow-[0_4px_16px_rgb(0_0_0/0.35)] ring-1 ring-white/10',
+              phase.kind === 'paused' &&
+                'animate-in duration-200 zoom-in-90 fade-in',
+              !centerArmed && 'pointer-events-none'
+            )}>
+            {phase.kind === 'paused' ? (
+              <PlayIcon className='size-9 fill-current' />
+            ) : (
+              <PauseIcon className='size-9 fill-current' />
+            )}
+          </button>
+        )}
 
       {quirks.blockIframeInput && !handsOff && (
         <div

@@ -9,8 +9,8 @@ export interface YouTubeQuirks {
   // the video inside the taller iframe, so its title bar and logo land in the
   // clipped bands while the picture stays whole
   cropPx: number
-  // Show our cover before asking YouTube to pause, so its paused UI
-  // ("More videos", title) is never visible
+  // Where a pause shows our cover (touch screens), show it before asking
+  // YouTube to pause, so the pause never lands a frame early
   coverBeforePause: boolean
   // Keep the cover this long after YouTube reports PLAYING, hiding the
   // title flash on resume
