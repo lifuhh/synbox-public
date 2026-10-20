@@ -1,4 +1,5 @@
 import { AppwriteException, Query } from 'appwrite'
+import type { Models } from 'appwrite'
 import { z } from 'zod'
 
 import type { CurrentPlayingInfo } from '@/types'
@@ -40,13 +41,14 @@ const getSongDocument = async (collectionId: string, songId: string) => {
   }
 }
 
-export async function addSongInfoBySongId(songInfo: CurrentPlayingInfo) {
+export const addSongInfoBySongId = async (songInfo: CurrentPlayingInfo) => {
   const { videoId, title, author, thumbnailUrl } = songInfo
 
+  let songInfoUpload: Models.DefaultDocument | undefined
   try {
     const appwriteId = createAppwriteIdFromYoutubeId(videoId)
 
-    const songInfoUpload = await databases.createDocument(
+    songInfoUpload = await databases.createDocument(
       appwriteConfig.databaseId,
       appwriteConfig.songInfoId,
       appwriteId,
@@ -56,15 +58,15 @@ export async function addSongInfoBySongId(songInfo: CurrentPlayingInfo) {
         title,
       }
     )
-    return songInfoUpload
   } catch (error) {
     console.log('Add Song Info Error:', error)
   }
+  return songInfoUpload
 }
 
-export async function getSongInfoBySongId(
+export const getSongInfoBySongId = async (
   songId: string
-): Promise<CurrentPlayingInfo | null> {
+): Promise<CurrentPlayingInfo | null> => {
   if (!songId) {
     throw new Error('No Song Id!')
   }
@@ -99,7 +101,7 @@ export async function getSongInfoBySongId(
   }
 }
 
-export async function getSongLyricsById(songId: string) {
+export const getSongLyricsById = async (songId: string) => {
   if (!songId) {
     throw new Error('No songId given')
   }
@@ -145,17 +147,18 @@ export const songsWithLyrics = async (videoIds: string[]) => {
     ids.slice(i * PAGE, (i + 1) * PAGE)
   )
   const pages = await Promise.all(
-    chunks.map((chunk) =>
-      databases.listDocuments({
-        collectionId: appwriteConfig.lyricsId,
-        databaseId: appwriteConfig.databaseId,
-        queries: [
-          Query.equal('$id', chunk),
-          Query.select(['$id']),
-          Query.limit(PAGE),
-        ],
-        total: false,
-      })
+    chunks.map(
+      async (chunk) =>
+        await databases.listDocuments({
+          collectionId: appwriteConfig.lyricsId,
+          databaseId: appwriteConfig.databaseId,
+          queries: [
+            Query.equal('$id', chunk),
+            Query.select(['$id']),
+            Query.limit(PAGE),
+          ],
+          total: false,
+        })
     )
   )
   return new Set(
@@ -170,7 +173,7 @@ export const songsWithLyrics = async (videoIds: string[]) => {
 export const listGallerySongs = async (): Promise<GallerySong[]> => {
   const rows: z.infer<typeof galleryRowSchema>[] = []
   for (;;) {
-    const last = rows[rows.length - 1]
+    const last = rows.at(-1)
     const page = await databases.listDocuments({
       collectionId: appwriteConfig.songInfoId,
       databaseId: appwriteConfig.databaseId,

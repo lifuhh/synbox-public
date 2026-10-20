@@ -6,11 +6,11 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null
 
 // Shallow shape check: enough that rendering cannot throw on a malformed doc
-const KARAOKE_DOC_VERSIONS: readonly unknown[] = [1, 2]
+const KARAOKE_DOC_VERSIONS: ReadonlySet<unknown> = new Set([1, 2])
 
 export const isKaraokeDoc = (value: unknown): value is KaraokeDoc =>
   isRecord(value) &&
-  KARAOKE_DOC_VERSIONS.includes(value.version) &&
+  KARAOKE_DOC_VERSIONS.has(value.version) &&
   Array.isArray(value.lines) &&
   value.lines.every(
     (line: unknown) =>
