@@ -97,7 +97,7 @@ export const extractVideoId = (input: string): string | null => {
       : `https://${input}`
 
   try {
-    const match = fullUrl.match(videoIdPattern)
+    const match = videoIdPattern.exec(fullUrl)
     if (match && match[1]) {
       return match[1]
     }
