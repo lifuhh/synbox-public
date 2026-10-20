@@ -5,11 +5,12 @@ import type { Job } from '@/lib/generation/store'
 const ENTER = { duration: 0.22, ease: [0.16, 1, 0.3, 1] } as const
 const EXIT = { duration: 0.14, ease: [0.4, 0, 1, 1] } as const
 
+// On a touch screen the panel is a card in the middle of the screen, so it scales from its centre there
 export const PANEL_MOTION = {
   animate: { opacity: 1, scale: 1, transition: ENTER },
   exit: { opacity: 0, scale: 0.8, transition: EXIT },
   initial: { opacity: 0, scale: 0.8 },
-  style: { transformOrigin: 'bottom right' },
+  style: { transformOrigin: 'var(--panel-origin, bottom right)' },
 } as const
 
 export const FAB_MOTION = {
