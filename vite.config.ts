@@ -1,4 +1,6 @@
+import { execFileSync } from 'node:child_process'
 import type { IncomingMessage, ServerResponse } from 'node:http'
+import path from 'node:path'
 
 import { sentryVitePlugin } from '@sentry/vite-plugin'
 import tailwindcss from '@tailwindcss/vite'
@@ -13,6 +15,20 @@ import { defineConfig, lazyPlugins, loadEnv } from 'vite-plus'
 
 import { handleYoutube } from './netlify/youtube-proxy'
 
+// A git worktree has no env file of its own, so every checkout reads the main checkout's
+const envDir = (() => {
+  try {
+    const gitDir = execFileSync(
+      'git',
+      ['rev-parse', '--path-format=absolute', '--git-common-dir'],
+      { cwd: import.meta.dirname, encoding: 'utf-8' }
+    )
+    return path.dirname(gitDir.trim())
+  } catch {
+    return import.meta.dirname
+  }
+})()
+
 // The dev server's stand-in for the Netlify function at /api/youtube
 const serveYoutube = async (
   // Connect strips the mount path from url and keeps the full one here
@@ -22,7 +38,7 @@ const serveYoutube = async (
 ) => {
   const { referer } = req.headers
   const headers = new Headers(referer === undefined ? {} : { referer })
-  const env = loadEnv(process.env.NODE_ENV ?? 'development', process.cwd(), '')
+  const env = loadEnv(process.env.NODE_ENV ?? 'development', envDir, '')
   // A local .env from before the proxy still works: its referrer-restricted browser key accepts the
   // localhost page the request came from
   const key = env.YOUTUBE_API_KEY || env.VITE_GOOGLE_API_KEY
@@ -67,6 +83,7 @@ export default defineConfig({
       (process.env.COMMIT_REF ?? 'local').slice(0, 7)
     ),
   },
+  envDir,
   fmt: {
     ...ultraciteFmt,
     bracketSameLine: true,
