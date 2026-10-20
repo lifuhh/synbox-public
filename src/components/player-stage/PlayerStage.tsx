@@ -333,7 +333,10 @@ export const PlayerStage = ({
         <div
           data-testid='stage-input'
           aria-hidden='true'
-          className='absolute inset-0 z-20'
+          className={cn(
+            'absolute inset-0 z-20',
+            controlsVisible && 'cursor-pointer'
+          )}
           onClick={player.togglePlay}
           onDoubleClick={toggleFullscreen}
         />
