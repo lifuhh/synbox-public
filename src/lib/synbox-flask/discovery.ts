@@ -3,17 +3,14 @@ import { z } from 'zod'
 
 import { LOOKUP_ADDRESS } from './address'
 
-// A label value the backend adds later degrades to no badge instead of failing the search
 const videoSearchResultSchema = z.object({
   channel: z.string(),
   duration_s: z.number().nullable(),
   group: z.number(),
-  is_cover: z.boolean().nullable(),
   processed: z.boolean(),
   source: z.enum(['youtube', 'library']).catch('youtube'),
   thumbnail_url: z.string(),
   title: z.string(),
-  version: z.enum(['full', 'tv_size', 'live']).nullable().catch(null),
   video_id: z.string(),
 })
 export type VideoSearchResult = z.infer<typeof videoSearchResultSchema>
@@ -28,19 +25,9 @@ export type VideoSearchResponse = z.infer<typeof videoSearchResponseSchema>
 
 const librarySongSchema = z.object({
   artist: z.string(),
-  difficulty: z
-    .enum(['beginner', 'intermediate', 'advanced'])
-    .nullable()
-    .catch(null),
-  explicit: z.boolean(),
-  mood: z.string().nullable(),
-  themes: z.array(z.string()),
   thumbnail_url: z.string(),
   title: z.string(),
   video_id: z.string(),
-  vocal: z
-    .enum(['female', 'male', 'mixed', 'synth', 'unknown'])
-    .catch('unknown'),
 })
 export type LibrarySong = z.infer<typeof librarySongSchema>
 
@@ -53,17 +40,14 @@ const librarySearchResponseSchema = z.object({
   mode: z.enum(['ranked', 'title_match']).catch('ranked'),
   query: z.string(),
   ready: z.boolean(),
-  results: z.array(
-    librarySongSchema.extend({
-      fit: z.number().nullable(),
-      vocal_unknown: z.boolean(),
-    })
-  ),
+  results: z.array(librarySongSchema),
 })
 export type LibrarySearchResponse = z.infer<typeof librarySearchResponseSchema>
 
 const similarSongsResponseSchema = z.object({
   results: z.array(librarySongSchema),
+  // Null from a backend that predates it
+  song: librarySongSchema.nullable().catch(null),
   video_id: z.string(),
 })
 export type SimilarSongsResponse = z.infer<typeof similarSongsResponseSchema>
