@@ -54,7 +54,7 @@ const HomeFooter = () => (
         orientation='vertical'
         className='hidden mx-4 my-2 h-auto w-0.5 self-stretch bg-foreground sm:block'
       />
-      <div className='flex'></div>
+      <div className='flex' />
       <Dock className='mt-0 border-none'>
         <DockIcon
           onClick={() => {
