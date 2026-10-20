@@ -11,7 +11,7 @@ export const STAGES = [
   },
   {
     id: 'download',
-    label: 'Downloading the song',
+    label: 'Preparing the song',
     phase: 'validate',
     weight: 10,
   },
@@ -73,7 +73,7 @@ export const isStageId = (value: unknown): value is StageId =>
 // step clearing within seconds instead of one long first step
 export const STEPS = [
   { id: 'check', stages: ['check'], title: 'Check Song' },
-  { id: 'fetch', stages: ['download', 'read'], title: 'Fetch Song' },
+  { id: 'fetch', stages: ['download', 'read'], title: 'Analyze Song' },
   { id: 'vocals', stages: ['separate'], title: 'Isolate Vocals' },
   { id: 'transcribe', stages: ['listen', 'lyrics'], title: 'Transcribe' },
   { id: 'sync', stages: ['align', 'verify'], title: 'Sync Timing' },
