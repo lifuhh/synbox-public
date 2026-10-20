@@ -18,6 +18,7 @@ import { isStandalone } from '@/lib/pwa'
 import type { CssVars } from '@/types'
 import { cn } from '@/utils/cn'
 
+import { clampSeek, HOLD_JUMP_MS, holdStep } from './seek-steps'
 import { StageControls } from './stage-controls'
 import type { SeekFlash } from './use-stage-taps'
 import { useStageTaps } from './use-stage-taps'
@@ -32,7 +33,6 @@ import type { YouTubeQuirks } from './youtube-quirks'
 const IDLE_MS = 1800
 // How long an unmuted autoplay gets to start before retrying muted
 const AUTOPLAY_CHECK_MS = 1500
-const SEEK_STEP_SEC = 5
 const VOLUME_STEP = 0.05
 
 const COVERED_PHASES = new Set<StagePhase['kind']>([
@@ -348,9 +348,7 @@ export const PlayerStage = ({
   }
 
   const seekBy = (seconds: number) => {
-    const duration = player.getDuration()
-    const target = player.getTime() + seconds
-    player.seek(Math.max(0, duration > 0 ? Math.min(target, duration) : target))
+    player.seek(player.getTime() + seconds)
   }
   const taps = useStageTaps({
     controlsVisible,
@@ -373,6 +371,33 @@ export const PlayerStage = ({
     }
   }, [])
 
+  // The arrow key being held: how many jumps it has made, when the last one was, and where it aimed. A
+  // held key's jumps build on that aim, since the player's own time lags a seek it has not finished
+  const hold = useRef<{
+    key: string
+    jumps: number
+    at: number
+    target: number
+  } | null>(null)
+  const holdSeek = (event: KeyboardEvent) => {
+    const held = event.repeat && hold.current?.key === event.key
+    const now = performance.now()
+    if (held && hold.current !== null && now - hold.current.at < HOLD_JUMP_MS) {
+      return
+    }
+    const jumps = held && hold.current !== null ? hold.current.jumps : 0
+    const from =
+      held && hold.current !== null ? hold.current.target : player.getTime()
+    const direction = event.key === 'ArrowLeft' ? -1 : 1
+    const target = clampSeek(
+      from + direction * holdStep(jumps),
+      player.getDuration(),
+      quirks.endGuardSec
+    )
+    player.seek(target)
+    hold.current = { at: now, jumps: jumps + 1, key: event.key, target }
+  }
+
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (isEditable(event.target) || event.metaKey || event.ctrlKey) {
@@ -387,18 +412,12 @@ export const PlayerStage = ({
           player.togglePlay()
           break
         }
-        case 'ArrowLeft': {
-          if (onSlider) {
-            return
-          }
-          player.seek(Math.max(0, player.getTime() - SEEK_STEP_SEC))
-          break
-        }
+        case 'ArrowLeft':
         case 'ArrowRight': {
           if (onSlider) {
             return
           }
-          player.seek(player.getTime() + SEEK_STEP_SEC)
+          holdSeek(event)
           break
         }
         case 'ArrowUp': {
