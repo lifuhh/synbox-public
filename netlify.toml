@@ -10,6 +10,17 @@ for = "/manifest.webmanifest"
 Content-Type = "application/manifest+json"
 Cache-Control = "no-cache"
 
+# Vite's bundles have content hashes in their names; public/assets/ (icons, showcase) does not, so only these
+[[headers]]
+for = "/assets/*.js"
+[headers.values]
+Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+for = "/assets/*.css"
+[headers.values]
+Cache-Control = "public, max-age=31536000, immutable"
+
 [[redirects]]
 from = "/*"
 to = "/index.html"
