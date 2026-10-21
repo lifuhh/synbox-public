@@ -1,5 +1,7 @@
 import { z } from 'zod'
 
+import { backendToken } from '@/lib/auth'
+
 import { LOOKUP_ADDRESS } from './address'
 
 const lyricsFieldsSchema = z.object({
@@ -81,12 +83,14 @@ export const getLyricsVersion = async (videoId: string, version: number) => {
   return { ...body.fields, videoId }
 }
 
+// A signed-in admin is enough; the typed admin token still works for now
 export const activateLyricsVersion = async (
   videoId: string,
   version: number,
   adminToken: string
-) =>
-  await request(
+) => {
+  const token = await backendToken()
+  return await request(
     `/lyrics/${encodeURIComponent(videoId)}/active`,
     activatedVersionSchema,
     {
@@ -94,7 +98,9 @@ export const activateLyricsVersion = async (
       headers: {
         'Content-Type': 'application/json',
         'X-Admin-Token': adminToken,
+        ...(token === null ? {} : { Authorization: `Bearer ${token}` }),
       },
       method: 'POST',
     }
   )
+}

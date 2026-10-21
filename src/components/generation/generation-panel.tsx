@@ -1,9 +1,10 @@
-import { Check, Minus, Play, RotateCcw, X } from 'lucide-react'
+import { Check, LogIn, Minus, Play, RotateCcw, X } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useRef } from 'react'
 import { Link } from 'react-router'
 
 import { Button } from '@/components/ui/button'
+import { signInWithGoogle } from '@/lib/auth'
 import { overallValue } from '@/lib/generation/progress'
 import type { Job } from '@/lib/generation/store'
 import {
@@ -324,6 +325,17 @@ const GenerationPanel = ({
                     {status.message}
                   </p>
                   <div className='flex gap-2'>
+                    {status.signIn ? (
+                      <Button
+                        gap='md'
+                        className='flex-1'
+                        onClick={() => {
+                          void signInWithGoogle()
+                        }}>
+                        <LogIn className='size-4' />
+                        Sign In
+                      </Button>
+                    ) : null}
                     {status.retry ? (
                       <Button
                         gap='md'

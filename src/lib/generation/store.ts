@@ -30,8 +30,15 @@ export type JobStatus =
       outcome: SaveOutcome
       karaoke: KaraokeDoc | null
     }
-  // `retry` is false when trying again cannot help, such as a video YouTube keeps to youtube.com
-  | { kind: 'failed'; at: number; message: string; retry: boolean }
+  // `retry` is false when trying again cannot help, such as a video YouTube keeps to youtube.com or a
+  // used-up daily limit; `signIn` when signing in is what would help
+  | {
+      kind: 'failed'
+      at: number
+      message: string
+      retry: boolean
+      signIn: boolean
+    }
 
 export interface GenerationRequest {
   videoId: string
@@ -246,6 +253,7 @@ const run = async (job: Job, signal: AbortSignal) => {
     }
     const message =
       error instanceof Error ? error.message : 'Something went wrong'
+    const refused = error instanceof GenerationError && error.code !== undefined
     updateJob(id, (current) => ({
       ...current,
       ahead: 0,
@@ -253,7 +261,8 @@ const run = async (job: Job, signal: AbortSignal) => {
         at: Date.now(),
         kind: 'failed',
         message,
-        retry: !(error instanceof YouTubeOnlyError),
+        retry: !(error instanceof YouTubeOnlyError) && !refused,
+        signIn: refused && error.code === 'sign_in_required',
       },
     }))
   }

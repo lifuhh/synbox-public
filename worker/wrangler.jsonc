@@ -1,0 +1,44 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "synbox-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true },
+  // Browsers reach it as synbox.io/api/* through Netlify; Netlify and Cloud Run call this host directly
+  "routes": [{ "pattern": "api.synbox.io", "custom_domain": true }],
+  "workers_dev": false,
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "synbox",
+      "database_id": "711de2d4-689c-4b5e-92bd-8c5c941c0bd3",
+      "migrations_dir": "migrations",
+    },
+  ],
+  // Secrets (wrangler secret put): BETTER_AUTH_SECRET, GOOGLE_CLIENT_SECRET, INTERNAL_SECRET
+  "vars": {
+    "BETTER_AUTH_URL": "https://synbox.io",
+    "GOOGLE_CLIENT_ID": "",
+    "DEFAULT_DAILY_LIMIT": "0",
+    "TRUSTED_ORIGINS": "https://synbox.io,https://www.synbox.io,https://synbox.netlify.app",
+  },
+  "env": {
+    "dev": {
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "synbox",
+          "database_id": "711de2d4-689c-4b5e-92bd-8c5c941c0bd3",
+          "migrations_dir": "migrations",
+        },
+      ],
+      "vars": {
+        "BETTER_AUTH_URL": "http://localhost:5173",
+        "GOOGLE_CLIENT_ID": "",
+        "DEFAULT_DAILY_LIMIT": "0",
+        "TRUSTED_ORIGINS": "http://localhost:5173",
+      },
+    },
+  },
+}

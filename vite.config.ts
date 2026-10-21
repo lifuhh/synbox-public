@@ -239,4 +239,15 @@ export default defineConfig({
       '@': `${import.meta.dirname}/src`,
     },
   },
+  // Netlify sends these to the auth Worker; locally that is `wrangler dev --env dev` in worker/
+  server: {
+    proxy: {
+      '/api/auth': 'http://localhost:8787',
+      '/api/me': 'http://localhost:8787',
+    },
+  },
+  // worker/ has its own tests, run with bun test there
+  test: {
+    exclude: ['**/node_modules/**', 'worker/**'],
+  },
 })

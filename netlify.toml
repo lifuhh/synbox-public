@@ -21,6 +21,20 @@ for = "/assets/*.css"
 [headers.values]
 Cache-Control = "public, max-age=31536000, immutable"
 
+# Sign-in and account routes live in the auth Worker (worker/). Proxying them keeps its session cookie
+# first-party on synbox.io
+[[redirects]]
+from = "/api/auth/*"
+to = "https://api.synbox.io/api/auth/:splat"
+status = 200
+force = true
+
+[[redirects]]
+from = "/api/me"
+to = "https://api.synbox.io/api/me"
+status = 200
+force = true
+
 [[redirects]]
 from = "/*"
 to = "/index.html"

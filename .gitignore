@@ -38,3 +38,7 @@ bun.lockb
 
 # Private change log (local working history, never published)
 docs/log/
+
+# Auth Worker local state and dev secrets
+.wrangler/
+.dev.vars*

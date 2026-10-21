@@ -1,5 +1,8 @@
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   CircleQuestionMarkIcon,
+  LogInIcon,
+  LogOutIcon,
   MonitorDownIcon,
   ShareIcon,
   SquarePlusIcon,
@@ -20,9 +23,13 @@ import {
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { fetchMe, signInWithGoogle, signOut } from '@/lib/auth'
+import type { Quota } from '@/lib/auth'
 import { useInstallMethod } from '@/lib/pwa'
+import { QUERY_KEYS } from '@/lib/react-query/query-keys'
 import { handleRedirect } from '@/utils'
 
 import { GitHubIcon } from '../svgicons'
@@ -62,10 +69,32 @@ const IosInstallDialog = ({
   </Dialog>
 )
 
+const quotaText = ({ limit, used }: Quota) => {
+  if (limit === null) {
+    return 'No daily song limit'
+  }
+  if (limit === 0) {
+    return 'Generating songs is invite-only for now'
+  }
+  return `${Math.max(limit - used, 0)} of ${limit} new songs left today`
+}
+
 const ProfileButtonDropdown = () => {
   const navigate = useNavigate()
   const install = useInstallMethod()
   const [iosHelpOpen, setIosHelpOpen] = useState(false)
+  const queryClient = useQueryClient()
+  const { data: me } = useQuery({
+    queryFn: fetchMe,
+    queryKey: [QUERY_KEYS.GET_ME],
+    staleTime: 60_000,
+  })
+  const user = me?.user ?? null
+
+  const handleSignOut = async () => {
+    await signOut()
+    await queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.GET_ME] })
+  }
 
   const handleAboutOnClick = () => {
     void navigate('/about')
@@ -76,7 +105,16 @@ const ProfileButtonDropdown = () => {
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant='outline-primary' size='icon'>
-            <UserIcon className='size-6 shrink-0 fill-current' />
+            {user !== null && user.image !== null && user.image !== '' ? (
+              <img
+                src={user.image}
+                alt=''
+                referrerPolicy='no-referrer'
+                className='size-full rounded-md object-cover'
+              />
+            ) : (
+              <UserIcon className='size-6 shrink-0 fill-current' />
+            )}
             <span className='sr-only'>Toggle Profile</span>
           </Button>
         </DropdownMenuTrigger>
@@ -84,8 +122,31 @@ const ProfileButtonDropdown = () => {
           align='end'
           sideOffset={10}
           variant='primary'
-          className='w-56 overflow-auto'>
+          className='w-64 overflow-auto'>
+          {user ? (
+            <div className='flex flex-col gap-0.5 px-2 pt-1.5 pb-2'>
+              <p className='truncate text-sm font-medium'>{user.name}</p>
+              <p className='truncate text-xs text-muted-foreground'>
+                {user.email}
+              </p>
+              {me?.quota && (
+                <p className='pt-1 text-xs text-muted-foreground'>
+                  {quotaText(me.quota)}
+                </p>
+              )}
+            </div>
+          ) : null}
           <DropdownMenuGroup>
+            {user ? null : (
+              <DropdownMenuItem
+                className='cursor-pointer'
+                onClick={() => {
+                  void signInWithGoogle()
+                }}>
+                <LogInIcon className='mr-2 size-5 shrink-0' />
+                <span>Sign In With Google</span>
+              </DropdownMenuItem>
+            )}
             <DropdownMenuItem
               className='cursor-pointer'
               onClick={() => {
@@ -115,6 +176,19 @@ const ProfileButtonDropdown = () => {
               </DropdownMenuItem>
             )}
           </DropdownMenuGroup>
+          {user ? (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className='cursor-pointer'
+                onClick={() => {
+                  void handleSignOut()
+                }}>
+                <LogOutIcon className='mr-2 size-5 shrink-0' />
+                <span>Sign Out</span>
+              </DropdownMenuItem>
+            </>
+          ) : null}
           <p className='px-2 pt-1 pb-1.5 text-xs text-muted-foreground'>
             Version {__BUILD_ID__}
           </p>
