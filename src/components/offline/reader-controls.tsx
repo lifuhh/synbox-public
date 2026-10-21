@@ -55,7 +55,8 @@ export const LayersPanel = () => {
   const [prefs, setPrefs] = useAtom(readerPrefsAtom)
   const shown = LAYERS.filter((layer) => prefs[layer.id]).length
   return (
-    <div className='flex w-60 flex-col gap-0.5 rounded-xl border border-(--reader-line) bg-(--reader-panel) p-1.5 shadow-xl'>
+    // Its corners hold the rows': their 8px plus the 6px padding and the border
+    <div className='flex w-60 flex-col gap-0.5 rounded-2xl border border-(--reader-line) bg-(--reader-panel) p-1.5 shadow-xl'>
       {LAYERS.map((layer) => {
         const on = prefs[layer.id]
         return (

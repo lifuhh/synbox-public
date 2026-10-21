@@ -23,8 +23,9 @@ const buttonVariants = cva(
         icon: 'h-10 w-10',
         // A small round icon button, as for a carousel's arrows
         'icon-round': 'size-9 rounded-full',
-        // The action inside a field, as the landing search box's
-        inset: 'h-11 px-5',
+        // The action inside a field, as the landing search box's. A trailing icon's drawing starts inside its
+        // box, so that side's padding is 4px less and the label and icon sit the same distance from the edges
+        inset: 'h-10 px-5 has-[>svg]:pr-4',
         lg: 'h-11 rounded-md px-8',
         // A short labelled pill that sits among the top bar's icon buttons
         pill: 'h-9 rounded-full px-3 sm:px-4',

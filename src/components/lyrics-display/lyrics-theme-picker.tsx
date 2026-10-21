@@ -295,7 +295,7 @@ export const LyricsThemePicker = ({
                 close()
               }}
               className={cn(
-                'rounded-md py-1.5 text-xs font-medium transition-colors focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-hidden touch:py-2.5 touch:text-sm',
+                'rounded-sm py-1.5 text-xs font-medium transition-colors focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-hidden touch:py-2.5 touch:text-sm',
                 backdrop === option.id
                   ? 'bg-accent text-foreground'
                   : 'text-muted-foreground hover:text-foreground'
