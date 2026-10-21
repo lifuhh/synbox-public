@@ -16,7 +16,12 @@ import {
 } from 'react'
 
 import { useToast } from '@/components/ui/use-toast'
-import { playerChromeOpenAtom, playerVolumeAtom } from '@/context/atoms'
+import {
+  playerChromeOpenAtom,
+  playerVolumeAtom,
+  stageClockAtom,
+  stageFullscreenAtom,
+} from '@/context/atoms'
 import { useThemeColor } from '@/hooks/use-theme-color'
 import { useWakeLock } from '@/hooks/use-wake-lock'
 import { isStandalone } from '@/lib/pwa'
@@ -79,6 +84,33 @@ const BOX_WIDTH: Record<VideoFit, string> = {
 const LYRICS_TOP: Record<VideoFit, string> = {
   fit: 'portrait:top-[calc(var(--video-cy)+min(50cqw/var(--video-aspect),50cqh)+0.5rem)]',
   zoom: '',
+}
+
+// What sits outside the stage reads from it: the song's clock (the watch page's lyrics), and whether it is the
+// whole screen now (fullscreen, or iPhone's stand-in), which turns the watch page back into the stage alone
+const usePublishStage = (
+  { getTime, seek, subscribeFrame }: StagePlayer,
+  fullscreen: boolean,
+  immersive: boolean
+) => {
+  const setClock = useSetAtom(stageClockAtom)
+  useEffect(() => {
+    setClock({ getTime, seek, subscribeFrame })
+    return () => {
+      setClock(null)
+    }
+  }, [getTime, seek, subscribeFrame, setClock])
+  const setStageFullscreen = useSetAtom(stageFullscreenAtom)
+  const full = fullscreen || immersive
+  useEffect(() => {
+    setStageFullscreen(full)
+  }, [full, setStageFullscreen])
+  useEffect(
+    () => () => {
+      setStageFullscreen(false)
+    },
+    [setStageFullscreen]
+  )
 }
 
 const markImmersive = () => {
@@ -223,6 +255,9 @@ interface PlayerStageProps {
   autoplay?: boolean
   onEvent?: (message: string) => void
   className?: string
+  // Theater on the watch page: the control bar's toggle and the T key, where the page offers it
+  theater?: boolean
+  onToggleTheater?: () => void
 }
 
 export const PlayerStage = ({
@@ -232,6 +267,8 @@ export const PlayerStage = ({
   autoplay = false,
   onEvent,
   className,
+  theater = false,
+  onToggleTheater,
 }: PlayerStageProps) => {
   const [storedVolume, setStoredVolume] = useAtom(playerVolumeAtom)
   // Browsers block unmuted autoplay until the viewer has interacted with the
@@ -257,6 +294,7 @@ export const PlayerStage = ({
     volume,
   })
   const { phase, stageRef, boxRef } = player
+
   const aspect = useVideoAspect(videoId)
   const { fit, toggleFit } = useVideoFit()
 
@@ -355,6 +393,8 @@ export const PlayerStage = ({
 
   useEffect(() => (immersive ? markImmersive() : undefined), [immersive])
 
+  usePublishStage(player, fullscreen, immersive)
+
   useEffect(() => {
     const sync = () => {
       setFullscreen(document.fullscreenElement !== null)
@@ -403,12 +443,20 @@ export const PlayerStage = ({
       const onSlider =
         event.target instanceof HTMLElement &&
         event.target.getAttribute('role') === 'slider'
+      const simple: Partial<Record<string, () => void>> = {
+        ' ': player.togglePlay,
+        f: toggleFullscreen,
+        k: player.togglePlay,
+        t: onToggleTheater,
+        z: toggleFit,
+      }
+      const action = simple[event.key]
+      if (action !== undefined) {
+        action()
+        event.preventDefault()
+        return
+      }
       switch (event.key) {
-        case ' ':
-        case 'k': {
-          player.togglePlay()
-          break
-        }
         case 'ArrowLeft':
         case 'ArrowRight': {
           if (onSlider) {
@@ -435,14 +483,7 @@ export const PlayerStage = ({
           setVolume({ ...volume, muted: !volume.muted })
           break
         }
-        case 'f': {
-          toggleFullscreen()
-          break
-        }
-        case 'z': {
-          toggleFit()
-          break
-        }
+
         case 'Escape': {
           if (!immersive) {
             return
@@ -552,6 +593,8 @@ export const PlayerStage = ({
         onLoopChange={setLoop}
         fullscreen={fullscreen || immersive}
         onToggleFullscreen={toggleFullscreen}
+        theater={theater}
+        onToggleTheater={onToggleTheater}
         zoomed={fit === 'zoom'}
         onToggleZoom={toggleFit}
         onSeekBy={seekBy}

@@ -3,6 +3,7 @@ import {
   LockIcon,
   MaximizeIcon,
   MinimizeIcon,
+  RectangleHorizontalIcon,
   PauseIcon,
   PlayIcon,
   RepeatIcon,
@@ -108,6 +109,9 @@ interface StageControlsProps {
   onLoopChange: (loop: boolean) => void
   fullscreen: boolean
   onToggleFullscreen: () => void
+  // Theater is offered on a wide watch page only
+  theater: boolean
+  onToggleTheater?: () => void
   zoomed: boolean
   onToggleZoom: () => void
   onSeekBy: (seconds: number) => void
@@ -144,6 +148,37 @@ const VOLUME_WHEEL_STEP = 0.05
 const SEEK_SETTLED_SEC = 1
 const SEEK_HOLD_MAX_MS = 3000
 
+// Theater (on a wide watch page) and Fullscreen: the ways the player can take more of the screen
+const ViewButtons = ({
+  fullscreen,
+  onToggleFullscreen,
+  theater,
+  onToggleTheater,
+}: Pick<
+  StageControlsProps,
+  'fullscreen' | 'onToggleFullscreen' | 'theater' | 'onToggleTheater'
+>) => (
+  <>
+    {onToggleTheater !== undefined && !fullscreen && (
+      <IconButton
+        label={theater ? 'Default View' : 'Theater Mode'}
+        active={theater}
+        onClick={onToggleTheater}>
+        <RectangleHorizontalIcon className='size-5' />
+      </IconButton>
+    )}
+    <IconButton
+      label={fullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
+      onClick={onToggleFullscreen}>
+      {fullscreen ? (
+        <MinimizeIcon className='size-5' />
+      ) : (
+        <MaximizeIcon className='size-5' />
+      )}
+    </IconButton>
+  </>
+)
+
 export const StageControls = ({
   player,
   visible,
@@ -151,6 +186,8 @@ export const StageControls = ({
   onLoopChange,
   fullscreen,
   onToggleFullscreen,
+  theater,
+  onToggleTheater,
   zoomed,
   onToggleZoom,
   onSeekBy,
@@ -391,15 +428,12 @@ export const StageControls = ({
                   <ExpandIcon className='size-5' />
                 )}
               </IconButton>
-              <IconButton
-                label={fullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
-                onClick={onToggleFullscreen}>
-                {fullscreen ? (
-                  <MinimizeIcon className='size-5' />
-                ) : (
-                  <MaximizeIcon className='size-5' />
-                )}
-              </IconButton>
+              <ViewButtons
+                fullscreen={fullscreen}
+                onToggleFullscreen={onToggleFullscreen}
+                theater={theater}
+                onToggleTheater={onToggleTheater}
+              />
             </div>
           </div>
         </div>

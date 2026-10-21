@@ -1,7 +1,7 @@
 import { useAtom } from 'jotai'
 import { CheckIcon, PaletteIcon } from 'lucide-react'
 import type { CSSProperties, RefObject } from 'react'
-import { useId, useRef } from 'react'
+import { use, useId, useRef } from 'react'
 
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import {
@@ -34,7 +34,7 @@ import {
   MyStyles,
   ScreenSizeTweak,
 } from './lyrics-style-scope'
-import { RailButton, RailTooltip } from './rail-button'
+import { RailButton, RailInline, RailTooltip } from './rail-button'
 
 const HALF_FILLED: CSSProperties & Record<'--p', number> = { '--p': 0.5 }
 
@@ -153,6 +153,7 @@ export const LyricsThemePicker = ({
 }) => {
   const [panel, setPanel] = useAtom(lyricsStylePanelAtom)
   const portrait = usePortrait()
+  const inline = use(RailInline)
   const touch = useMediaQuery('(pointer: coarse)')
   // Focus moves in, and back to the button on close, only for a panel opened from the keyboard; after a
   // hover or a click it would pop the button's tooltip and hold the player's UI open
@@ -381,8 +382,8 @@ export const LyricsThemePicker = ({
 
       <PopoverContent
         data-player-chrome
-        side={portrait ? 'bottom' : 'right'}
-        sideOffset={portrait ? 8 : 14}
+        side={portrait || inline ? 'bottom' : 'right'}
+        sideOffset={portrait || inline ? 8 : 14}
         collisionPadding={8}
         // Follows the rail as it slides in, when a click on the lyrics opens both at once
         updatePositionStrategy='always'
