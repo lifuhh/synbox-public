@@ -3,6 +3,7 @@ import { toRomaji } from 'wanakana'
 import type { RubySegment } from '@/lib/furigana'
 import { parseRubyHtml } from '@/lib/furigana'
 import type { TimedLyrics } from '@/lib/lyrics-document'
+import type { KaraokeDocLine } from '@/types'
 
 // One sung line as the reader shows it: the Japanese with its furigana, then romaji and both translations
 export interface OfflineLine {
@@ -12,10 +13,19 @@ export interface OfflineLine {
   zh: string
   // A pause of STANZA_GAP_SEC or more before it, so the reader starts a new paragraph
   stanza: boolean
+  // When it is sung, in seconds: the karaoke timing's when it matches the lyrics, else the lyrics row's
+  start: number
+  end: number
+  // Each mora's timing, for the karaoke fill; null when the song's timing doesn't match these lyrics
+  karaoke: KaraokeDocLine | null
 }
+
+// Bumped when the saved shape changes; a sync fetches every song saved under an older one again
+export const OFFLINE_SONG_VERSION = 2
 
 // A song saved on this device for reading without a connection
 export interface OfflineSong {
+  version: number
   videoId: string
   title: string
   author: string
@@ -25,6 +35,8 @@ export interface OfflineSong {
   generatedAt: number
   // When its live lyrics were last written ($updatedAt): a sync fetches the song again when this moves
   updatedAt: number
+  // The karaoke timing couldn't be fetched (the lookup service was down): the next sync tries again
+  timingPending: boolean
   // The title as romaji, so it is found by what it sounds like
   titleRomaji: string
   lines: OfflineLine[]
@@ -79,10 +91,15 @@ const trimSegments = (segments: RubySegment[]) =>
     return { ...segment, base }
   })
 
-export const offlineLines = (lyrics: TimedLyrics): OfflineLine[] => {
+// `karaoke` is index-aligned with the lyrics lines, or null
+export const offlineLines = (
+  lyrics: TimedLyrics,
+  karaoke: KaraokeDocLine[] | null
+): OfflineLine[] => {
   const lines: OfflineLine[] = []
   let lastEnd: number | null = null
   for (const [index, line] of lyrics.lines.entries()) {
+    const timed = karaoke?.[index] ?? null
     const ruby = trimSegments(parseRubyHtml(line.text))
     const romaji = lyrics.romaji[index] ?? ''
     if (textOf(ruby).trim() === '' && romaji.trim() === '') {
@@ -90,9 +107,12 @@ export const offlineLines = (lyrics: TimedLyrics): OfflineLine[] => {
     }
     lines.push({
       en: lyrics.eng[index] ?? '',
+      end: timed?.end ?? line.endSeconds,
+      karaoke: timed,
       romaji,
       ruby,
       stanza: lastEnd !== null && line.startSeconds - lastEnd >= STANZA_GAP_SEC,
+      start: timed?.start ?? line.startSeconds,
       zh: lyrics.chi[index] ?? '',
     })
     lastEnd = line.endSeconds

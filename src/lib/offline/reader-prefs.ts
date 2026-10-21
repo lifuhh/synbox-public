@@ -22,6 +22,8 @@ const readerPrefsSchema = z.object({
   hue: z.number().min(0).max(360).catch(300),
   japanese: z.boolean().catch(true),
   language: z.enum(['en', 'zh']).catch('en'),
+  // Synced plays the lyrics on a silent clock, Spotify style; reader is the plain page
+  mode: z.enum(['synced', 'reader']).catch('synced'),
   romaji: z.boolean().catch(true),
   size: z
     .number()

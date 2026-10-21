@@ -8,7 +8,16 @@ const line = (
   ruby: OfflineLine['ruby'],
   romaji: string,
   en = ''
-): OfflineLine => ({ en, romaji, ruby, stanza: false, zh: '' })
+): OfflineLine => ({
+  en,
+  end: 0,
+  karaoke: null,
+  romaji,
+  ruby,
+  stanza: false,
+  start: 0,
+  zh: '',
+})
 
 const song = (
   videoId: string,
@@ -20,9 +29,11 @@ const song = (
   generatedAt: 0,
   lines,
   thumbnail: null,
+  timingPending: false,
   title,
   titleRomaji: romanizeTitle(title, lines),
   updatedAt: 0,
+  version: 2,
   videoId,
 })
 

@@ -1,27 +1,36 @@
 import { useAtom, useAtomValue } from 'jotai'
 import {
   ALargeSmallIcon,
+  AudioLinesIcon,
+  BookOpenTextIcon,
   ChevronLeftIcon,
+  LocateFixedIcon,
   MoonIcon,
   Rows3Icon,
   SunIcon,
 } from 'lucide-react'
+import type { Ref } from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router'
 
+import type { KaraokeLineHandle } from '@/components/lyrics-display/karaoke-line'
 import { RubyText } from '@/components/lyrics-display/ruby-text'
+import { PlaybackBar } from '@/components/offline/playback-bar'
 import {
   LayersPanel,
   ReaderButton,
   TypeBar,
 } from '@/components/offline/reader-controls'
+import { ReaderKaraokeLine } from '@/components/offline/reader-karaoke-line'
+import { useSyncedLyrics } from '@/components/offline/use-synced-lyrics'
 import {
   READER_SIZES,
   accentColor,
   colorHue,
   readerPrefsAtom,
 } from '@/lib/offline/reader-prefs'
-import type { OfflineLine } from '@/lib/offline/song'
+import type { OfflineLine, OfflineSong } from '@/lib/offline/song'
+import { OFFLINE_SONG_VERSION } from '@/lib/offline/song'
 import { useOfflineSong } from '@/lib/offline/sync'
 import type { CssVars } from '@/types'
 import { cn } from '@/utils/cn'
@@ -31,28 +40,83 @@ type Panel = 'none' | 'layers' | 'type'
 // How far the page scrolls in one direction before the bars hide or come back
 const SCROLL_SLACK_PX = 8
 
-// One sung line as a block: the Japanese, its romaji, then the translation
-const ReaderLine = ({ line, first }: { line: OfflineLine; first: boolean }) => {
+const NO_LINES: OfflineLine[] = []
+
+// The Japanese of a line: filled as it is sung when synced and timed, else plain ruby text
+const ReaderJapanese = ({
+  line,
+  synced,
+  karaokeRef,
+}: {
+  line: OfflineLine
+  synced: boolean
+  karaokeRef: Ref<KaraokeLineHandle>
+}) => {
+  const { bold } = useAtomValue(readerPrefsAtom)
+  const className = cn(
+    'font-reader text-reader-ja',
+    bold ? 'font-bold' : 'font-normal'
+  )
+  return synced && line.karaoke !== null ? (
+    <ReaderKaraokeLine
+      ref={karaokeRef}
+      line={line.karaoke}
+      className={className}
+    />
+  ) : (
+    <p lang='ja' className={cn(className, 'text-(--reader-accent)')}>
+      <RubyText segments={line.ruby} />
+    </p>
+  )
+}
+
+// One sung line as a block: the Japanese, its romaji, then the translation. Synced, a tap seeks to it, the
+// line being sung is the bright one, and its Japanese fills as it is sung
+const ReaderLine = ({
+  line,
+  first,
+  synced,
+  dimmed,
+  blockRef,
+  karaokeRef,
+  onSeek,
+}: {
+  line: OfflineLine
+  first: boolean
+  synced: boolean
+  dimmed: boolean
+  blockRef: (element: HTMLDivElement | null) => void
+  karaokeRef: Ref<KaraokeLineHandle>
+  onSeek: (time: number) => void
+}) => {
   const prefs = useAtomValue(readerPrefsAtom)
   const translation = prefs.language === 'en' ? line.en : line.zh
   const source = prefs.japanese || (prefs.romaji && line.romaji !== '')
   return (
+    // oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- a tap seeks; the position bar does the same from the keyboard
     <div
+      ref={blockRef}
+      onClick={
+        synced
+          ? () => {
+              onSeek(line.start)
+            }
+          : undefined
+      }
       className={cn(
-        'grid gap-y-0.5 pb-reader-line',
-        line.stanza && !first && 'pt-reader-stanza'
+        'grid gap-y-0.5 pb-reader-line transition-opacity duration-300',
+        line.stanza && !first && 'pt-reader-stanza',
+        synced && 'cursor-pointer',
+        dimmed && 'opacity-40'
       )}>
       {source && (
         <div>
           {prefs.japanese && (
-            <p
-              lang='ja'
-              className={cn(
-                'font-reader text-reader-ja text-(--reader-accent)',
-                prefs.bold ? 'font-bold' : 'font-normal'
-              )}>
-              <RubyText segments={line.ruby} />
-            </p>
+            <ReaderJapanese
+              line={line}
+              synced={synced}
+              karaokeRef={karaokeRef}
+            />
           )}
           {prefs.romaji && line.romaji !== '' && (
             <p
@@ -80,20 +144,23 @@ const ReaderLine = ({ line, first }: { line: OfflineLine; first: boolean }) => {
   )
 }
 
-// The top bar: back, the song, and the three things a reader changes. It slides away while reading down
+// The top bar: back, the song, and what a reader changes. In reader mode it slides away while reading down
 const ReaderHeader = ({
-  title,
-  author,
+  song,
   shown,
   panel,
+  timed,
   onTogglePanel,
+  onToggleMode,
   onBack,
 }: {
-  title: string
-  author: string
+  song: OfflineSong | null
   shown: boolean
   panel: Panel
+  // The song has timing, so it can play synced
+  timed: boolean
   onTogglePanel: (panel: Panel) => void
+  onToggleMode: () => void
   onBack: () => void
 }) => {
   const [prefs, setPrefs] = useAtom(readerPrefsAtom)
@@ -109,12 +176,23 @@ const ReaderHeader = ({
         </ReaderButton>
         <div className='min-w-0 flex-1 px-1'>
           <p className='truncate text-sm leading-tight font-semibold'>
-            {title}
+            {song?.title}
           </p>
           <p className='truncate text-xs leading-tight text-(--reader-muted)'>
-            {author}
+            {song?.author}
           </p>
         </div>
+        {timed && (
+          <ReaderButton
+            label={prefs.mode === 'synced' ? 'Reader Mode' : 'Synced Lyrics'}
+            onClick={onToggleMode}>
+            {prefs.mode === 'synced' ? (
+              <BookOpenTextIcon className='size-5' />
+            ) : (
+              <AudioLinesIcon className='size-5' />
+            )}
+          </ReaderButton>
+        )}
         <ReaderButton
           label='Show Lines'
           pressed={panel === 'layers'}
@@ -152,12 +230,69 @@ const ReaderHeader = ({
   )
 }
 
-const ReaderPage = () => {
-  const { videoId = '' } = useParams()
-  const navigate = useNavigate()
-  const location = useLocation()
-  const { data: song, isPending } = useOfflineSong(videoId)
-  const prefs = useAtomValue(readerPrefsAtom)
+const NotSaved = () => (
+  <div className='mx-auto flex max-w-sm flex-col items-center gap-4 px-6 pt-16 text-center'>
+    <p className='text-base'>This song isn&apos;t saved on this device.</p>
+    <Link
+      to='/offline'
+      replace
+      className='rounded-full border border-(--reader-line-strong) px-4 py-2 text-sm font-medium'>
+      Offline Lyrics
+    </Link>
+  </div>
+)
+
+// What sits at the bottom: the text style row when open, and the play controls when synced, with Current
+// Line above them once the reader has scrolled away from the line being sung
+const ReaderBottom = ({
+  typeOpen,
+  synced,
+  following,
+  onFollow,
+  time,
+  duration,
+  playing,
+  onSeek,
+  onToggle,
+}: {
+  typeOpen: boolean
+  synced: boolean
+  following: boolean
+  onFollow: () => void
+  time: number
+  duration: number
+  playing: boolean
+  onSeek: (time: number) => void
+  onToggle: () => void
+}) =>
+  typeOpen || synced ? (
+    <div className='absolute inset-x-0 bottom-0 z-20 border-t border-(--reader-line) bg-(--reader-bg) pr-(--safe-right) pb-(--safe-bottom) pl-(--safe-left)'>
+      {synced && !following && (
+        <button
+          type='button'
+          onClick={onFollow}
+          className='absolute -top-14 left-1/2 flex h-10 -translate-x-1/2 items-center gap-1.5 rounded-full bg-(--reader-fg) px-4 text-sm font-medium text-(--reader-bg) shadow-lg'>
+          <LocateFixedIcon className='size-4' />
+          Current Line
+        </button>
+      )}
+      {typeOpen && <TypeBar />}
+      {synced && (
+        <PlaybackBar
+          time={time}
+          duration={duration}
+          playing={playing}
+          onSeek={onSeek}
+          onToggle={onToggle}
+        />
+      )}
+    </div>
+  ) : null
+
+// The bars and their panels. Reading, the bars hide on the way down and come back on the way up, like a book
+// app, and a tap on the page shows or hides them; an open panel keeps them. Synced, the page scrolls itself and
+// its controls stay
+const useReaderBars = (synced: boolean) => {
   const [panel, setPanel] = useState<Panel>('none')
   const [barsShown, setBarsShown] = useState(true)
   const lastScroll = useRef(0)
@@ -174,25 +309,15 @@ const ReaderPage = () => {
     }
   }, [])
 
-  const goBack = () => {
-    // Opened from a link or a reload, there is no page of ours to go back to
-    if (location.key === 'default') {
-      void navigate('/offline', { replace: true })
-    } else {
-      void navigate(-1)
-    }
-  }
-
   const togglePanel = (next: Panel) => {
     setPanel((current) => (current === next ? 'none' : next))
     setBarsShown(true)
   }
 
-  // Bars hide while reading down and come back on the way up, like a book app; an open panel keeps them
   const onScroll = (event: React.UIEvent<HTMLElement>) => {
     const top = event.currentTarget.scrollTop
     const moved = top - lastScroll.current
-    if (Math.abs(moved) < SCROLL_SLACK_PX) {
+    if (synced || Math.abs(moved) < SCROLL_SLACK_PX) {
       return
     }
     lastScroll.current = top
@@ -203,7 +328,7 @@ const ReaderPage = () => {
 
   // A tap on the page shows or hides the bars, unless it selected text
   const onPageTap = () => {
-    if ((window.getSelection()?.toString() ?? '') !== '') {
+    if (synced || (window.getSelection()?.toString() ?? '') !== '') {
       return
     }
     if (panel === 'none') {
@@ -214,6 +339,71 @@ const ReaderPage = () => {
   }
 
   const typeOpen = panel === 'type' && barsShown
+  return {
+    barsShown,
+    onPageTap,
+    onScroll,
+    panel,
+    setBarsShown,
+    togglePanel,
+    typeOpen,
+  }
+}
+
+const useGoBack = () => {
+  const navigate = useNavigate()
+  const location = useLocation()
+  return () => {
+    // Opened from a link or a reload, there is no page of ours to go back to
+    if (location.key === 'default') {
+      void navigate('/offline', { replace: true })
+    } else {
+      void navigate(-1)
+    }
+  }
+}
+
+const ReaderPage = () => {
+  const { videoId = '' } = useParams()
+  const { data: song, isPending } = useOfflineSong(videoId)
+  const [prefs, setPrefs] = useAtom(readerPrefsAtom)
+
+  // Songs saved before timing was kept read as plain text until the next sync fetches them again
+  const timed = song?.version === OFFLINE_SONG_VERSION
+  const synced = timed && prefs.mode === 'synced'
+  const {
+    active,
+    duration,
+    following,
+    karaokeLines,
+    playback,
+    playedTime,
+    blocks,
+    scroller,
+    seek,
+    setFollowing,
+    togglePlay,
+    userScrolled,
+  } = useSyncedLyrics(song?.lines ?? NO_LINES, synced)
+  const {
+    barsShown,
+    onPageTap,
+    onScroll,
+    panel,
+    setBarsShown,
+    togglePanel,
+    typeOpen,
+  } = useReaderBars(synced)
+  const goBack = useGoBack()
+  // Until it starts, the whole song reads at full strength
+  const started = synced && (playback.playing || playedTime > 0)
+  const toggleMode = () => {
+    if (prefs.mode === 'synced') {
+      playback.pause()
+    }
+    setBarsShown(true)
+    setPrefs({ mode: prefs.mode === 'synced' ? 'reader' : 'synced' })
+  }
   const readerVars: CssVars = {
     '--reader-accent':
       accentColor(prefs.theme, colorHue(prefs)) ?? 'var(--reader-fg)',
@@ -233,19 +423,24 @@ const ReaderPage = () => {
       />
 
       <ReaderHeader
-        title={song?.title ?? ''}
-        author={song?.author ?? ''}
+        song={song ?? null}
         shown={barsShown}
         panel={panel}
+        timed={timed}
         onTogglePanel={togglePanel}
+        onToggleMode={toggleMode}
         onBack={goBack}
       />
 
       <div
+        ref={scroller}
         onScroll={onScroll}
+        onWheel={userScrolled}
+        onTouchMove={userScrolled}
         className={cn(
           'flex-1 overflow-y-auto overscroll-contain scroll-auto pt-reader-top pr-(--safe-right) pl-(--safe-left)',
-          typeOpen ? 'pb-reader-bottom-bar' : 'pb-reader-bottom'
+          synced && 'pb-reader-follow',
+          !synced && (typeOpen ? 'pb-reader-bottom-bar' : 'pb-reader-bottom')
         )}>
         {song ? (
           // oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions -- a tap anywhere toggles the bars; every control is also a button in them
@@ -267,31 +462,36 @@ const ReaderPage = () => {
                 key={index}
                 line={line}
                 first={index === 0}
+                synced={synced}
+                dimmed={started && index !== active}
+                blockRef={(element) => {
+                  blocks.current[index] = element
+                }}
+                karaokeRef={(handle) => {
+                  karaokeLines.current[index] = handle
+                }}
+                onSeek={seek}
               />
             ))}
           </article>
         ) : (
-          !isPending && (
-            <div className='mx-auto flex max-w-sm flex-col items-center gap-4 px-6 pt-16 text-center'>
-              <p className='text-base'>
-                This song isn&apos;t saved on this device.
-              </p>
-              <Link
-                to='/offline'
-                replace
-                className='rounded-full border border-(--reader-line-strong) px-4 py-2 text-sm font-medium'>
-                Offline Lyrics
-              </Link>
-            </div>
-          )
+          !isPending && <NotSaved />
         )}
       </div>
 
-      {typeOpen && (
-        <div className='absolute inset-x-0 bottom-0 z-20 border-t border-(--reader-line) bg-(--reader-bg) pr-(--safe-right) pb-(--safe-bottom) pl-(--safe-left)'>
-          <TypeBar />
-        </div>
-      )}
+      <ReaderBottom
+        typeOpen={typeOpen}
+        synced={synced}
+        following={following}
+        onFollow={() => {
+          setFollowing(true)
+        }}
+        time={playedTime}
+        duration={duration}
+        playing={playback.playing}
+        onSeek={seek}
+        onToggle={togglePlay}
+      />
     </div>
   )
 }
