@@ -465,9 +465,9 @@ export const PlayerStage = ({
       data-player-stage
       data-phase={phase.kind}
       className={cn(
-        // --video-cy is the video's vertical centre: the stage's middle, or in portrait right under the top
-        // bar, so the lyrics get all the height below it
-        '[container-type:size] relative size-full overflow-hidden bg-black [--video-cy:50cqh] portrait:[--video-cy:calc(var(--topbar-h)+28.125cqw)]',
+        // --video-cy is the video's vertical centre: the middle of the stage, in portrait too, with the lyrics
+        // in the space below it
+        '[container-type:size] relative size-full overflow-hidden bg-black [--video-cy:50cqh]',
         !controlsVisible && 'cursor-none',
         className
       )}>
