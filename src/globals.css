@@ -350,6 +350,52 @@
   );
 }
 
+/* A row that sticks under the top bar, and slides up to the screen's top while the bar is scrolled away. See-
+   through over the page glow until it sticks (data-stuck); then it is page-coloured up to the top edge, so
+   nothing scrolls into view above it */
+@utility sticky-under-topbar {
+  position: sticky;
+  top: var(--topbar-shown-h);
+  transition:
+    top 300ms ease-out,
+    background-color 200ms;
+
+  &[data-stuck] {
+    background-color: var(--background);
+  }
+
+  &[data-stuck]::before {
+    content: '';
+    position: absolute;
+    inset-inline: 0;
+    bottom: 100%;
+    height: var(--topbar-shown-h);
+    background-color: var(--background);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+}
+
+/* A block that folds away to nothing, its row closing as it fades; data-folded folds it */
+@utility fold {
+  display: grid;
+  grid-template-rows: 1fr;
+  transition:
+    grid-template-rows 300ms ease-out,
+    opacity 300ms ease-out;
+
+  &[data-folded] {
+    grid-template-rows: 0fr;
+    opacity: 0;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+}
+
 /* The glow behind the top of every page: two soft washes of the brand glow over the page color */
 @utility page-glow {
   background:
@@ -948,6 +994,8 @@
   :root {
     /* The fixed top bar, plus the status bar it sits under in a standalone app */
     --topbar-h: calc(3.5rem + env(safe-area-inset-top, 0px));
+    /* How much of the top the bar covers right now: all of it, or only the status bar while it is scrolled away */
+    --topbar-shown-h: var(--topbar-h);
     --safe-bottom: env(safe-area-inset-bottom, 0px);
     --safe-left: env(safe-area-inset-left, 0px);
     --safe-right: env(safe-area-inset-right, 0px);
@@ -980,6 +1028,10 @@
   html:has([data-reader]) [data-topbar],
   html:has([data-reader]) [data-generation-host] {
     visibility: hidden;
+  }
+
+  html[data-topbar-hidden] {
+    --topbar-shown-h: env(safe-area-inset-top, 0px);
   }
 
   /* The iPhone stand-in for fullscreen: the player without the app's top bar */

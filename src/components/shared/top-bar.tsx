@@ -72,6 +72,11 @@ const TopBar = () => {
     }
   }, [])
   const mode = scrollState?.path === pathname ? scrollState.mode : 'top'
+  // Rows that stick under the bar move up to the screen's top while it is away (--topbar-shown-h)
+  const away = !isVideoPlayer && mode === 'hidden'
+  useEffect(() => {
+    document.documentElement.toggleAttribute('data-topbar-hidden', away)
+  }, [away])
   const cluster = cn(
     'flex items-center gap-2 transition-fade-translate duration-300 ease-out sm:gap-3',
     isVideoPlayer && armed && 'pointer-events-auto',
