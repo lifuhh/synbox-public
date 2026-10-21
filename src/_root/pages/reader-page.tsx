@@ -161,7 +161,8 @@ const ReaderLine = ({
           lang={prefs.language}
           className={cn(
             'font-reader text-reader-translation italic',
-            source && 'pt-0.5',
+            // A little apart, so the romaji reads as part of the Japanese above it
+            source && 'pt-1',
             prefs.bold ? 'font-medium' : 'font-normal'
           )}>
           {translation}
