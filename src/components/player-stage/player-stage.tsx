@@ -509,7 +509,7 @@ export const PlayerStage = ({
           onClick={() => {
             setVolume({ ...storedVolume, muted: false })
           }}
-          className='absolute top-[calc(var(--topbar-h)+0.5rem+var(--notices-h,0px)+var(--preview-banner-h,0px))] left-1/2 z-40 flex -translate-x-1/2 items-center gap-2.5 rounded-full bg-black/60 px-5 py-2.5 text-base font-medium text-white shadow-lg backdrop-blur-md transition-colors hover:bg-black/80 portrait:top-auto portrait:bottom-[calc(var(--stage-chrome-h)+var(--preview-banner-h,0px))]'>
+          className='absolute top-[calc(var(--topbar-h)+0.5rem+var(--notices-h,0px)+var(--preview-banner-h,0px))] left-1/2 z-40 flex -translate-x-1/2 items-center gap-2.5 rounded-full bg-black/60 px-5 py-2.5 text-base font-medium text-white shadow-lg backdrop-blur-md transition-colors hover:bg-black/80'>
           <VolumeXIcon className='size-5' aria-hidden='true' />
           Tap to Unmute
         </button>
