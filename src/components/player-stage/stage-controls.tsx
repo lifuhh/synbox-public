@@ -103,8 +103,6 @@ interface StageControlsProps {
   fullscreen: boolean
   onToggleFullscreen: () => void
   onSeekBy: (seconds: number) => void
-  // Height the controls occupy above the stage bottom, plus a small gap
-  onHeightChange: (px: number) => void
   volume: PlayerVolume
   onVolumeChange: (volume: PlayerVolume) => void
 }
@@ -125,7 +123,6 @@ export const StageControls = ({
   fullscreen,
   onToggleFullscreen,
   onSeekBy,
-  onHeightChange,
   volume,
   onVolumeChange: setVolume,
 }: StageControlsProps) => {
@@ -135,12 +132,12 @@ export const StageControls = ({
 
   useEffect(() => {
     const observe = (bar: HTMLDivElement, content: HTMLDivElement) => {
-      // Published for the generation button, which floats above the controls on the player
+      // Published for what floats above the controls: the lyrics, the rail in portrait, notices and the
+      // generation button (see --stage-chrome-h)
       const root = document.documentElement
       const observer = new ResizeObserver(() => {
         // The gradient above the controls is see-through, so only the rows count
         const height = bar.clientHeight - content.offsetTop + OBSTRUCTION_GAP_PX
-        onHeightChange(height)
         root.style.setProperty('--stage-controls-h', `${height}px`)
       })
       observer.observe(bar)
@@ -153,7 +150,7 @@ export const StageControls = ({
     const barNode = barRef.current
     const contentNode = contentRef.current
     return barNode && contentNode ? observe(barNode, contentNode) : undefined
-  }, [onHeightChange])
+  }, [])
 
   const time = usePlaybackClock(player)
   const duration = player.getDuration()
@@ -191,11 +188,13 @@ export const StageControls = ({
         'absolute inset-x-0 bottom-0 z-30 bg-linear-to-t from-black/80 via-black/40 to-transparent pt-10 pr-controls-right pb-controls-bottom pl-controls-left transition-opacity duration-(--controls-fade) short:pl-controls-rail',
         visible ? 'opacity-100' : 'opacity-0',
         !armed && 'pointer-events-none'
-      )}
-      onPointerDown={(event) => {
-        event.stopPropagation()
-      }}>
-      <div ref={contentRef} data-player-chrome>
+      )}>
+      {/* On a phone on its side the seek bar joins the buttons' row: two rows would cover a third of the
+          screen and push the lyrics to its middle */}
+      <div
+        ref={contentRef}
+        data-player-chrome
+        className='short:flex short:items-center short:gap-1'>
         <Slider
           aria-label='Seek'
           min={0}
@@ -218,9 +217,9 @@ export const StageControls = ({
               setHeld(null)
             }, SEEK_HOLD_MAX_MS)
           }}
-          className='mb-2 cursor-pointer'
+          className='mb-2 cursor-pointer short:order-1 short:mx-2 short:mb-0 short:min-w-0 short:flex-1'
         />
-        <div className='flex items-center gap-1 text-sm text-white tabular-nums touch:gap-0.5'>
+        <div className='flex items-center gap-1 text-sm text-white tabular-nums touch:gap-0.5 short:contents'>
           {/* Touch screens play and pause from the button in the middle of the stage instead */}
           <IconButton
             label={isPlaying ? 'Pause' : 'Play'}
@@ -285,10 +284,10 @@ export const StageControls = ({
               </div>
             </div>
           </div>
-          <span className='ml-2 min-w-0 truncate whitespace-nowrap touch:ml-1'>
+          <span className='ml-2 min-w-0 truncate whitespace-nowrap touch:ml-1 short:order-2 short:ml-0 short:shrink-0'>
             {formatTime(shown)} / {formatTime(duration)}
           </span>
-          <div className='ml-auto flex shrink-0 items-center gap-1 touch:gap-0.5'>
+          <div className='ml-auto flex shrink-0 items-center gap-1 touch:gap-0.5 short:order-3 short:ml-1'>
             <IconButton
               label='Loop'
               active={loop}

@@ -1,6 +1,6 @@
 import { useAtom, useSetAtom } from 'jotai'
 import type { ReactNode } from 'react'
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 import {
   lyricsAnchorAtom,
@@ -18,8 +18,9 @@ import { CONTROLS_FADE_MS } from './stage-controls'
 const TAP_SLOP_PX = 4
 const LIFT_MS = 200
 const CLICK_AFTER_DRAG_MS = 400
-// A drop this close above the controls docks the block at the bottom
-const DOCK_REACH_PX = 20
+// A drop whose bottom edge lands within this share of the lyrics' area from the bottom docks the block. A
+// share, not pixels: the same few pixels are a finger's width on a phone and nothing on a desktop
+const DOCK_REACH = 0.1
 
 const swallow = (event: MouseEvent) => {
   event.stopPropagation()
@@ -33,6 +34,8 @@ const swallowNextClick = () => {
   }, CLICK_AFTER_DRAG_MS)
 }
 
+const clamp01 = (value: number) => Math.min(1, Math.max(0, value))
+
 interface DragStart {
   pointerY: number
   anchor: number
@@ -41,23 +44,24 @@ interface DragStart {
 }
 
 interface DraggableLyricsProps {
-  children: ReactNode
+  // Nothing between lines; the block stays mounted so a drag survives a gap in the lyrics
+  children?: ReactNode
   layout: StageLayout
   scale: number
   backdrop: string
   colors: LyricsThemeColors
 }
 
-// `anchor` is where the viewer put the lyrics (0 = top, 1 = bottom of the
-// stage) and is what persists. Flex spacers split the free space above and
-// below the block by the anchor, so a taller or shorter line keeps its place
-// without measuring. The bottom spacer never shrinks below the
-// controls, which lifts the block just clear of them, and it drops back once
-// the controls have faded out. A drop on or just above the controls docks the
-// block (anchor 1), so it rides the controls' edge both ways instead of
-// stopping above them. Only the text box is
-// grabbable; a press without a drag opens the rail's style panel, and the empty
-// band beside the text passes clicks to the video
+// `anchor` is where the viewer put the lyrics (0 = top, 1 = bottom of their
+// area) and is what persists, once per drop. Flex spacers split the free
+// space above and below the block by the anchor, so a taller or shorter line
+// keeps its place without measuring. While the floating UI shows, the bottom
+// spacer never shrinks below the part of the stage it covers
+// (--stage-chrome-h), which lifts the block just clear of it, and it drops
+// back once the UI has faded out. A drop near the bottom docks the block
+// (anchor 1), so it rides the UI's edge both ways. Only the drawn text is
+// grabbable; a press on it without a drag opens the rail's style panel, and
+// a press beside or between its lines goes to the stage
 export const DraggableLyrics = ({
   children,
   layout,
@@ -65,13 +69,30 @@ export const DraggableLyrics = ({
   backdrop,
   colors,
 }: DraggableLyricsProps) => {
-  const [anchor, setAnchor] = useAtom(
+  const [savedAnchor, setSavedAnchor] = useAtom(
     usePortrait() ? lyricsAnchorPortraitAtom : lyricsAnchorAtom
   )
+  // Where the block follows the pointer during a drag; saved on the drop, not on every move
+  const [dragAnchor, setDragAnchor] = useState<number | null>(null)
+  const anchor = dragAnchor ?? savedAnchor
+  const dragging = dragAnchor !== null
   const blockRef = useRef<HTMLDivElement>(null)
   const dragRef = useRef<DragStart | null>(null)
-  const [dragging, setDragging] = useState(false)
   const setStylePanel = useSetAtom(lyricsStylePanelAtom)
+
+  // A drag cut off by leaving the page must not keep the controls hidden
+  const layoutRef = useRef(layout)
+  useEffect(() => {
+    layoutRef.current = layout
+  })
+  useEffect(
+    () => () => {
+      if (dragRef.current?.moved === true) {
+        layoutRef.current.onDragChange(false)
+      }
+    },
+    []
+  )
 
   const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
     const block = blockRef.current
@@ -85,7 +106,7 @@ export const DraggableLyrics = ({
     // while the controls lift it
     const room = layer.clientHeight - block.offsetHeight
     dragRef.current = {
-      anchor: room > 0 ? block.offsetTop / room : anchor,
+      anchor: room > 0 ? clamp01(block.offsetTop / room) : anchor,
       moved: false,
       pointerY: event.clientY,
       range: Math.max(1, room),
@@ -103,10 +124,9 @@ export const DraggableLyrics = ({
         return
       }
       drag.moved = true
-      setDragging(true)
       layout.onDragChange(true)
     }
-    setAnchor(Math.min(1, Math.max(0, drag.anchor + delta / drag.range)))
+    setDragAnchor(clamp01(drag.anchor + delta / drag.range))
   }
 
   const handlePointerUp = () => {
@@ -118,16 +138,15 @@ export const DraggableLyrics = ({
     if (drag.moved) {
       const block = blockRef.current
       const layer = block?.parentElement
-      // The controls are hidden while dragging, so this is the gap to the stage's bottom edge
-      if (
-        block &&
-        layer &&
+      // The floating UI is hidden while dragging, so this is the gap to the area's bottom edge
+      const docked =
+        block !== null &&
+        layer !== null &&
+        layer !== undefined &&
         layer.clientHeight - block.offsetTop - block.offsetHeight <=
-          layout.controlsHeight + DOCK_REACH_PX
-      ) {
-        setAnchor(1)
-      }
-      setDragging(false)
+          layer.clientHeight * DOCK_REACH
+      setSavedAnchor(docked ? 1 : anchor)
+      setDragAnchor(null)
       layout.onDragChange(false)
       // A drag that ends over the video must not also count as a tap on it
       swallowNextClick()
@@ -138,7 +157,6 @@ export const DraggableLyrics = ({
 
   // Never while dragging: the block follows the pointer exactly
   const settle = dragging ? 'none' : `flex-grow ${LIFT_MS}ms ease-out`
-  const bottomObstruction = layout.controlsVisible ? layout.controlsHeight : 0
   const anchorVars: CssVars = {
     '--anchor-grow': anchor,
     '--anchor-transition': settle,
@@ -150,12 +168,12 @@ export const DraggableLyrics = ({
   }
   const liftVars: CssVars = {
     '--lift-grow': 1 - anchor,
-    '--lift-min-h': `${bottomObstruction}px`,
+    '--lift-min-h': layout.controlsVisible ? 'var(--stage-chrome-h)' : '0px',
     // Lift at once when the controls appear; drop only after they fade. A
     // docking drop slides down with the spacer above, never delayed
     '--lift-transition': dragging
       ? 'none'
-      : `min-height ${LIFT_MS}ms ease-out ${bottomObstruction > 0 ? 0 : CONTROLS_FADE_MS}ms, ${settle}`,
+      : `min-height ${LIFT_MS}ms ease-out ${layout.controlsVisible ? 0 : CONTROLS_FADE_MS}ms, ${settle}`,
   }
   return (
     // A block taller than the room overflows upward, over the video, never down under the controls
@@ -163,14 +181,17 @@ export const DraggableLyrics = ({
       <div className='anchor-spacer' style={anchorVars} />
       <div
         ref={blockRef}
-        className='player-lyrics-overlay relative isolate shrink-0 px-3 py-cqh select-none'
+        className={cn(
+          'player-lyrics-overlay relative isolate shrink-0 px-3 py-cqh select-none',
+          children === undefined && 'invisible'
+        )}
         style={blockVars}
         data-backdrop={backdrop}>
         <div
           data-testid='lyrics-handle'
           data-lyrics-style-toggle
           className={cn(
-            'pointer-events-auto mx-auto w-fit max-w-full cursor-grab touch-none rounded-xl px-cqw ring-white/25 transition-surface hover:bg-white/5 hover:ring-1 touch:w-full',
+            'lyrics-hit-text mx-auto w-fit max-w-full cursor-grab touch-none rounded-xl px-cqw ring-white/25 transition-surface hover:bg-white/5 hover:ring-1',
             dragging && 'cursor-grabbing bg-white/5 ring-1'
           )}
           onPointerDown={handlePointerDown}

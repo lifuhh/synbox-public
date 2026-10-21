@@ -219,9 +219,13 @@
   --spacing-cqw: 1cqw;
   --spacing-cqh: 1cqh;
 
-  /* The player's lyric lines: a share of the stage's width, with a floor, times the viewer's scale */
-  --text-lyric: calc(max(3.5cqw, 1.5rem) * var(--lyric-scale));
-  --text-lyric-secondary: calc(max(2.4cqw, 0.9375rem) * var(--lyric-scale));
+  /* The player's lyric lines, times the viewer's scale: a share of the stage's width, but never more than a
+     share of its height, so a phone on its side (wide, very short) is not sized like a monitor. The floor
+     keeps furigana (0.45em) readable on a phone: 20px kanji, 9px readings */
+  --text-lyric: calc(max(min(2cqw, 4cqh), 1.25rem) * var(--lyric-scale));
+  --text-lyric-secondary: calc(
+    max(min(1.4cqw, 2.8cqh), 0.875rem) * var(--lyric-scale)
+  );
 
   /* The offline reader: room under its bar and over its text style row, and type times the reader's scale */
   --spacing-reader-top: calc(var(--spacing-safe-top) + 3.75rem);
@@ -419,14 +423,29 @@
 /* The spacers above and below the player's lyrics split the free space by the anchor; the lower one also
    lifts the lyrics clear of the controls */
 @utility anchor-spacer {
+  flex-basis: 0;
   flex-grow: var(--anchor-grow);
   transition: var(--anchor-transition);
 }
 
 @utility lyrics-lift {
+  /* Explicit: WebKit takes an empty box's min-height as its flex basis, and would then add the box's
+     share of the free space on top of it */
+  flex-basis: 0;
   flex-grow: var(--lift-grow);
   min-height: var(--lift-min-h);
   transition: var(--lift-transition);
+}
+
+/* Only the drawn text takes a press: the gaps beside and between wrapped lines pass it to the stage
+   below, so a tap there still shows the controls or double-tap seeks. Blocks pass presses through;
+   inline text takes them */
+@utility lyrics-hit-text {
+  pointer-events: none;
+
+  & :where(span, ruby):not(.lyric-karaoke-line) {
+    pointer-events: auto;
+  }
 }
 
 /* Fades the step wheel's rows out at its top and bottom edges */
@@ -704,7 +723,10 @@
   font-size: var(--furigana-size, 0.45em);
   line-height: 1;
   letter-spacing: -0.04em;
-  padding-bottom: var(--furigana-gap, 0);
+  /* Chromium stands the reading on the kanji's line box, WebKit (every iPhone browser and the installed
+     app) above the font's full ascent, about 0.4em higher. Any negative margin makes Chromium settle at
+     its tightest spot, and this one moves WebKit to the same spot, just clear of the kanji */
+  margin-bottom: -0.9em;
   text-shadow:
     0 0 1px rgb(0 0 0 / 0.95),
     0 0 2px rgb(0 0 0 / 0.8),
@@ -720,8 +742,8 @@
 @utility lyric-karaoke-ja {
   --kanji-spacing: 0.2em;
 
-  /* A phone fits far fewer characters a line; wide spacing would wrap most lines twice */
-  @media (width < 40rem) {
+  /* A phone, either way round, fits far fewer characters a line; wide spacing would wrap most lines twice */
+  @media (width < 40rem), (orientation: landscape) and (max-height: 500px) {
     --kanji-spacing: 0.08em;
   }
 }
@@ -922,12 +944,21 @@
     --safe-bottom: env(safe-area-inset-bottom, 0px);
     --safe-left: env(safe-area-inset-left, 0px);
     --safe-right: env(safe-area-inset-right, 0px);
-    /* In portrait the player's video is full width, centred on the screen */
-    --stage-video-top: calc(50dvh - 100vw * 9 / 32);
-    /* In portrait the player's rail sits on its control bar; notices and the generation button float above both */
-    --player-notices-bottom: calc(
-      var(--stage-controls-h, 5rem) + var(--player-rail-h, 0px) + 0.5rem
-    );
+    /* How much of the player's bottom edge its floating UI covers while it shows: the lyrics lift by this,
+       and notices and the generation button stand on it */
+    --stage-chrome-h: var(--stage-controls-h, 5rem);
+
+    @media (orientation: portrait) {
+      /* The rail sits on the control bar */
+      --stage-chrome-h: calc(
+        var(--stage-controls-h, 5rem) + var(--player-rail-h, 0px) + 0.5rem
+      );
+    }
+  }
+
+  /* Without the top bar the video moves up under the status bar */
+  html[data-immersive] {
+    --topbar-h: env(safe-area-inset-top, 0px);
   }
 
   /* The version preview banner and the player's Tap to Unmute both hang under the top bar (in portrait, both

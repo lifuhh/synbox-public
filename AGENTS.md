@@ -13,6 +13,25 @@
 - **Keep the private change log, never commit it.** `docs/log/` in the main checkout is gitignored working history: one entry per PR (problem, cause, change, expected behaviour, judgment calls, verification), in the shape set by its local `README.md`. From a worktree, write to `"$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")/docs/log/"`. Before changing how something works, read its entries (`grep -l <area or song id> docs/log/*`) so an earlier fix is not undone. If the folder is missing (a fresh clone), skip the log; never recreate it as tracked files.
 - Local reports and visual write-ups (HTML summaries, before/after screenshots, measurements) go in `.reports/YYYY-MM-DD-<slug>/`, one folder per report: an `index.html` with its images beside it, referenced by relative path so it opens offline. `.reports/` is gitignored; never commit a report. Anything worth keeping about why a change was made goes in the private change log instead.
 
+## Phones, the installed app and desktop
+
+The installed app (PWA) and the website are the same build: there is no phone code path to keep in sync. When they look different, the cause is one of two things, and every UI change must account for both:
+
+- **The engine.** Every iPhone browser and the installed iOS app run WebKit; desktop is usually Chromium. The same CSS lays out differently. Known cases, each fixed once in `src/globals.css`:
+  - Furigana: Chromium stands an `<rt>` on the kanji's line box, WebKit above the font's full ascent (0.34em higher). `lyric-ruby-text`'s negative margin puts both at the same spot.
+  - Flex: an empty spacer with a `min-height` and no `flex-basis` gets its min-height as the basis in WebKit, so it grows past it. Spacers that share space (`anchor-spacer`, `lyrics-lift`) set `flex-basis: 0`.
+  - iOS clips a `filter` on an inline box and paints no text-clipped background on `<rt>` (see `lyric-karaoke-line` and the karaoke fill spans); iOS keeps the last tapped element in `:hover`, so touch never reads `:hover`.
+- **The screen class.** A phone on its side is wide (~850px) but only ~390px tall. A value keyed only to width (`cqw`, `width < 40rem`) sizes it like a monitor. Key phone rules to the device, not one axis: `touch:` (finger input), `short:` (phone on its side), `portrait:`, and cap width-based sizes by height (`min(2cqw, 4cqh)`). The same pixel gap or dock distance is a finger's width on a phone and nothing on a monitor: use a share of the space instead.
+
+Rules for the player (and any full-screen surface):
+
+- **One measure for what the floating UI covers.** `--stage-chrome-h` is the bottom edge the controls (plus, in portrait, the rail) cover while they show. Anything that must clear them reads it, only while they show. Never offset a layer permanently by an element that hides.
+- **Presses outside a control go to the stage.** The stage's own taps (show/hide controls, double-tap seek) sit under everything. Don't widen a press target over it: the lyrics take presses only on their drawn text (`lyrics-hit-text`).
+- **Input on the floating UI counts as activity.** Don't stop `pointerdown` on it, or the controls hide under a finger that is still tapping them.
+- **Keep a dragged thing mounted, and save it on the drop**, not on every move: a remount mid-drag kills the drag, and a storage write per move is jank on a phone.
+
+**Check every UI change on three screens**, by measuring positions, not only by looking: desktop Chromium 1440×900, and Playwright WebKit with `isMobile: true, hasTouch: true` at 390×844 and 844×390. Chrome's device mode is not enough (it flips back to `pointer: fine` mid-page and is not WebKit). Playwright reports no safe areas; inject the iPhone ones (portrait top 47 / bottom 34, landscape left and right 47 / bottom 21) by overriding `--topbar-h`, `--safe-bottom`, `--safe-left` and `--safe-right`. Put the before/after screenshots side by side in a `.reports/` page. Real-device feel (touch drag, home indicator, status bar) still needs the user's phone: say what was not checked.
+
 ## Shipping a change
 
 Every task goes worktree → branch → PR → preview without asking how. Merging to `main` is the deploy.
