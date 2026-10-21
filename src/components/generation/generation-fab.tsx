@@ -129,7 +129,10 @@ const GenerationFab = ({ job, count, view, raised }: GenerationFabProps) => {
     ref.current?.focus({ preventScroll: true })
   }, [])
 
-  const turnVars: CssVars = { '--fab-turn': `rotate(${view.overall * 360}deg)` }
+  // The ring is drawn from 12 o'clock, so the dot's turn starts there too
+  const turnVars: CssVars = {
+    '--fab-turn': `rotate(${view.overall * 360 - 90}deg)`,
+  }
   return (
     <motion.button
       ref={ref}
@@ -200,20 +203,18 @@ const GenerationFab = ({ job, count, view, raised }: GenerationFabProps) => {
             strokeDashoffset={C * (1 - view.overall)}
             className='transition-dashoffset duration-450 ease-out'
           />
-          {state === 'running' && view.overall > 0.01 && (
-            // Turns with the same timing as the arc, so the dot stays on its tip
-            <g
-              className='[transform-origin:center] transform-(--fab-turn) transition-transform duration-450 ease-out [transform-box:view-box]'
-              style={turnVars}>
-              <circle
-                cx={SIZE / 2 + R}
-                cy={SIZE / 2}
-                r={STROKE / 2 + 0.5}
-                className='fill-white motion-safe:animate-breathe'
-              />
-            </g>
-          )}
         </svg>
+        {state === 'running' && view.overall > 0.01 && (
+          // Turns with the same timing as the arc, so the dot stays on its tip. It sits outside the SVG so its turn
+          // and pulse can run on the compositor: inside the SVG, the turn re-laid out the page on every frame.
+          // The dot's centre is R from the ring's centre: 26 + 24.5 - 2 = 48.5 px from the left.
+          <span
+            aria-hidden
+            className='absolute inset-0 transform-(--fab-turn) transition-transform duration-450 ease-out'
+            style={turnVars}>
+            <span className='absolute top-6 left-[48.5px] size-1 rounded-full bg-white motion-safe:animate-breathe' />
+          </span>
+        )}
         {count > 1 && (
           <span
             aria-hidden
