@@ -4,6 +4,7 @@ import { Navigate, Route, Routes } from 'react-router'
 import AppNotices from '@/components/shared/app-notices'
 import { Toaster } from '@/components/ui/toaster'
 import useKeyboardNavigation from '@/hooks/use-keyboard-navigation'
+import { useOfflineSync } from '@/lib/offline/sync'
 
 import LandingPage from './_root/pages/landing-page'
 import RootLayout from './_root/root-layout'
@@ -20,12 +21,16 @@ const StageLabPage = import.meta.env.DEV
 // Only the landing page ships in the first bundle; the rest load on first visit, or once the opening is over
 const pageImports = {
   about: async () => await import('./_root/pages/about-page'),
+  offline: async () => await import('./_root/pages/offline-page'),
   player: async () => await import('./_root/pages/player-page'),
+  reader: async () => await import('./_root/pages/reader-page'),
   search: async () => await import('./_root/pages/search-page'),
   versions: async () => await import('./_root/pages/versions-page'),
 }
 const AboutPage = lazy(pageImports.about)
+const OfflinePage = lazy(pageImports.offline)
 const PlayerPage = lazy(pageImports.player)
+const ReaderPage = lazy(pageImports.reader)
 const SearchPage = lazy(pageImports.search)
 const VersionsPage = lazy(pageImports.versions)
 // Not prefetched: only admins open it
@@ -41,6 +46,8 @@ const prefetchPages = () => {
 
 const App = () => {
   useKeyboardNavigation()
+  // Keeps this device's offline lyrics in step with the user's songs, bookmarks and recent songs
+  useOfflineSync()
   // After the first screen has loaded, so the prefetch never competes with it
   useEffect(() => {
     const id = setTimeout(prefetchPages, PREFETCH_DELAY_MS)
@@ -93,6 +100,22 @@ const App = () => {
             element={
               <Suspense>
                 <AboutPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path='/offline'
+            element={
+              <Suspense>
+                <OfflinePage />
+              </Suspense>
+            }
+          />
+          <Route
+            path='/offline/:videoId'
+            element={
+              <Suspense>
+                <ReaderPage />
               </Suspense>
             }
           />

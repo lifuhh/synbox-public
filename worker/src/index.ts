@@ -45,6 +45,24 @@ app.get('/api/me', async (c) => {
   })
 })
 
+// The songs the signed-in user generated, newest first, for their offline lyrics; a guest has none
+app.get('/api/me/songs', async (c) => {
+  const session = await createAuth(c.env).api.getSession({
+    headers: c.req.raw.headers,
+  })
+  if (!session) {
+    return c.json({ songs: [] })
+  }
+  const { results } = await c.env.DB.prepare(
+    `select "videoId", max(coalesce("finishedAt", "createdAt")) as "generatedAt" from "generation"
+     where "userId" = ?1 and "status" = 'succeeded'
+     group by "videoId" order by "generatedAt" desc limit 1000`
+  )
+    .bind(session.user.id)
+    .all()
+  return c.json({ songs: results })
+})
+
 // Called only by the Cloud Run backend, after it has verified the user's JWT or hashed the guest's address
 const internal = new Hono<{ Bindings: AppEnv }>()
 

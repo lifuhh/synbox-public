@@ -1,5 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query'
 import {
+  BookOpenTextIcon,
   CircleQuestionMarkIcon,
   ShieldIcon,
   LogInIcon,
@@ -29,6 +30,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { signInWithGoogle, signOut, useMe } from '@/lib/auth'
 import type { Quota } from '@/lib/auth'
+import { forgetMySongs } from '@/lib/offline/sync'
 import { useInstallMethod } from '@/lib/pwa'
 import { QUERY_KEYS } from '@/lib/react-query/query-keys'
 import { handleRedirect } from '@/utils'
@@ -90,6 +92,7 @@ const ProfileButtonDropdown = () => {
 
   const handleSignOut = async () => {
     await signOut()
+    forgetMySongs()
     await queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.GET_ME] })
   }
 
@@ -144,6 +147,14 @@ const ProfileButtonDropdown = () => {
                 <span>Sign In With Google</span>
               </DropdownMenuItem>
             )}
+            <DropdownMenuItem
+              className='cursor-pointer'
+              onClick={() => {
+                void navigate('/offline')
+              }}>
+              <BookOpenTextIcon className='mr-2 size-5 shrink-0' />
+              <span>Offline Lyrics</span>
+            </DropdownMenuItem>
             <DropdownMenuItem
               className='cursor-pointer'
               onClick={() => {

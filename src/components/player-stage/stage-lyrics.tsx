@@ -23,6 +23,8 @@ import {
   currentLineIndex,
   karaokeMatchesLyrics,
 } from '@/lib/karaoke'
+import type { TimedLyrics } from '@/lib/lyrics-document'
+import { parseLyricsDocument } from '@/lib/lyrics-document'
 import { getLyricsThemeColors } from '@/lib/lyrics-themes'
 import {
   useGetKaraokeById,
@@ -38,17 +40,6 @@ import { DraggableLyrics } from './draggable-lyrics'
 import type { StageLayout } from './player-stage'
 import type { StagePlayer } from './use-you-tube-player'
 
-const lyricLineSchema = z.object({
-  endSeconds: z.number(),
-  startSeconds: z.number(),
-  text: z.string(),
-})
-const lyricsDocumentSchema = z.object({
-  chi_translation: z.string(),
-  eng_translation: z.string(),
-  labelled_full_lyrics: z.string(),
-  romaji: z.string(),
-})
 // Fields read before (or without) a full parse; a missing or malformed field
 // reads as absent rather than failing the others
 const optionalText = z
@@ -68,41 +59,6 @@ export const parseLyricsText = (data: unknown): LyricsText => {
   const result = lyricsTextSchema.safeParse(data)
   return result.success ? result.data : {}
 }
-const parseJsonWith = <T,>(schema: z.ZodType<T>, raw: string): T | null => {
-  try {
-    const result = schema.safeParse(JSON.parse(raw))
-    return result.success ? result.data : null
-  } catch {
-    return null
-  }
-}
-
-export interface TimedLyrics {
-  lines: z.infer<typeof lyricLineSchema>[]
-  eng: string[]
-  chi: string[]
-  romaji: string[]
-}
-
-export const parseLyricsDocument = (data: unknown): TimedLyrics | null => {
-  const document = lyricsDocumentSchema.safeParse(data)
-  if (!document.success) {
-    return null
-  }
-  const texts = z.array(z.string())
-  const lines = parseJsonWith(
-    z.array(lyricLineSchema),
-    document.data.labelled_full_lyrics
-  )
-  const eng = parseJsonWith(texts, document.data.eng_translation)
-  const chi = parseJsonWith(texts, document.data.chi_translation)
-  const romaji = parseJsonWith(texts, document.data.romaji)
-  if (!(lines && eng && chi && romaji)) {
-    return null
-  }
-  return { chi, eng, lines, romaji }
-}
-
 // Everything the overlay draws runs this far ahead of the player's clock: on a device the lyrics read
 // 100–200 ms behind the voice, from the embed reporting its time late and the frame it takes to paint
 const LYRICS_LEAD_SEC = 0.15

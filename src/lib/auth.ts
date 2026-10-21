@@ -43,6 +43,19 @@ export const fetchMe = async (): Promise<Me> => {
   return meSchema.parse(await response.json())
 }
 
+const mySongsSchema = z.object({
+  songs: z.array(z.object({ generatedAt: z.number(), videoId: z.string() })),
+})
+
+// The songs this account generated, newest first; empty for a guest
+export const fetchMySongs = async () => {
+  const response = await fetch('/api/me/songs', { credentials: 'same-origin' })
+  if (!response.ok) {
+    throw new Error(`/api/me/songs answered ${response.status}`)
+  }
+  return mySongsSchema.parse(await response.json()).songs
+}
+
 // One retry: until it answers, everyone looks like a guest and admin pages wait
 export const useMe = () =>
   useQuery({
