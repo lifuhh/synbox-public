@@ -125,14 +125,14 @@ const CenterPlayButton = ({
     aria-hidden={!visible}
     onClick={onToggle}
     className={cn(
-      'absolute top-(--video-cy) left-1/2 z-26 grid size-20 -translate-1/2 place-items-center rounded-full bg-primary-subtle text-primary-text shadow-stage transition-opacity duration-300 short:size-14',
+      'absolute top-(--video-cy) left-1/2 z-26 grid size-20 -translate-1/2 place-items-center text-white/90 drop-shadow-stage transition-opacity duration-300 short:size-14',
       visible ? 'opacity-100' : 'opacity-0',
       !armed && 'pointer-events-none'
     )}>
     {phase.kind === 'paused' ? (
-      <PlayIcon className='size-9 fill-current short:size-6' />
+      <PlayIcon className='size-16 fill-current short:size-10' />
     ) : (
-      <PauseIcon className='size-9 fill-current short:size-6' />
+      <PauseIcon className='size-16 fill-current short:size-10' />
     )}
   </button>
 )
