@@ -60,6 +60,8 @@ const driveCarousel = (
   // The scroll position that centres slide 0, and the distance from one slide to the next
   let base = 0
   let pitch = 1
+  // The slide last seen at the centre, so a resize keeps it there even if the browser re-snapped first
+  let centred = homeIndex(0, count, copies)
   let glide: Glide | null = null
   let drag: Drag | null = null
   let settleTimer = 0
@@ -86,7 +88,11 @@ const driveCarousel = (
       track.scrollLeft +
       first.width / 2 -
       track.clientWidth / 2
-    pitch = slides.length > 1 ? second.left - first.left : 1
+    // Centres, not edges: an off-centre slide is scaled about its centre
+    pitch =
+      slides.length > 1
+        ? second.left + second.width / 2 - (first.left + first.width / 2)
+        : 1
   }
 
   const jump = (x: number) => {
@@ -168,7 +174,8 @@ const driveCarousel = (
   }
 
   const onScroll = () => {
-    onActive(item(Math.round(position())))
+    centred = Math.round(position())
+    onActive(item(centred))
     window.clearTimeout(settleTimer)
     if (!glide && !drag) {
       settleTimer = window.setTimeout(settle, SETTLE_MS)
@@ -280,11 +287,14 @@ const driveCarousel = (
 
   // Keep the same slide centred when the row changes size (rotation, window resize)
   const observer = new ResizeObserver(() => {
-    const index = nearest()
+    const index = glide ? glide.to : centred
     stopGlide()
     measure()
     jump(xOf(index))
     snap(true)
+    // A jump to where the row already is fires no scroll event
+    centred = index
+    onActive(item(index))
   })
 
   measure()

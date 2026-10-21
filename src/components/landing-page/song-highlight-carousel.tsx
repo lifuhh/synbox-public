@@ -33,9 +33,10 @@ const SongCard = ({
     aria-hidden={clone || undefined}
     tabIndex={clone ? -1 : undefined}
     data-active={active}
-    className='group flex min-w-0 snap-center flex-col gap-1 rounded-xl focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden'>
-    {/* Only the picture dims off-centre: dimmed text would fall below 4.5:1 */}
-    <span className='relative mb-2 aspect-video overflow-hidden rounded-xl bg-thumbnail-placeholder transition-opacity duration-150 group-data-[active=false]:opacity-60'>
+    className='group flex min-w-0 snap-center flex-col gap-1 rounded-xl focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden motion-safe:transition-transform motion-safe:duration-150 data-[active=false]:motion-safe:scale-94'>
+    {/* Off-centre slides shrink, fade their picture and mute their title, so the centred one stands out
+        whatever the pictures look like. Text is muted, not faded: faded text would fall below 4.5:1 */}
+    <span className='relative mb-2 aspect-video overflow-hidden rounded-xl bg-thumbnail-placeholder transition-opacity duration-150 group-data-[active=false]:opacity-40'>
       <img
         src={item.thumbnailUrl}
         alt=''
@@ -49,7 +50,7 @@ const SongCard = ({
         <PlayIcon className='size-4 fill-current' aria-hidden />
       </span>
     </span>
-    <span className='line-clamp-2 text-label leading-snug font-semibold text-foreground'>
+    <span className='line-clamp-2 text-label leading-snug font-semibold text-foreground transition-colors duration-150 group-data-[active=false]:text-muted-foreground'>
       {item.title}
     </span>
     <span className='truncate text-sm text-muted-foreground'>
