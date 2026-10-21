@@ -14,7 +14,7 @@ for = "/manifest.webmanifest"
 Content-Type = "application/manifest+json"
 Cache-Control = "no-cache"
 
-# Vite's bundles have content hashes in their names; public/assets/ (icons, showcase) does not, so only these
+# Vite's bundles have content hashes in their names; public/assets/ (icons) does not, so only these
 [[headers]]
 for = "/assets/*.js"
 [headers.values]

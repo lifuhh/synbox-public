@@ -211,11 +211,7 @@ export default defineConfig({
         // Or the precache would still answer "/" with its index.html, ahead of the pages route below
         directoryIndex: '',
         // The app shell only. Lyrics, songs and videos always come from the network
-        globIgnores: [
-          'AppLogoV2.svg',
-          'assets/icons/Synbox.svg',
-          'assets/showcase/**',
-        ],
+        globIgnores: ['assets/icons/Synbox.svg', 'assets/showcase/**'],
         globPatterns: ['**/*.{js,css,html,png,svg,woff2}'],
         // Pages from the network first, so opening or reloading a tab shows the latest deploy (a precached page
         // kept the deploy the worker was built with until a hard reload). The shell in the precache answers

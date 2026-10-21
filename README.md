@@ -8,9 +8,6 @@
   <a href="./LICENSE" target="_blank" rel="noopener noreferrer">
     <img src="https://img.shields.io/badge/license-PolyForm_Noncommercial-orange" alt="License Badge" />
   </a>
-  <a href="#">
-    <img src="https://img.shields.io/badge/version-1.0.0-blue?style=flat-square" alt="Version Badge" />
-  </a>
 </p>
 
 <p align="center">
@@ -103,14 +100,15 @@ This frustration inspired me to create Synbox — a tool that helps fans like me
 
 ## **Infrastructure / Technologies**
 
-| **Category**    | **Technologies**                                |
-| --------------- | ----------------------------------------------- |
-| **Frontend**    | React, TypeScript, TailwindCSS, ShadCN UI, Vite |
-| **Backend**     | Python, Flask                                   |
-| **APIs**        | OpenAI API, Google Cloud APIs                   |
-| **Database**    | Appwrite                                        |
-| **Deployment**  | Netlify (frontend), Google Cloud Run (backend)  |
-| **Other Tools** | ESLint, Prettier, Bun                           |
+| **Category** | **Technologies** |
+| --- | --- |
+| **Frontend** | React, TypeScript, TailwindCSS, ShadCN UI, Vite+ |
+| **Backend** | Python, Flask |
+| **APIs** | ElevenLabs Scribe, OpenAI API, YouTube Data API |
+| **Database** | Appwrite (songs, lyrics), Cloudflare D1 (accounts) |
+| **Auth** | Better Auth on a Cloudflare Worker |
+| **Deployment** | Netlify (frontend), Cloudflare Workers (auth), Cloud Run (backend) |
+| **Other Tools** | Bun, Oxlint, Oxfmt, Ultracite |
 
 ### **System Architecture**
 
@@ -118,16 +116,18 @@ Synbox leverages a cutting edge full-stack architecture, combining a user-friend
 
 **Frontend** - Built with React, TypeScript, and TailwindCSS, the frontend provides a dynamic and responsive interface. Features include a landing page with an infinite scroll gallery, customizable lyrics overlays, viewing history and bookmarks.
 
-**Backend** - Powered by Flask and Python, the backend processes AI requests, including OpenAI Whisper model-based transcription, translation, and annotation.
+**Backend** - Powered by Flask and Python, the backend processes AI requests, including speech recognition, lyric alignment, translation, and annotation.
 
-**Database** - Appwrite serves as the backend's database, handling storage of generated lyrics.
+**Database** - Appwrite stores songs and generated lyrics. Accounts live in Cloudflare D1, behind the auth Worker.
 
 **APIs and Integrations**  
-**OpenAI API** - For transcription, translation, and annotation of Japanese song lyrics.  
+**ElevenLabs Scribe** - Speech recognition with character timestamps.  
+**OpenAI API** - Translation and song metadata.  
 **Google Data API** - Integrates YouTube data to fetch popular Japanese playlists and user-submitted video links.
 
 **Hosting and Deployment**  
 **Frontend** - Hosted on **Netlify**, ensuring fast and reliable delivery.  
+**Auth** - A **Cloudflare Worker** handles sign-in, quotas and admin.  
 **Backend** - Runs on **Google Cloud Run**, offering scalable and efficient serverless deployment.
 
 This architecture ensures Synbox remains fast, responsive, and capable of delivering a rich user experience while handling computationally intensive AI tasks in the backend.
