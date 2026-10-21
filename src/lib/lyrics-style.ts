@@ -19,6 +19,8 @@ export interface LyricsStyle {
   anchor: number
   // In portrait the lyrics have their own band under the video, so they keep their own place in it
   anchorPortrait: number
+  // The karaoke two-row layout: the next line waits, unfilled, in the other row. Desktop and phone landscape
+  twoLines: boolean
 }
 
 export const DEFAULT_LYRICS_STYLE: LyricsStyle = {
@@ -28,6 +30,7 @@ export const DEFAULT_LYRICS_STYLE: LyricsStyle = {
   customHue: DEFAULT_LYRICS_CUSTOM_HUE,
   fontSize: 1,
   themeId: DEFAULT_LYRICS_THEME_ID,
+  twoLines: false,
 }
 
 // A song keeps only the fields the viewer changed for it; the rest follow the defaults
@@ -43,6 +46,7 @@ const songStyleSchema = z.object({
       customHue: z.number().min(0).max(359),
       fontSize: z.number().min(0.4).max(1.6),
       themeId: z.enum(LYRICS_THEME_IDS),
+      twoLines: z.boolean(),
     })
     .partial(),
   // When this device last changed the song's style, so a later cross-device sync can keep the newest
@@ -84,39 +88,56 @@ export const writeSongStyle = (
 }
 
 // A shared link carries the sender's whole style as ?style=1.<theme>.<backdrop>.<size%>.<anchor%>.<portrait%>.<hue>,
-// short enough to sit in a chat message. The leading 1 is the format's version
+// short enough to sit in a chat message. The leading number is the format's version: 2 adds a last field, 1
+// for two lines. A style on one line still goes out as 1, which an app version from before 2 can read
 const SHARE_SEPARATOR = '.'
 const percent = (value: number) => Math.round(value * 100)
 
-export const encodeSharedStyle = (style: LyricsStyle) =>
-  [
-    1,
+export const encodeSharedStyle = (style: LyricsStyle) => {
+  const fields = [
     style.themeId,
     style.backdrop,
     percent(style.fontSize),
     percent(style.anchor),
     percent(style.anchorPortrait),
     Math.round(style.customHue),
-  ].join(SHARE_SEPARATOR)
+  ]
+  return (style.twoLines ? [2, ...fields, 1] : [1, ...fields]).join(
+    SHARE_SEPARATOR
+  )
+}
 
+const sharedFields = [
+  z.enum(LYRICS_THEME_IDS),
+  z.enum(LYRICS_BACKDROP_IDS),
+  z.coerce.number().int().min(40).max(160),
+  z.coerce.number().int().min(0).max(100),
+  z.coerce.number().int().min(0).max(100),
+  z.coerce.number().int().min(0).max(359),
+] as const
 const sharedStyleSchema = z
-  .tuple([
-    z.literal('1'),
-    z.enum(LYRICS_THEME_IDS),
-    z.enum(LYRICS_BACKDROP_IDS),
-    z.coerce.number().int().min(40).max(160),
-    z.coerce.number().int().min(0).max(100),
-    z.coerce.number().int().min(0).max(100),
-    z.coerce.number().int().min(0).max(359),
+  .union([
+    z.tuple([z.literal('1'), ...sharedFields]),
+    z.tuple([z.literal('2'), ...sharedFields, z.enum(['0', '1'])]),
   ])
   .transform(
-    ([, themeId, backdrop, size, anchor, anchorPortrait, customHue]) => ({
+    ([
+      ,
+      themeId,
+      backdrop,
+      size,
+      anchor,
+      anchorPortrait,
+      customHue,
+      lines,
+    ]) => ({
       anchor: anchor / 100,
       anchorPortrait: anchorPortrait / 100,
       backdrop,
       customHue,
       fontSize: size / 100,
       themeId,
+      twoLines: lines === '1',
     })
   )
 

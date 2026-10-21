@@ -1,5 +1,5 @@
 import { useAtomValue } from 'jotai'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { z } from 'zod'
 
 import type { KaraokeLineHandle } from '@/components/lyrics-display/karaoke-line'
@@ -11,18 +11,21 @@ import {
   lyricsBackdropAtom,
   lyricsCustomHueAtom,
   lyricsThemeIdAtom,
+  lyricsTwoLinesAtom,
   lyricsVisibilityAtom,
   romajiVisibilityAtom,
   translationIsEnglishAtom,
   translationVisibilityAtom,
 } from '@/context/atoms'
+import { usePortrait } from '@/hooks/use-media-query'
 import { balanceWrap } from '@/lib/balance-wrap'
 import { parseRubyHtml } from '@/lib/furigana'
-import type { PlaybackClock } from '@/lib/karaoke'
+import type { PlaybackClock, TwoLineView } from '@/lib/karaoke'
 import {
   advancePlaybackClock,
   currentLineIndex,
   karaokeMatchesLyrics,
+  twoLineView,
 } from '@/lib/karaoke'
 import type { TimedLyrics } from '@/lib/lyrics-document'
 import { parseLyricsDocument } from '@/lib/lyrics-document'
@@ -116,6 +119,53 @@ const lineAt = (
   return { karaokeLine, romaji, text, translation }
 }
 
+interface ShownRows {
+  lyrics: boolean
+  romaji: boolean
+  translation: boolean
+}
+
+// One lyric line with the rows the viewer shows with it: its translation above, its romaji below. Each
+// karaoke line hands its fill handle to `track` while mounted
+const LineRows = ({
+  line: { karaokeLine, romaji, text, translation },
+  lineKey,
+  shown,
+  track,
+}: {
+  line: ReturnType<typeof lineAt> & { text: string }
+  lineKey: number
+  shown: ShownRows
+  track: (handle: KaraokeLineHandle | null) => () => void
+}) => (
+  <>
+    {shown.translation && translation && !sameText(translation, text) && (
+      <LyricLine html={translation} primary={false} />
+    )}
+    {shown.lyrics &&
+      (karaokeLine ? (
+        <div className='text-center text-lyric'>
+          <KaraokeLine key={lineKey} ref={track} line={karaokeLine} />
+        </div>
+      ) : (
+        <LyricLine html={text} primary />
+      ))}
+    {shown.romaji &&
+      (karaokeLine ? (
+        <div className='text-center text-lyric-secondary'>
+          <KaraokeRomajiLine key={lineKey} ref={track} line={karaokeLine} />
+        </div>
+      ) : (
+        romaji &&
+        !sameText(romaji, text) && <LyricLine html={romaji} primary={false} />
+      ))}
+  </>
+)
+
+const NO_VIEW: TwoLineView = { active: -1, rows: [-1, -1] }
+const sameView = (a: TwoLineView, b: TwoLineView) =>
+  a.active === b.active && a.rows[0] === b.rows[0] && a.rows[1] === b.rows[1]
+
 export const StageLyrics = ({
   videoId,
   player,
@@ -136,7 +186,10 @@ export const StageLyrics = ({
   const { data: versionLyrics } = useGetLyricsVersion(videoId, version)
   const data = version === null ? activeLyrics : versionLyrics
   const lyrics = useMemo(() => parseLyricsDocument(data), [data])
-  const [index, setIndex] = useState(-1)
+  const [view, setView] = useState(NO_VIEW)
+  const showView = useCallback((next: TwoLineView) => {
+    setView((current) => (sameView(current, next) ? current : next))
+  }, [])
 
   // v2 timing applies only when it was generated for exactly these lines
   const { data: karaokeDoc } = useGetKaraokeById(videoId, version)
@@ -148,8 +201,19 @@ export const StageLyrics = ({
         : null,
     [karaokeDoc, plainLyrics]
   )
-  const karaokeRef = useRef<KaraokeLineHandle>(null)
-  const karaokeRomajiRef = useRef<KaraokeLineHandle>(null)
+  // The fill handles of the karaoke lines on screen, set from the frame loop
+  const handlesRef = useRef(new Set<KaraokeLineHandle>())
+  const track = useCallback((handle: KaraokeLineHandle | null) => {
+    const handles = handlesRef.current
+    if (handle !== null) {
+      handles.add(handle)
+    }
+    return () => {
+      if (handle !== null) {
+        handles.delete(handle)
+      }
+    }
+  }, [])
   const clockRef = useRef<PlaybackClock | null>(null)
   const playingRef = useRef(false)
   const playing = player.phase.kind === 'playing'
@@ -165,9 +229,22 @@ export const StageLyrics = ({
   const backdrop = useAtomValue(lyricsBackdropAtom)
   const themeId = useAtomValue(lyricsThemeIdAtom)
   const hue = useAtomValue(lyricsCustomHueAtom)
+  // Upright, a phone's lines wrap at its narrow width and the band under the video also holds the controls,
+  // so two lines (each with its romaji and translation) would crowd it: one line there
+  const portrait = usePortrait()
+  const twoLines = useAtomValue(lyricsTwoLinesAtom) && !portrait
   const colors = useMemo(
     () => getLyricsThemeColors(themeId, hue),
     [themeId, hue]
+  )
+
+  const plainSpans = useMemo(
+    () =>
+      lyrics?.lines.map((line) => ({
+        end: line.endSeconds,
+        start: line.startSeconds,
+      })) ?? [],
+    [lyrics]
   )
 
   const { subscribeFrame } = player
@@ -218,60 +295,74 @@ export const StageLyrics = ({
           playing: playingRef.current,
           reported,
         })
-        setIndex(currentLineIndex(karaokeLines, time))
-        karaokeRef.current?.setTime(time)
-        karaokeRomajiRef.current?.setTime(time)
+        if (twoLines) {
+          showView(twoLineView(karaokeLines, time))
+        } else {
+          const index = currentLineIndex(karaokeLines, time)
+          showView({ active: index, rows: [index, -1] })
+        }
+        for (const handle of handlesRef.current) {
+          handle.setTime(time)
+        }
       })
     }
     return lyrics
-      ? subscribeFrame((time) => {
-          setIndex(findLineIndex(lyrics.lines, time + LYRICS_LEAD_SEC))
+      ? subscribeFrame((reported) => {
+          const time = reported + LYRICS_LEAD_SEC
+          if (twoLines) {
+            // Plain lines have no lead-in: each one runs until the next one starts
+            showView(twoLineView(plainSpans, time, 0))
+          } else {
+            const index = findLineIndex(lyrics.lines, time)
+            showView({ active: index, rows: [index, -1] })
+          }
         })
       : undefined
-  }, [lyrics, karaokeLines, subscribeFrame])
+  }, [lyrics, plainSpans, karaokeLines, subscribeFrame, twoLines, showView])
 
-  const { karaokeLine, text, translation, romaji } = lineAt(
-    lyrics,
-    karaokeLines,
-    index,
-    english,
-    placeholder
-  )
+  const shown: ShownRows = {
+    lyrics: showLyrics,
+    romaji: showRomaji,
+    translation: showTranslation,
+  }
+  // Nothing between lines: DraggableLyrics keeps its block mounted but hidden
+  const rowsOf = (index: number) => {
+    const line = lineAt(lyrics, karaokeLines, index, english, placeholder)
+    return line.text === undefined ? undefined : (
+      <LineRows
+        line={{ ...line, text: line.text }}
+        lineKey={index}
+        shown={shown}
+        track={track}
+      />
+    )
+  }
   return (
     <DraggableLyrics
       layout={layout}
       scale={scale}
       backdrop={backdrop}
       colors={colors}>
-      {text === undefined ? undefined : (
-        <>
-          {showTranslation && translation && !sameText(translation, text) && (
-            <LyricLine html={translation} primary={false} />
-          )}
-          {showLyrics &&
-            (karaokeLine ? (
-              <div className='text-center text-lyric'>
-                <KaraokeLine key={index} ref={karaokeRef} line={karaokeLine} />
-              </div>
-            ) : (
-              <LyricLine html={text} primary />
-            ))}
-          {showRomaji &&
-            (karaokeLine ? (
-              <div className='text-center text-lyric-secondary'>
-                <KaraokeRomajiLine
-                  key={index}
-                  ref={karaokeRomajiRef}
-                  line={karaokeLine}
-                />
-              </div>
-            ) : (
-              romaji &&
-              !sameText(romaji, text) && (
-                <LyricLine html={romaji} primary={false} />
-              )
-            ))}
-        </>
+      {twoLines && view.active >= 0 ? (
+        // Equal rows, so a longer line in one row never moves the other, set apart so each line's romaji and
+        // translation read as its own
+        <div className='grid auto-rows-fr lyric-rows-gap text-lyric'>
+          {view.rows.map((index, row) => (
+            <div
+              // The rows are fixed places; only the lines in them change
+              // oxlint-disable-next-line no-array-index-key
+              key={row}
+              data-lyric-row={index === view.active ? 'sung' : 'next'}
+              className={cn(
+                'transition-opacity duration-200',
+                index !== view.active && 'opacity-60'
+              )}>
+              {index >= 0 && rowsOf(index)}
+            </div>
+          ))}
+        </div>
+      ) : (
+        rowsOf(view.active)
       )}
     </DraggableLyrics>
   )

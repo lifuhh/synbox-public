@@ -59,6 +59,12 @@ const defaultLyricsStyleAtoms: {
     undefined,
     initOptions
   ),
+  twoLines: atomWithStorage(
+    'lyricsTwoLines',
+    DEFAULT_LYRICS_STYLE.twoLines,
+    undefined,
+    initOptions
+  ),
 }
 
 const readDefaults = (get: Getter): LyricsStyle => ({
@@ -68,6 +74,7 @@ const readDefaults = (get: Getter): LyricsStyle => ({
   customHue: get(defaultLyricsStyleAtoms.customHue),
   fontSize: get(defaultLyricsStyleAtoms.fontSize),
   themeId: get(defaultLyricsStyleAtoms.themeId),
+  twoLines: get(defaultLyricsStyleAtoms.twoLines),
 })
 
 const LYRICS_STYLE_KEYS = [
@@ -77,6 +84,7 @@ const LYRICS_STYLE_KEYS = [
   'customHue',
   'fontSize',
   'themeId',
+  'twoLines',
 ] as const satisfies readonly (keyof LyricsStyle)[]
 
 // The song on the player: the style it was given on this device, and a style from a shared link, shown
@@ -163,6 +171,7 @@ export const lyricsCustomHueAtom = lyricsStyleField('customHue')
 export const lyricsBackdropAtom = lyricsStyleField('backdrop')
 export const lyricsAnchorAtom = lyricsStyleField('anchor')
 export const lyricsAnchorPortraitAtom = lyricsStyleField('anchorPortrait')
+export const lyricsTwoLinesAtom = lyricsStyleField('twoLines')
 
 // A shared style that matches the viewer's own changes nothing, so it is not shown as shared
 export const showSharedLyricsStyleAtom = atom(

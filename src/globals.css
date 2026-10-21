@@ -494,6 +494,12 @@
   transition: var(--anchor-transition);
 }
 
+/* Between the two rows of the two-line karaoke layout: a share of the lyric size, so each line's romaji and
+   translation read as its own at every size */
+@utility lyric-rows-gap {
+  row-gap: 0.4em;
+}
+
 @utility lyrics-lift {
   /* Explicit: WebKit takes an empty box's min-height as its flex basis, and would then add the box's
      share of the free space on top of it */

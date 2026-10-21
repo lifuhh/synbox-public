@@ -15,6 +15,7 @@ import {
   moraCharCounts,
   romajiFillParts,
   tokenFillParts,
+  twoLineView,
 } from './karaoke'
 
 const mora = (kana: string, start: number, end: number, romaji = '') => ({
@@ -202,6 +203,33 @@ describe('currentLineIndex', () => {
     expect(currentLineIndex(held, 12.5)).toBe(0)
     expect(currentLineIndex(held, 13.4)).toBe(0)
     expect(currentLineIndex(held, 14 - LINE_LEAD_IN)).toBe(1)
+  })
+})
+
+describe('twoLineView', () => {
+  const lines = [
+    { end: 12, start: 10 },
+    { end: 14, start: 12.2 },
+    { end: 16, start: 14.2 },
+    // an instrumental break before line 3
+    { end: 32, start: 30 },
+    { end: 34, start: 32.2 },
+  ]
+
+  test('a sung line keeps its row; its old row takes the line after next', () => {
+    expect(twoLineView(lines, 11)).toEqual({ active: 0, rows: [0, 1] })
+    expect(twoLineView(lines, 13)).toEqual({ active: 1, rows: [2, 1] })
+    // the passage's last line leaves the other row empty
+    expect(twoLineView(lines, 15)).toEqual({ active: 2, rows: [2, -1] })
+    expect(twoLineView(lines, 25).rows).toEqual([-1, -1])
+  })
+
+  test('a passage after an instrumental break starts in the top row', () => {
+    expect(twoLineView(lines, 30 - LINE_LEAD_IN)).toEqual({
+      active: 3,
+      rows: [3, 4],
+    })
+    expect(twoLineView(lines, 33)).toEqual({ active: 4, rows: [-1, 4] })
   })
 })
 

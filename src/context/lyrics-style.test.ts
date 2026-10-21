@@ -124,3 +124,16 @@ test('a malformed shared style is ignored', () => {
   expect(decodeSharedStyle('2.lemon.shadow.100.10.50.200')).toBeNull()
   expect(decodeSharedStyle('garbage')).toBeNull()
 })
+
+test('two lines travel in a shared link; a one-line style stays readable by older app versions', () => {
+  const twoLines = {
+    ...DEFAULT_LYRICS_STYLE,
+    themeId: 'lemon' as const,
+    twoLines: true,
+  }
+  expect(decodeSharedStyle(encodeSharedStyle(twoLines))).toEqual(twoLines)
+  const oneLine = { ...twoLines, twoLines: false }
+  expect(encodeSharedStyle(oneLine).startsWith('1.')).toBe(true)
+  expect(decodeSharedStyle(encodeSharedStyle(oneLine))).toEqual(oneLine)
+  expect(decodeSharedStyle('2.lemon.shadow.100.10.50.200.7')).toBeNull()
+})

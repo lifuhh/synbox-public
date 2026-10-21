@@ -203,6 +203,47 @@ export const currentLineIndex = (
   return time < lineRelease(lines, index) ? index : -1
 }
 
+// The karaoke two-row layout: two fixed rows, the sung line in one and the
+// next line waiting in the other. A finished line's row takes the line after
+// next, so the line being sung never changes rows and the eye never jumps.
+// Each passage after an instrumental break starts again in the top row
+export interface TwoLineView {
+  active: number
+  // Line index in the top and the bottom row, -1 for an empty row
+  rows: readonly [number, number]
+}
+
+const NO_LINES: TwoLineView = { active: -1, rows: [-1, -1] }
+
+const startsPassage = (
+  lines: readonly Pick<KaraokeDocLine, 'start' | 'end'>[],
+  index: number
+) =>
+  index === 0 || lines[index].start - lines[index - 1].end >= INSTRUMENTAL_GAP
+
+export const twoLineView = (
+  lines: readonly Pick<KaraokeDocLine, 'start' | 'end'>[],
+  time: number,
+  leadIn = LINE_LEAD_IN
+): TwoLineView => {
+  const active = currentLineIndex(lines, time, leadIn)
+  if (active < 0) {
+    return NO_LINES
+  }
+  let first = active
+  while (!startsPassage(lines, first)) {
+    first -= 1
+  }
+  const next =
+    active + 1 < lines.length && !startsPassage(lines, active + 1)
+      ? active + 1
+      : -1
+  return {
+    active,
+    rows: (active - first) % 2 === 0 ? [active, next] : [next, active],
+  }
+}
+
 export interface PlaybackClock {
   // Last time the player reported, and the performance.now() it was seen at
   mediaTime: number
