@@ -99,13 +99,13 @@ const LandingPageCharts: React.FC = () => {
             </ul>
           )}
         </div>
-        <p className='mx-2 mt-1 mb-1 text-sm text-song-channel'>
-          Source: YouTube Top 100 Songs Japan ·{' '}
+        <p className='mx-2 mt-1 mb-1 truncate text-sm text-song-channel'>
+          YouTube Top 100 Japan ·{' '}
           <MicVocalIcon
             className='inline size-3.5 -translate-y-px text-primary-text'
             aria-hidden
           />{' '}
-          Karaoke Lyrics
+          Karaoke
         </p>
       </div>
     </section>
