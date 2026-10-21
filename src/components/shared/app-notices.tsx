@@ -30,11 +30,13 @@ const AppNotices = () => {
       ref={publishHeight}
       className='pointer-events-none fixed inset-x-0 top-(--topbar-h) z-100 flex flex-col items-center gap-2 px-4 empty:hidden [&:not(:empty)]:pt-2'>
       {!online && !onOfflinePage && (
-        <Link to='/offline' className={pill}>
-          <CloudOffIcon className='size-4 shrink-0 text-primary' />
-          Offline. Read your saved lyrics
-          <ChevronRightIcon className='-mr-1 size-4 shrink-0' />
-        </Link>
+        <output>
+          <Link to='/offline' className={pill}>
+            <CloudOffIcon className='size-4 shrink-0 text-primary' />
+            Offline. Read your saved lyrics
+            <ChevronRightIcon className='-mr-1 size-4 shrink-0' />
+          </Link>
+        </output>
       )}
     </div>
   )

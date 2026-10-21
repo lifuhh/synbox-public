@@ -840,6 +840,12 @@
     --preview-banner-h: 3rem;
   }
 
+  /* The offline reader covers the app; what it covers can't be reached by Tab or a screen reader */
+  html:has([data-reader]) [data-topbar],
+  html:has([data-reader]) [data-generation-host] {
+    visibility: hidden;
+  }
+
   /* The iPhone stand-in for fullscreen: the player without the app's top bar */
   html[data-immersive] [data-topbar] {
     display: none;

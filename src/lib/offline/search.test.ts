@@ -59,11 +59,7 @@ describe('romanizeTitle', () => {
 
 describe('searchSongs', () => {
   const idol = song('idol', 'アイドル', 'YOASOBI', [
-    line(
-      [{ base: '星', rt: 'ほし' }],
-      'hoshi no kakera',
-      'a shard of a star'
-    ),
+    line([{ base: '星', rt: 'ほし' }], 'hoshi no kakera', 'a shard of a star'),
   ])
   const night = song('night', '夜に駆ける', 'YOASOBI', [
     line(

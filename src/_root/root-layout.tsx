@@ -24,7 +24,9 @@ const RootLayout: React.FC = () => (
       <section className='flex h-full flex-1 bg-backdrop-scrim/75'>
         <Outlet />
       </section>
-      <GenerationHost />
+      <div data-generation-host>
+        <GenerationHost />
+      </div>
     </div>
   </div>
 )

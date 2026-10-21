@@ -284,7 +284,7 @@ const VersionsAdmin = ({ videoId }: { videoId: string }) => {
   }
 
   return (
-    <div className='mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 pt-page-top pb-page-bottom-lg'>
+    <div className='mx-auto flex w-full max-w-3xl flex-col gap-6 overflow-y-auto px-4 pt-page-top pb-page-bottom-lg'>
       <title>Lyrics Versions · Synbox</title>
       <Link
         to={`/v/${videoId}`}

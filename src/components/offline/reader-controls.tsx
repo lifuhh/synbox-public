@@ -139,7 +139,7 @@ const ColorSwatch = ({
       aria-label={label}
       title={label}
       onClick={onSelect}
-      className='flex size-9 shrink-0 items-center justify-center rounded-full touch:size-10'>
+      className='flex size-9 shrink-0 items-center justify-center rounded-full'>
       <span
         style={swatchVars}
         className={cn(
@@ -219,7 +219,7 @@ export const TypeBar = () => {
       ) : (
         <fieldset
           aria-label='Japanese Colour'
-          className='flex min-w-0 flex-1 items-center justify-between gap-1'>
+          className='no-scrollbar flex min-w-0 flex-1 items-center justify-between gap-0.5 overflow-x-auto'>
           {READER_COLORS.map((color) => (
             <ColorSwatch
               key={color.id}
@@ -240,7 +240,7 @@ export const TypeBar = () => {
               setPrefs({ color: 'custom' })
               setCustomOpen(true)
             }}
-            className='flex size-9 shrink-0 items-center justify-center rounded-full touch:size-10'>
+            className='flex size-9 shrink-0 items-center justify-center rounded-full'>
             <span
               className={cn(
                 'size-6 rounded-full border border-(--reader-line-strong) bg-hue-wheel',

@@ -252,7 +252,7 @@ const ReaderPage = () => {
         onBack={goBack}
       />
 
-      <main
+      <div
         onScroll={onScroll}
         className={cn(
           'flex-1 overflow-y-auto overscroll-contain scroll-auto pt-reader-top pr-(--safe-right) pl-(--safe-left)',
@@ -303,7 +303,7 @@ const ReaderPage = () => {
             </div>
           )
         )}
-      </main>
+      </div>
 
       {typeOpen && (
         <div className='absolute inset-x-0 bottom-0 z-20 border-t border-(--reader-line) bg-(--reader-bg) pr-(--safe-right) pb-(--safe-bottom) pl-(--safe-left)'>

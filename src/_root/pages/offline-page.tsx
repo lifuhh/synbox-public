@@ -83,6 +83,8 @@ const OfflinePage = () => {
 
   useEffect(() => {
     requestSync()
+    // Asks the browser not to clear the saved songs to free space; here, where the request makes sense
+    void navigator.storage?.persist?.()
   }, [])
 
   // Each saved song with the lists it is on, newest first: by when you generated it for your own songs, by

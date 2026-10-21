@@ -70,6 +70,11 @@ const isMySong = (value: unknown): value is MySong =>
   typeof value.generatedAt === 'number'
 
 // The account's songs as of the last sync, so the list still knows them offline
+// On Sign Out: the next account's songs are its own
+export const forgetMySongs = () => {
+  writeJson(MINE_KEY, [])
+}
+
 export const readMySongs = (): MySong[] => {
   const stored = readJson(MINE_KEY)
   return Array.isArray(stored) ? stored.filter(isMySong) : []
@@ -218,11 +223,25 @@ const syncSongs = async (
     const saved = stored.get(videoId)
     return (
       dates.has(videoId) &&
-      (saved === undefined ||
-        saved.thumbnail === null ||
-        saved.updatedAt !== dates.get(videoId)?.updatedAt)
+      (saved === undefined || saved.updatedAt !== dates.get(videoId)?.updatedAt)
     )
   })
+  // A missing thumbnail is fetched on its own, without the lyrics again
+  await Promise.all(
+    [...stored.values()]
+      .filter(
+        (song) =>
+          song.thumbnail === null &&
+          dates.has(song.videoId) &&
+          !stale.includes(song.videoId)
+      )
+      .map(async (song) => {
+        const thumbnail = await fetchThumbnail(song.videoId)
+        if (thumbnail !== null) {
+          await set(song.videoId, { ...song, thumbnail }, songStore)
+        }
+      })
+  )
   let failed = 0
   for (const [index, chunk] of chunked(stale, CHUNK).entries()) {
     setStatus({ done: index * CHUNK, kind: 'saving', total: stale.length })
@@ -303,10 +322,9 @@ export const useOfflineSync = () => {
     const sync = async () => {
       setStatus({ done: 0, kind: 'saving', total: 0 })
       try {
+        // Signed out keeps the list too: an expired session is not a choice to drop the songs. Sign Out clears it
         let mine = readMySongs()
-        if (account === 'signed-out') {
-          mine = []
-        } else if (account === 'signed-in') {
+        if (account === 'signed-in') {
           try {
             mine = await fetchMySongs()
           } catch {
@@ -314,9 +332,10 @@ export const useOfflineSync = () => {
           }
         }
         writeJson(MINE_KEY, mine)
-        // Bookmarks and recent songs carry their titles, for a song whose info row is missing
+        // Bookmarks and recent songs carry their titles, for a song whose info row is missing; a later entry
+        // wins, so they come after the account's untitled ones
         const failed = await syncSongs(
-          [...favourites, ...history.slice(0, RECENT_LIMIT), ...mine],
+          [...mine, ...history.slice(0, RECENT_LIMIT), ...favourites],
           queryClient
         )
         const syncedAt = Date.now()
@@ -329,8 +348,6 @@ export const useOfflineSync = () => {
     const timer = setTimeout(
       () => {
         if (online && !isPending) {
-          // Asks the browser not to clear the saved songs to free space
-          void navigator.storage?.persist?.()
           runOnce(sync)
         }
       },
