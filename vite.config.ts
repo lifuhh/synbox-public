@@ -154,7 +154,7 @@ export default defineConfig({
           'Japanese karaoke for any YouTube video, with AI-transcribed, synced lyrics, furigana, romaji and translations.',
         display: 'standalone',
         icons: [
-          { sizes: '64x64', src: 'pwa-64x64.png', type: 'image/png' },
+          { sizes: '64x64', src: 'pwa-64x64-e0e4e24d.png', type: 'image/png' },
           {
             sizes: '192x192',
             src: 'pwa-192x192-f591e4ca.png',
