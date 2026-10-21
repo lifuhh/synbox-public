@@ -13,7 +13,6 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useToast } from '@/components/ui/use-toast'
 import { playerChromeOpenAtom, playerVolumeAtom } from '@/context/atoms'
 import { useArmed } from '@/hooks/use-armed'
-import { useMediaQuery } from '@/hooks/use-media-query'
 import { isStandalone } from '@/lib/pwa'
 import type { CssVars } from '@/types'
 import { cn } from '@/utils/cn'
@@ -39,13 +38,12 @@ const COVERED_PHASES = new Set<StagePhase['kind']>([
   'loading',
   'ready',
   'starting',
-  'paused',
   'ended',
 ])
 
-const coversPhase = (phase: StagePhase, coverPause: boolean) =>
-  (COVERED_PHASES.has(phase.kind) && (coverPause || phase.kind !== 'paused')) ||
-  (phase.kind === 'playing' && !phase.settled)
+// A pause leaves the frame in view: with controls=0 YouTube draws nothing over a paused video
+const coversPhase = (phase: StagePhase) =>
+  COVERED_PHASES.has(phase.kind) || (phase.kind === 'playing' && !phase.settled)
 
 const markImmersive = () => {
   const root = document.documentElement
@@ -178,7 +176,6 @@ const StageCover = ({
   phase: StagePhase
 }) => {
   const [thumb, setThumb] = useState('maxresdefault')
-  const dimmed = phase.kind === 'paused' || phase.kind === 'ended'
   return (
     <div className='pointer-events-none absolute inset-0 z-10 grid place-items-center overflow-hidden bg-black'>
       <img
@@ -188,15 +185,15 @@ const StageCover = ({
           setThumb('hqdefault')
         }}
         className={cn(
-          'absolute inset-0 size-full object-cover transition-filter-fade duration-300',
-          dimmed && 'scale-105 opacity-60 blur-md'
+          'absolute inset-0 size-full object-cover transition-opacity duration-300',
+          phase.kind === 'ended' && 'opacity-60'
         )}
       />
       <div className='relative text-white drop-shadow-stage'>
         {(phase.kind === 'loading' || phase.kind === 'starting') && (
           <LoaderIcon className='size-14 animate-spin' />
         )}
-        {(phase.kind === 'ready' || phase.kind === 'paused') && (
+        {phase.kind === 'ready' && (
           <PlayIcon className='size-20 fill-current opacity-90' />
         )}
         {phase.kind === 'ended' && <RotateCcwIcon className='size-16' />}
@@ -243,12 +240,7 @@ export const PlayerStage = ({
   const [fullscreen, setFullscreen] = useState(false)
   // iPhone Safari has no fullscreen for a page; there the button hides the app's own top bar instead
   const [immersive, setImmersive] = useState(false)
-  const touch = useMediaQuery('(pointer: coarse)')
-  // With a mouse a pause leaves the frame in view, so a viewer can stop on a moment; a touch screen
-  // shows the blurred cover
-  const coverPause = touch
   const player = useYouTubePlayer({
-    coverPause,
     loop,
     onEvent,
     quirks,
@@ -296,7 +288,7 @@ export const PlayerStage = ({
 
   // YouTube's own error screens (unavailable, sign-in, age gate) need its UI
   const handsOff = phase.kind === 'error'
-  const showCover = !handsOff && coversPhase(phase, coverPause)
+  const showCover = !handsOff && coversPhase(phase)
   const controlsVisible = !dragging && (!idle || phase.kind !== 'playing')
   const blockInput = quirks.blockIframeInput && !handsOff
   const { toast } = useToast()

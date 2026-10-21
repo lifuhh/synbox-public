@@ -17,7 +17,6 @@ type NumberQuirk = Exclude<keyof YouTubeQuirks, BooleanQuirk>
 
 const BOOLEAN_QUIRKS: { key: BooleanQuirk; label: string }[] = [
   { key: 'blockIframeInput', label: 'Block Iframe Input' },
-  { key: 'coverBeforePause', label: 'Cover Before Pause' },
   { key: 'unloadCaptions', label: 'Unload Captions' },
 ]
 const NUMBER_QUIRKS: { key: NumberQuirk; label: string; step: number }[] = [
@@ -28,7 +27,7 @@ const NUMBER_QUIRKS: { key: NumberQuirk; label: string; step: number }[] = [
 
 const CHECKS = [
   'Hover the video: no YouTube title bar or logo',
-  'Pause (click, space, k): the frame stays with our play button (touch: blurred cover); nothing from YouTube',
+  'Pause (click, space, k): the frame stays with our play button; nothing from YouTube',
   'Resume or seek: no title flash or top shade; our center button hides with the rest of the controls',
   'Seek to the last seconds: stops with a replay cover, no end screen',
   'Volume slider, mute, arrow keys: change sticks, survives reload',

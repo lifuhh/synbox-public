@@ -10,9 +10,6 @@ export interface YouTubeQuirks {
   // clipped bands while the picture stays whole. Its top shade is up to 146px
   // tall (big mode) and fades on YouTube's own timer after a play or seek
   cropPx: number
-  // Where a pause shows our cover (touch screens), show it before asking
-  // YouTube to pause, so the pause never lands a frame early
-  coverBeforePause: boolean
   // Keep the cover this long after YouTube reports PLAYING, hiding the
   // title flash on resume
   coverHoldMs: number
@@ -27,7 +24,6 @@ export interface YouTubeQuirks {
 
 export const DEFAULT_YOUTUBE_QUIRKS: YouTubeQuirks = {
   blockIframeInput: true,
-  coverBeforePause: true,
   coverHoldMs: 150,
   cropPx: 150,
   endGuardSec: 1,
