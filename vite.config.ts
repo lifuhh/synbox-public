@@ -155,12 +155,20 @@ export default defineConfig({
         display: 'standalone',
         icons: [
           { sizes: '64x64', src: 'pwa-64x64.png', type: 'image/png' },
-          { sizes: '192x192', src: 'pwa-192x192.png', type: 'image/png' },
-          { sizes: '512x512', src: 'pwa-512x512.png', type: 'image/png' },
+          {
+            sizes: '192x192',
+            src: 'pwa-192x192-f591e4ca.png',
+            type: 'image/png',
+          },
+          {
+            sizes: '512x512',
+            src: 'pwa-512x512-51f10054.png',
+            type: 'image/png',
+          },
           {
             purpose: 'maskable',
             sizes: '512x512',
-            src: 'maskable-icon-512x512.png',
+            src: 'maskable-icon-512x512-31cb5bbb.png',
             type: 'image/png',
           },
         ],
