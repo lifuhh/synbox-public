@@ -8,6 +8,7 @@ import {
   MoonIcon,
   Rows3Icon,
   SunIcon,
+  TvMinimalPlayIcon,
 } from 'lucide-react'
 import type { Ref } from 'react'
 import { useEffect, useImperativeHandle, useRef, useState } from 'react'
@@ -259,6 +260,16 @@ const ReaderHeader = ({
   )
 }
 
+// Online, the song itself is a tap away: the player, with the video and its sound
+const WatchVideo = ({ videoId }: { videoId: string }) => (
+  <Link
+    to={`/v/${videoId}`}
+    className='mt-3 inline-flex h-10 items-center gap-2 rounded-full border border-(--reader-line-strong) px-4 text-sm font-medium transition-colors hover:bg-(--reader-hover) focus-visible:ring-2 focus-visible:ring-(--reader-fg) focus-visible:outline-hidden touch:h-11'>
+    <TvMinimalPlayIcon aria-hidden className='size-4' />
+    Watch Video
+  </Link>
+)
+
 const NotFound = () => {
   const online = useOnline()
   return (
@@ -403,6 +414,7 @@ const ReaderPage = () => {
   const { videoId = '' } = useParams()
   const { data: song, isPending } = useLyricsSong(videoId)
   const [prefs, setPrefs] = useAtom(readerPrefsAtom)
+  const online = useOnline()
 
   // Songs saved before timing was kept read as plain text until the next sync fetches them again
   const timed = song?.version === OFFLINE_SONG_VERSION
@@ -490,6 +502,7 @@ const ReaderPage = () => {
                   {song.author}
                 </p>
               )}
+              {online && <WatchVideo videoId={song.videoId} />}
             </header>
             {song.lines.map((line, index) => (
               <ReaderLine
