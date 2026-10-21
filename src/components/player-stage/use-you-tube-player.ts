@@ -8,9 +8,16 @@ import {
 import { flushSync } from 'react-dom'
 
 import type { YTPlayer, YTStateCode } from '@/lib/youtube/iframe-api'
-import { loadYouTubeIframeApi, YTState } from '@/lib/youtube/iframe-api'
+import { YTState } from '@/lib/youtube/iframe-api'
 
+import { holdReading, NO_READING } from './player-reading'
 import { clampSeek } from './seek-steps'
+import {
+  connectEngine,
+  loadSong,
+  placeEngine,
+  rebuildEngine,
+} from './youtube-engine'
 import type { YouTubeQuirks } from './youtube-quirks'
 
 export type StagePhase =
@@ -35,7 +42,12 @@ interface UseYouTubePlayerOptions {
   volume: PlayerVolume
   loop: boolean
   onEvent?: (message: string) => void
+  // The browser refused to start the song with sound, so it plays muted
+  onBlocked?: () => void
 }
+
+// A play YouTube has not answered at all by then: no buffering, no playing, no refusal
+const START_CHECK_MS = 1500
 
 const STATE_NAMES: Record<YTStateCode, string> = {
   [YTState.Unstarted]: 'UNSTARTED',
@@ -51,6 +63,10 @@ const nextPhase = (
   state: YTStateCode,
   stoppedByGuard: boolean
 ): StagePhase => {
+  // Until the song asked for is cued, what YouTube reports is about the one before
+  if (current.kind === 'loading' && state !== YTState.Cued) {
+    return current
+  }
   switch (state) {
     case YTState.Playing: {
       // Resuming from a pause has no cover to hold
@@ -89,64 +105,36 @@ export const useYouTubePlayer = ({
   volume,
   loop,
   onEvent,
+  onBlocked,
 }: UseYouTubePlayerOptions) => {
-  const hostRef = useRef<HTMLDivElement>(null)
+  const stageRef = useRef<HTMLDivElement>(null)
+  const boxRef = useRef<HTMLDivElement>(null)
   const playerRef = useRef<YTPlayer | null>(null)
   const [phase, setPhase] = useState<StagePhase>({ kind: 'loading' })
   const phaseRef = useRef(phase)
   const stoppedByGuardRef = useRef(false)
 
-  // A phone suspends the page, and the embed with it, once the app leaves the screen: playback cannot
-  // continue there, and an embed that another app's audio interrupted can come back hung. So on a touch
-  // screen the player is torn down when the page hides and rebuilt, cued where it was, when it returns
-  const [suspended, setSuspended] = useState(false)
-  const resumeAtRef = useRef(0)
-  useEffect(() => {
-    const handleVisibility = () => {
-      if (!matchMedia('(pointer: coarse)').matches) {
-        return
-      }
-      if (document.visibilityState === 'hidden') {
-        resumeAtRef.current = playerRef.current?.getCurrentTime() ?? 0
-        setPhase({ kind: 'loading' })
-        setSuspended(true)
-      } else {
-        setSuspended(false)
-      }
-    }
-    document.addEventListener('visibilitychange', handleVisibility)
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibility)
-    }
-  }, [])
-
-  // An embed that couldn't load without a connection (still loading, or YouTube's error) is torn down and
-  // built again, as after a return to the app, once the phone is back online; a player that loaded is left
-  useEffect(() => {
-    const handleOnline = () => {
-      const { kind } = phaseRef.current
-      if (kind === 'loading' || kind === 'error') {
-        setSuspended(true)
-        requestAnimationFrame(() => {
-          setSuspended(false)
-        })
-      }
-    }
-    window.addEventListener('online', handleOnline)
-    return () => {
-      window.removeEventListener('online', handleOnline)
-    }
-  }, [])
-
   // Read inside long-lived YouTube callbacks without re-creating the player
-  const latest = useRef({ loop, onEvent, quirks })
+  const latest = useRef({ loop, onBlocked, onEvent, quirks })
   useLayoutEffect(() => {
     phaseRef.current = phase
-    latest.current = { loop, onEvent, quirks }
+    latest.current = { loop, onBlocked, onEvent, quirks }
   })
 
   const log = useCallback((message: string) => {
     latest.current.onEvent?.(message)
+  }, [])
+
+  const readingRef = useRef(NO_READING)
+  const read = useCallback(() => {
+    const player = playerRef.current
+    readingRef.current = holdReading(
+      readingRef.current,
+      player
+        ? { duration: player.getDuration(), time: player.getCurrentTime() }
+        : null
+    )
+    return readingRef.current
   }, [])
 
   const dropCaptions = useCallback((player: YTPlayer) => {
@@ -171,6 +159,72 @@ export const useYouTubePlayer = ({
     []
   )
 
+  const startCheckRef = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined
+  )
+  // After a rebuild the song plays again, as it was asked to; a player is rebuilt once per song
+  const replayRef = useRef<{ muted: boolean } | null>(null)
+  const rebuiltRef = useRef(false)
+  const silentPlayRef = useRef(false)
+  // A song refused sound plays muted. One refused even muted (iOS Low Power Mode) waits for a tap
+  const refusedRef = useRef<(() => void) | null>(null)
+
+  const rebuild = useCallback((replay: { muted: boolean } | null) => {
+    replayRef.current = replay
+    playerRef.current = null
+    setPhase({ kind: 'loading' })
+    rebuildEngine(readingRef.current.time)
+  }, [])
+
+  // `muted` mutes YouTube before asking it to play: browsers only allow an
+  // autoplay without a user gesture when it is silent
+  const play = useCallback(
+    ({ muted: silent = false }: { muted?: boolean } = {}) => {
+      const player = playerRef.current
+      if (!player) {
+        return
+      }
+      if (silent) {
+        player.mute()
+      }
+      if (phaseRef.current.kind === 'ended') {
+        player.seekTo(0, true)
+      }
+      if (phaseRef.current.kind === 'ready') {
+        setPhase({ kind: 'starting' })
+      }
+      silentPlayRef.current = silent
+      player.playVideo()
+      // A refused play usually comes with onAutoplayBlocked; one with no answer at all counts as refused,
+      // and a silent one with no answer means the embed hangs (after another app's audio cut in)
+      clearTimeout(startCheckRef.current)
+      startCheckRef.current = setTimeout(() => {
+        if (!silent) {
+          log('start check: no answer')
+          refusedRef.current?.()
+        } else if (!rebuiltRef.current) {
+          rebuiltRef.current = true
+          log('start check: no answer, rebuilding')
+          rebuild({ muted: true })
+        }
+      }, START_CHECK_MS)
+    },
+    [log, rebuild]
+  )
+
+  useLayoutEffect(() => {
+    refusedRef.current = () => {
+      if (silentPlayRef.current) {
+        setPhase((current) =>
+          current.kind === 'starting' ? { kind: 'ready' } : current
+        )
+        return
+      }
+      latest.current.onBlocked?.()
+      play({ muted: true })
+    }
+  })
+
   useEffect(() => {
     const settle = () => {
       setPhase((current) =>
@@ -179,88 +233,99 @@ export const useYouTubePlayer = ({
           : current
       )
     }
-
-    const mount = (host: HTMLDivElement) => {
-      let disposed = false
-      let settleTimer: ReturnType<typeof setTimeout> | undefined
-      const target = document.createElement('div')
-      host.append(target)
-
-      const create = async () => {
-        const YT = await loadYouTubeIframeApi()
-        if (disposed) {
-          return
+    let settleTimer: ReturnType<typeof setTimeout> | undefined
+    const disconnect = connectEngine({
+      onAutoplayBlocked: () => {
+        clearTimeout(startCheckRef.current)
+        log('autoplay blocked')
+        refusedRef.current?.()
+      },
+      onError: (code) => {
+        clearTimeout(startCheckRef.current)
+        log(`error ${code}`)
+        setPhase({ code, kind: 'error' })
+      },
+      onReady: (player) => {
+        playerRef.current = player
+        applyVolume(player, volumeRef.current)
+        dropCaptions(player)
+        log('ready')
+      },
+      onStateChange: (state) => {
+        const player = playerRef.current
+        log(`state ${STATE_NAMES[state] ?? state}`)
+        if (state === YTState.Buffering || state === YTState.Playing) {
+          clearTimeout(startCheckRef.current)
         }
-        const player = new YT.Player(target, {
-          events: {
-            onError: ({ data }) => {
-              if (disposed) {
-                return
-              }
-              log(`error ${data}`)
-              setPhase({ code: data, kind: 'error' })
-            },
-            onReady: () => {
-              if (disposed) {
-                return
-              }
-              playerRef.current = player
-              applyVolume(player, volumeRef.current)
-              dropCaptions(player)
-              log('ready')
-              setPhase({ kind: 'ready' })
-            },
-            onStateChange: ({ data }) => {
-              if (disposed) {
-                return
-              }
-              log(`state ${STATE_NAMES[data] ?? data}`)
-              if (data === YTState.Playing) {
-                stoppedByGuardRef.current = false
-                dropCaptions(player)
-                clearTimeout(settleTimer)
-                settleTimer = setTimeout(
-                  settle,
-                  latest.current.quirks.coverHoldMs
-                )
-              }
-              setPhase((current) =>
-                nextPhase(current, data, stoppedByGuardRef.current)
-              )
-            },
-          },
-          height: '100%',
-          host: 'https://www.youtube-nocookie.com',
-          playerVars: {
-            cc_load_policy: 0,
-            controls: 0,
-            disablekb: 1,
-            enablejsapi: 1,
-            fs: 0,
-            hl: 'en',
-            iv_load_policy: 3,
-            origin: window.location.origin,
-            playsinline: 1,
-            rel: 0,
-            start: Math.floor(resumeAtRef.current),
-          },
-          videoId,
-          width: '100%',
-        })
-      }
-      void create()
+        if (state === YTState.Playing && player) {
+          stoppedByGuardRef.current = false
+          dropCaptions(player)
+          clearTimeout(settleTimer)
+          settleTimer = setTimeout(settle, latest.current.quirks.coverHoldMs)
+        }
+        setPhase((current) =>
+          nextPhase(current, state, stoppedByGuardRef.current)
+        )
+        const replay = replayRef.current
+        if (state === YTState.Cued && replay) {
+          replayRef.current = null
+          play(replay)
+        }
+      },
+    })
+    loadSong(videoId)
+    return () => {
+      clearTimeout(settleTimer)
+      clearTimeout(startCheckRef.current)
+      playerRef.current = null
+      disconnect()
+    }
+  }, [videoId, applyVolume, dropCaptions, log, play])
 
-      return () => {
-        disposed = true
-        clearTimeout(settleTimer)
-        playerRef.current?.destroy()
-        playerRef.current = null
-        host.replaceChildren()
+  // The video lies over this stage's box. YouTube's own error screens (unavailable, sign-in, age gate)
+  // need its UI, so they take input
+  const blockInput = quirks.blockIframeInput && phase.kind !== 'error'
+  const { cropPx } = quirks
+  useLayoutEffect(() => {
+    const stage = stageRef.current
+    const box = boxRef.current
+    return stage && box
+      ? placeEngine(stage, box, { blockInput, cropPx })
+      : undefined
+  }, [blockInput, cropPx])
+
+  // A phone suspends the page, and the embed with it, once the app leaves the screen: the song pauses
+  // there and waits, at the same time, on the same player
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (
+        document.visibilityState === 'hidden' &&
+        matchMedia('(pointer: coarse)').matches
+      ) {
+        clearTimeout(startCheckRef.current)
+        playerRef.current?.pauseVideo()
       }
     }
-    const hostNode = hostRef.current
-    return hostNode && !suspended ? mount(hostNode) : undefined
-  }, [videoId, suspended, applyVolume, dropCaptions, log])
+    document.addEventListener('visibilitychange', handleVisibility)
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibility)
+    }
+  }, [])
+
+  // An embed that couldn't load without a connection (still loading, or YouTube's error) is built again
+  // once the phone is back online; a player that loaded is left
+  useEffect(() => {
+    const handleOnline = () => {
+      const { kind } = phaseRef.current
+      if (kind === 'loading' || kind === 'error') {
+        rebuild(null)
+      }
+    }
+    window.addEventListener('online', handleOnline)
+    return () => {
+      window.removeEventListener('online', handleOnline)
+    }
+  }, [rebuild])
 
   // Before onReady these only record the value; onReady applies it
   const { level, muted } = volume
@@ -296,9 +361,8 @@ export const useYouTubePlayer = ({
       if (!player) {
         return
       }
-      const time = player.getCurrentTime()
+      const { time, duration } = read()
       const guard = latest.current.quirks.endGuardSec
-      const duration = player.getDuration()
       if (
         guard > 0 &&
         duration > 0 &&
@@ -325,7 +389,7 @@ export const useYouTubePlayer = ({
     return () => {
       cancelAnimationFrame(frame)
     }
-  }, [log])
+  }, [log, read])
 
   const subscribeFrame = useCallback((listener: (time: number) => void) => {
     frameListeners.current.add(listener)
@@ -333,28 +397,6 @@ export const useYouTubePlayer = ({
       frameListeners.current.delete(listener)
     }
   }, [])
-
-  // `muted` mutes YouTube before asking it to play: browsers only allow an
-  // autoplay without a user gesture when it is silent
-  const play = useCallback(
-    ({ muted: silent = false }: { muted?: boolean } = {}) => {
-      const player = playerRef.current
-      if (!player) {
-        return
-      }
-      if (silent) {
-        player.mute()
-      }
-      if (phaseRef.current.kind === 'ended') {
-        player.seekTo(0, true)
-      }
-      if (phaseRef.current.kind === 'ready') {
-        setPhase({ kind: 'starting' })
-      }
-      player.playVideo()
-    },
-    []
-  )
 
   const pause = useCallback(() => {
     const player = playerRef.current
@@ -375,6 +417,20 @@ export const useYouTubePlayer = ({
     }
   }, [pause, play])
 
+  // Call inside a tap or key handler. The unmute, and a play YouTube passes straight to its <video>, reach
+  // the element while the browser still counts the tap, which lets it make sound for the rest of the visit
+  const unlockSound = useCallback(() => {
+    const player = playerRef.current
+    if (!player) {
+      return
+    }
+    player.unMute()
+    const { kind } = phaseRef.current
+    if (kind === 'playing' || kind === 'buffering') {
+      player.playVideo()
+    }
+  }, [])
+
   const seek = useCallback(
     (seconds: number) => {
       const player = playerRef.current
@@ -383,36 +439,28 @@ export const useYouTubePlayer = ({
       }
       stoppedByGuardRef.current = false
       player.seekTo(
-        clampSeek(
-          seconds,
-          player.getDuration(),
-          latest.current.quirks.endGuardSec
-        ),
+        clampSeek(seconds, read().duration, latest.current.quirks.endGuardSec),
         true
       )
       dropCaptions(player)
     },
-    [dropCaptions]
+    [dropCaptions, read]
   )
 
-  const getTime = useCallback(
-    () => playerRef.current?.getCurrentTime() ?? 0,
-    []
-  )
-  const getDuration = useCallback(
-    () => playerRef.current?.getDuration() ?? 0,
-    []
-  )
+  const getTime = useCallback(() => read().time, [read])
+  const getDuration = useCallback(() => read().duration, [read])
   return {
+    boxRef,
     getDuration,
     getTime,
-    hostRef,
     pause,
     phase,
     play,
     seek,
+    stageRef,
     subscribeFrame,
     togglePlay,
+    unlockSound,
   }
 }
 

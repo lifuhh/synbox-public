@@ -1,4 +1,5 @@
 import {
+  ExpandIcon,
   LockIcon,
   MaximizeIcon,
   MinimizeIcon,
@@ -7,6 +8,7 @@ import {
   RepeatIcon,
   RotateCcwIcon,
   RotateCwIcon,
+  ShrinkIcon,
   SmartphoneIcon,
   Volume1Icon,
   Volume2Icon,
@@ -106,6 +108,8 @@ interface StageControlsProps {
   onLoopChange: (loop: boolean) => void
   fullscreen: boolean
   onToggleFullscreen: () => void
+  zoomed: boolean
+  onToggleZoom: () => void
   onSeekBy: (seconds: number) => void
   volume: PlayerVolume
   onVolumeChange: (volume: PlayerVolume) => void
@@ -147,6 +151,8 @@ export const StageControls = ({
   onLoopChange,
   fullscreen,
   onToggleFullscreen,
+  zoomed,
+  onToggleZoom,
   onSeekBy,
   volume,
   onVolumeChange: setVolume,
@@ -370,6 +376,16 @@ export const StageControls = ({
                   onLoopChange(!loop)
                 }}>
                 <RepeatIcon className='size-5' />
+              </IconButton>
+              <IconButton
+                label='Zoom to Fill'
+                active={zoomed}
+                onClick={onToggleZoom}>
+                {zoomed ? (
+                  <ShrinkIcon className='size-5' />
+                ) : (
+                  <ExpandIcon className='size-5' />
+                )}
               </IconButton>
               <IconButton
                 label={fullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
