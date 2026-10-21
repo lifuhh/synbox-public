@@ -796,14 +796,18 @@
     transition: transform 0.3s ease;
   }
 
-  .playlist-item:hover & span {
-    animation: marquee 20s linear infinite;
+  @media (prefers-reduced-motion: no-preference) {
+    .playlist-item:hover & span {
+      animation: marquee 20s linear infinite;
+    }
   }
 }
 
 @utility playlist-item {
-  &:hover .marquee span {
-    animation: marquee 20s linear infinite;
+  @media (prefers-reduced-motion: no-preference) {
+    &:hover .marquee span {
+      animation: marquee 20s linear infinite;
+    }
   }
 }
 

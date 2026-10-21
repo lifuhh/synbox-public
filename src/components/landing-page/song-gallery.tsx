@@ -208,13 +208,13 @@ const SongGallery = () => {
         ref={title}
         id='gallery-title'
         data-stuck={stuck ? true : undefined}
-        className='sticky-under-topbar px-4 pb-1.5 text-xl font-semibold tracking-tight text-foreground sm:px-8'>
+        className='sticky-under-topbar px-4 pb-1.5 text-xl font-semibold tracking-tight text-foreground md:px-0'>
         <button type='button' onClick={toStart} className='py-0.5'>
           Gallery
         </button>
       </h2>
       {/* The padding sits outside the measured box: a row's height follows from its content width */}
-      <div className='px-4 sm:px-8'>
+      <div className='px-4 md:px-0'>
         <div ref={setList}>
           {isLoading ? (
             <output aria-label='Loading gallery' className={`${GRID} py-4`}>
