@@ -76,6 +76,12 @@ const defaultLyricsStyleAtoms: {
     undefined,
     initOptions
   ),
+  stagger: atomWithStorage(
+    'lyricsStagger',
+    DEFAULT_LYRICS_STYLE.stagger,
+    undefined,
+    initOptions
+  ),
   themeId: atomWithStorage<LyricsThemeId>(
     'lyricsTheme',
     DEFAULT_LYRICS_STYLE.themeId,
@@ -103,6 +109,7 @@ const readDefaults = (get: Getter): LyricsStyle => {
     screenSizes: screenSizes.success
       ? screenSizes.data
       : DEFAULT_LYRICS_STYLE.screenSizes,
+    stagger: get(defaultLyricsStyleAtoms.stagger),
     themeId: get(defaultLyricsStyleAtoms.themeId),
     twoLines: get(defaultLyricsStyleAtoms.twoLines),
   }
@@ -115,6 +122,7 @@ const LYRICS_STYLE_KEYS = [
   'customHue',
   'fontSize',
   'screenSizes',
+  'stagger',
   'themeId',
   'twoLines',
 ] as const satisfies readonly (keyof LyricsStyle)[]
@@ -265,6 +273,7 @@ export const lyricsBackdropAtom = lyricsStyleField('backdrop')
 export const lyricsAnchorAtom = lyricsStyleField('anchor')
 export const lyricsAnchorPortraitAtom = lyricsStyleField('anchorPortrait')
 export const lyricsTwoLinesAtom = lyricsStyleField('twoLines')
+export const lyricsStaggerAtom = lyricsStyleField('stagger')
 export const lyricsScreenSizesAtom = lyricsStyleField('screenSizes')
 
 // A shared style that matches the viewer's own changes nothing, so it is not shown as shared

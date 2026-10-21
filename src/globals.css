@@ -239,9 +239,12 @@
 
   /* The player's lyric lines, times the viewer's scale: a share of the stage's width, but never more than a
      share of its height, so a phone on its side (wide, very short) is not sized like a monitor. A phone held
-     upright gets the floor: 17px, 25px on its side, 43px on a 1440px-wide desktop. Translation and romaji
-     are 0.7 of that */
+     upright gets the floor: 17px, 25px on its side, 43px on a 1440px-wide desktop. Sizes step down as on the
+     reader: the romaji, read with the Japanese, 0.8 of it (floor 14px); the translation 0.7 (floor 12px) */
   --text-lyric: calc(max(min(3cqw, 6.4cqh), 1.0625rem) * var(--lyric-scale));
+  --text-lyric-romaji: calc(
+    max(min(2.4cqw, 5.12cqh), 0.875rem) * var(--lyric-scale)
+  );
   --text-lyric-secondary: calc(
     max(min(2.1cqw, 4.48cqh), 0.75rem) * var(--lyric-scale)
   );
@@ -532,6 +535,34 @@
   flex-basis: 0;
   flex-grow: var(--anchor-grow);
   transition: var(--anchor-transition);
+}
+
+/* Karaoke Stagger: in the two-row layout the top row hugs the leading edge and the next row the trailing one,
+   as a karaoke machine shows them. [class] lifts these over the rows' own centring */
+@utility lyric-row-start {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+
+  & > [class] {
+    width: fit-content;
+    max-width: 100%;
+    margin-inline: 0;
+    text-align: start;
+  }
+}
+
+@utility lyric-row-end {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+
+  & > [class] {
+    width: fit-content;
+    max-width: 100%;
+    margin-inline: 0;
+    text-align: end;
+  }
 }
 
 /* Between the two rows of the two-line karaoke layout: a share of the lyric size, so each line's romaji and

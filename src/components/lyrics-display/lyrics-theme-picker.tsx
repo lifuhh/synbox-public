@@ -17,6 +17,7 @@ import {
   lyricsCustomHueAtom,
   lyricsStylePanelAtom,
   lyricsThemeIdAtom,
+  lyricsStaggerAtom,
   lyricsTwoLinesAtom,
 } from '@/context/atoms'
 import { useMediaQuery, usePortrait } from '@/hooks/use-media-query'
@@ -97,9 +98,18 @@ const ThemeSwatch = ({
   )
 }
 
-// The karaoke two-row layout, on or off. A switch, so it applies without closing the panel
-const TwoLinesSwitch = ({ portrait }: { portrait: boolean }) => {
-  const [twoLines, setTwoLines] = useAtom(lyricsTwoLinesAtom)
+// A switch row in the panel: on and off, applied at once without closing it
+const StyleSwitch = ({
+  label,
+  hint,
+  checked,
+  onChange,
+}: {
+  label: string
+  hint: string
+  checked: boolean
+  onChange: (checked: boolean) => void
+}) => {
   const hintId = useId()
   return (
     <section className='flex flex-col gap-1'>
@@ -107,33 +117,59 @@ const TwoLinesSwitch = ({ portrait }: { portrait: boolean }) => {
         type='button'
         // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- a switch: on and off, applied at once
         role='switch'
-        aria-checked={twoLines}
+        aria-checked={checked}
         aria-describedby={hintId}
         onClick={() => {
-          setTwoLines(!twoLines)
+          onChange(!checked)
         }}
         className='group -mx-2 flex min-h-10 items-center justify-between gap-3 rounded-md px-2 text-sm font-medium focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-hidden touch:min-h-11'>
-        Two Lines
+        {label}
         <span
           aria-hidden='true'
           className={cn(
             'relative h-5 w-9 shrink-0 rounded-full transition-colors',
-            twoLines ? 'bg-primary' : 'bg-secondary ring-1 ring-border'
+            checked ? 'bg-primary' : 'bg-secondary ring-1 ring-border'
           )}>
           <span
             className={cn(
               'absolute top-0.5 left-0.5 size-4 rounded-full bg-white shadow transition-transform motion-reduce:transition-none',
-              twoLines && 'translate-x-4'
+              checked && 'translate-x-4'
             )}
           />
         </span>
       </button>
       <p id={hintId} className='text-xs text-muted-foreground'>
-        {portrait
-          ? 'Shows the next line in a second row, on a wide screen or a phone turned sideways.'
-          : 'Shows the next line in a second row, so you can read ahead.'}
+        {hint}
       </p>
     </section>
+  )
+}
+
+// The karaoke two-row layout, and with it the karaoke machine's stagger: top row left, next row right
+const TwoLinesSwitch = ({ portrait }: { portrait: boolean }) => {
+  const [twoLines, setTwoLines] = useAtom(lyricsTwoLinesAtom)
+  const [stagger, setStagger] = useAtom(lyricsStaggerAtom)
+  return (
+    <>
+      <StyleSwitch
+        label='Two Lines'
+        checked={twoLines}
+        onChange={setTwoLines}
+        hint={
+          portrait
+            ? 'Shows the next line in a second row, on a wide screen or a phone turned sideways.'
+            : 'Shows the next line in a second row, so you can read ahead.'
+        }
+      />
+      {twoLines && (
+        <StyleSwitch
+          label='Karaoke Stagger'
+          checked={stagger}
+          onChange={setStagger}
+          hint='The top line sits left and the next line right, as on a karaoke machine.'
+        />
+      )}
+    </>
   )
 }
 
