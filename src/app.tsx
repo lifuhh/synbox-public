@@ -63,7 +63,7 @@ const App = () => {
   }, [])
 
   return (
-    <main className='flex h-dvh'>
+    <main className='flex h-(--app-h)'>
       <Routes>
         {StageLabPage && (
           <Route

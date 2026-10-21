@@ -48,7 +48,7 @@ const FavouritesDropdownButton = () => {
               <DropdownMenuSeparator />
             </div>
 
-            <div className='max-h-[min(600px,calc(100dvh-var(--topbar-h)-6rem))] overflow-y-auto px-2'>
+            <div className='max-h-[min(600px,calc(var(--app-h)-var(--topbar-h)-6rem))] overflow-y-auto px-2'>
               {favorites.length > 0 ? (
                 <div className='space-y-1 pb-4'>
                   {favorites.toReversed().map((item) => (

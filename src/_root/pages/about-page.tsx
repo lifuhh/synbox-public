@@ -7,7 +7,7 @@ import {
 } from '@/components/ui/accordion'
 
 const AboutPage = () => (
-  <section className='relative mt-(--topbar-h) flex-between flex custom-scrollbar max-h-[calc(100dvh-var(--topbar-h))] flex-1 flex-col overflow-y-scroll px-4 pb-page-bottom-sm md:px-10'>
+  <section className='relative mt-(--topbar-h) flex-between flex custom-scrollbar max-h-[calc(var(--app-h)-var(--topbar-h))] flex-1 flex-col overflow-y-scroll px-4 pb-page-bottom-sm md:px-10'>
     <title>About | Synbox</title>
 
     <div className='mx-auto w-full max-w-6xl'>

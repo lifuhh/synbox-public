@@ -33,9 +33,9 @@ class ErrorBoundary extends Component<Props, State> {
   public render(): ReactNode {
     if (this.state.hasError) {
       return (
-        <div className='relative h-dvh w-full'>
+        <div className='relative h-(--app-h) w-full'>
           <TopBar />
-          <div className='relative -my-14 flex min-h-dvh flex-col items-center justify-center bg-background px-4 py-12 sm:px-6 lg:px-8'>
+          <div className='relative -my-14 flex min-h-(--app-h) flex-col items-center justify-center bg-background px-4 py-12 sm:px-6 lg:px-8'>
             <div className='mx-auto max-w-md text-center'>
               <div className='mx-auto h-12 w-12 text-primary-text' />
               <h1 className='mt-4 text-3xl font-bold tracking-tight text-foreground sm:text-4xl'>

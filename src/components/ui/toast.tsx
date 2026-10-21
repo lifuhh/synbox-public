@@ -17,7 +17,7 @@ const ToastViewportRender: React.ForwardRefRenderFunction<
   <ToastPrimitives.Viewport
     ref={ref}
     className={cn(
-      'fixed top-[calc(var(--topbar-h)+0.5rem+var(--notices-h,0px))] right-[max(1rem,var(--safe-right))] z-100 flex max-h-dvh w-[calc(100%-2rem)] flex-col gap-2 sm:w-auto sm:max-w-sm',
+      'fixed top-[calc(var(--topbar-h)+0.5rem+var(--notices-h,0px))] right-[max(1rem,var(--safe-right))] z-100 flex max-h-(--app-h) w-[calc(100%-2rem)] flex-col gap-2 sm:w-auto sm:max-w-sm',
       className
     )}
     {...props}
