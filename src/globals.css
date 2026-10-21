@@ -629,6 +629,9 @@
     animation-name: appear;
   }
 }
+@utility rise-delay-* {
+  --rise-delay: calc(--value(integer) * 1ms);
+}
 @utility appear {
   animation: appear 0.2s ease-out both;
 }

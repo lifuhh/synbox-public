@@ -1,11 +1,12 @@
 import {
   ArrowRightIcon,
   Info,
+  LoaderCircleIcon,
   LogInIcon,
   PlayIcon,
   SearchIcon,
 } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router'
 
 import { startFromButton } from '@/components/generation/start-generation'
@@ -22,6 +23,14 @@ import { useGetLyricsBySongId } from '@/lib/react-query/queries-and-mutations'
 import { YouTubeUrlOrIdValidation } from '@/lib/validation'
 import { extractVideoId } from '@/utils'
 import { cn } from '@/utils/cn'
+
+// The hero rises in once per page load, a line at a time; coming back home later shows it at once
+let heroShown = false
+const RISE_STEPS = [
+  'rise-in',
+  'rise-in rise-delay-100',
+  'rise-in rise-delay-200',
+]
 
 interface HeroGenerateLyricsDefaultProps {
   setProcessingStage: (stage: number) => void
@@ -194,7 +203,7 @@ const HeroGenerateLyricsDefault = ({
       return <SearchIcon className='size-5 shrink-0' />
     }
     if (isCheckingLyrics || checking) {
-      return ''
+      return null
     }
     if (blocked) {
       return <LogInIcon className='size-5 shrink-0' />
@@ -207,16 +216,35 @@ const HeroGenerateLyricsDefault = ({
   }
 
   const showAction = !(blocked && access.kind === 'user')
+  const actionDisabled = errorMessage !== '' || isCheckingLyrics || checking
+  const submit = () => {
+    if (inputValue.length === 0) {
+      return
+    }
+    handleOpenLandingPageDialog()
+  }
+  const animate = useMemo(() => !heroShown, [])
+  useEffect(() => {
+    heroShown = true
+  }, [])
 
   return (
     <div className='mx-auto flex w-full max-w-3xl flex-col gap-5 pt-12 pb-10 md:items-center md:pt-20 md:pb-14'>
-      <h1 className='text-left text-4xl font-semibold tracking-tight text-balance text-foreground no-select md:text-center md:text-6xl'>
+      <h1
+        className={cn(
+          animate && RISE_STEPS[0],
+          'text-left text-4xl font-semibold tracking-tight text-balance text-foreground no-select md:text-center md:text-6xl'
+        )}>
         AI-Powered Japanese Karaoke
       </h1>
       {/* The info button sits inline at the end of the sentence, so it stays beside the words as they wrap */}
-      <p className='text-base text-pretty text-tagline no-select md:text-center md:text-lg'>
-        Transform YouTube videos into your personalized Japanese karaoke stage,
-        with AI-transcribed, accurately synced lyrics and translations
+      <p
+        className={cn(
+          animate && RISE_STEPS[1],
+          'text-base text-pretty text-tagline no-select md:text-center md:text-lg'
+        )}>
+        Paste a YouTube link and sing along with synced lyrics, furigana, romaji
+        and translations
         <TooltipProvider delayDuration={0}>
           <Tooltip open={infoOpen} onOpenChange={setInfoOpen}>
             <TooltipTrigger asChild>
@@ -244,8 +272,13 @@ const HeroGenerateLyricsDefault = ({
           </Tooltip>
         </TooltipProvider>
       </p>
-      <div className='mt-3 flex w-full flex-col gap-2 md:max-w-170'>
-        {/* The field draws the border and its state; the action sits inside it from sm up */}
+      <div
+        className={cn(
+          animate && RISE_STEPS[2],
+          'mt-3 flex w-full flex-col gap-2 md:max-w-170'
+        )}>
+        {/* The field draws the border and its state; the action sits inside it, a labelled pill from sm up and a
+            round icon on phones, where the label would squeeze the text */}
         <InputField state={inputMode} className='relative'>
           <Input
             value={inputValue}
@@ -259,21 +292,29 @@ const HeroGenerateLyricsDefault = ({
             variant='bare'
           />
           {showAction && (
-            <Button
-              onClick={() => {
-                if (inputValue?.length === 0) {
-                  return
-                }
-                handleOpenLandingPageDialog()
-              }}
-              disabled={errorMessage !== '' || isCheckingLyrics || checking}
-              variant='hero'
-              size='inset'
-              gap='sm'
-              className='hidden shrink-0 sm:inline-flex'>
-              <span className='text-label'>{buttonLabel()}</span>
-              {buttonIcon()}
-            </Button>
+            <>
+              <Button
+                onClick={submit}
+                disabled={actionDisabled}
+                variant='hero'
+                size='icon'
+                aria-label={buttonLabel()}
+                className='shrink-0 sm:hidden'>
+                {buttonIcon() ?? (
+                  <LoaderCircleIcon className='size-5 shrink-0 motion-safe:animate-spin' />
+                )}
+              </Button>
+              <Button
+                onClick={submit}
+                disabled={actionDisabled}
+                variant='hero'
+                size='inset'
+                gap='sm'
+                className='hidden shrink-0 sm:inline-flex'>
+                <span className='text-label'>{buttonLabel()}</span>
+                {buttonIcon()}
+              </Button>
+            </>
           )}
         </InputField>
         <div className='min-h-6 px-5 text-sm' aria-live='polite'>
@@ -291,23 +332,6 @@ const HeroGenerateLyricsDefault = ({
             </p>
           )}
         </div>
-        {showAction && (
-          <Button
-            onClick={() => {
-              if (inputValue?.length === 0) {
-                return
-              }
-              handleOpenLandingPageDialog()
-            }}
-            disabled={errorMessage !== '' || isCheckingLyrics || checking}
-            variant='hero'
-            size='lg'
-            gap='sm'
-            className='w-full sm:hidden'>
-            <span className='text-label'>{buttonLabel()}</span>
-            {buttonIcon()}
-          </Button>
-        )}
       </div>
     </div>
   )
