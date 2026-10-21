@@ -1,15 +1,16 @@
 import { lazy, Suspense, useEffect } from 'react'
-import { Navigate, Route, Routes, useLocation } from 'react-router'
+import { Navigate, Route, Routes } from 'react-router'
 
 import AppNotices from '@/components/shared/app-notices'
 import { Toaster } from '@/components/ui/toaster'
 import useKeyboardNavigation from '@/hooks/use-keyboard-navigation'
-import { applyUpdateOnPageChange, OPENING_MS } from '@/lib/pwa'
 
 import LandingPage from './_root/pages/landing-page'
 import RootLayout from './_root/root-layout'
 
 import './globals.css'
+// Registers the service worker, and swaps a new deploy in at the next page change
+import '@/lib/pwa'
 
 // Dev-only: the static `import.meta.env.DEV` check drops the lab from production builds
 const StageLabPage = import.meta.env.DEV
@@ -30,6 +31,8 @@ const VersionsPage = lazy(pageImports.versions)
 // Not prefetched: only admins open it
 const AdminPage = lazy(async () => await import('./_root/pages/admin-page'))
 
+const PREFETCH_DELAY_MS = 4000
+
 const prefetchPages = () => {
   for (const load of Object.values(pageImports)) {
     void load()
@@ -38,16 +41,9 @@ const prefetchPages = () => {
 
 const App = () => {
   useKeyboardNavigation()
-  const { pathname } = useLocation()
+  // After the first screen has loaded, so the prefetch never competes with it
   useEffect(() => {
-    applyUpdateOnPageChange()
-    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- runs on each page change, which is what pathname marks
-  }, [pathname])
-
-  // Not during the opening, when a waiting update may be swapped in: in Chromium, a new version told to take
-  // over while the old one serves these chunks stays waiting
-  useEffect(() => {
-    const id = setTimeout(prefetchPages, OPENING_MS)
+    const id = setTimeout(prefetchPages, PREFETCH_DELAY_MS)
     return () => {
       clearTimeout(id)
     }

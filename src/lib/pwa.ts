@@ -102,72 +102,80 @@ const subscribeOnline = (listener: () => void) => {
 export const useOnline = () =>
   useSyncExternalStore(subscribeOnline, () => navigator.onLine)
 
-// A new deploy is downloaded in the background and waits for a moment when swapping it in goes unnoticed:
-// while the app opens, on the next page change, or on return after a long time away
+// A new deploy is downloaded in the background and waits. It is swapped in only by the next in-app page
+// change, which then loads the new page from the server as one ordinary page load. Never by reloading a page
+// that is already showing: that redraws it in front of the viewer and can cut off what they just did (a play
+// press, a click). A tab that stays on one page keeps its version until it changes page or is reopened
 const UPDATE_CHECK_MS = 60 * 60 * 1000
-
-// Until the viewer has touched anything, applying a waiting version is invisible: the app opens on the
-// latest version, as a reload in a browser tab should
-export const OPENING_MS = 4000
-// Back after this long, the app counts as freshly opened, as a native app does. Not on a song page: the
-// reload would lose the place in the song
-const AWAY_MS = 30 * 60 * 1000
+// The new version normally activates in well under a second; past this the page loads anyway
+const ACTIVATE_TIMEOUT_MS = 3000
 
 let updateReady = false
 let swapping = false
 
-let openedAt = 0
-let touched = false
-const markTouched = () => {
-  touched = true
-}
-const watchForTouch = () => {
-  touched = false
-  window.addEventListener('pointerdown', markTouched, { once: true })
-  window.addEventListener('keydown', markTouched, { once: true })
-}
-watchForTouch()
-
-const isOpening = () => !touched && performance.now() - openedAt < OPENING_MS
-// A reload would cut a running generation's progress off
+// A load would cut a running generation's progress off
 const isGenerating = () => anyActive(getGenerationState())
-const isSongPage = () => /^\/v\/[^/]+\/?$/u.test(window.location.pathname)
 
-// Activates the waiting version, then reloads onto it. The plugin reloads on a controller change instead,
+// Activates the waiting version, then loads `href` on it. The plugin reloads on a controller change instead,
 // which never comes for a page the old worker did not control (a hard reload while another tab is open)
-const swapIn = async () => {
-  if (!updateReady || swapping || isGenerating()) {
-    return
-  }
+const loadOnNewVersion = async (href: string) => {
   swapping = true
+  let loaded = false
+  const load = () => {
+    if (!loaded) {
+      loaded = true
+      window.location.assign(href)
+    }
+  }
+  setTimeout(load, ACTIVATE_TIMEOUT_MS)
   // Asked here: a version already waiting at load reports itself before onRegisteredSW runs
   const registration = await navigator.serviceWorker.getRegistration()
   const waiting = registration?.waiting
   if (!waiting) {
-    window.location.reload()
+    // Another tab activated it already
+    load()
     return
   }
   waiting.addEventListener('statechange', () => {
-    if (waiting.state === 'activated') {
-      window.location.reload()
-    } else if (waiting.state === 'redundant') {
-      // A newer deploy replaced it; that one gets its own onNeedRefresh
-      swapping = false
+    if (waiting.state === 'activated' || waiting.state === 'redundant') {
+      load()
     }
   })
   // oxlint-disable-next-line unicorn/require-post-message-target-origin -- a worker's postMessage takes no origin
   waiting.postMessage({ type: 'SKIP_WAITING' })
 }
 
+// React Router moves between pages with history.pushState. With a version waiting, that page change becomes a
+// full load of the same address on the new version instead. Replacements (tidying the current address) and
+// the back button stay in-app
+const pushState = window.history.pushState.bind(window.history)
+window.history.pushState = (
+  data: unknown,
+  unused: string,
+  url?: string | URL | null
+) => {
+  if (
+    updateReady &&
+    !swapping &&
+    !isGenerating() &&
+    url !== undefined &&
+    url !== null
+  ) {
+    const target = new URL(url, window.location.href)
+    if (target.origin === window.location.origin) {
+      void loadOnNewVersion(target.href)
+      return
+    }
+  }
+  pushState(data, unused, url)
+}
+
 registerSW({
   onNeedRefresh: () => {
     updateReady = true
-    if (isOpening()) {
-      void swapIn()
-    }
   },
   onNeedReload: () => {
-    // swapIn reloads once the new version is active
+    // loadOnNewVersion loads the page once the new version is active
   },
   onRegisteredSW: (_url, registration) => {
     if (!registration) {
@@ -185,23 +193,3 @@ registerSW({
     })
   },
 })
-
-let hiddenAt: number | null = null
-document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'hidden') {
-    hiddenAt = Date.now()
-    return
-  }
-  if (hiddenAt === null || Date.now() - hiddenAt < AWAY_MS || isSongPage()) {
-    return
-  }
-  // A version found by the check on return is applied too, if it arrives within the opening
-  openedAt = performance.now()
-  watchForTouch()
-  void swapIn()
-})
-
-// A page change already redraws the screen, so a waiting version is swapped in there, on the new page
-export const applyUpdateOnPageChange = () => {
-  void swapIn()
-}
