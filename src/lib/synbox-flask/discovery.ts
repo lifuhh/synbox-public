@@ -59,6 +59,8 @@ const gallerySongsSchema = z.object({
   songs: z.array(
     z.object({
       artist: z.string(),
+      // False from a backend that predates it
+      karaoke: z.boolean().catch(false),
       thumbnail_url: z.string(),
       title: z.string(),
       video_id: z.string(),
@@ -66,10 +68,15 @@ const gallerySongsSchema = z.object({
   ),
 })
 
+export interface LibraryListSong extends GallerySong {
+  // Its lyrics are timed word by word, so the player fills them as they are sung
+  karaoke: boolean
+}
+
 // Every song in the library, in a fresh order each visit. Same-origin: Netlify proxies it to the lookup
 // service and keeps a copy at its edge (netlify.toml), so the home page costs no Appwrite reads and doesn't
 // wait on a cold start. It answers 503 for the few seconds a fresh lookup service loads the library
-export const getLibrarySongs = async (): Promise<GallerySong[]> => {
+export const getLibrarySongs = async (): Promise<LibraryListSong[]> => {
   const response = await fetch('/api/library/songs')
   if (!response.ok) {
     throw new Error(`The gallery failed to load (HTTP ${response.status})`)
@@ -78,6 +85,7 @@ export const getLibrarySongs = async (): Promise<GallerySong[]> => {
   return shuffleArray(
     songs.map((song) => ({
       author: song.artist,
+      karaoke: song.karaoke,
       thumbnailUrl: song.thumbnail_url,
       title: song.title,
       videoId: song.video_id,

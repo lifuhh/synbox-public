@@ -32,7 +32,6 @@ const LIST_QUERIES = [
   QUERY_KEYS.SEARCH_VIDEOS,
   QUERY_KEYS.SEARCH_LIBRARY,
   QUERY_KEYS.GET_GALLERY_SONGS,
-  QUERY_KEYS.GET_SONGS_WITH_LYRICS,
 ]
 
 const announcementOf = (job: Job | null, view: Presentation | null) => {

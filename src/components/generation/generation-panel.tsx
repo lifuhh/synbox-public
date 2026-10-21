@@ -4,10 +4,11 @@ import { useRef } from 'react'
 import { Link } from 'react-router'
 
 import { startFromButton } from '@/components/generation/start-generation'
+import { KaraokeBadge, KaraokeMark } from '@/components/shared/karaoke-badge'
 import { Button } from '@/components/ui/button'
 import { SIGN_IN_CODES, signInWithGoogle, useAccess } from '@/lib/auth'
 import { overallValue } from '@/lib/generation/progress'
-import type { Job } from '@/lib/generation/store'
+import type { Job, JobStatus } from '@/lib/generation/store'
 import {
   cancelGeneration,
   dismissGeneration,
@@ -166,6 +167,12 @@ const rowStatus = (job: Job) => {
   )
 }
 
+// The run's timed lyrics are now the song's live lyrics. When it saved nothing new, the library list says
+const madeKaraoke = (status: Extract<JobStatus, { kind: 'complete' }>) =>
+  status.karaoke !== null &&
+  (status.outcome.kind === 'created' ||
+    (status.outcome.kind === 'version' && status.outcome.active))
+
 // Every song started from this tab, oldest first; picking one shows it in the panel
 const SongQueue = ({
   jobs,
@@ -206,6 +213,12 @@ const SongQueue = ({
               <span className='min-w-0 flex-1 truncate text-xs text-foreground'>
                 {title === '' ? job.videoId : title}
               </span>
+              {job.status.kind === 'complete' &&
+                (madeKaraoke(job.status) ? (
+                  <KaraokeBadge />
+                ) : (
+                  <KaraokeMark videoId={job.videoId} />
+                ))}
               <span
                 className={cn(
                   'shrink-0 text-xs tabular-nums',

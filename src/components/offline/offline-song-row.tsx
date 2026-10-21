@@ -7,8 +7,10 @@ import {
 } from 'lucide-react'
 import { Link } from 'react-router'
 
+import { KaraokeBadge } from '@/components/shared/karaoke-badge'
 import type { SearchMatch } from '@/lib/offline/search'
 import type { OfflineSong } from '@/lib/offline/song'
+import { hasKaraoke } from '@/lib/offline/song'
 import type { OfflineSource } from '@/lib/offline/sync'
 
 const SOURCE_ICONS = {
@@ -64,7 +66,10 @@ export const OfflineSongRow = ({
         <p className='line-clamp-2 text-sm leading-snug font-medium text-foreground'>
           {song.title}
         </p>
-        <p className='truncate text-xs text-muted-foreground'>{song.author}</p>
+        <p className='flex items-center gap-1.5 text-xs text-muted-foreground'>
+          {hasKaraoke(song) && <KaraokeBadge />}
+          <span className='truncate'>{song.author}</span>
+        </p>
         {match?.kind === 'lyrics' ? (
           <p className='truncate text-xs text-primary-text italic'>
             “{match.line}”
