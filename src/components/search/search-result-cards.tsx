@@ -16,7 +16,7 @@ const Thumbnail = ({
   alt: string
   videoId: string
 }) => (
-  <div className='relative aspect-video w-full overflow-hidden rounded-md bg-input'>
+  <div className='relative aspect-video w-full overflow-hidden rounded-lg bg-input'>
     {src !== '' && (
       <img
         src={src}
@@ -28,6 +28,10 @@ const Thumbnail = ({
     <KaraokeCornerMark videoId={videoId} />
   </div>
 )
+
+// The hover surface's corners follow the picture's: its 8px radius plus the 8px padding
+const CARD =
+  'flex flex-col gap-2 rounded-2xl p-2 transition-colors hover:bg-muted/60'
 
 // Two lines tall even when the title fits on one, so every card's next row lines up
 const Title = ({ children }: { children: string }) => (
@@ -48,7 +52,7 @@ export const VideoResultCard = ({
     onClick={() => {
       onSelect(result)
     }}
-    className='flex flex-col gap-2 rounded-lg p-2 text-left transition-colors hover:bg-muted/60'>
+    className={`${CARD} text-left`}>
     <Thumbnail
       src={result.thumbnail_url}
       alt={result.title}
@@ -68,7 +72,7 @@ export const LibrarySongCard = ({
   onPlay: (videoId: string) => void
   onMoreLikeThis: (videoId: string) => void
 }) => (
-  <div className='flex flex-col gap-2 rounded-lg p-2 transition-colors hover:bg-muted/60'>
+  <div className={CARD}>
     <button
       type='button'
       onClick={() => {
