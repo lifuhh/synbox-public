@@ -79,7 +79,7 @@ const TopBar = () => {
     document.documentElement.toggleAttribute('data-topbar-hidden', away)
   }, [away])
   const cluster = cn(
-    'flex items-center gap-2 transition-fade-translate duration-300 ease-out sm:gap-3',
+    'flex items-center gap-1 transition-fade-translate duration-300 ease-out min-[360px]:gap-2 sm:gap-3',
     isVideoPlayer && armed && 'pointer-events-auto',
     !iconsShown && '-translate-y-2 opacity-0'
   )

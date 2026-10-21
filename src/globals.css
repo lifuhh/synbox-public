@@ -607,6 +607,23 @@
   }
 }
 
+/* tw-animate's menu, dialog, popover, tooltip and toast entrances zoom and slide; under reduced motion they only
+   fade. Unlayered, so it wins over the utilities that set these per element */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    --tw-enter-scale: 1;
+    --tw-exit-scale: 1;
+    --tw-enter-rotate: 0;
+    --tw-exit-rotate: 0;
+    --tw-enter-translate-x: 0;
+    --tw-enter-translate-y: 0;
+    --tw-exit-translate-x: 0;
+    --tw-exit-translate-y: 0;
+    --tw-enter-blur: 0;
+    --tw-exit-blur: 0;
+  }
+}
+
 /* Content that arrives fades in where it will stay, instead of standing in a skeleton first. `rise-in` is for
    a view's first appearance: a short rise with a blur that clears, staggered by --rise-delay. `appear` is for
    small things that resolve in place (the top bar's account slot). Reduced motion keeps only the fade. Named
