@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { useLocation, useMatch } from 'react-router'
 
 import { setGenerationDock } from '@/components/generation/dock'
-import { playerChromeOpenAtom } from '@/context/atoms'
+import { playerChromeOpenAtom, playerSurfaceAtom } from '@/context/atoms'
 import { useArmed } from '@/hooks/use-armed'
 import { cn } from '@/utils/cn'
 
@@ -21,8 +21,11 @@ const JITTER_PX = 4
 const HIDE_AFTER_PX = 96
 
 const TopBar = () => {
-  // The versions page under /v/:id is an ordinary page with an opaque bar
-  const isVideoPlayer = useMatch('/v/:videoId') !== null
+  // The versions page under /v/:id is an ordinary page with an opaque bar, and so is the watch page around a
+  // player that is not the whole screen
+  const onPlayer = useMatch('/v/:videoId') !== null
+  const surface = useAtomValue(playerSurfaceAtom)
+  const isVideoPlayer = onPlayer && surface !== 'watch'
   // On the player the buttons show and hide with the rest of its floating UI
   const chromeOpen = useAtomValue(playerChromeOpenAtom)
   const iconsShown = !isVideoPlayer || chromeOpen
@@ -40,6 +43,10 @@ const TopBar = () => {
     const lastTop = new WeakMap<HTMLElement, number>()
     const onScroll = (event: Event) => {
       const box = event.target
+      // The watch page's panels scroll inside a page that doesn't, so the bar stays
+      if (document.documentElement.dataset.watch !== undefined) {
+        return
+      }
       if (
         !(box instanceof HTMLElement) ||
         box.scrollHeight <= box.clientHeight + 1

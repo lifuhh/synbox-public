@@ -371,6 +371,9 @@ export const watchLayoutAtom = atomWithStorage<WatchLayout>(
   'playerWatchLayout',
   'default'
 )
+// How the player page shows right now: the watch page, or the stage alone (fullscreen, a phone on its side,
+// Lock Landscape). PlayerPage sets it; the top bar reads it. null away from the player
+export const playerSurfaceAtom = atom<'stage' | 'watch' | null>(null)
 // Whether the stage is the whole screen right now: browser fullscreen, or iPhone's stand-in for it.
 // PlayerStage owns it
 export const stageFullscreenAtom = atom(false)

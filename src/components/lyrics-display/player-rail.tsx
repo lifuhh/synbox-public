@@ -1,6 +1,7 @@
 import { useAtom, useAtomValue, useSetAtom } from 'jotai'
 import {
   BookOpenTextIcon,
+  ListPlusIcon,
   BookmarkCheckIcon,
   BookmarkIcon,
   LanguagesIcon,
@@ -8,12 +9,13 @@ import {
   Share2Icon,
   ShareIcon,
 } from 'lucide-react'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
 
 import { ToastAction } from '@/components/ui/toast'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { useToast } from '@/components/ui/use-toast'
+import { SaveToPlaylist } from '@/components/watch/save-to-playlist'
 import {
   addFavoriteAtom,
   currentVideoAtom,
@@ -126,7 +128,7 @@ const Divider = ({ inline }: { inline: boolean }) => (
 
 const railClass = (inline: boolean, interactive: boolean, open: boolean) =>
   inline
-    ? 'no-scrollbar flex items-center gap-1 overflow-x-auto rounded-2xl bg-card p-1'
+    ? 'no-scrollbar flex w-fit max-w-full items-center gap-1 overflow-x-auto rounded-2xl bg-card p-1'
     : cn(
         'flex flex-col items-center gap-1 rounded-r-2xl bg-black/55 p-1.5 shadow-rail backdrop-blur-md transition-translate-fade duration-300 ease-out',
         'portrait:no-scrollbar portrait:max-w-[calc(100vw-0.5rem)] portrait:flex-row portrait:gap-1 portrait:overflow-x-auto portrait:rounded-2xl portrait:p-1',
@@ -170,6 +172,7 @@ const PlayerRail = ({ inline = false }: { inline?: boolean }) => {
   }, [inline])
 
   const currentVideo = useAtomValue(currentVideoAtom)
+  const [saving, setSaving] = useState(false)
   const addFavorite = useSetAtom(addFavoriteAtom)
   const removeFavorite = useSetAtom(removeFavoriteAtom)
   const isFavorite = useAtomValue(isFavoriteAtom)
@@ -363,6 +366,16 @@ const PlayerRail = ({ inline = false }: { inline?: boolean }) => {
                   )}
                 </RailButton>
               </RailTooltip>
+              <RailTooltip label='Save to Playlist'>
+                <RailButton
+                  label='Save to Playlist'
+                  disabled={!currentVideo}
+                  onClick={() => {
+                    setSaving(true)
+                  }}>
+                  <ListPlusIcon className='size-5 shrink-0' />
+                </RailButton>
+              </RailTooltip>
               <RailTooltip label={shareLabel}>
                 <RailButton
                   label={shareLabel}
@@ -387,6 +400,13 @@ const PlayerRail = ({ inline = false }: { inline?: boolean }) => {
           </div>
         </RailTooltipsOff>
       </RailInline>
+      {currentVideo && (
+        <SaveToPlaylist
+          song={currentVideo}
+          open={saving}
+          onOpenChange={setSaving}
+        />
+      )}
     </TooltipProvider>
   )
 }

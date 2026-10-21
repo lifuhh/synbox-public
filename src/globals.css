@@ -292,10 +292,13 @@
     --reader-status: #1f1c17;
     --status-scrim-fade: 0px;
   }
+}
 
-  /* Furigana over the page, not over a video: no shadow, a little quieter than the kanji. The player's -0.9em
-     is tuned to its web font; with the reader's system fonts it sets the reading on the kanji. About 2px
-     clear takes 0 in Chromium and -0.3em in iPhone WebKit, which stands the reading higher */
+/* Furigana over a page, not over a video (the reader, the watch page's lyrics): no shadow, a little quieter
+   than the kanji. The player's -0.9em is tuned to its web font; with the reader's system fonts it sets the
+   reading on the kanji. About 2px clear takes 0 in Chromium and -0.3em in iPhone WebKit, which stands the
+   reading higher */
+@utility page-ruby {
   & .lyric-ruby-text {
     margin-bottom: 0;
     text-shadow: none;
@@ -305,6 +308,16 @@
       margin-bottom: -0.3em;
     }
   }
+}
+
+/* The watch page's lyrics: the reader's type and karaoke fill on the app's own surface, the Japanese in the
+   accent and the romaji in the page's ink */
+@utility lyrics-sheet {
+  --reader-fg: var(--foreground);
+  --reader-accent: var(--primary-text);
+  --reader-muted: var(--muted-foreground);
+  --reader-scale: 1;
+  --furigana-size: 0.5em;
 }
 
 /* Synced lyrics' karaoke fill on the page: sung in the Japanese colour, unsung at half strength. A part
@@ -556,6 +569,75 @@
     black 72%,
     transparent
   );
+}
+
+/* The player's watch page (src/components/watch/watch-page.tsx). Narrow: the video on top, the song under it,
+   then Lyrics and Up Next as tabs. From 1000px wide (YouTube's two-column point) the video sits top left, as
+   large as leaves 12rem below it, the lyrics beside it in a 320-402px column, the song and More Like This
+   under the video and Up Next under the lyrics; Theater gives the video both columns. Only the boxes below
+   scroll, so the video never moves under youtube-engine's fixed layer */
+@utility watch-page {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  padding-top: var(--topbar-h);
+
+  @media (min-width: 1000px) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(20rem, 25.125rem);
+    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-areas: 'stage side' 'main next';
+    gap: 1rem 1.5rem;
+    padding: calc(var(--topbar-h) + 0.25rem) 1.5rem 0;
+
+    &[data-theater] {
+      grid-template-areas: 'stage stage' 'main next';
+    }
+  }
+}
+
+@utility watch-stage {
+  flex-shrink: 0;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  max-height: 45%;
+  overflow: hidden;
+  background: #000;
+
+  @media (min-width: 1000px) {
+    grid-area: stage;
+    justify-self: start;
+    width: min(100%, calc((var(--app-h) - var(--topbar-h) - 12rem) * 16 / 9));
+    max-height: none;
+    border-radius: 0.75rem;
+
+    [data-theater] > & {
+      width: 100%;
+      aspect-ratio: auto;
+      height: min(56.25vw, calc(var(--app-h) - var(--topbar-h) - 12rem));
+    }
+  }
+}
+
+@utility watch-side {
+  grid-area: side;
+  position: relative;
+  min-height: 0;
+}
+
+@utility watch-main {
+  grid-area: main;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+@utility watch-next {
+  grid-area: next;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 /* The karaoke corner on a thumbnail (KaraokeCorner): the top-right half of its square */
@@ -1201,9 +1283,18 @@
   }
 
   /* The player is black edge to edge, including any strip a mobile browser's toolbar leaves */
-  html:has([data-player-stage]),
-  html:has([data-player-stage]) body {
+  html:has([data-player-stage]):not([data-watch]),
+  html:has([data-player-stage]):not([data-watch]) body {
     background-color: #000;
+  }
+
+  /* On the watch page the stage is a box under the top bar: what hangs under the bar inside it (Tap to
+     Unmute, the lock column) hangs from the video's own top edge instead */
+  html[data-watch] [data-player-stage] {
+    --topbar-h: 0px;
+    --notices-h: 0px;
+    --preview-banner-h: 0px;
+    --stage-corner-top: 0.25rem;
   }
 
   [data-player-stage] {
@@ -1212,7 +1303,7 @@
 
   /* Nothing scrolls on the player, and its black already carries the white clock. In fullscreen the video is
      meant to reach the screen's edge, so no scrim darkens its top */
-  html:has([data-player-stage]) [data-status-scrim] {
+  html:has([data-player-stage]):not([data-watch]) [data-status-scrim] {
     display: none;
   }
 

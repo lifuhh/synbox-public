@@ -89,10 +89,22 @@ const LYRICS_TOP: Record<VideoFit, string> = {
 // What sits outside the stage reads from it: the song's clock (the watch page's lyrics), and whether it is the
 // whole screen now (fullscreen, or iPhone's stand-in), which turns the watch page back into the stage alone
 const usePublishStage = (
-  { getTime, seek, subscribeFrame }: StagePlayer,
+  { getTime, seek, subscribeFrame, phase }: StagePlayer,
   fullscreen: boolean,
-  immersive: boolean
+  immersive: boolean,
+  onEnded: (() => void) | undefined
 ) => {
+  // The song played to its end (not looping): the page decides what plays next
+  const onEndedRef = useRef(onEnded)
+  useLayoutEffect(() => {
+    onEndedRef.current = onEnded
+  })
+  const ended = phase.kind === 'ended'
+  useEffect(() => {
+    if (ended) {
+      onEndedRef.current?.()
+    }
+  }, [ended])
   const setClock = useSetAtom(stageClockAtom)
   useEffect(() => {
     setClock({ getTime, seek, subscribeFrame })
@@ -258,6 +270,8 @@ interface PlayerStageProps {
   // Theater on the watch page: the control bar's toggle and the T key, where the page offers it
   theater?: boolean
   onToggleTheater?: () => void
+  // The song played to its end
+  onEnded?: () => void
 }
 
 export const PlayerStage = ({
@@ -269,6 +283,7 @@ export const PlayerStage = ({
   className,
   theater = false,
   onToggleTheater,
+  onEnded,
 }: PlayerStageProps) => {
   const [storedVolume, setStoredVolume] = useAtom(playerVolumeAtom)
   // Browsers block unmuted autoplay until the viewer has interacted with the
@@ -393,7 +408,7 @@ export const PlayerStage = ({
 
   useEffect(() => (immersive ? markImmersive() : undefined), [immersive])
 
-  usePublishStage(player, fullscreen, immersive)
+  usePublishStage(player, fullscreen, immersive, onEnded)
 
   useEffect(() => {
     const sync = () => {

@@ -1,4 +1,4 @@
-import { useAtomValue, useSetAtom } from 'jotai'
+import { useAtom, useAtomValue, useSetAtom } from 'jotai'
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router'
 
@@ -10,21 +10,94 @@ import VersionPreviewBanner, {
 import { PlayerStage } from '@/components/player-stage/player-stage'
 import { StageLyrics } from '@/components/player-stage/stage-lyrics'
 import { DEFAULT_YOUTUBE_QUIRKS } from '@/components/player-stage/youtube-quirks'
+import { WatchPage } from '@/components/watch/watch-page'
 import {
   currentVideoAtom,
+  historyAtom,
   lyricsStyleSongAtom,
+  playerSurfaceAtom,
   showSharedLyricsStyleAtom,
+  stageFullscreenAtom,
+  watchLayoutAtom,
 } from '@/context/atoms'
+import { usePageTurned } from '@/hooks/use-landscape-lock'
 import { useLyricsReady } from '@/hooks/use-lyrics-ready'
+import { useMediaQuery } from '@/hooks/use-media-query'
 import { useSongVisit } from '@/hooks/use-song-visit'
+import { useAccess } from '@/lib/auth'
+import { nextSong } from '@/lib/listening/model'
+import { useRecommendations } from '@/lib/listening/recommendations'
+import {
+  autoplayAtom,
+  queueAtom,
+  queueSourceAtom,
+  songPath,
+} from '@/lib/listening/store'
 import { decodeSharedStyle } from '@/lib/lyrics-style'
 import { handleVideoRoute } from '@/utils/route-handler.ts'
+
+// The stage alone fills the screen in fullscreen (or iPhone's stand-in), on a phone on its side and under
+// Lock Landscape; otherwise the page is the watch page around it
+const usePlayerSurface = () => {
+  const fullscreen = useAtomValue(stageFullscreenAtom)
+  const short = useMediaQuery(
+    '(orientation: landscape) and (max-height: 500px)'
+  )
+  const turned = usePageTurned()
+  const surface = fullscreen || short || turned ? 'stage' : 'watch'
+  const setSurface = useSetAtom(playerSurfaceAtom)
+  useEffect(() => {
+    setSurface(surface)
+  }, [surface, setSurface])
+  useEffect(
+    () => () => {
+      setSurface(null)
+    },
+    [setSurface]
+  )
+  return surface
+}
+
+// When a song ends: the queue's next song, else (autoplay on) a recommendation not played lately
+const usePlayNext = (videoId: string) => {
+  const navigate = useNavigate()
+  const [queue, setQueue] = useAtom(queueAtom)
+  const [source, setSource] = useAtom(queueSourceAtom)
+  const autoplay = useAtomValue(autoplayAtom)
+  const history = useAtomValue(historyAtom)
+  const { songs } = useRecommendations(videoId)
+  return () => {
+    const next = nextSong(
+      { autoplay, queue, source },
+      videoId,
+      songs,
+      history.slice(0, 20).map((item) => item.videoId)
+    )
+    if (next === null) {
+      return
+    }
+    setQueue(next.queue)
+    if (
+      next.queue.length === 0 &&
+      !queue.some((song) => song.videoId === next.song.videoId)
+    ) {
+      setSource(null)
+    }
+    void navigate(songPath(next.song.videoId), {
+      state: { videoId: next.song.videoId },
+    })
+  }
+}
 
 const PlayerPage = () => {
   const navigate = useNavigate()
   const { videoId = '' } = useParams<{ videoId: string }>()
   const [searchParams, setSearchParams] = useSearchParams()
-  const previewVersion = parsePreviewVersion(searchParams.get('version'))
+  // Lyrics versions are an admin tool: anyone else always gets the song's current lyrics
+  const { admin } = useAccess()
+  const previewVersion = admin
+    ? parsePreviewVersion(searchParams.get('version'))
+    : null
 
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -91,6 +164,17 @@ const PlayerPage = () => {
     }
   }, [videoId, navigate])
 
+  const surface = usePlayerSurface()
+  const wide = useMediaQuery('(min-width: 1000px)')
+  const [layout, setLayout] = useAtom(watchLayoutAtom)
+  const toggleTheater =
+    surface === 'watch' && wide
+      ? () => {
+          setLayout(layout === 'theater' ? 'default' : 'theater')
+        }
+      : undefined
+  const playNext = usePlayNext(videoId)
+
   if (error !== null && error !== '') {
     return (
       <div className='flex h-(--app-h) w-full flex-col items-center justify-center gap-4 px-4 text-center'>
@@ -119,22 +203,35 @@ const PlayerPage = () => {
   return (
     <>
       <title>{`${currentVideo?.title ?? 'Player Page'} | Synbox`}</title>
-      <PlayerRail />
-      <VersionPreviewBanner videoId={stageVideoId} />
+      {surface === 'stage' && <PlayerRail />}
+      {previewVersion !== null && (
+        <VersionPreviewBanner videoId={stageVideoId} />
+      )}
       <SharedStyleBanner />
-      <PlayerStage
-        key={stageVideoId}
+      <WatchPage
+        surface={surface}
+        theater={layout === 'theater'}
         videoId={stageVideoId}
-        quirks={DEFAULT_YOUTUBE_QUIRKS}
-        autoplay={lyricsReady}
-        renderLyrics={(player, layout) => (
-          <StageLyrics
+        version={previewVersion}
+        stage={
+          <PlayerStage
+            key={stageVideoId}
             videoId={stageVideoId}
-            player={player}
-            layout={layout}
-            version={previewVersion}
+            quirks={DEFAULT_YOUTUBE_QUIRKS}
+            autoplay={lyricsReady}
+            theater={layout === 'theater'}
+            onToggleTheater={toggleTheater}
+            onEnded={playNext}
+            renderLyrics={(player, stageLayout) => (
+              <StageLyrics
+                videoId={stageVideoId}
+                player={player}
+                layout={stageLayout}
+                version={previewVersion}
+              />
+            )}
           />
-        )}
+        }
       />
     </>
   )
