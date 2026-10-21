@@ -30,9 +30,9 @@ const formatDate = (ms: number) =>
   })
 
 const Thumbnail = ({ src }: { src: string | null }) => (
-  <div className='relative aspect-video w-28 shrink-0 overflow-hidden rounded-md bg-white/5 sm:w-32'>
+  <div className='relative aspect-video w-24 shrink-0 overflow-hidden rounded bg-white/5'>
     {src === null ? (
-      <MusicIcon className='absolute inset-0 m-auto size-6 text-muted-foreground' />
+      <MusicIcon className='absolute inset-0 m-auto size-5 text-muted-foreground' />
     ) : (
       <img
         src={src}
@@ -58,13 +58,13 @@ export const OfflineSongRow = ({
   <li>
     <Link
       to={`/offline/${song.videoId}`}
-      className='flex min-h-20 items-center gap-3 rounded-lg p-2 transition-colors hover:bg-white/5 active:bg-white/10'>
+      className='flex items-center gap-3 rounded-lg px-2 py-1.5 transition-colors hover:bg-white/5 active:bg-white/10'>
       <Thumbnail src={song.thumbnail} />
-      <div className='flex min-w-0 flex-1 flex-col gap-0.5'>
-        <p className='line-clamp-2 text-label leading-snug font-semibold text-foreground'>
+      <div className='flex min-w-0 flex-1 flex-col'>
+        <p className='line-clamp-2 text-sm leading-snug font-medium text-foreground'>
           {song.title}
         </p>
-        <p className='truncate text-sm text-muted-foreground'>{song.author}</p>
+        <p className='truncate text-xs text-muted-foreground'>{song.author}</p>
         {match?.kind === 'lyrics' ? (
           <p className='truncate text-xs text-primary italic'>“{match.line}”</p>
         ) : (
@@ -77,7 +77,7 @@ export const OfflineSongRow = ({
                   <Icon
                     key={source}
                     aria-label={label}
-                    className='size-3.5 shrink-0'
+                    className='size-3 shrink-0'
                   />
                 )
               }
@@ -86,9 +86,8 @@ export const OfflineSongRow = ({
         )}
       </div>
       <span className='flex shrink-0 items-center gap-0.5 text-sm text-muted-foreground'>
-        <span className='hidden sm:inline'>View Lyrics</span>
-        <ChevronRightIcon aria-hidden='true' className='size-5' />
-        <span className='sr-only sm:hidden'>View Lyrics</span>
+        <ChevronRightIcon aria-hidden='true' className='size-4' />
+        <span className='sr-only'>View Lyrics</span>
       </span>
     </Link>
   </li>

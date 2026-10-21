@@ -31,17 +31,8 @@ type Panel = 'none' | 'layers' | 'type'
 // How far the page scrolls in one direction before the bars hide or come back
 const SCROLL_SLACK_PX = 8
 
-// One sung line as a block: the Japanese and its romaji, then the translation. Wide landscape screens put
-// the translation beside them, so a line reads across rather than down
-const ReaderLine = ({
-  line,
-  first,
-  split,
-}: {
-  line: OfflineLine
-  first: boolean
-  split: boolean
-}) => {
+// One sung line as a block: the Japanese, its romaji, then the translation
+const ReaderLine = ({ line, first }: { line: OfflineLine; first: boolean }) => {
   const prefs = useAtomValue(readerPrefsAtom)
   const translation = prefs.language === 'en' ? line.en : line.zh
   const source = prefs.japanese || (prefs.romaji && line.romaji !== '')
@@ -49,7 +40,6 @@ const ReaderLine = ({
     <div
       className={cn(
         'grid gap-y-0.5 pb-reader-line',
-        split && 'landscape:sm:grid-cols-2 landscape:sm:gap-x-12',
         line.stanza && !first && 'pt-reader-stanza'
       )}>
       {source && (
@@ -58,7 +48,7 @@ const ReaderLine = ({
             <p
               lang='ja'
               className={cn(
-                'font-reader-ja text-reader-ja text-(--reader-accent)',
+                'font-reader text-reader-ja text-(--reader-accent)',
                 prefs.bold ? 'font-bold' : 'font-normal'
               )}>
               <RubyText segments={line.ruby} />
@@ -79,8 +69,8 @@ const ReaderLine = ({
         <p
           lang={prefs.language}
           className={cn(
-            'font-reader-serif text-reader-translation',
-            source && 'pt-1 landscape:sm:pt-0',
+            'font-reader text-reader-translation',
+            source && 'pt-0.5',
             prefs.bold ? 'font-semibold' : 'font-normal'
           )}>
           {translation}
@@ -223,7 +213,6 @@ const ReaderPage = () => {
     }
   }
 
-  const split = (prefs.japanese || prefs.romaji) && prefs.translation
   const typeOpen = panel === 'type' && barsShown
   const readerVars: CssVars = {
     '--reader-accent':
@@ -262,20 +251,14 @@ const ReaderPage = () => {
           // oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions -- a tap anywhere toggles the bars; every control is also a button in them
           <article
             onClick={onPageTap}
-            className={cn(
-              'mx-auto max-w-2xl px-6 sm:px-8',
-              split && 'landscape:sm:max-w-5xl'
-            )}>
-            <header className='pt-4 pb-10 text-center'>
-              <h1 className='font-reader-serif text-reader-title font-semibold text-balance'>
-                {song.title}
-              </h1>
+            className='mx-auto max-w-xl px-5 font-reader'>
+            <header className='pb-5'>
+              <h1 className='text-reader-title font-semibold'>{song.title}</h1>
               {song.author !== '' && (
-                <p className='mt-2 text-xs font-medium tracking-widest text-(--reader-muted) uppercase'>
+                <p className='pt-0.5 text-xs text-(--reader-muted)'>
                   {song.author}
                 </p>
               )}
-              <div className='mx-auto mt-7 h-px w-16 bg-(--reader-line-strong)' />
             </header>
             {song.lines.map((line, index) => (
               <ReaderLine
@@ -284,7 +267,6 @@ const ReaderPage = () => {
                 key={index}
                 line={line}
                 first={index === 0}
-                split={split}
               />
             ))}
           </article>
