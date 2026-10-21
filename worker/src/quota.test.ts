@@ -60,6 +60,7 @@ beforeEach(() => {
     '0001_auth.sql',
     '0002_generation.sql',
     '0003_guest_generations.sql',
+    '0004_hourly_user_limit.sql',
   ]) {
     sqlite.run(
       readFileSync(`${import.meta.dir}/../migrations/${file}`, 'utf-8')
@@ -81,7 +82,7 @@ test('the daily limit holds and a reconnect is free', async () => {
   expect(await reserve('r3')).toEqual({
     limit: 2,
     outcome: 'quota_exceeded',
-    resetsAt: '2026-10-22T00:00:00.000Z',
+    resetsAt: '2026-10-21T11:00:00.000Z',
   })
   expect(await getQuota(db, 'u1', LIMITS, now)).toMatchObject({
     limit: 2,
@@ -149,23 +150,22 @@ test('a guest gets one song a day, and all guests together stop at the shared ca
   expect(await reserve('g1')).toEqual({ outcome: 'forbidden' })
 })
 
-test('signed-in users can have no daily limit while guests keep theirs', async () => {
-  const open = { ...LIMITS, user: null }
-  const outcomes = await Promise.all(
-    ['r1', 'r2', 'r3'].map(
-      async (id) =>
-        await reserveGeneration(
-          db,
-          { id, kind: 'new', owner: { id: 'u1', kind: 'user' }, videoId: 'v' },
-          open,
-          now
-        )
+test("a user's limit is per rolling hour", async () => {
+  await reserve('r1')
+  await reserve('r2')
+  expect(await reserve('r3')).toMatchObject({ outcome: 'quota_exceeded' })
+  const later = new Date(now.getTime() + 3_600_001)
+  expect(
+    await reserveGeneration(
+      db,
+      {
+        id: 'r3',
+        kind: 'new',
+        owner: { id: 'u1', kind: 'user' },
+        videoId: 'v',
+      },
+      LIMITS,
+      later
     )
-  )
-  expect(outcomes.map((r) => r.outcome)).toEqual([
-    'reserved',
-    'reserved',
-    'reserved',
-  ])
-  expect(await getQuota(db, 'u1', open, now)).toMatchObject({ limit: null })
+  ).toEqual({ outcome: 'reserved' })
 })

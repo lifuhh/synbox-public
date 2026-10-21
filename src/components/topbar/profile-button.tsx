@@ -71,12 +71,12 @@ const IosInstallDialog = ({
 
 const quotaText = ({ limit, used }: Quota) => {
   if (limit === null) {
-    return 'No daily song limit'
+    return 'No song limit'
   }
   if (limit === 0) {
     return 'Generating songs is invite-only for now'
   }
-  return `${Math.max(limit - used, 0)} of ${limit} new songs left today`
+  return `${Math.max(limit - used, 0)} of ${limit} new songs left this hour`
 }
 
 const ProfileButtonDropdown = () => {

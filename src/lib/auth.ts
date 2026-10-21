@@ -127,7 +127,7 @@ export const SIGN_IN_CODES = new Set([
 export const noSongReason = (quota: Quota) =>
   quota.limit === 0
     ? 'Generating songs is invite-only for now.'
-    : `You've generated all ${quota.limit} of today's songs. More at ${new Date(quota.resetsAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}.`
+    : `You've generated ${quota.limit} songs in the last hour. More at ${new Date(quota.resetsAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}.`
 
 export const signInWithGoogle = async () =>
   await authClient.signIn.social({

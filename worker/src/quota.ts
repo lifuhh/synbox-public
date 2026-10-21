@@ -7,8 +7,8 @@ export type Owner =
   | { kind: 'guest'; key: string }
 
 export interface Limits {
-  // Per signed-in user per day (null: no limit), unless an admin set an override
-  user: number | null
+  // Per signed-in user in any rolling hour, unless an admin set an override; admins have none
+  user: number
   // Per guest per day, and for all guests together
   guest: number
   guestTotal: number
@@ -35,7 +35,7 @@ export type Reservation =
 interface UserRow {
   role: string | null
   banned: number | null
-  dailyLimit: number | null
+  hourlyLimit: number | null
 }
 
 interface GenerationRow {
@@ -47,37 +47,55 @@ interface GenerationRow {
 
 const utcDay = (now: Date) => now.toISOString().slice(0, 10)
 
-const nextUtcMidnight = (now: Date) =>
-  new Date(
-    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1)
-  ).toISOString()
+const HOUR_MS = 3_600_000
 
 const readUser = async (db: D1Database, userId: string) =>
   await db
     .prepare(
-      `select u."role", u."banned", q."dailyLimit" from "user" u
+      `select u."role", u."banned", q."hourlyLimit" from "user" u
        left join "quotaOverride" q on q."userId" = u."id" where u."id" = ?1`
     )
     .bind(userId)
     .first<UserRow>()
 
-const limitFor = (user: UserRow, defaultLimit: number | null) =>
-  user.role === 'admin' ? null : (user.dailyLimit ?? defaultLimit)
+const limitFor = (user: UserRow, defaultLimit: number) =>
+  user.role === 'admin' ? null : (user.hourlyLimit ?? defaultLimit)
 
-// The column and value a generation is owned by. The column name is one of two literals, never input
+// What a generation is owned by, and which of its songs count: a user's in the last hour, a guest's today.
+// The SQL is one of two literals, never input. ?2 owner, ?5 today, ?9 an hour ago
 const ownerOf = (owner: Owner) =>
   owner.kind === 'user'
-    ? { column: '"userId"', value: owner.id }
-    : { column: '"guestKey"', value: owner.key }
+    ? {
+        column: '"userId"',
+        counted: `"userId" = ?2 and "createdAt" > ?9`,
+        value: owner.id,
+      }
+    : {
+        column: '"guestKey"',
+        counted: `"guestKey" = ?2 and "utcDay" = ?5`,
+        value: owner.key,
+      }
 
-// Failed generations never count. ?2 owner, ?5 day, ?7 the owner's limit (null: none), ?8 the cap on all
-// guests together (null: not a guest)
+// Failed generations never count. ?7 the owner's limit (null: none), ?8 the cap on all guests together
+// (null: not a guest)
 const slotFree = (
-  column: string
+  counted: string
 ) => `(?7 is null or (select count(*) from "generation"
-    where ${column} = ?2 and "utcDay" = ?5 and "status" <> 'failed') < ?7)
+    where ${counted} and "status" <> 'failed') < ?7)
   and (?8 is null or (select count(*) from "generation"
     where "guestKey" is not null and "utcDay" = ?5 and "status" <> 'failed') < ?8)`
+
+// When the oldest song counted in the user's last hour drops out of it
+const userResetsAt = async (db: D1Database, userId: string, now: Date) => {
+  const oldest = await db
+    .prepare(
+      `select min("createdAt") as "oldest" from "generation"
+       where "userId" = ?1 and "createdAt" > ?2 and "status" <> 'failed'`
+    )
+    .bind(userId, now.getTime() - HOUR_MS)
+    .first<number | null>('oldest')
+  return new Date((oldest ?? now.getTime()) + HOUR_MS).toISOString()
+}
 
 export const getQuota = async (
   db: D1Database,
@@ -88,13 +106,13 @@ export const getQuota = async (
   const user = await readUser(db, userId)
   const used = await db
     .prepare(
-      `select count(*) from "generation" where "userId" = ?1 and "utcDay" = ?2 and "status" <> 'failed'`
+      `select count(*) from "generation" where "userId" = ?1 and "createdAt" > ?2 and "status" <> 'failed'`
     )
-    .bind(userId, utcDay(now))
+    .bind(userId, now.getTime() - HOUR_MS)
     .first<number>('count(*)')
   return {
     limit: user ? limitFor(user, limits.user) : 0,
-    resetsAt: nextUtcMidnight(now),
+    resetsAt: await userResetsAt(db, userId, now),
     used: used ?? 0,
   }
 }
@@ -127,7 +145,7 @@ const refusal = async (
     return {
       limit: limit ?? 0,
       outcome: 'quota_exceeded',
-      resetsAt: nextUtcMidnight(now),
+      resetsAt: await userResetsAt(db, owner.id, now),
     }
   }
   const mine = await db
@@ -159,7 +177,7 @@ export const reserveGeneration = async (
   if (own === null) {
     return { outcome: 'forbidden' }
   }
-  const { column, value } = ownerOf(request.owner)
+  const { column, counted, value } = ownerOf(request.owner)
   const day = utcDay(now)
   const bindings = [
     request.id,
@@ -170,12 +188,14 @@ export const reserveGeneration = async (
     now.getTime(),
     own.limit,
     own.cap,
+    // ?9, an hour ago: only a user's count reads it, and SQLite refuses a value no placeholder takes
+    ...(request.owner.kind === 'user' ? [now.getTime() - HOUR_MS] : []),
   ]
   // One statement, so two concurrent requests can't both take the last slot (D1 runs writes one at a time)
   const { meta } = await db
     .prepare(
       `insert into "generation" ("id", ${column}, "videoId", "kind", "status", "utcDay", "createdAt")
-       select ?1, ?2, ?3, ?4, 'reserved', ?5, ?6 where ${slotFree(column)}
+       select ?1, ?2, ?3, ?4, 'reserved', ?5, ?6 where ${slotFree(counted)}
        on conflict ("id") do nothing`
     )
     .bind(...bindings)
@@ -208,7 +228,7 @@ export const reserveGeneration = async (
   const retried = await db
     .prepare(
       `update "generation" set "status" = 'reserved', "errorCode" = null, "finishedAt" = null
-       where "id" = ?1 and "status" = 'failed' and ${slotFree(column)}`
+       where "id" = ?1 and "status" = 'failed' and ${slotFree(counted)}`
     )
     .bind(...bindings)
     .run()

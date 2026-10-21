@@ -6,7 +6,7 @@ import { finishGeneration, getQuota, reserveGeneration } from './quota'
 import type { FinishedStatus, GenerationKind, Limits, Owner } from './quota'
 
 type AppEnv = Env & {
-  USER_DAILY_LIMIT: string
+  USER_HOURLY_LIMIT: string
   GUEST_DAILY_LIMIT: string
   GUEST_DAILY_TOTAL: string
 }
@@ -22,8 +22,7 @@ const count = (value: string | undefined) => {
 const limitsOf = (env: AppEnv): Limits => ({
   guest: count(env.GUEST_DAILY_LIMIT),
   guestTotal: count(env.GUEST_DAILY_TOTAL),
-  user:
-    env.USER_DAILY_LIMIT === 'unlimited' ? null : count(env.USER_DAILY_LIMIT),
+  user: count(env.USER_HOURLY_LIMIT),
 })
 
 app.on(
