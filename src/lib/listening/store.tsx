@@ -129,18 +129,26 @@ export const useListening = () => {
     })
   }
 
-  // Starts a playlist at one of its songs; the songs after it become the queue
-  const playPlaylist = (id: string, index = 0) => {
+  // Lines a playlist up from one of its songs: the songs after it become the queue. For a link that opens
+  // that song itself
+  const queuePlaylistFrom = (id: string, index: number) => {
     const list = store.get(playlistsAtom).find((saved) => saved.id === id)
-    if (list === undefined || list.songs.length === 0) {
-      return
+    if (list === undefined || index >= list.songs.length) {
+      return null
     }
     const play = playFrom(list, index)
     setQueue(play.queue)
     setSource(play.source)
-    void navigate(songPath(play.song.videoId), {
-      state: { videoId: play.song.videoId },
-    })
+    return play.song
+  }
+  // Plays a playlist from one of its songs
+  const playPlaylist = (id: string, index = 0) => {
+    const song = queuePlaylistFrom(id, index)
+    if (song !== null) {
+      void navigate(songPath(song.videoId), {
+        state: { videoId: song.videoId },
+      })
+    }
   }
 
   return {
@@ -153,6 +161,7 @@ export const useListening = () => {
     moveInQueue,
     playNext,
     playPlaylist,
+    queuePlaylistFrom,
     removeFromPlaylist,
     removeFromQueue,
     renamePlaylist,
