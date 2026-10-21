@@ -8,10 +8,9 @@ import { useArmed } from '@/hooks/use-armed'
 import { cn } from '@/utils/cn'
 
 import AppLogo from '../topbar/app-logo'
-import FavouritesDropdownButton from '../topbar/favourites-dropdown-button'
-import HistoryDropdownButton from '../topbar/history-dropdown-button'
 import LyricsButton from '../topbar/lyrics-button'
 import ProfileButton from '../topbar/profile-button'
+import SavedMenu from '../topbar/saved-menu'
 
 // Within this many pixels of the top a page counts as unscrolled
 const TOP_SLACK_PX = 8
@@ -131,8 +130,7 @@ const TopBar = () => {
             className='contents'
           />
           <LyricsButton />
-          <FavouritesDropdownButton />
-          <HistoryDropdownButton />
+          <SavedMenu />
           {!isVideoPlayer && <ProfileButton />}
         </div>
       </nav>
