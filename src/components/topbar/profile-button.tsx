@@ -34,6 +34,7 @@ import { forgetMySongs } from '@/lib/offline/sync'
 import { useInstallMethod } from '@/lib/pwa'
 import { QUERY_KEYS } from '@/lib/react-query/query-keys'
 import { handleRedirect } from '@/utils'
+import { cn } from '@/utils/cn'
 
 import { GitHubIcon } from '../svgicons'
 import { Button } from '../ui/button'
@@ -72,6 +73,47 @@ const IosInstallDialog = ({
   </Dialog>
 )
 
+// Pictures this page has already shown, so a remounted top bar shows them at once instead of fading in again
+const loadedAvatars = new Set<string>()
+
+// The person icon stays until the picture has fully loaded, then the two crossfade; signing out fades back
+const Avatar = ({ src }: { src: string | null }) => {
+  const [lastSrc, setLastSrc] = useState(src)
+  const [loaded, setLoaded] = useState(src !== null && loadedAvatars.has(src))
+  if (src !== null && src !== lastSrc) {
+    setLastSrc(src)
+    setLoaded(loadedAvatars.has(src))
+  }
+  const shown = src !== null && loaded
+
+  return (
+    <span className='relative grid size-full place-items-center'>
+      <UserIcon
+        className={cn(
+          'size-6 shrink-0 fill-current transition-opacity duration-300 motion-reduce:transition-none',
+          shown && 'opacity-0'
+        )}
+      />
+      {lastSrc !== null && (
+        <img
+          key={lastSrc}
+          src={lastSrc}
+          alt=''
+          referrerPolicy='no-referrer'
+          onLoad={() => {
+            loadedAvatars.add(lastSrc)
+            setLoaded(true)
+          }}
+          className={cn(
+            'absolute inset-0 size-full rounded-md object-cover transition-opacity duration-300 motion-reduce:transition-none',
+            !shown && 'opacity-0'
+          )}
+        />
+      )}
+    </span>
+  )
+}
+
 const quotaText = ({ limit, used }: Quota) => {
   if (limit === null) {
     return 'No song limit'
@@ -105,16 +147,7 @@ const ProfileButtonDropdown = () => {
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant='outline-primary' size='icon'>
-            {user !== null && user.image !== null && user.image !== '' ? (
-              <img
-                src={user.image}
-                alt=''
-                referrerPolicy='no-referrer'
-                className='size-full rounded-md object-cover'
-              />
-            ) : (
-              <UserIcon className='size-6 shrink-0 fill-current' />
-            )}
+            <Avatar src={user?.image === '' ? null : (user?.image ?? null)} />
             <span className='sr-only'>Toggle Profile</span>
           </Button>
         </DropdownMenuTrigger>
