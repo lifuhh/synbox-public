@@ -8,6 +8,7 @@ import {
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router'
 
+import { startFromButton } from '@/components/generation/start-generation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -17,7 +18,6 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { noSongReason, signInWithGoogle, useAccess } from '@/lib/auth'
-import { startGeneration } from '@/lib/generation/store'
 import { useGetLyricsBySongId } from '@/lib/react-query/queries-and-mutations'
 import { YouTubeUrlOrIdValidation } from '@/lib/validation'
 import { extractVideoId } from '@/utils'
@@ -66,6 +66,8 @@ const HeroGenerateLyricsDefault = ({
   const [inputValue, setInputValue] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
   const [validationSuccess, setValidationSuccess] = useState(false)
+  // Asking the backend whether it would take the song, before the panel opens
+  const [checking, setChecking] = useState(false)
   // A tooltip only opens on hover or keyboard focus, so a tap toggles it too
   const [infoOpen, setInfoOpen] = useState(false)
   const navigate = useNavigate()
@@ -143,7 +145,11 @@ const HeroGenerateLyricsDefault = ({
       } else if (blocked) {
         void signInWithGoogle()
       } else {
-        startGeneration({ mode: 'new', videoId: extractedVideoId })
+        setChecking(true)
+        void (async () => {
+          await startFromButton({ mode: 'new', videoId: extractedVideoId })
+          setChecking(false)
+        })()
       }
     }
   }
@@ -173,6 +179,9 @@ const HeroGenerateLyricsDefault = ({
     if (isCheckingLyrics) {
       return 'Searching ...'
     }
+    if (checking) {
+      return 'Checking ...'
+    }
     if (blocked) {
       return 'Sign In to Generate'
     }
@@ -183,7 +192,7 @@ const HeroGenerateLyricsDefault = ({
     if (isSearch) {
       return <SearchIcon className='size-6 shrink-0' />
     }
-    if (isCheckingLyrics) {
+    if (isCheckingLyrics || checking) {
       return ''
     }
     if (blocked) {
@@ -243,7 +252,7 @@ const HeroGenerateLyricsDefault = ({
                 }
                 handleOpenLandingPageDialog()
               }}
-              disabled={errorMessage !== '' || isCheckingLyrics}
+              disabled={errorMessage !== '' || isCheckingLyrics || checking}
               variant='hero'
               size='tall'
               gap='md'

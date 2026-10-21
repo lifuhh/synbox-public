@@ -2,6 +2,7 @@ import type { UseQueryResult } from '@tanstack/react-query'
 import { LogInIcon, SearchIcon } from 'lucide-react'
 import { useNavigate, useSearchParams } from 'react-router'
 
+import { startFromButton } from '@/components/generation/start-generation'
 import {
   LibrarySongCard,
   VideoResultCard,
@@ -11,7 +12,6 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { noSongReason, signInWithGoogle, useAccess } from '@/lib/auth'
-import { startGeneration } from '@/lib/generation/store'
 import {
   useGetSimilarSongs,
   useSearchLibrary,
@@ -343,7 +343,7 @@ const SearchPage = () => {
     if (result.processed) {
       handlePlay(result.video_id)
     } else {
-      startGeneration({
+      void startFromButton({
         mode: 'new',
         title: result.title,
         videoId: result.video_id,

@@ -15,8 +15,19 @@ import {
   reportFraction,
   startPhase,
 } from './progress'
-import type { ProgressEvent, SaveOutcome, VideoSummary } from './stream'
-import { GenerationError, transcribe, translate, validate } from './stream'
+import type {
+  ProgressEvent,
+  Refusal,
+  SaveOutcome,
+  VideoSummary,
+} from './stream'
+import {
+  checkGeneration,
+  GenerationError,
+  transcribe,
+  translate,
+  validate,
+} from './stream'
 
 export type GenerationMode = 'new' | 'regenerate'
 
@@ -331,6 +342,24 @@ export const startGeneration = (request: GenerationRequest): boolean => {
   set({ expanded: true, focusedId: job.id, jobs: [...kept, job] })
   pump()
   return true
+}
+
+// What a button calls: asks the backend first, so a refused song never opens the panel. Resolves to the
+// refusal, or null once the generation started (or its running job was opened)
+export const requestGeneration = async (
+  request: GenerationRequest
+): Promise<Refusal | null> => {
+  const running = state.jobs.some(
+    (job) => isActive(job) && job.videoId === request.videoId
+  )
+  if (!running) {
+    const refusal = await checkGeneration(request.videoId, request.mode)
+    if (refusal !== null) {
+      return refusal
+    }
+  }
+  startGeneration(request)
+  return null
 }
 
 const newest = (jobs: readonly Job[]) => jobs.at(-1)?.id ?? null
