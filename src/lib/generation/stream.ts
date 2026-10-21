@@ -45,6 +45,11 @@ interface StreamMessage {
   data: unknown
 }
 
+const handedOff = () =>
+  new GenerationError('The lyrics server handed the stream over', {
+    handoff: true,
+  })
+
 const stale = () =>
   new GenerationError('Reconnecting to the lyrics server', { resumed: true })
 
@@ -128,6 +133,8 @@ const readStream = async (
       throw new GenerationError('This browser cannot read the stream')
     }
 
+    // A backend that keeps streams short ends a long one with {"type": "resume"} while the job runs on
+    let resumeAsked = false
     const handleLine = (line: string) => {
       if (line.trim() === '') {
         return
@@ -146,6 +153,9 @@ const readStream = async (
         throw new GenerationError(String(content.data), {
           code: typeof content.code === 'string' ? content.code : undefined,
         })
+      }
+      if (content.type === 'resume') {
+        resumeAsked = true
       }
       onMessage({ data: content.data, type: content.type })
     }
@@ -183,6 +193,9 @@ const readStream = async (
       )
     }
     handleLine(buffer)
+    if (resumeAsked) {
+      throw handedOff()
+    }
   } finally {
     clearTimeout(idleTimer)
     document.removeEventListener('visibilitychange', pauseIdle)
@@ -239,6 +252,8 @@ const generationFields = (videoId: string, options: GenerationOptions) => ({
   id: videoId,
   regenerate: options.regenerate,
   request_id: options.requestId,
+  // This client sends the same request again when a stream ends with {"type": "resume"}
+  resume: true,
   skip_uploader_lyrics: options.skipUploaderLyrics,
 })
 
@@ -396,7 +411,7 @@ export const translate = async (
   const progress = forwardProgress(listeners)
   await readStream(
     '/translate-annotate',
-    { id: videoId, request_id: requestId },
+    { id: videoId, request_id: requestId, resume: true },
     signal,
     JOB_IDLE_MS,
     (message) => {

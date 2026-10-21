@@ -218,6 +218,13 @@ const runPhase = async <T>(
       if (!(error instanceof GenerationError) || signal.aborted) {
         throw error
       }
+      // Asked again at once, or when the page is back on screen. The replay repeats the job's progress
+      // from the start, which only ever raises what the panel shows
+      if (error.handoff) {
+        // oxlint-disable-next-line eslint/no-await-in-loop -- the next stream waits for the page to be on screen
+        await untilVisible(signal)
+        continue
+      }
       // Before the backend was ever heard there is no job of ours to lose: a few retries, as for any failure
       if (error.lost && heardAt.has(id)) {
         const now = Date.now()
