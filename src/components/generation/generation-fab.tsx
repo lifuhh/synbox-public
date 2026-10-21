@@ -16,24 +16,29 @@ import {
 } from './surface'
 import type { Presentation } from './use-presentation'
 
-const STROKE = 3
-// The corner button, and the one docked in the top bar beside its 40 px icons
-const CORNER_SIZE = 52
-const DOCK_SIZE = 40
-
-// The ring runs along the button's edge, and the dot at its tip is r from the centre, 2 px to its corner.
-// The sizes are set as classes: --fab-size, --fab-dot-x and --fab-dot-y
-const ringOf = (size: number, sizes: string) => {
-  const r = (size - STROKE) / 2
-  return { c: 2 * Math.PI * r, r, size, sizes }
+// The corner button's ring runs along its 52 px edge. Docked in the top bar, a 28 px ring sits in the same
+// 40 px box as the icons beside it, as light as their 24 px glyphs. The dot at the ring's tip is r from the
+// centre (its box's corner 2 px off); --fab-size, --fab-dot-x and --fab-dot-y are set as classes
+const ringOf = (
+  size: number,
+  diameter: number,
+  stroke: number,
+  sizes: string
+) => {
+  const r = (diameter - stroke) / 2
+  return { c: 2 * Math.PI * r, r, size, sizes, stroke }
 }
 const CORNER = ringOf(
-  CORNER_SIZE,
+  52,
+  52,
+  3,
   '[--fab-dot-x:48.5px] [--fab-dot-y:24px] [--fab-size:52px]'
 )
 const DOCK = ringOf(
-  DOCK_SIZE,
-  '[--fab-dot-x:36.5px] [--fab-dot-y:18px] [--fab-size:40px]'
+  40,
+  28,
+  2,
+  '[--fab-dot-x:31px] [--fab-dot-y:18px] [--fab-size:40px]'
 )
 // Trims the line box to the digits' cap height, so they center on the ring rather than on the font's box
 const CAP_CENTERED = '[text-box:trim-both_cap_alphabetic] leading-none'
@@ -118,7 +123,10 @@ const GenerationFab = ({
           transition={{ damping: 12, stiffness: 300, type: 'spring' }}>
           {/* Lucide's check sits half a pixel high in its box */}
           <Check
-            className='size-5 translate-y-[0.5px]'
+            className={cn(
+              'translate-y-[0.5px]',
+              docked ? 'size-3.5' : 'size-5'
+            )}
             strokeWidth={3}
             aria-hidden
           />
@@ -130,7 +138,8 @@ const GenerationFab = ({
         <motion.span
           key='failed'
           className={cn(
-            'col-start-1 row-start-1 text-lg font-bold text-error',
+            'col-start-1 row-start-1 font-bold text-error',
+            docked ? 'text-caption' : 'text-lg',
             CAP_CENTERED
           )}
           initial={{ opacity: 0 }}
@@ -147,7 +156,7 @@ const GenerationFab = ({
           'col-start-1 row-start-1 font-semibold text-white tabular-nums',
           CAP_CENTERED,
           // Measured: at 15 px the digits land half a pixel above the ring's center
-          docked && (percent === 100 ? 'text-badge' : 'text-xs'),
+          docked && 'text-badge',
           !docked &&
             (percent === 100
               ? 'text-caption'
@@ -159,8 +168,10 @@ const GenerationFab = ({
   }
   const ref = useRef<HTMLButtonElement>(null)
   useEffect(() => {
-    ref.current?.focus({ preventScroll: true })
-  }, [])
+    // Focus comes back here from the panel. On a phone it follows a tap, and WebKit would still draw the
+    // keyboard ring around it, the loudest thing in the top bar; the next Tab press shows it
+    ref.current?.focus({ focusVisible: !docked, preventScroll: true })
+  }, [docked])
 
   // The ring is drawn from 12 o'clock, so the dot's turn starts there too
   const turnVars: CssVars = {
@@ -179,7 +190,7 @@ const GenerationFab = ({
         'group size-(--fab-size) rounded-full text-left outline-none',
         ring.sizes,
         docked
-          ? 'pointer-events-auto relative shrink-0 bg-generation-surface/80 focus-visible:ring-2 focus-visible:ring-brand-light'
+          ? 'pointer-events-auto relative shrink-0 focus-visible:ring-2 focus-visible:ring-brand-light'
           : cn(
               surfacePlacement(raised),
               'fixed z-50 origin-bottom-right drop-shadow-fab'
@@ -228,7 +239,7 @@ const GenerationFab = ({
             cy={ring.size / 2}
             r={ring.r}
             fill='none'
-            strokeWidth={STROKE}
+            strokeWidth={ring.stroke}
             className='stroke-white/10'
           />
           <circle
@@ -236,7 +247,7 @@ const GenerationFab = ({
             cy={ring.size / 2}
             r={ring.r}
             fill='none'
-            strokeWidth={STROKE}
+            strokeWidth={ring.stroke}
             strokeLinecap='round'
             stroke={state === 'failed' ? 'rgb(248 113 113)' : 'url(#fab-ring)'}
             strokeDasharray={ring.c}
@@ -258,7 +269,12 @@ const GenerationFab = ({
         {count > 1 && (
           <span
             aria-hidden
-            className='absolute -top-1 -right-1 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-brand-light px-1 text-badge leading-none font-semibold text-generation-surface tabular-nums'>
+            className={cn(
+              'absolute grid place-items-center rounded-full bg-brand-light leading-none font-semibold text-generation-surface tabular-nums',
+              docked
+                ? 'top-1 right-1 h-3.5 min-w-3.5 px-0.5 text-micro'
+                : '-top-1 -right-1 h-[18px] min-w-[18px] px-1 text-badge'
+            )}>
             {count}
           </span>
         )}

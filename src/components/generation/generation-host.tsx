@@ -16,6 +16,7 @@ import {
 } from '@/lib/generation/store'
 import { QUERY_KEYS } from '@/lib/react-query/query-keys'
 
+import { useGenerationDock } from './dock'
 import GenerationFab from './generation-fab'
 import GenerationPanel from './generation-panel'
 import type { PanelExit } from './surface'
@@ -67,9 +68,8 @@ const GenerationHost = () => {
   // On a phone the corner sits over the player's lyrics and controls and the lists' play buttons, so the
   // minimized job docks into the top bar instead (top-bar.tsx), one tap from its panel as before
   const touch = useMediaQuery('(pointer: coarse)')
-  const dock = touch
-    ? document.querySelector<HTMLElement>('[data-generation-dock]')
-    : null
+  const slot = useGenerationDock()
+  const dock = touch ? slot : null
   const docked = dock !== null
 
   // How the panel leaves next time. Set before collapsing, and back to quick each time it opens.
