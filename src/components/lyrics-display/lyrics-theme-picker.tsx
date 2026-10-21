@@ -1,4 +1,4 @@
-import { useAtom, useAtomValue, useSetAtom } from 'jotai'
+import { useAtom } from 'jotai'
 import { CheckIcon, PaletteIcon } from 'lucide-react'
 import type { CSSProperties, RefObject } from 'react'
 import { useId, useRef } from 'react'
@@ -12,17 +12,13 @@ import {
 } from '@/components/ui/popover'
 import { Slider } from '@/components/ui/slider'
 import {
-  applySongLyricsStyleToAllAtom,
   fontSizeMultiplierAtom,
   lyricsBackdropAtom,
   lyricsCustomHueAtom,
   lyricsStylePanelAtom,
-  lyricsStyleSourceAtom,
   lyricsThemeIdAtom,
   lyricsTwoLinesAtom,
-  resetSongLyricsStyleAtom,
 } from '@/context/atoms'
-import type { LyricsStyleSource } from '@/context/atoms'
 import { useMediaQuery, usePortrait } from '@/hooks/use-media-query'
 import type { LyricsThemeColors } from '@/lib/lyrics-themes'
 import {
@@ -33,6 +29,11 @@ import {
 import type { CssVars } from '@/types'
 import { cn } from '@/utils/cn'
 
+import {
+  LyricsStyleScopeSection,
+  MyStyles,
+  ScreenSizeTweak,
+} from './lyrics-style-scope'
 import { RailButton, RailTooltip } from './rail-button'
 
 const HALF_FILLED: CSSProperties & Record<'--p', number> = { '--p': 0.5 }
@@ -136,12 +137,6 @@ const TwoLinesSwitch = ({ portrait }: { portrait: boolean }) => {
   )
 }
 
-const SOURCE_NOTES: Record<LyricsStyleSource, string> = {
-  default: 'This song uses your default style.',
-  shared: 'Showing the style this link was shared with.',
-  song: 'Style and position are saved for this song.',
-}
-
 // A discrete pick (a preset colour, a backdrop) applies and closes, like a menu. Size and the custom hue
 // are adjusted by dragging and previewed live, so those keep the panel open until Done, Escape or a click
 // outside. The panel centers on the rail (`anchorRef`) rather than on its button. With a mouse, resting on
@@ -169,10 +164,6 @@ export const LyricsThemePicker = ({
   const [themeId, setThemeId] = useAtom(lyricsThemeIdAtom)
   const [customHue, setCustomHue] = useAtom(lyricsCustomHueAtom)
   const [backdrop, setBackdrop] = useAtom(lyricsBackdropAtom)
-  const source = useAtomValue(lyricsStyleSourceAtom)
-  const ownStyle = source === 'shared' || source === 'song'
-  const resetSongStyle = useSetAtom(resetSongLyricsStyleAtom)
-  const applyToAll = useSetAtom(applySongLyricsStyleToAllAtom)
 
   const activeBackdrop = LYRICS_BACKDROPS.find((b) => b.id === backdrop)
 
@@ -183,16 +174,9 @@ export const LyricsThemePicker = ({
   )
   const body = (
     <div className='flex flex-col gap-4 p-4 unhighlightable'>
-      <div className='flex items-center justify-between touch:pr-10'>
-        {heading}
-        <button
-          type='button'
-          onClick={resetSongStyle}
-          disabled={!ownStyle}
-          className='-my-2 py-2 text-xs text-muted-foreground transition-colors hover:text-foreground disabled:pointer-events-none disabled:opacity-0 touch:text-sm'>
-          Reset
-        </button>
-      </div>
+      <div className='flex items-center touch:pr-10'>{heading}</div>
+
+      <LyricsStyleScopeSection />
 
       <section className='flex flex-col gap-2'>
         <h3 className='text-xs font-medium tracking-wide text-muted-foreground uppercase'>
@@ -223,6 +207,7 @@ export const LyricsThemePicker = ({
             A
           </span>
         </div>
+        <ScreenSizeTweak />
       </section>
 
       <TwoLinesSwitch portrait={portrait} />
@@ -322,20 +307,7 @@ export const LyricsThemePicker = ({
         <p className='text-xs text-muted-foreground'>{activeBackdrop?.hint}</p>
       </section>
 
-      {source !== null && (
-        <section className='flex items-center justify-between gap-3 pt-3'>
-          <p className='text-xs text-muted-foreground'>
-            {SOURCE_NOTES[source]}
-          </p>
-          <button
-            type='button'
-            onClick={applyToAll}
-            disabled={!ownStyle}
-            className='-my-2 shrink-0 py-2 text-xs font-medium text-primary-text transition-colors hover:text-foreground disabled:pointer-events-none disabled:opacity-0 touch:text-sm'>
-            Use For All Songs
-          </button>
-        </section>
-      )}
+      <MyStyles onApplied={close} />
     </div>
   )
 

@@ -10,6 +10,7 @@ import {
   fontSizeMultiplierAtom,
   lyricsBackdropAtom,
   lyricsCustomHueAtom,
+  lyricsScreenSizesAtom,
   lyricsThemeIdAtom,
   lyricsTwoLinesAtom,
   lyricsVisibilityAtom,
@@ -17,7 +18,7 @@ import {
   translationIsEnglishAtom,
   translationVisibilityAtom,
 } from '@/context/atoms'
-import { usePortrait } from '@/hooks/use-media-query'
+import { useLyricsSurface } from '@/hooks/use-media-query'
 import { balanceWrap } from '@/lib/balance-wrap'
 import { parseRubyHtml } from '@/lib/furigana'
 import type { PlaybackClock, TwoLineView } from '@/lib/karaoke'
@@ -225,14 +226,17 @@ export const StageLyrics = ({
   const showRomaji = useAtomValue(romajiVisibilityAtom)
   const showTranslation = useAtomValue(translationVisibilityAtom)
   const english = useAtomValue(translationIsEnglishAtom)
-  const scale = useAtomValue(fontSizeMultiplierAtom)
+  // One size for every screen, times this screen's own optional tweak
+  const surface = useLyricsSurface()
+  const scale =
+    useAtomValue(fontSizeMultiplierAtom) *
+    useAtomValue(lyricsScreenSizesAtom)[surface]
   const backdrop = useAtomValue(lyricsBackdropAtom)
   const themeId = useAtomValue(lyricsThemeIdAtom)
   const hue = useAtomValue(lyricsCustomHueAtom)
   // Upright, a phone's lines wrap at its narrow width and the band under the video also holds the controls,
   // so two lines (each with its romaji and translation) would crowd it: one line there
-  const portrait = usePortrait()
-  const twoLines = useAtomValue(lyricsTwoLinesAtom) && !portrait
+  const twoLines = useAtomValue(lyricsTwoLinesAtom) && surface !== 'portrait'
   const colors = useMemo(
     () => getLyricsThemeColors(themeId, hue),
     [themeId, hue]
