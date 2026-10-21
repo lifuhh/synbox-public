@@ -5,13 +5,13 @@ import GenerationHost from '@/components/generation/generation-host'
 import TopBar from '@/components/shared/top-bar'
 
 const RootLayout: React.FC = () => (
-  <div className='relative min-h-dvh w-full'>
+  <div className='relative min-h-(--app-h) w-full'>
     <div
       aria-hidden='true'
       className='pointer-events-none fixed inset-0 -z-10 page-glow'
     />
 
-    <div className='relative h-dvh w-full'>
+    <div className='relative h-(--app-h) w-full'>
       <TopBar />
       <section className='flex h-full flex-1'>
         <Outlet />

@@ -93,7 +93,7 @@ const PlayerPage = () => {
 
   if (error !== null && error !== '') {
     return (
-      <div className='flex h-dvh w-full flex-col items-center justify-center gap-4 px-4 text-center'>
+      <div className='flex h-(--app-h) w-full flex-col items-center justify-center gap-4 px-4 text-center'>
         <p className='text-error-strong'>{error}</p>
         <p className='text-sm text-faint'>Video ID: {videoId}</p>
         <button
@@ -110,7 +110,7 @@ const PlayerPage = () => {
 
   if (isLoading || stageVideoId === null) {
     return (
-      <div className='flex h-dvh w-full items-center justify-center'>
+      <div className='flex h-(--app-h) w-full items-center justify-center'>
         Loading...
       </div>
     )

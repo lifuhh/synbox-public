@@ -162,7 +162,7 @@ const SongGallery = () => {
   const [scroller, setScroller] = useState<HTMLDivElement | null>(null)
 
   return (
-    <section className='relative flex h-[calc(100dvh-var(--topbar-h))] flex-col px-2 sm:px-6'>
+    <section className='relative flex h-[calc(var(--app-h)-var(--topbar-h))] flex-col px-2 sm:px-6'>
       {/* Placeholders fill the box but don't scroll: there is nothing to scroll to yet */}
       <div
         ref={setScroller}
