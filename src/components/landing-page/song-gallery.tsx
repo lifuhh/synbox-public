@@ -7,6 +7,7 @@ import { useMediaQuery } from '@/hooks/use-media-query'
 import type { GallerySong } from '@/lib/appwrite/api'
 import { useGallerySongs } from '@/lib/react-query/queries-and-mutations'
 import type { CssVars } from '@/types'
+import { cn } from '@/utils/cn'
 
 import HomeFooter from '../shared/home-footer'
 
@@ -162,9 +163,13 @@ const SongGallery = () => {
 
   return (
     <section className='relative flex h-[calc(100dvh-var(--topbar-h))] flex-col px-2 sm:px-6'>
+      {/* Placeholders fill the box but don't scroll: there is nothing to scroll to yet */}
       <div
         ref={setScroller}
-        className='custom-scrollbar min-h-0 flex-1 overflow-y-auto px-2'>
+        className={cn(
+          'custom-scrollbar min-h-0 flex-1 px-2',
+          isLoading ? 'overflow-hidden' : 'overflow-y-auto'
+        )}>
         {isLoading ? (
           <output aria-label='Loading gallery' className={`${GRID} py-4`}>
             {Array.from({ length: SKELETON_CARDS }, (_, index) => (
