@@ -2,6 +2,7 @@ import { WandSparklesIcon } from 'lucide-react'
 import { useState } from 'react'
 import { Link } from 'react-router'
 
+import { startFromButton } from '@/components/generation/start-generation'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -9,7 +10,6 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { usePortrait } from '@/hooks/use-media-query'
-import { startGeneration } from '@/lib/generation/store'
 import { useGetLyricsVersions } from '@/lib/react-query/queries-and-mutations'
 import { cn } from '@/utils/cn'
 
@@ -42,13 +42,13 @@ export const LyricsVersionsMenu = ({ videoId }: { videoId: string }) => {
         variant='primary-surface'>
         <DropdownMenuItem
           onSelect={() => {
-            startGeneration({ mode: 'regenerate', videoId })
+            void startFromButton({ mode: 'regenerate', videoId })
           }}>
           Regenerate Lyrics
         </DropdownMenuItem>
         <DropdownMenuItem
           onSelect={() => {
-            startGeneration({
+            void startFromButton({
               mode: 'regenerate',
               skipUploaderLyrics: true,
               videoId,

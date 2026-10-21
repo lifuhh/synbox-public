@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import { useRef } from 'react'
 import { Link } from 'react-router'
 
+import { startFromButton } from '@/components/generation/start-generation'
 import { Button } from '@/components/ui/button'
 import { SIGN_IN_CODES, signInWithGoogle, useAccess } from '@/lib/auth'
 import { overallValue } from '@/lib/generation/progress'
@@ -14,7 +15,6 @@ import {
   isActive,
   retryGeneration,
   setGenerationExpanded,
-  startGeneration,
 } from '@/lib/generation/store'
 import { cn } from '@/utils/cn'
 
@@ -136,7 +136,7 @@ const DoneView = ({ job }: { job: Job }) => {
               type='button'
               className='underline-offset-4 hover:text-white/80 hover:underline'
               onClick={() => {
-                startGeneration({
+                void startFromButton({
                   mode: 'regenerate',
                   skipUploaderLyrics: true,
                   title: titleOf(job),

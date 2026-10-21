@@ -3,6 +3,7 @@ import { ArrowLeftIcon, ChevronDownIcon, PlayIcon } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useParams } from 'react-router'
 
+import { startFromButton } from '@/components/generation/start-generation'
 import Forbidden from '@/components/shared/forbidden'
 import { Button } from '@/components/ui/button'
 import {
@@ -21,7 +22,6 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useAccess } from '@/lib/auth'
-import { startGeneration } from '@/lib/generation/store'
 import {
   useActivateLyricsVersion,
   useGetLyricsVersions,
@@ -275,7 +275,7 @@ const VersionsAdmin = ({ videoId }: { videoId: string }) => {
   const versions = data ? data.versions.toReversed() : []
 
   const regenerate = (skipUploaderLyrics: boolean) => {
-    startGeneration({
+    void startFromButton({
       mode: 'regenerate',
       skipUploaderLyrics,
       title: songInfo?.title,

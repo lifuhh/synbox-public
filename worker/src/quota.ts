@@ -21,7 +21,8 @@ export interface Quota {
 }
 
 export type Reservation =
-  | { outcome: 'reserved' | 'replay' }
+  // `allowed`: checkGeneration's yes, when nothing was taken
+  | { outcome: 'reserved' | 'replay' | 'allowed' }
   | { outcome: 'quota_exceeded'; limit: number; resetsAt: string }
   | {
       outcome:
@@ -165,25 +166,41 @@ const refusal = async (
     : { outcome: 'guests_full' }
 }
 
-export const reserveGeneration = async (
+interface GenerationRequest {
+  id: string
+  owner: Owner
+  videoId: string
+  kind: GenerationKind
+}
+
+// The refusals that need no free slot, then the owner's limits and the statement bindings for the slot check
+type Admitted =
+  | { refused: Reservation }
+  | {
+      bindings: (string | number | null)[]
+      day: string
+      own: { limit: number | null; cap: number | null }
+    }
+
+const admit = async (
   db: D1Database,
-  request: { id: string; owner: Owner; videoId: string; kind: GenerationKind },
+  request: GenerationRequest,
   limits: Limits,
-  now = new Date()
-): Promise<Reservation> => {
+  now: Date
+): Promise<Admitted> => {
   const enabled = await db
     .prepare(
       `select "value" from "appSetting" where "key" = 'generationEnabled'`
     )
     .first<string>('value')
   if (enabled !== '1') {
-    return { outcome: 'generation_paused' }
+    return { refused: { outcome: 'generation_paused' } }
   }
   const own = await ownLimits(db, request.owner, limits)
   if (own === null) {
-    return { outcome: 'forbidden' }
+    return { refused: { outcome: 'forbidden' } }
   }
-  const { column, counted, value } = ownerOf(request.owner)
+  const { value } = ownerOf(request.owner)
   const day = utcDay(now)
   const bindings = [
     request.id,
@@ -197,6 +214,43 @@ export const reserveGeneration = async (
     // ?9, an hour ago: only a user's count reads it, and SQLite refuses a value no placeholder takes
     ...(request.owner.kind === 'user' ? [now.getTime() - HOUR_MS] : []),
   ]
+  return { bindings, day, own }
+}
+
+// Whether a new song would be reserved, without taking it: the app asks before it starts a generation, so a
+// refusal shows at the button instead of partway through
+export const checkGeneration = async (
+  db: D1Database,
+  request: Omit<GenerationRequest, 'id'>,
+  limits: Limits,
+  now = new Date()
+): Promise<Reservation> => {
+  const admitted = await admit(db, { ...request, id: '' }, limits, now)
+  if ('refused' in admitted) {
+    return admitted.refused
+  }
+  const { bindings, day, own } = admitted
+  const free = await db
+    .prepare(`select ${slotFree(ownerOf(request.owner).counted)} as "free"`)
+    .bind(...bindings)
+    .first<number>('free')
+  return free === 1
+    ? { outcome: 'allowed' }
+    : await refusal(db, request.owner, own.limit, limits, day, now)
+}
+
+export const reserveGeneration = async (
+  db: D1Database,
+  request: GenerationRequest,
+  limits: Limits,
+  now = new Date()
+): Promise<Reservation> => {
+  const admitted = await admit(db, request, limits, now)
+  if ('refused' in admitted) {
+    return admitted.refused
+  }
+  const { bindings, day, own } = admitted
+  const { column, counted, value } = ownerOf(request.owner)
   // One statement, so two concurrent requests can't both take the last slot (D1 runs writes one at a time)
   const { meta } = await db
     .prepare(

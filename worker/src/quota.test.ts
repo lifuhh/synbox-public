@@ -3,7 +3,13 @@ import type { SQLQueryBindings } from 'bun:sqlite'
 import { beforeEach, expect, test } from 'bun:test'
 import { readFileSync } from 'node:fs'
 
-import { finishGeneration, getQuota, reserveGeneration } from './quota'
+import type { Owner } from './quota'
+import {
+  checkGeneration,
+  finishGeneration,
+  getQuota,
+  reserveGeneration,
+} from './quota'
 
 // The subset of D1 that quota.ts uses, over bun:sqlite with the real migrations
 const asD1 = (sqlite: Database) =>
@@ -53,6 +59,9 @@ const reserveAsGuest = async (id: string, key: string) =>
     LIMITS,
     now
   )
+
+const check = async (owner: Owner) =>
+  await checkGeneration(db, { kind: 'new', owner, videoId: 'v' }, LIMITS, now)
 
 beforeEach(() => {
   sqlite = new Database(':memory:')
@@ -187,4 +196,29 @@ test("a user's limit is per rolling hour", async () => {
       later
     )
   ).toEqual({ outcome: 'reserved' })
+})
+
+test('a check answers what reserving would, and takes nothing', async () => {
+  const user: Owner = { id: 'u1', kind: 'user' }
+  const guest: Owner = { key: 'g1', kind: 'guest' }
+  expect(await check(user)).toEqual({ outcome: 'allowed' })
+  expect(await check(user)).toEqual({ outcome: 'allowed' })
+  await reserve('r1')
+  await reserve('r2')
+  expect(await check(user)).toMatchObject({ outcome: 'quota_exceeded' })
+  expect(await check({ id: 'admin', kind: 'user' })).toEqual({
+    outcome: 'allowed',
+  })
+  expect(await check({ id: 'banned', kind: 'user' })).toEqual({
+    outcome: 'forbidden',
+  })
+  expect(await check(guest)).toEqual({ outcome: 'allowed' })
+  await reserveAsGuest('g', 'g1')
+  expect(await check(guest)).toEqual({ outcome: 'guest_limit' })
+  sqlite.run(
+    `update "appSetting" set "value" = '0' where "key" = 'generationEnabled'`
+  )
+  expect(await check({ id: 'admin', kind: 'user' })).toEqual({
+    outcome: 'generation_paused',
+  })
 })

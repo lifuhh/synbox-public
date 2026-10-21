@@ -1,9 +1,21 @@
 import { Hono } from 'hono'
+import type { Context } from 'hono'
 
 import { createAuth } from './auth'
 import type { Env } from './auth'
-import { finishGeneration, getQuota, reserveGeneration } from './quota'
-import type { FinishedStatus, GenerationKind, Limits, Owner } from './quota'
+import {
+  checkGeneration,
+  finishGeneration,
+  getQuota,
+  reserveGeneration,
+} from './quota'
+import type {
+  FinishedStatus,
+  GenerationKind,
+  Limits,
+  Owner,
+  Reservation,
+} from './quota'
 
 type AppEnv = Env & {
   USER_HOURLY_LIMIT: string
@@ -94,6 +106,7 @@ const isStatus = (value: unknown): value is FinishedStatus =>
   typeof value === 'string' && STATUSES.has(value)
 
 const RESERVATION_STATUS = {
+  allowed: 200,
   already_finished: 409,
   forbidden: 403,
   generation_paused: 503,
@@ -104,28 +117,58 @@ const RESERVATION_STATUS = {
   reserved: 201,
 } as const
 
+// Exactly one of userId and guestKey
+const ownerOf = ({
+  userId,
+  guestKey,
+}: Record<string, unknown>): Owner | null => {
+  if (isText(userId) && guestKey === undefined) {
+    return { id: userId, kind: 'user' }
+  }
+  if (isText(guestKey) && userId === undefined) {
+    return { key: guestKey, kind: 'guest' }
+  }
+  return null
+}
+
+const answer = (c: Context, reservation: Reservation) => {
+  const status = RESERVATION_STATUS[reservation.outcome]
+  return reservation.outcome === 'reserved' ||
+    reservation.outcome === 'replay' ||
+    reservation.outcome === 'allowed'
+    ? c.json(reservation, status)
+    : c.json({ ...reservation, code: reservation.outcome }, status)
+}
+
 internal.post('/generations', async (c) => {
   const body = await c.req.json<Record<string, unknown>>()
-  const { id, userId, guestKey, videoId, kind } = body
-  // Exactly one of userId and guestKey
-  let owner: Owner | null = null
-  if (isText(userId) && guestKey === undefined) {
-    owner = { id: userId, kind: 'user' }
-  } else if (isText(guestKey) && userId === undefined) {
-    owner = { key: guestKey, kind: 'guest' }
-  }
+  const { id, videoId, kind } = body
+  const owner = ownerOf(body)
   if (!isText(id) || owner === null || !isText(videoId) || !isKind(kind)) {
     return c.json({ code: 'bad_request' }, 400)
   }
-  const reservation = await reserveGeneration(
-    c.env.DB,
-    { id, kind, owner, videoId },
-    limitsOf(c.env)
+  return answer(
+    c,
+    await reserveGeneration(
+      c.env.DB,
+      { id, kind, owner, videoId },
+      limitsOf(c.env)
+    )
   )
-  const status = RESERVATION_STATUS[reservation.outcome]
-  return reservation.outcome === 'reserved' || reservation.outcome === 'replay'
-    ? c.json(reservation, status)
-    : c.json({ ...reservation, code: reservation.outcome }, status)
+})
+
+// Same answer as reserving, without taking a song
+internal.post('/generations/check', async (c) => {
+  const body = await c.req.json<Record<string, unknown>>()
+  const { videoId, kind } = body
+  const owner = ownerOf(body)
+  if (owner === null || !isText(videoId) || !isKind(kind)) {
+    return c.json({ code: 'bad_request' }, 400)
+  }
+  return answer(
+    c,
+    await checkGeneration(c.env.DB, { kind, owner, videoId }, limitsOf(c.env))
+  )
 })
 
 internal.patch('/generations/:id', async (c) => {

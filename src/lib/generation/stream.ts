@@ -270,6 +270,42 @@ export const validate = async (
   return found.video
 }
 
+export interface Refusal {
+  // services/accounts.py MESSAGES: sign_in_required, admin_only, quota_exceeded, ...
+  code: string
+  message: string
+}
+
+// Whether the backend would refuse this generation, asked when its button is pressed so the refusal shows
+// there. null when it would go ahead, or when the backend can't answer: the pipeline checks again anyway
+export const checkGeneration = async (
+  videoId: string,
+  kind: 'new' | 'regenerate'
+): Promise<Refusal | null> => {
+  try {
+    const token = await backendToken()
+    const response = await fetch(`${BE_ADDRESS}/generation-check`, {
+      body: JSON.stringify({ id: videoId, kind }),
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token === null ? {} : { Authorization: `Bearer ${token}` }),
+      },
+      method: 'POST',
+      // A cold backend takes several seconds to start
+      signal: AbortSignal.timeout(20_000),
+    })
+    const body: unknown = await response.json()
+    return isRecord(body) &&
+      body.ok === false &&
+      typeof body.code === 'string' &&
+      typeof body.message === 'string'
+      ? { code: body.code, message: body.message }
+      : null
+  } catch {
+    return null
+  }
+}
+
 // `regenerate` redoes everything but vocal separation; `skipUploaderLyrics` leaves the uploader's subtitles
 // out while YouTube Music, LRCLIB and the audio still count
 // `requestId` names one generation and is sent again on every reconnect: the backend replays a job it
