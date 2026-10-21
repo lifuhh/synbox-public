@@ -362,7 +362,7 @@ const GenerationPanel = ({
         surfacePlacement(raised),
         // Centred on a touch screen, like every other panel there
         'touch:inset-x-0 touch:top-1/2 touch:bottom-auto touch:mx-auto touch:max-h-[calc(var(--app-h)-var(--topbar-h)-2rem)] touch:-translate-y-1/2 touch:[--panel-origin:center]',
-        'fixed z-50 max-h-[calc(var(--app-h)-var(--topbar-h)-var(--stage-controls-h,0px)-2rem)] w-[min(400px,calc(100vw-2rem))] overflow-x-hidden overflow-y-auto rounded-panel bg-generation-panel/90 shadow-panel backdrop-blur-xl'
+        'fixed z-50 max-h-[calc(var(--app-h)-var(--topbar-h)-var(--stage-controls-h,0px)-2rem)] w-[min(400px,calc(100vw-2rem))] overflow-x-hidden overflow-y-auto rounded-panel bg-generation-panel shadow-panel backdrop-blur-xl'
       )}>
       <div className='flex flex-col gap-4 p-4'>
         <SongHeader job={job} onClose={active ? minimize : dismiss} />
