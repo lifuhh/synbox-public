@@ -2,11 +2,29 @@
 
 @import 'tw-animate-css';
 
+/* Portrait, except a page turned on its side by Lock Landscape (html[data-landscape-lock], below). Declared
+   first, as the built-in one it replaces was, so it sorts before the variants that follow */
+@custom-variant portrait {
+  @media (orientation: portrait) {
+    &:not(:where(html[data-landscape-lock], html[data-landscape-lock] *)) {
+      @slot;
+    }
+  }
+}
 @custom-variant dark (&:is(.dark *));
 /* Finger-driven screens: bigger hit areas, no hover-only affordances */
 @custom-variant touch (@media (pointer: coarse));
-/* A phone on its side: too short for the player's vertical rail */
-@custom-variant short (@media (orientation: landscape) and (max-height: 500px));
+/* A phone on its side: too short for the player's vertical rail. A page turned by Lock Landscape counts too */
+@custom-variant short {
+  @media (orientation: landscape) and (max-height: 500px) {
+    @slot;
+  }
+  @media (orientation: portrait) and (max-width: 500px) {
+    &:where(html[data-landscape-lock], html[data-landscape-lock] *) {
+      @slot;
+    }
+  }
+}
 
 @utility container {
   margin-inline: auto;
@@ -207,7 +225,7 @@
 
 /* Spacing that reads runtime variables, inlined so each element resolves them itself */
 @theme inline {
-  --spacing-safe-top: env(safe-area-inset-top);
+  --spacing-safe-top: var(--safe-top);
   --spacing-page-top: calc(var(--topbar-h) + 1.5rem);
   --spacing-page-bottom-sm: calc(1rem + var(--safe-bottom));
   --spacing-page-bottom: calc(2.5rem + var(--safe-bottom));
@@ -229,7 +247,7 @@
   );
 
   /* The offline reader: room under its bar and over its text style row, and type times the reader's scale */
-  --spacing-reader-top: calc(var(--spacing-safe-top) + 3.75rem);
+  --spacing-reader-top: calc(var(--safe-top) + 3.75rem);
   --spacing-reader-bottom: calc(var(--safe-bottom) + 2.5rem);
   --spacing-reader-bottom-bar: calc(var(--safe-bottom) + 6rem);
   /* Synced lyrics: room for the play controls, and for the last line to scroll up to where the sung line sits */
@@ -248,8 +266,9 @@
   --text-reader-translation--line-height: 1.4;
 }
 
-/* The offline reader's paper and ink, dark by default. The status bar strip stays dark on the light page:
-   an installed iPhone app draws the clock in white over whatever is under it */
+/* The offline reader's paper and ink, dark by default. The status bar strip stays dark on the light page, with
+   a hard edge (a dark fade over paper reads as a smudge): an installed iPhone app draws the clock in white over
+   whatever is under it */
 @utility reader-paper {
   --reader-bg: #111113;
   --reader-fg: #ebe7e1;
@@ -259,6 +278,7 @@
   --reader-muted: #9d978e;
   --reader-panel: #1d1d20;
   --reader-status: #111113;
+  --theme-color: var(--reader-status);
   --furigana-size: 0.5em;
 
   &[data-theme='light'] {
@@ -270,6 +290,7 @@
     --reader-muted: #6b655b;
     --reader-panel: #fffdf8;
     --reader-status: #1f1c17;
+    --status-scrim-fade: 0px;
   }
 
   /* Furigana over the page, not over a video: no shadow, a little quieter than the kanji. The player's -0.9em
@@ -357,6 +378,8 @@
 @utility sticky-under-topbar {
   position: sticky;
   top: var(--topbar-shown-h);
+  /* Over the status bar scrim (z-40), whose fade would otherwise dim the row's top; under the bar (z-50) */
+  z-index: 45;
   transition:
     top 300ms ease-out,
     background-color 200ms;
@@ -408,67 +431,80 @@
   }
 }
 
-/* The glow behind the top of every page: two soft washes of the brand glow over the page color */
+/* The glow behind the top of every page: two soft washes of the brand glow over the page color. Sized to the
+   screen, so a layer shorter than it (the status bar scrim) paints the same pixels as the full-screen one */
 @utility page-glow {
-  background:
+  background-image:
     radial-gradient(110% 40% at 18% -4%, var(--glow-a), transparent 72%),
     radial-gradient(80% 34% at 100% 6%, var(--glow-b), transparent 70%);
+  background-size: 100% var(--app-h);
+  background-repeat: no-repeat;
 }
 
-/* The landing carousel's row. Its container (@container) picks how many cards show, and the cards stretch to
-   fill the row with a slice of the next one peeking in, so the gap stays 1rem at every width */
+/* Over the status bar of an app drawn under it (installed on an iPhone): the surface's own backdrop, solid behind
+   the clock and fading out just below it, so content scrolling up under the status bar dissolves instead of
+   running into the clock. With no top inset (Android, a browser tab, a phone on its side) it has no height */
+@utility status-scrim {
+  --scrim-fade: var(
+    --status-scrim-fade,
+    min(2rem, calc(var(--safe-top) * 100))
+  );
+  /* The fade starts a little above the inset's bottom edge (none when there is no fade) and eases out */
+  --scrim-lead: min(calc(var(--safe-top) * 0.3), var(--scrim-fade));
+  --scrim-solid: calc(var(--safe-top) - var(--scrim-lead));
+  --scrim-ease: calc(var(--scrim-lead) + var(--scrim-fade));
+  height: calc(var(--safe-top) + var(--scrim-fade));
+  pointer-events: none;
+  mask-image: linear-gradient(
+    to bottom,
+    #000 var(--scrim-solid),
+    rgb(0 0 0 / 0.8) calc(var(--scrim-solid) + var(--scrim-ease) * 0.3),
+    rgb(0 0 0 / 0.45) calc(var(--scrim-solid) + var(--scrim-ease) * 0.55),
+    rgb(0 0 0 / 0.15) calc(var(--scrim-solid) + var(--scrim-ease) * 0.8),
+    transparent
+  );
+}
+
+/* The landing carousel's row: one slide centred, its neighbours peeking in on both sides and fading out at
+   the edges. Its container (@container) sizes the slide, capped so a phone on its side or a monitor still
+   shows the neighbours; the side padding only shows when there is a single slide */
 @utility carousel-track {
-  --cards: 1;
   --gap: 1rem;
-  --peek: 3rem;
-  --pad: 1rem;
+  --peek: 2rem;
+  --slide: min(100cqw - 2 * (var(--gap) + var(--peek)), 28rem);
+  position: relative;
   display: grid;
   grid-auto-flow: column;
-  grid-auto-columns: calc(
-    (100cqw - 2 * var(--pad) - var(--cards) * var(--gap) - var(--peek)) /
-      var(--cards)
-  );
+  grid-auto-columns: var(--slide);
   gap: var(--gap);
-  padding: 0.125rem var(--pad) 0.375rem;
-  scroll-padding-inline: var(--pad);
+  padding: 0.125rem calc((100cqw - var(--slide)) / 2) 0.375rem;
   overflow-x: auto;
   overscroll-behavior-x: contain;
+  /* Instant, unlike every other box (*): useLoopingCarousel moves the row a frame at a time */
+  scroll-behavior: auto;
   scroll-snap-type: x mandatory;
   scrollbar-width: none;
+  /* Horizontal touch drags are handled in script (useLoopingCarousel); vertical ones scroll the page */
+  touch-action: pan-y;
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    #000 var(--peek),
+    #000 calc(100% - var(--peek)),
+    transparent
+  );
 
   &::-webkit-scrollbar {
     display: none;
   }
-  @media (width >= 48rem) {
-    --pad: 0px;
+  @media (orientation: landscape) and (max-height: 500px) {
+    --slide: min(100cqw - 2 * (var(--gap) + var(--peek)), 22rem);
   }
-  /* An edge with more cards past it fades out over the last 3rem, so the peeking card is cut softly */
-  &[data-more='right'] {
-    mask-image: linear-gradient(to right, #000 calc(100% - 3rem), transparent);
-  }
-  &[data-more='left'] {
-    mask-image: linear-gradient(to right, transparent, #000 3rem);
-  }
-  &[data-more='both'] {
-    mask-image: linear-gradient(
-      to right,
-      transparent,
-      #000 3rem,
-      #000 calc(100% - 3rem),
-      transparent
-    );
-  }
-  @container (width >= 35rem) {
-    --cards: 2;
-  }
-  @container (width >= 55rem) {
-    --cards: 3;
-  }
-  @container (width >= 73.75rem) {
-    --cards: 4;
-  }
-  @container (width >= 92.5rem) {
-    --cards: 5;
+  /* The loading row: a centred placeholder slide with one on each side */
+  &[data-skeleton] {
+    overflow: hidden;
+    justify-content: center;
+    padding-inline: 0;
   }
 }
 
@@ -477,21 +513,18 @@
   clip-path: inset(0 var(--progress-remaining) 0 0 round 9999px);
 }
 
-/* A landing carousel slide, scaled and faded by its distance from the current one */
-@utility carousel-slide {
-  opacity: var(--slide-opacity);
-  transform: var(--slide-transform);
-  transition:
-    transform 0.5s ease-in-out,
-    opacity 0.3s ease-in-out;
-}
-
 /* The spacers above and below the player's lyrics split the free space by the anchor; the lower one also
    lifts the lyrics clear of the controls */
 @utility anchor-spacer {
   flex-basis: 0;
   flex-grow: var(--anchor-grow);
   transition: var(--anchor-transition);
+}
+
+/* Between the two rows of the two-line karaoke layout: a share of the lyric size, so each line's romaji and
+   translation read as its own at every size */
+@utility lyric-rows-gap {
+  row-gap: 0.4em;
 }
 
 @utility lyrics-lift {
@@ -523,6 +556,11 @@
     black 72%,
     transparent
   );
+}
+
+/* A list that scrolls inside a box fades out over its last 2rem, so the cut-off row reads as more to scroll to */
+@utility mask-fade-end {
+  mask-image: linear-gradient(to bottom, black calc(100% - 2rem), transparent);
 }
 
 /* Diagonal stripes on a running progress bar; the size is one stripe period */
@@ -574,8 +612,64 @@
   }
 }
 
+/* tw-animate's menu, dialog, popover, tooltip and toast entrances zoom and slide; under reduced motion they only
+   fade. Unlayered, so it wins over the utilities that set these per element */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    --tw-enter-scale: 1;
+    --tw-exit-scale: 1;
+    --tw-enter-rotate: 0;
+    --tw-exit-rotate: 0;
+    --tw-enter-translate-x: 0;
+    --tw-enter-translate-y: 0;
+    --tw-exit-translate-x: 0;
+    --tw-exit-translate-y: 0;
+    --tw-enter-blur: 0;
+    --tw-exit-blur: 0;
+  }
+}
+
+/* Content that arrives fades in where it will stay, instead of standing in a skeleton first. `rise-in` is for
+   a view's first appearance: a short rise with a blur that clears, staggered by --rise-delay. `appear` is for
+   small things that resolve in place (the top bar's account slot). Reduced motion keeps only the fade. Named
+   apart from tw-animate's `enter` keyframes and `fade-in` utility, which other components use */
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    translate: 0 12px;
+    filter: blur(4px);
+  }
+}
+@keyframes appear {
+  from {
+    opacity: 0;
+  }
+}
+@utility rise-in {
+  animation: rise-in 0.3s ease-out var(--rise-delay, 0ms) both;
+  @media (prefers-reduced-motion: reduce) {
+    animation-name: appear;
+  }
+}
+@utility rise-delay-* {
+  --rise-delay: calc(--value(integer) * 1ms);
+}
+@utility appear {
+  animation: appear 0.2s ease-out both;
+}
+
 /* A loading placeholder: a lighter band sweeps across it, so it reads as loading on a dark card, where a
    pulse between two near-blacks looked like an empty box */
+/* A skeleton stays invisible for its first 400 ms and then fades in, so a load that finishes quickly shows
+   nothing between the empty space and the content (which then fades in with `appear`) */
+@utility skeleton-shimmer {
+  animation:
+    var(--animate-shimmer),
+    appear 0.3s ease-out 0.4s both;
+  @media (prefers-reduced-motion: reduce) {
+    animation: appear 0.3s ease-out 0.4s both;
+  }
+}
 @utility skeleton-fill {
   background: linear-gradient(
       100deg,
@@ -707,14 +801,18 @@
     transition: transform 0.3s ease;
   }
 
-  .playlist-item:hover & span {
-    animation: marquee 20s linear infinite;
+  @media (prefers-reduced-motion: no-preference) {
+    .playlist-item:hover & span {
+      animation: marquee 20s linear infinite;
+    }
   }
 }
 
 @utility playlist-item {
-  &:hover .marquee span {
-    animation: marquee 20s linear infinite;
+  @media (prefers-reduced-motion: no-preference) {
+    &:hover .marquee span {
+      animation: marquee 20s linear infinite;
+    }
   }
 }
 
@@ -1006,15 +1104,18 @@
   }
 
   :root {
+    /* The status bar an installed iPhone app draws under; 0 where the system keeps it (Android, browsers) */
+    --safe-top: env(safe-area-inset-top, 0px);
     /* The fixed top bar, plus the status bar it sits under in a standalone app */
-    --topbar-h: calc(3.5rem + env(safe-area-inset-top, 0px));
+    --topbar-h: calc(3.5rem + var(--safe-top));
     /* How much of the top the bar covers right now: all of it, or only the status bar while it is scrolled away */
     --topbar-shown-h: var(--topbar-h);
     --safe-bottom: env(safe-area-inset-bottom, 0px);
     --safe-left: env(safe-area-inset-left, 0px);
     --safe-right: env(safe-area-inset-right, 0px);
     /* The screen's height; full-screen layers use it instead of dvh (see the standalone rule below) */
-    --app-h: 100dvh;
+    --screen-h: 100dvh;
+    --app-h: var(--screen-h);
     /* How much of the player's bottom edge its floating UI covers while it shows: the lyrics lift by this,
        and notices and the generation button stand on it */
     --stage-chrome-h: var(--stage-controls-h, 5rem);
@@ -1029,13 +1130,22 @@
 
   /* Without the top bar the video moves up under the status bar */
   html[data-immersive] {
-    --topbar-h: env(safe-area-inset-top, 0px);
+    --topbar-h: var(--safe-top);
   }
 
   /* The version preview banner and the player's Tap to Unmute both hang under the top bar (in portrait, both
      stand above the rail) */
   :root:has([data-preview-banner]) {
     --preview-banner-h: 3rem;
+  }
+
+  /* Upright, the player's right-hand column (Lock Landscape, Lock Screen) starts a top-bar cluster gap (8px)
+     under the top bar's icons, less its own 4px padding, and under any banner hanging there */
+  :root {
+    --stage-corner-top: calc(
+      var(--topbar-h) + 0.25rem + var(--notices-h, 0px) +
+        var(--preview-banner-h, 0px)
+    );
   }
 
   /* The offline reader covers the app; what it covers can't be reached by Tab or a screen reader */
@@ -1045,7 +1155,7 @@
   }
 
   html[data-topbar-hidden] {
-    --topbar-shown-h: env(safe-area-inset-top, 0px);
+    --topbar-shown-h: var(--safe-top);
   }
 
   /* The iPhone stand-in for fullscreen: the player without the app's top bar */
@@ -1053,10 +1163,52 @@
     display: none;
   }
 
+  /* Lock Landscape where nothing can lock the orientation (see src/lib/page-turn.ts): while the screen stands
+     upright the page is turned a quarter clockwise, top to the screen's right edge, so a phone held on its
+     side with its top to the left shows it upright. The safe areas turn with it: the notch is on the page's
+     left and the home indicator on its right. The top bar goes, as in fullscreen: its menus are placed in
+     the screen's axes and would open in the wrong place */
+  @media (orientation: portrait) {
+    html[data-landscape-lock] {
+      --safe-left: env(safe-area-inset-top, 0px);
+      --safe-right: env(safe-area-inset-bottom, 0px);
+      --safe-bottom: env(safe-area-inset-left, 0px);
+      --topbar-h: var(--safe-top);
+      --topbar-shown-h: var(--topbar-h);
+      --safe-top: env(safe-area-inset-right, 0px);
+      --app-h: 100vw;
+      --stage-chrome-h: var(--stage-controls-h, 5rem);
+    }
+
+    html[data-landscape-lock] body {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: var(--screen-h);
+      height: 100vw;
+      transform-origin: 0 0;
+      transform: translateX(100vw) rotate(90deg);
+    }
+
+    html[data-landscape-lock] [data-topbar] {
+      display: none;
+    }
+  }
+
   /* The player is black edge to edge, including any strip a mobile browser's toolbar leaves */
   html:has([data-player-stage]),
   html:has([data-player-stage]) body {
     background-color: #000;
+  }
+
+  [data-player-stage] {
+    --theme-color: #000;
+  }
+
+  /* Nothing scrolls on the player, and its black already carries the white clock. In fullscreen the video is
+     meant to reach the screen's edge, so no scrim darkens its top */
+  html:has([data-player-stage]) [data-status-scrim] {
+    display: none;
   }
 
   html {
@@ -1083,7 +1235,7 @@
   @media (display-mode: standalone) {
     @supports (-webkit-touch-callout: none) {
       :root {
-        --app-h: min(100lvh, calc(100dvh + env(safe-area-inset-top, 0px)));
+        --screen-h: min(100lvh, calc(100dvh + env(safe-area-inset-top, 0px)));
       }
 
       html,

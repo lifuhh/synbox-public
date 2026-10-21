@@ -1,3 +1,5 @@
+import { pageWidth } from './page-turn'
+
 // Wraps a lyric into lines of even length: the narrowest width that still takes no more
 // lines than a plain wrap. CSS text-wrap: balance does this in Chromium, but WebKit (every iPhone browser)
 // mis-measures <ruby>: a line with furigana that fits on two lines came out as three, the last one a single
@@ -15,7 +17,7 @@ const keepBalanced = (element: HTMLElement) => {
       Number.parseFloat(getComputedStyle(element).fontSize) * 0.75
     let narrow = 0
     // Fractional: offsetWidth rounds down, and a line exactly that wide would wrap
-    let wide = element.getBoundingClientRect().width
+    let wide = pageWidth(element)
     while (wide - narrow > 1) {
       const middle = (narrow + wide) / 2
       style.maxInlineSize = `${middle}px`

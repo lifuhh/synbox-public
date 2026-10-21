@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { queryOptions, useMutation, useQuery } from '@tanstack/react-query'
 
 import type { CurrentPlayingInfo } from '@/types'
 
@@ -6,9 +6,9 @@ import {
   addSongInfoBySongId,
   getSongInfoBySongId,
   getSongLyricsById,
-  songsWithLyrics,
 } from '../appwrite/api'
 import { getKaraoke } from '../synbox-flask/api'
+import type { LibraryListSong } from '../synbox-flask/discovery'
 import {
   getLibrarySongs,
   getSimilarSongs,
@@ -45,25 +45,28 @@ export const useGetChartsPlaylist = () =>
   })
 
 // Once a visit, so the shuffled order holds while the user browses
+const librarySongs = queryOptions({
+  queryFn: getLibrarySongs,
+  queryKey: [QUERY_KEYS.GET_GALLERY_SONGS],
+  // A cold lookup service answers 503 while it loads the library, which takes seconds
+  retry: 5,
+  retryDelay: 3000,
+  staleTime: Infinity,
+})
+
 export const useGallerySongs = () => {
-  const query = useQuery({
-    queryFn: getLibrarySongs,
-    queryKey: [QUERY_KEYS.GET_GALLERY_SONGS],
-    // A cold lookup service answers 503 while it loads the library, which takes seconds
-    retry: 5,
-    retryDelay: 3000,
-    staleTime: Infinity,
-  })
+  const query = useQuery(librarySongs)
   return { ...query, songs: query.data ?? [] }
 }
 
-export const useSongsWithLyrics = (videoIds: string[]) =>
-  useQuery({
-    enabled: videoIds.length > 0,
-    queryFn: async () => await songsWithLyrics(videoIds),
-    queryKey: [QUERY_KEYS.GET_SONGS_WITH_LYRICS, videoIds],
-    staleTime: 1000 * 60 * 10,
-  })
+const karaokeIds = (songs: LibraryListSong[]) =>
+  new Set(songs.flatMap((song) => (song.karaoke ? [song.videoId] : [])))
+
+// The song plays with the karaoke fill, by the library list; false until it loads (or offline)
+export const useHasKaraoke = (videoId: string) => {
+  const { data } = useQuery({ ...librarySongs, select: karaokeIds })
+  return data?.has(videoId) ?? false
+}
 
 export const useGetSongInfoBySongId = (songId: string) =>
   useQuery({

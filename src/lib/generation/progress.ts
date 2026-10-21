@@ -20,6 +20,10 @@ const EASE_K = Math.log(5)
 const PACE: Partial<Record<StageId, number>> = { check: 0.4 }
 // A finished stage's bar runs from where it was to full over this long, instead of jumping there
 export const FINISH_MS = 400
+// A stage opened when its request went out, before the backend began it, only creeps this far: the request
+// may wait seconds (a cold start, the embed check, another song holding YouTube) and a bar that raced to
+// 90 % there sat at the top for the whole real stage
+export const PENDING_CAP = 0.1
 
 export interface StageRun {
   label: string
@@ -31,6 +35,8 @@ export interface StageRun {
   base: number
   baseAt: number
   reported: boolean
+  // The backend began it. Until then the bar creeps towards PENDING_CAP
+  confirmed: boolean
   doneAt: number | null
 }
 
@@ -49,13 +55,18 @@ export const stageValue = (run: StageRun | undefined, now: number): number => {
   const remainingS = Math.max(run.expectedS * run.pace * (1 - run.base), 1)
   const elapsedS = Math.max(now - run.baseAt, 0) / 1000
   const eased = 1 - Math.exp((-EASE_K * elapsedS) / remainingS)
-  return run.base + (1 - run.base) * CAP * eased
+  return run.base + (1 - run.base) * (run.confirmed ? CAP : PENDING_CAP) * eased
 }
 
-const close = (run: StageRun, now: number): StageRun => ({
+// Keeps what the bar shows now as the floor, so changing how it moves from here can't move it back
+const rebase = (run: StageRun, now: number): StageRun => ({
   ...run,
   base: stageValue(run, now),
   baseAt: now,
+})
+
+const close = (run: StageRun, now: number): StageRun => ({
+  ...rebase(run, now),
   doneAt: now,
 })
 
@@ -68,6 +79,7 @@ const finishBefore = (runs: Runs, index: number, now: number): Runs => {
       next[stage.id] = {
         base: 1,
         baseAt: now,
+        confirmed: true,
         doneAt: now,
         expectedS: 0,
         label: stage.label,
@@ -82,28 +94,38 @@ const finishBefore = (runs: Runs, index: number, now: number): Runs => {
   return next
 }
 
-// Opens a stage and closes every stage before it.
-// Opening a stage that is already open keeps its clock, so a stream that replays from the start after a
-// reconnect changes nothing it already showed.
-export const beginStage = (
+interface StageUpdate {
+  expectedS?: number
+  label?: string
+}
+
+const openStage = (
   runs: Runs,
   id: StageId,
   now: number,
-  update: { expectedS?: number; label?: string } = {}
+  update: StageUpdate,
+  confirmed: boolean
 ): Runs => {
   const next = finishBefore(runs, stageIndex(id), now)
   const run = next[id]
   if (run) {
+    const expectedS = update.expectedS ?? run.expectedS
+    const label = update.label ?? run.label
+    const changes =
+      run.doneAt === null &&
+      ((confirmed && !run.confirmed) || expectedS !== run.expectedS)
     next[id] = {
-      ...run,
-      expectedS: update.expectedS ?? run.expectedS,
-      label: update.label ?? run.label,
+      ...(changes ? rebase(run, now) : run),
+      confirmed: run.confirmed || confirmed,
+      expectedS,
+      label,
     }
     return next
   }
   next[id] = {
     base: 0,
     baseAt: now,
+    confirmed,
     doneAt: null,
     expectedS: update.expectedS ?? spec(id).weight,
     label: update.label ?? spec(id).label,
@@ -113,6 +135,17 @@ export const beginStage = (
   }
   return next
 }
+
+// The backend began a stage: opens it and closes every stage before it.
+// Opening a stage that is already open keeps its clock, so a stream that replays from the start after a
+// reconnect changes nothing it already showed. A new estimate (the backend's, arriving after the request
+// sat in line) changes how the bar moves from where it is, never where it is.
+export const beginStage = (
+  runs: Runs,
+  id: StageId,
+  now: number,
+  update: StageUpdate = {}
+): Runs => openStage(runs, id, now, update, true)
 
 export const reportFraction = (
   runs: Runs,
@@ -134,6 +167,7 @@ export const reportFraction = (
       ...run,
       base: Math.max(MEASURED_SHARE * fraction, stageValue(run, now)),
       baseAt: now,
+      confirmed: true,
       reported: true,
     },
   }
@@ -157,7 +191,9 @@ export const completePhase = (runs: Runs, phase: Phase, now: number): Runs =>
 // The first stage of a phase whose request just went out, so its bar moves before the backend's first report
 export const startPhase = (runs: Runs, phase: Phase, now: number): Runs => {
   const first = STAGES.find((stage) => stage.phase === phase)
-  return first && !runs[first.id] ? beginStage(runs, first.id, now) : runs
+  return first && !runs[first.id]
+    ? openStage(runs, first.id, now, {}, false)
+    : runs
 }
 
 const weighted = (runs: Runs, ids: readonly StageId[], now: number) => {

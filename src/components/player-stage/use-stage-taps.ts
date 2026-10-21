@@ -1,6 +1,8 @@
 import type { MouseEvent, PointerEvent } from 'react'
 import { useEffect, useRef, useState } from 'react'
 
+import { fractionAcross } from '@/lib/page-turn'
+
 export const TAP_SEEK_SEC = 10
 // How long a tap on a side waits for a second one before it counts as a single tap
 const DOUBLE_TAP_MS = 280
@@ -100,8 +102,7 @@ export const useStageTaps = ({
     } else {
       intentRef.current = controlsVisible ? 'hide' : 'reveal'
     }
-    const { left, width } = event.currentTarget.getBoundingClientRect()
-    sideRef.current = sideAt((event.clientX - left) / width)
+    sideRef.current = sideAt(fractionAcross(event, event.currentTarget))
   }
 
   const onClick = () => {

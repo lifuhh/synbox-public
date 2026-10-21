@@ -9,15 +9,21 @@ import {
 } from '@/lib/lyrics-style'
 
 import {
+  applyLyricsTemplateAtom,
   applySongLyricsStyleToAllAtom,
   fontSizeMultiplierAtom,
   lyricsAnchorAtom,
+  lyricsStyleAtom,
+  lyricsStyleScopeAtom,
   lyricsStyleSongAtom,
+  lyricsTemplatesAtom,
   lyricsThemeIdAtom,
+  lyricsTwoLinesAtom,
   dismissSharedLyricsStyleAtom,
   keepSharedLyricsStyleAtom,
   lyricsStyleSourceAtom,
   resetSongLyricsStyleAtom,
+  saveLyricsTemplateAtom,
   showSharedLyricsStyleAtom,
 } from './atoms'
 
@@ -30,6 +36,7 @@ test('a song keeps its own style; other songs follow the defaults', () => {
   store.set(lyricsThemeIdAtom, 'aqua')
 
   store.set(lyricsStyleSongAtom, 'songA')
+  store.set(lyricsStyleScopeAtom, 'song')
   store.set(lyricsThemeIdAtom, 'matcha')
   store.set(lyricsAnchorAtom, 0.1)
 
@@ -46,6 +53,8 @@ test('a song keeps its own style; other songs follow the defaults', () => {
   reloaded.set(lyricsStyleSongAtom, 'songA')
   expect(reloaded.get(lyricsThemeIdAtom)).toBe('matcha')
   expect(reloaded.get(lyricsAnchorAtom)).toBe(0.1)
+  // A song with its own style opens with changes going to it
+  expect(reloaded.get(lyricsStyleScopeAtom)).toBe('song')
   // Size was never changed for songA, so it still follows the default
   reloaded.set(lyricsStyleSongAtom, null)
   reloaded.set(fontSizeMultiplierAtom, 1.3)
@@ -57,9 +66,10 @@ test('a song keeps its own style; other songs follow the defaults', () => {
   expect(localStorage.getItem('lyricsStyle:songA')).toBeNull()
 })
 
-test('Use For All Songs makes the song style the default', () => {
+test('Save as My Default makes the song style the default', () => {
   const store = createStore()
   store.set(lyricsStyleSongAtom, 'songA')
+  store.set(lyricsStyleScopeAtom, 'song')
   store.set(lyricsThemeIdAtom, 'lemon')
   store.set(applySongLyricsStyleToAllAtom)
 
@@ -123,4 +133,97 @@ test('a malformed shared style is ignored', () => {
   expect(decodeSharedStyle('1.lemon.shadow.999.10.50.200')).toBeNull()
   expect(decodeSharedStyle('2.lemon.shadow.100.10.50.200')).toBeNull()
   expect(decodeSharedStyle('garbage')).toBeNull()
+})
+
+test('two lines travel in a shared link; a one-line style stays readable by older app versions', () => {
+  const twoLines = {
+    ...DEFAULT_LYRICS_STYLE,
+    themeId: 'lemon' as const,
+    twoLines: true,
+  }
+  expect(decodeSharedStyle(encodeSharedStyle(twoLines))).toMatchObject({
+    themeId: 'lemon',
+    twoLines: true,
+  })
+  const oneLine = { ...twoLines, twoLines: false }
+  expect(encodeSharedStyle(oneLine).startsWith('1.')).toBe(true)
+  expect(decodeSharedStyle(encodeSharedStyle(oneLine))).toMatchObject({
+    themeId: 'lemon',
+    twoLines: false,
+  })
+  expect(decodeSharedStyle('2.lemon.shadow.100.10.50.200.7')).toBeNull()
+})
+
+test('a change carries to every song, unless the song has its own style; old saved styles load unchanged', () => {
+  // Saved by the app before two lines, screen sizes and templates existed
+  localStorage.setItem('lyricsTheme', JSON.stringify('aqua'))
+  localStorage.setItem(
+    'lyricsStyle:mv',
+    JSON.stringify({
+      style: { anchor: 0.2, fontSize: 0.8 },
+      updatedAt: 1,
+      v: 1,
+    })
+  )
+  const store = createStore()
+  store.sub(lyricsThemeIdAtom, () => {})
+  store.sub(fontSizeMultiplierAtom, () => {})
+
+  store.set(lyricsStyleSongAtom, 'songA')
+  expect(store.get(lyricsStyleScopeAtom)).toBe('all')
+  store.set(lyricsThemeIdAtom, 'lemon')
+  store.set(fontSizeMultiplierAtom, 1.2)
+  expect(localStorage.getItem('lyricsStyle:songA')).toBeNull()
+
+  store.set(lyricsStyleSongAtom, 'mv')
+  expect(store.get(lyricsStyleScopeAtom)).toBe('song')
+  expect(store.get(lyricsStyleAtom)).toMatchObject({
+    anchor: 0.2,
+    fontSize: 0.8,
+    themeId: 'lemon',
+    twoLines: false,
+  })
+  // For All Songs, a field the song had its own value for lets go of it, so the change shows; the rest stay
+  store.set(lyricsStyleScopeAtom, 'all')
+  store.set(fontSizeMultiplierAtom, 1.1)
+  expect(store.get(lyricsStyleAtom)).toMatchObject({
+    anchor: 0.2,
+    fontSize: 1.1,
+  })
+  expect(store.get(lyricsStyleSourceAtom)).toBe('song')
+})
+
+test('a saved style applies where changes go, and survives a reload', () => {
+  const store = createStore()
+  store.set(lyricsStyleSongAtom, 'songA')
+  store.set(lyricsStyleScopeAtom, 'song')
+  store.set(lyricsThemeIdAtom, 'matcha')
+  store.set(lyricsTwoLinesAtom, true)
+  store.set(saveLyricsTemplateAtom, 'Duet')
+  store.set(resetSongLyricsStyleAtom)
+
+  const reloaded = createStore()
+  reloaded.set(lyricsStyleSongAtom, 'songB')
+  const [duet] = reloaded.get(lyricsTemplatesAtom)
+  expect(duet?.name).toBe('Duet')
+  reloaded.set(applyLyricsTemplateAtom, duet?.id ?? '')
+  // songB followed the default, so the saved style became the default
+  expect(reloaded.get(lyricsStyleSourceAtom)).toBe('default')
+  reloaded.set(lyricsStyleSongAtom, 'songC')
+  expect(reloaded.get(lyricsStyleAtom)).toMatchObject({
+    themeId: 'matcha',
+    twoLines: true,
+  })
+
+  // One bad record drops only itself
+  const saved = localStorage.getItem('lyricsTemplates') ?? ''
+  localStorage.setItem(
+    'lyricsTemplates',
+    saved.replace('"templates":[', '"templates":[{"id":1},')
+  )
+  expect(
+    createStore()
+      .get(lyricsTemplatesAtom)
+      .map((t) => t.name)
+  ).toEqual(['Duet'])
 })

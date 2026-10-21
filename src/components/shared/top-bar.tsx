@@ -2,15 +2,16 @@ import { useAtomValue } from 'jotai'
 import { useEffect, useState } from 'react'
 import { useLocation, useMatch } from 'react-router'
 
+import { setGenerationDock } from '@/components/generation/dock'
 import { playerChromeOpenAtom } from '@/context/atoms'
 import { useArmed } from '@/hooks/use-armed'
 import { cn } from '@/utils/cn'
 
 import AppLogo from '../topbar/app-logo'
-import FavouritesDropdownButton from '../topbar/favourites-dropdown-button'
-import HistoryDropdownButton from '../topbar/history-dropdown-button'
+import GitHubButton from '../topbar/github-button'
 import LyricsButton from '../topbar/lyrics-button'
 import ProfileButton from '../topbar/profile-button'
+import SavedMenu from '../topbar/saved-menu'
 
 // Within this many pixels of the top a page counts as unscrolled
 const TOP_SLACK_PX = 8
@@ -82,9 +83,19 @@ const TopBar = () => {
     isVideoPlayer && armed && 'pointer-events-auto',
     !iconsShown && '-translate-y-2 opacity-0'
   )
+  // The buttons share one rhythm on a phone: equal cells, 48 px while there is room and down to the
+  // buttons' own 40 px when there is not, so a lyrics generation docked first in the row fits beside them.
+  // It stays while the others hide with the player's floating UI
+  const buttons = cn(
+    'mr-1 ml-auto grid auto-cols-[minmax(2.5rem,3rem)] grid-flow-col justify-items-center sm:mr-2 sm:flex sm:items-center sm:gap-3',
+    isVideoPlayer && armed && 'pointer-events-auto',
+    '*:not-data-generation-dock:transition-fade-translate *:not-data-generation-dock:duration-300 *:not-data-generation-dock:ease-out',
+    !iconsShown &&
+      '*:not-data-generation-dock:-translate-y-2 *:not-data-generation-dock:opacity-0'
+  )
 
   return (
-    <section
+    <header
       data-topbar
       className={cn(
         'fixed top-0 right-0 left-0 z-50 pt-safe-top pr-(--safe-right) pl-(--safe-left)',
@@ -112,14 +123,26 @@ const TopBar = () => {
         ) : (
           <AppLogo />
         )}
-        <div data-player-chrome className={cn(cluster, 'mr-2 ml-auto')}>
+        <div data-player-chrome className={buttons}>
+          {/* A minimized lyrics generation on a phone (generation-host.tsx) */}
+          <div
+            ref={setGenerationDock}
+            data-generation-dock
+            className='contents'
+          />
           <LyricsButton />
-          <FavouritesDropdownButton />
-          <HistoryDropdownButton />
-          {!isVideoPlayer && <ProfileButton />}
+          <SavedMenu />
+          {!isVideoPlayer && (
+            <>
+              <span className='max-sm:hidden'>
+                <GitHubButton />
+              </span>
+              <ProfileButton />
+            </>
+          )}
         </div>
       </nav>
-    </section>
+    </header>
   )
 }
 

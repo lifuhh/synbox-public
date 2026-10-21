@@ -1,3 +1,7 @@
+# Deploy previews build only on request (a [preview] commit), to save build minutes: AGENTS.md › Shipping
+[build]
+ignore = "bash scripts/netlify-ignore.sh"
+
 # A stale service worker would pin every visitor to an old deploy
 [[headers]]
 for = "/sw.js"

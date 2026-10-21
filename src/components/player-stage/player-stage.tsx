@@ -1,22 +1,29 @@
 import { useAtom, useSetAtom } from 'jotai'
 import {
   LoaderIcon,
-  PauseIcon,
   PlayIcon,
   RotateCcwIcon,
   RotateCwIcon,
   VolumeXIcon,
 } from 'lucide-react'
 import type { ReactNode } from 'react'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react'
 
 import { useToast } from '@/components/ui/use-toast'
 import { playerChromeOpenAtom, playerVolumeAtom } from '@/context/atoms'
-import { useArmed } from '@/hooks/use-armed'
+import { useThemeColor } from '@/hooks/use-theme-color'
+import { useWakeLock } from '@/hooks/use-wake-lock'
 import { isStandalone } from '@/lib/pwa'
 import type { CssVars } from '@/types'
 import { cn } from '@/utils/cn'
 
+import { CenterPlayButton } from './center-play-button'
 import { clampSeek, HOLD_JUMP_MS, holdStep } from './seek-steps'
 import { StageControls } from './stage-controls'
 import type { SeekFlash } from './use-stage-taps'
@@ -27,11 +34,11 @@ import type {
   StagePlayer,
 } from './use-you-tube-player'
 import { useYouTubePlayer } from './use-you-tube-player'
+import type { VideoFit } from './video-fit'
+import { useVideoAspect, useVideoFit } from './video-fit'
 import type { YouTubeQuirks } from './youtube-quirks'
 
 const IDLE_MS = 1800
-// How long an unmuted autoplay gets to start before retrying muted
-const AUTOPLAY_CHECK_MS = 1500
 const VOLUME_STEP = 0.05
 
 const COVERED_PHASES = new Set<StagePhase['kind']>([
@@ -44,6 +51,35 @@ const COVERED_PHASES = new Set<StagePhase['kind']>([
 // A pause leaves the frame in view: with controls=0 YouTube draws nothing over a paused video
 const coversPhase = (phase: StagePhase) =>
   COVERED_PHASES.has(phase.kind) || (phase.kind === 'playing' && !phase.settled)
+
+// Calls `handler` inside the next trusted click or key press anywhere, while the browser still counts it
+const onNextPress = (handler: () => void) => {
+  const types = ['click', 'keydown'] as const
+  const listener = (event: Event) => {
+    if (event.isTrusted) {
+      handler()
+    }
+  }
+  for (const type of types) {
+    window.addEventListener(type, listener, { capture: true })
+  }
+  return () => {
+    for (const type of types) {
+      window.removeEventListener(type, listener, { capture: true })
+    }
+  }
+}
+
+// The video's box: whole inside the stage, or covering it
+const BOX_WIDTH: Record<VideoFit, string> = {
+  fit: 'w-[min(100cqw,calc(var(--video-aspect)*100cqh))]',
+  zoom: 'w-[max(100cqw,calc(var(--video-aspect)*100cqh))]',
+}
+// Upright, the lyrics get the space under a whole video, and lie over one that covers the stage
+const LYRICS_TOP: Record<VideoFit, string> = {
+  fit: 'portrait:top-[calc(var(--video-cy)+min(50cqw/var(--video-aspect),50cqh)+0.5rem)]',
+  zoom: '',
+}
 
 const markImmersive = () => {
   const root = document.documentElement
@@ -106,36 +142,6 @@ const useIdle = (ms: number) => {
   }, [wake])
   return { idle, sleep }
 }
-
-const CenterPlayButton = ({
-  phase,
-  visible,
-  armed,
-  onToggle,
-}: {
-  phase: StagePhase
-  visible: boolean
-  armed: boolean
-  onToggle: () => void
-}) => (
-  <button
-    type='button'
-    tabIndex={-1}
-    aria-label={phase.kind === 'playing' ? 'Pause' : 'Play'}
-    aria-hidden={!visible}
-    onClick={onToggle}
-    className={cn(
-      'absolute top-(--video-cy) left-1/2 z-26 grid size-20 -translate-1/2 place-items-center text-white/90 drop-shadow-stage transition-opacity duration-300 short:size-14',
-      visible ? 'opacity-100' : 'opacity-0',
-      !armed && 'pointer-events-none'
-    )}>
-    {phase.kind === 'paused' ? (
-      <PlayIcon className='size-16 fill-current short:size-10' />
-    ) : (
-      <PauseIcon className='size-16 fill-current short:size-10' />
-    )}
-  </button>
-)
 
 const SeekFlashBadge = ({ flash }: { flash: SeekFlash }) => (
   <div
@@ -242,57 +248,55 @@ export const PlayerStage = ({
   const [immersive, setImmersive] = useState(false)
   const player = useYouTubePlayer({
     loop,
+    onBlocked: () => {
+      setAutoplayMuted(true)
+    },
     onEvent,
     quirks,
     videoId,
     volume,
   })
-  const { phase, hostRef } = player
+  const { phase, stageRef, boxRef } = player
+  const aspect = useVideoAspect(videoId)
+  const { fit, toggleFit } = useVideoFit()
 
   const autoplayedRef = useRef(false)
-  const { play } = player
-  const phaseKindRef = useRef(phase.kind)
-  useEffect(() => {
-    phaseKindRef.current = phase.kind
-  }, [phase.kind])
+  const { play, unlockSound } = player
   const isReady = phase.kind === 'ready'
-  // The check lives in a ref, not the effect's cleanup: play() moves the phase
-  // off 'ready', which re-runs this effect and would cancel the check
-  const autoplayCheckRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  useEffect(
-    () => () => {
-      if (autoplayCheckRef.current) {
-        clearTimeout(autoplayCheckRef.current)
-      }
-    },
-    []
-  )
   useEffect(() => {
     if (!(autoplay && isReady) || autoplayedRef.current) {
       return
     }
     autoplayedRef.current = true
     play()
-    // A blocked unmuted play leaves YouTube unstarted without an error
-    autoplayCheckRef.current = setTimeout(() => {
-      const kind = phaseKindRef.current
-      if (kind !== 'playing' && kind !== 'buffering') {
-        setAutoplayMuted(true)
-        play({ muted: true })
-      }
-    }, AUTOPLAY_CHECK_MS)
   }, [autoplay, isReady, play])
+
+  // While the song is muted only because the browser refused sound, the next tap or key anywhere turns it
+  // on: that press is the permission the browser waits for, and it lasts the visit (see youtube-engine)
+  useEffect(
+    () =>
+      autoplayMuted
+        ? onNextPress(() => {
+            unlockSound()
+            setAutoplayMuted(false)
+          })
+        : undefined,
+    [autoplayMuted, unlockSound]
+  )
 
   const { idle, sleep } = useIdle(IDLE_MS)
   const [dragging, setDragging] = useState(false)
+  const [locked, setLocked] = useState(false)
+  useWakeLock(phase.kind === 'playing' || phase.kind === 'buffering')
+  useThemeColor(stageRef)
 
   // YouTube's own error screens (unavailable, sign-in, age gate) need its UI
   const handsOff = phase.kind === 'error'
   const showCover = !handsOff && coversPhase(phase)
-  const controlsVisible = !dragging && (!idle || phase.kind !== 'playing')
+  const controlsVisible =
+    !locked && !dragging && (!idle || phase.kind !== 'playing')
   const blockInput = quirks.blockIframeInput && !handsOff
   const { toast } = useToast()
-  const centerArmed = useArmed(controlsVisible)
   const setChromeOpen = useSetAtom(playerChromeOpenAtom)
   useEffect(() => {
     setChromeOpen(controlsVisible)
@@ -315,7 +319,7 @@ export const PlayerStage = ({
   }
 
   // The whole page goes fullscreen, not just the stage, so the rail and the controls stay in reach.
-  // Nothing locks the orientation: the player turns with the phone, either way round
+  // The player turns with the phone either way round, unless Lock Landscape holds it on its side
   const toggleFullscreen = () => {
     if (!document.fullscreenEnabled) {
       // In Safari, unlike the Home Screen app, the browser's own bars stay; say how to lose them
@@ -388,8 +392,11 @@ export const PlayerStage = ({
     hold.current = { at: now, jumps: jumps + 1, key: event.key, target }
   }
 
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
+  // One listener for the stage's life, calling the latest handler: a press that shows the controls renders
+  // the stage while the press is still being dispatched, and a listener swapped then would miss it
+  const keyDownRef = useRef<((event: KeyboardEvent) => void) | null>(null)
+  useLayoutEffect(() => {
+    keyDownRef.current = (event: KeyboardEvent) => {
       if (isEditable(event.target) || event.metaKey || event.ctrlKey) {
         return
       }
@@ -432,6 +439,10 @@ export const PlayerStage = ({
           toggleFullscreen()
           break
         }
+        case 'z': {
+          toggleFit()
+          break
+        }
         case 'Escape': {
           if (!immersive) {
             return
@@ -445,44 +456,49 @@ export const PlayerStage = ({
       }
       event.preventDefault()
     }
+  })
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      keyDownRef.current?.(event)
+    }
     window.addEventListener('keydown', handleKeyDown)
     return () => {
       window.removeEventListener('keydown', handleKeyDown)
     }
-  })
+  }, [])
 
-  const cropVars: CssVars = { '--iframe-crop': `${-quirks.cropPx}px` }
+  const stageVars: CssVars = { '--video-aspect': String(aspect) }
   return (
     <div
+      ref={stageRef}
       data-player-stage
       data-phase={phase.kind}
+      data-fit={fit}
+      style={stageVars}
       className={cn(
         // --video-cy is the video's vertical centre: the middle of the stage, in portrait too, with the lyrics
-        // in the space below it
-        '[container-type:size] relative size-full overflow-hidden bg-black [--video-cy:50cqh]',
+        // in the space below it. The video and the black around it are youtube-engine's layer, under the stage
+        '[container-type:size] relative size-full overflow-hidden [--video-cy:50cqh]',
         !controlsVisible && 'cursor-none',
         className
       )}>
-      <div className='absolute top-(--video-cy) left-1/2 aspect-video w-[min(100cqw,177.78cqh)] -translate-1/2 overflow-hidden'>
-        <div
-          ref={hostRef}
-          className={cn(
-            'absolute inset-x-0 top-(--iframe-crop) bottom-(--iframe-crop) [&>iframe]:size-full',
-            blockInput && '[&>iframe]:pointer-events-none'
-          )}
-          style={cropVars}
-        />
+      {/* The video's box, in the video's own shape: whole inside the stage, or filling it and cropped. The
+          engine lays the video over it */}
+      <div
+        ref={boxRef}
+        className={cn(
+          'absolute top-(--video-cy) left-1/2 aspect-(--video-aspect) -translate-1/2 overflow-hidden',
+          BOX_WIDTH[fit]
+        )}>
         {showCover && <StageCover videoId={videoId} phase={phase} />}
       </div>
 
-      {/* The play/pause control shows and hides with the rest of the floating UI. Opaque, so it also covers
-          the flash YouTube draws in the same spot on a play or pause, which comes from input that has just
-          shown the UI. It sits outside the video box so it draws above the lyrics */}
+      {/* The play/pause control shows and hides with the rest of the floating UI, and on a phone stays as long
+          as YouTube's own button under it. It sits outside the video box so it draws above the lyrics */}
       {!showCover && !handsOff && (
         <CenterPlayButton
           phase={phase}
-          visible={controlsVisible}
-          armed={centerArmed}
+          controlsVisible={controlsVisible}
           onToggle={() => {
             player.togglePlay()
           }}
@@ -506,19 +522,25 @@ export const PlayerStage = ({
       {autoplayMuted && (
         <button
           type='button'
+          data-unmute-pill
           onClick={() => {
             setVolume({ ...storedVolume, muted: false })
           }}
-          className='absolute top-[calc(var(--topbar-h)+0.5rem+var(--notices-h,0px)+var(--preview-banner-h,0px))] left-1/2 z-40 flex -translate-x-1/2 items-center gap-2.5 rounded-full bg-black/60 px-5 py-2.5 text-base font-medium text-white shadow-lg backdrop-blur-md transition-colors hover:bg-black/80'>
+          className='absolute top-[calc(var(--topbar-h)+0.5rem+var(--notices-h,0px)+var(--preview-banner-h,0px))] left-1/2 z-40 flex -translate-x-1/2 items-center gap-2.5 rounded-full bg-black/60 px-5 py-2.5 text-base font-medium whitespace-nowrap text-white shadow-lg backdrop-blur-md transition-colors hover:bg-black/80'>
           <VolumeXIcon className='size-5' aria-hidden='true' />
           Tap to Unmute
         </button>
       )}
 
       {renderLyrics && (
-        // In portrait the lyrics get the space under the video; on a phone on its side they keep clear of the
-        // rail's column and the notch. The floating UI at the bottom is cleared by DraggableLyrics' lift
-        <div className='pointer-events-none absolute inset-0 z-25 portrait:top-[calc(var(--video-cy)+28.125cqw+0.5rem)] short:inset-x-controls-rail'>
+        // In portrait the lyrics get the space under a whole video, and lie over one that fills the stage; on a
+        // phone on its side they keep clear of the rail's column and the notch. The floating UI at the bottom
+        // is cleared by DraggableLyrics' lift
+        <div
+          className={cn(
+            'pointer-events-none absolute inset-0 z-25 short:inset-x-controls-rail',
+            LYRICS_TOP[fit]
+          )}>
           {renderLyrics(player, layout)}
         </div>
       )}
@@ -530,9 +552,13 @@ export const PlayerStage = ({
         onLoopChange={setLoop}
         fullscreen={fullscreen || immersive}
         onToggleFullscreen={toggleFullscreen}
+        zoomed={fit === 'zoom'}
+        onToggleZoom={toggleFit}
         onSeekBy={seekBy}
         volume={volume}
         onVolumeChange={setVolume}
+        locked={locked}
+        onLockedChange={setLocked}
       />
     </div>
   )

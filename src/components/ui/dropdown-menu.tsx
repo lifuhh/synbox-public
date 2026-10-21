@@ -13,17 +13,6 @@ const DropdownMenuTrigger = DropdownMenuPrimitive.Trigger
 
 const DropdownMenuGroup = DropdownMenuPrimitive.Group
 
-const dropdownMenuContentVariants = cva('', {
-  defaultVariants: { variant: 'default' },
-  variants: {
-    variant: {
-      default: '',
-      // A list panel that lays out its own padding
-      panel: 'p-0',
-    },
-  },
-})
-
 const dropdownMenuItemVariants = cva('', {
   defaultVariants: { variant: 'default' },
   variants: {
@@ -31,36 +20,25 @@ const dropdownMenuItemVariants = cva('', {
       default: '',
       // An action that can't be taken back lightly, such as blocking someone
       destructive: 'text-error focus:text-error',
-      // A song row: thumbnail, text and actions
-      media: 'p-2',
+      // The menu's one call to action, as a guest's Continue With Google: a tonal pill
+      primary:
+        'justify-center rounded-full bg-primary-subtle py-2 font-semibold text-primary-text focus:bg-primary-subtle-hover focus:text-primary-text',
       // A label over a line of description
       stacked: 'flex-col items-start gap-0.5',
     },
   },
 })
 
-const dropdownMenuLabelVariants = cva('', {
-  defaultVariants: { variant: 'default' },
-  variants: {
-    variant: {
-      default: '',
-      heading: 'unselectable text-xl',
-    },
-  },
-})
-
 const DropdownMenuContentRender: React.ForwardRefRenderFunction<
   React.ComponentRef<typeof DropdownMenuPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Content> &
-    VariantProps<typeof dropdownMenuContentVariants>
-> = ({ className, sideOffset = 4, variant, ...props }, ref) => (
+  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Content>
+> = ({ className, sideOffset = 4, ...props }, ref) => (
   <DropdownMenuPrimitive.Portal>
     <DropdownMenuPrimitive.Content
       ref={ref}
       sideOffset={sideOffset}
       className={cn(
         'z-50 min-w-32 overflow-hidden rounded-xl bg-popover p-1 text-popover-foreground shadow-md data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95',
-        dropdownMenuContentVariants({ variant }),
         className
       )}
       {...props}
@@ -79,8 +57,9 @@ const DropdownMenuItemRender: React.ForwardRefRenderFunction<
 > = ({ className, inset, variant, ...props }, ref) => (
   <DropdownMenuPrimitive.Item
     ref={ref}
+    // rounded-lg: the menu's 12px corners less its 4px padding, so a highlighted row nests in them
     className={cn(
-      'relative flex cursor-default items-center rounded-xs px-2 py-1.5 text-sm outline-hidden transition-colors select-none focus:bg-accent focus:text-accent-foreground data-disabled:pointer-events-none data-disabled:opacity-50',
+      'relative flex cursor-default items-center rounded-lg px-2 py-1.5 text-sm outline-hidden transition-colors select-none focus:bg-accent focus:text-accent-foreground data-disabled:pointer-events-none data-disabled:opacity-50',
       inset === true && 'pl-8',
       dropdownMenuItemVariants({ variant }),
       className
@@ -90,27 +69,6 @@ const DropdownMenuItemRender: React.ForwardRefRenderFunction<
 )
 const DropdownMenuItem = React.forwardRef(DropdownMenuItemRender)
 DropdownMenuItem.displayName = DropdownMenuPrimitive.Item.displayName
-
-const DropdownMenuLabelRender: React.ForwardRefRenderFunction<
-  React.ComponentRef<typeof DropdownMenuPrimitive.Label>,
-  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Label> &
-    VariantProps<typeof dropdownMenuLabelVariants> & {
-      inset?: boolean
-    }
-> = ({ className, inset, variant, ...props }, ref) => (
-  <DropdownMenuPrimitive.Label
-    ref={ref}
-    className={cn(
-      'px-2 py-1.5 text-sm font-semibold',
-      inset === true && 'pl-8',
-      dropdownMenuLabelVariants({ variant }),
-      className
-    )}
-    {...props}
-  />
-)
-const DropdownMenuLabel = React.forwardRef(DropdownMenuLabelRender)
-DropdownMenuLabel.displayName = DropdownMenuPrimitive.Label.displayName
 
 const DropdownMenuSeparatorRender: React.ForwardRefRenderFunction<
   React.ComponentRef<typeof DropdownMenuPrimitive.Separator>,
@@ -130,7 +88,6 @@ export {
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuGroup,
 }

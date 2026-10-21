@@ -192,14 +192,29 @@ registerSW({
     if (!registration) {
       return
     }
-    const check = () => {
-      void registration.update()
+    // update() rejects with "newestWorker is null" when the browser has dropped the registration's worker
+    // (iOS clears it for storage), and offline. Neither is news: the page loads from the network then, and
+    // the next check tries again
+    const check = async () => {
+      if (
+        registration.installing ??
+        registration.waiting ??
+        registration.active
+      ) {
+        try {
+          await registration.update()
+        } catch {
+          // Checked again within the hour and on the next return
+        }
+      }
     }
     // An installed app is resumed rather than reloaded, so check whenever it comes back too
-    setInterval(check, UPDATE_CHECK_MS)
+    setInterval(() => {
+      void check()
+    }, UPDATE_CHECK_MS)
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible') {
-        check()
+        void check()
       }
     })
   },

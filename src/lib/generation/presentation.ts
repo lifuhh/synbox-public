@@ -28,6 +28,21 @@ export const START_CURSOR: Cursor = {
   revealAt: null,
 }
 
+// Where to start when the screen switches to a job already under way: at its current step, and with the
+// result showing if it has one, instead of rolling through the steps it finished before it was shown
+export const cursorAt = (
+  views: readonly StepView[],
+  completedAt: number | null,
+  now: number
+): Cursor => {
+  const current = views.findIndex((view) => view.state !== 'done')
+  return {
+    fullSince: null,
+    index: current === -1 ? views.length - 1 : current,
+    revealAt: current === -1 && completedAt !== null ? now : null,
+  }
+}
+
 export const advanceCursor = (
   cursor: Cursor,
   views: readonly StepView[],

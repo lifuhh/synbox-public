@@ -6,7 +6,7 @@ import * as React from 'react'
 import { cn } from '@/utils/cn'
 
 const buttonVariants = cva(
-  'inline-flex items-center justify-center rounded-md text-sm font-medium whitespace-nowrap ring-offset-background transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-hidden disabled:pointer-events-none disabled:opacity-50',
+  'inline-flex items-center justify-center rounded-md text-sm font-medium whitespace-nowrap ring-offset-background transition duration-150 ease-out focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-hidden disabled:pointer-events-none disabled:opacity-50 motion-safe:enabled:active:scale-96',
   {
     defaultVariants: {
       size: 'default',
@@ -23,11 +23,12 @@ const buttonVariants = cva(
         icon: 'h-10 w-10',
         // A small round icon button, as for a carousel's arrows
         'icon-round': 'size-9 rounded-full',
-        // The action inside a field, as the landing search box's
-        inset: 'h-11 px-5',
+        // The action inside a field, as the landing search box's. A trailing icon's drawing starts inside its
+        // box, so that side's padding is 4px less and the label and icon sit the same distance from the edges
+        inset: 'h-10 px-5 has-[>svg]:pr-4',
         lg: 'h-11 rounded-md px-8',
-        // A default-height button with a little side padding, for a lone icon in a row
-        narrow: 'h-10 px-2 py-2',
+        // A short labelled pill that sits among the top bar's icon buttons
+        pill: 'h-9 rounded-full px-3 sm:px-4',
         sm: 'h-9 rounded-md px-3',
         // The hero's call to action: padding, not height, sets how tall it is
         tall: 'h-10 px-4 py-6',
@@ -39,8 +40,6 @@ const buttonVariants = cva(
         destructive:
           'bg-destructive text-destructive-foreground hover:bg-destructive/90',
         ghost: 'hover:bg-accent hover:text-accent-foreground',
-        // Ghost that takes the tonal fill on hover
-        'ghost-primary': 'hover:bg-primary-subtle hover:text-primary-text',
         // Ghost with dimmed text that brightens on hover
         'ghost-subtle':
           'text-accent-foreground hover:bg-accent hover:text-foreground',
@@ -54,6 +53,9 @@ const buttonVariants = cva(
         'overlay-icon':
           'rounded-full text-white/70 hover:bg-white/10 hover:text-white',
         'overlay-muted': 'text-white/60 hover:bg-white/10 hover:text-white',
+        // A floating panel's ghost button with an outline, for a second action beside a filled one
+        'overlay-outline':
+          'border border-white/20 text-white/90 hover:border-white/35 hover:bg-white/10 hover:text-white',
         // A play button in a song list: a quiet icon that lights up on hover
         'row-icon':
           'rounded-full text-muted-foreground hover:bg-accent hover:text-foreground',

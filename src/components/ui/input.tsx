@@ -47,9 +47,10 @@ const Input = React.forwardRef(InputRender)
 Input.displayName = 'Input'
 
 // A rounded field that holds a bare Input and an action. The border tells whether what was typed is
-// usable, as on Input, but reacts to focus anywhere inside the field
+// usable, as on Input, but reacts to focus anywhere inside the field. The 50px field holds a 40px action
+// 4px in from the border on every side, so both pills share a centre (radius 25 = 20 + 4 + 1)
 const inputFieldVariants = cva(
-  'flex w-full items-center gap-2 rounded-full border bg-card pr-1.5 pl-5 transition-colors',
+  'flex w-full items-center gap-2 rounded-full border bg-card pr-1 pl-5 transition-colors',
   {
     defaultVariants: { state: 'default' },
     variants: {

@@ -154,13 +154,21 @@ export default defineConfig({
           'Japanese karaoke for any YouTube video, with AI-transcribed, synced lyrics, furigana, romaji and translations.',
         display: 'standalone',
         icons: [
-          { sizes: '64x64', src: 'pwa-64x64.png', type: 'image/png' },
-          { sizes: '192x192', src: 'pwa-192x192.png', type: 'image/png' },
-          { sizes: '512x512', src: 'pwa-512x512.png', type: 'image/png' },
+          { sizes: '64x64', src: 'pwa-64x64-e0e4e24d.png', type: 'image/png' },
+          {
+            sizes: '192x192',
+            src: 'pwa-192x192-f591e4ca.png',
+            type: 'image/png',
+          },
+          {
+            sizes: '512x512',
+            src: 'pwa-512x512-51f10054.png',
+            type: 'image/png',
+          },
           {
             purpose: 'maskable',
             sizes: '512x512',
-            src: 'maskable-icon-512x512.png',
+            src: 'maskable-icon-512x512-31cb5bbb.png',
             type: 'image/png',
           },
         ],
@@ -195,7 +203,7 @@ export default defineConfig({
         ],
         short_name: 'Synbox',
         start_url: '/',
-        theme_color: '#1f0a15',
+        theme_color: '#3c1628',
       },
       registerType: 'prompt',
       workbox: {

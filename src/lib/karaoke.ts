@@ -159,6 +159,25 @@ export const romajiFillParts = (line: KaraokeDocLine): FillPart[] => {
 // the wipe), unless the line before it is still being sung
 export const LINE_LEAD_IN = 0.5
 
+// The aligner ends a held last note when its vowel stops scoring, often well
+// before the singer lets go, and a line that vanishes reads as "stop singing".
+// So a finished line stays (filled) until the next one takes over. Only before
+// an instrumental break (a gap of INSTRUMENTAL_GAP or more, or the song's end)
+// does it clear, LINE_HOLD after its last mora.
+export const INSTRUMENTAL_GAP = 4
+export const LINE_HOLD = 2
+
+const lineRelease = (
+  lines: readonly Pick<KaraokeDocLine, 'start' | 'end'>[],
+  index: number
+) => {
+  const { end } = lines[index]
+  const next = lines[index + 1]
+  return next === undefined || next.start - end >= INSTRUMENTAL_GAP
+    ? end + LINE_HOLD
+    : Infinity
+}
+
 export const currentLineIndex = (
   lines: readonly Pick<KaraokeDocLine, 'start' | 'end'>[],
   time: number,
@@ -181,7 +200,48 @@ export const currentLineIndex = (
   ) {
     return index - 1
   }
-  return time < lines[index].end ? index : -1
+  return time < lineRelease(lines, index) ? index : -1
+}
+
+// The karaoke two-row layout: two fixed rows, the sung line in one and the
+// next line waiting in the other. A finished line's row takes the line after
+// next, so the line being sung never changes rows and the eye never jumps.
+// Each passage after an instrumental break starts again in the top row
+export interface TwoLineView {
+  active: number
+  // Line index in the top and the bottom row, -1 for an empty row
+  rows: readonly [number, number]
+}
+
+const NO_LINES: TwoLineView = { active: -1, rows: [-1, -1] }
+
+const startsPassage = (
+  lines: readonly Pick<KaraokeDocLine, 'start' | 'end'>[],
+  index: number
+) =>
+  index === 0 || lines[index].start - lines[index - 1].end >= INSTRUMENTAL_GAP
+
+export const twoLineView = (
+  lines: readonly Pick<KaraokeDocLine, 'start' | 'end'>[],
+  time: number,
+  leadIn = LINE_LEAD_IN
+): TwoLineView => {
+  const active = currentLineIndex(lines, time, leadIn)
+  if (active < 0) {
+    return NO_LINES
+  }
+  let first = active
+  while (!startsPassage(lines, first)) {
+    first -= 1
+  }
+  const next =
+    active + 1 < lines.length && !startsPassage(lines, active + 1)
+      ? active + 1
+      : -1
+  return {
+    active,
+    rows: (active - first) % 2 === 0 ? [active, next] : [next, active],
+  }
 }
 
 export interface PlaybackClock {

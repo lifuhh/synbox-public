@@ -1,7 +1,7 @@
-import { useAtom, useAtomValue, useSetAtom } from 'jotai'
+import { useAtom } from 'jotai'
 import { CheckIcon, PaletteIcon } from 'lucide-react'
 import type { CSSProperties, RefObject } from 'react'
-import { useRef } from 'react'
+import { useId, useRef } from 'react'
 
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import {
@@ -12,16 +12,13 @@ import {
 } from '@/components/ui/popover'
 import { Slider } from '@/components/ui/slider'
 import {
-  applySongLyricsStyleToAllAtom,
   fontSizeMultiplierAtom,
   lyricsBackdropAtom,
   lyricsCustomHueAtom,
   lyricsStylePanelAtom,
-  lyricsStyleSourceAtom,
   lyricsThemeIdAtom,
-  resetSongLyricsStyleAtom,
+  lyricsTwoLinesAtom,
 } from '@/context/atoms'
-import type { LyricsStyleSource } from '@/context/atoms'
 import { useMediaQuery, usePortrait } from '@/hooks/use-media-query'
 import type { LyricsThemeColors } from '@/lib/lyrics-themes'
 import {
@@ -32,6 +29,11 @@ import {
 import type { CssVars } from '@/types'
 import { cn } from '@/utils/cn'
 
+import {
+  LyricsStyleScopeSection,
+  MyStyles,
+  ScreenSizeTweak,
+} from './lyrics-style-scope'
 import { RailButton, RailTooltip } from './rail-button'
 
 const HALF_FILLED: CSSProperties & Record<'--p', number> = { '--p': 0.5 }
@@ -95,10 +97,44 @@ const ThemeSwatch = ({
   )
 }
 
-const SOURCE_NOTES: Record<LyricsStyleSource, string> = {
-  default: 'This song uses your default style.',
-  shared: 'Showing the style this link was shared with.',
-  song: 'Style and position are saved for this song.',
+// The karaoke two-row layout, on or off. A switch, so it applies without closing the panel
+const TwoLinesSwitch = ({ portrait }: { portrait: boolean }) => {
+  const [twoLines, setTwoLines] = useAtom(lyricsTwoLinesAtom)
+  const hintId = useId()
+  return (
+    <section className='flex flex-col gap-1'>
+      <button
+        type='button'
+        // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- a switch: on and off, applied at once
+        role='switch'
+        aria-checked={twoLines}
+        aria-describedby={hintId}
+        onClick={() => {
+          setTwoLines(!twoLines)
+        }}
+        className='group -mx-2 flex min-h-10 items-center justify-between gap-3 rounded-md px-2 text-sm font-medium focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-hidden touch:min-h-11'>
+        Two Lines
+        <span
+          aria-hidden='true'
+          className={cn(
+            'relative h-5 w-9 shrink-0 rounded-full transition-colors',
+            twoLines ? 'bg-primary' : 'bg-secondary ring-1 ring-border'
+          )}>
+          <span
+            className={cn(
+              'absolute top-0.5 left-0.5 size-4 rounded-full bg-white shadow transition-transform motion-reduce:transition-none',
+              twoLines && 'translate-x-4'
+            )}
+          />
+        </span>
+      </button>
+      <p id={hintId} className='text-xs text-muted-foreground'>
+        {portrait
+          ? 'Shows the next line in a second row, on a wide screen or a phone turned sideways.'
+          : 'Shows the next line in a second row, so you can read ahead.'}
+      </p>
+    </section>
+  )
 }
 
 // A discrete pick (a preset colour, a backdrop) applies and closes, like a menu. Size and the custom hue
@@ -128,10 +164,6 @@ export const LyricsThemePicker = ({
   const [themeId, setThemeId] = useAtom(lyricsThemeIdAtom)
   const [customHue, setCustomHue] = useAtom(lyricsCustomHueAtom)
   const [backdrop, setBackdrop] = useAtom(lyricsBackdropAtom)
-  const source = useAtomValue(lyricsStyleSourceAtom)
-  const ownStyle = source === 'shared' || source === 'song'
-  const resetSongStyle = useSetAtom(resetSongLyricsStyleAtom)
-  const applyToAll = useSetAtom(applySongLyricsStyleToAllAtom)
 
   const activeBackdrop = LYRICS_BACKDROPS.find((b) => b.id === backdrop)
 
@@ -142,16 +174,9 @@ export const LyricsThemePicker = ({
   )
   const body = (
     <div className='flex flex-col gap-4 p-4 unhighlightable'>
-      <div className='flex items-center justify-between touch:pr-10'>
-        {heading}
-        <button
-          type='button'
-          onClick={resetSongStyle}
-          disabled={!ownStyle}
-          className='-my-2 py-2 text-xs text-muted-foreground transition-colors hover:text-foreground disabled:pointer-events-none disabled:opacity-0 touch:text-sm'>
-          Reset
-        </button>
-      </div>
+      <div className='flex items-center touch:pr-10'>{heading}</div>
+
+      <LyricsStyleScopeSection />
 
       <section className='flex flex-col gap-2'>
         <h3 className='text-xs font-medium tracking-wide text-muted-foreground uppercase'>
@@ -182,7 +207,10 @@ export const LyricsThemePicker = ({
             A
           </span>
         </div>
+        <ScreenSizeTweak />
       </section>
+
+      <TwoLinesSwitch portrait={portrait} />
 
       <section className='flex flex-col gap-2'>
         <h3 className='text-xs font-medium tracking-wide text-muted-foreground uppercase'>
@@ -267,7 +295,7 @@ export const LyricsThemePicker = ({
                 close()
               }}
               className={cn(
-                'rounded-md py-1.5 text-xs font-medium transition-colors focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-hidden touch:py-2.5 touch:text-sm',
+                'rounded-sm py-1.5 text-xs font-medium transition-colors focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-hidden touch:py-2.5 touch:text-sm',
                 backdrop === option.id
                   ? 'bg-accent text-foreground'
                   : 'text-muted-foreground hover:text-foreground'
@@ -279,20 +307,7 @@ export const LyricsThemePicker = ({
         <p className='text-xs text-muted-foreground'>{activeBackdrop?.hint}</p>
       </section>
 
-      {source !== null && (
-        <section className='flex items-center justify-between gap-3 pt-3'>
-          <p className='text-xs text-muted-foreground'>
-            {SOURCE_NOTES[source]}
-          </p>
-          <button
-            type='button'
-            onClick={applyToAll}
-            disabled={!ownStyle}
-            className='-my-2 shrink-0 py-2 text-xs font-medium text-primary-text transition-colors hover:text-foreground disabled:pointer-events-none disabled:opacity-0 touch:text-sm'>
-            Use For All Songs
-          </button>
-        </section>
-      )}
+      <MyStyles onApplied={close} />
     </div>
   )
 

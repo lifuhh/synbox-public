@@ -14,7 +14,7 @@ const TabsListRender: React.ForwardRefRenderFunction<
   <TabsPrimitive.List
     ref={ref}
     className={cn(
-      'inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground',
+      'inline-flex h-10 items-center justify-center rounded-full bg-muted p-1 text-muted-foreground',
       className
     )}
     {...props}
@@ -30,7 +30,8 @@ const TabsTriggerRender: React.ForwardRefRenderFunction<
   <TabsPrimitive.Trigger
     ref={ref}
     className={cn(
-      'inline-flex items-center justify-center rounded-xs px-3 py-1.5 text-sm font-medium whitespace-nowrap ring-offset-background transition-all focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-hidden disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-accent data-[state=active]:text-foreground data-[state=active]:shadow-xs',
+      // The selected tab takes the same filled pill as a selected filter chip (the Lyrics page's)
+      'inline-flex items-center justify-center rounded-full px-3 py-1.5 text-sm font-medium whitespace-nowrap ring-offset-background transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-hidden disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-foreground data-[state=active]:text-background data-[state=inactive]:hover:text-foreground',
       className
     )}
     {...props}
@@ -46,7 +47,8 @@ const TabsContentRender: React.ForwardRefRenderFunction<
   <TabsPrimitive.Content
     ref={ref}
     className={cn(
-      'mt-2 ring-offset-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-hidden',
+      // An inset ring, so a panel flush with a clipping edge (a popover's) still shows it
+      'mt-2 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden focus-visible:ring-inset',
       className
     )}
     {...props}

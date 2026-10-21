@@ -4,10 +4,12 @@ import { useRef } from 'react'
 import { Link } from 'react-router'
 
 import { startFromButton } from '@/components/generation/start-generation'
+import { KaraokeBadge, KaraokeMark } from '@/components/shared/karaoke-badge'
 import { Button } from '@/components/ui/button'
+import { toast } from '@/components/ui/use-toast'
 import { SIGN_IN_CODES, signInWithGoogle, useAccess } from '@/lib/auth'
 import { overallValue } from '@/lib/generation/progress'
-import type { Job } from '@/lib/generation/store'
+import type { Job, JobStatus } from '@/lib/generation/store'
 import {
   cancelGeneration,
   dismissGeneration,
@@ -31,6 +33,10 @@ import {
 } from './surface'
 import { useOutsideActivity } from './use-outside-activity'
 import type { Presentation } from './use-presentation'
+import { isReconnecting } from './use-presentation'
+
+// What a song shows until the backend sends its details, when nothing named it before
+const PENDING_TITLE = 'Fetching Song Details…'
 
 const timeLeft = (seconds: number) => {
   if (seconds < 20) {
@@ -54,7 +60,7 @@ const SongHeader = ({ job, onClose }: { job: Job; onClose: () => void }) => {
   const running = isActive(job)
   let title = titleOf(job)
   if (title === '') {
-    title = running ? 'Fetching Song Details…' : 'Song Details Unavailable'
+    title = running ? PENDING_TITLE : 'Song Details Unavailable'
   }
   const channel = job.video?.channel ?? ''
   const subtitle = channel === '' ? generatingLabel(job, running) : channel
@@ -152,18 +158,65 @@ const DoneView = ({ job }: { job: Job }) => {
   )
 }
 
+// A finished song's row carries its Play button instead of a status
 const rowStatus = (job: Job) => {
   const { status } = job
-  if (status.kind === 'complete') {
-    return 'Ready'
-  }
   if (status.kind === 'failed') {
     return 'Failed'
   }
+  if (status.kind === 'complete') {
+    return null
+  }
+  const now = Date.now()
+  if (isReconnecting(job, now)) {
+    return 'Reconnecting…'
+  }
   return (
     queueLabelOf(job) ??
-    `${Math.floor(overallValue(job.runs, Date.now(), false) * 100)}%`
+    `${Math.floor(overallValue(job.runs, now, false) * 100)}%`
   )
+}
+
+// The run's timed lyrics are now the song's live lyrics. When it saved nothing new, the library list says
+const madeKaraoke = (status: Extract<JobStatus, { kind: 'complete' }>) =>
+  status.karaoke !== null &&
+  (status.outcome.kind === 'created' ||
+    (status.outcome.kind === 'version' && status.outcome.active))
+
+// A song's own action at the end of its row: Play once it is ready, Dismiss once it failed
+const RowAction = ({ job, title }: { job: Job; title: string }) => {
+  const outcome = outcomeOf(job)
+  const name = title === '' ? 'this song' : title
+  if (outcome) {
+    return (
+      <Button asChild size='sm' gap='sm' className='h-8 shrink-0 touch:h-11'>
+        <Link
+          to={outcome.play.to}
+          aria-label={`Play ${name}`}
+          onClick={() => {
+            dismissGeneration(job.id)
+          }}>
+          <Play className='size-3.5 fill-current' aria-hidden />
+          Play
+        </Link>
+      </Button>
+    )
+  }
+  if (job.status.kind === 'failed') {
+    return (
+      <Button
+        variant='overlay-icon'
+        size='icon'
+        className='size-8 shrink-0 touch:size-11'
+        aria-label={`Dismiss ${name}`}
+        onClick={() => {
+          dismissGeneration(job.id)
+        }}>
+        <X className='size-4' aria-hidden />
+      </Button>
+    )
+  }
+  return null
 }
 
 // Every song started from this tab, oldest first; picking one shows it in the panel
@@ -178,22 +231,24 @@ const SongQueue = ({
     <p className='px-1 text-xs font-medium text-faint'>
       Your Songs · {jobs.length}
     </p>
-    <ul className='flex max-h-36 flex-col gap-0.5 overflow-y-auto'>
+    <ul className='flex max-h-36 flex-col gap-0.5 overflow-y-auto touch:max-h-44'>
       {jobs.map((job) => {
         const title = titleOf(job)
-        const failed = job.status.kind === 'failed'
+        const status = rowStatus(job)
         return (
-          <li key={job.id}>
+          <li
+            key={job.id}
+            className={cn(
+              'flex items-center gap-1 rounded-lg pr-1 hover:bg-accent',
+              job.id === focusedId && 'bg-accent'
+            )}>
             <button
               type='button'
               aria-current={job.id === focusedId}
               onClick={() => {
                 focusGeneration(job.id)
               }}
-              className={cn(
-                'flex w-full items-center gap-2 rounded-lg px-1.5 py-1 text-left outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-brand-light touch:py-2',
-                job.id === focusedId && 'bg-accent'
-              )}>
+              className='flex min-w-0 flex-1 items-center gap-2 self-stretch rounded-lg px-1.5 py-1 text-left outline-none focus-visible:ring-2 focus-visible:ring-brand-light touch:py-2'>
               <span className='h-6 w-[43px] shrink-0 overflow-hidden rounded bg-thumbnail-placeholder'>
                 <img
                   src={thumbnailOf(job)}
@@ -203,17 +258,32 @@ const SongQueue = ({
                   className='size-full object-cover'
                 />
               </span>
-              <span className='min-w-0 flex-1 truncate text-xs text-foreground'>
-                {title === '' ? job.videoId : title}
-              </span>
               <span
                 className={cn(
-                  'shrink-0 text-xs tabular-nums',
-                  failed ? 'text-error' : 'text-muted-foreground'
+                  'min-w-0 flex-1 truncate text-xs',
+                  title === '' ? 'text-faint' : 'text-foreground'
                 )}>
-                {rowStatus(job)}
+                {title === '' ? PENDING_TITLE : title}
               </span>
+              {job.status.kind === 'complete' &&
+                (madeKaraoke(job.status) ? (
+                  <KaraokeBadge />
+                ) : (
+                  <KaraokeMark videoId={job.videoId} />
+                ))}
+              {status !== null && (
+                <span
+                  className={cn(
+                    'shrink-0 text-xs tabular-nums',
+                    job.status.kind === 'failed'
+                      ? 'text-error'
+                      : 'text-muted-foreground'
+                  )}>
+                  {status}
+                </span>
+              )}
             </button>
+            <RowAction job={job} title={title} />
           </li>
         )
       })}
@@ -230,7 +300,9 @@ interface GenerationPanelProps {
   jobs: readonly Job[]
   view: Presentation
   raised: boolean
-  // The listener got on with something else on the page; the panel steps aside to the corner
+  // Minimized, the job sits in the top bar rather than the corner (phones)
+  docked: boolean
+  // The listener got on with something else on the page; the panel steps aside to its button
   onOutsideActivity: () => void
 }
 
@@ -239,6 +311,7 @@ const GenerationPanel = ({
   jobs,
   view,
   raised,
+  docked,
   onOutsideActivity,
 }: GenerationPanelProps) => {
   const ref = useRef<HTMLElement>(null)
@@ -254,11 +327,19 @@ const GenerationPanel = ({
     if (status.kind === 'failed') {
       return 'Stopped'
     }
-    return view.complete ? 'Done' : (queueLabel ?? timeLeft(view.remainingS))
+    if (view.complete) {
+      return 'Done'
+    }
+    if (view.reconnecting) {
+      return 'Reconnecting…'
+    }
+    return queueLabel ?? timeLeft(view.remainingS)
   }
-  let hint = 'Keep browsing. This carries on in the corner.'
+  let hint = `Keep browsing. This carries on ${docked ? 'up top' : 'in the corner'}.`
   if (status.kind === 'complete') {
     hint = 'Finishing up…'
+  } else if (view.reconnecting) {
+    hint = 'The connection dropped. Catching up with the server…'
   } else if (queueLabel !== null) {
     hint = 'Songs take turns on the server. Add more any time.'
   }
@@ -281,7 +362,7 @@ const GenerationPanel = ({
         surfacePlacement(raised),
         // Centred on a touch screen, like every other panel there
         'touch:inset-x-0 touch:top-1/2 touch:bottom-auto touch:mx-auto touch:max-h-[calc(var(--app-h)-var(--topbar-h)-2rem)] touch:-translate-y-1/2 touch:[--panel-origin:center]',
-        'fixed z-50 max-h-[calc(var(--app-h)-var(--topbar-h)-var(--stage-controls-h,0px)-2rem)] w-[min(400px,calc(100vw-2rem))] overflow-x-hidden overflow-y-auto rounded-panel bg-generation-panel/90 shadow-panel backdrop-blur-xl'
+        'fixed z-50 max-h-[calc(var(--app-h)-var(--topbar-h)-var(--stage-controls-h,0px)-2rem)] w-[min(400px,calc(100vw-2rem))] overflow-x-hidden overflow-y-auto rounded-panel bg-generation-panel shadow-panel backdrop-blur-xl'
       )}>
       <div className='flex flex-col gap-4 p-4'>
         <SongHeader job={job} onClose={active ? minimize : dismiss} />
@@ -350,7 +431,7 @@ const GenerationPanel = ({
                       </Button>
                     ) : null}
                     <Button
-                      variant='overlay'
+                      variant='overlay-outline'
                       className='flex-1'
                       onClick={dismiss}>
                       Close
@@ -367,8 +448,14 @@ const GenerationPanel = ({
                       className='shrink-0'
                       onClick={() => {
                         cancelGeneration(job.id)
+                        // Nothing can stop the server's job once it runs: this only stops showing it
+                        toast({
+                          description:
+                            'The server may still finish it and add it to the library.',
+                          title: 'Stopped Watching This Song',
+                        })
                       }}>
-                      Cancel
+                      Stop Watching
                     </Button>
                   )}
                 </div>

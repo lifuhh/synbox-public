@@ -30,7 +30,9 @@ const Notice = ({ children }: { children: React.ReactNode }) => (
 )
 
 const ResultGrid = ({ children }: { children: React.ReactNode }) => (
-  <div className='grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5'>
+  // Each card pads its hover surface, so the grid reaches out by that padding and the pictures line up
+  // with the heading and the search field
+  <div className='-mx-2 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5'>
     {children}
   </div>
 )

@@ -24,7 +24,7 @@ const AppLogo: React.FC = () => {
   }
 
   return (
-    <div className='z-20 flex w-36 min-w-36 cursor-pointer justify-start py-2 align-middle sm:w-44 sm:min-w-44'>
+    <div className='z-20 flex w-24 min-w-24 cursor-pointer justify-start py-2 align-middle min-[360px]:w-28 min-[360px]:min-w-28 sm:w-44 sm:min-w-44'>
       <Link to='/' onClick={handleOnClick} aria-label='Synbox home'>
         <span className='inline-block'>
           <SynboxLogo />

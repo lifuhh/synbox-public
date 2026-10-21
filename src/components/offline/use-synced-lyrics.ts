@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import type { KaraokeLineHandle } from '@/components/lyrics-display/karaoke-line'
+import { LINE_HOLD } from '@/lib/karaoke'
 import type { OfflineLine } from '@/lib/offline/song'
 
 import { useSilentPlayback } from './use-silent-playback'
@@ -16,7 +17,8 @@ export const useSyncedLyrics = (lines: OfflineLine[], synced: boolean) => {
     for (const line of lines) {
       end = Math.max(end, line.end)
     }
-    return end + 1
+    // Long enough for the last line to clear once it is sung
+    return end + LINE_HOLD
   }, [lines])
 
   // The clock drives the line being sung frame by frame; every other line shows as sung

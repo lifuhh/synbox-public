@@ -84,3 +84,56 @@ test('a video YouTube keeps to youtube.com fails before the backend is asked, wi
     expect(fetchMock).toHaveBeenCalled()
   })
 })
+
+const ndjson = (lines: object[]) =>
+  new Response(`${lines.map((line) => JSON.stringify(line)).join('\n')}\n`, {
+    headers: { 'content-type': 'application/x-ndjson' },
+  })
+const check = (fraction: number) => ({
+  data: { expected_s: 5, fraction, stage: 'check' },
+  type: 'progress',
+})
+
+test('a stream the backend hands over with a resume line is asked again at once, and nothing shows as lost', async () => {
+  vi.resetModules()
+  const store = await import('./store')
+  const asked: string[] = []
+  const askedAt: number[] = []
+  const hanging = globalThis.fetch
+  vi.stubGlobal('fetch', async (url: string, init: RequestInit) => {
+    if (!url.endsWith('/validate')) {
+      return await hanging(url, init)
+    }
+    asked.push(typeof init.body === 'string' ? init.body : '')
+    askedAt.push(Date.now())
+    // The first stream ends after 270 s with the job still running; the next one replays it from the start
+    return asked.length === 1
+      ? ndjson([
+          check(0),
+          check(0.5),
+          { data: { request_id: 'r' }, type: 'resume' },
+        ])
+      : ndjson([
+          check(0),
+          check(0.5),
+          check(1),
+          {
+            data: { full_vid_info: { title: 'Handed Over' } },
+            type: 'vid_info',
+          },
+        ])
+  })
+
+  store.startGeneration({ mode: 'new', videoId: 'h'.repeat(11) })
+  await vi.waitFor(() => {
+    expect(store.getGenerationState().jobs[0].video?.title).toBe('Handed Over')
+  })
+  const [job] = store.getGenerationState().jobs
+  expect(asked).toHaveLength(2)
+  expect(asked[1]).toBe(asked[0])
+  // At once: not after a retry's wait (1.5 s) or a reconnect's (2 s)
+  expect(askedAt[1] - askedAt[0]).toBeLessThan(500)
+  expect(JSON.parse(asked[0])).toMatchObject({ resume: true })
+  expect(job.status).toMatchObject({ kind: 'running', phase: 'transcribe' })
+  expect(job.reconnectingSince).toBeNull()
+})
