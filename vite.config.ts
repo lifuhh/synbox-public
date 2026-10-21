@@ -200,6 +200,8 @@ export default defineConfig({
       registerType: 'prompt',
       workbox: {
         cleanupOutdatedCaches: true,
+        // Or the precache would still answer "/" with its index.html, ahead of the pages route below
+        directoryIndex: '',
         // The app shell only. Lyrics, songs and videos always come from the network
         globIgnores: [
           'AppLogoV2.svg',
