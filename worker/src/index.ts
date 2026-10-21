@@ -22,7 +22,8 @@ const count = (value: string | undefined) => {
 const limitsOf = (env: AppEnv): Limits => ({
   guest: count(env.GUEST_DAILY_LIMIT),
   guestTotal: count(env.GUEST_DAILY_TOTAL),
-  user: count(env.USER_DAILY_LIMIT),
+  user:
+    env.USER_DAILY_LIMIT === 'unlimited' ? null : count(env.USER_DAILY_LIMIT),
 })
 
 app.on(

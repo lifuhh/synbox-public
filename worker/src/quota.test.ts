@@ -148,3 +148,24 @@ test('a guest gets one song a day, and all guests together stop at the shared ca
   // A guest's request id is not a user's, and the other way round
   expect(await reserve('g1')).toEqual({ outcome: 'forbidden' })
 })
+
+test('signed-in users can have no daily limit while guests keep theirs', async () => {
+  const open = { ...LIMITS, user: null }
+  const outcomes = await Promise.all(
+    ['r1', 'r2', 'r3'].map(
+      async (id) =>
+        await reserveGeneration(
+          db,
+          { id, kind: 'new', owner: { id: 'u1', kind: 'user' }, videoId: 'v' },
+          open,
+          now
+        )
+    )
+  )
+  expect(outcomes.map((r) => r.outcome)).toEqual([
+    'reserved',
+    'reserved',
+    'reserved',
+  ])
+  expect(await getQuota(db, 'u1', open, now)).toMatchObject({ limit: null })
+})

@@ -7,8 +7,8 @@ export type Owner =
   | { kind: 'guest'; key: string }
 
 export interface Limits {
-  // Per signed-in user per day, unless an admin set an override
-  user: number
+  // Per signed-in user per day (null: no limit), unless an admin set an override
+  user: number | null
   // Per guest per day, and for all guests together
   guest: number
   guestTotal: number
@@ -61,7 +61,7 @@ const readUser = async (db: D1Database, userId: string) =>
     .bind(userId)
     .first<UserRow>()
 
-const limitFor = (user: UserRow, defaultLimit: number) =>
+const limitFor = (user: UserRow, defaultLimit: number | null) =>
   user.role === 'admin' ? null : (user.dailyLimit ?? defaultLimit)
 
 // The column and value a generation is owned by. The column name is one of two literals, never input
