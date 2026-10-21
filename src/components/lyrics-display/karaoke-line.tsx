@@ -1,6 +1,7 @@
 import type { Ref } from 'react'
 import { useImperativeHandle, useMemo, useRef } from 'react'
 
+import { balanceWrap } from '@/lib/balance-wrap'
 import { fillProgress, tokenFillParts } from '@/lib/karaoke'
 import type { KaraokeDocLine } from '@/types'
 import { cn } from '@/utils/cn'
@@ -48,9 +49,11 @@ export const KaraokeLine = ({ line, className, ref }: KaraokeLineProps) => {
 
   return (
     <p
+      key={line.text}
+      ref={balanceWrap}
       lang={isLatinLine ? undefined : 'ja'}
       className={cn(
-        'lyric-text-line align-middle text-balance',
+        'lyric-text-line mx-auto align-middle',
         // Japanese lines leave room above for furigana, so a wrapped line's
         // readings never run into the line before it
         isLatinLine

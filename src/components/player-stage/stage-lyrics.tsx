@@ -16,6 +16,7 @@ import {
   translationIsEnglishAtom,
   translationVisibilityAtom,
 } from '@/context/atoms'
+import { balanceWrap } from '@/lib/balance-wrap'
 import { parseRubyHtml } from '@/lib/furigana'
 import type { PlaybackClock } from '@/lib/karaoke'
 import {
@@ -82,8 +83,10 @@ const LyricLine = ({ html, primary }: { html: string; primary: boolean }) => {
   const latin = !primary || isLatinOnly(html)
   return (
     <p
+      key={html}
+      ref={balanceWrap}
       className={cn(
-        'lyric-text-line text-center text-balance',
+        'lyric-text-line mx-auto text-center',
         primary ? 'text-lyric' : 'text-lyric-secondary',
         // Room above a Japanese line for its furigana when it wraps
         latin

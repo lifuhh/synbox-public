@@ -220,11 +220,12 @@
   --spacing-cqh: 1cqh;
 
   /* The player's lyric lines, times the viewer's scale: a share of the stage's width, but never more than a
-     share of its height, so a phone on its side (wide, very short) is not sized like a monitor. The floor
-     keeps furigana (0.45em) readable on a phone: 20px kanji, 9px readings */
-  --text-lyric: calc(max(min(2cqw, 4cqh), 1.25rem) * var(--lyric-scale));
+     share of its height, so a phone on its side (wide, very short) is not sized like a monitor. A phone held
+     upright gets the floor: 17px, 25px on its side, 43px on a 1440px-wide desktop. Translation and romaji
+     are 0.7 of that */
+  --text-lyric: calc(max(min(3cqw, 6.4cqh), 1.0625rem) * var(--lyric-scale));
   --text-lyric-secondary: calc(
-    max(min(1.4cqw, 2.8cqh), 0.875rem) * var(--lyric-scale)
+    max(min(2.1cqw, 4.48cqh), 0.75rem) * var(--lyric-scale)
   );
 
   /* The offline reader: room under its bar and over its text style row, and type times the reader's scale */
@@ -750,9 +751,8 @@
 
 @utility lyric-karaoke-line {
   /* iOS Safari clips a filter on an inline box to its glyphs, cutting off the furigana above them; as
-     a block the box spans the whole line height, readings included, and a wrapped line balances */
+     a block the box spans the whole line height, readings included */
   display: block;
-  text-wrap: balance;
   text-shadow: none;
   filter: drop-shadow(0 0 1px rgb(0 0 0 / 0.95))
     drop-shadow(0 1px 3px rgb(0 0 0 / 0.7))

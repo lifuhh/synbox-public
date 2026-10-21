@@ -34,8 +34,6 @@ interface UseYouTubePlayerOptions {
   quirks: YouTubeQuirks
   volume: PlayerVolume
   loop: boolean
-  // A pause hides the frame under our cover; otherwise the paused frame stays in view
-  coverPause: boolean
   onEvent?: (message: string) => void
 }
 
@@ -51,16 +49,15 @@ const STATE_NAMES: Record<YTStateCode, string> = {
 const nextPhase = (
   current: StagePhase,
   state: YTStateCode,
-  stoppedByGuard: boolean,
-  coverPause: boolean
+  stoppedByGuard: boolean
 ): StagePhase => {
   switch (state) {
     case YTState.Playing: {
-      // Resuming from an uncovered pause has no cover to hold
+      // Resuming from a pause has no cover to hold
       const resuming =
         current.kind !== 'playing' &&
         current.kind !== 'buffering' &&
-        (coverPause || current.kind !== 'paused')
+        current.kind !== 'paused'
       return { kind: 'playing', settled: !resuming }
     }
     case YTState.Buffering: {
@@ -91,7 +88,6 @@ export const useYouTubePlayer = ({
   quirks,
   volume,
   loop,
-  coverPause,
   onEvent,
 }: UseYouTubePlayerOptions) => {
   const hostRef = useRef<HTMLDivElement>(null)
@@ -143,10 +139,10 @@ export const useYouTubePlayer = ({
   }, [])
 
   // Read inside long-lived YouTube callbacks without re-creating the player
-  const latest = useRef({ coverPause, loop, onEvent, quirks })
+  const latest = useRef({ loop, onEvent, quirks })
   useLayoutEffect(() => {
     phaseRef.current = phase
-    latest.current = { coverPause, loop, onEvent, quirks }
+    latest.current = { loop, onEvent, quirks }
   })
 
   const log = useCallback((message: string) => {
@@ -229,12 +225,7 @@ export const useYouTubePlayer = ({
                 )
               }
               setPhase((current) =>
-                nextPhase(
-                  current,
-                  data,
-                  stoppedByGuardRef.current,
-                  latest.current.coverPause
-                )
+                nextPhase(current, data, stoppedByGuardRef.current)
               )
             },
           },
@@ -369,12 +360,6 @@ export const useYouTubePlayer = ({
     const player = playerRef.current
     if (!player) {
       return
-    }
-    if (latest.current.coverPause && latest.current.quirks.coverBeforePause) {
-      // Commit the cover to the DOM before YouTube starts drawing its paused UI
-      flushSync(() => {
-        setPhase({ kind: 'paused' })
-      })
     }
     player.pauseVideo()
   }, [])
