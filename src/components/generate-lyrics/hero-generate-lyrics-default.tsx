@@ -145,7 +145,10 @@ const HeroGenerateLyricsDefault = ({
       } else {
         setChecking(true)
         void (async () => {
-          await startFromButton({ mode: 'new', videoId: extractedVideoId })
+          await startFromButton(
+            { mode: 'new', videoId: extractedVideoId },
+            { announce: false }
+          )
           setChecking(false)
         })()
       }
@@ -178,7 +181,7 @@ const HeroGenerateLyricsDefault = ({
       return 'Searching ...'
     }
     if (checking) {
-      return 'Checking ...'
+      return 'Starting…'
     }
     if (blocked) {
       return 'Sign In to Generate'
