@@ -105,7 +105,7 @@ const Avatar = ({ src }: { src: string | null }) => {
             setLoaded(true)
           }}
           className={cn(
-            'absolute inset-0 size-full rounded-md object-cover transition-opacity duration-300 motion-reduce:transition-none',
+            'absolute inset-0 size-full rounded-full object-cover transition-opacity duration-300 motion-reduce:transition-none',
             !shown && 'opacity-0'
           )}
         />

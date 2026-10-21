@@ -1,5 +1,6 @@
 import { useAtomValue } from 'jotai'
-import { useMatch } from 'react-router'
+import { useEffect, useState } from 'react'
+import { useLocation, useMatch } from 'react-router'
 
 import { playerChromeOpenAtom } from '@/context/atoms'
 import { useArmed } from '@/hooks/use-armed'
@@ -11,6 +12,13 @@ import HistoryDropdownButton from '../topbar/history-dropdown-button'
 import LyricsButton from '../topbar/lyrics-button'
 import ProfileButton from '../topbar/profile-button'
 
+// Within this many pixels of the top a page counts as unscrolled
+const TOP_SLACK_PX = 8
+// Smaller moves are ignored, so a resting finger or an inertia tail doesn't flicker the bar
+const JITTER_PX = 4
+// The bar only hides once the page has scrolled past its own height
+const HIDE_AFTER_PX = 96
+
 const TopBar = () => {
   // The versions page under /v/:id is an ordinary page with an opaque bar
   const isVideoPlayer = useMatch('/v/:videoId') !== null
@@ -18,6 +26,52 @@ const TopBar = () => {
   const chromeOpen = useAtomValue(playerChromeOpenAtom)
   const iconsShown = !isVideoPlayer || chromeOpen
   const armed = useArmed(iconsShown)
+
+  // At the top of a page the bar is clear over the page glow, so the two read as one surface. Scrolling down
+  // slides it away; scrolling up brings it back over a fade of the page color. Pages scroll in their own boxes,
+  // so any vertical scroller counts, and the path it happened on is kept so a new page starts clear
+  const { pathname } = useLocation()
+  const [scrollState, setScrollState] = useState<{
+    path: string
+    mode: 'shown' | 'hidden'
+  } | null>(null)
+  useEffect(() => {
+    const lastTop = new WeakMap<HTMLElement, number>()
+    const onScroll = (event: Event) => {
+      const box = event.target
+      if (
+        !(box instanceof HTMLElement) ||
+        box.scrollHeight <= box.clientHeight + 1
+      ) {
+        return
+      }
+      const top = box.scrollTop
+      const previous = lastTop.get(box) ?? 0
+      lastTop.set(box, top)
+      if (top <= TOP_SLACK_PX) {
+        setScrollState(null)
+        return
+      }
+      if (Math.abs(top - previous) < JITTER_PX) {
+        return
+      }
+      const path = globalThis.location.pathname
+      const mode = top > previous && top > HIDE_AFTER_PX ? 'hidden' : 'shown'
+      setScrollState((current) =>
+        current?.path === path && current.mode === mode
+          ? current
+          : { mode, path }
+      )
+    }
+    document.addEventListener('scroll', onScroll, {
+      capture: true,
+      passive: true,
+    })
+    return () => {
+      document.removeEventListener('scroll', onScroll, { capture: true })
+    }
+  }, [])
+  const mode = scrollState?.path === pathname ? scrollState.mode : 'top'
   const cluster = cn(
     'flex items-center gap-2 transition-fade-translate duration-300 ease-out sm:gap-3',
     isVideoPlayer && armed && 'pointer-events-auto',
@@ -31,7 +85,12 @@ const TopBar = () => {
         'fixed top-0 right-0 left-0 z-50 pt-safe-top pr-(--safe-right) pl-(--safe-left)',
         isVideoPlayer
           ? 'pointer-events-none'
-          : 'bg-background/70 backdrop-blur-md'
+          : 'transition-transform duration-300 ease-out motion-reduce:transition-none',
+        !isVideoPlayer && mode !== 'top' && 'topbar-frost',
+        // Keyboard focus inside a hidden bar brings it back
+        !isVideoPlayer &&
+          mode === 'hidden' &&
+          '-translate-y-full focus-within:translate-y-0'
       )}>
       {/* The logo is taller than the bar and centred on it, so its waveform would start at the very
           top; with no bar behind it on the player, the row sits lower so the logo clears the edge */}

@@ -76,7 +76,7 @@ const SongRow = ({ song, ready, onPlayClick }: SongRowProps) => {
           className='shrink-0'
           aria-label={`Play ${song.title}`}
           onClick={onPlayClick(song.vidURL)}>
-          <PlayIcon className='size-6 shrink-0 fill-current' />
+          <PlayIcon className='size-5 shrink-0 fill-current' />
         </Button>
       </td>
     </tr>

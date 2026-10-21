@@ -210,11 +210,10 @@ const HeroGenerateLyricsDefault = ({
       <h1 className='text-left text-4xl font-semibold tracking-tight text-balance text-foreground no-select md:text-center md:text-6xl'>
         AI-Powered Japanese Karaoke
       </h1>
-      <div className='flex items-start gap-2 md:items-center md:justify-center'>
-        <p className='text-base text-pretty text-tagline no-select md:text-center md:text-lg'>
-          Transform YouTube videos into your personalized Japanese karaoke
-          stage, with AI-transcribed, accurately synced lyrics and translations
-        </p>
+      {/* The info button sits inline at the end of the sentence, so it stays beside the words as they wrap */}
+      <p className='text-base text-pretty text-tagline no-select md:text-center md:text-lg'>
+        Transform YouTube videos into your personalized Japanese karaoke stage,
+        with AI-transcribed, accurately synced lyrics and translations
         <TooltipProvider delayDuration={0}>
           <Tooltip open={infoOpen} onOpenChange={setInfoOpen}>
             <TooltipTrigger asChild>
@@ -224,7 +223,7 @@ const HeroGenerateLyricsDefault = ({
                 onClick={() => {
                   setInfoOpen((open) => !open)
                 }}
-                className='-m-2 shrink-0 rounded-full p-2'>
+                className='-my-2 ml-1 inline-flex rounded-full p-1.5 align-middle'>
                 <Info className='h-4 w-4 text-tagline' />
               </button>
             </TooltipTrigger>
@@ -241,7 +240,7 @@ const HeroGenerateLyricsDefault = ({
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
-      </div>
+      </p>
       <div className='mt-3 flex w-full flex-col gap-2 md:max-w-170'>
         {/* The field draws the border and its state; the action sits inside it from sm up */}
         <InputField state={inputMode} className='relative'>
