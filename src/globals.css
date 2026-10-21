@@ -241,10 +241,11 @@
   --text-reader-title--line-height: 1.35;
   --text-reader-ja: calc(1.0625rem * var(--reader-scale));
   --text-reader-ja--line-height: 1.95;
-  /* Romaji and translation share one size under the Japanese; weight and italics tell them apart */
+  /* Sizes step down from the Japanese: romaji, which is read with it, then the translation; weight and
+     italics tell those two apart as well */
   --text-reader-romaji: calc(0.9375rem * var(--reader-scale));
   --text-reader-romaji--line-height: 1.4;
-  --text-reader-translation: calc(0.9375rem * var(--reader-scale));
+  --text-reader-translation: calc(0.875rem * var(--reader-scale));
   --text-reader-translation--line-height: 1.4;
 }
 
