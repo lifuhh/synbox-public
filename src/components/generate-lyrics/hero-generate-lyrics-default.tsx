@@ -31,6 +31,7 @@ const RISE_STEPS = [
   'rise-in rise-delay-100',
   'rise-in rise-delay-200',
 ]
+const NO_RISE = ['', '', '']
 
 interface HeroGenerateLyricsDefaultProps {
   setProcessingStage: (stage: number) => void
@@ -169,10 +170,10 @@ const HeroGenerateLyricsDefault = ({
       return errorMessage
     }
     if (isCheckingLyrics) {
-      return 'Valid URL - Searching for lyrics...'
+      return 'Looking for lyrics…'
     }
     if (existingLyrics) {
-      return 'Lyrics & translations found!'
+      return 'Lyrics and translations ready'
     }
     if (blocked) {
       return access.kind === 'user'
@@ -187,7 +188,7 @@ const HeroGenerateLyricsDefault = ({
       return 'Search'
     }
     if (isCheckingLyrics) {
-      return 'Searching ...'
+      return 'Searching…'
     }
     if (checking) {
       return 'Starting…'
@@ -218,12 +219,12 @@ const HeroGenerateLyricsDefault = ({
   const showAction = !(blocked && access.kind === 'user')
   const actionDisabled = errorMessage !== '' || isCheckingLyrics || checking
   const submit = () => {
-    if (inputValue.length === 0) {
+    if (inputValue.length === 0 || actionDisabled) {
       return
     }
     handleOpenLandingPageDialog()
   }
-  const animate = useMemo(() => !heroShown, [])
+  const rise = useMemo(() => (heroShown ? NO_RISE : RISE_STEPS), [])
   useEffect(() => {
     heroShown = true
   }, [])
@@ -232,7 +233,7 @@ const HeroGenerateLyricsDefault = ({
     <div className='mx-auto flex w-full max-w-3xl flex-col gap-5 pt-12 pb-10 md:items-center md:pt-20 md:pb-14 short:gap-3 short:pt-4 short:pb-6'>
       <h1
         className={cn(
-          animate && RISE_STEPS[0],
+          rise[0],
           'text-left text-4xl font-semibold tracking-tight text-balance text-foreground no-select md:text-center md:text-6xl short:text-4xl'
         )}>
         AI-Powered Japanese Karaoke
@@ -240,7 +241,7 @@ const HeroGenerateLyricsDefault = ({
       {/* The info button sits inline at the end of the sentence, so it stays beside the words as they wrap */}
       <p
         className={cn(
-          animate && RISE_STEPS[1],
+          rise[1],
           'text-base text-pretty text-tagline no-select md:text-center md:text-lg short:text-base'
         )}>
         Paste a YouTube link and sing along with synced lyrics, furigana, romaji
@@ -273,50 +274,54 @@ const HeroGenerateLyricsDefault = ({
         </TooltipProvider>
       </p>
       <div
-        className={cn(
-          animate && RISE_STEPS[2],
-          'mt-3 flex w-full flex-col gap-2 md:max-w-170'
-        )}>
+        className={cn(rise[2], 'mt-3 flex w-full flex-col gap-2 md:max-w-170')}>
         {/* The field draws the border and its state; the action sits inside it, a labelled pill from sm up and a
             round icon on phones, where the label would squeeze the text */}
-        <InputField state={inputMode} className='relative'>
-          <Input
-            value={inputValue}
-            onChange={handleInputChange}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && isSearch) {
-                handleOpenLandingPageDialog()
-              }
-            }}
-            placeholder='Search or paste a YouTube URL'
-            variant='bare'
-          />
-          {showAction && (
-            <>
-              <Button
-                onClick={submit}
-                disabled={actionDisabled}
-                variant='hero'
-                size='icon'
-                aria-label={buttonLabel()}
-                className='shrink-0 sm:hidden'>
-                {buttonIcon() ?? (
-                  <LoaderCircleIcon className='size-5 shrink-0 motion-safe:animate-spin' />
-                )}
-              </Button>
-              <Button
-                onClick={submit}
-                disabled={actionDisabled}
-                variant='hero'
-                size='inset'
-                gap='sm'
-                className='hidden shrink-0 sm:inline-flex'>
-                <span className='text-label'>{buttonLabel()}</span>
-                {buttonIcon()}
-              </Button>
-            </>
-          )}
-        </InputField>
+        {/* A form, so Enter or the keyboard's Go key does what the button does, for a link as for a search */}
+        <form
+          onSubmit={(event) => {
+            event.preventDefault()
+            submit()
+          }}>
+          <InputField state={inputMode} className='relative'>
+            <Input
+              value={inputValue}
+              onChange={handleInputChange}
+              aria-label='Search songs or paste a YouTube link'
+              enterKeyHint={isSearch ? 'search' : 'go'}
+              autoCapitalize='off'
+              autoCorrect='off'
+              spellCheck={false}
+              placeholder='Search or paste a YouTube URL'
+              variant='bare'
+            />
+            {showAction && (
+              <>
+                <Button
+                  type='submit'
+                  disabled={actionDisabled}
+                  variant='hero'
+                  size='icon'
+                  aria-label={buttonLabel()}
+                  className='shrink-0 sm:hidden'>
+                  {buttonIcon() ?? (
+                    <LoaderCircleIcon className='size-5 shrink-0 motion-safe:animate-spin' />
+                  )}
+                </Button>
+                <Button
+                  type='submit'
+                  disabled={actionDisabled}
+                  variant='hero'
+                  size='inset'
+                  gap='sm'
+                  className='hidden shrink-0 sm:inline-flex'>
+                  <span className='text-label'>{buttonLabel()}</span>
+                  {buttonIcon()}
+                </Button>
+              </>
+            )}
+          </InputField>
+        </form>
         <div className='min-h-6 px-5 text-sm' aria-live='polite'>
           {inputMode === 'search' && (
             <p className='text-search'>Search by title, artist or mood</p>
