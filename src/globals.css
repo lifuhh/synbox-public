@@ -558,6 +558,11 @@
   );
 }
 
+/* A list that scrolls inside a box fades out over its last 2rem, so the cut-off row reads as more to scroll to */
+@utility mask-fade-end {
+  mask-image: linear-gradient(to bottom, black calc(100% - 2rem), transparent);
+}
+
 /* Diagonal stripes on a running progress bar; the size is one stripe period */
 @utility bg-stripes {
   background-image: repeating-linear-gradient(
