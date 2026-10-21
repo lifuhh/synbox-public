@@ -26,8 +26,6 @@ const buttonVariants = cva(
         // The action inside a field, as the landing search box's
         inset: 'h-11 px-5',
         lg: 'h-11 rounded-md px-8',
-        // A default-height button with a little side padding, for a lone icon in a row
-        narrow: 'h-10 px-2 py-2',
         sm: 'h-9 rounded-md px-3',
         // The hero's call to action: padding, not height, sets how tall it is
         tall: 'h-10 px-4 py-6',
@@ -39,8 +37,6 @@ const buttonVariants = cva(
         destructive:
           'bg-destructive text-destructive-foreground hover:bg-destructive/90',
         ghost: 'hover:bg-accent hover:text-accent-foreground',
-        // Ghost that takes the tonal fill on hover
-        'ghost-primary': 'hover:bg-primary-subtle hover:text-primary-text',
         // Ghost with dimmed text that brightens on hover
         'ghost-subtle':
           'text-accent-foreground hover:bg-accent hover:text-foreground',
