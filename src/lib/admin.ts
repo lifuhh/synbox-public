@@ -43,12 +43,15 @@ const generationSchema = z.object({
   createdAt: z.number(),
   email: z.string().nullable(),
   errorCode: z.string().nullable(),
+  // How far a running generation is, as the backend last reported: the stage's id and its fraction (0..1)
+  fraction: z.number().nullable().optional(),
   // SQLite's boolean
   guest: z.union([z.number(), z.boolean()]),
   id: z.string(),
   kind: z.enum(['new', 'regenerate', 'retime']),
   name: z.string().nullable(),
   resultVersion: z.number().nullable(),
+  stage: z.string().nullable().optional(),
   status: z.enum(['reserved', 'running', 'succeeded', 'failed']),
   videoId: z.string(),
 })
@@ -56,6 +59,8 @@ const generationSchema = z.object({
 export type HourlyLimit = z.infer<typeof hourlyLimitSchema>
 export type AdminUser = z.infer<typeof adminUserSchema>
 export type AdminGeneration = z.infer<typeof generationSchema>
+
+const RUNNING_REFRESH_MS = 5000
 
 const call = async (path: string, init: RequestInit = {}): Promise<unknown> => {
   const response = await fetch(`/api/admin${path}`, {
@@ -84,6 +89,14 @@ export const useAdminGenerations = () =>
         .object({ generations: z.array(generationSchema) })
         .parse(await call('/generations')).generations,
     queryKey: [QUERY_KEYS.GET_ADMIN_GENERATIONS],
+    // Follows songs still running
+    refetchInterval: (query) =>
+      query.state.data?.some(
+        (generation) =>
+          generation.status === 'reserved' || generation.status === 'running'
+      ) === true
+        ? RUNNING_REFRESH_MS
+        : false,
   })
 
 export const useAdminSettings = () =>

@@ -71,6 +71,7 @@ beforeEach(() => {
     '0003_guest_generations.sql',
     '0004_hourly_user_limit.sql',
     '0005_unlimited_override.sql',
+    '0006_generation_progress.sql',
   ]) {
     sqlite.run(
       readFileSync(`${import.meta.dir}/../migrations/${file}`, 'utf-8')
@@ -221,4 +222,62 @@ test('a check answers what reserving would, and takes nothing', async () => {
   expect(await check({ id: 'admin', kind: 'user' })).toEqual({
     outcome: 'generation_paused',
   })
+})
+
+const later = (minutes: number) => new Date(now.getTime() + minutes * 60_000)
+
+test('a generation nobody reports on for 15 minutes stops counting; one that reports keeps its slot', async () => {
+  expect(await reserve('r1')).toEqual({ outcome: 'reserved' })
+  expect(await reserve('r2')).toEqual({ outcome: 'reserved' })
+  // r1 keeps reporting; r2 went quiet when the app was put away
+  expect(
+    await finishGeneration(
+      db,
+      'r1',
+      { fraction: 0.4, stage: 'Separating the vocals', status: 'running' },
+      later(10)
+    )
+  ).toBe(true)
+  const at = later(20)
+  expect(
+    await reserveGeneration(
+      db,
+      {
+        id: 'r3',
+        kind: 'new',
+        owner: { id: 'u1', kind: 'user' },
+        videoId: 'v',
+      },
+      LIMITS,
+      at
+    )
+  ).toEqual({ outcome: 'reserved' })
+  const rows = sqlite
+    .query(
+      `select "id", "status", "errorCode", "stage", "fraction" from "generation" order by "id"`
+    )
+    .all()
+  expect(rows).toEqual([
+    {
+      errorCode: null,
+      fraction: 0.4,
+      id: 'r1',
+      stage: 'Separating the vocals',
+      status: 'running',
+    },
+    {
+      errorCode: 'abandoned',
+      fraction: null,
+      id: 'r2',
+      stage: null,
+      status: 'failed',
+    },
+    {
+      errorCode: null,
+      fraction: null,
+      id: 'r3',
+      stage: null,
+      status: 'reserved',
+    },
+  ])
 })
