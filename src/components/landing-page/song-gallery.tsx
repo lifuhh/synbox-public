@@ -139,7 +139,7 @@ const VirtualRows = ({
     '--row-h': `${rowHeight}px`,
   }
   return (
-    <ul className='relative h-(--gallery-h)' style={listVars}>
+    <ul className='relative h-(--gallery-h) appear' style={listVars}>
       {virtualizer.getVirtualItems().map((item) => {
         const rowVars: CssVars = {
           '--row-y': `${item.start - virtualizer.options.scrollMargin}px`,

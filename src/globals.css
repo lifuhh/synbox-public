@@ -638,6 +638,16 @@
 
 /* A loading placeholder: a lighter band sweeps across it, so it reads as loading on a dark card, where a
    pulse between two near-blacks looked like an empty box */
+/* A skeleton stays invisible for its first 400 ms and then fades in, so a load that finishes quickly shows
+   nothing between the empty space and the content (which then fades in with `appear`) */
+@utility skeleton-shimmer {
+  animation:
+    var(--animate-shimmer),
+    appear 0.3s ease-out 0.4s both;
+  @media (prefers-reduced-motion: reduce) {
+    animation: appear 0.3s ease-out 0.4s both;
+  }
+}
 @utility skeleton-fill {
   background: linear-gradient(
       100deg,

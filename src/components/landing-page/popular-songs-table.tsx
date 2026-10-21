@@ -131,7 +131,9 @@ const LandingPageCharts: React.FC = () => {
               <col className='w-[calc(100%-60px)]' />
               <col className='w-15' />
             </colgroup>
-            <tbody>
+            <tbody
+              key={isChartsDataFetching ? 'loading' : 'rows'}
+              className={isChartsDataFetching ? undefined : 'appear'}>
               {isChartsDataFetching
                 ? SKELETON_TITLES.map((title) => (
                     <SongRowSkeleton key={title.key} title={title} />
