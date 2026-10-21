@@ -51,7 +51,7 @@ export const StageLock = ({ onUnlock }: { onUnlock: () => void }) => {
         type='button'
         onClick={onUnlock}
         className={cn(
-          'absolute top-(--stage-corner-top) right-controls-right z-36 flex h-11 items-center gap-2 rounded-full bg-black/55 pr-4 pl-3.5 text-sm font-medium text-white shadow-rail backdrop-blur-md transition-opacity duration-300 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none short:top-[calc(var(--topbar-h)+2.75rem)] short:right-[calc(var(--safe-right)+0.25rem)] short:h-8 short:pr-3 short:pl-2.5',
+          'absolute top-[calc(var(--stage-corner-top)+3.25rem)] right-[calc(var(--safe-right)+0.875rem)] z-36 flex h-11 items-center gap-2 rounded-full bg-black/55 pr-4 pl-3.5 text-sm font-medium text-white shadow-rail backdrop-blur-md transition-opacity duration-300 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none sm:right-[calc(var(--safe-right)+1.375rem)] short:top-[calc(var(--topbar-h)+2.75rem)] short:right-[calc(var(--safe-right)+0.25rem)] short:h-8 short:pr-3 short:pl-2.5',
           shown ? 'opacity-100' : 'opacity-0',
           !armed && 'pointer-events-none'
         )}>
