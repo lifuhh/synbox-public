@@ -224,7 +224,7 @@ export const StageControls = ({
         data-player-chrome
         className={cn(
           'hidden absolute top-(--stage-corner-top) right-[calc(var(--safe-right)+0.625rem)] z-30 flex-col items-center gap-1 rounded-full bg-black/55 p-1 shadow-rail backdrop-blur-md transition-translate-fade duration-300 ease-out sm:right-[calc(var(--safe-right)+1.125rem)] touch:flex',
-          'short:top-[calc(var(--topbar-h)+0.25rem)] short:right-(--safe-right) short:rounded-none short:rounded-l-2xl',
+          'short:top-[calc(var(--topbar-h)+0.25rem)] short:right-(--safe-right) short:rounded-none short:rounded-l-xl',
           visible
             ? 'translate-x-0'
             : 'translate-x-[calc(100%+var(--safe-right)+1.125rem)]',

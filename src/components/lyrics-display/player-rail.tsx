@@ -255,10 +255,10 @@ const PlayerRail = () => {
             ref={panelRef}
             data-player-chrome
             aria-label='Player Controls'
+            // Its corners are the buttons' 8px radius plus the 4px padding around them, in every layout
             className={cn(
-              'flex flex-col items-center gap-1 rounded-r-2xl bg-black/55 p-1.5 shadow-rail backdrop-blur-md transition-translate-fade duration-300 ease-out',
-              'portrait:no-scrollbar portrait:max-w-[calc(100vw-0.5rem)] portrait:flex-row portrait:gap-1 portrait:overflow-x-auto portrait:rounded-2xl portrait:p-1',
-              'short:gap-1 short:p-1',
+              'flex flex-col items-center gap-1 rounded-r-xl bg-black/55 p-1 shadow-rail backdrop-blur-md transition-translate-fade duration-300 ease-out',
+              'portrait:no-scrollbar portrait:max-w-[calc(100vw-0.5rem)] portrait:flex-row portrait:gap-1 portrait:overflow-x-auto portrait:rounded-xl',
               // Past the notch inset too, or a phone on its side shows the rail's edge beside it
               open && armed && 'pointer-events-auto',
               open
