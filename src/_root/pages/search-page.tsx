@@ -1,5 +1,5 @@
 import type { UseQueryResult } from '@tanstack/react-query'
-import { SearchIcon } from 'lucide-react'
+import { LogInIcon, SearchIcon } from 'lucide-react'
 import { useNavigate, useSearchParams } from 'react-router'
 
 import {
@@ -10,6 +10,7 @@ import DotsLoader from '@/components/shared/dots-loader'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
+import { noSongReason, signInWithGoogle, useAccess } from '@/lib/auth'
 import { startGeneration } from '@/lib/generation/store'
 import {
   useGetSimilarSongs,
@@ -126,6 +127,33 @@ const ReadyToSing = ({
   )
 }
 
+// Adding a song from YouTube generates it. When that would be refused, the cards go and the reason stays,
+// with sign-in for a guest
+const NoNewSongs = () => {
+  const access = useAccess()
+  return (
+    <Section title='Add From YouTube'>
+      <div className='flex flex-wrap items-center gap-3'>
+        <Notice>
+          {access.kind === 'user'
+            ? noSongReason(access.quota)
+            : "You've used today's free song. Sign in to add more songs from YouTube."}
+        </Notice>
+        {access.kind === 'guest' && (
+          <Button
+            gap='md'
+            onClick={() => {
+              void signInWithGoogle()
+            }}>
+            <LogInIcon className='size-4' />
+            Sign In
+          </Button>
+        )}
+      </div>
+    </Section>
+  )
+}
+
 const AddFromYoutube = ({
   videos,
   results,
@@ -169,6 +197,7 @@ const SearchResults = ({
 }) => {
   const library = useSearchLibrary(query)
   const videos = useSearchVideos(query)
+  const { newSong } = useAccess()
   const libraryIds = new Set(library.data?.results.map((s) => s.video_id))
   const youtube = videos.data?.results ?? []
   // The library search can miss a processed song YouTube found (a description, or the library still loading).
@@ -195,13 +224,16 @@ const SearchResults = ({
           onMoreLikeThis={onMoreLikeThis}
         />
       )}
-      {showNew && (
-        <AddFromYoutube
-          videos={videos}
-          results={newVideos}
-          onSelect={onSelect}
-        />
-      )}
+      {showNew &&
+        (newSong ? (
+          <AddFromYoutube
+            videos={videos}
+            results={newVideos}
+            onSelect={onSelect}
+          />
+        ) : (
+          <NoNewSongs />
+        ))}
       {videos.data?.source === 'library_only' && (
         <Notice>
           YouTube search is unavailable right now, so only songs already in

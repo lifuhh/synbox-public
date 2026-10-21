@@ -1,4 +1,10 @@
-import { ArrowRightIcon, Info, PlayIcon, SearchIcon } from 'lucide-react'
+import {
+  ArrowRightIcon,
+  Info,
+  LogInIcon,
+  PlayIcon,
+  SearchIcon,
+} from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router'
 
@@ -10,10 +16,12 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
+import { noSongReason, signInWithGoogle, useAccess } from '@/lib/auth'
 import { startGeneration } from '@/lib/generation/store'
 import { useGetLyricsBySongId } from '@/lib/react-query/queries-and-mutations'
 import { YouTubeUrlOrIdValidation } from '@/lib/validation'
 import { extractVideoId } from '@/utils'
+import { cn } from '@/utils/cn'
 
 import { Spotlight } from '../ui/spotlight'
 
@@ -110,6 +118,16 @@ const HeroGenerateLyricsDefault = ({
     }
   }
 
+  // A new song here would be refused, so offer what would work instead: sign-in for a guest, nothing for a
+  // signed-in user who has used today's songs
+  const access = useAccess()
+  const blocked =
+    !isSearch &&
+    validationSuccess &&
+    !isCheckingLyrics &&
+    !existingLyrics &&
+    !access.newSong
+
   const handleOpenLandingPageDialog = () => {
     if (isSearch) {
       void navigate(`/search?q=${encodeURIComponent(inputValue.trim())}`)
@@ -122,6 +140,8 @@ const HeroGenerateLyricsDefault = ({
         void navigate(`/v/${extractedVideoId}`, {
           state: { videoId: extractedVideoId },
         })
+      } else if (blocked) {
+        void signInWithGoogle()
       } else {
         startGeneration({ mode: 'new', videoId: extractedVideoId })
       }
@@ -138,6 +158,11 @@ const HeroGenerateLyricsDefault = ({
     if (existingLyrics) {
       return 'Lyrics & translations found!'
     }
+    if (blocked) {
+      return access.kind === 'user'
+        ? noSongReason(access.quota)
+        : "You've used today's free song. Sign in to generate more."
+    }
     return validationSuccess ? 'Valid YouTube URL' : ''
   }
 
@@ -148,6 +173,9 @@ const HeroGenerateLyricsDefault = ({
     if (isCheckingLyrics) {
       return 'Searching ...'
     }
+    if (blocked) {
+      return 'Sign In to Generate'
+    }
     return existingLyrics ? 'Play Video' : 'Try Now'
   }
 
@@ -157,6 +185,9 @@ const HeroGenerateLyricsDefault = ({
     }
     if (isCheckingLyrics) {
       return ''
+    }
+    if (blocked) {
+      return <LogInIcon className='size-6 shrink-0' />
     }
     return existingLyrics ? (
       <PlayIcon className='size-6 shrink-0 fill-current' />
@@ -195,26 +226,32 @@ const HeroGenerateLyricsDefault = ({
             )}
             {inputValue.length > 0 && !isSearch && (
               <div
-                className={errorMessage ? 'text-error-strong' : 'text-success'}>
+                className={cn(
+                  'text-success',
+                  blocked && 'text-muted-foreground',
+                  errorMessage !== '' && 'text-error-strong'
+                )}>
                 {statusMessage()}
               </div>
             )}
           </div>
-          <Button
-            onClick={() => {
-              if (inputValue?.length === 0) {
-                return
-              }
-              handleOpenLandingPageDialog()
-            }}
-            disabled={errorMessage !== '' || isCheckingLyrics}
-            variant='hero'
-            size='tall'
-            gap='md'
-            className='w-full md:w-1/2 lg:w-1/4'>
-            <p className='text-body'>{buttonLabel()}</p>
-            {buttonIcon()}
-          </Button>
+          {!(blocked && access.kind === 'user') && (
+            <Button
+              onClick={() => {
+                if (inputValue?.length === 0) {
+                  return
+                }
+                handleOpenLandingPageDialog()
+              }}
+              disabled={errorMessage !== '' || isCheckingLyrics}
+              variant='hero'
+              size='tall'
+              gap='md'
+              className='w-full md:w-1/2 lg:w-1/4'>
+              <p className='text-body'>{buttonLabel()}</p>
+              {buttonIcon()}
+            </Button>
+          )}
         </div>
 
         <div className='flex items-center justify-center gap-2'>

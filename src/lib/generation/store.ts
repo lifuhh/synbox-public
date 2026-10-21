@@ -31,13 +31,13 @@ export type JobStatus =
       karaoke: KaraokeDoc | null
     }
   // `retry` is false when trying again cannot help, such as a video YouTube keeps to youtube.com or a
-  // used-up daily limit; `signIn` when signing in is what would help
+  // used-up daily limit; `code` is the backend's reason for refusing (services/accounts.py MESSAGES)
   | {
       kind: 'failed'
       at: number
       message: string
       retry: boolean
-      signIn: boolean
+      code: string | undefined
     }
 
 export interface GenerationRequest {
@@ -253,16 +253,16 @@ const run = async (job: Job, signal: AbortSignal) => {
     }
     const message =
       error instanceof Error ? error.message : 'Something went wrong'
-    const refused = error instanceof GenerationError && error.code !== undefined
+    const code = error instanceof GenerationError ? error.code : undefined
     updateJob(id, (current) => ({
       ...current,
       ahead: 0,
       status: {
         at: Date.now(),
+        code,
         kind: 'failed',
         message,
-        retry: !(error instanceof YouTubeOnlyError) && !refused,
-        signIn: refused && error.code === 'sign_in_required',
+        retry: !(error instanceof YouTubeOnlyError) && code === undefined,
       },
     }))
   }

@@ -20,7 +20,9 @@
   "vars": {
     "BETTER_AUTH_URL": "https://synbox.io",
     "GOOGLE_CLIENT_ID": "",
-    "DEFAULT_DAILY_LIMIT": "0",
+    "USER_DAILY_LIMIT": "3",
+    "GUEST_DAILY_LIMIT": "1",
+    "GUEST_DAILY_TOTAL": "20",
     "TRUSTED_ORIGINS": "https://synbox.io,https://www.synbox.io,https://synbox.netlify.app",
   },
   "env": {
@@ -36,7 +38,9 @@
       "vars": {
         "BETTER_AUTH_URL": "http://localhost:5173",
         "GOOGLE_CLIENT_ID": "",
-        "DEFAULT_DAILY_LIMIT": "0",
+        "USER_DAILY_LIMIT": "3",
+        "GUEST_DAILY_LIMIT": "1",
+        "GUEST_DAILY_TOTAL": "20",
         "TRUSTED_ORIGINS": "http://localhost:5173",
       },
     },

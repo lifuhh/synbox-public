@@ -83,11 +83,10 @@ export const getLyricsVersion = async (videoId: string, version: number) => {
   return { ...body.fields, videoId }
 }
 
-// A signed-in admin is enough; the typed admin token still works for now
+// Admins only: the backend checks the role in the login token
 export const activateLyricsVersion = async (
   videoId: string,
-  version: number,
-  adminToken: string
+  version: number
 ) => {
   const token = await backendToken()
   return await request(
@@ -97,7 +96,6 @@ export const activateLyricsVersion = async (
       body: JSON.stringify({ version }),
       headers: {
         'Content-Type': 'application/json',
-        'X-Admin-Token': adminToken,
         ...(token === null ? {} : { Authorization: `Bearer ${token}` }),
       },
       method: 'POST',

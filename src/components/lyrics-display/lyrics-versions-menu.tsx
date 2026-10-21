@@ -9,6 +9,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { usePortrait } from '@/hooks/use-media-query'
+import { useAccess } from '@/lib/auth'
 import { startGeneration } from '@/lib/generation/store'
 import { useGetLyricsVersions } from '@/lib/react-query/queries-and-mutations'
 import { cn } from '@/utils/cn'
@@ -21,6 +22,8 @@ export const LyricsVersionsMenu = ({ videoId }: { videoId: string }) => {
   const portrait = usePortrait()
   const { data } = useGetLyricsVersions(videoId)
   const count = data?.versions.length ?? 0
+  // A regeneration replaces the lyrics everyone sees, so only admins get it (the backend refuses others too)
+  const { admin } = useAccess()
 
   return (
     <DropdownMenu modal={false} open={menuOpen} onOpenChange={setMenuOpen}>
@@ -39,22 +42,26 @@ export const LyricsVersionsMenu = ({ videoId }: { videoId: string }) => {
         sideOffset={8}
         collisionPadding={8}
         variant='primary-surface'>
-        <DropdownMenuItem
-          onSelect={() => {
-            startGeneration({ mode: 'regenerate', videoId })
-          }}>
-          Regenerate Lyrics
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          onSelect={() => {
-            startGeneration({
-              mode: 'regenerate',
-              skipUploaderLyrics: true,
-              videoId,
-            })
-          }}>
-          Regenerate Without Uploader Lyrics
-        </DropdownMenuItem>
+        {admin && (
+          <>
+            <DropdownMenuItem
+              onSelect={() => {
+                startGeneration({ mode: 'regenerate', videoId })
+              }}>
+              Regenerate Lyrics
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onSelect={() => {
+                startGeneration({
+                  mode: 'regenerate',
+                  skipUploaderLyrics: true,
+                  videoId,
+                })
+              }}>
+              Regenerate Without Uploader Lyrics
+            </DropdownMenuItem>
+          </>
+        )}
         <DropdownMenuItem asChild>
           <Link to={`/v/${videoId}/versions`}>
             {count > 0 ? `All Versions (${count})` : 'All Versions'}

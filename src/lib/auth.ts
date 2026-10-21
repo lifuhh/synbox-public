@@ -1,6 +1,10 @@
+import { useQuery } from '@tanstack/react-query'
 import { adminClient, jwtClient } from 'better-auth/client/plugins'
 import { createAuthClient } from 'better-auth/react'
+import { useSyncExternalStore } from 'react'
 import { z } from 'zod'
+
+import { QUERY_KEYS } from '@/lib/react-query/query-keys'
 
 // Same origin: Netlify (and the dev server) pass /api/auth/* and /api/me to the auth Worker, so its
 // session cookie is first-party on synbox.io
@@ -38,6 +42,79 @@ export const fetchMe = async (): Promise<Me> => {
   }
   return meSchema.parse(await response.json())
 }
+
+export const useMe = () =>
+  useQuery({
+    queryFn: fetchMe,
+    queryKey: [QUERY_KEYS.GET_ME],
+    staleTime: 60_000,
+  })
+
+// A guest gets one new song a day per network. The backend enforces it; this only remembers, in this browser,
+// that today's is used, so the page offers sign-in instead of a song that would be refused
+const GUEST_SONG_KEY = 'synbox-guest-song-day'
+const guestListeners = new Set<() => void>()
+const utcDay = () => new Date().toISOString().slice(0, 10)
+
+const guestSongUsed = () => {
+  try {
+    return localStorage.getItem(GUEST_SONG_KEY) === utcDay()
+  } catch {
+    return false
+  }
+}
+
+export const markGuestSongUsed = () => {
+  try {
+    localStorage.setItem(GUEST_SONG_KEY, utcDay())
+  } catch {
+    // Private windows can refuse storage; the backend still refuses a second song
+  }
+  for (const listener of guestListeners) {
+    listener()
+  }
+}
+
+const subscribeGuestSong = (listener: () => void) => {
+  guestListeners.add(listener)
+  return () => {
+    guestListeners.delete(listener)
+  }
+}
+
+// What the person on the page may do. `newSong` is false only when we know a request would be refused
+export type Access =
+  | { kind: 'guest'; newSong: boolean; admin: false }
+  | { kind: 'user'; newSong: boolean; admin: boolean; quota: Quota }
+
+export const useAccess = (): Access => {
+  const { data } = useMe()
+  const guestUsed = useSyncExternalStore(subscribeGuestSong, guestSongUsed)
+  const user = data?.user ?? null
+  if (user === null || data?.quota === undefined) {
+    return { admin: false, kind: 'guest', newSong: !guestUsed }
+  }
+  const { quota } = data
+  return {
+    admin: user.role === 'admin',
+    kind: 'user',
+    newSong: quota.limit === null || quota.used < quota.limit,
+    quota,
+  }
+}
+
+// Refusals that signing in would fix
+export const SIGN_IN_CODES = new Set([
+  'sign_in_required',
+  'guest_limit',
+  'guests_full',
+])
+
+// Why a signed-in user can't start a new song, for the places that hide the button
+export const noSongReason = (quota: Quota) =>
+  quota.limit === 0
+    ? 'Generating songs is invite-only for now.'
+    : `You've generated all ${quota.limit} of today's songs. More at ${new Date(quota.resetsAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}.`
 
 export const signInWithGoogle = async () =>
   await authClient.signIn.social({

@@ -3,13 +3,27 @@ import { Hono } from 'hono'
 import { createAuth } from './auth'
 import type { Env } from './auth'
 import { finishGeneration, getQuota, reserveGeneration } from './quota'
-import type { FinishedStatus, GenerationKind } from './quota'
+import type { FinishedStatus, GenerationKind, Limits, Owner } from './quota'
 
-type AppEnv = Env & { DEFAULT_DAILY_LIMIT: string }
+type AppEnv = Env & {
+  USER_DAILY_LIMIT: string
+  GUEST_DAILY_LIMIT: string
+  GUEST_DAILY_TOTAL: string
+}
 
 const app = new Hono<{ Bindings: AppEnv }>()
 
-const defaultLimit = (env: AppEnv) => Number(env.DEFAULT_DAILY_LIMIT ?? '0')
+// An unset or unreadable number means no songs, never unlimited
+const count = (value: string | undefined) => {
+  const n = Number(value)
+  return Number.isInteger(n) && n >= 0 ? n : 0
+}
+
+const limitsOf = (env: AppEnv): Limits => ({
+  guest: count(env.GUEST_DAILY_LIMIT),
+  guestTotal: count(env.GUEST_DAILY_TOTAL),
+  user: count(env.USER_DAILY_LIMIT),
+})
 
 app.on(
   ['GET', 'POST'],
@@ -26,12 +40,12 @@ app.get('/api/me', async (c) => {
   }
   const { id, name, email, image, role } = session.user
   return c.json({
-    quota: await getQuota(c.env.DB, id, defaultLimit(c.env)),
+    quota: await getQuota(c.env.DB, id, limitsOf(c.env)),
     user: { email, id, image, name, role: role ?? 'user' },
   })
 })
 
-// Called only by the Cloud Run backend, after it has verified the user's JWT
+// Called only by the Cloud Run backend, after it has verified the user's JWT or hashed the guest's address
 const internal = new Hono<{ Bindings: AppEnv }>()
 
 internal.use(async (c, next) => {
@@ -65,6 +79,8 @@ const RESERVATION_STATUS = {
   already_finished: 409,
   forbidden: 403,
   generation_paused: 503,
+  guest_limit: 429,
+  guests_full: 429,
   quota_exceeded: 429,
   replay: 200,
   reserved: 201,
@@ -72,14 +88,21 @@ const RESERVATION_STATUS = {
 
 internal.post('/generations', async (c) => {
   const body = await c.req.json<Record<string, unknown>>()
-  const { id, userId, videoId, kind } = body
-  if (!isText(id) || !isText(userId) || !isText(videoId) || !isKind(kind)) {
+  const { id, userId, guestKey, videoId, kind } = body
+  // Exactly one of userId and guestKey
+  let owner: Owner | null = null
+  if (isText(userId) && guestKey === undefined) {
+    owner = { id: userId, kind: 'user' }
+  } else if (isText(guestKey) && userId === undefined) {
+    owner = { key: guestKey, kind: 'guest' }
+  }
+  if (!isText(id) || owner === null || !isText(videoId) || !isKind(kind)) {
     return c.json({ code: 'bad_request' }, 400)
   }
   const reservation = await reserveGeneration(
     c.env.DB,
-    { id, kind, userId, videoId },
-    defaultLimit(c.env)
+    { id, kind, owner, videoId },
+    limitsOf(c.env)
   )
   const status = RESERVATION_STATUS[reservation.outcome]
   return reservation.outcome === 'reserved' || reservation.outcome === 'replay'

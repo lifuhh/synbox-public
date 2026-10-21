@@ -18,8 +18,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
+import { useAccess } from '@/lib/auth'
 import { startGeneration } from '@/lib/generation/store'
 import {
   useActivateLyricsVersion,
@@ -29,24 +29,6 @@ import {
 import { QUERY_KEYS } from '@/lib/react-query/query-keys'
 import type { LyricsVersionSummary } from '@/lib/synbox-flask/lyrics-versions'
 import { cn } from '@/utils/cn'
-
-const TOKEN_KEY = 'synbox-admin-token'
-
-const readToken = () => {
-  try {
-    return sessionStorage.getItem(TOKEN_KEY) ?? ''
-  } catch {
-    return ''
-  }
-}
-
-const saveToken = (token: string) => {
-  try {
-    sessionStorage.setItem(TOKEN_KEY, token)
-  } catch {
-    // Private windows can refuse storage; the token then lasts until reload.
-  }
-}
 
 // The backend's version sources (synbox-transcribe-whisper › services/lyrics_versions.py, lyrics/persist.py)
 const SOURCE_LABELS: Record<string, string> = {
@@ -141,7 +123,8 @@ interface VersionCardProps {
   videoId: string
   version: LyricsVersionSummary
   isDefault: boolean
-  onMakeDefault: () => void
+  // Absent for anyone but an admin
+  onMakeDefault?: () => void
 }
 
 const VersionCard = ({
@@ -192,7 +175,7 @@ const VersionCard = ({
             {isDefault ? 'Play' : 'Preview'}
           </Link>
         </Button>
-        {!isDefault && (
+        {!isDefault && onMakeDefault !== undefined && (
           <Button size='sm' variant='outline' onClick={onMakeDefault}>
             Make Default
           </Button>
@@ -208,14 +191,13 @@ interface MakeDefaultDialogProps {
   onClose: () => void
 }
 
-// Changing what everyone hears is an admin action, so it asks for the token, kept for the session
+// Changing what everyone hears is an admin action: only admins see the button, and the backend checks the role
 const MakeDefaultDialog = ({
   videoId,
   version,
   onClose,
 }: MakeDefaultDialogProps) => {
   const queryClient = useQueryClient()
-  const [token, setToken] = useState(readToken)
   const [error, setError] = useState<string | null>(null)
   const { isPending, mutate: activate } = useActivateLyricsVersion()
 
@@ -223,19 +205,14 @@ const MakeDefaultDialog = ({
     if (version === null) {
       return
     }
-    if (token.trim() === '') {
-      setError('Enter the admin token.')
-      return
-    }
     setError(null)
     activate(
-      { adminToken: token, version, videoId },
+      { version, videoId },
       {
         onError: (activateError) => {
           setError(activateError.message)
         },
         onSuccess: () => {
-          saveToken(token)
           void queryClient.invalidateQueries({
             queryKey: [QUERY_KEYS.GET_LYRICS_VERSIONS, videoId],
           })
@@ -272,22 +249,6 @@ const MakeDefaultDialog = ({
               back at any time.
             </DialogDescription>
           </DialogHeader>
-          <label
-            htmlFor='admin-token'
-            className='grid gap-1.5 text-sm text-muted-foreground'>
-            Admin Token
-            <Input
-              id='admin-token'
-              type='password'
-              autoComplete='off'
-              autoFocus
-              value={token}
-              onChange={(event) => {
-                setToken(event.target.value)
-                setError(null)
-              }}
-            />
-          </label>
           {error !== null && (
             <p role='alert' className='text-sm text-error'>
               {error}
@@ -313,6 +274,7 @@ const VersionsPage = () => {
   const { data: songInfo } = useGetSongInfoBySongId(videoId)
   const [confirming, setConfirming] = useState<number | null>(null)
   const versions = data ? data.versions.toReversed() : []
+  const { admin } = useAccess()
 
   const regenerate = (skipUploaderLyrics: boolean) => {
     startGeneration({
@@ -342,39 +304,41 @@ const VersionsPage = () => {
             {songInfo?.title ?? videoId}
           </p>
         </div>
-        <DropdownMenu modal={false}>
-          <DropdownMenuTrigger asChild>
-            <Button gap='sm' className='w-fit shrink-0'>
-              Regenerate
-              <ChevronDownIcon className='size-4' />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent
-            align='end'
-            variant='subtle-surface'
-            className='w-72'>
-            <DropdownMenuItem
-              variant='stacked'
-              onSelect={() => {
-                regenerate(false)
-              }}>
-              <span>Regenerate</span>
-              <span className='text-xs text-muted-foreground'>
-                A fresh run with every lyrics source
-              </span>
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              variant='stacked'
-              onSelect={() => {
-                regenerate(true)
-              }}>
-              <span>Regenerate Without Uploader Lyrics</span>
-              <span className='text-xs text-muted-foreground'>
-                For when the video&apos;s subtitles are wrong
-              </span>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        {admin && (
+          <DropdownMenu modal={false}>
+            <DropdownMenuTrigger asChild>
+              <Button gap='sm' className='w-fit shrink-0'>
+                Regenerate
+                <ChevronDownIcon className='size-4' />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align='end'
+              variant='subtle-surface'
+              className='w-72'>
+              <DropdownMenuItem
+                variant='stacked'
+                onSelect={() => {
+                  regenerate(false)
+                }}>
+                <span>Regenerate</span>
+                <span className='text-xs text-muted-foreground'>
+                  A fresh run with every lyrics source
+                </span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                variant='stacked'
+                onSelect={() => {
+                  regenerate(true)
+                }}>
+                <span>Regenerate Without Uploader Lyrics</span>
+                <span className='text-xs text-muted-foreground'>
+                  For when the video&apos;s subtitles are wrong
+                </span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </header>
 
       <p className='-mt-2 text-sm text-muted-foreground'>
@@ -407,9 +371,13 @@ const VersionsPage = () => {
               videoId={videoId}
               version={version}
               isDefault={data?.active === version.version}
-              onMakeDefault={() => {
-                setConfirming(version.version)
-              }}
+              onMakeDefault={
+                admin
+                  ? () => {
+                      setConfirming(version.version)
+                    }
+                  : undefined
+              }
             />
           ))}
         </ul>

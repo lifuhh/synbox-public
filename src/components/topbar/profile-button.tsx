@@ -1,4 +1,4 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQueryClient } from '@tanstack/react-query'
 import {
   CircleQuestionMarkIcon,
   LogInIcon,
@@ -26,7 +26,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { fetchMe, signInWithGoogle, signOut } from '@/lib/auth'
+import { signInWithGoogle, signOut, useMe } from '@/lib/auth'
 import type { Quota } from '@/lib/auth'
 import { useInstallMethod } from '@/lib/pwa'
 import { QUERY_KEYS } from '@/lib/react-query/query-keys'
@@ -84,11 +84,7 @@ const ProfileButtonDropdown = () => {
   const install = useInstallMethod()
   const [iosHelpOpen, setIosHelpOpen] = useState(false)
   const queryClient = useQueryClient()
-  const { data: me } = useQuery({
-    queryFn: fetchMe,
-    queryKey: [QUERY_KEYS.GET_ME],
-    staleTime: 60_000,
-  })
+  const { data: me } = useMe()
   const user = me?.user ?? null
 
   const handleSignOut = async () => {

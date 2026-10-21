@@ -38,12 +38,29 @@ const asD1 = (sqlite: Database) =>
 let db: D1Database
 let sqlite: Database
 const now = new Date('2026-10-21T10:00:00Z')
-const reserve = async (id: string, userId = 'u1') =>
-  await reserveGeneration(db, { id, kind: 'new', userId, videoId: 'v' }, 2, now)
+const LIMITS = { guest: 1, guestTotal: 2, user: 2 }
+const reserve = async (id: string, userId = 'u1', videoId = 'v') =>
+  await reserveGeneration(
+    db,
+    { id, kind: 'new', owner: { id: userId, kind: 'user' }, videoId },
+    LIMITS,
+    now
+  )
+const reserveAsGuest = async (id: string, key: string) =>
+  await reserveGeneration(
+    db,
+    { id, kind: 'new', owner: { key, kind: 'guest' }, videoId: 'v' },
+    LIMITS,
+    now
+  )
 
 beforeEach(() => {
   sqlite = new Database(':memory:')
-  for (const file of ['0001_auth.sql', '0002_generation.sql']) {
+  for (const file of [
+    '0001_auth.sql',
+    '0002_generation.sql',
+    '0003_guest_generations.sql',
+  ]) {
     sqlite.run(
       readFileSync(`${import.meta.dir}/../migrations/${file}`, 'utf-8')
     )
@@ -66,7 +83,10 @@ test('the daily limit holds and a reconnect is free', async () => {
     outcome: 'quota_exceeded',
     resetsAt: '2026-10-22T00:00:00.000Z',
   })
-  expect(await getQuota(db, 'u1', 2, now)).toMatchObject({ limit: 2, used: 2 })
+  expect(await getQuota(db, 'u1', LIMITS, now)).toMatchObject({
+    limit: 2,
+    used: 2,
+  })
 })
 
 test('a failed song gives its slot back, and trying it again takes a slot again', async () => {
@@ -81,14 +101,7 @@ test('a failed song gives its slot back, and trying it again takes a slot again'
 
 test('a request id never opens another video, another user, or a second run once it worked', async () => {
   await reserve('r1')
-  expect(
-    await reserveGeneration(
-      db,
-      { id: 'r1', kind: 'new', userId: 'u1', videoId: 'other' },
-      2,
-      now
-    )
-  ).toEqual({ outcome: 'forbidden' })
+  expect(await reserve('r1', 'u1', 'other')).toEqual({ outcome: 'forbidden' })
   expect(await reserve('r1', 'admin')).toEqual({ outcome: 'forbidden' })
   await finishGeneration(
     db,
@@ -119,4 +132,19 @@ test('an override replaces the default limit, and pausing stops everyone', async
     `update "appSetting" set "value" = '0' where "key" = 'generationEnabled'`
   )
   expect(await reserve('a1', 'admin')).toEqual({ outcome: 'generation_paused' })
+})
+
+test('a guest gets one song a day, and all guests together stop at the shared cap', async () => {
+  expect(await reserveAsGuest('g1', 'net-a')).toEqual({ outcome: 'reserved' })
+  expect(await reserveAsGuest('g2', 'net-a')).toEqual({
+    outcome: 'guest_limit',
+  })
+  expect(await reserveAsGuest('g3', 'net-b')).toEqual({ outcome: 'reserved' })
+  expect(await reserveAsGuest('g4', 'net-c')).toEqual({
+    outcome: 'guests_full',
+  })
+  // Signed-in users don't share the guests' cap
+  expect(await reserve('r1')).toEqual({ outcome: 'reserved' })
+  // A guest's request id is not a user's, and the other way round
+  expect(await reserve('g1')).toEqual({ outcome: 'forbidden' })
 })
