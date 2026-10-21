@@ -241,10 +241,11 @@
   --text-reader-title--line-height: 1.35;
   --text-reader-ja: calc(1.0625rem * var(--reader-scale));
   --text-reader-ja--line-height: 1.95;
-  --text-reader-romaji: calc(0.8125rem * var(--reader-scale));
-  --text-reader-romaji--line-height: 1.35;
-  --text-reader-translation: calc(1rem * var(--reader-scale));
-  --text-reader-translation--line-height: 1.45;
+  /* Romaji and translation share one size under the Japanese; weight and italics tell them apart */
+  --text-reader-romaji: calc(0.9375rem * var(--reader-scale));
+  --text-reader-romaji--line-height: 1.4;
+  --text-reader-translation: calc(0.9375rem * var(--reader-scale));
+  --text-reader-translation--line-height: 1.4;
 }
 
 /* The offline reader's paper and ink, dark by default. The status bar strip stays dark on the light page:

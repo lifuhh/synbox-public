@@ -7,7 +7,9 @@ import { extendTailwindMerge } from 'tailwind-merge'
 const twMerge = extendTailwindMerge({
   extend: {
     classGroups: {
-      'bg-image': [{ bg: ['stripes', 'theme-swatch', 'hue-track'] }],
+      'bg-image': [
+        { bg: ['stripes', 'theme-swatch', 'hue-track', 'hue-wheel'] },
+      ],
       'mask-image': [{ mask: ['fade-y'] }],
       transition: [
         {
@@ -40,6 +42,12 @@ const twMerge = extendTailwindMerge({
         'controls-rail',
         'cqw',
         'cqh',
+        'reader-top',
+        'reader-bottom',
+        'reader-bottom-bar',
+        'reader-follow',
+        'reader-line',
+        'reader-stanza',
       ],
       text: [
         'badge',
@@ -49,6 +57,10 @@ const twMerge = extendTailwindMerge({
         'micro',
         'lyric',
         'lyric-secondary',
+        'reader-title',
+        'reader-ja',
+        'reader-romaji',
+        'reader-translation',
       ],
     },
   },
