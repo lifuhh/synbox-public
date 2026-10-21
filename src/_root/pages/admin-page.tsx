@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { Navigate } from 'react-router'
 
+import Forbidden from '@/components/shared/forbidden'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -66,14 +66,8 @@ const GenerationPanel = () => {
   )
 }
 
-// Empty means the default limit; saved on Enter or when the field loses focus
-const LimitField = ({
-  user,
-  defaultLimit,
-}: {
-  user: AdminUser
-  defaultLimit: number
-}) => {
+// Empty means the default limit (shown in the panel above); saved on Enter or when the field loses focus
+const LimitField = ({ user }: { user: AdminUser }) => {
   const saved = user.hourlyLimit === null ? '' : String(user.hourlyLimit)
   const [value, setValue] = useState(saved)
   const { isPending, mutate: setLimit } = useSetHourlyLimit()
@@ -93,10 +87,10 @@ const LimitField = ({
     <Input
       aria-label={`Hourly Limit for ${user.email}`}
       inputMode='numeric'
-      placeholder={String(defaultLimit)}
+      placeholder='Default'
       value={value}
       disabled={isPending}
-      className='h-8 w-20'
+      className='h-8 w-full'
       onChange={(event) => {
         setValue(event.target.value)
       }}
@@ -110,25 +104,17 @@ const LimitField = ({
   )
 }
 
-const UserRow = ({
-  user,
-  defaultLimit,
-  isSelf,
-}: {
-  user: AdminUser
-  defaultLimit: number
-  isSelf: boolean
-}) => {
+const UserRow = ({ user, isSelf }: { user: AdminUser; isSelf: boolean }) => {
   const blocked = user.banned === 1 || user.banned === true
   const admin = user.role === 'admin'
   const { isPending, mutate: setBlocked } = useSetBlocked()
   return (
     <tr
       className={cn(
-        'border-t border-white/10 align-middle',
+        'h-14 border-t border-white/10 align-middle',
         blocked && 'text-muted-foreground'
       )}>
-      <th scope='row' className='py-2 pr-4 text-left font-normal'>
+      <th scope='row' className='pr-3 text-left font-normal'>
         <span className='block truncate font-medium text-foreground'>
           {user.email}
         </span>
@@ -136,25 +122,22 @@ const UserRow = ({
           {user.name}
         </span>
       </th>
-      <td className='py-2 pr-4'>{admin ? 'Admin' : 'User'}</td>
-      <td className='py-2 pr-4 whitespace-nowrap'>
-        {formatWhen(user.lastSeenAt)}
-      </td>
-      <td className='py-2 pr-4 text-right tabular-nums'>
-        {user.songsLastHour}
-      </td>
-      <td className='py-2 pr-4 text-right tabular-nums'>{user.songsTotal}</td>
-      <td className='py-2 pr-4'>
+      <td className='px-3'>{admin ? 'Admin' : 'User'}</td>
+      <td className='truncate px-3'>{formatWhen(user.lastSeenAt)}</td>
+      <td className='px-3 text-right tabular-nums'>{user.songsLastHour}</td>
+      <td className='px-3 text-right tabular-nums'>{user.songsTotal}</td>
+      <td className='px-3'>
         {admin ? (
-          <span className='text-xs text-muted-foreground'>None</span>
+          <span className='text-muted-foreground'>No Limit</span>
         ) : (
-          <LimitField user={user} defaultLimit={defaultLimit} />
+          <LimitField user={user} />
         )}
       </td>
-      <td className='py-2 text-right'>
+      <td className='pl-3 text-right'>
         {isSelf || admin ? null : (
           <Button
             size='sm'
+            className='w-full'
             variant={blocked ? 'outline' : 'destructive'}
             disabled={isPending}
             onClick={() => {
@@ -180,16 +163,26 @@ const UsersTable = () => {
   }
   return (
     <div className='overflow-x-auto'>
-      <table className='w-full text-left text-sm'>
+      {/* Fixed columns, so every row lines up whatever its content */}
+      <table className='w-full min-w-3xl table-fixed text-left text-sm'>
+        <colgroup>
+          <col className='w-3/10' />
+          <col className='w-1/12' />
+          <col className='w-1/5' />
+          <col className='w-1/12' />
+          <col className='w-1/10' />
+          <col className='w-1/8' />
+          <col />
+        </colgroup>
         <thead className='text-xs text-muted-foreground'>
           <tr>
-            <th className='pr-4 pb-2 font-medium'>Account</th>
-            <th className='pr-4 pb-2 font-medium'>Role</th>
-            <th className='pr-4 pb-2 font-medium'>Last Seen</th>
-            <th className='pr-4 pb-2 text-right font-medium'>Last Hour</th>
-            <th className='pr-4 pb-2 text-right font-medium'>Total Songs</th>
-            <th className='pr-4 pb-2 font-medium'>Hourly Limit</th>
-            <th className='pb-2 font-medium'>
+            <th className='pr-3 pb-2 font-medium'>Account</th>
+            <th className='px-3 pb-2 font-medium'>Role</th>
+            <th className='px-3 pb-2 font-medium'>Last Seen</th>
+            <th className='px-3 pb-2 text-right font-medium'>Last Hour</th>
+            <th className='px-3 pb-2 text-right font-medium'>Total Songs</th>
+            <th className='px-3 pb-2 font-medium'>Hourly Limit</th>
+            <th className='pb-2 pl-3 font-medium'>
               <span className='sr-only'>Block</span>
             </th>
           </tr>
@@ -199,7 +192,6 @@ const UsersTable = () => {
             <UserRow
               key={user.id}
               user={user}
-              defaultLimit={settings.limits.user}
               isSelf={user.id === me?.user?.id}
             />
           ))}
@@ -214,14 +206,14 @@ const UsersTable = () => {
   )
 }
 
-// Admins only: anyone else goes home, once the sign-in check has answered
+// Admins only: anyone else gets a 403, once the sign-in check has answered
 const AdminPage = () => {
   const { admin, ready } = useAccess()
   if (!ready) {
     return null
   }
   if (!admin) {
-    return <Navigate to='/' replace />
+    return <Forbidden />
   }
   return (
     <div className='mx-auto flex w-full max-w-5xl flex-col gap-6 overflow-y-auto px-4 pt-page-top pb-page-bottom-lg'>

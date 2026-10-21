@@ -1,8 +1,9 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { ArrowLeftIcon, ChevronDownIcon, PlayIcon } from 'lucide-react'
 import { useState } from 'react'
-import { Link, Navigate, useParams } from 'react-router'
+import { Link, useParams } from 'react-router'
 
+import Forbidden from '@/components/shared/forbidden'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -385,18 +386,14 @@ const VersionsAdmin = ({ videoId }: { videoId: string }) => {
   )
 }
 
-// Versions are an admin tool: anyone else goes to the song, once the sign-in check has answered
+// Versions are an admin tool: anyone else gets a 403, once the sign-in check has answered
 const VersionsPage = () => {
   const { videoId = '' } = useParams<{ videoId: string }>()
   const { admin, ready } = useAccess()
   if (!ready) {
     return null
   }
-  return admin ? (
-    <VersionsAdmin videoId={videoId} />
-  ) : (
-    <Navigate to={`/v/${videoId}`} replace />
-  )
+  return admin ? <VersionsAdmin videoId={videoId} /> : <Forbidden />
 }
 
 export default VersionsPage
