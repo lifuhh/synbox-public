@@ -207,9 +207,21 @@ export default defineConfig({
           'assets/showcase/**',
         ],
         globPatterns: ['**/*.{js,css,html,png,svg,woff2}'],
-        navigateFallback: '/index.html',
-        navigateFallbackDenylist: [/^\/api\//u],
+        // Pages from the network first, so opening or reloading a tab shows the latest deploy (a precached page
+        // kept the deploy the worker was built with until a hard reload). The shell in the precache answers
+        // when the network fails or takes over 3 s
+        navigateFallback: null,
         runtimeCaching: [
+          {
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'pages',
+              networkTimeoutSeconds: 3,
+              precacheFallback: { fallbackURL: '/index.html' },
+            },
+            urlPattern: ({ request, url }) =>
+              request.mode === 'navigate' && !url.pathname.startsWith('/api/'),
+          },
           {
             handler: 'StaleWhileRevalidate',
             options: { cacheName: 'google-fonts-css' },
