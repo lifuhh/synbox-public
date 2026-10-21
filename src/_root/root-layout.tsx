@@ -2,6 +2,7 @@ import React from 'react'
 import { Outlet } from 'react-router'
 
 import GenerationHost from '@/components/generation/generation-host'
+import TabBar from '@/components/shared/tab-bar'
 import TopBar from '@/components/shared/top-bar'
 
 const RootLayout: React.FC = () => (
@@ -23,6 +24,7 @@ const RootLayout: React.FC = () => (
       <section className='flex h-full flex-1'>
         <Outlet />
       </section>
+      <TabBar />
       <div data-generation-host>
         <GenerationHost />
       </div>

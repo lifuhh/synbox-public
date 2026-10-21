@@ -1,4 +1,4 @@
-import { useAtomValue, useSetAtom, useStore } from 'jotai'
+import { atom, useAtomValue, useSetAtom, useStore } from 'jotai'
 import { atomWithStorage } from 'jotai/utils'
 import { useNavigate } from 'react-router'
 
@@ -24,6 +24,8 @@ export const queueSourceAtom = atomWithStorage<QueueSource>(
 )
 export const autoplayAtom = atomWithStorage('listeningAutoplay', true)
 export const playlistsAtom = atomWithStorage<Playlist[]>('playlists', [])
+// The song opened last in this visit, for the installed app's bar that takes you back to it
+export const resumeSongAtom = atom<ListSong | null>(null)
 
 export const songPath = (videoId: string) => `/v/${videoId}`
 

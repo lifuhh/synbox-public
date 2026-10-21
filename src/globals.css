@@ -12,6 +12,8 @@
   }
 }
 @custom-variant dark (&:is(.dark *));
+/* The app installed on a phone (opened from the Home Screen): its own navigation, no website pitch */
+@custom-variant installed (@media (display-mode: standalone) and (pointer: coarse));
 /* Finger-driven screens: bigger hit areas, no hover-only affordances */
 @custom-variant touch (@media (pointer: coarse));
 /* A phone on its side: too short for the player's vertical rail. A page turned by Lock Landscape counts too */
@@ -227,9 +229,9 @@
 @theme inline {
   --spacing-safe-top: var(--safe-top);
   --spacing-page-top: calc(var(--topbar-h) + 1.5rem);
-  --spacing-page-bottom-sm: calc(1rem + var(--safe-bottom));
-  --spacing-page-bottom: calc(2.5rem + var(--safe-bottom));
-  --spacing-page-bottom-lg: calc(4rem + var(--safe-bottom));
+  --spacing-page-bottom-sm: calc(1rem + var(--safe-bottom) + var(--tabbar-h));
+  --spacing-page-bottom: calc(2.5rem + var(--safe-bottom) + var(--tabbar-h));
+  --spacing-page-bottom-lg: calc(4rem + var(--safe-bottom) + var(--tabbar-h));
   --spacing-controls-bottom: max(0.75rem, var(--safe-bottom));
   --spacing-controls-left: max(1rem, var(--safe-left));
   --spacing-controls-right: max(1rem, var(--safe-right));
@@ -1231,6 +1233,8 @@
     --safe-bottom: env(safe-area-inset-bottom, 0px);
     --safe-left: env(safe-area-inset-left, 0px);
     --safe-right: env(safe-area-inset-right, 0px);
+    /* What the installed app's tab bar (and the resume bar over it) covers at the bottom; 0 without them */
+    --tabbar-h: 0px;
     /* The screen's height; full-screen layers use it instead of dvh (see the standalone rule below) */
     --screen-h: 100dvh;
     --app-h: var(--screen-h);
@@ -1274,6 +1278,21 @@
 
   html[data-topbar-hidden] {
     --topbar-shown-h: var(--safe-top);
+  }
+
+  /* The installed app on a phone: the tab bar floats 0.5rem over the home indicator, 4rem tall, with 1rem
+     clear above it; the resume bar adds its own height. The top bar keeps only the logo, as the tabs carry
+     Lyrics, Saved and the account */
+  html[data-tabbar] {
+    --tabbar-h: 5.5rem;
+  }
+
+  html[data-tabbar][data-resume-bar] {
+    --tabbar-h: 9.25rem;
+  }
+
+  html[data-tabbar] [data-topbar] [data-player-chrome] {
+    display: none;
   }
 
   /* The iPhone stand-in for fullscreen: the player without the app's top bar */

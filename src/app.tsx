@@ -28,12 +28,14 @@ const pageImports = {
   reader: async () => await import('./_root/pages/reader-page'),
   search: async () => await import('./_root/pages/search-page'),
   versions: async () => await import('./_root/pages/versions-page'),
+  you: async () => await import('./_root/pages/you-page'),
 }
 const AboutPage = lazy(pageImports.about)
 const OfflinePage = lazy(pageImports.offline)
 const PlayerPage = lazy(pageImports.player)
 const PlaylistPage = lazy(pageImports.playlist)
 const PlaylistsPage = lazy(pageImports.playlists)
+const YouPage = lazy(pageImports.you)
 const ReaderPage = lazy(pageImports.reader)
 const SearchPage = lazy(pageImports.search)
 const VersionsPage = lazy(pageImports.versions)
@@ -144,6 +146,14 @@ const App = () => {
             element={
               <Suspense>
                 <PlaylistPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path='/you'
+            element={
+              <Suspense>
+                <YouPage />
               </Suspense>
             }
           />

@@ -31,6 +31,7 @@ import {
   autoplayAtom,
   queueAtom,
   queueSourceAtom,
+  resumeSongAtom,
   songPath,
 } from '@/lib/listening/store'
 import { decodeSharedStyle } from '@/lib/lyrics-style'
@@ -105,6 +106,13 @@ const PlayerPage = () => {
 
   useSongVisit(videoId)
   const currentVideo = useAtomValue(currentVideoAtom)
+  // The installed app's resume bar takes the listener back to this song from the other tabs
+  const setResumeSong = useSetAtom(resumeSongAtom)
+  useEffect(() => {
+    if (currentVideo !== null && currentVideo.videoId === videoId) {
+      setResumeSong(currentVideo)
+    }
+  }, [currentVideo, videoId, setResumeSong])
   // Autoplay waits for the lyrics so a song that starts singing at once never
   // plays ahead of them; useLyricsReady gives up after LYRICS_WAIT_MS
   const lyricsReady = useLyricsReady(videoId)

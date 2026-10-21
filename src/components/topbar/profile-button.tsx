@@ -114,7 +114,7 @@ const Avatar = ({ src }: { src: string | null }) => {
   )
 }
 
-const quotaText = ({ limit, used }: Quota) => {
+export const quotaText = ({ limit, used }: Quota) => {
   if (limit === null) {
     return 'No song limit'
   }
