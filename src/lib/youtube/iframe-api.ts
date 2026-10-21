@@ -15,7 +15,7 @@ export interface YTPlayer {
   playVideo: () => void
   pauseVideo: () => void
   seekTo: (seconds: number, allowSeekAhead: boolean) => void
-  cueVideoById: (videoId: string) => void
+  cueVideoById: (options: { videoId: string; startSeconds?: number }) => void
   getCurrentTime: () => number
   getDuration: () => number
   getPlayerState: () => YTStateCode
@@ -41,6 +41,8 @@ export interface YTPlayerOptions {
     onReady?: () => void
     onStateChange?: (event: { data: YTStateCode }) => void
     onError?: (event: { data: number }) => void
+    // The browser refused a play: unmuted, with no tap behind it
+    onAutoplayBlocked?: () => void
   }
 }
 
