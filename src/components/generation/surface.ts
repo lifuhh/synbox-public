@@ -30,7 +30,6 @@ export const FAB_MOTION = {
   animate: { opacity: 1, scale: 1, transition: { ...ENTER, delay: 0.06 } },
   exit: { opacity: 0, scale: 0.6, transition: EXIT },
   initial: { opacity: 0, scale: 0.6 },
-  style: { transformOrigin: 'bottom right' },
 } as const
 
 // YouTube's thumbnail is known from the id alone, so the song shows from the first frame

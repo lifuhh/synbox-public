@@ -135,17 +135,41 @@ const GenerationFab = ({ job, count, view, raised }: GenerationFabProps) => {
       ref={ref}
       type='button'
       {...FAB_MOTION}
+      style={SIZE_VARS}
       onClick={() => {
         setGenerationExpanded(true)
       }}
       aria-label={`Lyrics generation: ${title}, ${state === 'running' ? `${percent}%` : detail}${count > 1 ? `, ${count} songs` : ''}. Open details`}
       className={cn(
         surfacePlacement(raised),
-        'group fixed z-50 flex flex-row-reverse items-center rounded-full bg-generation-surface text-left shadow-fab ring-1 ring-white/8 outline-none ring-inset focus-visible:ring-2 focus-visible:ring-brand-light focus-visible:ring-offset-2 focus-visible:ring-offset-black'
+        'group fixed z-50 size-(--fab-size) origin-bottom-right rounded-full text-left drop-shadow-fab outline-none'
       )}>
+      {/* Spans the open label and the ring beneath it. It opens by clipping, and the text by sliding, never
+          by resizing: the text is laid out once, and a transition cut short turns back from where it is */}
       <span
-        className='relative grid size-(--fab-size) shrink-0 place-items-center'
-        style={SIZE_VARS}>
+        className={cn(
+          'absolute inset-y-0 right-0 flex w-max items-center rounded-full bg-generation-surface pr-(--fab-size) ring-1 ring-white/8 transition-clip duration-300 ease-out ring-inset group-focus-visible:ring-2 group-focus-visible:ring-brand-light',
+          state === 'running'
+            ? '[clip-path:inset(0_0_0_calc(100%-var(--fab-size))_round_9999px)] group-hover:[clip-path:inset(0_round_9999px)] group-focus-visible:[clip-path:inset(0_round_9999px)]'
+            : '[clip-path:inset(0_round_9999px)]'
+        )}>
+        <span className='overflow-hidden'>
+          <span
+            className={cn(
+              'block max-w-[min(15rem,calc(100vw-7rem))] pr-1 pl-5 transition-transform duration-300 ease-out',
+              state === 'running' &&
+                'translate-x-full group-hover:translate-x-0 group-focus-visible:translate-x-0'
+            )}>
+            <span className='block truncate text-caption leading-4 font-semibold text-white'>
+              {title}
+            </span>
+            <span className='block truncate text-xs leading-4 text-white/55'>
+              {detail}
+            </span>
+          </span>
+        </span>
+      </span>
+      <span className='relative grid size-full place-items-center'>
         <svg
           viewBox={`0 0 ${SIZE} ${SIZE}`}
           className='absolute inset-0 -rotate-90'
@@ -200,24 +224,6 @@ const GenerationFab = ({ job, count, view, raised }: GenerationFabProps) => {
         <AnimatePresence mode='popLayout' initial={false}>
           {badge()}
         </AnimatePresence>
-      </span>
-      <span
-        className={cn(
-          'grid transition-grid-cols duration-300 ease-out',
-          state === 'running'
-            ? 'grid-cols-[0fr] group-hover:grid-cols-[1fr] group-focus-visible:grid-cols-[1fr]'
-            : 'grid-cols-[1fr]'
-        )}>
-        <span className='overflow-hidden'>
-          <span className='block max-w-[min(15rem,calc(100vw-7rem))] pr-1 pl-5'>
-            <span className='block truncate text-caption leading-4 font-semibold text-white'>
-              {title}
-            </span>
-            <span className='block truncate text-xs leading-4 text-white/55'>
-              {detail}
-            </span>
-          </span>
-        </span>
       </span>
     </motion.button>
   )

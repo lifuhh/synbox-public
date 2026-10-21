@@ -15,7 +15,6 @@ const twMerge = extendTailwindMerge({
         {
           transition: [
             'dashoffset',
-            'grid-cols',
             'clip',
             'width',
             'translate-fade',
@@ -27,9 +26,9 @@ const twMerge = extendTailwindMerge({
       ],
     },
     theme: {
-      'drop-shadow': ['stage'],
+      'drop-shadow': ['stage', 'fab'],
       radius: ['panel'],
-      shadow: ['fab', 'panel', 'glow', 'glow-sm', 'rail', 'stage'],
+      shadow: ['panel', 'glow', 'glow-sm', 'rail', 'stage'],
       spacing: [
         'safe-top',
         'page-top',
