@@ -150,7 +150,10 @@ const ProfileButtonDropdown = () => {
         {isPending ? (
           <span aria-hidden className='size-10' />
         ) : (
-          <span key={user ? 'account' : 'guest'} className='flex appear'>
+          <span
+            key={user ? 'account' : 'guest'}
+            // On a phone the top bar is a grid of icon-sized cells; the Sign In pill takes two
+            className={cn('flex appear', user === null && 'max-sm:col-span-2')}>
             <DropdownMenuTrigger asChild>
               {user ? (
                 <Button variant='toolbar' size='icon'>
