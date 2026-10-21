@@ -17,6 +17,7 @@ import {
 
 import { useToast } from '@/components/ui/use-toast'
 import { playerChromeOpenAtom, playerVolumeAtom } from '@/context/atoms'
+import { useThemeColor } from '@/hooks/use-theme-color'
 import { useWakeLock } from '@/hooks/use-wake-lock'
 import { isStandalone } from '@/lib/pwa'
 import type { CssVars } from '@/types'
@@ -287,6 +288,7 @@ export const PlayerStage = ({
   const [dragging, setDragging] = useState(false)
   const [locked, setLocked] = useState(false)
   useWakeLock(phase.kind === 'playing' || phase.kind === 'buffering')
+  useThemeColor(stageRef)
 
   // YouTube's own error screens (unavailable, sign-in, age gate) need its UI
   const handsOff = phase.kind === 'error'

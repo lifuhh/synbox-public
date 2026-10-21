@@ -203,7 +203,7 @@ export default defineConfig({
         ],
         short_name: 'Synbox',
         start_url: '/',
-        theme_color: '#1f0a15',
+        theme_color: '#3c1628',
       },
       registerType: 'prompt',
       workbox: {
