@@ -10,10 +10,12 @@ import {
   FILL_MIN,
   fillProgress,
   karaokeMatchesLyrics,
+  LINE_HOLD,
   LINE_LEAD_IN,
   moraCharCounts,
   romajiFillParts,
   tokenFillParts,
+  twoLineView,
 } from './karaoke'
 
 const mora = (kana: string, start: number, end: number, romaji = '') => ({
@@ -183,9 +185,51 @@ describe('currentLineIndex', () => {
     // line 1's lead-in, but line 0 still sung
     expect(currentLineIndex(lines, 11.9)).toBe(0)
     expect(currentLineIndex(lines, 12.05)).toBe(1)
-    // a gap between lines
-    expect(currentLineIndex(lines, 17)).toBe(-1)
+    // an instrumental break: line 1 clears LINE_HOLD after its last mora
+    expect(currentLineIndex(lines, 15 + LINE_HOLD - 0.1)).toBe(1)
+    expect(currentLineIndex(lines, 15 + LINE_HOLD)).toBe(-1)
     expect(currentLineIndex(lines, 20 - LINE_LEAD_IN)).toBe(2)
+    // the song's last line clears the same way
+    expect(currentLineIndex(lines, 25 + LINE_HOLD - 0.1)).toBe(2)
+    expect(currentLineIndex(lines, 25 + LINE_HOLD)).toBe(-1)
+  })
+
+  test('a held last word keeps its line up until the next line takes over', () => {
+    // The aligner ended the held note at 12; the singer holds it until ~13.8
+    const held = [
+      { end: 12, start: 10 },
+      { end: 17, start: 14 },
+    ]
+    expect(currentLineIndex(held, 12.5)).toBe(0)
+    expect(currentLineIndex(held, 13.4)).toBe(0)
+    expect(currentLineIndex(held, 14 - LINE_LEAD_IN)).toBe(1)
+  })
+})
+
+describe('twoLineView', () => {
+  const lines = [
+    { end: 12, start: 10 },
+    { end: 14, start: 12.2 },
+    { end: 16, start: 14.2 },
+    // an instrumental break before line 3
+    { end: 32, start: 30 },
+    { end: 34, start: 32.2 },
+  ]
+
+  test('a sung line keeps its row; its old row takes the line after next', () => {
+    expect(twoLineView(lines, 11)).toEqual({ active: 0, rows: [0, 1] })
+    expect(twoLineView(lines, 13)).toEqual({ active: 1, rows: [2, 1] })
+    // the passage's last line leaves the other row empty
+    expect(twoLineView(lines, 15)).toEqual({ active: 2, rows: [2, -1] })
+    expect(twoLineView(lines, 25).rows).toEqual([-1, -1])
+  })
+
+  test('a passage after an instrumental break starts in the top row', () => {
+    expect(twoLineView(lines, 30 - LINE_LEAD_IN)).toEqual({
+      active: 3,
+      rows: [3, 4],
+    })
+    expect(twoLineView(lines, 33)).toEqual({ active: 4, rows: [-1, 4] })
   })
 })
 
