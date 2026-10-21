@@ -7,7 +7,7 @@ export type Owner =
   | { kind: 'guest'; key: string }
 
 export interface Limits {
-  // Per signed-in user in any rolling hour, unless an admin set an override; admins have none
+  // Per signed-in user in any rolling hour, unless an admin set an override (a number, or none); admins have none
   user: number
   // Per guest per day, and for all guests together
   guest: number
@@ -35,6 +35,8 @@ export type Reservation =
 interface UserRow {
   role: string | null
   banned: number | null
+  // SQLite's boolean: an admin set this user's limit; then a null hourlyLimit means none
+  overridden: number
   hourlyLimit: number | null
 }
 
@@ -52,14 +54,18 @@ const HOUR_MS = 3_600_000
 const readUser = async (db: D1Database, userId: string) =>
   await db
     .prepare(
-      `select u."role", u."banned", q."hourlyLimit" from "user" u
+      `select u."role", u."banned", q."userId" is not null as "overridden", q."hourlyLimit" from "user" u
        left join "quotaOverride" q on q."userId" = u."id" where u."id" = ?1`
     )
     .bind(userId)
     .first<UserRow>()
 
-const limitFor = (user: UserRow, defaultLimit: number) =>
-  user.role === 'admin' ? null : (user.hourlyLimit ?? defaultLimit)
+const limitFor = (user: UserRow, defaultLimit: number) => {
+  if (user.role === 'admin') {
+    return null
+  }
+  return user.overridden === 1 ? user.hourlyLimit : defaultLimit
+}
 
 // What a generation is owned by, and which of its songs count: a user's in the last hour, a guest's today.
 // The SQL is one of two literals, never input. ?2 owner, ?5 today, ?9 an hour ago

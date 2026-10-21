@@ -69,9 +69,12 @@ const GenerationPanel = () => {
   )
 }
 
-// Empty means the default limit (shown in the panel above); saved on Enter or when the field loses focus
+// Empty means the default limit (shown in the panel above); saved on Enter or when the field loses focus.
+// The ∞ button lifts the limit, and pressing it again goes back to the default
 const LimitField = ({ user }: { user: AdminUser }) => {
-  const saved = user.hourlyLimit === null ? '' : String(user.hourlyLimit)
+  const unlimited = user.hourlyLimit === 'unlimited'
+  const saved =
+    typeof user.hourlyLimit === 'number' ? String(user.hourlyLimit) : ''
   const [value, setValue] = useState(saved)
   const { isPending, mutate: setLimit } = useSetHourlyLimit()
   const save = () => {
@@ -84,26 +87,48 @@ const LimitField = ({ user }: { user: AdminUser }) => {
       setValue(saved)
       return
     }
-    setLimit({ hourlyLimit: trimmed === '' ? null : limit, userId: user.id })
+    setLimit({
+      hourlyLimit: trimmed === '' ? 'default' : limit,
+      userId: user.id,
+    })
   }
   return (
-    <Input
-      aria-label={`Hourly Limit for ${user.email}`}
-      inputMode='numeric'
-      placeholder='Default'
-      value={value}
-      disabled={isPending}
-      className='h-8 w-full'
-      onChange={(event) => {
-        setValue(event.target.value)
-      }}
-      onBlur={save}
-      onKeyDown={(event) => {
-        if (event.key === 'Enter') {
-          event.currentTarget.blur()
-        }
-      }}
-    />
+    <div className='flex gap-1.5'>
+      <Input
+        aria-label={`Hourly Limit for ${user.email}`}
+        inputMode='numeric'
+        placeholder={unlimited ? 'No Limit' : 'Default'}
+        value={unlimited ? '' : value}
+        disabled={isPending || unlimited}
+        className='h-9 w-full min-w-0'
+        onChange={(event) => {
+          setValue(event.target.value)
+        }}
+        onBlur={save}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter') {
+            event.currentTarget.blur()
+          }
+        }}
+      />
+      <Button
+        size='sm'
+        variant={unlimited ? 'default' : 'outline'}
+        className='shrink-0'
+        aria-label={`No Limit for ${user.email}`}
+        aria-pressed={unlimited}
+        title='No Limit'
+        disabled={isPending}
+        onClick={() => {
+          setValue('')
+          setLimit({
+            hourlyLimit: unlimited ? 'default' : 'unlimited',
+            userId: user.id,
+          })
+        }}>
+        ∞
+      </Button>
+    </div>
   )
 }
 
@@ -169,12 +194,12 @@ const UsersTable = () => {
       {/* Fixed columns, so every row lines up whatever its content */}
       <table className='w-full min-w-3xl table-fixed text-left text-sm'>
         <colgroup>
-          <col className='w-3/10' />
+          <col className='w-1/4' />
           <col className='w-1/12' />
           <col className='w-1/5' />
           <col className='w-1/12' />
           <col className='w-1/10' />
-          <col className='w-1/8' />
+          <col className='w-1/6' />
           <col />
         </colgroup>
         <thead className='text-xs text-muted-foreground'>
@@ -326,7 +351,7 @@ const AdminPage = () => {
         <h2 className='text-lg font-semibold text-foreground'>Accounts</h2>
         <p className='text-sm text-muted-foreground'>
           Blocking signs the person out everywhere and stops their songs. An
-          empty limit uses the default.
+          empty limit uses the default; ∞ lifts it.
         </p>
         <UsersTable />
       </section>

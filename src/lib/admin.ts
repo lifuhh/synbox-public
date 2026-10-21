@@ -9,11 +9,17 @@ import { QUERY_KEYS } from '@/lib/react-query/query-keys'
 // D1 hands back Better Auth's dates as text or epoch milliseconds
 const when = z.union([z.string(), z.number()])
 
+// 'default' follows the Worker's USER_HOURLY_LIMIT; a number or 'unlimited' is an admin's override
+const hourlyLimitSchema = z.union([
+  z.number(),
+  z.enum(['default', 'unlimited']),
+])
+
 const adminUserSchema = z.object({
   banned: z.union([z.number(), z.boolean()]).nullable(),
   createdAt: when,
   email: z.string(),
-  hourlyLimit: z.number().nullable(),
+  hourlyLimit: hourlyLimitSchema,
   id: z.string(),
   image: z.string().nullable(),
   lastSeenAt: when.nullable(),
@@ -47,6 +53,7 @@ const generationSchema = z.object({
   videoId: z.string(),
 })
 
+export type HourlyLimit = z.infer<typeof hourlyLimitSchema>
 export type AdminUser = z.infer<typeof adminUserSchema>
 export type AdminGeneration = z.infer<typeof generationSchema>
 
@@ -100,7 +107,6 @@ const useRefreshing = <T>(run: (input: T) => Promise<unknown>) => {
   })
 }
 
-// null puts the user back on the default limit
 export const useSetHourlyLimit = () =>
   useRefreshing(
     async ({
@@ -108,7 +114,7 @@ export const useSetHourlyLimit = () =>
       userId,
     }: {
       userId: string
-      hourlyLimit: number | null
+      hourlyLimit: HourlyLimit
     }) =>
       await call(`/users/${encodeURIComponent(userId)}/limit`, {
         body: JSON.stringify({ hourlyLimit }),

@@ -61,6 +61,7 @@ beforeEach(() => {
     '0002_generation.sql',
     '0003_guest_generations.sql',
     '0004_hourly_user_limit.sql',
+    '0005_unlimited_override.sql',
   ]) {
     sqlite.run(
       readFileSync(`${import.meta.dir}/../migrations/${file}`, 'utf-8')
@@ -133,6 +134,24 @@ test('an override replaces the default limit, and pausing stops everyone', async
     `update "appSetting" set "value" = '0' where "key" = 'generationEnabled'`
   )
   expect(await reserve('a1', 'admin')).toEqual({ outcome: 'generation_paused' })
+})
+
+test('an unlimited override lifts the limit, and removing it brings the default back', async () => {
+  sqlite.run(
+    `insert into "quotaOverride" values ('u1', null, null, 'admin', 0)`
+  )
+  expect(await reserve('r1')).toEqual({ outcome: 'reserved' })
+  expect(await reserve('r2')).toEqual({ outcome: 'reserved' })
+  expect(await reserve('r3')).toEqual({ outcome: 'reserved' })
+  expect(await getQuota(db, 'u1', LIMITS, now)).toMatchObject({
+    limit: null,
+    used: 3,
+  })
+  sqlite.run(`delete from "quotaOverride" where "userId" = 'u1'`)
+  expect(await reserve('r4')).toMatchObject({
+    limit: 2,
+    outcome: 'quota_exceeded',
+  })
 })
 
 test('a guest gets one song a day, and all guests together stop at the shared cap', async () => {
