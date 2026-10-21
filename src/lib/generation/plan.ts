@@ -72,12 +72,12 @@ export const isStageId = (value: unknown): value is StageId =>
 // What the panel lists: one row and one bar per step. The first is the quick check, so the panel shows a
 // step clearing within seconds instead of one long first step
 export const STEPS = [
-  { id: 'check', stages: ['check'], title: 'Check Song' },
-  { id: 'fetch', stages: ['download', 'read'], title: 'Analyze Song' },
-  { id: 'vocals', stages: ['separate'], title: 'Isolate Vocals' },
-  { id: 'transcribe', stages: ['listen', 'lyrics'], title: 'Transcribe' },
-  { id: 'sync', stages: ['align', 'verify'], title: 'Sync Timing' },
-  { id: 'translate', stages: ['translate', 'save'], title: 'Translate' },
+  { id: 'check', stages: ['check'], title: 'Song Check' },
+  { id: 'fetch', stages: ['download', 'read'], title: 'Song Analysis' },
+  { id: 'vocals', stages: ['separate'], title: 'Vocal Isolation' },
+  { id: 'transcribe', stages: ['listen', 'lyrics'], title: 'Transcription' },
+  { id: 'sync', stages: ['align', 'verify'], title: 'Timing Sync' },
+  { id: 'translate', stages: ['translate', 'save'], title: 'Translation' },
 ] as const satisfies readonly {
   id: string
   title: string
