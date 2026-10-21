@@ -10,6 +10,9 @@ interface ErrorKind {
   lost?: boolean
   // Lost because the page just came back, so reconnect at once
   resumed?: boolean
+  // The backend ended a long stream on purpose ({"type": "resume"}) while its job runs on, and asks to be
+  // asked again: not a failure, and not a reconnect
+  handoff?: boolean
   // Why the backend refused, when it says: sign_in_required, quota_exceeded, already_finished, ...
   code?: string
 }
@@ -18,13 +21,15 @@ export class GenerationError extends Error {
   readonly retryable: boolean
   readonly lost: boolean
   readonly resumed: boolean
+  readonly handoff: boolean
   readonly code: string | undefined
 
   constructor(message: string, kind: ErrorKind = {}) {
     super(message)
     this.name = 'GenerationError'
     this.lost = kind.lost === true || kind.resumed === true
-    this.retryable = kind.retryable === true || this.lost
+    this.handoff = kind.handoff === true
+    this.retryable = kind.retryable === true || this.lost || this.handoff
     this.resumed = kind.resumed === true
     this.code = kind.code
   }
