@@ -10,6 +10,14 @@ import type { formattedYoutubeVideoItemForCarousel } from '@/types'
 
 const SKELETON_CARDS = 4
 
+// At the start, at the end -> the edges with more cards past them
+const MORE: Record<string, 'none' | 'right' | 'left' | 'both'> = {
+  'false-false': 'both',
+  'false-true': 'left',
+  'true-false': 'right',
+  'true-true': 'none',
+}
+
 const SongCard = ({
   item,
   index,
@@ -21,7 +29,7 @@ const SongCard = ({
     to={`/v/${item.videoId}`}
     state={{ videoId: item.videoId }}
     title={item.title}
-    className='group flex min-w-0 carousel-card snap-start flex-col gap-1 rounded-xl focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden'>
+    className='group flex min-w-0 snap-start flex-col gap-1 rounded-xl focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden'>
     <span className='relative mb-2 aspect-video overflow-hidden rounded-xl bg-thumbnail-placeholder'>
       <img
         src={item.thumbnailUrl}
@@ -100,6 +108,8 @@ const SongHighlightCarousel = () => {
   }
 
   const loading = isLoading || !playlistData
+  // Which edges have more cards past them; those edges fade instead of cutting a card off
+  const more = MORE[`${atStart}-${atEnd}`]
 
   return (
     <section
@@ -141,7 +151,10 @@ const SongHighlightCarousel = () => {
         />
       )}
       {!isError && loading && (
-        <output aria-label='Loading recommendations' className='carousel-track'>
+        <output
+          aria-label='Loading recommendations'
+          data-more='right'
+          className='carousel-track'>
           {Array.from({ length: SKELETON_CARDS }, (_, index) => (
             // oxlint-disable-next-line no-array-index-key
             <CardSkeleton key={index} />
@@ -154,6 +167,7 @@ const SongHighlightCarousel = () => {
           // oxlint-disable-next-line no-noninteractive-tabindex -- a scrolling region must be focusable so the arrow keys can scroll it
           tabIndex={0}
           onScroll={updateEdges}
+          data-more={more}
           className='carousel-track rounded-xl focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden'>
           {playlistData.map((item, index) => (
             <SongCard key={item.videoId} item={item} index={index} />

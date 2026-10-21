@@ -317,6 +317,18 @@
   );
 }
 
+/* The top bar once a page has scrolled under it: the page color behind the buttons, fading to clear below them,
+   so scrolled content slides under without a hard edge. The padding is the fade zone. No blur: WebKit drops a
+   backdrop filter that is masked */
+@utility topbar-frost {
+  padding-bottom: 1.25rem;
+  background: linear-gradient(
+    to bottom,
+    color-mix(in oklab, var(--background) 94%, transparent) 55%,
+    transparent
+  );
+}
+
 /* The glow behind the top of every page: two soft washes of the brand glow over the page color */
 @utility page-glow {
   background:
@@ -351,6 +363,22 @@
   @media (width >= 48rem) {
     --pad: 0px;
   }
+  /* An edge with more cards past it fades out over the last 3rem, so the peeking card is cut softly */
+  &[data-more='right'] {
+    mask-image: linear-gradient(to right, #000 calc(100% - 3rem), transparent);
+  }
+  &[data-more='left'] {
+    mask-image: linear-gradient(to right, transparent, #000 3rem);
+  }
+  &[data-more='both'] {
+    mask-image: linear-gradient(
+      to right,
+      transparent,
+      #000 3rem,
+      #000 calc(100% - 3rem),
+      transparent
+    );
+  }
   @container (width >= 35rem) {
     --cards: 2;
   }
@@ -362,35 +390,6 @@
   }
   @container (width >= 92.5rem) {
     --cards: 5;
-  }
-}
-
-/* Cards fade as they scroll in and out of the row, so the peeking one reads as "more" */
-@utility carousel-card {
-  @supports (animation-timeline: view()) {
-    animation:
-      carousel-enter linear both,
-      carousel-exit linear forwards;
-    animation-timeline: view(inline), view(inline);
-    animation-range:
-      entry 0% entry 100%,
-      exit 0% exit 100%;
-  }
-}
-@keyframes carousel-enter {
-  from {
-    opacity: 0.35;
-  }
-  to {
-    opacity: 1;
-  }
-}
-@keyframes carousel-exit {
-  from {
-    opacity: 1;
-  }
-  to {
-    opacity: 0.35;
   }
 }
 
@@ -594,6 +593,8 @@
   white-space: nowrap;
   overflow: hidden;
   position: relative;
+  /* Clipped text fades out instead of stopping mid-letter; on touch nothing hovers, so this is all it shows */
+  mask-image: linear-gradient(to right, #000 calc(100% - 2rem), transparent);
 
   & span {
     display: inline-block;
