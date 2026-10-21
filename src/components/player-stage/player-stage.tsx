@@ -1,7 +1,6 @@
 import { useAtom, useSetAtom } from 'jotai'
 import {
   LoaderIcon,
-  PauseIcon,
   PlayIcon,
   RotateCcwIcon,
   RotateCwIcon,
@@ -12,11 +11,12 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { useToast } from '@/components/ui/use-toast'
 import { playerChromeOpenAtom, playerVolumeAtom } from '@/context/atoms'
-import { useArmed } from '@/hooks/use-armed'
+import { useWakeLock } from '@/hooks/use-wake-lock'
 import { isStandalone } from '@/lib/pwa'
 import type { CssVars } from '@/types'
 import { cn } from '@/utils/cn'
 
+import { CenterPlayButton } from './center-play-button'
 import { clampSeek, HOLD_JUMP_MS, holdStep } from './seek-steps'
 import { StageControls } from './stage-controls'
 import type { SeekFlash } from './use-stage-taps'
@@ -106,36 +106,6 @@ const useIdle = (ms: number) => {
   }, [wake])
   return { idle, sleep }
 }
-
-const CenterPlayButton = ({
-  phase,
-  visible,
-  armed,
-  onToggle,
-}: {
-  phase: StagePhase
-  visible: boolean
-  armed: boolean
-  onToggle: () => void
-}) => (
-  <button
-    type='button'
-    tabIndex={-1}
-    aria-label={phase.kind === 'playing' ? 'Pause' : 'Play'}
-    aria-hidden={!visible}
-    onClick={onToggle}
-    className={cn(
-      'absolute top-(--video-cy) left-1/2 z-26 grid size-20 -translate-1/2 place-items-center text-white/90 drop-shadow-stage transition-opacity duration-300 short:size-14',
-      visible ? 'opacity-100' : 'opacity-0',
-      !armed && 'pointer-events-none'
-    )}>
-    {phase.kind === 'paused' ? (
-      <PlayIcon className='size-16 fill-current short:size-10' />
-    ) : (
-      <PauseIcon className='size-16 fill-current short:size-10' />
-    )}
-  </button>
-)
 
 const SeekFlashBadge = ({ flash }: { flash: SeekFlash }) => (
   <div
@@ -285,14 +255,16 @@ export const PlayerStage = ({
 
   const { idle, sleep } = useIdle(IDLE_MS)
   const [dragging, setDragging] = useState(false)
+  const [locked, setLocked] = useState(false)
+  useWakeLock(phase.kind === 'playing' || phase.kind === 'buffering')
 
   // YouTube's own error screens (unavailable, sign-in, age gate) need its UI
   const handsOff = phase.kind === 'error'
   const showCover = !handsOff && coversPhase(phase)
-  const controlsVisible = !dragging && (!idle || phase.kind !== 'playing')
+  const controlsVisible =
+    !locked && !dragging && (!idle || phase.kind !== 'playing')
   const blockInput = quirks.blockIframeInput && !handsOff
   const { toast } = useToast()
-  const centerArmed = useArmed(controlsVisible)
   const setChromeOpen = useSetAtom(playerChromeOpenAtom)
   useEffect(() => {
     setChromeOpen(controlsVisible)
@@ -315,7 +287,7 @@ export const PlayerStage = ({
   }
 
   // The whole page goes fullscreen, not just the stage, so the rail and the controls stay in reach.
-  // Nothing locks the orientation: the player turns with the phone, either way round
+  // The player turns with the phone either way round, unless Lock Landscape holds it on its side
   const toggleFullscreen = () => {
     if (!document.fullscreenEnabled) {
       // In Safari, unlike the Home Screen app, the browser's own bars stay; say how to lose them
@@ -475,14 +447,12 @@ export const PlayerStage = ({
         {showCover && <StageCover videoId={videoId} phase={phase} />}
       </div>
 
-      {/* The play/pause control shows and hides with the rest of the floating UI. Opaque, so it also covers
-          the flash YouTube draws in the same spot on a play or pause, which comes from input that has just
-          shown the UI. It sits outside the video box so it draws above the lyrics */}
+      {/* The play/pause control shows and hides with the rest of the floating UI, and on a phone stays as long
+          as YouTube's own button under it. It sits outside the video box so it draws above the lyrics */}
       {!showCover && !handsOff && (
         <CenterPlayButton
           phase={phase}
-          visible={controlsVisible}
-          armed={centerArmed}
+          controlsVisible={controlsVisible}
           onToggle={() => {
             player.togglePlay()
           }}
@@ -506,10 +476,11 @@ export const PlayerStage = ({
       {autoplayMuted && (
         <button
           type='button'
+          data-unmute-pill
           onClick={() => {
             setVolume({ ...storedVolume, muted: false })
           }}
-          className='absolute top-[calc(var(--topbar-h)+0.5rem+var(--notices-h,0px)+var(--preview-banner-h,0px))] left-1/2 z-40 flex -translate-x-1/2 items-center gap-2.5 rounded-full bg-black/60 px-5 py-2.5 text-base font-medium text-white shadow-lg backdrop-blur-md transition-colors hover:bg-black/80'>
+          className='absolute top-[calc(var(--topbar-h)+0.5rem+var(--notices-h,0px)+var(--preview-banner-h,0px))] left-1/2 z-40 flex -translate-x-1/2 items-center gap-2.5 rounded-full bg-black/60 px-5 py-2.5 text-base font-medium whitespace-nowrap text-white shadow-lg backdrop-blur-md transition-colors hover:bg-black/80'>
           <VolumeXIcon className='size-5' aria-hidden='true' />
           Tap to Unmute
         </button>
@@ -533,6 +504,8 @@ export const PlayerStage = ({
         onSeekBy={seekBy}
         volume={volume}
         onVolumeChange={setVolume}
+        locked={locked}
+        onLockedChange={setLocked}
       />
     </div>
   )

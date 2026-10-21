@@ -6,6 +6,7 @@ import {
   useState,
 } from 'react'
 
+import { useWakeLock } from '@/hooks/use-wake-lock'
 import { currentLineIndex } from '@/lib/karaoke'
 
 // The bar's clock and time labels need far fewer updates than the karaoke fill
@@ -121,29 +122,7 @@ export const useSilentPlayback = (
   }, [playing, duration, lines])
 
   // A phone would dim and lock its screen part way through a song with nothing touched
-  useEffect(() => {
-    let lock: WakeLockSentinel | null = null
-    let released = false
-    const request = async () => {
-      try {
-        const sentinel = await navigator.wakeLock?.request('screen')
-        if (released) {
-          await sentinel?.release()
-        } else {
-          lock = sentinel ?? null
-        }
-      } catch {
-        // Not allowed (battery saver, an older browser): the screen may dim
-      }
-    }
-    if (playing) {
-      void request()
-    }
-    return () => {
-      released = true
-      void lock?.release()
-    }
-  }, [playing])
+  useWakeLock(playing)
 
   return { active, pause, play, playing, reached, seek, time }
 }
