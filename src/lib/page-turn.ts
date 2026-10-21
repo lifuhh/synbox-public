@@ -35,3 +35,9 @@ export const fractionAcross = (
     ? (point.clientY - box.top) / box.height
     : (point.clientX - box.left) / box.width
 }
+
+// An element's fractional width along the page (offsetWidth rounds)
+export const pageWidth = (element: Element) => {
+  const box = element.getBoundingClientRect()
+  return pageTurned() ? box.height : box.width
+}
