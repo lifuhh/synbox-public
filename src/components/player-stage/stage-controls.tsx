@@ -216,23 +216,27 @@ export const StageControls = ({
 
   return (
     <>
-      {/* Settings for the whole sitting rather than the song, so they keep out of the thumb's way: top right,
-          under the top bar. Touch screens only */}
+      {/* Settings for the whole sitting rather than the song, so they keep out of the thumb's way: a column
+          down the right edge, touch screens only, sliding out to the right with the rest of the UI. Upright it
+          hangs under the top bar's last icon, centred on it; on a phone on its side it mirrors the rail on the
+          left (same buttons, padding and top), so the two frame the video */}
       <div
         data-player-chrome
         className={cn(
-          'hidden absolute top-(--stage-corner-top) right-controls-right z-30 items-center gap-0.5 rounded-full bg-black/55 p-0.5 shadow-rail backdrop-blur-md transition-opacity duration-(--controls-fade) touch:flex',
-          visible ? 'opacity-100' : 'opacity-0',
+          'hidden absolute top-(--stage-corner-top) right-[calc(var(--safe-right)+0.625rem)] z-30 flex-col items-center gap-1 rounded-full bg-black/55 p-1 shadow-rail backdrop-blur-md transition-translate-fade duration-300 ease-out sm:right-[calc(var(--safe-right)+1.125rem)] touch:flex',
+          'short:top-[calc(var(--topbar-h)+0.25rem)] short:right-(--safe-right) short:rounded-none short:rounded-l-2xl',
+          visible
+            ? 'translate-x-0'
+            : 'translate-x-[calc(100%+var(--safe-right)+1.125rem)]',
           !armed && 'pointer-events-none'
-        )}
-        style={FADE_VARS}>
+        )}>
         <IconButton
           label='Lock Landscape'
           active={landscape.locked}
           onClick={() => {
             void landscape.toggle()
           }}
-          className='rounded-full'>
+          className='rounded-full short:size-8 short:rounded-lg'>
           <SmartphoneIcon className='size-5 rotate-90' />
         </IconButton>
         <IconButton
@@ -240,7 +244,7 @@ export const StageControls = ({
           onClick={() => {
             onLockedChange(true)
           }}
-          className='rounded-full'>
+          className='rounded-full short:size-8 short:rounded-lg'>
           <LockIcon className='size-5' />
         </IconButton>
       </div>
