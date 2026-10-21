@@ -1,5 +1,5 @@
 import { useAtomValue } from 'jotai'
-import { CloudOffIcon, RefreshCwIcon, SearchIcon, XIcon } from 'lucide-react'
+import { CloudOffIcon, SearchIcon, XIcon } from 'lucide-react'
 import { useDeferredValue, useEffect, useMemo, useState } from 'react'
 
 import { OfflineSongRow } from '@/components/offline/offline-song-row'
@@ -145,39 +145,20 @@ const OfflinePage = () => {
   return (
     <section className='flex custom-scrollbar flex-1 flex-col overflow-y-auto overscroll-contain pr-(--safe-right) pb-page-bottom pl-(--safe-left)'>
       <title>Offline Lyrics · Synbox</title>
-      <div className='mx-auto w-full max-w-5xl px-4 pt-page-top md:px-8'>
-        <header className='flex items-start justify-between gap-3 pb-3'>
-          <div className='min-w-0'>
-            <h1 className='text-2xl font-bold text-foreground'>
-              Offline Lyrics
-            </h1>
-            <p
-              aria-live='polite'
-              className='flex items-center gap-1.5 pt-1 text-sm text-muted-foreground'>
-              {online ? null : <CloudOffIcon className='size-4 shrink-0' />}
-              {statusText(status, online, shelf.length)}
-            </p>
-          </div>
-          {online && (
-            <button
-              type='button'
-              aria-label='Update Saved Songs'
-              disabled={status.kind === 'saving'}
-              onClick={requestSync}
-              className='flex size-10 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-white/10 hover:text-foreground disabled:opacity-60'>
-              <RefreshCwIcon
-                className={cn(
-                  'size-5',
-                  status.kind === 'saving' && 'animate-spin'
-                )}
-              />
-            </button>
-          )}
-        </header>
-      </div>
+      <header className='mx-auto w-full max-w-xl px-4 pt-(--topbar-h) text-center'>
+        <h1 className='pt-2 text-base font-semibold text-foreground'>
+          Offline Lyrics
+        </h1>
+        <p
+          aria-live='polite'
+          className='flex items-center justify-center gap-1 text-xs text-muted-foreground'>
+          {online ? null : <CloudOffIcon className='size-3.5 shrink-0' />}
+          {statusText(status, online, shelf.length)}
+        </p>
+      </header>
 
       <div className='sticky top-(--topbar-h) z-10 bg-background/85 backdrop-blur-md'>
-        <div className='mx-auto flex w-full max-w-5xl flex-col gap-2.5 px-4 py-2.5 md:px-8'>
+        <div className='mx-auto flex w-full max-w-xl flex-col gap-2 px-4 py-2'>
           <label className='relative block'>
             <span className='sr-only'>Search Saved Songs</span>
             <SearchIcon className='pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground' />
@@ -190,7 +171,7 @@ const OfflinePage = () => {
               placeholder='Title, artist, romaji or a lyric'
               enterKeyHint='search'
               autoComplete='off'
-              className='h-11 w-full rounded-full border border-white/10 bg-white/5 pr-10 pl-9 text-base text-foreground placeholder:text-muted-foreground focus:border-primary/60 focus:outline-none [&::-webkit-search-cancel-button]:hidden'
+              className='h-10 w-full rounded-full border border-white/10 bg-white/5 pr-10 pl-9 text-base text-foreground placeholder:text-muted-foreground focus:border-primary/60 focus:outline-none [&::-webkit-search-cancel-button]:hidden'
             />
             {query !== '' && (
               <button
@@ -216,7 +197,7 @@ const OfflinePage = () => {
                   setFilter(item.id)
                 }}
                 className={cn(
-                  'flex h-9 shrink-0 items-center rounded-full border px-3 text-sm font-medium transition-colors',
+                  'flex h-8 shrink-0 items-center rounded-full border px-3 text-sm font-medium transition-colors',
                   filter === item.id
                     ? 'border-transparent bg-foreground text-background'
                     : 'border-white/15 text-foreground hover:bg-white/10'
@@ -228,9 +209,9 @@ const OfflinePage = () => {
         </div>
       </div>
 
-      <div className='mx-auto w-full max-w-5xl px-2 pt-1 md:px-6'>
+      <div className='mx-auto w-full max-w-xl px-2'>
         {results.length > 0 ? (
-          <ul className='grid grid-cols-1 gap-x-4 sm:grid-cols-2 xl:grid-cols-3'>
+          <ul className='grid grid-cols-1'>
             {results.map(({ entry, sources, sortAt, match }) => (
               <OfflineSongRow
                 key={entry.song.videoId}
