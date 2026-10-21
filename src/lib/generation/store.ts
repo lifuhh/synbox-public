@@ -7,6 +7,7 @@ import { useSyncExternalStore } from 'react'
 import { playsOutsideYouTube } from '@/lib/youtube/embed-check'
 import type { KaraokeDoc } from '@/types'
 
+import { GenerationError } from './failure'
 import type { Phase } from './plan'
 import type { Runs } from './progress'
 import {
@@ -23,13 +24,7 @@ import type {
   SaveOutcome,
   VideoSummary,
 } from './stream'
-import {
-  checkGeneration,
-  GenerationError,
-  transcribe,
-  translate,
-  validate,
-} from './stream'
+import { checkGeneration, transcribe, translate, validate } from './stream'
 
 export type GenerationMode = 'new' | 'regenerate'
 
@@ -91,10 +86,11 @@ const RETRIES = 2
 const RETRY_DELAY_MS = 1500
 // A lost connection is not a failure while the backend's job may still be running: it is asked again, with
 // waits that grow to the last of these, and each answer replays the job's progress. Asking again never
-// pays twice (the request id names the job). Coming back to the page reconnects at once, without counting
-const RECONNECT_DELAYS_MS = [1000, 2000, 4000, 8000, 15_000]
-// Tries in a row without hearing the backend (about 3 minutes on screen) before the job says it lost it
-const RECONNECTS = 14
+// pays twice (the request id names the job). Coming back to the page reconnects at once. Cloud Run turning
+// requests away while songs use the CPU (429 "Rate exceeded.") counts as lost too: the job runs on
+const RECONNECT_DELAYS_MS = [2000, 4000, 8000, 15_000, 30_000]
+// How long on screen a job keeps asking without hearing the backend before it says it lost it
+const RECONNECT_WINDOW_MS = 10 * 60_000
 // Each running job holds a stream open; more than this wait here rather than fill the backend's line, which
 // refuses songs past its own limit
 export const MAX_RUNNING = 3
@@ -150,8 +146,10 @@ const listenersFor = (id: number): Listeners => ({
   },
 })
 
-// Retries wait for the page to be on screen: a suspended page cannot reach the backend
+// Retries wait for the page to be on screen: a suspended page cannot reach the backend. Resolves to how
+// long it waited
 const untilVisible = async (signal: AbortSignal) => {
+  const since = Date.now()
   // oxlint-disable-next-line promise/avoid-new -- turns the visibilitychange and abort events into a promise
   await new Promise<void>((resolve) => {
     if (document.visibilityState === 'visible' || signal.aborted) {
@@ -168,6 +166,7 @@ const untilVisible = async (signal: AbortSignal) => {
     document.addEventListener('visibilitychange', settle)
     signal.addEventListener('abort', settle)
   })
+  return Date.now() - since
 }
 
 // Waits `ms`, or less when the page gets its network back (resume.ts)
@@ -203,6 +202,8 @@ const runPhase = async <T>(
   }))
   let attempt = 0
   let reconnects = 0
+  // When the backend was last heard or this run of reconnects began, moved on by time in the background
+  let lostSince: number | null = null
   for (;;) {
     const askedAt = Date.now()
     try {
@@ -219,13 +220,15 @@ const runPhase = async <T>(
       }
       // Before the backend was ever heard there is no job of ours to lose: a few retries, as for any failure
       if (error.lost && heardAt.has(id)) {
-        if ((heardAt.get(id) ?? 0) >= askedAt) {
+        const now = Date.now()
+        if (lostSince === null || (heardAt.get(id) ?? 0) >= askedAt) {
           reconnects = 0
+          lostSince = now
         }
         if (!error.resumed) {
           reconnects += 1
         }
-        if (reconnects > RECONNECTS) {
+        if (now - lostSince > RECONNECT_WINDOW_MS) {
           throw new GenerationError(
             'Lost the connection to the lyrics server. The song may still finish there, so try again in a minute.',
             { code: 'connection_lost' }
@@ -252,7 +255,10 @@ const runPhase = async <T>(
         await sleep(RETRY_DELAY_MS, signal)
       }
       // oxlint-disable-next-line eslint/no-await-in-loop -- a retry waits for the page to be on screen
-      await untilVisible(signal)
+      const away = await untilVisible(signal)
+      if (lostSince !== null) {
+        lostSince += away
+      }
     }
   }
 }

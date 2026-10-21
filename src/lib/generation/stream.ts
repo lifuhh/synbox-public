@@ -5,6 +5,7 @@ import { BE_ADDRESS } from '@/lib/synbox-flask/address'
 import { isKaraokeDoc } from '@/lib/synbox-flask/api'
 import type { KaraokeDoc } from '@/types'
 
+import { failedResponse, GenerationError } from './failure'
 import { isStageId } from './plan'
 import type { StageId } from './plan'
 import { onResume } from './resume'
@@ -16,35 +17,6 @@ const VALIDATE_IDLE_MS = 60_000
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null
-
-interface ErrorKind {
-  // Asking again may work. The rest (the backend's own `error` message, a refused request) would fail the
-  // same way, or pay twice
-  retryable?: boolean
-  // The connection went (dropped, went quiet, or never came back from the background) while the backend's
-  // job may still be running: asking again with the same request id attaches to it
-  lost?: boolean
-  // Lost because the page just came back, so reconnect at once
-  resumed?: boolean
-  // Why the backend refused, when it says: sign_in_required, quota_exceeded, already_finished, ...
-  code?: string
-}
-
-export class GenerationError extends Error {
-  readonly retryable: boolean
-  readonly lost: boolean
-  readonly resumed: boolean
-  readonly code: string | undefined
-
-  constructor(message: string, kind: ErrorKind = {}) {
-    super(message)
-    this.name = 'GenerationError'
-    this.lost = kind.lost === true || kind.resumed === true
-    this.retryable = kind.retryable === true || this.lost
-    this.resumed = kind.resumed === true
-    this.code = kind.code
-  }
-}
 
 export interface ProgressEvent {
   stage: StageId
@@ -72,15 +44,6 @@ interface StreamMessage {
   type: string
   data: unknown
 }
-
-const failedRequest = (status: number) =>
-  status === 429
-    ? new GenerationError(
-        'Too many songs requested from your network. Try again in a while.'
-      )
-    : new GenerationError(`The lyrics server answered ${status}`, {
-        retryable: status >= 500,
-      })
 
 const stale = () =>
   new GenerationError('Reconnecting to the lyrics server', { resumed: true })
@@ -149,7 +112,13 @@ const readStream = async (
       )
     }
     if (!response.ok) {
-      throw failedRequest(response.status)
+      let text = ''
+      try {
+        text = await response.text()
+      } catch {
+        // The status alone decides then
+      }
+      throw failedResponse(response.status, text)
     }
     // A host without the backend answers with the app's index.html and a 200
     if (!(response.headers.get('content-type') ?? '').includes('ndjson')) {
