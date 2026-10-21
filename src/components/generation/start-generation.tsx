@@ -21,6 +21,8 @@ export const startFromButton = async (request: GenerationRequest) => {
       </ToastAction>
     ) : undefined,
     description: refusal.message,
+    // Long enough to read the reason, unlike the app's 2-second confirmations
+    duration: 6000,
     title: "Can't Generate This Song",
     variant: 'destructive',
   })
