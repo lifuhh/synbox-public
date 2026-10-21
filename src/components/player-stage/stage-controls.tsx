@@ -87,7 +87,7 @@ const IconButton = ({
     aria-pressed={active}
     onClick={onClick}
     className={cn(
-      'grid size-9 shrink-0 place-items-center rounded-md text-white/85 transition-colors hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none touch:size-10',
+      'grid size-9 shrink-0 place-items-center rounded-md text-white/85 transition-colors hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none touch:size-11',
       active === true && 'text-primary-text hover:text-primary-text',
       className
     )}>
@@ -106,6 +106,24 @@ interface StageControlsProps {
   volume: PlayerVolume
   onVolumeChange: (volume: PlayerVolume) => void
 }
+
+const Clock = ({
+  time,
+  duration,
+  className,
+}: {
+  time: number
+  duration: number
+  className: string
+}) => (
+  <span
+    className={cn(
+      'min-w-0 truncate text-sm whitespace-nowrap text-white tabular-nums',
+      className
+    )}>
+    {formatTime(time)} / {formatTime(duration)}
+  </span>
+)
 
 export const CONTROLS_FADE_MS = 300
 const FADE_VARS: CssVars = { '--controls-fade': `${CONTROLS_FADE_MS}ms` }
@@ -195,38 +213,45 @@ export const StageControls = ({
         ref={contentRef}
         data-player-chrome
         className='short:flex short:items-center short:gap-1'>
-        <Slider
-          aria-label='Seek'
-          min={0}
-          max={Math.max(duration, 1)}
-          step={0.1}
-          value={[shown]}
-          onValueChange={([value]) => {
-            setHeld(value === undefined ? null : { committed: false, value })
-          }}
-          onValueCommit={([value]) => {
-            if (value === undefined) {
-              setHeld(null)
-              return
-            }
-            player.seek(value)
-            setHeld({ committed: true, value })
-            // A seek the player never reports lets go of the bar anyway
-            clearTimeout(releaseRef.current)
-            releaseRef.current = setTimeout(() => {
-              setHeld(null)
-            }, SEEK_HOLD_MAX_MS)
-          }}
-          className='mb-2 cursor-pointer short:order-1 short:mx-2 short:mb-0 short:min-w-0 short:flex-1'
-        />
-        <div className='flex items-center gap-1 text-sm text-white tabular-nums touch:gap-0.5 short:contents'>
-          {/* Touch screens play and pause from the button in the middle of the stage instead */}
+        {/* On a touch screen the clock sits at the end of the seek bar, so the buttons' row fits at 320px */}
+        <div className='mb-2 flex items-center gap-3 short:contents'>
+          <Slider
+            aria-label='Seek'
+            min={0}
+            max={Math.max(duration, 1)}
+            step={0.1}
+            value={[shown]}
+            onValueChange={([value]) => {
+              setHeld(value === undefined ? null : { committed: false, value })
+            }}
+            onValueCommit={([value]) => {
+              if (value === undefined) {
+                setHeld(null)
+                return
+              }
+              player.seek(value)
+              setHeld({ committed: true, value })
+              // A seek the player never reports lets go of the bar anyway
+              clearTimeout(releaseRef.current)
+              releaseRef.current = setTimeout(() => {
+                setHeld(null)
+              }, SEEK_HOLD_MAX_MS)
+            }}
+            className='min-w-0 flex-1 cursor-pointer short:order-1 short:mx-2'
+          />
+          <Clock
+            time={shown}
+            duration={duration}
+            className='hidden shrink-0 touch:block short:order-2'
+          />
+        </div>
+        <div className='flex items-center gap-1 touch:gap-0.5 short:contents'>
+          {/* Bottom left, where every player has it, although touch screens also have one mid-stage */}
           <IconButton
             label={isPlaying ? 'Pause' : 'Play'}
             onClick={() => {
               player.togglePlay()
-            }}
-            className='touch:hidden'>
+            }}>
             {isPlaying ? (
               <PauseIcon className='size-5' />
             ) : (
@@ -284,9 +309,11 @@ export const StageControls = ({
               </div>
             </div>
           </div>
-          <span className='ml-2 min-w-0 truncate whitespace-nowrap touch:ml-1 short:order-2 short:ml-0 short:shrink-0'>
-            {formatTime(shown)} / {formatTime(duration)}
-          </span>
+          <Clock
+            time={shown}
+            duration={duration}
+            className='ml-2 touch:hidden short:order-2 short:ml-0 short:shrink-0'
+          />
           <div className='ml-auto flex shrink-0 items-center gap-1 touch:gap-0.5 short:order-3 short:ml-1'>
             <IconButton
               label='Loop'
