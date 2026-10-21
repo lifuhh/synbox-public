@@ -415,75 +415,52 @@
     radial-gradient(80% 34% at 100% 6%, var(--glow-b), transparent 70%);
 }
 
-/* The landing carousel's row. Its container (@container) picks how many cards show, and the cards stretch to
-   fill the row with a slice of the next one peeking in, so the gap stays 1rem at every width */
+/* The landing carousel's row: one slide centred, its neighbours peeking in on both sides and fading out at
+   the edges. Its container (@container) sizes the slide, capped so a phone on its side or a monitor still
+   shows the neighbours; the side padding only shows when there is a single slide */
 @utility carousel-track {
-  --cards: 1;
   --gap: 1rem;
-  --peek: 3rem;
-  --pad: 1rem;
+  --peek: 2rem;
+  --slide: min(100cqw - 2 * (var(--gap) + var(--peek)), 28rem);
+  position: relative;
   display: grid;
   grid-auto-flow: column;
-  grid-auto-columns: calc(
-    (100cqw - 2 * var(--pad) - var(--cards) * var(--gap) - var(--peek)) /
-      var(--cards)
-  );
+  grid-auto-columns: var(--slide);
   gap: var(--gap);
-  padding: 0.125rem var(--pad) 0.375rem;
-  scroll-padding-inline: var(--pad);
+  padding: 0.125rem calc((100cqw - var(--slide)) / 2) 0.375rem;
   overflow-x: auto;
   overscroll-behavior-x: contain;
+  /* Instant, unlike every other box (*): useLoopingCarousel moves the row a frame at a time */
+  scroll-behavior: auto;
   scroll-snap-type: x mandatory;
   scrollbar-width: none;
+  /* Horizontal touch drags are handled in script (useLoopingCarousel); vertical ones scroll the page */
+  touch-action: pan-y;
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    #000 var(--peek),
+    #000 calc(100% - var(--peek)),
+    transparent
+  );
 
   &::-webkit-scrollbar {
     display: none;
   }
-  @media (width >= 48rem) {
-    --pad: 0px;
+  @media (orientation: landscape) and (max-height: 500px) {
+    --slide: min(100cqw - 2 * (var(--gap) + var(--peek)), 22rem);
   }
-  /* An edge with more cards past it fades out over the last 3rem, so the peeking card is cut softly */
-  &[data-more='right'] {
-    mask-image: linear-gradient(to right, #000 calc(100% - 3rem), transparent);
-  }
-  &[data-more='left'] {
-    mask-image: linear-gradient(to right, transparent, #000 3rem);
-  }
-  &[data-more='both'] {
-    mask-image: linear-gradient(
-      to right,
-      transparent,
-      #000 3rem,
-      #000 calc(100% - 3rem),
-      transparent
-    );
-  }
-  @container (width >= 35rem) {
-    --cards: 2;
-  }
-  @container (width >= 55rem) {
-    --cards: 3;
-  }
-  @container (width >= 73.75rem) {
-    --cards: 4;
-  }
-  @container (width >= 92.5rem) {
-    --cards: 5;
+  /* The loading row: a centred placeholder slide with one on each side */
+  &[data-skeleton] {
+    overflow: hidden;
+    justify-content: center;
+    padding-inline: 0;
   }
 }
 
 /* A progress bar's fill, clipped from the right by --progress-remaining */
 @utility clip-progress {
   clip-path: inset(0 var(--progress-remaining) 0 0 round 9999px);
-}
-
-/* A landing carousel slide, scaled and faded by its distance from the current one */
-@utility carousel-slide {
-  opacity: var(--slide-opacity);
-  transform: var(--slide-transform);
-  transition:
-    transform 0.5s ease-in-out,
-    opacity 0.3s ease-in-out;
 }
 
 /* The spacers above and below the player's lyrics split the free space by the anchor; the lower one also
