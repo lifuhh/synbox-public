@@ -207,7 +207,7 @@ const OfflinePage = () => {
       <div
         ref={bar}
         data-stuck={stuck ? true : undefined}
-        className='sticky-under-topbar z-10'>
+        className='sticky-under-topbar'>
         <div className='mx-auto flex w-full max-w-xl flex-col gap-2 px-4 py-2'>
           <label className='relative block'>
             <span className='sr-only'>Search Saved Songs</span>

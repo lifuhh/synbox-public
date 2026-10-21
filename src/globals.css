@@ -225,7 +225,7 @@
 
 /* Spacing that reads runtime variables, inlined so each element resolves them itself */
 @theme inline {
-  --spacing-safe-top: env(safe-area-inset-top);
+  --spacing-safe-top: var(--safe-top);
   --spacing-page-top: calc(var(--topbar-h) + 1.5rem);
   --spacing-page-bottom-sm: calc(1rem + var(--safe-bottom));
   --spacing-page-bottom: calc(2.5rem + var(--safe-bottom));
@@ -247,7 +247,7 @@
   );
 
   /* The offline reader: room under its bar and over its text style row, and type times the reader's scale */
-  --spacing-reader-top: calc(var(--spacing-safe-top) + 3.75rem);
+  --spacing-reader-top: calc(var(--safe-top) + 3.75rem);
   --spacing-reader-bottom: calc(var(--safe-bottom) + 2.5rem);
   --spacing-reader-bottom-bar: calc(var(--safe-bottom) + 6rem);
   /* Synced lyrics: room for the play controls, and for the last line to scroll up to where the sung line sits */
@@ -266,8 +266,9 @@
   --text-reader-translation--line-height: 1.4;
 }
 
-/* The offline reader's paper and ink, dark by default. The status bar strip stays dark on the light page:
-   an installed iPhone app draws the clock in white over whatever is under it */
+/* The offline reader's paper and ink, dark by default. The status bar strip stays dark on the light page, with
+   a hard edge (a dark fade over paper reads as a smudge): an installed iPhone app draws the clock in white over
+   whatever is under it */
 @utility reader-paper {
   --reader-bg: #111113;
   --reader-fg: #ebe7e1;
@@ -277,6 +278,7 @@
   --reader-muted: #9d978e;
   --reader-panel: #1d1d20;
   --reader-status: #111113;
+  --theme-color: var(--reader-status);
   --furigana-size: 0.5em;
 
   &[data-theme='light'] {
@@ -288,6 +290,7 @@
     --reader-muted: #6b655b;
     --reader-panel: #fffdf8;
     --reader-status: #1f1c17;
+    --status-scrim-fade: 0px;
   }
 
   /* Furigana over the page, not over a video: no shadow, a little quieter than the kanji. The player's -0.9em
@@ -375,6 +378,8 @@
 @utility sticky-under-topbar {
   position: sticky;
   top: var(--topbar-shown-h);
+  /* Over the status bar scrim (z-40), whose fade would otherwise dim the row's top; under the bar (z-50) */
+  z-index: 45;
   transition:
     top 300ms ease-out,
     background-color 200ms;
@@ -426,11 +431,38 @@
   }
 }
 
-/* The glow behind the top of every page: two soft washes of the brand glow over the page color */
+/* The glow behind the top of every page: two soft washes of the brand glow over the page color. Sized to the
+   screen, so a layer shorter than it (the status bar scrim) paints the same pixels as the full-screen one */
 @utility page-glow {
-  background:
+  background-image:
     radial-gradient(110% 40% at 18% -4%, var(--glow-a), transparent 72%),
     radial-gradient(80% 34% at 100% 6%, var(--glow-b), transparent 70%);
+  background-size: 100% var(--app-h);
+  background-repeat: no-repeat;
+}
+
+/* Over the status bar of an app drawn under it (installed on an iPhone): the surface's own backdrop, solid behind
+   the clock and fading out just below it, so content scrolling up under the status bar dissolves instead of
+   running into the clock. With no top inset (Android, a browser tab, a phone on its side) it has no height */
+@utility status-scrim {
+  --scrim-fade: var(
+    --status-scrim-fade,
+    min(2rem, calc(var(--safe-top) * 100))
+  );
+  /* The fade starts a little above the inset's bottom edge (none when there is no fade) and eases out */
+  --scrim-lead: min(calc(var(--safe-top) * 0.3), var(--scrim-fade));
+  --scrim-solid: calc(var(--safe-top) - var(--scrim-lead));
+  --scrim-ease: calc(var(--scrim-lead) + var(--scrim-fade));
+  height: calc(var(--safe-top) + var(--scrim-fade));
+  pointer-events: none;
+  mask-image: linear-gradient(
+    to bottom,
+    #000 var(--scrim-solid),
+    rgb(0 0 0 / 0.8) calc(var(--scrim-solid) + var(--scrim-ease) * 0.3),
+    rgb(0 0 0 / 0.45) calc(var(--scrim-solid) + var(--scrim-ease) * 0.55),
+    rgb(0 0 0 / 0.15) calc(var(--scrim-solid) + var(--scrim-ease) * 0.8),
+    transparent
+  );
 }
 
 /* The landing carousel's row: one slide centred, its neighbours peeking in on both sides and fading out at
@@ -1007,8 +1039,10 @@
   }
 
   :root {
+    /* The status bar an installed iPhone app draws under; 0 where the system keeps it (Android, browsers) */
+    --safe-top: env(safe-area-inset-top, 0px);
     /* The fixed top bar, plus the status bar it sits under in a standalone app */
-    --topbar-h: calc(3.5rem + env(safe-area-inset-top, 0px));
+    --topbar-h: calc(3.5rem + var(--safe-top));
     /* How much of the top the bar covers right now: all of it, or only the status bar while it is scrolled away */
     --topbar-shown-h: var(--topbar-h);
     --safe-bottom: env(safe-area-inset-bottom, 0px);
@@ -1031,7 +1065,7 @@
 
   /* Without the top bar the video moves up under the status bar */
   html[data-immersive] {
-    --topbar-h: env(safe-area-inset-top, 0px);
+    --topbar-h: var(--safe-top);
   }
 
   /* The version preview banner and the player's Tap to Unmute both hang under the top bar (in portrait, both
@@ -1056,7 +1090,7 @@
   }
 
   html[data-topbar-hidden] {
-    --topbar-shown-h: env(safe-area-inset-top, 0px);
+    --topbar-shown-h: var(--safe-top);
   }
 
   /* The iPhone stand-in for fullscreen: the player without the app's top bar */
@@ -1074,9 +1108,9 @@
       --safe-left: env(safe-area-inset-top, 0px);
       --safe-right: env(safe-area-inset-bottom, 0px);
       --safe-bottom: env(safe-area-inset-left, 0px);
-      --topbar-h: env(safe-area-inset-right, 0px);
+      --topbar-h: var(--safe-top);
       --topbar-shown-h: var(--topbar-h);
-      --spacing-safe-top: env(safe-area-inset-right, 0px);
+      --safe-top: env(safe-area-inset-right, 0px);
       --app-h: 100vw;
       --stage-chrome-h: var(--stage-controls-h, 5rem);
     }
@@ -1100,6 +1134,16 @@
   html:has([data-player-stage]),
   html:has([data-player-stage]) body {
     background-color: #000;
+  }
+
+  [data-player-stage] {
+    --theme-color: #000;
+  }
+
+  /* Nothing scrolls on the player, and its black already carries the white clock. In fullscreen the video is
+     meant to reach the screen's edge, so no scrim darkens its top */
+  html:has([data-player-stage]) [data-status-scrim] {
+    display: none;
   }
 
   html {

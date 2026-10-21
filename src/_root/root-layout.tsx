@@ -12,6 +12,13 @@ const RootLayout: React.FC = () => (
     />
 
     <div className='relative h-(--app-h) w-full'>
+      {/* The page's own backdrop (its color and the glow) over the status bar:
+          above the pages, under the top bar, menus, dialogs and the generation panel */}
+      <div
+        aria-hidden='true'
+        data-status-scrim
+        className='status-scrim fixed inset-x-0 top-0 z-40 bg-background page-glow'
+      />
       <TopBar />
       <section className='flex h-full flex-1'>
         <Outlet />

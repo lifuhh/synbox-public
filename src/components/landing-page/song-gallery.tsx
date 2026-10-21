@@ -210,7 +210,7 @@ const SongGallery = () => {
         ref={title}
         id='gallery-title'
         data-stuck={stuck ? true : undefined}
-        className='sticky-under-topbar z-10 px-4 pb-1.5 text-xl font-semibold tracking-tight text-foreground sm:px-8'>
+        className='sticky-under-topbar px-4 pb-1.5 text-xl font-semibold tracking-tight text-foreground sm:px-8'>
         <button type='button' onClick={toStart} className='py-0.5'>
           Gallery
         </button>

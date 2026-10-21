@@ -24,6 +24,7 @@ import {
 } from '@/components/offline/reader-controls'
 import { ReaderKaraokeLine } from '@/components/offline/reader-karaoke-line'
 import { useSyncedLyrics } from '@/components/offline/use-synced-lyrics'
+import { useThemeColor } from '@/hooks/use-theme-color'
 import {
   READER_SIZES,
   accentColor,
@@ -197,7 +198,7 @@ const ReaderHeader = ({
   return (
     <header
       className={cn(
-        'absolute inset-x-0 top-0 z-20 border-b border-(--reader-line) bg-(--reader-bg) pt-safe-top pr-(--safe-right) pl-(--safe-left) transition-transform duration-200 ease-out',
+        'absolute inset-x-0 top-0 z-40 border-b border-(--reader-line) bg-(--reader-bg) pt-safe-top pr-(--safe-right) pl-(--safe-left) transition-transform duration-200 ease-out',
         !shown && '-translate-y-full'
       )}>
       <div className='relative mx-auto flex h-13 max-w-3xl items-center gap-0.5 px-1.5 sm:px-3'>
@@ -415,6 +416,8 @@ const ReaderPage = () => {
   const { data: song, isPending } = useLyricsSong(videoId)
   const [prefs, setPrefs] = useAtom(readerPrefsAtom)
   const online = useOnline()
+  const root = useRef<HTMLDivElement>(null)
+  useThemeColor(root)
 
   // Songs saved before timing was kept read as plain text until the next sync fetches them again
   const timed = song?.version === OFFLINE_SONG_VERSION
@@ -460,6 +463,7 @@ const ReaderPage = () => {
 
   return (
     <div
+      ref={root}
       data-reader
       data-theme={prefs.theme}
       style={readerVars}
@@ -467,7 +471,7 @@ const ReaderPage = () => {
       <title>{song ? `${song.title} · Lyrics` : 'Lyrics · Synbox'}</title>
       <div
         aria-hidden='true'
-        className='absolute inset-x-0 top-0 z-30 h-safe-top bg-(--reader-status)'
+        className='status-scrim absolute inset-x-0 top-0 z-30 bg-(--reader-status)'
       />
 
       <ReaderHeader
