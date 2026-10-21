@@ -10,6 +10,7 @@ import {
   FILL_MIN,
   fillProgress,
   karaokeMatchesLyrics,
+  LINE_HOLD,
   LINE_LEAD_IN,
   moraCharCounts,
   romajiFillParts,
@@ -183,9 +184,24 @@ describe('currentLineIndex', () => {
     // line 1's lead-in, but line 0 still sung
     expect(currentLineIndex(lines, 11.9)).toBe(0)
     expect(currentLineIndex(lines, 12.05)).toBe(1)
-    // a gap between lines
-    expect(currentLineIndex(lines, 17)).toBe(-1)
+    // an instrumental break: line 1 clears LINE_HOLD after its last mora
+    expect(currentLineIndex(lines, 15 + LINE_HOLD - 0.1)).toBe(1)
+    expect(currentLineIndex(lines, 15 + LINE_HOLD)).toBe(-1)
     expect(currentLineIndex(lines, 20 - LINE_LEAD_IN)).toBe(2)
+    // the song's last line clears the same way
+    expect(currentLineIndex(lines, 25 + LINE_HOLD - 0.1)).toBe(2)
+    expect(currentLineIndex(lines, 25 + LINE_HOLD)).toBe(-1)
+  })
+
+  test('a held last word keeps its line up until the next line takes over', () => {
+    // The aligner ended the held note at 12; the singer holds it until ~13.8
+    const held = [
+      { end: 12, start: 10 },
+      { end: 17, start: 14 },
+    ]
+    expect(currentLineIndex(held, 12.5)).toBe(0)
+    expect(currentLineIndex(held, 13.4)).toBe(0)
+    expect(currentLineIndex(held, 14 - LINE_LEAD_IN)).toBe(1)
   })
 })
 

@@ -159,6 +159,25 @@ export const romajiFillParts = (line: KaraokeDocLine): FillPart[] => {
 // the wipe), unless the line before it is still being sung
 export const LINE_LEAD_IN = 0.5
 
+// The aligner ends a held last note when its vowel stops scoring, often well
+// before the singer lets go, and a line that vanishes reads as "stop singing".
+// So a finished line stays (filled) until the next one takes over. Only before
+// an instrumental break (a gap of INSTRUMENTAL_GAP or more, or the song's end)
+// does it clear, LINE_HOLD after its last mora.
+export const INSTRUMENTAL_GAP = 4
+export const LINE_HOLD = 2
+
+const lineRelease = (
+  lines: readonly Pick<KaraokeDocLine, 'start' | 'end'>[],
+  index: number
+) => {
+  const { end } = lines[index]
+  const next = lines[index + 1]
+  return next === undefined || next.start - end >= INSTRUMENTAL_GAP
+    ? end + LINE_HOLD
+    : Infinity
+}
+
 export const currentLineIndex = (
   lines: readonly Pick<KaraokeDocLine, 'start' | 'end'>[],
   time: number,
@@ -181,7 +200,7 @@ export const currentLineIndex = (
   ) {
     return index - 1
   }
-  return time < lines[index].end ? index : -1
+  return time < lineRelease(lines, index) ? index : -1
 }
 
 export interface PlaybackClock {
