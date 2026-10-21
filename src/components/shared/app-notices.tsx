@@ -1,6 +1,6 @@
-import { ChevronRightIcon, CloudOffIcon, WifiIcon } from 'lucide-react'
+import { CloudOffIcon, WifiIcon } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Link, useMatch } from 'react-router'
+import { useMatch } from 'react-router'
 
 import { useOnline } from '@/lib/pwa'
 
@@ -8,15 +8,15 @@ const pill =
   'pointer-events-auto flex h-8 items-center gap-1.5 rounded-full border border-white/10 bg-popover/90 px-3 text-xs text-foreground shadow-lg backdrop-blur-md'
 
 // How long the note about a connection change stays up
-const NOTICE_MS = { offline: 6000, online: 3000 } as const
+const NOTICE_MS = 2000
 
 type ConnectionNotice = 'offline' | 'online' | null
 
-// A note when the connection drops or comes back (and on opening the app offline), that leaves on its own
+// A note when the connection drops or comes back, that leaves on its own
 const useConnectionNotice = () => {
   const online = useOnline()
   const [notice, setNotice] = useState<ConnectionNotice>(null)
-  const last = useRef(true)
+  const last = useRef(online)
   useEffect(() => {
     const changed = last.current !== online
     last.current = online
@@ -30,7 +30,7 @@ const useConnectionNotice = () => {
           setNotice(null)
         }
       },
-      changed ? NOTICE_MS[kind] : 0
+      changed ? NOTICE_MS : 0
     )
     return () => {
       clearTimeout(timer)
@@ -44,7 +44,6 @@ const useConnectionNotice = () => {
 const AppNotices = () => {
   const notice = useConnectionNotice()
   const onReader = useMatch('/lyrics/:videoId') !== null
-  const onLyrics = useMatch('/lyrics') !== null
   const publishHeight = useCallback((stack: HTMLDivElement) => {
     const root = document.documentElement
     const observer = new ResizeObserver(() => {
@@ -62,25 +61,15 @@ const AppNotices = () => {
       ref={publishHeight}
       className='pointer-events-none fixed inset-x-0 top-(--topbar-h) z-100 flex flex-col items-center gap-2 px-4 empty:hidden [&:not(:empty)]:pt-2'>
       {!onReader && notice === 'offline' && (
-        <output>
-          {onLyrics ? (
-            <span className={pill}>
-              <CloudOffIcon className='size-3.5 shrink-0 text-primary' />
-              Offline. Saved lyrics still work
-            </span>
-          ) : (
-            <Link to='/lyrics' className={pill}>
-              <CloudOffIcon className='size-3.5 shrink-0 text-primary' />
-              Offline. Read your saved lyrics
-              <ChevronRightIcon className='-mr-1 size-3.5 shrink-0' />
-            </Link>
-          )}
+        <output className={pill}>
+          <CloudOffIcon className='size-3.5 shrink-0 text-primary' />
+          Lost Connection
         </output>
       )}
       {!onReader && notice === 'online' && (
         <output className={pill}>
           <WifiIcon className='size-3.5 shrink-0 text-primary' />
-          Back online
+          Reconnected
         </output>
       )}
     </div>
