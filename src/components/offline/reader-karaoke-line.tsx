@@ -2,22 +2,32 @@ import type { Ref } from 'react'
 import { useImperativeHandle, useMemo, useRef } from 'react'
 
 import type { KaraokeLineHandle } from '@/components/lyrics-display/karaoke-line'
-import { fillProgress, tokenFillParts } from '@/lib/karaoke'
+import { fillProgress, romajiFillParts, tokenFillParts } from '@/lib/karaoke'
 import type { KaraokeDocLine } from '@/types'
+import { cn } from '@/utils/cn'
 
-// The player's karaoke line, drawn for a page instead of over a video: the reader's colours and font, no
-// glow. The fill logic is the player's own (tokenFillParts, fillProgress). Unfilled, every part reads as
-// sung, so only the line being played shows the wipe
+// The player's karaoke lines, drawn for a page instead of over a video: the reader's colours and font, no
+// glow. The fill logic is the player's own: tokenFillParts for the Japanese and its furigana, romajiFillParts
+// for the romaji, word by word on the same morae. Unfilled, every part reads as sung, so only the line being
+// played shows the wipe
 export const ReaderKaraokeLine = ({
   line,
+  kind,
   className,
   ref,
 }: {
   line: KaraokeDocLine
+  kind: 'japanese' | 'romaji'
   className?: string
   ref?: Ref<KaraokeLineHandle>
 }) => {
-  const tokenParts = useMemo(() => tokenFillParts(line), [line])
+  const tokenParts = useMemo(
+    () =>
+      kind === 'japanese'
+        ? tokenFillParts(line)
+        : romajiFillParts(line).map((part) => [part]),
+    [line, kind]
+  )
   const parts = useMemo(() => tokenParts.flat(), [tokenParts])
   // Index of each token's first part in `parts`, for the element refs
   const firstPart = useMemo(
@@ -43,11 +53,14 @@ export const ReaderKaraokeLine = ({
   }, [parts])
 
   return (
-    <p lang='ja' className={className}>
+    <p
+      lang={kind === 'japanese' ? 'ja' : undefined}
+      className={cn(kind === 'romaji' && 'reader-karaoke-romaji', className)}>
       {tokenParts.map((token, tokenIndex) => (
         // Tokens and parts are positional and never reorder within a line
         // oxlint-disable-next-line no-array-index-key
         <span key={tokenIndex}>
+          {kind === 'romaji' && tokenIndex > 0 && ' '}
           {token.map((part, index) => {
             const at = firstPart[tokenIndex] + index
             return (

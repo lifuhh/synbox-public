@@ -284,9 +284,14 @@
   --karaoke-stop: calc(var(--p, 1) * 100%);
   --karaoke-gradient: linear-gradient(
     to right,
-    var(--reader-accent) var(--karaoke-stop),
+    var(--karaoke-sung, var(--reader-accent)) var(--karaoke-stop),
     color-mix(in oklab, var(--reader-fg) 40%, transparent) var(--karaoke-stop)
   );
+}
+
+/* The romaji lights up in the page's own ink as it is sung, the Japanese in its chosen colour */
+@utility reader-karaoke-romaji {
+  --karaoke-sung: var(--reader-fg);
 }
 
 /* The reader's custom colour swatch: every hue */
