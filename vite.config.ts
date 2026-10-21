@@ -242,6 +242,7 @@ export default defineConfig({
   // Netlify sends these to the auth Worker; locally that is `wrangler dev --env dev` in worker/
   server: {
     proxy: {
+      '/api/admin': 'http://localhost:8787',
       '/api/auth': 'http://localhost:8787',
       '/api/me': 'http://localhost:8787',
     },

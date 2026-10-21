@@ -127,4 +127,98 @@ internal.patch('/generations/:id', async (c) => {
 
 app.route('/internal', internal)
 
+// The admin pane (src/_root/pages/admin-page.tsx). Every route checks the session's role on the server
+const admin = new Hono<{ Bindings: AppEnv; Variables: { adminId: string } }>()
+
+admin.use(async (c, next) => {
+  const session = await createAuth(c.env).api.getSession({
+    headers: c.req.raw.headers,
+  })
+  if (session?.user.role !== 'admin') {
+    return c.json({ code: 'forbidden' }, 403)
+  }
+  c.set('adminId', session.user.id)
+  // oxlint-disable-next-line node/callback-return -- Hono's next() runs the route, which sets c.res
+  await next()
+  return c.res
+})
+
+// Everyone who has signed in, most recently seen first, with their songs in the last hour and overall
+admin.get('/users', async (c) => {
+  const since = Date.now() - 3_600_000
+  const { results } = await c.env.DB.prepare(
+    `select u."id", u."email", u."name", u."image", u."role", u."banned", u."banReason", u."createdAt",
+       (select max(s."updatedAt") from "session" s where s."userId" = u."id") as "lastSeenAt",
+       q."hourlyLimit",
+       (select count(*) from "generation" g where g."userId" = u."id" and g."createdAt" > ?1
+          and g."status" <> 'failed') as "songsLastHour",
+       (select count(*) from "generation" g where g."userId" = u."id" and g."status" = 'succeeded')
+          as "songsTotal"
+     from "user" u left join "quotaOverride" q on q."userId" = u."id"
+     order by "lastSeenAt" desc nulls last, u."createdAt" desc`
+  )
+    .bind(since)
+    .all()
+  return c.json({ users: results })
+})
+
+// A per-person hourly limit; null goes back to the default
+admin.put('/users/:id/limit', async (c) => {
+  const { hourlyLimit } = await c.req.json<Record<string, unknown>>()
+  const id = c.req.param('id')
+  if (hourlyLimit === null) {
+    await c.env.DB.prepare(`delete from "quotaOverride" where "userId" = ?1`)
+      .bind(id)
+      .run()
+    return c.body(null, 204)
+  }
+  if (
+    typeof hourlyLimit !== 'number' ||
+    !Number.isInteger(hourlyLimit) ||
+    hourlyLimit < 0
+  ) {
+    return c.json({ code: 'bad_request' }, 400)
+  }
+  await c.env.DB.prepare(
+    `insert into "quotaOverride" ("userId", "hourlyLimit", "setBy", "setAt") values (?1, ?2, ?3, ?4)
+     on conflict ("userId") do update set "hourlyLimit" = ?2, "setBy" = ?3, "setAt" = ?4`
+  )
+    .bind(id, hourlyLimit, c.get('adminId'), Date.now())
+    .run()
+  return c.body(null, 204)
+})
+
+// The limits in force, today's guest songs, and the switch that pauses all generation
+admin.get('/settings', async (c) => {
+  const limits = limitsOf(c.env)
+  const enabled = await c.env.DB.prepare(
+    `select "value" from "appSetting" where "key" = 'generationEnabled'`
+  ).first<string>('value')
+  const guestSongsToday = await c.env.DB.prepare(
+    `select count(*) from "generation" where "guestKey" is not null and "utcDay" = ?1 and "status" <> 'failed'`
+  )
+    .bind(new Date().toISOString().slice(0, 10))
+    .first<number>('count(*)')
+  return c.json({
+    generationEnabled: enabled === '1',
+    guestSongsToday: guestSongsToday ?? 0,
+    limits,
+  })
+})
+
+admin.put('/settings', async (c) => {
+  const { generationEnabled } = await c.req.json<Record<string, unknown>>()
+  if (typeof generationEnabled !== 'boolean') {
+    return c.json({ code: 'bad_request' }, 400)
+  }
+  await c.env.DB.prepare(
+    `update "appSetting" set "value" = ?1 where "key" = 'generationEnabled'`
+  )
+    .bind(generationEnabled ? '1' : '0')
+    .run()
+  return c.body(null, 204)
+})
+
+app.route('/api/admin', admin)
+
 export default app

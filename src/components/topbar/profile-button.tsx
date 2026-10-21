@@ -1,6 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query'
 import {
   CircleQuestionMarkIcon,
+  ShieldIcon,
   LogInIcon,
   LogOutIcon,
   MonitorDownIcon,
@@ -151,6 +152,16 @@ const ProfileButtonDropdown = () => {
               <GitHubIcon className='mr-2 ml-[3px] h-4 w-4 fill-white' />
               <span>GitHub</span>
             </DropdownMenuItem>
+            {user?.role === 'admin' && (
+              <DropdownMenuItem
+                className='cursor-pointer'
+                onClick={() => {
+                  void navigate('/admin')
+                }}>
+                <ShieldIcon className='mr-2 size-5 shrink-0' />
+                <span>Admin</span>
+              </DropdownMenuItem>
+            )}
             <DropdownMenuItem
               className='cursor-pointer'
               onClick={handleAboutOnClick}>

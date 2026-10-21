@@ -43,10 +43,12 @@ export const fetchMe = async (): Promise<Me> => {
   return meSchema.parse(await response.json())
 }
 
+// One retry: until it answers, everyone looks like a guest and admin pages wait
 export const useMe = () =>
   useQuery({
     queryFn: fetchMe,
     queryKey: [QUERY_KEYS.GET_ME],
+    retry: 1,
     staleTime: 60_000,
   })
 
