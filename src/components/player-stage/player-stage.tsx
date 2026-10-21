@@ -127,14 +127,14 @@ const CenterPlayButton = ({
     aria-hidden={!visible}
     onClick={onToggle}
     className={cn(
-      'absolute top-1/2 left-1/2 z-26 grid size-20 -translate-1/2 place-items-center rounded-full bg-primary-subtle text-primary-text shadow-stage transition-opacity duration-300',
+      'absolute top-(--video-cy) left-1/2 z-26 grid size-20 -translate-1/2 place-items-center rounded-full bg-primary-subtle text-primary-text shadow-stage transition-opacity duration-300 short:size-14',
       visible ? 'opacity-100' : 'opacity-0',
       !armed && 'pointer-events-none'
     )}>
     {phase.kind === 'paused' ? (
-      <PlayIcon className='size-9 fill-current' />
+      <PlayIcon className='size-9 fill-current short:size-6' />
     ) : (
-      <PauseIcon className='size-9 fill-current' />
+      <PauseIcon className='size-9 fill-current short:size-6' />
     )}
   </button>
 )
@@ -142,7 +142,7 @@ const CenterPlayButton = ({
 const SeekFlashBadge = ({ flash }: { flash: SeekFlash }) => (
   <div
     className={cn(
-      'pointer-events-none absolute inset-y-0 z-26 grid w-1/3 place-items-center',
+      'pointer-events-none absolute top-(--video-cy) z-26 flex w-1/3 -translate-y-1/2 justify-center',
       flash.side === 'back' ? 'left-0' : 'right-0'
     )}>
     <span
@@ -206,8 +206,7 @@ const StageCover = ({
 }
 
 export interface StageLayout {
-  // Stage pixels our controls cover from the bottom when they show, measured even while hidden
-  controlsHeight: number
+  // While true the floating UI covers --stage-chrome-h of the stage's bottom edge
   controlsVisible: boolean
   // Controls stay hidden while dragging, so the drop position is the real one
   onDragChange: (dragging: boolean) => void
@@ -294,7 +293,6 @@ export const PlayerStage = ({
 
   const { idle, sleep } = useIdle(IDLE_MS)
   const [dragging, setDragging] = useState(false)
-  const [controlsHeight, setControlsHeight] = useState(0)
 
   // YouTube's own error screens (unavailable, sign-in, age gate) need its UI
   const handsOff = phase.kind === 'error'
@@ -314,7 +312,6 @@ export const PlayerStage = ({
     [setChromeOpen]
   )
   const layout: StageLayout = {
-    controlsHeight,
     controlsVisible,
     onDragChange: (next) => {
       setDragging(next)
@@ -468,11 +465,13 @@ export const PlayerStage = ({
       data-player-stage
       data-phase={phase.kind}
       className={cn(
-        '[container-type:size] relative size-full overflow-hidden bg-black',
+        // --video-cy is the video's vertical centre: the stage's middle, or in portrait right under the top
+        // bar, so the lyrics get all the height below it
+        '[container-type:size] relative size-full overflow-hidden bg-black [--video-cy:50cqh] portrait:[--video-cy:calc(var(--topbar-h)+28.125cqw)]',
         !controlsVisible && 'cursor-none',
         className
       )}>
-      <div className='absolute top-1/2 left-1/2 aspect-video w-[min(100cqw,177.78cqh)] -translate-1/2 overflow-hidden'>
+      <div className='absolute top-(--video-cy) left-1/2 aspect-video w-[min(100cqw,177.78cqh)] -translate-1/2 overflow-hidden'>
         <div
           ref={hostRef}
           className={cn(
@@ -486,8 +485,7 @@ export const PlayerStage = ({
 
       {/* The play/pause control shows and hides with the rest of the floating UI. Opaque, so it also covers
           the flash YouTube draws in the same spot on a play or pause, which comes from input that has just
-          shown the UI. It sits outside the video box so it draws above the lyrics; the video is always
-          centred on the stage */}
+          shown the UI. It sits outside the video box so it draws above the lyrics */}
       {!showCover && !handsOff && (
         <CenterPlayButton
           phase={phase}
@@ -519,15 +517,16 @@ export const PlayerStage = ({
           onClick={() => {
             setVolume({ ...storedVolume, muted: false })
           }}
-          className='absolute top-[calc(var(--topbar-h)+0.5rem+var(--notices-h,0px)+var(--preview-banner-h,0px))] left-1/2 z-40 flex -translate-x-1/2 items-center gap-2.5 rounded-full bg-black/60 px-5 py-2.5 text-base font-medium text-white shadow-lg backdrop-blur-md transition-colors hover:bg-black/80 portrait:top-auto portrait:bottom-[calc(var(--player-notices-bottom)+var(--preview-banner-h,0px))]'>
+          className='absolute top-[calc(var(--topbar-h)+0.5rem+var(--notices-h,0px)+var(--preview-banner-h,0px))] left-1/2 z-40 flex -translate-x-1/2 items-center gap-2.5 rounded-full bg-black/60 px-5 py-2.5 text-base font-medium text-white shadow-lg backdrop-blur-md transition-colors hover:bg-black/80 portrait:top-auto portrait:bottom-[calc(var(--stage-chrome-h)+var(--preview-banner-h,0px))]'>
           <VolumeXIcon className='size-5' aria-hidden='true' />
           Tap to Unmute
         </button>
       )}
 
       {renderLyrics && (
-        // In portrait the lyrics get the space between the video and the rail on the controls
-        <div className='pointer-events-none absolute inset-0 z-25 portrait:top-[calc(50cqh+28.125cqw+0.5rem)] portrait:bottom-[var(--player-rail-h,0px)]'>
+        // In portrait the lyrics get the space under the video; on a phone on its side they keep clear of the
+        // rail's column and the notch. The floating UI at the bottom is cleared by DraggableLyrics' lift
+        <div className='pointer-events-none absolute inset-0 z-25 portrait:top-[calc(var(--video-cy)+28.125cqw+0.5rem)] short:inset-x-controls-rail'>
           {renderLyrics(player, layout)}
         </div>
       )}
@@ -540,7 +539,6 @@ export const PlayerStage = ({
         fullscreen={fullscreen || immersive}
         onToggleFullscreen={toggleFullscreen}
         onSeekBy={seekBy}
-        onHeightChange={setControlsHeight}
         volume={volume}
         onVolumeChange={setVolume}
       />

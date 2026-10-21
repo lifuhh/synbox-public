@@ -90,7 +90,10 @@ const LyricLine = ({ html, primary }: { html: string; primary: boolean }) => {
           ? 'font_noto_sans_reg leading-normal'
           : 'font_noto_sans_jp_black_900 leading-loose'
       )}>
-      <RubyText segments={segments} />
+      {/* Inline, so only the drawn text takes a press */}
+      <span>
+        <RubyText segments={segments} />
+      </span>
     </p>
   )
 }
@@ -231,40 +234,42 @@ export const StageLyrics = ({
     english,
     placeholder
   )
-  if (text === undefined) {
-    return null
-  }
-
   return (
     <DraggableLyrics
       layout={layout}
       scale={scale}
       backdrop={backdrop}
       colors={colors}>
-      {showTranslation && translation && !sameText(translation, text) && (
-        <LyricLine html={translation} primary={false} />
+      {text === undefined ? undefined : (
+        <>
+          {showTranslation && translation && !sameText(translation, text) && (
+            <LyricLine html={translation} primary={false} />
+          )}
+          {showLyrics &&
+            (karaokeLine ? (
+              <div className='text-center text-lyric'>
+                <KaraokeLine key={index} ref={karaokeRef} line={karaokeLine} />
+              </div>
+            ) : (
+              <LyricLine html={text} primary />
+            ))}
+          {showRomaji &&
+            (karaokeLine ? (
+              <div className='text-center text-lyric-secondary'>
+                <KaraokeRomajiLine
+                  key={index}
+                  ref={karaokeRomajiRef}
+                  line={karaokeLine}
+                />
+              </div>
+            ) : (
+              romaji &&
+              !sameText(romaji, text) && (
+                <LyricLine html={romaji} primary={false} />
+              )
+            ))}
+        </>
       )}
-      {showLyrics &&
-        (karaokeLine ? (
-          <div className='text-center text-lyric'>
-            <KaraokeLine key={index} ref={karaokeRef} line={karaokeLine} />
-          </div>
-        ) : (
-          <LyricLine html={text} primary />
-        ))}
-      {showRomaji &&
-        (karaokeLine ? (
-          <div className='text-center text-lyric-secondary'>
-            <KaraokeRomajiLine
-              key={index}
-              ref={karaokeRomajiRef}
-              line={karaokeLine}
-            />
-          </div>
-        ) : (
-          romaji &&
-          !sameText(romaji, text) && <LyricLine html={romaji} primary={false} />
-        ))}
     </DraggableLyrics>
   )
 }
