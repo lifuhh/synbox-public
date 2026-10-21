@@ -57,7 +57,7 @@ export const OfflineSongRow = ({
 }) => (
   <li>
     <Link
-      to={`/offline/${song.videoId}`}
+      to={`/lyrics/${song.videoId}`}
       className='flex items-center gap-3 rounded-lg px-2 py-1.5 transition-colors hover:bg-white/5 active:bg-white/10'>
       <Thumbnail src={song.thumbnail} />
       <div className='flex min-w-0 flex-1 flex-col'>

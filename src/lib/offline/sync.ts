@@ -6,6 +6,7 @@ import { useEffect, useRef, useSyncExternalStore } from 'react'
 
 import { favoritesAtom, historyAtom } from '@/context/atoms'
 import { getGallerySongs, getLyricsRows } from '@/lib/appwrite/api'
+import type { LyricsRow } from '@/lib/appwrite/api'
 import { fetchMySongs, useMe } from '@/lib/auth'
 import { karaokeMatchesLyrics } from '@/lib/karaoke'
 import { parseLyricsDocument } from '@/lib/lyrics-document'
@@ -117,14 +118,6 @@ export const useOfflineSongs = () =>
     staleTime: Infinity,
   })
 
-export const useOfflineSong = (videoId: string) =>
-  useQuery({
-    networkMode: 'always',
-    queryFn: async () => (await get<OfflineSong>(videoId, songStore)) ?? null,
-    queryKey: [QUERY_KEYS.GET_OFFLINE_SONGS, videoId],
-    staleTime: Infinity,
-  })
-
 const chunked = <T>(items: T[], size: number) =>
   Array.from({ length: Math.ceil(items.length / size) }, (_, i) =>
     items.slice(i * size, (i + 1) * size)
@@ -173,6 +166,62 @@ const fetchKaraoke = async (
     : null
 }
 
+// One song in the saved shape, from its lyrics row, its karaoke timing and thumbnail (fetched here), and its
+// title and artist; null when the row's lyrics can't be read
+const buildSong = async (
+  found: LyricsRow,
+  known: { title?: string; author?: string } | undefined
+): Promise<OfflineSong | null> => {
+  const { videoId } = found
+  const lyrics = parseLyricsDocument(found.row)
+  if (lyrics === null) {
+    return null
+  }
+  const title = known?.title ?? videoId
+  let karaoke: KaraokeDocLine[] | null = null
+  let timingPending = false
+  try {
+    karaoke = await fetchKaraoke(videoId, found.row)
+  } catch {
+    timingPending = true
+  }
+  const lines = offlineLines(lyrics, karaoke)
+  return {
+    author: known?.author ?? '',
+    generatedAt: found.createdAt,
+    lines,
+    thumbnail: await fetchThumbnail(videoId),
+    timingPending,
+    title,
+    titleRomaji: romanizeTitle(title, lines),
+    updatedAt: found.updatedAt,
+    version: OFFLINE_SONG_VERSION,
+    videoId,
+  }
+}
+
+// The song the reader shows: this device's saved copy, or, online, the song fetched live, so any song can be
+// read. Its own key, so a sync running in the background never swaps the lines under a reader
+export const useLyricsSong = (videoId: string) =>
+  useQuery({
+    networkMode: 'always',
+    queryFn: async (): Promise<OfflineSong | null> => {
+      const saved = await get<OfflineSong>(videoId, songStore)
+      if (saved !== undefined || !navigator.onLine) {
+        return saved ?? null
+      }
+      const [rows, infos] = await Promise.all([
+        getLyricsRows([videoId]),
+        getGallerySongs([videoId]).catch(() => []),
+      ])
+      const found = rows.get(videoId)
+      return found === undefined ? null : await buildSong(found, infos[0])
+    },
+    queryKey: [QUERY_KEYS.GET_LYRICS_SONG, videoId],
+    retry: 1,
+    staleTime: Infinity,
+  })
+
 // Saves one stretch of songs; returns how many could not be saved
 const saveChunk = async (
   ids: string[],
@@ -185,32 +234,13 @@ const saveChunk = async (
   const results = await Promise.all(
     ids.map(async (videoId) => {
       const found = rows.get(videoId)
-      const lyrics = found === undefined ? null : parseLyricsDocument(found.row)
-      if (found === undefined || lyrics === null) {
-        return false
-      }
       const info = infos.find((song) => song.videoId === videoId)
-      const known = wanted.get(videoId)
-      const title = info?.title ?? known?.title ?? videoId
-      let karaoke: KaraokeDocLine[] | null = null
-      let timingPending = false
-      try {
-        karaoke = await fetchKaraoke(videoId, found.row)
-      } catch {
-        timingPending = true
-      }
-      const lines = offlineLines(lyrics, karaoke)
-      const song: OfflineSong = {
-        author: info?.author ?? known?.author ?? '',
-        generatedAt: found.createdAt,
-        lines,
-        thumbnail: await fetchThumbnail(videoId),
-        timingPending,
-        title,
-        titleRomaji: romanizeTitle(title, lines),
-        updatedAt: found.updatedAt,
-        version: OFFLINE_SONG_VERSION,
-        videoId,
+      const song =
+        found === undefined
+          ? null
+          : await buildSong(found, info ?? wanted.get(videoId))
+      if (song === null) {
+        return false
       }
       await set(videoId, song, songStore)
       return true

@@ -145,6 +145,13 @@ const loadOnNewVersion = async (href: string) => {
   waiting.postMessage({ type: 'SKIP_WAITING' })
 }
 
+// Someone moving around the lyrics pages is reading, maybe with no connection: a reload there would cut into
+// that. The new version waits until they leave them, and until the phone is online
+const LYRICS_PATH = /^\/lyrics(?:\/|$)/u
+const readingLyrics = (target: URL) =>
+  LYRICS_PATH.test(window.location.pathname) ||
+  LYRICS_PATH.test(target.pathname)
+
 // React Router moves between pages with history.pushState. With a version waiting, that page change becomes a
 // full load of the same address on the new version instead. Replacements (tidying the current address) and
 // the back button stay in-app
@@ -162,7 +169,11 @@ window.history.pushState = (
     url !== null
   ) {
     const target = new URL(url, window.location.href)
-    if (target.origin === window.location.origin) {
+    if (
+      target.origin === window.location.origin &&
+      navigator.onLine &&
+      !readingLyrics(target)
+    ) {
       void loadOnNewVersion(target.href)
       return
     }

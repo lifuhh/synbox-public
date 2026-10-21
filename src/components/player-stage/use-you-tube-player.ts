@@ -124,6 +124,24 @@ export const useYouTubePlayer = ({
     }
   }, [])
 
+  // An embed that couldn't load without a connection (still loading, or YouTube's error) is torn down and
+  // built again, as after a return to the app, once the phone is back online; a player that loaded is left
+  useEffect(() => {
+    const handleOnline = () => {
+      const { kind } = phaseRef.current
+      if (kind === 'loading' || kind === 'error') {
+        setSuspended(true)
+        requestAnimationFrame(() => {
+          setSuspended(false)
+        })
+      }
+    }
+    window.addEventListener('online', handleOnline)
+    return () => {
+      window.removeEventListener('online', handleOnline)
+    }
+  }, [])
+
   // Read inside long-lived YouTube callbacks without re-creating the player
   const latest = useRef({ coverPause, loop, onEvent, quirks })
   useLayoutEffect(() => {

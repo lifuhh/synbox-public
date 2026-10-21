@@ -150,10 +150,10 @@ const ProfileButtonDropdown = () => {
             <DropdownMenuItem
               className='cursor-pointer'
               onClick={() => {
-                void navigate('/offline')
+                void navigate('/lyrics')
               }}>
               <BookOpenTextIcon className='mr-2 size-5 shrink-0' />
-              <span>Offline Lyrics</span>
+              <span>Lyrics</span>
             </DropdownMenuItem>
             <DropdownMenuItem
               className='cursor-pointer'

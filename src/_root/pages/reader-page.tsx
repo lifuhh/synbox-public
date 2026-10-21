@@ -31,7 +31,8 @@ import {
 } from '@/lib/offline/reader-prefs'
 import type { OfflineLine, OfflineSong } from '@/lib/offline/song'
 import { OFFLINE_SONG_VERSION } from '@/lib/offline/song'
-import { useOfflineSong } from '@/lib/offline/sync'
+import { useLyricsSong } from '@/lib/offline/sync'
+import { useOnline } from '@/lib/pwa'
 import type { CssVars } from '@/types'
 import { cn } from '@/utils/cn'
 
@@ -258,17 +259,24 @@ const ReaderHeader = ({
   )
 }
 
-const NotSaved = () => (
-  <div className='mx-auto flex max-w-sm flex-col items-center gap-4 px-6 pt-16 text-center'>
-    <p className='text-base'>This song isn&apos;t saved on this device.</p>
-    <Link
-      to='/offline'
-      replace
-      className='rounded-full border border-(--reader-line-strong) px-4 py-2 text-sm font-medium'>
-      Offline Lyrics
-    </Link>
-  </div>
-)
+const NotFound = () => {
+  const online = useOnline()
+  return (
+    <div className='mx-auto flex max-w-sm flex-col items-center gap-4 px-6 pt-16 text-center'>
+      <p className='text-base'>
+        {online
+          ? 'This song has no lyrics yet.'
+          : 'This song isn’t saved on this device. Saved songs can be read offline.'}
+      </p>
+      <Link
+        to='/lyrics'
+        replace
+        className='rounded-full border border-(--reader-line-strong) px-4 py-2 text-sm font-medium'>
+        All Lyrics
+      </Link>
+    </div>
+  )
+}
 
 // What sits at the bottom: the text style row when open, and the play controls when synced, with Current
 // Line above them once the reader has scrolled away from the line being sung
@@ -384,7 +392,7 @@ const useGoBack = () => {
   return () => {
     // Opened from a link or a reload, there is no page of ours to go back to
     if (location.key === 'default') {
-      void navigate('/offline', { replace: true })
+      void navigate('/lyrics', { replace: true })
     } else {
       void navigate(-1)
     }
@@ -393,7 +401,7 @@ const useGoBack = () => {
 
 const ReaderPage = () => {
   const { videoId = '' } = useParams()
-  const { data: song, isPending } = useOfflineSong(videoId)
+  const { data: song, isPending } = useLyricsSong(videoId)
   const [prefs, setPrefs] = useAtom(readerPrefsAtom)
 
   // Songs saved before timing was kept read as plain text until the next sync fetches them again
@@ -503,7 +511,7 @@ const ReaderPage = () => {
             ))}
           </article>
         ) : (
-          !isPending && <NotSaved />
+          !isPending && <NotFound />
         )}
       </div>
 
