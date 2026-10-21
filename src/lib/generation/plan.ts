@@ -85,3 +85,23 @@ export const STEPS = [
 }[]
 
 export type Step = (typeof STEPS)[number]
+
+// The step a stage belongs to
+export const stepOf = (id: StageId) =>
+  STEPS.find((step) => (step.stages as readonly StageId[]).includes(id))
+
+// How far through the whole job a report of `fraction` into stage `id` is, by the panel's own weights
+export const overallAt = (id: StageId, fraction: number) => {
+  const at = stageIndex(id)
+  let total = 0
+  let done = 0
+  for (const [index, stage] of STAGES.entries()) {
+    total += stage.weight
+    if (index < at) {
+      done += stage.weight
+    } else if (index === at) {
+      done += stage.weight * fraction
+    }
+  }
+  return done / total
+}

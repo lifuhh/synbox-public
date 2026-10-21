@@ -51,6 +51,20 @@ interface GenerationRow {
 const utcDay = (now: Date) => now.toISOString().slice(0, 10)
 
 const HOUR_MS = 3_600_000
+// A generation the backend hasn't reported on for this long has stopped: the app gave up, was put away, or the
+// instance running it died. The backend reports every stage and every tenth of one, so a live one never gets here
+const STALL_MS = 15 * 60_000
+
+// Lets go of stopped generations, so they show as stopped and stop counting against their owner
+export const expireStalled = async (db: D1Database, now = new Date()) => {
+  await db
+    .prepare(
+      `update "generation" set "status" = 'failed', "errorCode" = 'abandoned', "finishedAt" = ?1
+       where "status" in ('reserved', 'running') and coalesce("updatedAt", "createdAt") < ?2`
+    )
+    .bind(now.getTime(), now.getTime() - STALL_MS)
+    .run()
+}
 
 const readUser = async (db: D1Database, userId: string) =>
   await db
@@ -110,6 +124,7 @@ export const getQuota = async (
   limits: Limits,
   now = new Date()
 ): Promise<Quota> => {
+  await expireStalled(db, now)
   const user = await readUser(db, userId)
   const used = await db
     .prepare(
@@ -188,6 +203,7 @@ const admit = async (
   limits: Limits,
   now: Date
 ): Promise<Admitted> => {
+  await expireStalled(db, now)
   const enabled = await db
     .prepare(
       `select "value" from "appSetting" where "key" = 'generationEnabled'`
@@ -254,8 +270,8 @@ export const reserveGeneration = async (
   // One statement, so two concurrent requests can't both take the last slot (D1 runs writes one at a time)
   const { meta } = await db
     .prepare(
-      `insert into "generation" ("id", ${column}, "videoId", "kind", "status", "utcDay", "createdAt")
-       select ?1, ?2, ?3, ?4, 'reserved', ?5, ?6 where ${slotFree(counted)}
+      `insert into "generation" ("id", ${column}, "videoId", "kind", "status", "utcDay", "createdAt", "updatedAt")
+       select ?1, ?2, ?3, ?4, 'reserved', ?5, ?6, ?6 where ${slotFree(counted)}
        on conflict ("id") do nothing`
     )
     .bind(...bindings)
@@ -287,7 +303,8 @@ export const reserveGeneration = async (
   // Trying a failed song again counts again, so it needs a free slot like a new one
   const retried = await db
     .prepare(
-      `update "generation" set "status" = 'reserved', "errorCode" = null, "finishedAt" = null
+      `update "generation" set "status" = 'reserved', "errorCode" = null, "finishedAt" = null, "updatedAt" = ?6,
+       "stage" = null, "fraction" = null
        where "id" = ?1 and "status" = 'failed' and ${slotFree(counted)}`
     )
     .bind(...bindings)
@@ -297,6 +314,7 @@ export const reserveGeneration = async (
     : await refusal(db, request.owner, own.limit, limits, day, now)
 }
 
+// A finished generation, or a running one's progress (`running` with its stage and fraction)
 export const finishGeneration = async (
   db: D1Database,
   id: string,
@@ -304,13 +322,16 @@ export const finishGeneration = async (
     status: FinishedStatus
     resultVersion?: number
     errorCode?: string
+    stage?: string
+    fraction?: number
   },
   now = new Date()
 ): Promise<boolean> => {
   const { meta } = await db
     .prepare(
       `update "generation" set "status" = ?2, "resultVersion" = ?3, "errorCode" = ?4,
-       "finishedAt" = case when ?2 = 'running' then null else ?5 end
+       "finishedAt" = case when ?2 = 'running' then null else ?5 end, "updatedAt" = ?5,
+       "stage" = coalesce(?6, "stage"), "fraction" = case when ?2 = 'running' then ?7 end
        where "id" = ?1 and "status" in ('reserved', 'running')`
     )
     .bind(
@@ -318,7 +339,9 @@ export const finishGeneration = async (
       update.status,
       update.resultVersion ?? null,
       update.errorCode ?? null,
-      now.getTime()
+      now.getTime(),
+      update.stage ?? null,
+      update.fraction ?? null
     )
     .run()
   return meta.changes > 0

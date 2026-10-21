@@ -35,6 +35,7 @@ import {
 } from '@/lib/admin'
 import type { AdminGeneration, AdminUser, HourlyLimit } from '@/lib/admin'
 import { useAccess, useMe } from '@/lib/auth'
+import { isStageId, overallAt, stepOf } from '@/lib/generation/plan'
 import { useGetSongInfoBySongId } from '@/lib/react-query/queries-and-mutations'
 import type { CssVars } from '@/types'
 import { cn } from '@/utils/cn'
@@ -604,18 +605,32 @@ const KIND_LABELS = {
   retime: 'Retime',
 } as const
 
-const STATUS_LABELS = {
-  failed: 'Failed',
-  reserved: 'In Progress',
-  running: 'In Progress',
-  succeeded: 'Done',
-} as const
+// A running song shows its step and how far the whole job is, as the progress panel does; one the backend
+// stopped reporting on was let go ('abandoned') and shows as stopped
+const statusLabel = (generation: AdminGeneration) => {
+  if (generation.status === 'succeeded') {
+    return 'Done'
+  }
+  if (generation.status === 'failed') {
+    return generation.errorCode === 'abandoned' ? 'Stopped' : 'Failed'
+  }
+  const { stage, fraction } = generation
+  if (!isStageId(stage)) {
+    return 'Starting'
+  }
+  const percent = Math.round(overallAt(stage, fraction ?? 0) * 100)
+  return `${stepOf(stage)?.title ?? 'In Progress'} · ${percent}%`
+}
 
-const statusClass = (status: AdminGeneration['status']) =>
+const statusClass = (generation: AdminGeneration) =>
   cn(
-    status === 'failed' && 'text-error',
-    status === 'succeeded' && 'text-foreground',
-    (status === 'reserved' || status === 'running') && 'text-muted-foreground'
+    generation.status === 'failed' &&
+      (generation.errorCode === 'abandoned'
+        ? 'text-muted-foreground'
+        : 'text-error'),
+    generation.status === 'succeeded' && 'text-foreground',
+    (generation.status === 'reserved' || generation.status === 'running') &&
+      'text-muted-foreground tabular-nums'
   )
 
 const isGuest = (generation: AdminGeneration) =>
@@ -655,8 +670,8 @@ const SongRow = ({ generation }: { generation: AdminGeneration }) => (
       )}
     </td>
     <td className='px-4'>{KIND_LABELS[generation.kind]}</td>
-    <td className={cn('px-4', statusClass(generation.status))}>
-      {STATUS_LABELS[generation.status]}
+    <td className={cn('px-4', statusClass(generation))}>
+      {statusLabel(generation)}
     </td>
     <td className='truncate pl-4 text-muted-foreground'>
       <When value={generation.createdAt} />
@@ -671,8 +686,8 @@ const SongCard = ({ generation }: { generation: AdminGeneration }) => (
       <div className='min-w-0'>
         <SongTitle generation={generation} />
       </div>
-      <span className={cn('shrink-0', statusClass(generation.status))}>
-        {STATUS_LABELS[generation.status]}
+      <span className={cn('shrink-0', statusClass(generation))}>
+        {statusLabel(generation)}
       </span>
     </div>
     <p className='truncate text-xs text-muted-foreground'>

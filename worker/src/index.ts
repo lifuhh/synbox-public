@@ -5,6 +5,7 @@ import { createAuth } from './auth'
 import type { Env } from './auth'
 import {
   checkGeneration,
+  expireStalled,
   finishGeneration,
   getQuota,
   reserveGeneration,
@@ -173,14 +174,19 @@ internal.post('/generations/check', async (c) => {
 
 internal.patch('/generations/:id', async (c) => {
   const body = await c.req.json<Record<string, unknown>>()
-  const { status, resultVersion, errorCode } = body
+  const { status, resultVersion, errorCode, stage, fraction } = body
   if (!isStatus(status)) {
     return c.json({ code: 'bad_request' }, 400)
   }
   const updated = await finishGeneration(c.env.DB, c.req.param('id'), {
     errorCode: isText(errorCode, 200) ? errorCode : undefined,
+    fraction:
+      typeof fraction === 'number' && fraction >= 0 && fraction <= 1
+        ? fraction
+        : undefined,
     resultVersion:
       typeof resultVersion === 'number' ? resultVersion : undefined,
+    stage: isText(stage, 80) ? stage : undefined,
     status,
   })
   return updated ? c.body(null, 204) : c.json({ code: 'not_found' }, 404)
@@ -206,6 +212,7 @@ admin.use(async (c, next) => {
 
 // Everyone who has signed in, most recently seen first, with their songs in the last hour and overall
 admin.get('/users', async (c) => {
+  await expireStalled(c.env.DB)
   const since = Date.now() - 3_600_000
   const { results } = await c.env.DB.prepare(
     `select u."id", u."email", u."name", u."image", u."role", u."banned", u."banReason", u."createdAt",
@@ -226,9 +233,10 @@ admin.get('/users', async (c) => {
 
 // The latest generations, newest first, with who asked for them (an account, or a guest)
 admin.get('/generations', async (c) => {
+  await expireStalled(c.env.DB)
   const { results } = await c.env.DB.prepare(
     `select g."id", g."videoId", g."kind", g."status", g."createdAt", g."errorCode", g."resultVersion",
-       u."email", u."name", g."guestKey" is not null as "guest"
+       g."stage", g."fraction", u."email", u."name", g."guestKey" is not null as "guest"
      from "generation" g left join "user" u on u."id" = g."userId"
      order by g."createdAt" desc limit 200`
   ).all()
