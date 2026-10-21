@@ -23,7 +23,7 @@ const Skeleton = ({
   <div
     data-slot='skeleton'
     className={cn(
-      'animate-pulse rounded-md bg-accent',
+      'animate-shimmer rounded-md skeleton-fill motion-reduce:animate-none',
       skeletonVariants({ shape }),
       className
     )}

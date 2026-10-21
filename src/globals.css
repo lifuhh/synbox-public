@@ -148,6 +148,7 @@
   --animate-accordion-down: accordion-down 0.2s ease-out;
   --animate-accordion-up: accordion-up 0.2s ease-out;
   --animate-pulse: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  --animate-shimmer: shimmer 1.6s linear infinite;
   --animate-progress-stripes: progress-stripes 0.9s linear infinite;
   --animate-breathe: breathe 2.4s ease-in-out infinite;
 
@@ -192,6 +193,14 @@
     }
     50% {
       opacity: 0.5;
+    }
+  }
+  @keyframes shimmer {
+    from {
+      background-position: 100% 0;
+    }
+    to {
+      background-position: 0 0;
     }
   }
 }
@@ -478,6 +487,18 @@
   @media (prefers-reduced-motion: reduce) {
     animation-duration: 1ms;
   }
+}
+
+/* A loading placeholder: a lighter band sweeps across it, so it reads as loading on a dark card, where a
+   pulse between two near-blacks looked like an empty box */
+@utility skeleton-fill {
+  background: linear-gradient(
+      100deg,
+      var(--accent) 35%,
+      color-mix(in oklab, var(--accent), white 10%) 50%,
+      var(--accent) 65%
+    )
+    0 0 / 300% 100%;
 }
 
 @utility flex-around {
