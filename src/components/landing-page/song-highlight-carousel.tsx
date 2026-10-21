@@ -2,7 +2,7 @@ import { ChevronLeftIcon, ChevronRightIcon, PlayIcon } from 'lucide-react'
 import { useState } from 'react'
 import { Link } from 'react-router'
 
-import { KaraokeMark } from '@/components/shared/karaoke-badge'
+import { KaraokeCornerMark } from '@/components/shared/karaoke-badge'
 import LoadError from '@/components/shared/load-error'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -50,13 +50,13 @@ const SongCard = ({
       <span className='absolute right-2.5 bottom-2.5 grid size-10 place-items-center rounded-full bg-black/70 text-white opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100'>
         <PlayIcon className='size-4 fill-current' aria-hidden />
       </span>
+      <KaraokeCornerMark videoId={item.videoId} />
     </span>
     <span className='line-clamp-2 text-label leading-snug font-semibold text-foreground transition-colors duration-150 group-data-[active=false]:text-muted-foreground'>
       {item.title}
     </span>
-    <span className='flex items-center gap-1.5 text-sm text-muted-foreground'>
-      <KaraokeMark videoId={item.videoId} />
-      <span className='truncate'>{item.channel}</span>
+    <span className='truncate text-sm text-muted-foreground'>
+      {item.channel}
     </span>
   </Link>
 )

@@ -558,6 +558,11 @@
   );
 }
 
+/* The karaoke corner on a thumbnail (KaraokeCorner): the top-right half of its square */
+@utility corner-fold {
+  clip-path: polygon(0 0, 100% 0, 100% 100%);
+}
+
 /* A list that scrolls inside a box fades out over its last 2rem, so the cut-off row reads as more to scroll to */
 @utility mask-fade-end {
   mask-image: linear-gradient(to bottom, black calc(100% - 2rem), transparent);

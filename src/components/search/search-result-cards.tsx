@@ -1,13 +1,21 @@
 import { SparklesIcon } from 'lucide-react'
 
-import { KaraokeMark } from '@/components/shared/karaoke-badge'
+import { KaraokeCornerMark } from '@/components/shared/karaoke-badge'
 import type {
   LibrarySong,
   VideoSearchResult,
 } from '@/lib/synbox-flask/discovery'
 
-const Thumbnail = ({ src, alt }: { src: string; alt: string }) => (
-  <div className='relative aspect-video w-full overflow-hidden rounded-lg bg-input'>
+const Thumbnail = ({
+  src,
+  alt,
+  videoId,
+}: {
+  src: string
+  alt: string
+  videoId: string
+}) => (
+  <div className='relative aspect-video w-full overflow-hidden rounded-md bg-input'>
     {src !== '' && (
       <img
         src={src}
@@ -16,12 +24,9 @@ const Thumbnail = ({ src, alt }: { src: string; alt: string }) => (
         className='absolute inset-0 h-full w-full object-cover'
       />
     )}
+    <KaraokeCornerMark videoId={videoId} />
   </div>
 )
-
-// The hover surface's corners follow the picture's: its 8px radius plus the 8px padding
-const CARD =
-  'flex flex-col gap-2 rounded-2xl p-2 transition-colors hover:bg-muted/60'
 
 // Two lines tall even when the title fits on one, so every card's next row lines up
 const Title = ({ children }: { children: string }) => (
@@ -42,13 +47,14 @@ export const VideoResultCard = ({
     onClick={() => {
       onSelect(result)
     }}
-    className={`${CARD} text-left`}>
-    <Thumbnail src={result.thumbnail_url} alt={result.title} />
+    className='flex flex-col gap-2 rounded-lg p-2 text-left transition-colors hover:bg-muted/60'>
+    <Thumbnail
+      src={result.thumbnail_url}
+      alt={result.title}
+      videoId={result.video_id}
+    />
     <Title>{result.title}</Title>
-    <p className='flex items-center gap-1.5 text-xs text-muted-foreground'>
-      <KaraokeMark videoId={result.video_id} />
-      <span className='truncate'>{result.channel}</span>
-    </p>
+    <p className='truncate text-xs text-muted-foreground'>{result.channel}</p>
   </button>
 )
 
@@ -61,20 +67,23 @@ export const LibrarySongCard = ({
   onPlay: (videoId: string) => void
   onMoreLikeThis: (videoId: string) => void
 }) => (
-  <div className={CARD}>
+  <div className='flex flex-col gap-2 rounded-lg p-2 transition-colors hover:bg-muted/60'>
     <button
       type='button'
       onClick={() => {
         onPlay(song.video_id)
       }}
       className='flex flex-col gap-2 text-left'>
-      <Thumbnail src={song.thumbnail_url} alt={song.title} />
+      <Thumbnail
+        src={song.thumbnail_url}
+        alt={song.title}
+        videoId={song.video_id}
+      />
       <Title>{song.title}</Title>
     </button>
     <div className='flex items-center gap-2'>
-      <p className='flex min-w-0 flex-1 items-center gap-1.5 text-xs text-muted-foreground'>
-        <KaraokeMark videoId={song.video_id} />
-        <span className='truncate'>{song.artist}</span>
+      <p className='min-w-0 flex-1 truncate text-xs text-muted-foreground'>
+        {song.artist}
       </p>
       <button
         type='button'

@@ -4,7 +4,7 @@ import { useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Link } from 'react-router'
 
-import { KaraokeMark } from '@/components/shared/karaoke-badge'
+import { KaraokeCornerMark } from '@/components/shared/karaoke-badge'
 import OptimizedThumbnail from '@/components/shared/optimized-thumbnail'
 import {
   AlertDialog,
@@ -64,7 +64,9 @@ const SongRow = ({
         to={`/v/${song.videoId}`}
         onClick={onOpen}
         className='flex min-w-0 grow items-center gap-2 rounded-md p-2 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden'>
-        <OptimizedThumbnail src={song.thumbnailUrl} alt='' />
+        <OptimizedThumbnail src={song.thumbnailUrl} alt=''>
+          <KaraokeCornerMark videoId={song.videoId} size='sm' />
+        </OptimizedThumbnail>
         <span className='min-w-0 grow'>
           <span
             ref={containerRef}
@@ -75,9 +77,8 @@ const SongRow = ({
               {song.title}
             </span>
           </span>
-          <span className='flex items-center gap-1.5 text-sm text-song-meta'>
-            <KaraokeMark videoId={song.videoId} />
-            <span className='truncate'>{song.author}</span>
+          <span className='block truncate text-sm text-song-meta'>
+            {song.author}
           </span>
         </span>
       </Link>

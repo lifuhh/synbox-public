@@ -7,7 +7,7 @@ import {
 } from 'lucide-react'
 import { Link } from 'react-router'
 
-import { KaraokeBadge } from '@/components/shared/karaoke-badge'
+import { KaraokeCorner } from '@/components/shared/karaoke-badge'
 import type { SearchMatch } from '@/lib/offline/search'
 import type { OfflineSong } from '@/lib/offline/song'
 import { hasKaraoke } from '@/lib/offline/song'
@@ -31,7 +31,13 @@ const formatDate = (ms: number) =>
         : 'numeric',
   })
 
-const Thumbnail = ({ src }: { src: string | null }) => (
+const Thumbnail = ({
+  src,
+  karaoke,
+}: {
+  src: string | null
+  karaoke: boolean
+}) => (
   <div className='relative aspect-video w-24 shrink-0 overflow-hidden rounded bg-thumbnail-placeholder'>
     {src === null ? (
       <MusicIcon className='absolute inset-0 m-auto size-5 text-muted-foreground' />
@@ -43,6 +49,7 @@ const Thumbnail = ({ src }: { src: string | null }) => (
         className='size-full object-cover'
       />
     )}
+    {karaoke && <KaraokeCorner size='sm' />}
   </div>
 )
 
@@ -61,15 +68,12 @@ export const OfflineSongRow = ({
     <Link
       to={`/lyrics/${song.videoId}`}
       className='flex items-center gap-3 rounded-lg px-2 py-1.5 transition-colors hover:bg-accent active:bg-muted'>
-      <Thumbnail src={song.thumbnail} />
+      <Thumbnail src={song.thumbnail} karaoke={hasKaraoke(song)} />
       <div className='flex min-w-0 flex-1 flex-col'>
         <p className='line-clamp-2 text-sm leading-snug font-medium text-foreground'>
           {song.title}
         </p>
-        <p className='flex items-center gap-1.5 text-xs text-muted-foreground'>
-          {hasKaraoke(song) && <KaraokeBadge />}
-          <span className='truncate'>{song.author}</span>
-        </p>
+        <p className='truncate text-xs text-muted-foreground'>{song.author}</p>
         {match?.kind === 'lyrics' ? (
           <p className='truncate text-xs text-primary-text italic'>
             “{match.line}”
