@@ -26,6 +26,8 @@ const buttonVariants = cva(
         // The action inside a field, as the landing search box's
         inset: 'h-11 px-5',
         lg: 'h-11 rounded-md px-8',
+        // A short labelled pill that sits among the top bar's icon buttons
+        pill: 'h-9 rounded-full px-4',
         sm: 'h-9 rounded-md px-3',
         // The hero's call to action: padding, not height, sets how tall it is
         tall: 'h-10 px-4 py-6',

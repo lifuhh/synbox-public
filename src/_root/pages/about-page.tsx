@@ -1,4 +1,3 @@
-import HomeFooter from '@/components/shared/home-footer'
 import {
   Accordion,
   AccordionContent,
@@ -178,7 +177,24 @@ const AboutPage = () => (
       </p>
     </div>
 
-    <HomeFooter />
+    <nav
+      aria-label='Links'
+      className='mx-auto flex gap-6 pt-6 text-sm text-muted-foreground'>
+      <a
+        href='https://github.com/lifuhh/synbox'
+        target='_blank'
+        rel='noreferrer'
+        className='hover:text-foreground'>
+        GitHub
+      </a>
+      <a
+        href='https://www.linkedin.com/in/lifuhh/'
+        target='_blank'
+        rel='noreferrer'
+        className='hover:text-foreground'>
+        LinkedIn
+      </a>
+    </nav>
   </section>
 )
 

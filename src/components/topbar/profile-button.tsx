@@ -38,6 +38,7 @@ import { cn } from '@/utils/cn'
 
 import { GitHubIcon } from '../svgicons'
 import { Button } from '../ui/button'
+import { REPO_URL } from './github-button'
 
 // iOS has no install prompt; Safari installs from its Share sheet
 const IosInstallDialog = ({
@@ -129,7 +130,7 @@ const ProfileButtonDropdown = () => {
   const install = useInstallMethod()
   const [iosHelpOpen, setIosHelpOpen] = useState(false)
   const queryClient = useQueryClient()
-  const { data: me } = useMe()
+  const { data: me, isPending } = useMe()
   const user = me?.user ?? null
 
   const handleSignOut = async () => {
@@ -145,12 +146,26 @@ const ProfileButtonDropdown = () => {
   return (
     <>
       <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant='toolbar' size='icon'>
-            <Avatar src={user?.image === '' ? null : (user?.image ?? null)} />
-            <span className='sr-only'>Toggle Profile</span>
-          </Button>
-        </DropdownMenuTrigger>
+        {/* Until the session is known the slot holds an avatar's space, so a signed-in visit never flashes
+            Sign In; a guest gets a labelled button rather than an empty person icon */}
+        {isPending ? (
+          <span aria-hidden className='size-10' />
+        ) : (
+          <span key={user ? 'account' : 'guest'} className='flex appear'>
+            <DropdownMenuTrigger asChild>
+              {user ? (
+                <Button variant='toolbar' size='icon'>
+                  <Avatar
+                    src={user.image === '' ? null : (user.image ?? null)}
+                  />
+                  <span className='sr-only'>Account</span>
+                </Button>
+              ) : (
+                <Button size='pill'>Sign In</Button>
+              )}
+            </DropdownMenuTrigger>
+          </span>
+        )}
         <DropdownMenuContent
           align='end'
           sideOffset={10}
@@ -168,17 +183,26 @@ const ProfileButtonDropdown = () => {
               )}
             </div>
           ) : null}
+          {user ? null : (
+            <>
+              <div className='flex flex-col gap-2 px-2 pt-1.5 pb-2'>
+                <p className='text-sm text-pretty text-muted-foreground'>
+                  Sign in to generate more songs and find them on every device.
+                </p>
+                <DropdownMenuItem
+                  variant='primary'
+                  className='cursor-pointer'
+                  onClick={() => {
+                    void signInWithGoogle()
+                  }}>
+                  <LogInIcon className='mr-2 size-5 shrink-0' />
+                  <span>Continue With Google</span>
+                </DropdownMenuItem>
+              </div>
+              <DropdownMenuSeparator />
+            </>
+          )}
           <DropdownMenuGroup>
-            {user ? null : (
-              <DropdownMenuItem
-                className='cursor-pointer'
-                onClick={() => {
-                  void signInWithGoogle()
-                }}>
-                <LogInIcon className='mr-2 size-5 shrink-0' />
-                <span>Sign In With Google</span>
-              </DropdownMenuItem>
-            )}
             <DropdownMenuItem
               className='cursor-pointer'
               onClick={() => {
@@ -187,10 +211,11 @@ const ProfileButtonDropdown = () => {
               <BookOpenTextIcon className='mr-2 size-5 shrink-0' />
               <span>Lyrics</span>
             </DropdownMenuItem>
+            {/* From sm up the top bar shows GitHub itself */}
             <DropdownMenuItem
-              className='cursor-pointer'
+              className='cursor-pointer sm:hidden'
               onClick={() => {
-                handleRedirect('https://github.com/lifuhh/')
+                handleRedirect(REPO_URL)
               }}>
               <GitHubIcon className='mr-2 ml-[3px] h-4 w-4 fill-white' />
               <span>GitHub</span>

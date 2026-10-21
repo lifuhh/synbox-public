@@ -607,6 +607,32 @@
   }
 }
 
+/* Content that arrives fades in where it will stay, instead of standing in a skeleton first. `rise-in` is for
+   a view's first appearance: a short rise with a blur that clears, staggered by --rise-delay. `appear` is for
+   small things that resolve in place (the top bar's account slot). Reduced motion keeps only the fade. Named
+   apart from tw-animate's `enter` keyframes and `fade-in` utility, which other components use */
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    translate: 0 12px;
+    filter: blur(4px);
+  }
+}
+@keyframes appear {
+  from {
+    opacity: 0;
+  }
+}
+@utility rise-in {
+  animation: rise-in 0.3s ease-out var(--rise-delay, 0ms) both;
+  @media (prefers-reduced-motion: reduce) {
+    animation-name: appear;
+  }
+}
+@utility appear {
+  animation: appear 0.2s ease-out both;
+}
+
 /* A loading placeholder: a lighter band sweeps across it, so it reads as loading on a dark card, where a
    pulse between two near-blacks looked like an empty box */
 @utility skeleton-fill {

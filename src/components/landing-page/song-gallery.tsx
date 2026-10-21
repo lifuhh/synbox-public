@@ -9,8 +9,6 @@ import { useGallerySongs } from '@/lib/react-query/queries-and-mutations'
 import type { LibraryListSong } from '@/lib/synbox-flask/discovery'
 import type { CssVars } from '@/types'
 
-import HomeFooter from '../shared/home-footer'
-
 // The gallery is part of the page's own scroll, so a finger on it never gets caught in a box inside the page.
 // Its title sticks under the top bar while the gallery is on screen, and a tap on it goes back to the
 // gallery's start. Only the rows near the view exist. Every row is exactly as tall as the card width makes it
@@ -205,7 +203,7 @@ const SongGallery = () => {
     <section
       ref={setSection}
       aria-labelledby='gallery-title'
-      className='relative mt-12'>
+      className='relative mt-12 pb-page-bottom'>
       <h2
         ref={title}
         id='gallery-title'
@@ -230,7 +228,6 @@ const SongGallery = () => {
           )}
         </div>
       </div>
-      {!isLoading && <HomeFooter />}
     </section>
   )
 }
