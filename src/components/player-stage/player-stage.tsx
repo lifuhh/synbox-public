@@ -1,7 +1,6 @@
 import { useAtom, useSetAtom } from 'jotai'
 import {
   LoaderIcon,
-  PauseIcon,
   PlayIcon,
   RotateCcwIcon,
   RotateCwIcon,
@@ -12,11 +11,11 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { useToast } from '@/components/ui/use-toast'
 import { playerChromeOpenAtom, playerVolumeAtom } from '@/context/atoms'
-import { useArmed } from '@/hooks/use-armed'
 import { isStandalone } from '@/lib/pwa'
 import type { CssVars } from '@/types'
 import { cn } from '@/utils/cn'
 
+import { CenterPlayButton } from './center-play-button'
 import { clampSeek, HOLD_JUMP_MS, holdStep } from './seek-steps'
 import { StageControls } from './stage-controls'
 import type { SeekFlash } from './use-stage-taps'
@@ -106,36 +105,6 @@ const useIdle = (ms: number) => {
   }, [wake])
   return { idle, sleep }
 }
-
-const CenterPlayButton = ({
-  phase,
-  visible,
-  armed,
-  onToggle,
-}: {
-  phase: StagePhase
-  visible: boolean
-  armed: boolean
-  onToggle: () => void
-}) => (
-  <button
-    type='button'
-    tabIndex={-1}
-    aria-label={phase.kind === 'playing' ? 'Pause' : 'Play'}
-    aria-hidden={!visible}
-    onClick={onToggle}
-    className={cn(
-      'absolute top-(--video-cy) left-1/2 z-26 grid size-20 -translate-1/2 place-items-center text-white/90 drop-shadow-stage transition-opacity duration-300 short:size-14',
-      visible ? 'opacity-100' : 'opacity-0',
-      !armed && 'pointer-events-none'
-    )}>
-    {phase.kind === 'paused' ? (
-      <PlayIcon className='size-16 fill-current short:size-10' />
-    ) : (
-      <PauseIcon className='size-16 fill-current short:size-10' />
-    )}
-  </button>
-)
 
 const SeekFlashBadge = ({ flash }: { flash: SeekFlash }) => (
   <div
@@ -292,7 +261,6 @@ export const PlayerStage = ({
   const controlsVisible = !dragging && (!idle || phase.kind !== 'playing')
   const blockInput = quirks.blockIframeInput && !handsOff
   const { toast } = useToast()
-  const centerArmed = useArmed(controlsVisible)
   const setChromeOpen = useSetAtom(playerChromeOpenAtom)
   useEffect(() => {
     setChromeOpen(controlsVisible)
@@ -475,14 +443,12 @@ export const PlayerStage = ({
         {showCover && <StageCover videoId={videoId} phase={phase} />}
       </div>
 
-      {/* The play/pause control shows and hides with the rest of the floating UI. Opaque, so it also covers
-          the flash YouTube draws in the same spot on a play or pause, which comes from input that has just
-          shown the UI. It sits outside the video box so it draws above the lyrics */}
+      {/* The play/pause control shows and hides with the rest of the floating UI, and on a phone stays as long
+          as YouTube's own button under it. It sits outside the video box so it draws above the lyrics */}
       {!showCover && !handsOff && (
         <CenterPlayButton
           phase={phase}
-          visible={controlsVisible}
-          armed={centerArmed}
+          controlsVisible={controlsVisible}
           onToggle={() => {
             player.togglePlay()
           }}
