@@ -15,7 +15,9 @@ import {
   reportFraction,
   startPhase,
 } from './progress'
+import { onResume } from './resume'
 import type {
+  Listeners,
   ProgressEvent,
   Refusal,
   SaveOutcome,
@@ -72,6 +74,9 @@ export interface Job extends Required<GenerationRequest> {
   status: JobStatus
   // Songs ahead of this one on the backend while it waits for the CPU; 0 when it is not waiting
   ahead: number
+  // Since when the connection is lost and being asked again, while the backend's job may still be running;
+  // null while the backend is heard
+  reconnectingSince: number | null
 }
 
 export interface GenerationState {
@@ -83,16 +88,21 @@ export interface GenerationState {
 }
 
 const RETRIES = 2
-// Coming back from the background reconnects without using a retry, but never without limit: a backend
-// that cannot replay would otherwise run (and charge for) the job again on every return
-const RECONNECTS = 6
 const RETRY_DELAY_MS = 1500
+// A lost connection is not a failure while the backend's job may still be running: it is asked again, with
+// waits that grow to the last of these, and each answer replays the job's progress. Asking again never
+// pays twice (the request id names the job). Coming back to the page reconnects at once, without counting
+const RECONNECT_DELAYS_MS = [1000, 2000, 4000, 8000, 15_000]
+// Tries in a row without hearing the backend (about 3 minutes on screen) before the job says it lost it
+const RECONNECTS = 14
 // Each running job holds a stream open; more than this wait here rather than fill the backend's line, which
 // refuses songs past its own limit
 export const MAX_RUNNING = 3
 
 let state: GenerationState = { expanded: false, focusedId: null, jobs: [] }
 const controllers = new Map<number, AbortController>()
+// When each job last heard the backend. Kept out of `state`: heartbeats would re-render for nothing
+const heardAt = new Map<number, number>()
 let nextId = 1
 const listeners = new Set<() => void>()
 
@@ -116,19 +126,29 @@ const updateJob = (id: number, change: (job: Job) => Job) => {
 export const focusedJob = ({ jobs, focusedId }: GenerationState) =>
   jobs.find((job) => job.id === focusedId) ?? null
 
-const onProgress = (id: number) => (event: ProgressEvent) => {
-  const now = Date.now()
-  updateJob(id, (job) => {
-    let runs = beginStage(job.runs, event.stage, now, {
-      expectedS: event.expectedS,
-      label: event.label,
-    })
-    if (event.fraction !== undefined) {
-      runs = reportFraction(runs, event.stage, event.fraction, now)
+const listenersFor = (id: number): Listeners => ({
+  onHeard: () => {
+    heardAt.set(id, Date.now())
+    if (
+      state.jobs.some((job) => job.id === id && job.reconnectingSince !== null)
+    ) {
+      updateJob(id, (job) => ({ ...job, reconnectingSince: null }))
     }
-    return { ...job, runs }
-  })
-}
+  },
+  onProgress: (event: ProgressEvent) => {
+    const now = Date.now()
+    updateJob(id, (job) => {
+      let runs = beginStage(job.runs, event.stage, now, {
+        expectedS: event.expectedS,
+        label: event.label,
+      })
+      if (event.fraction !== undefined) {
+        runs = reportFraction(runs, event.stage, event.fraction, now)
+      }
+      return { ...job, runs }
+    })
+  },
+})
 
 // Retries wait for the page to be on screen: a suspended page cannot reach the backend
 const untilVisible = async (signal: AbortSignal) => {
@@ -150,14 +170,22 @@ const untilVisible = async (signal: AbortSignal) => {
   })
 }
 
+// Waits `ms`, or less when the page gets its network back (resume.ts)
 const sleep = async (ms: number, signal: AbortSignal) => {
   // oxlint-disable-next-line promise/avoid-new -- turns setTimeout into a promise; Promise.withResolvers is ES2024
   await new Promise<void>((resolve) => {
-    const timer = setTimeout(resolve, ms)
-    signal.addEventListener('abort', () => {
-      clearTimeout(timer)
+    const stops: (() => void)[] = []
+    const done = () => {
+      for (const stop of stops) {
+        stop()
+      }
       resolve()
-    })
+    }
+    const timer = setTimeout(done, ms)
+    stops.push(() => {
+      clearTimeout(timer)
+    }, onResume(done))
+    signal.addEventListener('abort', done)
   })
 }
 
@@ -176,6 +204,7 @@ const runPhase = async <T>(
   let attempt = 0
   let reconnects = 0
   for (;;) {
+    const askedAt = Date.now()
     try {
       // oxlint-disable-next-line eslint/no-await-in-loop -- attempts run one after another
       const result = await call()
@@ -188,14 +217,31 @@ const runPhase = async <T>(
       if (!(error instanceof GenerationError) || signal.aborted) {
         throw error
       }
-      // Coming back from the background is not a failure: reconnect at once, without using a retry
-      if (error.resumed) {
-        reconnects += 1
+      // Before the backend was ever heard there is no job of ours to lose: a few retries, as for any failure
+      if (error.lost && heardAt.has(id)) {
+        if ((heardAt.get(id) ?? 0) >= askedAt) {
+          reconnects = 0
+        }
+        if (!error.resumed) {
+          reconnects += 1
+        }
         if (reconnects > RECONNECTS) {
           throw new GenerationError(
-            'Lost the connection to the lyrics server too many times',
-            false
+            'Lost the connection to the lyrics server. The song may still finish there, so try again in a minute.',
+            { code: 'connection_lost' }
           )
+        }
+        updateJob(id, (job) => ({
+          ...job,
+          reconnectingSince: job.reconnectingSince ?? Date.now(),
+        }))
+        if (!error.resumed) {
+          const delay =
+            RECONNECT_DELAYS_MS[
+              Math.min(reconnects, RECONNECT_DELAYS_MS.length) - 1
+            ]
+          // oxlint-disable-next-line eslint/no-await-in-loop -- a reconnect waits before the next attempt
+          await sleep(delay, signal)
         }
       } else {
         if (!error.retryable || attempt >= RETRIES) {
@@ -220,32 +266,34 @@ class YouTubeOnlyError extends Error {
   }
 }
 
+// The backend refused to run a job again because it already saved it, as when the page was away while it
+// finished and the replay window passed: the song is there to play
+const ALREADY_FINISHED = 'already_finished'
+
 const run = async (job: Job, signal: AbortSignal) => {
   const { id, videoId } = job
-  const progress = onProgress(id)
+  const progress = listenersFor(id)
+  const options = {
+    regenerate: job.mode === 'regenerate',
+    requestId: job.requestId,
+    skipUploaderLyrics: job.skipUploaderLyrics,
+  }
+  // Asked once per job: a reconnect does not load a player again
+  let embeds: Promise<boolean> | null = null
   try {
     const video = await runPhase(id, 'validate', signal, async () => {
       // Before the backend spends minutes on a song our player could never play
-      if (!(await playsOutsideYouTube(videoId, signal))) {
+      embeds ??= playsOutsideYouTube(videoId, signal)
+      if (!(await embeds)) {
         throw new YouTubeOnlyError()
       }
-      return await validate(videoId, signal, progress)
+      return await validate(videoId, options, signal, progress)
     })
     updateJob(id, (current) => ({ ...current, video }))
     await runPhase(id, 'transcribe', signal, async () => {
-      await transcribe(
-        videoId,
-        {
-          regenerate: job.mode === 'regenerate',
-          requestId: job.requestId,
-          skipUploaderLyrics: job.skipUploaderLyrics,
-        },
-        signal,
-        progress,
-        (ahead) => {
-          updateJob(id, (current) => ({ ...current, ahead }))
-        }
-      )
+      await transcribe(videoId, options, signal, progress, (ahead) => {
+        updateJob(id, (current) => ({ ...current, ahead }))
+      })
     })
     updateJob(id, (current) => ({ ...current, ahead: 0 }))
     const { outcome, karaoke } = await runPhase(
@@ -256,26 +304,48 @@ const run = async (job: Job, signal: AbortSignal) => {
     )
     updateJob(id, (current) => ({
       ...current,
+      reconnectingSince: null,
       status: { at: Date.now(), karaoke, kind: 'complete', outcome },
     }))
   } catch (error) {
     if (signal.aborted) {
       return
     }
+    const code = error instanceof GenerationError ? error.code : undefined
+    if (code === ALREADY_FINISHED) {
+      const now = Date.now()
+      updateJob(id, (current) => ({
+        ...current,
+        ahead: 0,
+        reconnectingSince: null,
+        runs: completePhase(current.runs, 'translate', now),
+        status: {
+          at: now,
+          karaoke: null,
+          kind: 'complete',
+          outcome: { kind: 'finished' },
+        },
+      }))
+      return
+    }
     const message =
       error instanceof Error ? error.message : 'Something went wrong'
-    const code = error instanceof GenerationError ? error.code : undefined
     updateJob(id, (current) => ({
       ...current,
       ahead: 0,
+      reconnectingSince: null,
       status: {
         at: Date.now(),
         code,
         kind: 'failed',
         message,
-        retry: !(error instanceof YouTubeOnlyError) && code === undefined,
+        retry:
+          !(error instanceof YouTubeOnlyError) &&
+          (code === undefined || code === 'connection_lost'),
       },
     }))
+  } finally {
+    heardAt.delete(id)
   }
 }
 
@@ -326,6 +396,7 @@ export const startGeneration = (request: GenerationRequest): boolean => {
   const job: Job = {
     ahead: 0,
     id,
+    reconnectingSince: null,
     runs: {},
     skipUploaderLyrics: false,
     startedAt: Date.now(),
