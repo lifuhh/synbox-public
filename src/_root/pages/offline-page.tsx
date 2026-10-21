@@ -52,7 +52,7 @@ const ago = (ms: number) => {
 }
 
 const statusText = (status: SyncStatus, online: boolean, saved: number) => {
-  const count = `${saved} ${saved === 1 ? 'song' : 'songs'} saved`
+  const count = `${saved} ${saved === 1 ? 'song' : 'songs'} saved for offline`
   if (!online) {
     return `Offline · ${count}`
   }
@@ -144,11 +144,9 @@ const OfflinePage = () => {
 
   return (
     <section className='flex custom-scrollbar flex-1 flex-col overflow-y-auto overscroll-contain pr-(--safe-right) pb-page-bottom pl-(--safe-left)'>
-      <title>Offline Lyrics · Synbox</title>
+      <title>Lyrics · Synbox</title>
       <header className='mx-auto w-full max-w-xl px-4 pt-(--topbar-h) text-center'>
-        <h1 className='pt-2 text-base font-semibold text-foreground'>
-          Offline Lyrics
-        </h1>
+        <h1 className='pt-2 text-base font-semibold text-foreground'>Lyrics</h1>
         <p
           aria-live='polite'
           className='flex items-center justify-center gap-1 text-xs text-muted-foreground'>

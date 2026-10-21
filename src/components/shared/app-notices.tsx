@@ -1,18 +1,50 @@
-import { ChevronRightIcon, CloudOffIcon } from 'lucide-react'
-import { useCallback } from 'react'
+import { ChevronRightIcon, CloudOffIcon, WifiIcon } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useMatch } from 'react-router'
 
 import { useOnline } from '@/lib/pwa'
 
 const pill =
-  'pointer-events-auto flex min-h-11 items-center gap-2 rounded-full border border-white/10 bg-popover/90 px-4 text-sm text-foreground shadow-lg backdrop-blur-md'
+  'pointer-events-auto flex h-8 items-center gap-1.5 rounded-full border border-white/10 bg-popover/90 px-3 text-xs text-foreground shadow-lg backdrop-blur-md'
 
-// The offline notice, under the top bar. Its height is published as
-// --notices-h so the toasts open below it rather than over it
-const AppNotices = () => {
+// How long the note about a connection change stays up
+const NOTICE_MS = { offline: 6000, online: 3000 } as const
+
+type ConnectionNotice = 'offline' | 'online' | null
+
+// A note when the connection drops or comes back (and on opening the app offline), that leaves on its own
+const useConnectionNotice = () => {
   const online = useOnline()
-  // The offline pages are the place to be without a connection
-  const onOfflinePage = useMatch('/offline/*') !== null
+  const [notice, setNotice] = useState<ConnectionNotice>(null)
+  const last = useRef(true)
+  useEffect(() => {
+    const changed = last.current !== online
+    last.current = online
+    const kind = online ? 'online' : 'offline'
+    if (changed) {
+      setNotice(kind)
+    }
+    const timer = setTimeout(
+      () => {
+        if (changed) {
+          setNotice(null)
+        }
+      },
+      changed ? NOTICE_MS[kind] : 0
+    )
+    return () => {
+      clearTimeout(timer)
+    }
+  }, [online])
+  return notice
+}
+
+// Notes under the top bar. Its height is published as --notices-h so the toasts open below it rather than
+// over it. None over the lyrics reader: it works the same without a connection, and nothing should cover it
+const AppNotices = () => {
+  const notice = useConnectionNotice()
+  const onReader = useMatch('/lyrics/:videoId') !== null
+  const onLyrics = useMatch('/lyrics') !== null
   const publishHeight = useCallback((stack: HTMLDivElement) => {
     const root = document.documentElement
     const observer = new ResizeObserver(() => {
@@ -29,13 +61,26 @@ const AppNotices = () => {
     <div
       ref={publishHeight}
       className='pointer-events-none fixed inset-x-0 top-(--topbar-h) z-100 flex flex-col items-center gap-2 px-4 empty:hidden [&:not(:empty)]:pt-2'>
-      {!online && !onOfflinePage && (
+      {!onReader && notice === 'offline' && (
         <output>
-          <Link to='/offline' className={pill}>
-            <CloudOffIcon className='size-4 shrink-0 text-primary' />
-            Offline. Read your saved lyrics
-            <ChevronRightIcon className='-mr-1 size-4 shrink-0' />
-          </Link>
+          {onLyrics ? (
+            <span className={pill}>
+              <CloudOffIcon className='size-3.5 shrink-0 text-primary' />
+              Offline. Saved lyrics still work
+            </span>
+          ) : (
+            <Link to='/lyrics' className={pill}>
+              <CloudOffIcon className='size-3.5 shrink-0 text-primary' />
+              Offline. Read your saved lyrics
+              <ChevronRightIcon className='-mr-1 size-3.5 shrink-0' />
+            </Link>
+          )}
+        </output>
+      )}
+      {!onReader && notice === 'online' && (
+        <output className={pill}>
+          <WifiIcon className='size-3.5 shrink-0 text-primary' />
+          Back online
         </output>
       )}
     </div>

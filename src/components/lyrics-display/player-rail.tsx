@@ -1,5 +1,6 @@
 import { useAtom, useAtomValue, useSetAtom } from 'jotai'
 import {
+  BookOpenTextIcon,
   BookmarkCheckIcon,
   BookmarkIcon,
   LanguagesIcon,
@@ -8,7 +9,7 @@ import {
   ShareIcon,
 } from 'lucide-react'
 import { useEffect, useRef } from 'react'
-import { useParams } from 'react-router'
+import { useNavigate, useParams } from 'react-router'
 
 import { ToastAction } from '@/components/ui/toast'
 import { TooltipProvider } from '@/components/ui/tooltip'
@@ -113,6 +114,7 @@ const Divider = () => (
 
 const PlayerRail = () => {
   const { videoId = '' } = useParams<{ videoId: string }>()
+  const navigate = useNavigate()
   const { admin } = useAccess()
   const { toast } = useToast()
   const panelRef = useRef<HTMLElement>(null)
@@ -342,6 +344,17 @@ const PlayerRail = () => {
                   void handleShare()
                 }}>
                 <PlatformShareIcon className='size-5 shrink-0' />
+              </RailButton>
+            </RailTooltip>
+            {/* The song's lyrics as a page to read or play along without the video */}
+            <RailTooltip label='Read Lyrics'>
+              <RailButton
+                label='Read Lyrics'
+                disabled={videoId === ''}
+                onClick={() => {
+                  void navigate(`/lyrics/${videoId}`)
+                }}>
+                <BookOpenTextIcon className='size-5 shrink-0' />
               </RailButton>
             </RailTooltip>
           </nav>

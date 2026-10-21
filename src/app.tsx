@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect } from 'react'
-import { Navigate, Route, Routes } from 'react-router'
+import { Navigate, Route, Routes, useParams } from 'react-router'
 
 import AppNotices from '@/components/shared/app-notices'
 import { Toaster } from '@/components/ui/toaster'
@@ -37,6 +37,12 @@ const VersionsPage = lazy(pageImports.versions)
 const AdminPage = lazy(async () => await import('./_root/pages/admin-page'))
 
 const PREFETCH_DELAY_MS = 4000
+
+// The lyrics pages lived under /offline until they worked online too
+const OldReaderLink = () => {
+  const { videoId = '' } = useParams()
+  return <Navigate to={`/lyrics/${videoId}`} replace />
+}
 
 const prefetchPages = () => {
   for (const load of Object.values(pageImports)) {
@@ -103,8 +109,10 @@ const App = () => {
               </Suspense>
             }
           />
+          <Route path='/offline' element={<Navigate to='/lyrics' replace />} />
+          <Route path='/offline/:videoId' element={<OldReaderLink />} />
           <Route
-            path='/offline'
+            path='/lyrics'
             element={
               <Suspense>
                 <OfflinePage />
@@ -112,7 +120,7 @@ const App = () => {
             }
           />
           <Route
-            path='/offline/:videoId'
+            path='/lyrics/:videoId'
             element={
               <Suspense>
                 <ReaderPage />

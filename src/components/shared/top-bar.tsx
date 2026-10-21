@@ -8,6 +8,7 @@ import { cn } from '@/utils/cn'
 import AppLogo from '../topbar/app-logo'
 import FavouritesDropdownButton from '../topbar/favourites-dropdown-button'
 import HistoryDropdownButton from '../topbar/history-dropdown-button'
+import LyricsButton from '../topbar/lyrics-button'
 import ProfileButton from '../topbar/profile-button'
 
 const TopBar = () => {
@@ -46,6 +47,7 @@ const TopBar = () => {
           <AppLogo />
         )}
         <div data-player-chrome className={cn(cluster, 'mr-2 ml-auto')}>
+          <LyricsButton />
           <FavouritesDropdownButton />
           <HistoryDropdownButton />
           {!isVideoPlayer && <ProfileButton />}
