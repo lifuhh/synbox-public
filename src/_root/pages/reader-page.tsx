@@ -10,7 +10,7 @@ import {
   SunIcon,
 } from 'lucide-react'
 import type { Ref } from 'react'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useImperativeHandle, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router'
 
 import type { KaraokeLineHandle } from '@/components/lyrics-display/karaoke-line'
@@ -42,7 +42,8 @@ const SCROLL_SLACK_PX = 8
 
 const NO_LINES: OfflineLine[] = []
 
-// The Japanese of a line: filled as it is sung when synced and timed, else plain ruby text
+// The Japanese and the romaji of a line: each filled as it is sung when synced and timed, else plain text.
+// Bold Japanese, medium romaji and a regular italic translation set the three lines apart
 const ReaderJapanese = ({
   line,
   synced,
@@ -55,11 +56,12 @@ const ReaderJapanese = ({
   const { bold } = useAtomValue(readerPrefsAtom)
   const className = cn(
     'font-reader text-reader-ja',
-    bold ? 'font-bold' : 'font-normal'
+    bold ? 'font-extrabold' : 'font-bold'
   )
   return synced && line.karaoke !== null ? (
     <ReaderKaraokeLine
       ref={karaokeRef}
+      kind='japanese'
       line={line.karaoke}
       className={className}
     />
@@ -70,8 +72,34 @@ const ReaderJapanese = ({
   )
 }
 
+const ReaderRomaji = ({
+  line,
+  synced,
+  karaokeRef,
+}: {
+  line: OfflineLine
+  synced: boolean
+  karaokeRef: Ref<KaraokeLineHandle>
+}) => {
+  const { bold } = useAtomValue(readerPrefsAtom)
+  const className = cn(
+    'text-reader-romaji',
+    bold ? 'font-semibold' : 'font-medium'
+  )
+  return synced && line.karaoke !== null ? (
+    <ReaderKaraokeLine
+      ref={karaokeRef}
+      kind='romaji'
+      line={line.karaoke}
+      className={className}
+    />
+  ) : (
+    <p className={cn(className, 'text-(--reader-muted)')}>{line.romaji}</p>
+  )
+}
+
 // One sung line as a block: the Japanese, its romaji, then the translation. Synced, a tap seeks to it, the
-// line being sung is the bright one, and its Japanese fills as it is sung
+// line being sung is the bright one, and its Japanese and romaji fill as they are sung
 const ReaderLine = ({
   line,
   first,
@@ -92,6 +120,15 @@ const ReaderLine = ({
   const prefs = useAtomValue(readerPrefsAtom)
   const translation = prefs.language === 'en' ? line.en : line.zh
   const source = prefs.japanese || (prefs.romaji && line.romaji !== '')
+  // The clock drives one handle per line; it fills the Japanese and the romaji together
+  const japanese = useRef<KaraokeLineHandle>(null)
+  const romaji = useRef<KaraokeLineHandle>(null)
+  useImperativeHandle(karaokeRef, () => ({
+    setTime: (time: number) => {
+      japanese.current?.setTime(time)
+      romaji.current?.setTime(time)
+    },
+  }))
   return (
     // oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- a tap seeks; the position bar does the same from the keyboard
     <div
@@ -112,20 +149,10 @@ const ReaderLine = ({
       {source && (
         <div>
           {prefs.japanese && (
-            <ReaderJapanese
-              line={line}
-              synced={synced}
-              karaokeRef={karaokeRef}
-            />
+            <ReaderJapanese line={line} synced={synced} karaokeRef={japanese} />
           )}
           {prefs.romaji && line.romaji !== '' && (
-            <p
-              className={cn(
-                'text-reader-romaji text-(--reader-muted) italic',
-                prefs.bold ? 'font-semibold' : 'font-normal'
-              )}>
-              {line.romaji}
-            </p>
+            <ReaderRomaji line={line} synced={synced} karaokeRef={romaji} />
           )}
         </div>
       )}
@@ -133,9 +160,9 @@ const ReaderLine = ({
         <p
           lang={prefs.language}
           className={cn(
-            'font-reader text-reader-translation',
+            'font-reader text-reader-translation italic',
             source && 'pt-0.5',
-            prefs.bold ? 'font-semibold' : 'font-normal'
+            prefs.bold ? 'font-medium' : 'font-normal'
           )}>
           {translation}
         </p>
