@@ -149,7 +149,8 @@ admin.get('/users', async (c) => {
   const { results } = await c.env.DB.prepare(
     `select u."id", u."email", u."name", u."image", u."role", u."banned", u."banReason", u."createdAt",
        (select max(s."updatedAt") from "session" s where s."userId" = u."id") as "lastSeenAt",
-       q."hourlyLimit",
+       case when q."userId" is null then 'default' when q."hourlyLimit" is null then 'unlimited'
+         else q."hourlyLimit" end as "hourlyLimit",
        (select count(*) from "generation" g where g."userId" = u."id" and g."createdAt" > ?1
           and g."status" <> 'failed') as "songsLastHour",
        (select count(*) from "generation" g where g."userId" = u."id" and g."status" = 'succeeded')
@@ -173,20 +174,21 @@ admin.get('/generations', async (c) => {
   return c.json({ generations: results })
 })
 
-// A per-person hourly limit; null goes back to the default
+// A per-person hourly limit: a number, 'unlimited', or 'default' to go back to USER_HOURLY_LIMIT
 admin.put('/users/:id/limit', async (c) => {
   const { hourlyLimit } = await c.req.json<Record<string, unknown>>()
   const id = c.req.param('id')
-  if (hourlyLimit === null) {
+  if (hourlyLimit === 'default') {
     await c.env.DB.prepare(`delete from "quotaOverride" where "userId" = ?1`)
       .bind(id)
       .run()
     return c.body(null, 204)
   }
   if (
-    typeof hourlyLimit !== 'number' ||
-    !Number.isInteger(hourlyLimit) ||
-    hourlyLimit < 0
+    hourlyLimit !== 'unlimited' &&
+    (typeof hourlyLimit !== 'number' ||
+      !Number.isInteger(hourlyLimit) ||
+      hourlyLimit < 0)
   ) {
     return c.json({ code: 'bad_request' }, 400)
   }
@@ -194,7 +196,12 @@ admin.put('/users/:id/limit', async (c) => {
     `insert into "quotaOverride" ("userId", "hourlyLimit", "setBy", "setAt") values (?1, ?2, ?3, ?4)
      on conflict ("userId") do update set "hourlyLimit" = ?2, "setBy" = ?3, "setAt" = ?4`
   )
-    .bind(id, hourlyLimit, c.get('adminId'), Date.now())
+    .bind(
+      id,
+      hourlyLimit === 'unlimited' ? null : hourlyLimit,
+      c.get('adminId'),
+      Date.now()
+    )
     .run()
   return c.body(null, 204)
 })
