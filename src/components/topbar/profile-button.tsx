@@ -152,8 +152,11 @@ const ProfileButtonDropdown = () => {
         ) : (
           <span
             key={user ? 'account' : 'guest'}
-            // On a phone the top bar is a grid of icon-sized cells; the Sign In pill takes two
-            className={cn('flex appear', user === null && 'max-sm:col-span-2')}>
+            // On a phone the top bar is a grid of icon-sized cells; the Sign In pill takes two, centred in the row
+            className={cn(
+              'flex appear items-center',
+              user === null && 'max-sm:col-span-2'
+            )}>
             <DropdownMenuTrigger asChild>
               {user ? (
                 <Button variant='toolbar' size='icon'>
