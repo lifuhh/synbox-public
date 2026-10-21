@@ -57,13 +57,13 @@ const IosInstallDialog = ({
       </DialogHeader>
       <ol className='flex flex-col gap-3 text-base'>
         <li className='flex items-center gap-3'>
-          <ShareIcon className='size-5 shrink-0 text-primary' />
+          <ShareIcon className='size-5 shrink-0 text-primary-text' />
           <span>
             Tap <strong>Share</strong> in Safari&apos;s toolbar
           </span>
         </li>
         <li className='flex items-center gap-3'>
-          <SquarePlusIcon className='size-5 shrink-0 text-primary' />
+          <SquarePlusIcon className='size-5 shrink-0 text-primary-text' />
           <span>
             Choose <strong>Add to Home Screen</strong>
           </span>
@@ -146,7 +146,7 @@ const ProfileButtonDropdown = () => {
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant='outline-primary' size='icon'>
+          <Button variant='toolbar' size='icon'>
             <Avatar src={user?.image === '' ? null : (user?.image ?? null)} />
             <span className='sr-only'>Toggle Profile</span>
           </Button>
@@ -154,7 +154,6 @@ const ProfileButtonDropdown = () => {
         <DropdownMenuContent
           align='end'
           sideOffset={10}
-          variant='primary'
           className='w-64 overflow-auto'>
           {user ? (
             <div className='flex flex-col gap-0.5 px-2 pt-1.5 pb-2'>

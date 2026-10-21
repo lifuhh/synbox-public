@@ -5,7 +5,7 @@ import { useMatch } from 'react-router'
 import { useOnline } from '@/lib/pwa'
 
 const pill =
-  'pointer-events-auto flex h-8 items-center gap-1.5 rounded-full border border-white/10 bg-popover/90 px-3 text-xs text-foreground shadow-lg backdrop-blur-md'
+  'pointer-events-auto flex h-8 items-center gap-1.5 rounded-full bg-popover/90 px-3 text-xs text-foreground shadow-lg backdrop-blur-md'
 
 // How long the note about a connection change stays up
 const NOTICE_MS = 2000
@@ -62,13 +62,13 @@ const AppNotices = () => {
       className='pointer-events-none fixed inset-x-0 top-(--topbar-h) z-100 flex flex-col items-center gap-2 px-4 empty:hidden [&:not(:empty)]:pt-2'>
       {!onReader && notice === 'offline' && (
         <output className={pill}>
-          <CloudOffIcon className='size-3.5 shrink-0 text-primary' />
+          <CloudOffIcon className='size-3.5 shrink-0 text-primary-text' />
           Lost Connection
         </output>
       )}
       {!onReader && notice === 'online' && (
         <output className={pill}>
-          <WifiIcon className='size-3.5 shrink-0 text-primary' />
+          <WifiIcon className='size-3.5 shrink-0 text-primary-text' />
           Reconnected
         </output>
       )}

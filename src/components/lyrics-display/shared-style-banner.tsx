@@ -33,7 +33,7 @@ const SharedStyleNotice = () => {
           setHidden(true)
         }
       }}
-      className='fixed top-[calc(var(--topbar-h)+0.5rem+var(--notices-h,0px))] left-1/2 z-50 flex -translate-x-1/2 auto-hide items-center rounded-full bg-black/60 py-1 pr-1 pl-4 text-sm whitespace-nowrap text-white shadow-lg ring-1 ring-white/20 backdrop-blur-md portrait:top-auto portrait:bottom-(--player-notices-bottom)'>
+      className='fixed top-[calc(var(--topbar-h)+0.5rem+var(--notices-h,0px))] left-1/2 z-50 flex -translate-x-1/2 auto-hide items-center rounded-full bg-black/60 py-1 pr-1 pl-4 text-sm whitespace-nowrap text-white shadow-lg backdrop-blur-md portrait:top-auto portrait:bottom-(--player-notices-bottom)'>
       <span
         aria-hidden='true'
         className='size-2.5 shrink-0 rounded-full bg-(--banner-swatch) ring-1 ring-white/40'

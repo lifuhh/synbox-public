@@ -1,5 +1,4 @@
 import { Dock, DockIcon } from '@/components/magicui/dock'
-import { Separator } from '@/components/ui/separator'
 import { handleRedirect } from '@/utils'
 
 type IconProps = React.HTMLAttributes<SVGElement>
@@ -99,7 +98,7 @@ const Icons = {
 
 const HomeFooter = () => (
   <div className='bottom-0 left-0 z-50 flex-between min-h-14 w-full flex-col pt-2 pb-(--safe-bottom)'>
-    <div className='flex flex-wrap items-center justify-center gap-x-1 gap-y-2 pb-2 sm:flex-around sm:flex-nowrap'>
+    <div className='flex flex-wrap items-center justify-center gap-x-1 gap-y-2 pb-2 sm:flex-nowrap sm:justify-center sm:gap-x-8'>
       <div className='flex w-full justify-center sm:w-auto'>
         <h1 className='unselectable font-semibold text-pretty whitespace-nowrap'>
           Built With
@@ -110,59 +109,52 @@ const HomeFooter = () => (
           onClick={() => {
             handleRedirect('https://react.dev/')
           }}
-          className='cursor-pointer bg-card-foreground'>
-          <Icons.React className='h-6 w-6 text-primary-light' />
+          className='cursor-pointer bg-card text-muted-foreground transition-colors hover:bg-accent hover:text-foreground'>
+          <Icons.React className='h-6 w-6' />
         </DockIcon>
         <DockIcon
           onClick={() => {
             handleRedirect('https://tailwindcss.com/')
           }}
-          className='cursor-pointer bg-card-foreground'>
-          <Icons.Tailwind className='h-6 w-6 text-primary-light' />
+          className='cursor-pointer bg-card text-muted-foreground transition-colors hover:bg-accent hover:text-foreground'>
+          <Icons.Tailwind className='h-6 w-6' />
         </DockIcon>
         <DockIcon
           onClick={() => {
             handleRedirect('https://ui.shadcn.com/')
           }}
-          className='cursor-pointer bg-card-foreground'>
-          <Icons.Shadcn className='h-6 w-6 text-primary-light' />
+          className='cursor-pointer bg-card text-muted-foreground transition-colors hover:bg-accent hover:text-foreground'>
+          <Icons.Shadcn className='h-6 w-6' />
         </DockIcon>
         <DockIcon
           onClick={() => {
             handleRedirect('https://platform.openai.com/docs/overview/')
           }}
-          className='cursor-pointer bg-card-foreground'>
-          <Icons.Openai className='h-6 w-6 text-primary-light' />
+          className='cursor-pointer bg-card text-muted-foreground transition-colors hover:bg-accent hover:text-foreground'>
+          <Icons.Openai className='h-6 w-6' />
         </DockIcon>
         <DockIcon
           onClick={() => {
             handleRedirect('https://developers.google.com/youtube/v3/')
           }}
-          className='cursor-pointer bg-card-foreground'>
-          <Icons.Gcloud className='h-6 w-6 text-primary-light' />
+          className='cursor-pointer bg-card text-muted-foreground transition-colors hover:bg-accent hover:text-foreground'>
+          <Icons.Gcloud className='h-6 w-6' />
         </DockIcon>
       </Dock>
-      <Separator
-        decorative={false}
-        orientation='vertical'
-        variant='contrast'
-        className='hidden mx-4 my-2 h-auto w-0.5 self-stretch sm:block'
-      />
-      <div className='flex' />
       <Dock className='mt-0 border-none'>
         <DockIcon
           onClick={() => {
             handleRedirect('https://www.linkedin.com/in/lifuhh/')
           }}
-          className='cursor-pointer bg-card-foreground'>
-          <Icons.Linkedin className='h-6 w-6 text-primary-light' />
+          className='cursor-pointer bg-card text-muted-foreground transition-colors hover:bg-accent hover:text-foreground'>
+          <Icons.Linkedin className='h-6 w-6' />
         </DockIcon>
         <DockIcon
           onClick={() => {
             handleRedirect('https://github.com/lifuhh/')
           }}
-          className='cursor-pointer bg-card-foreground'>
-          <Icons.GitHub className='h-6 w-6 text-primary-light' />
+          className='cursor-pointer bg-card text-muted-foreground transition-colors hover:bg-accent hover:text-foreground'>
+          <Icons.GitHub className='h-6 w-6' />
         </DockIcon>
       </Dock>
     </div>

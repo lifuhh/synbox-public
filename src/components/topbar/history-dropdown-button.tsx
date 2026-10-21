@@ -67,7 +67,7 @@ const PaginationLink: React.FC<{
     type='button'
     onClick={onClick}
     className={`flex h-8 w-8 items-center justify-center rounded-md ${
-      isActive === true ? 'bg-primary text-primary-foreground' : ''
+      isActive === true ? 'bg-primary-subtle text-primary-text' : ''
     } ${className}`}>
     {children}
   </button>
@@ -139,7 +139,11 @@ const HistoryDropdownButton = () => {
               handlePageChange(pageNum)
             }}
             isActive={currentPage === pageNum}
-            className={currentPage === pageNum ? 'bg-primary' : ''}>
+            className={
+              currentPage === pageNum
+                ? 'bg-primary-subtle text-primary-text'
+                : ''
+            }>
             {pageNum}
           </PaginationLink>
         </PaginationItem>
@@ -195,7 +199,7 @@ const HistoryDropdownButton = () => {
         <Tooltip>
           <DropdownMenuTrigger asChild>
             <TooltipTrigger asChild>
-              <Button variant='outline-primary' size='icon'>
+              <Button variant='toolbar' size='icon'>
                 <RotateCcwClockIcon className='h-6 w-6 shrink-0' />
                 <span className='sr-only'>View History</span>
               </Button>
@@ -207,7 +211,7 @@ const HistoryDropdownButton = () => {
           align='end'
           sideOffset={10}
           collisionPadding={8}
-          variant='primary-panel'
+          variant='panel'
           className='h-(--history-menu-h) max-h-(--radix-dropdown-menu-content-available-height) w-[min(400px,calc(100vw-1rem))]'
           style={menuVars}>
           <div className='flex h-full flex-col'>

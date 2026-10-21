@@ -139,7 +139,7 @@ const GenerationPanel = () => {
   }
   const { generationEnabled, guestSongsToday, limits } = data
   return (
-    <section className='flex flex-wrap items-center gap-x-10 gap-y-4 rounded-xl border border-white/10 bg-card/60 p-4'>
+    <section className='flex flex-wrap items-center gap-x-10 gap-y-4 rounded-xl bg-card/60 p-4'>
       <Stat label='Generation'>
         <span className='flex items-center gap-2'>
           <span
@@ -329,10 +329,7 @@ const LimitControl = ({
           <ChevronDownIcon className='size-4 shrink-0 opacity-60' />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent
-        align='start'
-        variant='subtle-surface'
-        className='w-48'>
+      <DropdownMenuContent align='start' className='w-48'>
         {options.map((option) => (
           <DropdownMenuItem
             key={option}
@@ -396,10 +393,7 @@ const RowActions = ({
             <EllipsisIcon className='size-4' />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent
-          align='end'
-          variant='subtle-surface'
-          className='w-40'>
+        <DropdownMenuContent align='end' className='w-40'>
           {blocked ? (
             <DropdownMenuItem
               onSelect={() => {

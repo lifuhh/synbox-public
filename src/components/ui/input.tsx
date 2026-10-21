@@ -18,9 +18,9 @@ const inputVariants = cva('', {
       valid: 'border-success hover:border-foreground focus:border-success',
     },
     variant: {
+      // Borderless inside an InputField, which draws the edge and its state
+      bare: 'h-12 min-w-0 flex-1 border-0 bg-transparent px-0 py-0 text-base text-foreground invisible-ring sm:text-base',
       default: '',
-      // The landing page's big search box
-      hero: 'border-2 bg-input/40 py-6 text-white invisible-ring',
     },
   },
 })
@@ -46,4 +46,36 @@ const InputRender: React.ForwardRefRenderFunction<
 const Input = React.forwardRef(InputRender)
 Input.displayName = 'Input'
 
-export { Input }
+// A rounded field that holds a bare Input and an action. The border tells whether what was typed is
+// usable, as on Input, but reacts to focus anywhere inside the field
+const inputFieldVariants = cva(
+  'flex w-full items-center gap-2 rounded-full border bg-card pr-1.5 pl-5 transition-colors',
+  {
+    defaultVariants: { state: 'default' },
+    variants: {
+      state: {
+        default:
+          'border-input focus-within:border-foreground/60 hover:border-foreground/40',
+        empty:
+          'border-foreground/60 focus-within:border-foreground/90 hover:border-foreground/80',
+        invalid:
+          'border-error-input focus-within:border-error-input hover:border-foreground',
+        search:
+          'border-search focus-within:border-search hover:border-foreground',
+        valid:
+          'border-success focus-within:border-success hover:border-foreground',
+      },
+    },
+  }
+)
+
+const InputField = ({
+  className,
+  state,
+  ...props
+}: React.HTMLAttributes<HTMLDivElement> &
+  VariantProps<typeof inputFieldVariants>) => (
+  <div className={cn(inputFieldVariants({ state }), className)} {...props} />
+)
+
+export { Input, InputField }

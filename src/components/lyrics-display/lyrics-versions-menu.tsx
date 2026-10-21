@@ -38,8 +38,7 @@ export const LyricsVersionsMenu = ({ videoId }: { videoId: string }) => {
         side={portrait ? 'bottom' : 'right'}
         align={portrait ? 'center' : 'start'}
         sideOffset={8}
-        collisionPadding={8}
-        variant='primary-surface'>
+        collisionPadding={8}>
         <DropdownMenuItem
           onSelect={() => {
             void startFromButton({ mode: 'regenerate', videoId })

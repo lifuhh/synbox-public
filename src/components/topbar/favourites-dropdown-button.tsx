@@ -28,7 +28,7 @@ const FavouritesDropdownButton = () => {
         <Tooltip>
           <DropdownMenuTrigger asChild>
             <TooltipTrigger asChild>
-              <Button variant='outline-primary' size='icon'>
+              <Button variant='toolbar' size='icon'>
                 <BookBookmarkIcon className='h-6 w-6 shrink-0' />
                 <span className='sr-only'>View Bookmarks</span>
               </Button>
@@ -40,7 +40,7 @@ const FavouritesDropdownButton = () => {
           align='end'
           collisionPadding={8}
           sideOffset={10}
-          variant='primary-panel'
+          variant='panel'
           className='max-h-(--radix-dropdown-menu-content-available-height) w-[min(400px,calc(100vw-1rem))]'>
           <div className='flex flex-col'>
             <div className='sticky top-0 z-10 bg-background/95 p-2'>

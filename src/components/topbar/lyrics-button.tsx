@@ -14,7 +14,7 @@ const LyricsButton = () => (
   <TooltipProvider>
     <Tooltip>
       <TooltipTrigger asChild>
-        <Button variant='outline-primary' size='icon' asChild>
+        <Button variant='toolbar' size='icon' asChild>
           <Link to='/lyrics'>
             <BookOpenTextIcon className='h-6 w-6 shrink-0' />
             <span className='sr-only'>Lyrics</span>

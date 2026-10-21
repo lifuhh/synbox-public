@@ -148,7 +148,7 @@ const GenerationFab = ({ job, count, view, raised }: GenerationFabProps) => {
           by resizing: the text is laid out once, and a transition cut short turns back from where it is */}
       <span
         className={cn(
-          'absolute inset-y-0 right-0 flex w-max items-center rounded-full bg-generation-surface pr-(--fab-size) ring-1 ring-white/8 transition-clip duration-300 ease-out ring-inset group-focus-visible:ring-2 group-focus-visible:ring-brand-light',
+          'absolute inset-y-0 right-0 flex w-max items-center rounded-full bg-generation-surface pr-(--fab-size) transition-clip duration-300 ease-out ring-inset group-focus-visible:ring-2 group-focus-visible:ring-brand-light',
           state === 'running'
             ? '[clip-path:inset(0_0_0_calc(100%-var(--fab-size))_round_9999px)] group-hover:[clip-path:inset(0_round_9999px)] group-focus-visible:[clip-path:inset(0_round_9999px)]'
             : '[clip-path:inset(0_round_9999px)]'

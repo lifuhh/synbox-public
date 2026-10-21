@@ -26,8 +26,9 @@ export const RailButton = ({
     aria-label={label}
     aria-pressed={pressed}
     className={cn(
-      'grid size-9 shrink-0 place-items-center rounded-lg text-white/85 transition-colors hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none disabled:pointer-events-none disabled:opacity-30 touch:size-10 portrait:touch:size-9.5 short:size-8',
-      pressed === true && 'bg-primary text-white hover:bg-primary/85',
+      'grid size-9 shrink-0 place-items-center rounded-lg text-white/85 transition-colors hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:pointer-events-none disabled:opacity-30 touch:size-10 portrait:touch:size-9.5 short:size-8',
+      pressed === true &&
+        'bg-primary-subtle text-primary-text hover:bg-primary-subtle-hover',
       pressed === false && 'text-white/45',
       className
     )}
@@ -66,7 +67,7 @@ export const RailTooltip = ({
         }
       }}>
       <TooltipTrigger asChild>{children}</TooltipTrigger>
-      <TooltipContent side='right' sideOffset={10} variant='primary'>
+      <TooltipContent side='right' sideOffset={10}>
         {label}
       </TooltipContent>
     </Tooltip>

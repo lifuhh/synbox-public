@@ -9,7 +9,6 @@ import { useGallerySongs } from '@/lib/react-query/queries-and-mutations'
 import type { CssVars } from '@/types'
 
 import HomeFooter from '../shared/home-footer'
-import { Spotlight } from '../ui/spotlight'
 
 // The gallery scrolls in its own box, sized with the footer below it to fill the screen under the top bar,
 // so the page ends at the footer however many songs there are. Inside, only the rows near the view exist:
@@ -18,12 +17,12 @@ import { Spotlight } from '../ui/spotlight'
 // nears the end of the ones loaded.
 const GRID =
   'grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4'
-const CARD = 'block rounded-xl border bg-muted p-4'
+const CARD = 'block rounded-xl bg-card p-4'
 // gap-6 between cards and rows; py-4 above the first row and below the last
 const GAP_PX = 24
 const PAD_PX = 16
-// Border 2 + padding 32 + title line 28 + artist line 20 + its margin 12
-const CARD_CHROME_PX = 94
+// Padding 32 + title line 28 + artist line 20 + its margin 12
+const CARD_CHROME_PX = 92
 // Load the next cards when the view is this many rows from the end of the loaded ones
 const LOAD_AHEAD_ROWS = 2
 
@@ -31,7 +30,7 @@ const SongCard = ({ song }: { song: GallerySong }) => (
   <Link
     to={`/v/${song.videoId}`}
     state={{ videoId: song.videoId }}
-    className={`${CARD} transition-colors duration-300 hover:border-ring hover:bg-primary/10 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden`}>
+    className={`${CARD} transition-colors duration-300 hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden`}>
     <p className='truncate text-lg font-bold tracking-wide text-song-title'>
       {song.title}
     </p>
@@ -163,13 +162,6 @@ const SongGallery = () => {
 
   return (
     <section className='relative flex h-[calc(100dvh-var(--topbar-h))] flex-col px-2 sm:px-6'>
-      {/* The glow is 169 % of this section tall and shifted up 40 % of that, so its bottom lands at
-          top + 101.4 % of the section. Any top lower than -1.4 % of the section keeps it above the
-          footer; a higher one makes the page scroll on past the footer */}
-      <Spotlight
-        className='-top-80 left-40 scale-x-[-1] md:-top-8 md:-left-40'
-        fill='#580a24'
-      />
       <div
         ref={setScroller}
         className='custom-scrollbar min-h-0 flex-1 overflow-y-auto px-2'>

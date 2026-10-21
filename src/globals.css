@@ -20,88 +20,84 @@
 }
 
 @theme {
-  --font-inter:
-    Inter, ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji',
-    'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+  --font-ui:
+    'Plus Jakarta Sans', 'Noto Sans JP', ui-sans-serif, system-ui, sans-serif,
+    'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
   /* The offline reader: the phone's own plain sans for every script. System fonts are complete on the device,
      while the web fonts only have the slices a page has drawn before */
   --font-reader:
     -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP',
     'Noto Sans CJK JP', 'PingFang SC', 'Yu Gothic', system-ui, sans-serif;
 
-  --color-border: hsl(var(--border));
-  --color-input: hsl(var(--input));
+  --color-border: var(--border);
+  --color-input: var(--input);
 
-  --color-ring: hsl(var(--ring));
-  --color-ring-foreground: hsl(var(--ring-foreground));
+  --color-ring: var(--ring);
 
-  --color-background: hsl(var(--background));
-  --color-foreground: hsl(var(--foreground));
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
 
-  --color-card: hsl(var(--card));
-  --color-card-foreground: hsl(var(--card-foreground));
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
 
-  --color-popover: hsl(var(--popover));
-  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
 
-  --color-primary: hsl(var(--primary));
-  --color-primary-foreground: hsl(var(--primary-foreground));
-  --color-primary-light: hsl(var(--primary-light));
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  /* The only magenta allowed as text, and the tonal fill behind it */
+  --color-primary-text: var(--primary-text);
+  --color-primary-subtle: var(--primary-subtle);
+  --color-primary-subtle-hover: var(--primary-subtle-hover);
 
-  --color-secondary: hsl(var(--secondary));
-  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
 
-  --color-muted: hsl(var(--muted));
-  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
 
-  --color-accent: hsl(var(--accent));
-  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
 
-  --color-destructive: hsl(var(--destructive));
-  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
 
-  --color-search: hsl(var(--search));
+  /* The search field in search mode, distinct from the green (valid link) and red (bad link) states */
+  --color-search: var(--search);
 
-  --border-color-primary: hsl(var(--primary));
-  --border-color-primary-bright: hsl(var(--primary-bright));
-
-  /* Status colors on the dark surfaces */
-  --color-error: var(--color-red-300);
-  --color-error-soft: var(--color-red-200);
-  --color-error-hover: var(--color-red-50);
-  --color-error-border: var(--color-red-400);
-  --color-error-strong: var(--color-red-500);
-  --color-error-ring-offset: var(--color-red-600);
-  --color-error-input: var(--color-red-800);
-  --color-success: var(--color-green-500);
-  --color-warning: var(--color-amber-300);
+  /* Status colors on the dark surfaces, one hue each, at least 15° from the magenta */
+  --color-error: var(--red-11);
+  --color-error-soft: var(--red-12);
+  --color-error-hover: var(--red-13);
+  --color-error-border: var(--red-9);
+  --color-error-ring-offset: var(--red-8);
+  --color-error-strong: var(--red-10);
+  --color-error-input: var(--red-9);
+  --color-success: var(--green-11);
+  --color-warning: var(--amber-11);
 
   /* Neutral text and surfaces */
-  --color-hero-from: var(--color-neutral-50);
-  --color-hero-to: var(--color-neutral-400);
-  --color-tagline: var(--color-neutral-300);
-  --color-lab-foreground: var(--color-neutral-200);
-  --color-lab-muted: var(--color-neutral-400);
-  --color-dock-divider: var(--color-neutral-400);
-  --color-stage: var(--color-neutral-950);
-  --color-song-title: var(--color-zinc-100);
-  --color-song-meta: var(--color-gray-400);
-  --color-song-channel: var(--color-gray-300);
-  --color-faint: var(--color-gray-600);
-  --color-thumbnail-placeholder: var(--color-gray-800);
-  --color-divider: #424242;
-  --color-dock-border: #707070;
+  --color-tagline: var(--graphite-11);
+  --color-lab-foreground: var(--graphite-12);
+  --color-lab-muted: var(--graphite-11);
+  --color-dock-divider: var(--graphite-6);
+  --color-stage: #000;
+  --color-song-title: var(--graphite-12);
+  --color-song-meta: var(--graphite-11);
+  --color-song-channel: var(--graphite-11);
+  --color-faint: var(--graphite-9);
+  --color-thumbnail-placeholder: var(--graphite-4);
+  --color-dock-border: var(--graphite-6);
 
   /* Brand accents */
-  --color-brand-light: #f785b3;
-  --color-brand-glow: #eb6fce;
-  --color-brand-divider: #c2255c;
-  --color-brand-ring-stop: hsl(329 95% 50%);
-  --color-backdrop-from: #ca195f;
-  --color-backdrop-to: #a81c95;
-  --color-backdrop-scrim: #150406;
-  --color-generation-surface: #241019;
-  --color-generation-panel: #1b0812;
+  --color-brand-light: var(--magenta-11);
+  --color-brand-glow: var(--magenta-10);
+  --color-brand-ring-stop: var(--magenta-9);
+  /* The two-color glow behind the top of a page */
+  --color-glow-a: var(--glow-a);
+  --color-glow-b: var(--glow-b);
+  --color-generation-surface: var(--graphite-3);
+  --color-generation-panel: var(--graphite-2);
 
   --text-badge: 11px;
   --text-caption: 13px;
@@ -112,8 +108,8 @@
   --radius-panel: 20px;
 
   --shadow-panel: 0 24px 64px -12px rgb(0 0 0/0.7);
-  --shadow-glow: 0 0 32px -6px #eb6fce;
-  --shadow-glow-sm: 0 0 12px -2px #eb6fce;
+  --shadow-glow: 0 0 32px -6px var(--magenta-9);
+  --shadow-glow-sm: 0 0 12px -2px var(--magenta-9);
   --shadow-rail: 0 8px 24px rgb(0 0 0/0.4);
   --shadow-stage: 0 4px 16px rgb(0 0 0/0.35);
   --drop-shadow-stage: 0 2px 6px rgb(0 0 0/0.8);
@@ -150,7 +146,6 @@
 
   --animate-accordion-down: accordion-down 0.2s ease-out;
   --animate-accordion-up: accordion-up 0.2s ease-out;
-  --animate-spotlight: spotlight 2s ease 0.75s 1 forwards;
   --animate-pulse: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   --animate-progress-stripes: progress-stripes 0.9s linear infinite;
   --animate-breathe: breathe 2.4s ease-in-out infinite;
@@ -169,16 +164,6 @@
     }
     to {
       height: 0;
-    }
-  }
-  @keyframes spotlight {
-    0% {
-      opacity: 0;
-      transform: translate(-72%, -62%) scale(0.5);
-    }
-    100% {
-      opacity: 1;
-      transform: translate(-50%, -40%) scale(1);
     }
   }
   /* Moves the stripes against the direction the bar fills */
@@ -331,26 +316,81 @@
   );
 }
 
-/* The soft shape of each backdrop color blob */
-@utility clip-backdrop-blob {
-  clip-path: polygon(
-    74.1% 44.1%,
-    100% 61.6%,
-    97.5% 26.9%,
-    85.5% 0.1%,
-    80.7% 2%,
-    72.5% 32.5%,
-    60.2% 62.4%,
-    52.4% 68.1%,
-    47.5% 58.3%,
-    45.2% 34.5%,
-    27.5% 76.7%,
-    0.1% 64.9%,
-    17.9% 100%,
-    27.6% 76.8%,
-    76.1% 97.7%,
-    74.1% 44.1%
+/* The glow behind the top of every page: two soft washes of the brand glow over the page color */
+@utility page-glow {
+  background:
+    radial-gradient(110% 40% at 18% -4%, var(--glow-a), transparent 72%),
+    radial-gradient(80% 34% at 100% 6%, var(--glow-b), transparent 70%);
+}
+
+/* The landing carousel's row. Its container (@container) picks how many cards show, and the cards stretch to
+   fill the row with a slice of the next one peeking in, so the gap stays 1rem at every width */
+@utility carousel-track {
+  --cards: 1;
+  --gap: 1rem;
+  --peek: 3rem;
+  --pad: 1rem;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: calc(
+    (100cqw - 2 * var(--pad) - var(--cards) * var(--gap) - var(--peek)) /
+      var(--cards)
   );
+  gap: var(--gap);
+  padding: 0.125rem var(--pad) 0.375rem;
+  scroll-padding-inline: var(--pad);
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+  @media (width >= 48rem) {
+    --pad: 0px;
+  }
+  @container (width >= 35rem) {
+    --cards: 2;
+  }
+  @container (width >= 55rem) {
+    --cards: 3;
+  }
+  @container (width >= 73.75rem) {
+    --cards: 4;
+  }
+  @container (width >= 92.5rem) {
+    --cards: 5;
+  }
+}
+
+/* Cards fade as they scroll in and out of the row, so the peeking one reads as "more" */
+@utility carousel-card {
+  @supports (animation-timeline: view()) {
+    animation:
+      carousel-enter linear both,
+      carousel-exit linear forwards;
+    animation-timeline: view(inline), view(inline);
+    animation-range:
+      entry 0% entry 100%,
+      exit 0% exit 100%;
+  }
+}
+@keyframes carousel-enter {
+  from {
+    opacity: 0.35;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes carousel-exit {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0.35;
+  }
 }
 
 /* A progress bar's fill, clipped from the right by --progress-remaining */
@@ -408,7 +448,7 @@
   ::before,
   ::backdrop,
   ::file-selector-button {
-    border-color: hsl(var(--border));
+    border-color: var(--border);
   }
 
   /* Tailwind v4 resets buttons to cursor: default; this keeps the v3 pointer */
@@ -460,16 +500,16 @@
   }
 
   &::-webkit-scrollbar-track {
-    background: hsl(var(--popover));
+    background: var(--popover);
   }
 
   &::-webkit-scrollbar-thumb {
-    background: hsl(var(--primary) / 35%);
+    background: color-mix(in oklab, var(--primary) 35%, transparent);
     border-radius: 3px;
   }
 
   &::-webkit-scrollbar-thumb:hover {
-    background: hsl(var(--primary) / 65%);
+    background: color-mix(in oklab, var(--primary) 65%, transparent);
   }
 }
 
@@ -785,51 +825,64 @@
 }
 
 @layer base {
+  /* Berry. One theme (index.html pins the dark class). Primitives are named by hue and never used in components;
+     the shadcn names below point at them. Contrast notes are WCAG 2 ratios against the surface named */
   :root {
-    --background: 329 84% 95%;
-    --foreground: 329 5% 8%;
-    --card: 329 50% 90%;
-    --card-foreground: 329 5% 10%;
-    --popover: 329 84% 95%;
-    --popover-foreground: 329 95% 8%;
-    --primary: 329 95% 26%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 329 30% 70%;
-    --secondary-foreground: 0 0% 0%;
-    --muted: 291 30% 85%;
-    --muted-foreground: 329 5% 35%;
-    --accent: 291 30% 80%;
-    --accent-foreground: 329 5% 10%;
-    --destructive: 0 84% 30%;
-    --destructive-foreground: 329 5% 90%;
-    --search: 199 89% 60%;
-    --border: 329 30% 50%;
-    --input: 329 30% 18%;
-    --ring: 329 95% 43%;
-    --radius: 0.3rem;
-  }
-  .dark {
-    --background: 329 50% 8%;
-    --foreground: 329 5% 90%;
-    --card: 329 50% 8%;
-    --card-foreground: 329 5% 90%;
-    --popover: 329 50% 5%;
-    --popover-foreground: 329 5% 90%;
-    --primary-light: 329 95% 26%;
-    --primary: 329 95% 43%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 329 30% 10%;
-    --secondary-foreground: 0 0% 100%;
-    --muted: 329 95% 8%;
-    --muted-foreground: 329 5% 60%;
-    --accent: 291 30% 15%;
-    --accent-foreground: 329 5% 90%;
-    --destructive: 0 84% 30%;
-    --destructive-foreground: 329 5% 90%;
-    --search: 199 89% 60%;
-    --border: 329 30% 18%;
-    --input: 329 30% 18%;
-    --ring: 329 95% 43%;
+    --graphite-1: oklch(0.155 0.012 350); /* page */
+    --graphite-2: oklch(0.195 0.012 350); /* card, input */
+    --graphite-3: oklch(0.23 0.012 350); /* popover, sheet */
+    --graphite-4: oklch(0.27 0.012 350); /* hover, track */
+    --graphite-5: oklch(0.28 0.012 350); /* subtle line */
+    --graphite-6: oklch(0.36 0.012 350); /* input line */
+    --graphite-9: oklch(0.62 0.012 350); /* faint text, 4.6:1 on a popover */
+    --graphite-11: oklch(
+      0.76 0.012 350
+    ); /* secondary text, 7.8:1 on a popover */
+    --graphite-12: oklch(0.96 0.005 350); /* text, 16.2:1 on a card */
+    --magenta-3: oklch(0.27 0.08 350); /* tonal fill */
+    --magenta-4: oklch(0.31 0.09 350); /* tonal fill, hovered */
+    --magenta-7: oklch(0.46 0.18 350); /* selected border */
+    --magenta-9: oklch(0.585 0.24 350); /* solid; white label 4.8:1 */
+    --magenta-10: oklch(0.54 0.22 350); /* solid, hovered; white label 5.7:1 */
+    --magenta-11: oklch(
+      0.77 0.16 350
+    ); /* magenta text: 8.2:1 on a card, 7.0:1 on the tonal fill */
+    --glow-a: oklch(0.33 0.09 356);
+    --glow-b: oklch(0.25 0.07 340);
+    --danger-9: oklch(0.45 0.17 25); /* destructive fill; white label 8.2:1 */
+    --red-8: oklch(0.52 0.19 25);
+    --red-9: oklch(0.62 0.19 25); /* error border, 4.6:1 on a card */
+    --red-10: oklch(0.7 0.17 25); /* error text, 5.9:1 on a popover */
+    --red-11: oklch(0.74 0.14 25);
+    --red-12: oklch(0.82 0.09 25);
+    --red-13: oklch(0.95 0.02 25);
+    --green-11: oklch(0.76 0.15 152); /* 8.4:1 on a popover */
+    --amber-11: oklch(0.83 0.14 80); /* 9.9:1 on a popover */
+
+    --background: var(--graphite-1);
+    --foreground: var(--graphite-12);
+    --card: var(--graphite-2);
+    --card-foreground: var(--graphite-12);
+    --popover: var(--graphite-3);
+    --popover-foreground: var(--graphite-12);
+    --primary: var(--magenta-9);
+    --primary-foreground: #fff;
+    --primary-text: var(--magenta-11);
+    --primary-subtle: var(--magenta-3);
+    --primary-subtle-hover: var(--magenta-4);
+    --secondary: var(--graphite-2);
+    --secondary-foreground: var(--graphite-12);
+    /* shadcn's "muted" and "accent" are neutral fills, not the brand color */
+    --muted: var(--graphite-4);
+    --muted-foreground: var(--graphite-11);
+    --accent: var(--graphite-4);
+    --accent-foreground: var(--graphite-12);
+    --destructive: var(--danger-9);
+    --destructive-foreground: #fff;
+    --search: var(--magenta-11);
+    --border: var(--graphite-5);
+    --input: var(--graphite-6);
+    --ring: var(--magenta-11);
     --radius: 0.3rem;
   }
 
@@ -903,13 +956,13 @@
   }
 
   body {
-    @apply custom-scrollbar min-h-dvh font-inter text-foreground;
+    @apply custom-scrollbar min-h-dvh font-ui text-foreground;
 
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
-    background-color: hsl(var(--background));
-    color: hsl(var(--foreground));
+    background-color: var(--background);
+    color: var(--foreground);
 
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;

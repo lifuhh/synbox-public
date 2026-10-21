@@ -66,7 +66,9 @@ export const OfflineSongRow = ({
         </p>
         <p className='truncate text-xs text-muted-foreground'>{song.author}</p>
         {match?.kind === 'lyrics' ? (
-          <p className='truncate text-xs text-primary italic'>“{match.line}”</p>
+          <p className='truncate text-xs text-primary-text italic'>
+            “{match.line}”
+          </p>
         ) : (
           <p className='flex items-center gap-1.5 text-xs text-muted-foreground'>
             <span>{formatDate(sortAt)}</span>

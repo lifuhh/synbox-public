@@ -5,7 +5,6 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion'
-import { Separator } from '@/components/ui/separator'
 
 const AboutPage = () => (
   <section className='relative mt-(--topbar-h) flex-between flex custom-scrollbar max-h-[calc(100dvh-var(--topbar-h))] flex-1 flex-col overflow-y-scroll px-4 pb-page-bottom-sm md:px-10'>
@@ -13,7 +12,6 @@ const AboutPage = () => (
 
     <div className='mx-auto w-full max-w-6xl'>
       <h1 className='my-8 text-center text-3xl font-bold'>About</h1>
-      <Separator decorative={false} variant='brand' className='my-5' />
 
       <div className='space-y-6'>
         <p className='text-lg text-pretty'>
@@ -27,7 +25,6 @@ const AboutPage = () => (
       </div>
 
       <h1 className='my-8 text-center text-3xl font-bold'>FAQs</h1>
-      <Separator decorative={false} variant='brand' className='my-5' />
       <div className='mb-8'>
         <Accordion type='multiple' className='w-full'>
           <AccordionItem value='item-1'>

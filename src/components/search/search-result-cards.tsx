@@ -74,7 +74,7 @@ export const LibrarySongCard = ({
         onClick={() => {
           onMoreLikeThis(song.video_id)
         }}
-        className='-my-1 shrink-0 rounded-md p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-primary'>
+        className='-my-1 shrink-0 rounded-md p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-primary-text'>
         <SparklesIcon className='size-4' />
       </button>
     </div>

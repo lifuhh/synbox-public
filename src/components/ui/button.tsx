@@ -21,6 +21,10 @@ const buttonVariants = cva(
       size: {
         default: 'h-10 px-4 py-2',
         icon: 'h-10 w-10',
+        // A small round icon button, as for a carousel's arrows
+        'icon-round': 'size-9 rounded-full',
+        // The action inside a field, as the landing search box's
+        inset: 'h-11 px-5',
         lg: 'h-11 rounded-md px-8',
         // A default-height button with a little side padding, for a lone icon in a row
         narrow: 'h-10 px-2 py-2',
@@ -29,36 +33,34 @@ const buttonVariants = cva(
         tall: 'h-10 px-4 py-6',
       },
       variant: {
-        default: 'bg-primary text-primary-foreground hover:bg-primary/85',
+        // The one main action on a view: a tonal pill that stands out without glaring
+        default:
+          'bg-primary-subtle text-primary-text hover:bg-primary-subtle-hover',
         destructive:
           'bg-destructive text-destructive-foreground hover:bg-destructive/90',
         ghost: 'hover:bg-accent hover:text-accent-foreground',
-        // Ghost that fills with the brand color on hover
-        'ghost-primary': 'hover:bg-primary hover:text-accent-foreground',
+        // Ghost that takes the tonal fill on hover
+        'ghost-primary': 'hover:bg-primary-subtle hover:text-primary-text',
         // Ghost with dimmed text that brightens on hover
         'ghost-subtle':
           'text-accent-foreground hover:bg-accent hover:text-foreground',
-        // Raised hero call to action
-        hero: 'border-2 border-primary/90 bg-primary/90 text-foreground hover:border-primary hover:bg-primary',
-        // White pill on a brand-colored card; solid brand text, as 80% falls under 4.5:1 contrast on white
-        inverse:
-          'rounded-xl bg-white font-bold text-primary hover:bg-primary/80 hover:text-foreground [&:hover]:transition-none [&:hover]:duration-0',
-        link: 'text-primary underline-offset-4 hover:bg-primary hover:text-white hover:underline',
-        outline:
-          'border border-input bg-background hover:bg-accent hover:text-accent-foreground',
-        // The top bar's icon buttons
-        'outline-primary':
-          'border border-primary/80 bg-background invisible-ring hover:border-white hover:bg-accent hover:text-accent-foreground',
+        // The landing search box's action, sitting inside the field
+        hero: 'rounded-full bg-primary-subtle font-semibold text-primary-text hover:bg-primary-subtle-hover',
+        link: 'text-primary-text underline-offset-4 hover:underline',
+        // A secondary action: a neutral fill, no outline
+        outline: 'bg-secondary hover:bg-accent hover:text-accent-foreground',
         // Ghost buttons on the dark glass of a floating panel
         overlay: 'text-white/80 hover:bg-white/10 hover:text-accent-foreground',
         'overlay-icon':
           'rounded-full text-white/70 hover:bg-white/10 hover:text-white',
         'overlay-muted': 'text-white/60 hover:bg-white/10 hover:text-white',
+        // A play button in a song list: a quiet icon that lights up on hover
+        'row-icon':
+          'rounded-full text-muted-foreground hover:bg-accent hover:text-foreground',
         secondary:
           'bg-secondary text-secondary-foreground hover:bg-secondary/80',
-        // A play button in a song list: a link-styled icon on a filled square
-        'secondary-link':
-          'bg-secondary text-primary underline-offset-4 hover:bg-primary hover:text-white hover:underline',
+        // The top bar's icon buttons
+        toolbar: 'rounded-full hover:bg-accent hover:text-accent-foreground',
       },
     },
   }

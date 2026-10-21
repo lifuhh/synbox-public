@@ -49,12 +49,12 @@ const SongRow = ({ song, ready, onPlayClick }: SongRowProps) => {
   const isOverflowing = useOverflow(textRef, containerRef)
 
   return (
-    <tr className='playlist-item bg-card/80 text-accent-foreground hover:bg-muted-foreground/20'>
+    <tr className='playlist-item text-foreground transition-colors hover:bg-accent'>
       <td className='p-2'>
         <div className='flex items-center gap-1.5'>
           {ready && (
             <MicVocalIcon
-              className='size-3.5 shrink-0 text-primary'
+              className='size-3.5 shrink-0 text-primary-text'
               aria-label='Lyrics ready'
             />
           )}
@@ -71,7 +71,7 @@ const SongRow = ({ song, ready, onPlayClick }: SongRowProps) => {
       </td>
       <td className='p-2'>
         <Button
-          variant='secondary-link'
+          variant='row-icon'
           size='icon'
           className='shrink-0'
           aria-label={`Play ${song.title}`}
@@ -105,17 +105,19 @@ const LandingPageCharts: React.FC = () => {
 
   return (
     <div
-      className='w-full rounded-md border border-primary/30 bg-background lg:mt-2 lg:ml-6 lg:w-5/12 xl:w-4/12'
+      className='mx-4 rounded-xl bg-card p-2 md:mx-0 lg:w-100 lg:shrink-0 lg:self-start'
       aria-busy={isChartsDataFetching}>
-      <div className='relative overflow-hidden rounded-md'>
+      <div className='relative overflow-hidden rounded-lg'>
         <table className='w-full table-fixed border-collapse'>
           <colgroup>
             <col className='w-[calc(100%-60px)]' />
             <col className='w-15' />
           </colgroup>
           <thead>
-            <tr className='bg-muted text-white'>
-              <th className='unselectable py-3 text-center' colSpan={2}>
+            <tr>
+              <th
+                className='unselectable px-2 pt-2 pb-3 text-left text-lg font-semibold tracking-tight'
+                colSpan={2}>
                 YouTube Charts
               </th>
             </tr>
@@ -161,7 +163,7 @@ const LandingPageCharts: React.FC = () => {
             <caption className='mt-1 mb-2 caption-bottom text-sm text-song-channel'>
               Source: YouTube Top 100 Songs Japan ·{' '}
               <MicVocalIcon
-                className='inline size-3.5 -translate-y-px text-primary'
+                className='inline size-3.5 -translate-y-px text-primary-text'
                 aria-hidden
               />{' '}
               Lyrics ready
