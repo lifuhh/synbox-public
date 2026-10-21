@@ -15,4 +15,5 @@ export enum QUERY_KEYS {
   GET_ME = 'getMe',
   GET_ADMIN_USERS = 'getAdminUsers',
   GET_ADMIN_SETTINGS = 'getAdminSettings',
+  GET_ADMIN_GENERATIONS = 'getAdminGenerations',
 }
