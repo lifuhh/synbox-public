@@ -1,8 +1,11 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { AnimatePresence, MotionConfig } from 'motion/react'
+import type { ReactElement } from 'react'
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useMatch } from 'react-router'
 
+import { useMediaQuery } from '@/hooks/use-media-query'
 import { markGuestSongUsed, useAccess } from '@/lib/auth'
 import { STEPS } from '@/lib/generation/plan'
 import type { Job } from '@/lib/generation/store'
@@ -34,6 +37,15 @@ const LIST_QUERIES = [
   QUERY_KEYS.GET_GALLERY_SONGS,
 ]
 
+// Renders into the top bar's dock when there is one; AnimatePresence still sees it as its own child
+const Docked = ({
+  into,
+  children,
+}: {
+  into: HTMLElement | null
+  children: ReactElement
+}) => (into ? createPortal(children, into) : children)
+
 const announcementOf = (job: Job | null, view: Presentation | null) => {
   if (!job || !view) {
     return ''
@@ -52,6 +64,13 @@ const GenerationHost = () => {
   const view = usePresentation(job)
   const queryClient = useQueryClient()
   const onPlayer = useMatch('/v/:videoId') !== null
+  // On a phone the corner sits over the player's lyrics and controls and the lists' play buttons, so the
+  // minimized job docks into the top bar instead (top-bar.tsx), one tap from its panel as before
+  const touch = useMediaQuery('(pointer: coarse)')
+  const dock = touch
+    ? document.querySelector<HTMLElement>('[data-generation-dock]')
+    : null
+  const docked = dock !== null
 
   // How the panel leaves next time. Set before collapsing, and back to quick each time it opens.
   const [panelExit, setPanelExit] = useState<PanelExit>('quick')
@@ -119,16 +138,19 @@ const GenerationHost = () => {
               jobs={jobs}
               view={view}
               raised={onPlayer}
+              docked={docked}
               onOutsideActivity={stepAside}
             />
           ) : (
-            <GenerationFab
-              key='fab'
-              job={job}
-              count={jobs.length}
-              view={view}
-              raised={onPlayer}
-            />
+            <Docked key={docked ? 'dock' : 'fab'} into={dock}>
+              <GenerationFab
+                job={job}
+                count={jobs.length}
+                view={view}
+                raised={onPlayer}
+                docked={docked}
+              />
+            </Docked>
           ))}
       </AnimatePresence>
       <p className='sr-only' aria-live='polite'>

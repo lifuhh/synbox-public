@@ -54,6 +54,9 @@ const buttonVariants = cva(
         'overlay-icon':
           'rounded-full text-white/70 hover:bg-white/10 hover:text-white',
         'overlay-muted': 'text-white/60 hover:bg-white/10 hover:text-white',
+        // A floating panel's ghost button with an outline, for a second action beside a filled one
+        'overlay-outline':
+          'border border-white/20 text-white/90 hover:border-white/35 hover:bg-white/10 hover:text-white',
         // A play button in a song list: a quiet icon that lights up on hover
         'row-icon':
           'rounded-full text-muted-foreground hover:bg-accent hover:text-foreground',

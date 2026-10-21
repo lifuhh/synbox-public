@@ -112,11 +112,16 @@ const TopBar = () => {
         ) : (
           <AppLogo />
         )}
-        <div data-player-chrome className={cn(cluster, 'mr-2 ml-auto')}>
-          <LyricsButton />
-          <FavouritesDropdownButton />
-          <HistoryDropdownButton />
-          {!isVideoPlayer && <ProfileButton />}
+        <div className='mr-2 ml-auto flex items-center gap-2 sm:gap-3'>
+          {/* On a phone a minimized lyrics generation sits here (generation-host.tsx), clear of the page,
+              and stays on the player while the buttons beside it hide */}
+          <div data-generation-dock className='contents' />
+          <div data-player-chrome className={cluster}>
+            <LyricsButton />
+            <FavouritesDropdownButton />
+            <HistoryDropdownButton />
+            {!isVideoPlayer && <ProfileButton />}
+          </div>
         </div>
       </nav>
     </section>

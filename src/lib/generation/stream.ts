@@ -7,34 +7,42 @@ import type { KaraokeDoc } from '@/types'
 
 import { isStageId } from './plan'
 import type { StageId } from './plan'
+import { onResume } from './resume'
 
-// The backend sends a heartbeat at least every 10 s while a job runs
-const IDLE_TIMEOUT_MS = 60_000
+// The backend sends a heartbeat at least every 10 s while a job runs, so three missed ones mean the
+// connection is dead. An older backend's /validate sends nothing while it waits on YouTube, so it gets longer
+const JOB_IDLE_MS = 30_000
+const VALIDATE_IDLE_MS = 60_000
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null
 
-// `retryable` failures are the connection's, and asking again attaches to the same backend job. The rest
-// (the backend's own `error` message, a refused request) would fail the same way, or pay twice.
+interface ErrorKind {
+  // Asking again may work. The rest (the backend's own `error` message, a refused request) would fail the
+  // same way, or pay twice
+  retryable?: boolean
+  // The connection went (dropped, went quiet, or never came back from the background) while the backend's
+  // job may still be running: asking again with the same request id attaches to it
+  lost?: boolean
+  // Lost because the page just came back, so reconnect at once
+  resumed?: boolean
+  // Why the backend refused, when it says: sign_in_required, quota_exceeded, already_finished, ...
+  code?: string
+}
+
 export class GenerationError extends Error {
   readonly retryable: boolean
-  // The page came back from the background: its connection is stale, not failed, so reconnecting is
-  // not a retry
+  readonly lost: boolean
   readonly resumed: boolean
-  // Why the backend refused, when it says: sign_in_required, quota_exceeded, generation_paused, ...
   readonly code: string | undefined
 
-  constructor(
-    message: string,
-    retryable: boolean,
-    resumed = false,
-    code?: string
-  ) {
+  constructor(message: string, kind: ErrorKind = {}) {
     super(message)
     this.name = 'GenerationError'
-    this.retryable = retryable
-    this.resumed = resumed
-    this.code = code
+    this.lost = kind.lost === true || kind.resumed === true
+    this.retryable = kind.retryable === true || this.lost
+    this.resumed = kind.resumed === true
+    this.code = kind.code
   }
 }
 
@@ -68,44 +76,50 @@ interface StreamMessage {
 const failedRequest = (status: number) =>
   status === 429
     ? new GenerationError(
-        'Too many songs requested from your network. Try again in a while.',
-        false
+        'Too many songs requested from your network. Try again in a while.'
       )
-    : new GenerationError(`The lyrics server answered ${status}`, status >= 500)
+    : new GenerationError(`The lyrics server answered ${status}`, {
+        retryable: status >= 500,
+      })
 
 const stale = () =>
-  new GenerationError('Reconnecting to the lyrics server', true, true)
+  new GenerationError('Reconnecting to the lyrics server', { resumed: true })
 
 // Calls `onMessage` for every message and returns when the stream ends. A backend `error` message throws.
 const readStream = async (
   path: string,
   body: object,
   signal: AbortSignal,
+  idleMs: number,
   onMessage: (message: StreamMessage) => void
 ) => {
   const idle = new AbortController()
   let idleTimer: ReturnType<typeof setTimeout> | undefined
+  // Time in the background doesn't count toward the idle limit, even while bytes still arrive there: a
+  // limit restarted in the background fired on return before the page knew it was back
   const touch = () => {
     clearTimeout(idleTimer)
+    if (document.visibilityState === 'hidden') {
+      return
+    }
     idleTimer = setTimeout(() => {
       idle.abort()
-    }, IDLE_TIMEOUT_MS)
+    }, idleMs)
   }
   touch()
-  // A phone suspends a page in the background, and its connection with it. Time there doesn't count
-  // toward the idle limit, and on return the connection is replaced at once: asking again attaches to
-  // the same backend job, which replays its progress
-  const resumed = new AbortController()
-  let wasHidden = document.visibilityState === 'hidden'
-  const handleVisibility = () => {
+  const pauseIdle = () => {
     if (document.visibilityState === 'hidden') {
-      wasHidden = true
       clearTimeout(idleTimer)
-    } else if (wasHidden) {
-      resumed.abort()
     }
   }
-  document.addEventListener('visibilitychange', handleVisibility)
+  document.addEventListener('visibilitychange', pauseIdle)
+  // A phone suspends a page in the background, and its connection with it. When the page gets its network
+  // back the connection is replaced at once: asking again attaches to the same backend job, which replays
+  // its progress from the start
+  const resumed = new AbortController()
+  const stopResume = onResume(() => {
+    resumed.abort()
+  })
   try {
     const token = await backendToken()
     let response: Response
@@ -131,7 +145,7 @@ const readStream = async (
       // CORS headers, which the browser reports as a network error
       throw new GenerationError(
         "Couldn't reach the lyrics server. It may be busy with another song, so try again in a minute.",
-        true
+        { lost: true }
       )
     }
     if (!response.ok) {
@@ -139,13 +153,10 @@ const readStream = async (
     }
     // A host without the backend answers with the app's index.html and a 200
     if (!(response.headers.get('content-type') ?? '').includes('ndjson')) {
-      throw new GenerationError(
-        'The lyrics server sent an unreadable response',
-        false
-      )
+      throw new GenerationError('The lyrics server sent an unreadable response')
     }
     if (!response.body) {
-      throw new GenerationError('This browser cannot read the stream', false)
+      throw new GenerationError('This browser cannot read the stream')
     }
 
     const handleLine = (line: string) => {
@@ -163,12 +174,9 @@ const readStream = async (
         return
       }
       if (content.type === 'error') {
-        throw new GenerationError(
-          String(content.data),
-          false,
-          false,
-          typeof content.code === 'string' ? content.code : undefined
-        )
+        throw new GenerationError(String(content.data), {
+          code: typeof content.code === 'string' ? content.code : undefined,
+        })
       }
       onMessage({ data: content.data, type: content.type })
     }
@@ -202,13 +210,14 @@ const readStream = async (
         idle.signal.aborted
           ? 'The lyrics server stopped responding'
           : 'The connection to the lyrics server dropped',
-        true
+        { lost: true }
       )
     }
     handleLine(buffer)
   } finally {
     clearTimeout(idleTimer)
-    document.removeEventListener('visibilitychange', handleVisibility)
+    document.removeEventListener('visibilitychange', pauseIdle)
+    stopResume()
   }
 }
 
@@ -232,11 +241,16 @@ const parseVideo = (data: unknown): VideoSummary | null => {
   }
 }
 
-type OnProgress = (event: ProgressEvent) => void
+export interface Listeners {
+  onProgress: (event: ProgressEvent) => void
+  // Any message at all, heartbeats included: the backend is there
+  onHeard: () => void
+}
 
 const forwardProgress =
-  (onProgress: OnProgress) =>
+  ({ onProgress, onHeard }: Listeners) =>
   ({ type, data }: StreamMessage) => {
+    onHeard()
     if (type !== 'progress') {
       return
     }
@@ -246,25 +260,47 @@ const forwardProgress =
     }
   }
 
-// Downloads the song when it is new, and checks it is a Japanese song
+export interface GenerationOptions {
+  regenerate: boolean
+  skipUploaderLyrics: boolean
+  requestId: string
+}
+
+const generationFields = (videoId: string, options: GenerationOptions) => ({
+  id: videoId,
+  regenerate: options.regenerate,
+  request_id: options.requestId,
+  skip_uploader_lyrics: options.skipUploaderLyrics,
+})
+
+// Downloads the song when it is new, and checks it is a Japanese song. Named by its request id, the
+// validation goes on to run the whole song on the backend, so it finishes and saves while the page is away;
+// the later calls attach to it (an older backend ignores the extra fields)
 export const validate = async (
   videoId: string,
+  options: GenerationOptions,
   signal: AbortSignal,
-  onProgress: OnProgress
+  listeners: Listeners
 ): Promise<VideoSummary> => {
   // Filled in from the stream's callback, which control-flow narrowing cannot see into
   const found: { video: VideoSummary | null } = { video: null }
-  const progress = forwardProgress(onProgress)
-  await readStream('/validate', { id: videoId }, signal, (message) => {
-    progress(message)
-    if (message.type === 'vid_info') {
-      found.video = parseVideo(message.data)
+  const progress = forwardProgress(listeners)
+  await readStream(
+    '/validate',
+    generationFields(videoId, options),
+    signal,
+    VALIDATE_IDLE_MS,
+    (message) => {
+      progress(message)
+      if (message.type === 'vid_info') {
+        found.video = parseVideo(message.data)
+      }
     }
-  })
+  )
   if (found.video === null) {
     throw new GenerationError(
       'The server closed the connection before sending the song details',
-      true
+      { retryable: true }
     )
   }
   return found.video
@@ -314,26 +350,18 @@ export const checkGeneration = async (
 // when its turn comes
 export const transcribe = async (
   videoId: string,
-  options: {
-    regenerate: boolean
-    skipUploaderLyrics: boolean
-    requestId: string
-  },
+  options: GenerationOptions,
   signal: AbortSignal,
-  onProgress: OnProgress,
+  listeners: Listeners,
   onQueue: (ahead: number) => void
 ) => {
   const found: { lines: number | null } = { lines: null }
-  const progress = forwardProgress(onProgress)
+  const progress = forwardProgress(listeners)
   await readStream(
     '/transcribev2',
-    {
-      id: videoId,
-      regenerate: options.regenerate,
-      request_id: options.requestId,
-      skip_uploader_lyrics: options.skipUploaderLyrics,
-    },
+    generationFields(videoId, options),
     signal,
+    JOB_IDLE_MS,
     (message) => {
       progress(message)
       if (message.type === 'queue') {
@@ -351,11 +379,11 @@ export const transcribe = async (
   if (found.lines === null) {
     throw new GenerationError(
       'The server closed the connection before sending the lyrics',
-      true
+      { retryable: true }
     )
   }
   if (found.lines === 0) {
-    throw new GenerationError('No lyrics were found for this video', false)
+    throw new GenerationError('No lyrics were found for this video')
   }
 }
 
@@ -365,6 +393,8 @@ export type SaveOutcome =
   // `active`: the backend made it the default (latest wins); older backends keep it aside
   | { kind: 'version'; version: number; active: boolean }
   | { kind: 'unchanged' }
+  // Saved before this page heard how: the backend said so when asked again (already_finished)
+  | { kind: 'finished' }
 
 const parseSaved = (data: unknown): SaveOutcome => {
   if (isRecord(data) && data.created === true) {
@@ -391,14 +421,15 @@ export const translate = async (
   videoId: string,
   requestId: string,
   signal: AbortSignal,
-  onProgress: OnProgress
+  listeners: Listeners
 ): Promise<Saved> => {
   const found: { saved: Saved | null } = { saved: null }
-  const progress = forwardProgress(onProgress)
+  const progress = forwardProgress(listeners)
   await readStream(
     '/translate-annotate',
     { id: videoId, request_id: requestId },
     signal,
+    JOB_IDLE_MS,
     (message) => {
       progress(message)
       if (message.type === 'persisted') {
@@ -414,7 +445,7 @@ export const translate = async (
   if (found.saved === null) {
     throw new GenerationError(
       'The server closed the connection before saving the lyrics',
-      true
+      { retryable: true }
     )
   }
   return found.saved

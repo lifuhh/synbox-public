@@ -4,6 +4,7 @@ import { STEPS } from '@/lib/generation/plan'
 import type { Cursor } from '@/lib/generation/presentation'
 import {
   advanceCursor,
+  cursorAt,
   isRevealed,
   START_CURSOR,
 } from '@/lib/generation/presentation'
@@ -15,6 +16,12 @@ import {
 import type { Job } from '@/lib/generation/store'
 
 const TICK_MS = 100
+// A reconnect after coming back usually takes a fraction of a second; only a longer one is worth a word
+export const RECONNECTING_NOTICE_MS = 600
+
+export const isReconnecting = (job: Job, now: number) =>
+  job.reconnectingSince !== null &&
+  now - job.reconnectingSince >= RECONNECTING_NOTICE_MS
 
 interface Tick {
   jobId: number | null
@@ -24,6 +31,13 @@ interface Tick {
 
 const viewsAt = (job: Job, now: number) =>
   STEPS.map((step) => stepView(job.runs, step, now))
+
+const completedAt = ({ status }: Job) =>
+  status.kind === 'complete' ? status.at : null
+
+// A job the screen switches to starts at its current step
+const firstCursor = (job: Job, now: number) =>
+  cursorAt(viewsAt(job, now), completedAt(job), now)
 
 // Re-reads the job on a clock while anything on screen still moves, and works out what to show
 export const usePresentation = (job: Job | null) => {
@@ -38,8 +52,12 @@ export const usePresentation = (job: Job | null) => {
   })
 
   const sameJob = job !== null && tick.jobId === job.id
-  const cursor = sameJob ? tick.cursor : START_CURSOR
-  const revealed = sameJob && isRevealed(cursor, tick.now)
+  // Before its first tick a job is read at the current time: read at its start, every bar showed back at
+  // its floor for a frame whenever the panel switched songs
+  // oxlint-disable-next-line react/purity -- a clock-driven view, read at the same clock its ticks use
+  const now = sameJob ? tick.now : Date.now()
+  const cursor = sameJob || job === null ? tick.cursor : firstCursor(job, now)
+  const revealed = job !== null && isRevealed(cursor, now)
   const ticking = job !== null && job.status.kind !== 'failed' && !revealed
 
   useEffect(() => {
@@ -49,19 +67,19 @@ export const usePresentation = (job: Job | null) => {
         if (!current) {
           return prev
         }
-        const now = Date.now()
-        const from = prev.jobId === current.id ? prev.cursor : START_CURSOR
-        const { status } = current
+        const at = Date.now()
+        const from =
+          prev.jobId === current.id ? prev.cursor : firstCursor(current, at)
         return {
           cursor: advanceCursor(
             from,
-            viewsAt(current, now),
-            status.kind === 'complete' ? status.at : null,
-            status.kind === 'failed',
-            now
+            viewsAt(current, at),
+            completedAt(current),
+            current.status.kind === 'failed',
+            at
           ),
           jobId: current.id,
-          now,
+          now: at,
         }
       })
     }
@@ -79,7 +97,6 @@ export const usePresentation = (job: Job | null) => {
   if (!job) {
     return null
   }
-  const now = sameJob ? tick.now : job.startedAt
   const views = viewsAt(job, now)
   const failed = job.status.kind === 'failed'
   const lastIndex = views.length - 1
@@ -92,6 +109,7 @@ export const usePresentation = (job: Job | null) => {
     complete,
     index,
     overall: overallValue(job.runs, now, complete),
+    reconnecting: isReconnecting(job, now),
     remainingS: remainingSeconds(job.runs, now),
     revealed,
     // The centered step shows full while it waits for the wheel to roll

@@ -89,6 +89,14 @@ export const outcomeOf = (job: Job): Outcome | null => {
           versions: true,
         }
   }
+  if (outcome.kind === 'finished') {
+    return {
+      detail: 'It finished while this page was away.',
+      play: { label: 'Play Now', to: song },
+      title: job.mode === 'regenerate' ? 'Lyrics Updated' : 'Ready to Sing',
+      versions: job.mode === 'regenerate',
+    }
+  }
   if (outcome.kind === 'unchanged' && job.mode === 'regenerate') {
     return {
       detail: 'This run came out the same as the current lyrics.',
@@ -108,6 +116,7 @@ export const outcomeOf = (job: Job): Outcome | null => {
   }
 }
 
+// '' until the backend sends the song's details, when nothing named the song before
 export const titleOf = (job: Job) => job.video?.title ?? job.title
 
 // Where a job stands in line, or null once it is under way
