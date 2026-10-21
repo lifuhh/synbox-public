@@ -347,7 +347,7 @@ const VersionsAdmin = ({ videoId }: { videoId: string }) => {
         </p>
       )}
       {data?.versions.length === 0 && (
-        <p className='rounded-xl border border-dashed border-white/15 p-6 text-center text-sm text-muted-foreground'>
+        <p className='rounded-xl border border-dashed border-input p-6 text-center text-sm text-muted-foreground'>
           No versions yet. The first regeneration also keeps the current lyrics
           as the original version.
         </p>

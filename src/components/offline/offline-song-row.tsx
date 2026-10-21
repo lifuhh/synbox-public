@@ -30,7 +30,7 @@ const formatDate = (ms: number) =>
   })
 
 const Thumbnail = ({ src }: { src: string | null }) => (
-  <div className='relative aspect-video w-24 shrink-0 overflow-hidden rounded bg-white/5'>
+  <div className='relative aspect-video w-24 shrink-0 overflow-hidden rounded bg-thumbnail-placeholder'>
     {src === null ? (
       <MusicIcon className='absolute inset-0 m-auto size-5 text-muted-foreground' />
     ) : (
@@ -58,7 +58,7 @@ export const OfflineSongRow = ({
   <li>
     <Link
       to={`/lyrics/${song.videoId}`}
-      className='flex items-center gap-3 rounded-lg px-2 py-1.5 transition-colors hover:bg-white/5 active:bg-white/10'>
+      className='flex items-center gap-3 rounded-lg px-2 py-1.5 transition-colors hover:bg-accent active:bg-muted'>
       <Thumbnail src={song.thumbnail} />
       <div className='flex min-w-0 flex-1 flex-col'>
         <p className='line-clamp-2 text-sm leading-snug font-medium text-foreground'>

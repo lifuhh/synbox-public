@@ -98,7 +98,7 @@ const Badge = ({
   <span
     className={cn(
       'shrink-0 rounded-full px-2 py-0.5 text-xs font-medium',
-      tone === 'neutral' && 'bg-white/10 text-foreground',
+      tone === 'neutral' && 'bg-accent text-foreground',
       tone === 'error' && 'bg-error/15 text-error'
     )}>
     {children}
@@ -116,7 +116,7 @@ const Avatar = ({ user }: { user: AdminUser }) =>
   ) : (
     <span
       aria-hidden
-      className='flex size-8 shrink-0 items-center justify-center rounded-full bg-white/10 text-xs font-medium text-foreground'>
+      className='flex size-8 shrink-0 items-center justify-center rounded-full bg-accent text-xs font-medium text-foreground'>
       {(user.name.trim()[0] ?? user.email[0] ?? '?').toUpperCase()}
     </span>
   )
@@ -219,7 +219,7 @@ const Usage = ({ used, limit }: { used: number; limit: number | null }) => {
         </span>
         <span className='text-muted-foreground'> / {limit}</span>
       </span>
-      <span className='h-1 w-full max-w-20 overflow-hidden rounded-full bg-white/10'>
+      <span className='h-1 w-full max-w-20 overflow-hidden rounded-full bg-accent'>
         <span
           className={cn(
             'block h-full w-(--fill) rounded-full',
@@ -490,7 +490,7 @@ const AccountActions = ({ user, isSelf }: AccountProps) =>
   )
 
 const UserRow = (props: AccountProps) => (
-  <tr className='h-16 border-t border-white/10 align-middle'>
+  <tr className='h-16 border-t border-border align-middle'>
     <th scope='row' className='pr-4 text-left font-normal'>
       <Account {...props} />
     </th>
@@ -512,7 +512,7 @@ const UserRow = (props: AccountProps) => (
 
 // Phones: the same account as a stacked card, since six columns don't fit
 const UserCard = (props: AccountProps) => (
-  <li className='flex flex-col gap-3 border-t border-white/10 py-4'>
+  <li className='flex flex-col gap-3 border-t border-border py-4'>
     <div className='flex items-center justify-between gap-2'>
       <Account {...props} />
       <AccountActions {...props} />
@@ -642,7 +642,7 @@ const SongTitle = ({ generation }: { generation: AdminGeneration }) => {
 }
 
 const SongRow = ({ generation }: { generation: AdminGeneration }) => (
-  <tr className='h-14 border-t border-white/10 align-middle'>
+  <tr className='h-14 border-t border-border align-middle'>
     <th scope='row' className='pr-4 text-left font-normal'>
       <SongTitle generation={generation} />
     </th>
@@ -666,7 +666,7 @@ const SongRow = ({ generation }: { generation: AdminGeneration }) => (
 
 // Phones: the song on one line, and who, what and when under it
 const SongCard = ({ generation }: { generation: AdminGeneration }) => (
-  <li className='flex flex-col gap-1.5 border-t border-white/10 py-3'>
+  <li className='flex flex-col gap-1.5 border-t border-border py-3'>
     <div className='flex items-start justify-between gap-3'>
       <div className='min-w-0'>
         <SongTitle generation={generation} />

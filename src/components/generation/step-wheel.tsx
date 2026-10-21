@@ -167,7 +167,7 @@ const StepWheel = ({ views, index, failed }: StepWheelProps) => {
       {...handlers}
       className='relative h-[208px] cursor-grab touch-none overflow-hidden mask-fade-y select-none perspective-[700px] active:cursor-grabbing'
       aria-hidden>
-      <div className='absolute inset-x-0 top-1/2 h-15 -translate-y-1/2 rounded-xl bg-white/[0.055] ring-1 ring-white/10 ring-inset' />
+      <div className='absolute inset-x-0 top-1/2 h-15 -translate-y-1/2 rounded-xl bg-accent' />
       {STEPS.map((step, i) => {
         const view = views[i]
         const offset = i - index
@@ -188,14 +188,14 @@ const StepWheel = ({ views, index, failed }: StepWheelProps) => {
               <p className='truncate text-label leading-5 font-semibold tracking-tight text-white'>
                 {step.title}
               </p>
-              <p className='truncate text-xs leading-4 text-white/55'>
+              <p className='truncate text-xs leading-4 text-muted-foreground'>
                 {rowDetail(view, centered && failed)}
               </p>
             </div>
             <div className='flex w-24 flex-col items-end gap-1.5'>
               <span className='text-label leading-none font-semibold text-white tabular-nums'>
                 {percent}
-                <span className='ml-px text-xs text-white/55'>%</span>
+                <span className='ml-px text-xs text-muted-foreground'>%</span>
               </span>
               <ProgressBar
                 fraction={shownFraction}
