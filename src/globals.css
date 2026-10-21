@@ -272,10 +272,17 @@
     --reader-status: #1f1c17;
   }
 
-  /* Furigana over the page, not over a video: no shadow, a little quieter than the kanji */
+  /* Furigana over the page, not over a video: no shadow, a little quieter than the kanji. The player's -0.9em
+     is tuned to its web font; with the reader's system fonts it sets the reading on the kanji. About 2px
+     clear takes 0 in Chromium and -0.3em in iPhone WebKit, which stands the reading higher */
   & .lyric-ruby-text {
+    margin-bottom: 0;
     text-shadow: none;
     opacity: 0.8;
+
+    @supports (-webkit-touch-callout: none) {
+      margin-bottom: -0.3em;
+    }
   }
 }
 

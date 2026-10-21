@@ -451,7 +451,7 @@ const ReaderPage = () => {
       data-reader
       data-theme={prefs.theme}
       style={readerVars}
-      className='fixed inset-0 z-60 flex flex-col bg-(--reader-bg) text-(--reader-fg) reader-paper'>
+      className='fixed inset-0 z-60 reader-paper flex flex-col bg-(--reader-bg) text-(--reader-fg)'>
       <title>{song ? `${song.title} · Lyrics` : 'Lyrics · Synbox'}</title>
       <div
         aria-hidden='true'
