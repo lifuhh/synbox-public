@@ -23,6 +23,13 @@
   --font-inter:
     Inter, ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji',
     'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+  /* The offline reader. System fonts first: they are complete on the device, while the web fonts only have
+     the slices a page has drawn before */
+  --font-reader-ja:
+    'Hiragino Sans', 'Noto Sans JP', 'Noto Sans CJK JP', 'Yu Gothic', sans-serif;
+  --font-reader-serif:
+    'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, 'Songti SC',
+    'Noto Serif CJK SC', serif;
 
   --color-border: hsl(var(--border));
   --color-input: hsl(var(--input));
@@ -223,6 +230,63 @@
   /* The player's lyric lines: a share of the stage's width, with a floor, times the viewer's scale */
   --text-lyric: calc(max(3.5cqw, 1.5rem) * var(--lyric-scale));
   --text-lyric-secondary: calc(max(2.4cqw, 0.9375rem) * var(--lyric-scale));
+
+  /* The offline reader: room under its bar and over its text style row, and type times the reader's scale */
+  --spacing-reader-top: calc(var(--spacing-safe-top) + 4.25rem);
+  --spacing-reader-bottom: calc(var(--safe-bottom) + 2.5rem);
+  --spacing-reader-bottom-bar: calc(var(--safe-bottom) + 6rem);
+  --spacing-reader-line: calc(1.05rem * var(--reader-scale));
+  --spacing-reader-stanza: calc(1.5rem * var(--reader-scale));
+  --text-reader-title: calc(1.6rem * var(--reader-scale));
+  --text-reader-title--line-height: 1.25;
+  --text-reader-ja: calc(1.3rem * var(--reader-scale));
+  --text-reader-ja--line-height: 2.05;
+  --text-reader-romaji: calc(0.95rem * var(--reader-scale));
+  --text-reader-romaji--line-height: 1.4;
+  --text-reader-translation: calc(1.08rem * var(--reader-scale));
+  --text-reader-translation--line-height: 1.6;
+}
+
+/* The offline reader's paper and ink, dark by default. The status bar strip stays dark on the light page:
+   an installed iPhone app draws the clock in white over whatever is under it */
+@utility reader-paper {
+  --reader-bg: #111113;
+  --reader-fg: #ebe7e1;
+  --reader-hover: rgb(255 255 255 / 0.1);
+  --reader-line: rgb(255 255 255 / 0.1);
+  --reader-line-strong: rgb(255 255 255 / 0.25);
+  --reader-muted: #9d978e;
+  --reader-panel: #1d1d20;
+  --reader-status: #111113;
+  --furigana-size: 0.5em;
+
+  &[data-theme='light'] {
+    --reader-bg: #f7f3ea;
+    --reader-fg: #1f1c17;
+    --reader-hover: rgb(0 0 0 / 0.07);
+    --reader-line: rgb(0 0 0 / 0.1);
+    --reader-line-strong: rgb(0 0 0 / 0.25);
+    --reader-muted: #6b655b;
+    --reader-panel: #fffdf8;
+    --reader-status: #1f1c17;
+  }
+
+  /* Furigana over the page, not over a video: no shadow, a little quieter than the kanji */
+  & .lyric-ruby-text {
+    text-shadow: none;
+    opacity: 0.8;
+  }
+}
+
+/* The reader's custom colour swatch: every hue */
+@utility bg-hue-wheel {
+  background: conic-gradient(
+    oklch(0.75 0.15 0),
+    oklch(0.75 0.15 90),
+    oklch(0.75 0.15 180),
+    oklch(0.75 0.15 270),
+    oklch(0.75 0.15 360)
+  );
 }
 
 /* The lyrics' theme swatch: the light and dark backgrounds a theme is shown against */
@@ -791,11 +855,23 @@
     scroll-behavior: smooth;
   }
 
+  /* Every page scrolls inside its own box, so the document never moves: a press and drag anywhere must not
+     pull the whole app off the screen (the rubber band) the way it can a web page. Scroll boxes still
+     bounce at their own ends, as a native list does */
   html,
   body {
-    overflow-x: hidden;
+    overflow: hidden;
+    overscroll-behavior: none;
     width: 100%;
+    height: 100%;
     position: relative;
+  }
+
+  /* A long press on an image or link would lift it out to drag or open a preview, which no app does */
+  img,
+  a {
+    -webkit-touch-callout: none;
+    -webkit-user-drag: none;
   }
 
   /* Pinch zoom stays; double-tap zoom goes, so double-tapping the stage only toggles fullscreen */

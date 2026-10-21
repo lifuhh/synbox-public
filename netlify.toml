@@ -36,6 +36,12 @@ status = 200
 force = true
 
 [[redirects]]
+from = "/api/me/*"
+to = "https://api.synbox.io/api/me/:splat"
+status = 200
+force = true
+
+[[redirects]]
 from = "/api/admin/*"
 to = "https://api.synbox.io/api/admin/:splat"
 status = 200

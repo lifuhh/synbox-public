@@ -1,5 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query'
 import {
+  BookOpenTextIcon,
   CircleQuestionMarkIcon,
   ShieldIcon,
   LogInIcon,
@@ -144,6 +145,14 @@ const ProfileButtonDropdown = () => {
                 <span>Sign In With Google</span>
               </DropdownMenuItem>
             )}
+            <DropdownMenuItem
+              className='cursor-pointer'
+              onClick={() => {
+                void navigate('/offline')
+              }}>
+              <BookOpenTextIcon className='mr-2 size-5 shrink-0' />
+              <span>Offline Lyrics</span>
+            </DropdownMenuItem>
             <DropdownMenuItem
               className='cursor-pointer'
               onClick={() => {

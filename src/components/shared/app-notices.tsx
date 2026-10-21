@@ -1,5 +1,6 @@
-import { CloudOffIcon } from 'lucide-react'
+import { ChevronRightIcon, CloudOffIcon } from 'lucide-react'
 import { useCallback } from 'react'
+import { Link, useMatch } from 'react-router'
 
 import { useOnline } from '@/lib/pwa'
 
@@ -10,6 +11,8 @@ const pill =
 // --notices-h so the toasts open below it rather than over it
 const AppNotices = () => {
   const online = useOnline()
+  // The offline pages are the place to be without a connection
+  const onOfflinePage = useMatch('/offline/*') !== null
   const publishHeight = useCallback((stack: HTMLDivElement) => {
     const root = document.documentElement
     const observer = new ResizeObserver(() => {
@@ -26,11 +29,12 @@ const AppNotices = () => {
     <div
       ref={publishHeight}
       className='pointer-events-none fixed inset-x-0 top-(--topbar-h) z-100 flex flex-col items-center gap-2 px-4 empty:hidden [&:not(:empty)]:pt-2'>
-      {!online && (
-        <output className={pill}>
+      {!online && !onOfflinePage && (
+        <Link to='/offline' className={pill}>
           <CloudOffIcon className='size-4 shrink-0 text-primary' />
-          Offline. Songs and lyrics need a connection.
-        </output>
+          Offline. Read your saved lyrics
+          <ChevronRightIcon className='-mr-1 size-4 shrink-0' />
+        </Link>
       )}
     </div>
   )
