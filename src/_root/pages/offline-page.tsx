@@ -1,6 +1,6 @@
 import { useAtomValue } from 'jotai'
 import { CloudOffIcon, SearchIcon, XIcon } from 'lucide-react'
-import { useDeferredValue, useEffect, useMemo, useState } from 'react'
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 
 import { OfflineSongRow } from '@/components/offline/offline-song-row'
 import { favoritesAtom, historyAtom } from '@/context/atoms'
@@ -71,6 +71,47 @@ const statusText = (status: SyncStatus, online: boolean, saved: number) => {
     : `${count} · Updated ${ago(status.syncedAt)}${failed}`
 }
 
+// How long the saved-songs count stays under the title once nothing is changing
+const STATUS_SHOWN_MS = 4000
+
+// The sync status under the title. Saving, offline and errors stay; the settled "N songs saved" line shows for
+// a few seconds, then folds away so the list starts higher
+const SyncStatusLine = ({
+  status,
+  online,
+  saved,
+}: {
+  status: SyncStatus
+  online: boolean
+  saved: number
+}) => {
+  const lasting = !online || status.kind !== 'idle' || status.failed > 0
+  // What the line says, without "Updated … ago", which changes on its own as time passes
+  const state = `${online}-${status.kind}-${status.kind === 'saving' ? '' : status.syncedAt}-${saved}`
+  const [folded, setFolded] = useState<string | null>(null)
+  useEffect(() => {
+    const timer = lasting
+      ? undefined
+      : setTimeout(() => {
+          setFolded(state)
+        }, STATUS_SHOWN_MS)
+    return () => {
+      clearTimeout(timer)
+    }
+  }, [state, lasting])
+  const shown = lasting || folded !== state
+  return (
+    <div data-folded={shown ? undefined : true} className='fold'>
+      <p
+        aria-live='polite'
+        className='flex min-h-0 items-center justify-center gap-1 overflow-hidden text-xs text-muted-foreground'>
+        {online ? null : <CloudOffIcon className='size-3.5 shrink-0' />}
+        {statusText(status, online, saved)}
+      </p>
+    </div>
+  )
+}
+
 const OfflinePage = () => {
   const { data: songs = [], isPending } = useOfflineSongs()
   const favourites = useAtomValue(favoritesAtom)
@@ -80,6 +121,10 @@ const OfflinePage = () => {
   const [query, setQuery] = useState('')
   const deferredQuery = useDeferredValue(query)
   const [filter, setFilter] = useState<Filter>('all')
+  // Whether the search row has stuck under the top bar (it is page-coloured then)
+  const header = useRef<HTMLElement>(null)
+  const bar = useRef<HTMLDivElement>(null)
+  const [stuck, setStuck] = useState(false)
 
   useEffect(() => {
     requestSync()
@@ -143,19 +188,26 @@ const OfflinePage = () => {
   })()
 
   return (
-    <section className='flex custom-scrollbar flex-1 flex-col overflow-y-auto overscroll-contain pr-(--safe-right) pb-page-bottom pl-(--safe-left)'>
+    <section
+      onScroll={() => {
+        // Stuck once the header has scrolled up past where the row holds
+        const bottom = header.current?.getBoundingClientRect().bottom ?? 0
+        const top = bar.current?.getBoundingClientRect().top ?? 0
+        setStuck(bottom < top - 0.5)
+      }}
+      className='flex custom-scrollbar flex-1 flex-col overflow-y-auto overscroll-contain pr-(--safe-right) pb-page-bottom pl-(--safe-left)'>
       <title>Lyrics · Synbox</title>
-      <header className='mx-auto w-full max-w-xl px-4 pt-(--topbar-h) text-center'>
-        <h1 className='pt-2 text-base font-semibold text-foreground'>Lyrics</h1>
-        <p
-          aria-live='polite'
-          className='flex items-center justify-center gap-1 text-xs text-muted-foreground'>
-          {online ? null : <CloudOffIcon className='size-3.5 shrink-0' />}
-          {statusText(status, online, shelf.length)}
-        </p>
+      <header
+        ref={header}
+        className='mx-auto w-full max-w-xl px-4 pt-(--topbar-h) pb-1 text-center'>
+        <h1 className='text-base font-semibold text-foreground'>Lyrics</h1>
+        <SyncStatusLine status={status} online={online} saved={shelf.length} />
       </header>
 
-      <div className='sticky top-(--topbar-h) z-10 bg-background/85 backdrop-blur-md'>
+      <div
+        ref={bar}
+        data-stuck={stuck ? true : undefined}
+        className='sticky-under-topbar z-10'>
         <div className='mx-auto flex w-full max-w-xl flex-col gap-2 px-4 py-2'>
           <label className='relative block'>
             <span className='sr-only'>Search Saved Songs</span>

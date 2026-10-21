@@ -14,9 +14,6 @@ const LandingPage = () => (
       <SongHighlightCarousel />
       <LandingPageCharts />
     </section>
-    <h2 className='mt-12 px-4 text-xl font-semibold tracking-tight text-foreground sm:px-8'>
-      Gallery
-    </h2>
     <SongGallery />
   </section>
 )

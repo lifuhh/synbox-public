@@ -162,12 +162,20 @@ const SongGallery = () => {
   const [scroller, setScroller] = useState<HTMLDivElement | null>(null)
 
   return (
-    <section className='relative flex h-[calc(var(--app-h)-var(--topbar-h))] flex-col px-2 sm:px-6'>
-      {/* Placeholders fill the box but don't scroll: there is nothing to scroll to yet */}
+    <section
+      aria-labelledby='gallery-title'
+      className='relative mt-12 flex h-[calc(var(--app-h)-var(--topbar-h))] flex-col px-2 sm:px-6'>
+      <h2
+        id='gallery-title'
+        className='px-2 pb-3 text-xl font-semibold tracking-tight text-foreground'>
+        Gallery
+      </h2>
+      {/* Placeholders fill the box but don't scroll: there is nothing to scroll to yet. Cards scrolled up fade
+          out under the title instead of being cut at its edge */}
       <div
         ref={setScroller}
         className={cn(
-          'custom-scrollbar min-h-0 flex-1 px-2',
+          'custom-scrollbar min-h-0 flex-1 [mask-image:linear-gradient(to_bottom,transparent,#000_1rem)] px-2',
           isLoading ? 'overflow-hidden' : 'overflow-y-auto'
         )}>
         {isLoading ? (
