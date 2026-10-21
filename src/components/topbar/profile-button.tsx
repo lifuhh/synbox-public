@@ -1,6 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query'
 import {
-  BookOpenTextIcon,
   CircleQuestionMarkIcon,
   ShieldIcon,
   LogInIcon,
@@ -203,14 +202,6 @@ const ProfileButtonDropdown = () => {
             </>
           )}
           <DropdownMenuGroup>
-            <DropdownMenuItem
-              className='cursor-pointer'
-              onClick={() => {
-                void navigate('/lyrics')
-              }}>
-              <BookOpenTextIcon className='mr-2 size-5 shrink-0' />
-              <span>Lyrics</span>
-            </DropdownMenuItem>
             {/* From sm up the top bar shows GitHub itself */}
             <DropdownMenuItem
               className='cursor-pointer sm:hidden'
