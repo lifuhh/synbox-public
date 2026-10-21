@@ -2,10 +2,11 @@ import { useVirtualizer } from '@tanstack/react-virtual'
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router'
 
+import { KaraokeBadge } from '@/components/shared/karaoke-badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useMediaQuery } from '@/hooks/use-media-query'
-import type { GallerySong } from '@/lib/appwrite/api'
 import { useGallerySongs } from '@/lib/react-query/queries-and-mutations'
+import type { LibraryListSong } from '@/lib/synbox-flask/discovery'
 import type { CssVars } from '@/types'
 
 import HomeFooter from '../shared/home-footer'
@@ -27,7 +28,7 @@ const CARD_CHROME_PX = 92
 // The thumbnail is the card's width less its padding (p-4 on both sides)
 const CARD_PAD_X_PX = 32
 
-const SongCard = ({ song }: { song: GallerySong }) => (
+const SongCard = ({ song }: { song: LibraryListSong }) => (
   <Link
     to={`/v/${song.videoId}`}
     state={{ videoId: song.videoId }}
@@ -35,7 +36,10 @@ const SongCard = ({ song }: { song: GallerySong }) => (
     <p className='truncate text-lg font-bold tracking-wide text-song-title'>
       {song.title}
     </p>
-    <p className='mb-3 truncate text-sm text-muted-foreground'>{song.author}</p>
+    <p className='mb-3 flex items-center gap-1.5 text-sm text-muted-foreground'>
+      {song.karaoke && <KaraokeBadge />}
+      <span className='truncate'>{song.author}</span>
+    </p>
     <img
       src={song.thumbnailUrl}
       alt=''

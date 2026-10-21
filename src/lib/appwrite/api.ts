@@ -127,9 +127,6 @@ export const getSongLyricsById = async (songId: string) => {
   }
 }
 
-// Appwrite's largest page, and the most ids one equal() query takes
-const PAGE = 100
-
 const galleryRowSchema = songInfoDocumentSchema.extend({ $id: z.string() })
 
 export interface GallerySong {
@@ -137,34 +134,6 @@ export interface GallerySong {
   title: string
   author: string
   thumbnailUrl: string
-}
-
-// Which of `videoIds` have saved lyrics: one query per hundred songs, run together
-export const songsWithLyrics = async (videoIds: string[]) => {
-  const ids = videoIds.map(createAppwriteIdFromYoutubeId)
-  const chunks = Array.from({ length: Math.ceil(ids.length / PAGE) }, (_, i) =>
-    ids.slice(i * PAGE, (i + 1) * PAGE)
-  )
-  const pages = await Promise.all(
-    chunks.map(
-      async (chunk) =>
-        await tables.listRows({
-          databaseId: appwriteConfig.databaseId,
-          queries: [
-            Query.equal('$id', chunk),
-            Query.select(['$id']),
-            Query.limit(PAGE),
-          ],
-          tableId: appwriteConfig.lyricsId,
-          total: false,
-        })
-    )
-  )
-  return new Set(
-    pages.flatMap((page) =>
-      page.rows.map((row) => youtubeIdFromAppwriteId(row.$id))
-    )
-  )
 }
 
 // The cards for one stretch of the gallery, in the order asked for; a song without its info row is left out

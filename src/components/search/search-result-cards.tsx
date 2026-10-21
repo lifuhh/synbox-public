@@ -1,5 +1,6 @@
 import { SparklesIcon } from 'lucide-react'
 
+import { KaraokeMark } from '@/components/shared/karaoke-badge'
 import type {
   LibrarySong,
   VideoSearchResult,
@@ -40,7 +41,10 @@ export const VideoResultCard = ({
     className='flex flex-col gap-2 rounded-lg p-2 text-left transition-colors hover:bg-muted/60'>
     <Thumbnail src={result.thumbnail_url} alt={result.title} />
     <Title>{result.title}</Title>
-    <p className='truncate text-xs text-muted-foreground'>{result.channel}</p>
+    <p className='flex items-center gap-1.5 text-xs text-muted-foreground'>
+      <KaraokeMark videoId={result.video_id} />
+      <span className='truncate'>{result.channel}</span>
+    </p>
   </button>
 )
 
@@ -64,8 +68,9 @@ export const LibrarySongCard = ({
       <Title>{song.title}</Title>
     </button>
     <div className='flex items-center gap-2'>
-      <p className='min-w-0 flex-1 truncate text-xs text-muted-foreground'>
-        {song.artist}
+      <p className='flex min-w-0 flex-1 items-center gap-1.5 text-xs text-muted-foreground'>
+        <KaraokeMark videoId={song.video_id} />
+        <span className='truncate'>{song.artist}</span>
       </p>
       <button
         type='button'

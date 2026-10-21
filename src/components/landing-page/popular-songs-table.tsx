@@ -2,14 +2,12 @@ import { MicVocalIcon, PlayIcon } from 'lucide-react'
 import React, { useRef } from 'react'
 import { useNavigate } from 'react-router'
 
+import { KaraokeMark } from '@/components/shared/karaoke-badge'
 import LoadError from '@/components/shared/load-error'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useOverflow } from '@/hooks/use-overflow'
-import {
-  useGetChartsPlaylist,
-  useSongsWithLyrics,
-} from '@/lib/react-query/queries-and-mutations'
+import { useGetChartsPlaylist } from '@/lib/react-query/queries-and-mutations'
 import type { CssVars } from '@/types'
 
 // One per visible row (the body is six rows tall); varied so the column doesn't read as a block
@@ -37,12 +35,10 @@ interface SongRowProps {
     title: string
     vidURL: string
   }
-  // The song already has karaoke lyrics on the site
-  ready: boolean
   onPlayClick: (videoId: string) => () => void
 }
 
-const SongRow = ({ song, ready, onPlayClick }: SongRowProps) => {
+const SongRow = ({ song, onPlayClick }: SongRowProps) => {
   const textRef = useRef<HTMLSpanElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
 
@@ -52,12 +48,7 @@ const SongRow = ({ song, ready, onPlayClick }: SongRowProps) => {
     <tr className='playlist-item text-foreground transition-colors hover:bg-accent'>
       <td className='p-2'>
         <div className='flex items-center gap-1.5'>
-          {ready && (
-            <MicVocalIcon
-              className='size-3.5 shrink-0 text-primary-text'
-              aria-label='Lyrics ready'
-            />
-          )}
+          <KaraokeMark videoId={song.vidURL} />
           <div
             ref={containerRef}
             className={`min-w-0 flex-1 overflow-hidden ${isOverflowing ? 'marquee' : ''}`}>
@@ -95,9 +86,6 @@ const LandingPageCharts: React.FC = () => {
     isFetching,
     refetch,
   } = useGetChartsPlaylist()
-  const { data: withLyrics } = useSongsWithLyrics(
-    chartsData?.map((song) => song.id) ?? []
-  )
 
   const handleRowClick = (videoId: string) => () => {
     void navigate(`/v/${videoId}`)
@@ -155,7 +143,6 @@ const LandingPageCharts: React.FC = () => {
                         title: song.title,
                         vidURL: song.id,
                       }}
-                      ready={withLyrics?.has(song.id) === true}
                       onPlayClick={handleRowClick}
                     />
                   ))}
@@ -166,7 +153,7 @@ const LandingPageCharts: React.FC = () => {
                 className='inline size-3.5 -translate-y-px text-primary-text'
                 aria-hidden
               />{' '}
-              Lyrics ready
+              Karaoke Lyrics
             </caption>
           </table>
         </div>

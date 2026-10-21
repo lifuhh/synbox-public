@@ -42,6 +42,11 @@ export interface OfflineSong {
   lines: OfflineLine[]
 }
 
+// The saved copy plays with the karaoke fill. Copies saved before timing was kept have none
+export const hasKaraoke = (song: OfflineSong) =>
+  song.version === OFFLINE_SONG_VERSION &&
+  song.lines.some((line) => line.karaoke !== null)
+
 const STANZA_GAP_SEC = 4
 
 const KANJI = /[一-龯々]/u

@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router'
 import { DropdownMenuItem } from '@/components/ui/dropdown-menu'
 import { useOverflow } from '@/hooks/use-overflow'
 
+import { KaraokeMark } from '../shared/karaoke-badge'
 import OptimizedThumbnail from '../shared/optimized-thumbnail'
 import { Button } from '../ui/button'
 
@@ -51,7 +52,10 @@ const HistoryDropdownItem: React.FC<HistoryDropdownItemProps> = ({
               {title}
             </span>
           </div>
-          <div className='truncate text-sm text-song-meta'>{author}</div>
+          <div className='flex items-center gap-1.5 text-sm text-song-meta'>
+            <KaraokeMark videoId={videoId} />
+            <span className='truncate'>{author}</span>
+          </div>
         </div>
         <Button asChild variant='row-icon' size='icon' className='shrink-0'>
           <span aria-hidden='true'>
