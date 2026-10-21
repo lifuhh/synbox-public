@@ -48,7 +48,7 @@ const ensureLayer = () => {
   }
   layer = document.createElement('div')
   layer.dataset.stageVideo = ''
-  layer.setAttribute('aria-hidden', 'true')
+  layer.inert = true
   Object.assign(layer.style, {
     background: '#000',
     overflow: 'hidden',
@@ -212,6 +212,8 @@ export const placeEngine = (
   // Taking input, the video rises over the stage's own surface, still under its cover (z-10), lyrics and
   // controls, as when it sat inside the stage
   parts.layer.style.zIndex = blockInput ? '' : '5'
+  // Out of the tab order and the accessibility tree unless YouTube's own screen is the thing to use
+  parts.layer.inert = blockInput
   place()
   const observer = new ResizeObserver(place)
   observer.observe(stage)
@@ -222,6 +224,7 @@ export const placeEngine = (
     window.removeEventListener('resize', place)
     parts.layer.style.visibility = 'hidden'
     parts.layer.style.zIndex = ''
+    parts.layer.inert = true
     parts.host.style.pointerEvents = 'none'
   }
 }
