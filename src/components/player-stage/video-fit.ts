@@ -3,11 +3,14 @@ import { useAtom } from 'jotai'
 import { atomWithStorage } from 'jotai/utils'
 import { useSyncExternalStore } from 'react'
 
+import { LANDSCAPE_LOCK_ATTR, pageTurned } from '@/lib/page-turn'
+
 export const WIDE_ASPECT = 16 / 9
 
 // 'fit' shows the whole picture; 'zoom' fills the stage and crops what overflows
 export type VideoFit = 'fit' | 'zoom'
-// A phone held upright, a phone on its side (the `short:` variant), and everything else
+// A phone held upright, a phone on its side or a page turned by Lock Landscape (the `short:` variant), and
+// everything else
 export type StageScreen = 'portrait' | 'landscape' | 'wide'
 
 // A phone on its side is wider than any music video, so it fills by default: the crop is a strip off the
@@ -29,7 +32,7 @@ const SCREEN_QUERIES = {
 } as const
 
 const readScreen = (): StageScreen => {
-  if (matchMedia(SCREEN_QUERIES.landscape).matches) {
+  if (matchMedia(SCREEN_QUERIES.landscape).matches || pageTurned()) {
     return 'landscape'
   }
   return matchMedia(SCREEN_QUERIES.portrait).matches ? 'portrait' : 'wide'
@@ -40,7 +43,13 @@ const subscribeScreen = (onChange: () => void) => {
   for (const list of lists) {
     list.addEventListener('change', onChange)
   }
+  // Lock Landscape turns the page without turning the screen
+  const turn = new MutationObserver(onChange)
+  turn.observe(document.documentElement, {
+    attributeFilter: [LANDSCAPE_LOCK_ATTR],
+  })
   return () => {
+    turn.disconnect()
     for (const list of lists) {
       list.removeEventListener('change', onChange)
     }
