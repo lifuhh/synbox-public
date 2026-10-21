@@ -2,11 +2,29 @@
 
 @import 'tw-animate-css';
 
+/* Portrait, except a page turned on its side by Lock Landscape (html[data-landscape-lock], below). Declared
+   first, as the built-in one it replaces was, so it sorts before the variants that follow */
+@custom-variant portrait {
+  @media (orientation: portrait) {
+    &:not(:where(html[data-landscape-lock], html[data-landscape-lock] *)) {
+      @slot;
+    }
+  }
+}
 @custom-variant dark (&:is(.dark *));
 /* Finger-driven screens: bigger hit areas, no hover-only affordances */
 @custom-variant touch (@media (pointer: coarse));
-/* A phone on its side: too short for the player's vertical rail */
-@custom-variant short (@media (orientation: landscape) and (max-height: 500px));
+/* A phone on its side: too short for the player's vertical rail. A page turned by Lock Landscape counts too */
+@custom-variant short {
+  @media (orientation: landscape) and (max-height: 500px) {
+    @slot;
+  }
+  @media (orientation: portrait) and (max-width: 500px) {
+    &:where(html[data-landscape-lock], html[data-landscape-lock] *) {
+      @slot;
+    }
+  }
+}
 
 @utility container {
   margin-inline: auto;
@@ -1020,7 +1038,8 @@
     --safe-left: env(safe-area-inset-left, 0px);
     --safe-right: env(safe-area-inset-right, 0px);
     /* The screen's height; full-screen layers use it instead of dvh (see the standalone rule below) */
-    --app-h: 100dvh;
+    --screen-h: 100dvh;
+    --app-h: var(--screen-h);
     /* How much of the player's bottom edge its floating UI covers while it shows: the lyrics lift by this,
        and notices and the generation button stand on it */
     --stage-chrome-h: var(--stage-controls-h, 5rem);
@@ -1072,6 +1091,38 @@
     display: none;
   }
 
+  /* Lock Landscape where nothing can lock the orientation (see src/lib/page-turn.ts): while the screen stands
+     upright the page is turned a quarter clockwise, top to the screen's right edge, so a phone held on its
+     side with its top to the left shows it upright. The safe areas turn with it: the notch is on the page's
+     left and the home indicator on its right. The top bar goes, as in fullscreen: its menus are placed in
+     the screen's axes and would open in the wrong place */
+  @media (orientation: portrait) {
+    html[data-landscape-lock] {
+      --safe-left: env(safe-area-inset-top, 0px);
+      --safe-right: env(safe-area-inset-bottom, 0px);
+      --safe-bottom: env(safe-area-inset-left, 0px);
+      --topbar-h: env(safe-area-inset-right, 0px);
+      --topbar-shown-h: var(--topbar-h);
+      --spacing-safe-top: env(safe-area-inset-right, 0px);
+      --app-h: 100vw;
+      --stage-chrome-h: var(--stage-controls-h, 5rem);
+    }
+
+    html[data-landscape-lock] body {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: var(--screen-h);
+      height: 100vw;
+      transform-origin: 0 0;
+      transform: translateX(100vw) rotate(90deg);
+    }
+
+    html[data-landscape-lock] [data-topbar] {
+      display: none;
+    }
+  }
+
   /* The player is black edge to edge, including any strip a mobile browser's toolbar leaves */
   html:has([data-player-stage]),
   html:has([data-player-stage]) body {
@@ -1102,7 +1153,7 @@
   @media (display-mode: standalone) {
     @supports (-webkit-touch-callout: none) {
       :root {
-        --app-h: min(100lvh, calc(100dvh + env(safe-area-inset-top, 0px)));
+        --screen-h: min(100lvh, calc(100dvh + env(safe-area-inset-top, 0px)));
       }
 
       html,

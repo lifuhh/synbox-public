@@ -3,14 +3,35 @@
 import * as SliderPrimitive from '@radix-ui/react-slider'
 import * as React from 'react'
 
+import { fractionAcross, pageTurned } from '@/lib/page-turn'
 import { cn } from '@/utils/cn'
+
+// Radix places the value by the pointer's clientX across the slider's box on screen. On a page turned by
+// Lock Landscape the slider runs down the screen instead, so the position along it is rewritten into the
+// clientX Radix reads, before its own handler runs
+const alongTurnedPage = (event: React.PointerEvent<HTMLSpanElement>) => {
+  if (!pageTurned()) {
+    return
+  }
+  const box = event.currentTarget.getBoundingClientRect()
+  event.clientX =
+    box.left + box.width * fractionAcross(event, event.currentTarget)
+}
 
 const SliderRender: React.ForwardRefRenderFunction<
   React.ComponentRef<typeof SliderPrimitive.Root>,
   React.ComponentPropsWithoutRef<typeof SliderPrimitive.Root>
-> = ({ className, ...props }, ref) => (
+> = ({ className, onPointerDown, onPointerMove, ...props }, ref) => (
   <SliderPrimitive.Root
     ref={ref}
+    onPointerDown={(event) => {
+      alongTurnedPage(event)
+      onPointerDown?.(event)
+    }}
+    onPointerMove={(event) => {
+      alongTurnedPage(event)
+      onPointerMove?.(event)
+    }}
     className={cn(
       'relative flex touch-none select-none',
       "data-[orientation='horizontal']:h-2 data-[orientation='horizontal']:w-full data-[orientation='horizontal']:items-center touch:data-[orientation='horizontal']:h-8",

@@ -287,7 +287,7 @@ export const PlayerStage = ({
   }
 
   // The whole page goes fullscreen, not just the stage, so the rail and the controls stay in reach.
-  // Nothing locks the orientation: the player turns with the phone, either way round
+  // The player turns with the phone either way round, unless Lock Landscape holds it on its side
   const toggleFullscreen = () => {
     if (!document.fullscreenEnabled) {
       // In Safari, unlike the Home Screen app, the browser's own bars stay; say how to lose them

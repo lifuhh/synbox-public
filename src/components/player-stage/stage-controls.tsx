@@ -7,6 +7,7 @@ import {
   RepeatIcon,
   RotateCcwIcon,
   RotateCwIcon,
+  SmartphoneIcon,
   Volume1Icon,
   Volume2Icon,
   VolumeXIcon,
@@ -15,6 +16,7 @@ import { useEffect, useRef, useState } from 'react'
 
 import { Slider } from '@/components/ui/slider'
 import { useArmed } from '@/hooks/use-armed'
+import { useLandscapeLock } from '@/hooks/use-landscape-lock'
 import type { CssVars } from '@/types'
 import { cn } from '@/utils/cn'
 
@@ -152,6 +154,7 @@ export const StageControls = ({
   onLockedChange,
 }: StageControlsProps) => {
   const armed = useArmed(visible)
+  const landscape = useLandscapeLock()
   const barRef = useRef<HTMLDivElement>(null)
   const contentRef = useRef<HTMLDivElement>(null)
 
@@ -217,6 +220,15 @@ export const StageControls = ({
           !armed && 'pointer-events-none'
         )}
         style={FADE_VARS}>
+        <IconButton
+          label='Lock Landscape'
+          active={landscape.locked}
+          onClick={() => {
+            void landscape.toggle()
+          }}
+          className='rounded-full'>
+          <SmartphoneIcon className='size-5 rotate-90' />
+        </IconButton>
         <IconButton
           label='Lock Screen'
           onClick={() => {

@@ -5,6 +5,7 @@ import { useRef, useState } from 'react'
 
 import { STEPS } from '@/lib/generation/plan'
 import type { StepView } from '@/lib/generation/progress'
+import { pagePoint } from '@/lib/page-turn'
 
 import ProgressBar from './progress-bar'
 
@@ -71,7 +72,7 @@ const useDragFocus = (index: number, last: number) => {
       // A mouse drag would otherwise select the panel's text above and below the drum
       event.preventDefault()
       event.currentTarget.setPointerCapture(event.pointerId)
-      dragRef.current = { anchor: index, startY: event.clientY }
+      dragRef.current = { anchor: index, startY: pagePoint(event).y }
       setDragFocus(index)
     },
     onPointerMove: (event: PointerEvent<HTMLDivElement>) => {
@@ -79,7 +80,8 @@ const useDragFocus = (index: number, last: number) => {
       if (!drag) {
         return
       }
-      const raw = drag.anchor - (event.clientY - drag.startY) / DRAG_STEP_PX
+      const raw =
+        drag.anchor - (pagePoint(event).y - drag.startY) / DRAG_STEP_PX
       const clamped = Math.min(Math.max(raw, 0), last)
       setDragFocus(clamped + (raw - clamped) * EDGE_GIVE)
     },

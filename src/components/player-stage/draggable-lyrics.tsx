@@ -9,6 +9,7 @@ import {
 } from '@/context/atoms'
 import { usePortrait } from '@/hooks/use-media-query'
 import type { LyricsThemeColors } from '@/lib/lyrics-themes'
+import { pagePoint } from '@/lib/page-turn'
 import type { CssVars } from '@/types'
 import { cn } from '@/utils/cn'
 
@@ -108,7 +109,7 @@ export const DraggableLyrics = ({
     dragRef.current = {
       anchor: room > 0 ? clamp01(block.offsetTop / room) : anchor,
       moved: false,
-      pointerY: event.clientY,
+      pointerY: pagePoint(event).y,
       range: Math.max(1, room),
     }
   }
@@ -118,7 +119,7 @@ export const DraggableLyrics = ({
     if (!drag) {
       return
     }
-    const delta = event.clientY - drag.pointerY
+    const delta = pagePoint(event).y - drag.pointerY
     if (!drag.moved) {
       if (Math.abs(delta) < TAP_SLOP_PX) {
         return
