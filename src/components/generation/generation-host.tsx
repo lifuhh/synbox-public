@@ -1,10 +1,12 @@
 import { useQueryClient } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { AnimatePresence, MotionConfig } from 'motion/react'
 import type { ReactElement } from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useMatch } from 'react-router'
 
+import { playerSurfaceAtom } from '@/context/atoms'
 import { useMediaQuery } from '@/hooks/use-media-query'
 import { markGuestSongUsed, useAccess } from '@/lib/auth'
 import { STEPS } from '@/lib/generation/plan'
@@ -64,7 +66,11 @@ const GenerationHost = () => {
   const job = focusedJob(generation)
   const view = usePresentation(job)
   const queryClient = useQueryClient()
-  const onPlayer = useMatch('/v/:videoId') !== null
+  // Raised over the stage's control bar only while the stage is the whole screen; on the watch page the
+  // video is a box and the bottom of the screen is free
+  const onPlayerRoute = useMatch('/v/:videoId') !== null
+  const surface = useAtomValue(playerSurfaceAtom)
+  const onPlayer = onPlayerRoute && surface === 'stage'
   // On a phone the corner sits over the player's lyrics and controls and the lists' play buttons, so the
   // minimized job docks into the top bar instead (top-bar.tsx), one tap from its panel as before
   const touch = useMediaQuery('(pointer: coarse)')
