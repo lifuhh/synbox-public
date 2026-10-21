@@ -33,7 +33,22 @@ const settingsSchema = z.object({
   }),
 })
 
+const generationSchema = z.object({
+  createdAt: z.number(),
+  email: z.string().nullable(),
+  errorCode: z.string().nullable(),
+  // SQLite's boolean
+  guest: z.union([z.number(), z.boolean()]),
+  id: z.string(),
+  kind: z.enum(['new', 'regenerate', 'retime']),
+  name: z.string().nullable(),
+  resultVersion: z.number().nullable(),
+  status: z.enum(['reserved', 'running', 'succeeded', 'failed']),
+  videoId: z.string(),
+})
+
 export type AdminUser = z.infer<typeof adminUserSchema>
+export type AdminGeneration = z.infer<typeof generationSchema>
 
 const call = async (path: string, init: RequestInit = {}): Promise<unknown> => {
   const response = await fetch(`/api/admin${path}`, {
@@ -53,6 +68,15 @@ export const useAdminUsers = () =>
       z.object({ users: z.array(adminUserSchema) }).parse(await call('/users'))
         .users,
     queryKey: [QUERY_KEYS.GET_ADMIN_USERS],
+  })
+
+export const useAdminGenerations = () =>
+  useQuery({
+    queryFn: async () =>
+      z
+        .object({ generations: z.array(generationSchema) })
+        .parse(await call('/generations')).generations,
+    queryKey: [QUERY_KEYS.GET_ADMIN_GENERATIONS],
   })
 
 export const useAdminSettings = () =>

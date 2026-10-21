@@ -162,6 +162,17 @@ admin.get('/users', async (c) => {
   return c.json({ users: results })
 })
 
+// The latest generations, newest first, with who asked for them (an account, or a guest)
+admin.get('/generations', async (c) => {
+  const { results } = await c.env.DB.prepare(
+    `select g."id", g."videoId", g."kind", g."status", g."createdAt", g."errorCode", g."resultVersion",
+       u."email", u."name", g."guestKey" is not null as "guest"
+     from "generation" g left join "user" u on u."id" = g."userId"
+     order by g."createdAt" desc limit 200`
+  ).all()
+  return c.json({ generations: results })
+})
+
 // A per-person hourly limit; null goes back to the default
 admin.put('/users/:id/limit', async (c) => {
   const { hourlyLimit } = await c.req.json<Record<string, unknown>>()

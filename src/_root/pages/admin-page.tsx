@@ -1,18 +1,21 @@
 import { useState } from 'react'
+import { Link } from 'react-router'
 
 import Forbidden from '@/components/shared/forbidden'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
+  useAdminGenerations,
   useAdminSettings,
   useAdminUsers,
   useSetBlocked,
   useSetGenerationEnabled,
   useSetHourlyLimit,
 } from '@/lib/admin'
-import type { AdminUser } from '@/lib/admin'
+import type { AdminGeneration, AdminUser } from '@/lib/admin'
 import { useAccess, useMe } from '@/lib/auth'
+import { useGetSongInfoBySongId } from '@/lib/react-query/queries-and-mutations'
 import { cn } from '@/utils/cn'
 
 const formatWhen = (value: string | number | null) => {
@@ -116,10 +119,10 @@ const UserRow = ({ user, isSelf }: { user: AdminUser; isSelf: boolean }) => {
       )}>
       <th scope='row' className='pr-3 text-left font-normal'>
         <span className='block truncate font-medium text-foreground'>
-          {user.email}
+          {user.name}
         </span>
         <span className='block truncate text-xs text-muted-foreground'>
-          {user.name}
+          {user.email}
         </span>
       </th>
       <td className='px-3'>{admin ? 'Admin' : 'User'}</td>
@@ -206,6 +209,105 @@ const UsersTable = () => {
   )
 }
 
+const KIND_LABELS = {
+  new: 'New',
+  regenerate: 'Regenerate',
+  retime: 'Retime',
+} as const
+
+const STATUS_LABELS = {
+  failed: 'Failed',
+  reserved: 'In Progress',
+  running: 'In Progress',
+  succeeded: 'Done',
+} as const
+
+const SongRow = ({ generation }: { generation: AdminGeneration }) => {
+  const { data: songInfo } = useGetSongInfoBySongId(generation.videoId)
+  const path = `/v/${generation.videoId}`
+  const guest = generation.guest === 1 || generation.guest === true
+  return (
+    <tr className='h-14 border-t border-white/10 align-middle'>
+      <th scope='row' className='pr-3 text-left font-normal'>
+        <Link
+          to={path}
+          className='block truncate font-medium text-foreground hover:underline'>
+          {songInfo?.title ?? generation.videoId}
+        </Link>
+        <span className='block truncate text-xs text-muted-foreground'>
+          synbox.io{path}
+        </span>
+      </th>
+      <td className='px-3'>
+        <span className='block truncate'>
+          {guest ? 'Guest' : (generation.name ?? 'Deleted Account')}
+        </span>
+        {!guest && generation.email !== null && (
+          <span className='block truncate text-xs text-muted-foreground'>
+            {generation.email}
+          </span>
+        )}
+      </td>
+      <td className='px-3'>{KIND_LABELS[generation.kind]}</td>
+      <td
+        className={cn(
+          'px-3',
+          generation.status === 'failed' && 'text-error',
+          generation.status === 'succeeded' && 'text-foreground',
+          (generation.status === 'reserved' ||
+            generation.status === 'running') &&
+            'text-muted-foreground'
+        )}>
+        {STATUS_LABELS[generation.status]}
+      </td>
+      <td className='truncate pl-3'>{formatWhen(generation.createdAt)}</td>
+    </tr>
+  )
+}
+
+// Every song generated since accounts arrived, newest first
+const SongsTable = () => {
+  const { data: generations, error } = useAdminGenerations()
+  if (error !== null) {
+    return <p className='text-sm text-error'>{error.message}</p>
+  }
+  if (generations === undefined) {
+    return <Skeleton className='h-40 w-full' />
+  }
+  return (
+    <div className='overflow-x-auto'>
+      <table className='w-full min-w-3xl table-fixed text-left text-sm'>
+        <colgroup>
+          <col className='w-1/3' />
+          <col className='w-1/4' />
+          <col className='w-1/10' />
+          <col className='w-1/10' />
+          <col />
+        </colgroup>
+        <thead className='text-xs text-muted-foreground'>
+          <tr>
+            <th className='pr-3 pb-2 font-medium'>Song</th>
+            <th className='px-3 pb-2 font-medium'>By</th>
+            <th className='px-3 pb-2 font-medium'>Kind</th>
+            <th className='px-3 pb-2 font-medium'>Status</th>
+            <th className='pb-2 pl-3 font-medium'>When</th>
+          </tr>
+        </thead>
+        <tbody>
+          {generations.map((generation) => (
+            <SongRow key={generation.id} generation={generation} />
+          ))}
+        </tbody>
+      </table>
+      {generations.length === 0 && (
+        <p className='py-6 text-center text-sm text-muted-foreground'>
+          No songs generated yet.
+        </p>
+      )}
+    </div>
+  )
+}
+
 // Admins only: anyone else gets a 403, once the sign-in check has answered
 const AdminPage = () => {
   const { admin, ready } = useAccess()
@@ -227,6 +329,10 @@ const AdminPage = () => {
           empty limit uses the default.
         </p>
         <UsersTable />
+      </section>
+      <section className='flex flex-col gap-3'>
+        <h2 className='text-lg font-semibold text-foreground'>Songs</h2>
+        <SongsTable />
       </section>
     </div>
   )
