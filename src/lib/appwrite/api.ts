@@ -170,32 +170,55 @@ export const songsWithLyrics = async (videoIds: string[]) => {
 
 // Every song with lyrics on the site, in a fresh order each visit. A song-info row is also written when a
 // song is only opened, so the rows are checked against the lyrics
-export const listGallerySongs = async (): Promise<GallerySong[]> => {
-  const rows: z.infer<typeof galleryRowSchema>[] = []
+// Every song with lyrics, as ids only and shuffled, so the gallery knows its whole length from a few small
+// requests; the lyrics table has a row exactly for each of them
+export const listGallerySongIds = async (): Promise<string[]> => {
+  const rowIds: string[] = []
   for (;;) {
-    const last = rows.at(-1)
+    const last = rowIds.at(-1)
     // oxlint-disable-next-line eslint/no-await-in-loop -- each page starts after the last row of the one before
     const page = await tables.listRows({
       databaseId: appwriteConfig.databaseId,
       queries: [
-        Query.select(['$id', 'title', 'author', 'thumbnailUrl']),
+        Query.select(['$id']),
         Query.limit(PAGE),
-        ...(last ? [Query.cursorAfter(last.$id)] : []),
+        ...(last === undefined ? [] : [Query.cursorAfter(last)]),
       ],
-      tableId: appwriteConfig.songInfoId,
+      tableId: appwriteConfig.lyricsId,
       total: false,
     })
-    rows.push(...page.rows.map((row) => galleryRowSchema.parse(row)))
+    rowIds.push(...page.rows.map((row) => row.$id))
     if (page.rows.length < PAGE) {
       break
     }
   }
-  const songs = rows.map(({ $id, author, thumbnailUrl, title }) => ({
-    author,
-    thumbnailUrl,
-    title,
-    videoId: youtubeIdFromAppwriteId($id),
-  }))
-  const ready = await songsWithLyrics(songs.map((song) => song.videoId))
-  return shuffleArray(songs.filter((song) => ready.has(song.videoId)))
+  // A song saved under both id encodings has two rows
+  return shuffleArray([...new Set(rowIds.map(youtubeIdFromAppwriteId))])
+}
+
+// The cards for one stretch of the gallery, in the order asked for; a song without its info row is left out
+export const getGallerySongs = async (
+  videoIds: string[]
+): Promise<GallerySong[]> => {
+  if (videoIds.length === 0) {
+    return []
+  }
+  const page = await tables.listRows({
+    databaseId: appwriteConfig.databaseId,
+    queries: [
+      Query.equal('$id', videoIds.map(createAppwriteIdFromYoutubeId)),
+      Query.select(['$id', 'title', 'author', 'thumbnailUrl']),
+      Query.limit(videoIds.length),
+    ],
+    tableId: appwriteConfig.songInfoId,
+    total: false,
+  })
+  const byId = new Map(
+    page.rows.map((row) => {
+      const { $id, author, thumbnailUrl, title } = galleryRowSchema.parse(row)
+      const videoId = youtubeIdFromAppwriteId($id)
+      return [videoId, { author, thumbnailUrl, title, videoId }] as const
+    })
+  )
+  return videoIds.flatMap((videoId) => byId.get(videoId) ?? [])
 }
