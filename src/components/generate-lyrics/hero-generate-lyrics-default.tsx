@@ -276,7 +276,11 @@ const HeroGenerateLyricsDefault = ({
             </Button>
           )}
         </InputField>
-        <div className='min-h-6 px-5 text-sm' aria-live='polite'>
+        {/* On phones the action sits right under the field and this line under the action, so its reserved
+            height never parts the two */}
+        <div
+          className='min-h-6 px-5 text-sm max-sm:order-last'
+          aria-live='polite'>
           {inputMode === 'search' && (
             <p className='text-search'>Search by title, artist or mood</p>
           )}
@@ -303,7 +307,7 @@ const HeroGenerateLyricsDefault = ({
             variant='hero'
             size='lg'
             gap='sm'
-            className='w-full sm:hidden'>
+            className='mt-1 self-start sm:hidden'>
             <span className='text-label'>{buttonLabel()}</span>
             {buttonIcon()}
           </Button>
