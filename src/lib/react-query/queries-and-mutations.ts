@@ -1,5 +1,4 @@
-import { useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query'
-import type { InfiniteData } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 
 import type { CurrentPlayingInfo } from '@/types'
 
@@ -7,13 +6,11 @@ import {
   addSongInfoBySongId,
   getSongInfoBySongId,
   getSongLyricsById,
-  getGallerySongs,
-  listGallerySongIds,
   songsWithLyrics,
 } from '../appwrite/api'
-import type { GallerySong } from '../appwrite/api'
 import { getKaraoke } from '../synbox-flask/api'
 import {
+  getLibrarySongs,
   getSimilarSongs,
   searchLibrary,
   searchVideos,
@@ -47,42 +44,17 @@ export const useGetChartsPlaylist = () =>
     staleTime: 1000 * 60 * 60 * 24,
   })
 
-// Cards are fetched this many at a time, as the gallery scrolls near the end of what it has
-export const GALLERY_PAGE = 24
-
-// The ids once a visit, so the shuffled order holds while the user browses; the cards a page at a time
+// Once a visit, so the shuffled order holds while the user browses
 export const useGallerySongs = () => {
-  const ids = useQuery({
-    queryFn: listGallerySongIds,
-    queryKey: [QUERY_KEYS.GET_GALLERY_SONGS, 'ids'],
+  const query = useQuery({
+    queryFn: getLibrarySongs,
+    queryKey: [QUERY_KEYS.GET_GALLERY_SONGS],
+    // A cold lookup service answers 503 while it loads the library, which takes seconds
+    retry: 5,
+    retryDelay: 3000,
     staleTime: Infinity,
   })
-  const order = ids.data
-  const cards = useInfiniteQuery<
-    GallerySong[],
-    Error,
-    InfiniteData<GallerySong[], number>,
-    readonly unknown[],
-    number
-  >({
-    enabled: order !== undefined,
-    getNextPageParam: (_last, _all, start) =>
-      order !== undefined && start + GALLERY_PAGE < order.length
-        ? start + GALLERY_PAGE
-        : undefined,
-    initialPageParam: 0,
-    queryFn: async ({ pageParam }): Promise<GallerySong[]> =>
-      await getGallerySongs(
-        (order ?? []).slice(pageParam, pageParam + GALLERY_PAGE)
-      ),
-    queryKey: [QUERY_KEYS.GET_GALLERY_SONGS, 'cards', order],
-    staleTime: Infinity,
-  })
-  return {
-    ...cards,
-    isLoading: ids.isLoading || cards.isLoading,
-    songs: cards.data?.pages.flat() ?? [],
-  }
+  return { ...query, songs: query.data ?? [] }
 }
 
 export const useSongsWithLyrics = (videoIds: string[]) =>

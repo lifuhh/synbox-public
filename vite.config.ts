@@ -60,6 +60,12 @@ const serveYoutube = async (
   }
 }
 
+const LIBRARY_SONGS_PROXY = {
+  changeOrigin: true,
+  rewrite: () => '/library/songs',
+  target: 'https://synbox-lookup-1045990822048.asia-southeast1.run.app',
+}
+
 export default defineConfig({
   build: {
     chunkSizeWarningLimit: 1000,
@@ -234,16 +240,20 @@ export default defineConfig({
       telemetry: false,
     }),
   ]),
+  // The gallery's song list, as in dev
+  preview: { proxy: { '/api/library/songs': LIBRARY_SONGS_PROXY } },
   resolve: {
     alias: {
       '@': `${import.meta.dirname}/src`,
     },
   },
-  // Netlify sends these to the auth Worker; locally that is `wrangler dev --env dev` in worker/
+  // Netlify sends these to the auth Worker; locally that is `wrangler dev --env dev` in worker/. The gallery's
+  // song list goes to the lookup service, as netlify.toml sends it
   server: {
     proxy: {
       '/api/admin': 'http://localhost:8787',
       '/api/auth': 'http://localhost:8787',
+      '/api/library/songs': LIBRARY_SONGS_PROXY,
       '/api/me': 'http://localhost:8787',
     },
   },
