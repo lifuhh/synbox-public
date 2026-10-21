@@ -8,6 +8,7 @@ import { useArmed } from '@/hooks/use-armed'
 import { cn } from '@/utils/cn'
 
 import AppLogo from '../topbar/app-logo'
+import GitHubButton from '../topbar/github-button'
 import LyricsButton from '../topbar/lyrics-button'
 import ProfileButton from '../topbar/profile-button'
 import SavedMenu from '../topbar/saved-menu'
@@ -94,7 +95,7 @@ const TopBar = () => {
   )
 
   return (
-    <section
+    <header
       data-topbar
       className={cn(
         'fixed top-0 right-0 left-0 z-50 pt-safe-top pr-(--safe-right) pl-(--safe-left)',
@@ -131,10 +132,17 @@ const TopBar = () => {
           />
           <LyricsButton />
           <SavedMenu />
-          {!isVideoPlayer && <ProfileButton />}
+          {!isVideoPlayer && (
+            <>
+              <span className='max-sm:hidden'>
+                <GitHubButton />
+              </span>
+              <ProfileButton />
+            </>
+          )}
         </div>
       </nav>
-    </section>
+    </header>
   )
 }
 

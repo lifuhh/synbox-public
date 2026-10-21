@@ -155,7 +155,7 @@ const SongHighlightCarousel = () => {
           ref={setTrack}
           // oxlint-disable-next-line no-noninteractive-tabindex -- a scrolling region must be focusable so the arrow keys can scroll it
           tabIndex={0}
-          className='carousel-track rounded-xl focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden'>
+          className='carousel-track appear rounded-xl focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden'>
           {slides.map(({ index, item }) => (
             <SongCard
               // oxlint-disable-next-line no-array-index-key -- each song appears once per copy

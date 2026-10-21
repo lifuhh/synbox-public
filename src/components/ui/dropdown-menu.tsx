@@ -20,6 +20,9 @@ const dropdownMenuItemVariants = cva('', {
       default: '',
       // An action that can't be taken back lightly, such as blocking someone
       destructive: 'text-error focus:text-error',
+      // The menu's one call to action, as a guest's Continue With Google: a tonal pill
+      primary:
+        'justify-center rounded-full bg-primary-subtle py-2 font-semibold text-primary-text focus:bg-primary-subtle-hover focus:text-primary-text',
       // A label over a line of description
       stacked: 'flex-col items-start gap-0.5',
     },

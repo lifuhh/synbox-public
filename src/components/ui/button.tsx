@@ -6,7 +6,7 @@ import * as React from 'react'
 import { cn } from '@/utils/cn'
 
 const buttonVariants = cva(
-  'inline-flex items-center justify-center rounded-md text-sm font-medium whitespace-nowrap ring-offset-background transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-hidden disabled:pointer-events-none disabled:opacity-50',
+  'inline-flex items-center justify-center rounded-md text-sm font-medium whitespace-nowrap ring-offset-background transition duration-150 ease-out focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-hidden disabled:pointer-events-none disabled:opacity-50 motion-safe:enabled:active:scale-96',
   {
     defaultVariants: {
       size: 'default',
@@ -26,6 +26,8 @@ const buttonVariants = cva(
         // The action inside a field, as the landing search box's
         inset: 'h-11 px-5',
         lg: 'h-11 rounded-md px-8',
+        // A short labelled pill that sits among the top bar's icon buttons
+        pill: 'h-9 rounded-full px-3 sm:px-4',
         sm: 'h-9 rounded-md px-3',
         // The hero's call to action: padding, not height, sets how tall it is
         tall: 'h-10 px-4 py-6',

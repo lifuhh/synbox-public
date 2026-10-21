@@ -1,119 +1,74 @@
 import { MicVocalIcon, PlayIcon } from 'lucide-react'
-import React, { useRef } from 'react'
-import { useNavigate } from 'react-router'
+import type React from 'react'
+import { Link } from 'react-router'
 
 import { KaraokeMark } from '@/components/shared/karaoke-badge'
 import LoadError from '@/components/shared/load-error'
-import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { useOverflow } from '@/hooks/use-overflow'
 import { useGetChartsPlaylist } from '@/lib/react-query/queries-and-mutations'
 import type { CssVars } from '@/types'
 
-// One per visible row (the body is six rows tall); varied so the column doesn't read as a block
+// One per visible row (the list is about six rows tall); varied so the column doesn't read as a block
 const SKELETON_TITLES = [
-  <Skeleton key='a' className='h-5 w-5/6' />,
-  <Skeleton key='b' className='h-5 w-2/3' />,
-  <Skeleton key='c' className='h-5 w-11/12' />,
-  <Skeleton key='d' className='h-5 w-3/5' />,
-  <Skeleton key='e' className='h-5 w-3/4' />,
-  <Skeleton key='f' className='h-5 w-7/12' />,
+  <Skeleton key='a' className='h-4 w-5/6' />,
+  <Skeleton key='b' className='h-4 w-2/3' />,
+  <Skeleton key='c' className='h-4 w-11/12' />,
+  <Skeleton key='d' className='h-4 w-3/5' />,
+  <Skeleton key='e' className='h-4 w-3/4' />,
+  <Skeleton key='f' className='h-4 w-7/12' />,
 ]
-
-// Same row box as SongRow: p-2 cells around a 24px title line and a 40px icon button
-const SongRowSkeleton = ({ title }: { title: React.ReactNode }) => (
-  <tr className='bg-card/80'>
-    <td className='p-2'>{title}</td>
-    <td className='p-2'>
-      <Skeleton className='size-10' />
-    </td>
-  </tr>
-)
 
 interface SongRowProps {
   song: {
     title: string
     vidURL: string
   }
-  onPlayClick: (videoId: string) => () => void
 }
 
-const SongRow = ({ song, onPlayClick }: SongRowProps) => {
-  const textRef = useRef<HTMLSpanElement>(null)
-  const containerRef = useRef<HTMLDivElement>(null)
+// The whole row opens the song; the title wraps to two lines rather than scrolling on hover
+const SongRow = ({ song }: SongRowProps) => (
+  <li>
+    <Link
+      to={`/v/${song.vidURL}`}
+      className='group flex min-h-12 items-center gap-2 rounded-lg px-2 py-1.5 text-foreground transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden'>
+      <KaraokeMark videoId={song.vidURL} />
+      <span className='line-clamp-2 min-w-0 flex-1 text-sm text-pretty'>
+        {song.title}
+      </span>
+      <PlayIcon
+        aria-hidden
+        className='size-4 shrink-0 fill-current text-muted-foreground transition-colors group-hover:text-foreground'
+      />
+    </Link>
+  </li>
+)
 
-  const isOverflowing = useOverflow(textRef, containerRef)
-
-  return (
-    <tr className='playlist-item text-foreground transition-colors hover:bg-accent'>
-      <td className='p-2'>
-        <div className='flex items-center gap-1.5'>
-          <KaraokeMark videoId={song.vidURL} />
-          <div
-            ref={containerRef}
-            className={`min-w-0 flex-1 overflow-hidden ${isOverflowing ? 'marquee' : ''}`}>
-            <span
-              ref={textRef}
-              className='unselectable inline-block whitespace-nowrap'>
-              {song.title}
-            </span>
-          </div>
-        </div>
-      </td>
-      <td className='p-2'>
-        <Button
-          variant='row-icon'
-          size='icon'
-          className='shrink-0'
-          aria-label={`Play ${song.title}`}
-          onClick={onPlayClick(song.vidURL)}>
-          <PlayIcon className='size-5 shrink-0 fill-current' />
-        </Button>
-      </td>
-    </tr>
-  )
-}
-
-// Six rows, so a list of any length scrolls inside the card
-const TABLE_BODY_VARS: CssVars = { '--table-body-h': `${6 * 55}px` }
+// About six rows, so a list of any length scrolls inside the card
+const LIST_VARS: CssVars = { '--charts-list-h': `${6 * 56}px` }
 
 const LandingPageCharts: React.FC = () => {
-  const navigate = useNavigate()
   const {
     data: chartsData,
-    isLoading: isChartsDataFetching,
+    isLoading,
     isError,
     isFetching,
     refetch,
   } = useGetChartsPlaylist()
 
-  const handleRowClick = (videoId: string) => () => {
-    void navigate(`/v/${videoId}`)
-  }
-
   return (
-    <div
-      className='mx-4 rounded-xl bg-card p-2 md:mx-0 lg:w-100 lg:shrink-0 lg:self-start'
-      aria-busy={isChartsDataFetching}>
-      <div className='relative overflow-hidden rounded-lg'>
-        <table className='w-full table-fixed border-collapse'>
-          <colgroup>
-            <col className='w-[calc(100%-60px)]' />
-            <col className='w-15' />
-          </colgroup>
-          <thead>
-            <tr>
-              <th
-                className='unselectable px-2 pt-2 pb-3 text-left text-lg font-semibold tracking-tight'
-                colSpan={2}>
-                YouTube Charts
-              </th>
-            </tr>
-          </thead>
-        </table>
+    <section
+      aria-labelledby='charts-title'
+      aria-busy={isLoading}
+      className='flex flex-col gap-3 lg:w-100 lg:shrink-0 lg:self-start'>
+      <h2
+        id='charts-title'
+        className='flex min-h-9 items-center px-4 text-xl font-semibold tracking-tight text-foreground md:px-0 touch:min-h-0'>
+        YouTube Charts
+      </h2>
+      <div className='mx-4 rounded-xl bg-card p-2 md:mx-0'>
         <div
-          className='no-scrollbar h-(--table-body-h) overflow-y-auto'
-          style={TABLE_BODY_VARS}>
+          className='no-scrollbar h-(--charts-list-h) overflow-y-auto'
+          style={LIST_VARS}>
           {isError && (
             <LoadError
               message="Couldn't load the YouTube charts."
@@ -124,41 +79,36 @@ const LandingPageCharts: React.FC = () => {
               className='h-full'
             />
           )}
-          <table
-            hidden={isError}
-            className='w-full table-fixed border-collapse'>
-            <colgroup>
-              <col className='w-[calc(100%-60px)]' />
-              <col className='w-15' />
-            </colgroup>
-            <tbody>
-              {isChartsDataFetching
-                ? SKELETON_TITLES.map((title) => (
-                    <SongRowSkeleton key={title.key} title={title} />
-                  ))
-                : chartsData?.map((song, index) => (
-                    <SongRow
-                      key={`${song.title}-${index}`}
-                      song={{
-                        title: song.title,
-                        vidURL: song.id,
-                      }}
-                      onPlayClick={handleRowClick}
-                    />
-                  ))}
-            </tbody>
-            <caption className='mt-1 mb-2 caption-bottom text-sm text-song-channel'>
-              Source: YouTube Top 100 Songs Japan ·{' '}
-              <MicVocalIcon
-                className='inline size-3.5 -translate-y-px text-primary-text'
-                aria-hidden
-              />{' '}
-              Karaoke Lyrics
-            </caption>
-          </table>
+          {!isError && isLoading && (
+            <ul aria-hidden>
+              {SKELETON_TITLES.map((title) => (
+                <li key={title.key} className='flex min-h-12 items-center px-2'>
+                  {title}
+                </li>
+              ))}
+            </ul>
+          )}
+          {!isError && !isLoading && (
+            <ul className='appear'>
+              {chartsData?.map((song, index) => (
+                <SongRow
+                  key={`${song.title}-${index}`}
+                  song={{ title: song.title, vidURL: song.id }}
+                />
+              ))}
+            </ul>
+          )}
         </div>
+        <p className='mx-2 mt-1 mb-1 truncate text-sm text-song-channel'>
+          YouTube Top 100 Japan ·{' '}
+          <MicVocalIcon
+            className='inline size-3.5 -translate-y-px text-primary-text'
+            aria-hidden
+          />{' '}
+          Karaoke
+        </p>
       </div>
-    </div>
+    </section>
   )
 }
 

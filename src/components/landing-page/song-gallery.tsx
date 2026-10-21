@@ -1,4 +1,5 @@
 import { useVirtualizer } from '@tanstack/react-virtual'
+import { PlayIcon } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router'
 
@@ -9,8 +10,6 @@ import { useGallerySongs } from '@/lib/react-query/queries-and-mutations'
 import type { LibraryListSong } from '@/lib/synbox-flask/discovery'
 import type { CssVars } from '@/types'
 
-import HomeFooter from '../shared/home-footer'
-
 // The gallery is part of the page's own scroll, so a finger on it never gets caught in a box inside the page.
 // Its title sticks under the top bar while the gallery is on screen, and a tap on it goes back to the
 // gallery's start. Only the rows near the view exist. Every row is exactly as tall as the card width makes it
@@ -19,42 +18,52 @@ import HomeFooter from '../shared/home-footer'
 // upwards. Every card is known from the first request; the footer follows the last one.
 const GRID =
   'grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4'
-const CARD = 'block rounded-xl bg-card p-4'
 // gap-6 between cards and rows; py-4 above the first row and below the last
 const GAP_PX = 24
 const PAD_PX = 16
-// Padding 32 + title line 28 + artist line 20 + its margin 12
-const CARD_CHROME_PX = 92
-// The thumbnail is the card's width less its padding (p-4 on both sides)
-const CARD_PAD_X_PX = 32
+// Under the full-width thumbnail: mt-3 12 + the text block 72 (h-18: two title lines 48, gap 4, channel 20)
+const CARD_CHROME_PX = 84
 
+// Picture first, like the recommendations above, with no box around it; the text has fixed heights so a row's
+// height follows from its width alone
 const SongCard = ({ song }: { song: LibraryListSong }) => (
   <Link
     to={`/v/${song.videoId}`}
     state={{ videoId: song.videoId }}
-    className={`${CARD} transition-colors duration-300 hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden`}>
-    <p className='truncate text-lg font-bold tracking-wide text-song-title'>
-      {song.title}
-    </p>
-    <p className='mb-3 flex items-center gap-1.5 text-sm text-muted-foreground'>
-      {song.karaoke && <KaraokeBadge />}
-      <span className='truncate'>{song.author}</span>
-    </p>
-    <img
-      src={song.thumbnailUrl}
-      alt=''
-      loading='lazy'
-      decoding='async'
-      className='aspect-video w-full rounded-lg object-cover'
-    />
+    title={song.title}
+    className='group block rounded-xl focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden'>
+    <span className='relative block aspect-video overflow-hidden rounded-xl bg-thumbnail-placeholder'>
+      <img
+        src={song.thumbnailUrl}
+        alt=''
+        loading='lazy'
+        decoding='async'
+        className='size-full object-cover transition-transform duration-500 group-hover:scale-104 motion-reduce:transition-none'
+      />
+      <span className='absolute right-2.5 bottom-2.5 grid size-10 place-items-center rounded-full bg-black/70 text-white opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100'>
+        <PlayIcon className='size-4 fill-current' aria-hidden />
+      </span>
+    </span>
+    {/* A fixed-height block, so every row is the same height; the channel sits right under one line or two */}
+    <span className='mt-3 flex h-18 flex-col gap-1'>
+      <span className='line-clamp-2 text-base leading-6 font-semibold text-foreground'>
+        {song.title}
+      </span>
+      <span className='flex h-5 items-center gap-1.5 text-sm leading-5 text-muted-foreground'>
+        {song.karaoke && <KaraokeBadge />}
+        <span className='truncate'>{song.author}</span>
+      </span>
+    </span>
   </Link>
 )
 
 const CardSkeleton = () => (
-  <div className={CARD}>
-    <Skeleton className='mb-2 h-7 w-3/4' />
-    <Skeleton className='mb-3 h-5 w-1/3' />
-    <Skeleton shape='thumbnail' className='aspect-video w-full' />
+  <div>
+    <Skeleton shape='card' className='aspect-video w-full' />
+    <div className='mt-3 flex h-18 flex-col gap-2 pt-1'>
+      <Skeleton className='h-4 w-3/4' />
+      <Skeleton className='h-3.5 w-1/3' />
+    </div>
   </div>
 )
 
@@ -114,7 +123,7 @@ const VirtualRows = ({
   const columns = useColumns()
   const { top, width } = useListBox(list, scroller)
   const cardWidth = (width - (columns - 1) * GAP_PX) / columns
-  const rowHeight = ((cardWidth - CARD_PAD_X_PX) * 9) / 16 + CARD_CHROME_PX
+  const rowHeight = (cardWidth * 9) / 16 + CARD_CHROME_PX
   const rows = Array.from(
     { length: Math.ceil(songs.length / columns) },
     (_, index) => songs.slice(index * columns, (index + 1) * columns)
@@ -141,7 +150,7 @@ const VirtualRows = ({
     '--row-h': `${rowHeight}px`,
   }
   return (
-    <ul className='relative h-(--gallery-h)' style={listVars}>
+    <ul className='relative h-(--gallery-h) appear' style={listVars}>
       {virtualizer.getVirtualItems().map((item) => {
         const rowVars: CssVars = {
           '--row-y': `${item.start - virtualizer.options.scrollMargin}px`,
@@ -205,18 +214,18 @@ const SongGallery = () => {
     <section
       ref={setSection}
       aria-labelledby='gallery-title'
-      className='relative mt-12'>
+      className='relative mt-12 pb-page-bottom'>
       <h2
         ref={title}
         id='gallery-title'
         data-stuck={stuck ? true : undefined}
-        className='sticky-under-topbar px-4 pb-1.5 text-xl font-semibold tracking-tight text-foreground sm:px-8'>
+        className='sticky-under-topbar px-4 pb-1.5 text-xl font-semibold tracking-tight text-foreground md:px-0'>
         <button type='button' onClick={toStart} className='py-0.5'>
           Gallery
         </button>
       </h2>
       {/* The padding sits outside the measured box: a row's height follows from its content width */}
-      <div className='px-4 sm:px-8'>
+      <div className='px-4 md:px-0'>
         <div ref={setList}>
           {isLoading ? (
             <output aria-label='Loading gallery' className={`${GRID} py-4`}>
@@ -230,7 +239,6 @@ const SongGallery = () => {
           )}
         </div>
       </div>
-      {!isLoading && <HomeFooter />}
     </section>
   )
 }

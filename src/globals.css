@@ -607,8 +607,64 @@
   }
 }
 
+/* tw-animate's menu, dialog, popover, tooltip and toast entrances zoom and slide; under reduced motion they only
+   fade. Unlayered, so it wins over the utilities that set these per element */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    --tw-enter-scale: 1;
+    --tw-exit-scale: 1;
+    --tw-enter-rotate: 0;
+    --tw-exit-rotate: 0;
+    --tw-enter-translate-x: 0;
+    --tw-enter-translate-y: 0;
+    --tw-exit-translate-x: 0;
+    --tw-exit-translate-y: 0;
+    --tw-enter-blur: 0;
+    --tw-exit-blur: 0;
+  }
+}
+
+/* Content that arrives fades in where it will stay, instead of standing in a skeleton first. `rise-in` is for
+   a view's first appearance: a short rise with a blur that clears, staggered by --rise-delay. `appear` is for
+   small things that resolve in place (the top bar's account slot). Reduced motion keeps only the fade. Named
+   apart from tw-animate's `enter` keyframes and `fade-in` utility, which other components use */
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    translate: 0 12px;
+    filter: blur(4px);
+  }
+}
+@keyframes appear {
+  from {
+    opacity: 0;
+  }
+}
+@utility rise-in {
+  animation: rise-in 0.3s ease-out var(--rise-delay, 0ms) both;
+  @media (prefers-reduced-motion: reduce) {
+    animation-name: appear;
+  }
+}
+@utility rise-delay-* {
+  --rise-delay: calc(--value(integer) * 1ms);
+}
+@utility appear {
+  animation: appear 0.2s ease-out both;
+}
+
 /* A loading placeholder: a lighter band sweeps across it, so it reads as loading on a dark card, where a
    pulse between two near-blacks looked like an empty box */
+/* A skeleton stays invisible for its first 400 ms and then fades in, so a load that finishes quickly shows
+   nothing between the empty space and the content (which then fades in with `appear`) */
+@utility skeleton-shimmer {
+  animation:
+    var(--animate-shimmer),
+    appear 0.3s ease-out 0.4s both;
+  @media (prefers-reduced-motion: reduce) {
+    animation: appear 0.3s ease-out 0.4s both;
+  }
+}
 @utility skeleton-fill {
   background: linear-gradient(
       100deg,
@@ -740,14 +796,18 @@
     transition: transform 0.3s ease;
   }
 
-  .playlist-item:hover & span {
-    animation: marquee 20s linear infinite;
+  @media (prefers-reduced-motion: no-preference) {
+    .playlist-item:hover & span {
+      animation: marquee 20s linear infinite;
+    }
   }
 }
 
 @utility playlist-item {
-  &:hover .marquee span {
-    animation: marquee 20s linear infinite;
+  @media (prefers-reduced-motion: no-preference) {
+    &:hover .marquee span {
+      animation: marquee 20s linear infinite;
+    }
   }
 }
 
