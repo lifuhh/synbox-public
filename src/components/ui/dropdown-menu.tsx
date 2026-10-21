@@ -33,6 +33,8 @@ const dropdownMenuItemVariants = cva('', {
   variants: {
     variant: {
       default: '',
+      // An action that can't be taken back lightly, such as blocking someone
+      destructive: 'text-error focus:text-error',
       // A song row: thumbnail, text and actions
       media: 'p-2',
       // A label over a line of description
