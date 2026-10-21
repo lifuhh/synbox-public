@@ -73,7 +73,7 @@ const SongHeader = ({ job, onClose }: { job: Job; onClose: () => void }) => {
       <div className='min-w-0 flex-1'>
         <p className='truncate text-sm font-semibold text-white'>{title}</p>
         {subtitle !== '' && (
-          <p className='truncate text-xs text-white/55'>{subtitle}</p>
+          <p className='truncate text-xs text-muted-foreground'>{subtitle}</p>
         )}
       </div>
       <Button
@@ -113,7 +113,7 @@ const DoneView = ({ job }: { job: Job }) => {
       </motion.span>
       <div className='space-y-1 px-2'>
         <p className='text-lg font-semibold text-white'>{outcome.title}</p>
-        <p className='text-sm text-white/60'>{outcome.detail}</p>
+        <p className='text-sm text-muted-foreground'>{outcome.detail}</p>
       </div>
       <Button asChild gap='md' className='w-full'>
         <Link to={outcome.play.to} onClick={close}>
@@ -122,19 +122,19 @@ const DoneView = ({ job }: { job: Job }) => {
         </Link>
       </Button>
       {admin && (outcome.versions || !job.skipUploaderLyrics) && (
-        <div className='flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs text-white/50'>
+        <div className='flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs text-faint'>
           {admin && outcome.versions && (
             <Link
               to={`/v/${job.videoId}/versions`}
               onClick={close}
-              className='underline-offset-4 hover:text-white/80 hover:underline'>
+              className='underline-offset-4 hover:text-foreground hover:underline'>
               See All Versions
             </Link>
           )}
           {admin && !job.skipUploaderLyrics && (
             <button
               type='button'
-              className='underline-offset-4 hover:text-white/80 hover:underline'
+              className='underline-offset-4 hover:text-foreground hover:underline'
               onClick={() => {
                 void startFromButton({
                   mode: 'regenerate',
@@ -175,7 +175,7 @@ const SongQueue = ({
   focusedId: number
 }) => (
   <div className='flex flex-col gap-1'>
-    <p className='px-1 text-xs font-medium text-white/45'>
+    <p className='px-1 text-xs font-medium text-faint'>
       Your Songs · {jobs.length}
     </p>
     <ul className='flex max-h-36 flex-col gap-0.5 overflow-y-auto'>
@@ -191,8 +191,8 @@ const SongQueue = ({
                 focusGeneration(job.id)
               }}
               className={cn(
-                'flex w-full items-center gap-2 rounded-lg px-1.5 py-1 text-left outline-none hover:bg-white/5 focus-visible:ring-2 focus-visible:ring-brand-light touch:py-2',
-                job.id === focusedId && 'bg-white/8'
+                'flex w-full items-center gap-2 rounded-lg px-1.5 py-1 text-left outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-brand-light touch:py-2',
+                job.id === focusedId && 'bg-accent'
               )}>
               <span className='h-6 w-[43px] shrink-0 overflow-hidden rounded bg-thumbnail-placeholder'>
                 <img
@@ -203,13 +203,13 @@ const SongQueue = ({
                   className='size-full object-cover'
                 />
               </span>
-              <span className='min-w-0 flex-1 truncate text-xs text-white/85'>
+              <span className='min-w-0 flex-1 truncate text-xs text-foreground'>
                 {title === '' ? job.videoId : title}
               </span>
               <span
                 className={cn(
                   'shrink-0 text-xs tabular-nums',
-                  failed ? 'text-error' : 'text-white/55'
+                  failed ? 'text-error' : 'text-muted-foreground'
                 )}>
                 {rowStatus(job)}
               </span>
@@ -307,9 +307,9 @@ const GenerationPanel = ({
                 className='flex items-end justify-between px-1'>
                 <span className='text-5xl leading-none font-light tracking-tight text-white tabular-nums'>
                   {percent}
-                  <span className='ml-0.5 text-xl text-white/50'>%</span>
+                  <span className='ml-0.5 text-xl text-faint'>%</span>
                 </span>
-                <span className='pb-1 text-xs text-white/55'>
+                <span className='pb-1 text-xs text-muted-foreground'>
                   {progressNote()}
                 </span>
               </div>
@@ -359,7 +359,7 @@ const GenerationPanel = ({
                 </div>
               ) : (
                 <div className='flex h-9 items-center justify-between gap-3 px-1'>
-                  <p className='text-xs text-white/45'>{hint}</p>
+                  <p className='text-xs text-faint'>{hint}</p>
                   {active && (
                     <Button
                       variant='overlay-muted'

@@ -23,7 +23,7 @@ const ProgressBar = ({
   return (
     <div
       className={cn(
-        'relative overflow-hidden rounded-full bg-white/10',
+        'relative overflow-hidden rounded-full bg-muted',
         className
       )}>
       <div

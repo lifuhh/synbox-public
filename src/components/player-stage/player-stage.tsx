@@ -127,7 +127,7 @@ const CenterPlayButton = ({
     aria-hidden={!visible}
     onClick={onToggle}
     className={cn(
-      'absolute top-1/2 left-1/2 z-26 grid size-20 -translate-1/2 place-items-center rounded-full bg-stage text-white shadow-stage transition-opacity duration-300',
+      'absolute top-1/2 left-1/2 z-26 grid size-20 -translate-1/2 place-items-center rounded-full bg-primary-subtle text-primary-text shadow-stage transition-opacity duration-300',
       visible ? 'opacity-100' : 'opacity-0',
       !armed && 'pointer-events-none'
     )}>
