@@ -95,7 +95,7 @@ const TopBar = () => {
   )
 
   return (
-    <section
+    <header
       data-topbar
       className={cn(
         'fixed top-0 right-0 left-0 z-50 pt-safe-top pr-(--safe-right) pl-(--safe-left)',
@@ -142,7 +142,7 @@ const TopBar = () => {
           )}
         </div>
       </nav>
-    </section>
+    </header>
   )
 }
 

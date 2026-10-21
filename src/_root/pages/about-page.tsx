@@ -9,7 +9,7 @@ const AboutPage = () => (
   <section className='relative mt-(--topbar-h) flex-between flex custom-scrollbar max-h-[calc(var(--app-h)-var(--topbar-h))] flex-1 flex-col overflow-y-scroll px-4 pb-page-bottom-sm md:px-10'>
     <title>About | Synbox</title>
 
-    <div className='mx-auto w-full max-w-6xl'>
+    <div className='mx-auto w-full max-w-3xl'>
       <h1 className='my-8 text-center text-3xl font-bold'>About</h1>
 
       <div className='space-y-6'>
@@ -23,7 +23,7 @@ const AboutPage = () => (
         </p>
       </div>
 
-      <h1 className='my-8 text-center text-3xl font-bold'>FAQs</h1>
+      <h2 className='my-8 text-center text-2xl font-semibold'>FAQs</h2>
       <div className='mb-8'>
         <Accordion type='multiple' className='w-full'>
           <AccordionItem value='item-1'>
@@ -54,7 +54,7 @@ const AboutPage = () => (
               Transcription quality can be affected by several factors, such as
               the length of the song’s intro, the audio quality of the video,
               and the song’s tempo. While I strive for accuracy, music videos
-              that has Japanese lyrics already uploaded tend to yield the best
+              that have Japanese lyrics already uploaded tend to yield the best
               results as AI transcription can be unpredictable.
             </AccordionContent>
           </AccordionItem>
@@ -65,7 +65,7 @@ const AboutPage = () => (
             </AccordionTrigger>
             <AccordionContent>
               <div className='space-y-4'>
-                <p className='text-white'>
+                <p>
                   Synbox will be evolving! Here are some features I’m excited to
                   work on in the future:
                 </p>
@@ -78,9 +78,6 @@ const AboutPage = () => (
                         Incorporating channel-uploaded translations for lyrics
                         display
                       </li>
-                      <li>
-                        Introducing individual user accounts with Google login
-                      </li>
                       <li>Expanding support for additional languages</li>
                     </ul>
                   </div>
@@ -88,20 +85,9 @@ const AboutPage = () => (
                   <div className='grid gap-1.5'>
                     <h3 className='font-medium'>User Experience</h3>
                     <ul className='list-disc pl-6'>
-                      <li>
-                        Making the lyrics overlay draggable for a custom viewing
-                        height
-                      </li>
                       <li>Adding in-site likes and views counters</li>
-                      <li>
-                        Highlighting whether a video has generated lyrics in
-                        video cards
-                      </li>
                       <li>Supporting YouTube playlist imports</li>
                       <li>Introducing automatic re-attempts after errors</li>
-                      <li>
-                        Enhancing mobile responsiveness for a better experience
-                      </li>
                     </ul>
                   </div>
 
@@ -126,9 +112,7 @@ const AboutPage = () => (
             </AccordionTrigger>
             <AccordionContent>
               <div className='space-y-4'>
-                <p className='text-white'>
-                  Synbox is a full-stack passion project built with:
-                </p>
+                <p>Synbox is a full-stack passion project built with:</p>
 
                 <div className='space-y-2'>
                   <div className='grid gap-1.5'>
@@ -167,7 +151,7 @@ const AboutPage = () => (
           </AccordionItem>
         </Accordion>
       </div>
-      <h1 className='my-8 text-center text-3xl font-bold'>Disclaimer</h1>
+      <h2 className='my-8 text-center text-2xl font-semibold'>Disclaimer</h2>
       <p className='pb-2 text-sm'>
         Synbox is a personal project created to help me better understand and
         enjoy Japanese music videos. This is a non-commercial project with no
