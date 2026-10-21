@@ -53,11 +53,7 @@ const HistoryDropdownItem: React.FC<HistoryDropdownItemProps> = ({
           </div>
           <div className='truncate text-sm text-song-meta'>{author}</div>
         </div>
-        <Button
-          asChild
-          variant='secondary-link'
-          size='icon'
-          className='shrink-0'>
+        <Button asChild variant='row-icon' size='icon' className='shrink-0'>
           <span aria-hidden='true'>
             <PlayIcon className='size-6 shrink-0 fill-current' />
           </span>

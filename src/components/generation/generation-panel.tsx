@@ -60,7 +60,7 @@ const SongHeader = ({ job, onClose }: { job: Job; onClose: () => void }) => {
   const subtitle = channel === '' ? generatingLabel(job, running) : channel
   return (
     <div className='flex items-center gap-3'>
-      <span className='h-10 w-[71px] shrink-0 overflow-hidden rounded-md bg-linear-to-br from-primary to-brand-light ring-1 ring-white/10'>
+      <span className='h-10 w-[71px] shrink-0 overflow-hidden rounded-md bg-thumbnail-placeholder'>
         <img
           key={thumbnailOf(job)}
           src={thumbnailOf(job)}
@@ -108,7 +108,7 @@ const DoneView = ({ job }: { job: Job }) => {
         initial={{ rotate: -20, scale: 0.4 }}
         animate={{ rotate: 0, scale: 1 }}
         transition={{ damping: 12, stiffness: 260, type: 'spring' }}
-        className='flex size-12 items-center justify-center rounded-full bg-linear-to-br from-brand-light to-primary text-white shadow-glow'>
+        className='flex size-12 items-center justify-center rounded-full bg-primary-subtle text-primary-text'>
         <Check className='size-6' strokeWidth={3} aria-hidden />
       </motion.span>
       <div className='space-y-1 px-2'>
@@ -194,7 +194,7 @@ const SongQueue = ({
                 'flex w-full items-center gap-2 rounded-lg px-1.5 py-1 text-left outline-none hover:bg-white/5 focus-visible:ring-2 focus-visible:ring-brand-light touch:py-2',
                 job.id === focusedId && 'bg-white/8'
               )}>
-              <span className='h-6 w-[43px] shrink-0 overflow-hidden rounded bg-linear-to-br from-primary to-brand-light'>
+              <span className='h-6 w-[43px] shrink-0 overflow-hidden rounded bg-thumbnail-placeholder'>
                 <img
                   src={thumbnailOf(job)}
                   alt=''
@@ -281,7 +281,7 @@ const GenerationPanel = ({
         surfacePlacement(raised),
         // Centred on a touch screen, like every other panel there
         'touch:inset-x-0 touch:top-1/2 touch:bottom-auto touch:mx-auto touch:max-h-[calc(100dvh-var(--topbar-h)-2rem)] touch:-translate-y-1/2 touch:[--panel-origin:center]',
-        'fixed z-50 max-h-[calc(100dvh-var(--topbar-h)-var(--stage-controls-h,0px)-2rem)] w-[min(400px,calc(100vw-2rem))] overflow-x-hidden overflow-y-auto rounded-panel border border-white/10 bg-generation-panel/90 shadow-panel backdrop-blur-xl'
+        'fixed z-50 max-h-[calc(100dvh-var(--topbar-h)-var(--stage-controls-h,0px)-2rem)] w-[min(400px,calc(100vw-2rem))] overflow-x-hidden overflow-y-auto rounded-panel bg-generation-panel/90 shadow-panel backdrop-blur-xl'
       )}>
       <div className='flex flex-col gap-4 p-4'>
         <SongHeader job={job} onClose={active ? minimize : dismiss} />
@@ -322,7 +322,7 @@ const GenerationPanel = ({
                 <div className='flex flex-col gap-3'>
                   <p
                     role='alert'
-                    className='rounded-lg border border-error-border/25 bg-error-strong/10 px-3 py-2 text-sm text-error-soft'>
+                    className='rounded-lg bg-error-strong/10 px-3 py-2 text-sm text-error-soft'>
                     {status.message}
                   </p>
                   <div className='flex gap-2'>

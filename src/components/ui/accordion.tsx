@@ -16,7 +16,7 @@ const AccordionItemRender: React.ForwardRefRenderFunction<
 > = ({ className, ...props }, ref) => (
   <AccordionPrimitive.Item
     ref={ref}
-    className={cn('border-b', className)}
+    className={cn('rounded-xl bg-card px-4 not-first:mt-2', className)}
     {...props}
   />
 )

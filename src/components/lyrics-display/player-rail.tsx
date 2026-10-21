@@ -256,8 +256,8 @@ const PlayerRail = () => {
             data-player-chrome
             aria-label='Player Controls'
             className={cn(
-              'flex flex-col items-center gap-1 rounded-r-2xl border border-l-0 border-white/10 bg-black/55 p-1.5 shadow-rail backdrop-blur-md transition-translate-fade duration-300 ease-out',
-              'portrait:no-scrollbar portrait:max-w-[calc(100vw-0.5rem)] portrait:flex-row portrait:gap-1 portrait:overflow-x-auto portrait:rounded-2xl portrait:border-l portrait:p-1',
+              'flex flex-col items-center gap-1 rounded-r-2xl bg-black/55 p-1.5 shadow-rail backdrop-blur-md transition-translate-fade duration-300 ease-out',
+              'portrait:no-scrollbar portrait:max-w-[calc(100vw-0.5rem)] portrait:flex-row portrait:gap-1 portrait:overflow-x-auto portrait:rounded-2xl portrait:p-1',
               'short:gap-1 short:p-1',
               // Past the notch inset too, or a phone on its side shows the rail's edge beside it
               open && armed && 'pointer-events-auto',

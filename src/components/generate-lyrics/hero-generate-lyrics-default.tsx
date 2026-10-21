@@ -10,7 +10,7 @@ import { useNavigate } from 'react-router'
 
 import { startFromButton } from '@/components/generation/start-generation'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { Input, InputField } from '@/components/ui/input'
 import {
   Tooltip,
   TooltipContent,
@@ -22,8 +22,6 @@ import { useGetLyricsBySongId } from '@/lib/react-query/queries-and-mutations'
 import { YouTubeUrlOrIdValidation } from '@/lib/validation'
 import { extractVideoId } from '@/utils'
 import { cn } from '@/utils/cn'
-
-import { Spotlight } from '../ui/spotlight'
 
 interface HeroGenerateLyricsDefaultProps {
   setProcessingStage: (stage: number) => void
@@ -190,33 +188,63 @@ const HeroGenerateLyricsDefault = ({
 
   const buttonIcon = () => {
     if (isSearch) {
-      return <SearchIcon className='size-6 shrink-0' />
+      return <SearchIcon className='size-5 shrink-0' />
     }
     if (isCheckingLyrics || checking) {
       return ''
     }
     if (blocked) {
-      return <LogInIcon className='size-6 shrink-0' />
+      return <LogInIcon className='size-5 shrink-0' />
     }
     return existingLyrics ? (
-      <PlayIcon className='size-6 shrink-0 fill-current' />
+      <PlayIcon className='size-5 shrink-0 fill-current' />
     ) : (
-      <ArrowRightIcon className='size-6 shrink-0' />
+      <ArrowRightIcon className='size-5 shrink-0' />
     )
   }
 
-  return (
-    <div className='relative flex w-full overflow-hidden rounded-md pt-10 antialiased md:h-100 md:justify-center'>
-      <Spotlight
-        className='-top-8 left-10 md:-top-20 md:left-60'
-        fill='#580a24'
-      />
+  const showAction = !(blocked && access.kind === 'user')
 
-      <div className='z-10 mx-auto flex-between w-full max-w-7xl flex-col gap-4 p-4 lg:gap-0 xl:flex-around xl:h-96'>
-        <h1 className='bg-linear-to-b from-hero-from to-hero-to bg-clip-text pb-2 text-center text-4xl font-bold text-transparent no-select md:text-6xl lg:text-7xl'>
-          AI-Powered Japanese Karaoke
-        </h1>
-        <div className='relative flex-between flex w-full flex-col gap-4 overflow-visible sm:mx-auto sm:w-4/5 md:flex-row'>
+  return (
+    <div className='mx-auto flex w-full max-w-3xl flex-col gap-5 pt-12 pb-10 md:items-center md:pt-20 md:pb-14'>
+      <h1 className='text-left text-4xl font-semibold tracking-tight text-balance text-foreground no-select md:text-center md:text-6xl'>
+        AI-Powered Japanese Karaoke
+      </h1>
+      <div className='flex items-start gap-2 md:items-center md:justify-center'>
+        <p className='text-base text-pretty text-tagline no-select md:text-center md:text-lg'>
+          Transform YouTube videos into your personalized Japanese karaoke
+          stage, with AI-transcribed, accurately synced lyrics and translations
+        </p>
+        <TooltipProvider delayDuration={0}>
+          <Tooltip open={infoOpen} onOpenChange={setInfoOpen}>
+            <TooltipTrigger asChild>
+              <button
+                type='button'
+                aria-label='About Accuracy'
+                onClick={() => {
+                  setInfoOpen((open) => !open)
+                }}
+                className='-m-2 shrink-0 rounded-full p-2'>
+                <Info className='h-4 w-4 text-tagline' />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent
+              className='max-w-[calc(100vw-2rem)]'
+              collisionPadding={16}
+              side='bottom'
+              sideOffset={10}
+              align='end'>
+              <p className='text-center text-pretty'>
+                While AI strives for accuracy, occasional discrepancies in
+                transcription or syncing may occur.
+              </p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      </div>
+      <div className='mt-3 flex w-full flex-col gap-2 md:max-w-170'>
+        {/* The field draws the border and its state; the action sits inside it from sm up */}
+        <InputField state={inputMode} className='relative'>
           <Input
             value={inputValue}
             onChange={handleInputChange}
@@ -226,25 +254,9 @@ const HeroGenerateLyricsDefault = ({
               }
             }}
             placeholder='Search or paste a YouTube URL'
-            variant='hero'
-            state={inputMode}
+            variant='bare'
           />
-          <div className='absolute -bottom-20 left-0 h-20 w-full py-6 pt-2 text-center md:text-left lg:py-2'>
-            {inputMode === 'search' && (
-              <div className='text-search'>Search by title, artist or mood</div>
-            )}
-            {inputValue.length > 0 && !isSearch && (
-              <div
-                className={cn(
-                  'text-success',
-                  blocked && 'text-muted-foreground',
-                  errorMessage !== '' && 'text-error-strong'
-                )}>
-                {statusMessage()}
-              </div>
-            )}
-          </div>
-          {!(blocked && access.kind === 'user') && (
+          {showAction && (
             <Button
               onClick={() => {
                 if (inputValue?.length === 0) {
@@ -254,48 +266,46 @@ const HeroGenerateLyricsDefault = ({
               }}
               disabled={errorMessage !== '' || isCheckingLyrics || checking}
               variant='hero'
-              size='tall'
-              gap='md'
-              className='w-full md:w-1/2 lg:w-1/4'>
-              <p className='text-body'>{buttonLabel()}</p>
+              size='inset'
+              gap='sm'
+              className='hidden shrink-0 sm:inline-flex'>
+              <span className='text-label'>{buttonLabel()}</span>
               {buttonIcon()}
             </Button>
           )}
+        </InputField>
+        <div className='min-h-6 px-5 text-sm' aria-live='polite'>
+          {inputMode === 'search' && (
+            <p className='text-search'>Search by title, artist or mood</p>
+          )}
+          {inputValue.length > 0 && !isSearch && (
+            <p
+              className={cn(
+                'text-success',
+                blocked && 'text-muted-foreground',
+                errorMessage !== '' && 'text-error-strong'
+              )}>
+              {statusMessage()}
+            </p>
+          )}
         </div>
-
-        <div className='flex items-center justify-center gap-2'>
-          <p className='mx-auto mt-4 text-center text-base font-normal text-tagline no-select lg:mt-0'>
-            Transform YouTube videos into your personalized Japanese karaoke
-            stage, with AI-transcribed, accurately synced lyrics and
-            translations
-          </p>
-          <TooltipProvider delayDuration={0}>
-            <Tooltip open={infoOpen} onOpenChange={setInfoOpen}>
-              <TooltipTrigger asChild>
-                <button
-                  type='button'
-                  aria-label='About Accuracy'
-                  onClick={() => {
-                    setInfoOpen((open) => !open)
-                  }}
-                  className='-m-2 rounded-full p-2'>
-                  <Info className='h-4 w-4 text-tagline' />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent
-                className='max-w-[calc(100vw-2rem)]'
-                collisionPadding={16}
-                side='bottom'
-                sideOffset={10}
-                align='end'>
-                <p className='text-center text-pretty'>
-                  While AI strives for accuracy, occasional discrepancies in
-                  transcription or syncing may occur.
-                </p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        </div>
+        {showAction && (
+          <Button
+            onClick={() => {
+              if (inputValue?.length === 0) {
+                return
+              }
+              handleOpenLandingPageDialog()
+            }}
+            disabled={errorMessage !== '' || isCheckingLyrics || checking}
+            variant='hero'
+            size='lg'
+            gap='sm'
+            className='w-full sm:hidden'>
+            <span className='text-label'>{buttonLabel()}</span>
+            {buttonIcon()}
+          </Button>
+        )}
       </div>
     </div>
   )

@@ -29,13 +29,15 @@ const TopBar = () => {
       data-topbar
       className={cn(
         'fixed top-0 right-0 left-0 z-50 pt-safe-top pr-(--safe-right) pl-(--safe-left)',
-        isVideoPlayer ? 'pointer-events-none' : 'bg-muted/80 backdrop-blur-md'
+        isVideoPlayer
+          ? 'pointer-events-none'
+          : 'bg-background/70 backdrop-blur-md'
       )}>
       {/* The logo is taller than the bar and centred on it, so its waveform would start at the very
           top; with no bar behind it on the player, the row sits lower so the logo clears the edge */}
       <nav
         className={cn(
-          'flex-between h-14 w-full sm:px-4',
+          'flex-between h-14 w-full pr-2 sm:px-4',
           isVideoPlayer && 'mt-2'
         )}>
         {/* The logo is the way home on every page, the player included */}

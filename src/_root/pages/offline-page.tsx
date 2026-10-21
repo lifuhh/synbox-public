@@ -169,7 +169,7 @@ const OfflinePage = () => {
               placeholder='Title, artist, romaji or a lyric'
               enterKeyHint='search'
               autoComplete='off'
-              className='h-10 w-full rounded-full border border-white/10 bg-white/5 pr-10 pl-9 text-base text-foreground placeholder:text-muted-foreground focus:border-primary/60 focus:outline-none [&::-webkit-search-cancel-button]:hidden'
+              className='h-10 w-full rounded-full border border-border bg-card pr-10 pl-9 text-base text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none [&::-webkit-search-cancel-button]:hidden'
             />
             {query !== '' && (
               <button
@@ -195,10 +195,10 @@ const OfflinePage = () => {
                   setFilter(item.id)
                 }}
                 className={cn(
-                  'flex h-8 shrink-0 items-center rounded-full border px-3 text-sm font-medium transition-colors',
+                  'flex h-8 shrink-0 items-center rounded-full px-3 text-sm font-medium transition-colors',
                   filter === item.id
-                    ? 'border-transparent bg-foreground text-background'
-                    : 'border-white/15 text-foreground hover:bg-white/10'
+                    ? 'bg-foreground text-background'
+                    : 'bg-card text-foreground hover:bg-accent'
                 )}>
                 {item.label}
               </button>

@@ -66,7 +66,7 @@ const ThemeSwatch = ({
         className={cn(
           'relative flex h-11 w-14 items-center justify-center overflow-hidden rounded-md ring-2 ring-offset-2 ring-offset-popover transition-all duration-150 bg-theme-swatch',
           selected
-            ? 'ring-primary'
+            ? 'ring-foreground'
             : 'ring-transparent group-hover:ring-border group-focus-visible:ring-ring'
         )}
         style={themeVars}>
@@ -79,7 +79,7 @@ const ThemeSwatch = ({
           </span>
         </span>
         {selected && (
-          <span className='absolute top-0.5 right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-white'>
+          <span className='absolute top-0.5 right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-foreground text-background'>
             <CheckIcon className='size-3 shrink-0' />
           </span>
         )}
@@ -227,7 +227,7 @@ export const LyricsThemePicker = ({
                 onClick={() => {
                   close()
                 }}
-                className='rounded-md bg-primary px-2.5 py-1 text-xs font-medium text-white transition-colors hover:bg-primary/85 touch:px-3.5 touch:py-2 touch:text-sm'>
+                className='rounded-full bg-primary-subtle px-2.5 py-1 text-xs font-semibold text-primary-text transition-colors hover:bg-primary-subtle-hover touch:px-3.5 touch:py-2 touch:text-sm'>
                 Done
               </button>
             </div>
@@ -269,7 +269,7 @@ export const LyricsThemePicker = ({
               className={cn(
                 'rounded-md py-1.5 text-xs font-medium transition-colors focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-hidden touch:py-2.5 touch:text-sm',
                 backdrop === option.id
-                  ? 'bg-primary text-white'
+                  ? 'bg-accent text-foreground'
                   : 'text-muted-foreground hover:text-foreground'
               )}>
               {option.name}
@@ -280,7 +280,7 @@ export const LyricsThemePicker = ({
       </section>
 
       {source !== null && (
-        <section className='flex items-center justify-between gap-3 border-t pt-3'>
+        <section className='flex items-center justify-between gap-3 pt-3'>
           <p className='text-xs text-muted-foreground'>
             {SOURCE_NOTES[source]}
           </p>
@@ -288,7 +288,7 @@ export const LyricsThemePicker = ({
             type='button'
             onClick={applyToAll}
             disabled={!ownStyle}
-            className='-my-2 shrink-0 py-2 text-xs font-medium text-primary transition-colors hover:text-primary/80 disabled:pointer-events-none disabled:opacity-0 touch:text-sm'>
+            className='-my-2 shrink-0 py-2 text-xs font-medium text-primary-text transition-colors hover:text-foreground disabled:pointer-events-none disabled:opacity-0 touch:text-sm'>
             Use For All Songs
           </button>
         </section>

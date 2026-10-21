@@ -87,8 +87,8 @@ const IconButton = ({
     aria-pressed={active}
     onClick={onClick}
     className={cn(
-      'grid size-9 shrink-0 place-items-center rounded-md text-white/85 transition-colors hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none touch:size-10',
-      active === true && 'text-primary hover:text-primary',
+      'grid size-9 shrink-0 place-items-center rounded-md text-white/85 transition-colors hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none touch:size-10',
+      active === true && 'text-primary-text hover:text-primary-text',
       className
     )}>
     {children}

@@ -135,11 +135,7 @@ const VersionCard = ({
 }: VersionCardProps) => {
   const note = describeNote(version.note)
   return (
-    <li
-      className={cn(
-        'flex flex-col gap-3 rounded-xl border bg-card/60 p-4 sm:flex-row sm:items-center sm:gap-6',
-        isDefault ? 'border-primary/60' : 'border-white/10'
-      )}>
+    <li className='flex flex-col gap-3 rounded-xl bg-card p-4 sm:flex-row sm:items-center sm:gap-6'>
       <div className='min-w-0 flex-1 space-y-1.5'>
         <div className='flex flex-wrap items-center gap-x-2 gap-y-1'>
           <h2 className='font-semibold text-foreground'>
@@ -150,7 +146,7 @@ const VersionCard = ({
             {SOURCE_LABELS[version.source] ?? version.source}
           </span>
           {isDefault && (
-            <span className='rounded-full bg-primary/20 px-2 py-0.5 text-xs font-medium text-primary'>
+            <span className='rounded-full bg-primary-subtle px-2 py-0.5 text-xs font-medium text-primary-text'>
               Default
             </span>
           )}
@@ -235,7 +231,7 @@ const MakeDefaultDialog = ({
           onClose()
         }
       }}>
-      <DialogContent variant='subtle' className='max-w-md'>
+      <DialogContent className='max-w-md'>
         <form
           className='grid gap-4'
           onSubmit={(event) => {
@@ -309,10 +305,7 @@ const VersionsAdmin = ({ videoId }: { videoId: string }) => {
               <ChevronDownIcon className='size-4' />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent
-            align='end'
-            variant='subtle-surface'
-            className='w-72'>
+          <DropdownMenuContent align='end' className='w-72'>
             <DropdownMenuItem
               variant='stacked'
               onSelect={() => {

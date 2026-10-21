@@ -101,7 +101,7 @@ const PlayerPage = () => {
           onClick={() => {
             void navigate('/')
           }}
-          className='rounded-sm bg-primary px-4 py-2 text-white transition-colors hover:bg-primary/90'>
+          className='rounded-full bg-primary-subtle px-4 py-2 font-semibold text-primary-text transition-colors hover:bg-primary-subtle-hover'>
           Return Home
         </button>
       </div>

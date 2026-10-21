@@ -98,7 +98,7 @@ const Glyph = ({ view, failed }: { view: StepView; failed: boolean }) => {
   }
   if (view.state === 'done') {
     return (
-      <span className='flex size-7 items-center justify-center rounded-full bg-linear-to-br from-brand-light to-primary text-white shadow-glow-sm'>
+      <span className='flex size-7 items-center justify-center rounded-full bg-primary-subtle text-primary-text'>
         <Check className='size-4' strokeWidth={3} aria-hidden />
       </span>
     )
