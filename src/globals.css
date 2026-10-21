@@ -949,14 +949,16 @@
       0.76 0.012 350
     ); /* secondary text, 7.8:1 on a popover */
     --graphite-12: oklch(0.96 0.005 350); /* text, 16.2:1 on a card */
-    --magenta-3: oklch(0.27 0.08 350); /* tonal fill */
-    --magenta-4: oklch(0.31 0.09 350); /* tonal fill, hovered */
+    --magenta-3: oklch(0.36 0.1 350); /* tonal fill; magenta-11 label 5.1:1 */
+    --magenta-4: oklch(
+      0.39 0.105 350
+    ); /* tonal fill, hovered; magenta-11 label 4.6:1 */
     --magenta-7: oklch(0.46 0.18 350); /* selected border */
     --magenta-9: oklch(0.585 0.24 350); /* solid; white label 4.8:1 */
     --magenta-10: oklch(0.54 0.22 350); /* solid, hovered; white label 5.7:1 */
     --magenta-11: oklch(
       0.77 0.16 350
-    ); /* magenta text: 8.2:1 on a card, 7.0:1 on the tonal fill */
+    ); /* magenta text: 8.2:1 on a card, 5.1:1 on the tonal fill */
     --glow-a: oklch(0.33 0.09 356);
     --glow-b: oklch(0.25 0.07 340);
     --danger-9: oklch(0.45 0.17 25); /* destructive fill; white label 8.2:1 */
