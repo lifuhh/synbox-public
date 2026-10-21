@@ -11,6 +11,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { useToast } from '@/components/ui/use-toast'
 import { playerChromeOpenAtom, playerVolumeAtom } from '@/context/atoms'
+import { useWakeLock } from '@/hooks/use-wake-lock'
 import { isStandalone } from '@/lib/pwa'
 import type { CssVars } from '@/types'
 import { cn } from '@/utils/cn'
@@ -254,11 +255,14 @@ export const PlayerStage = ({
 
   const { idle, sleep } = useIdle(IDLE_MS)
   const [dragging, setDragging] = useState(false)
+  const [locked, setLocked] = useState(false)
+  useWakeLock(phase.kind === 'playing' || phase.kind === 'buffering')
 
   // YouTube's own error screens (unavailable, sign-in, age gate) need its UI
   const handsOff = phase.kind === 'error'
   const showCover = !handsOff && coversPhase(phase)
-  const controlsVisible = !dragging && (!idle || phase.kind !== 'playing')
+  const controlsVisible =
+    !locked && !dragging && (!idle || phase.kind !== 'playing')
   const blockInput = quirks.blockIframeInput && !handsOff
   const { toast } = useToast()
   const setChromeOpen = useSetAtom(playerChromeOpenAtom)
@@ -472,10 +476,11 @@ export const PlayerStage = ({
       {autoplayMuted && (
         <button
           type='button'
+          data-unmute-pill
           onClick={() => {
             setVolume({ ...storedVolume, muted: false })
           }}
-          className='absolute top-[calc(var(--topbar-h)+0.5rem+var(--notices-h,0px)+var(--preview-banner-h,0px))] left-1/2 z-40 flex -translate-x-1/2 items-center gap-2.5 rounded-full bg-black/60 px-5 py-2.5 text-base font-medium text-white shadow-lg backdrop-blur-md transition-colors hover:bg-black/80'>
+          className='absolute top-[calc(var(--topbar-h)+0.5rem+var(--notices-h,0px)+var(--preview-banner-h,0px))] left-1/2 z-40 flex -translate-x-1/2 items-center gap-2.5 rounded-full bg-black/60 px-5 py-2.5 text-base font-medium whitespace-nowrap text-white shadow-lg backdrop-blur-md transition-colors hover:bg-black/80'>
           <VolumeXIcon className='size-5' aria-hidden='true' />
           Tap to Unmute
         </button>
@@ -499,6 +504,8 @@ export const PlayerStage = ({
         onSeekBy={seekBy}
         volume={volume}
         onVolumeChange={setVolume}
+        locked={locked}
+        onLockedChange={setLocked}
       />
     </div>
   )

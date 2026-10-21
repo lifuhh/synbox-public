@@ -1044,6 +1044,19 @@
     --preview-banner-h: 3rem;
   }
 
+  /* The player's top right corner (Lock Landscape, Lock Screen, Unlock) starts under all of those, so on a
+     narrow screen it clears Tap to Unmute too */
+  :root {
+    --stage-corner-top: calc(
+      var(--topbar-h) + 0.5rem + var(--notices-h, 0px) +
+        var(--preview-banner-h, 0px) + var(--unmute-h, 0px)
+    );
+  }
+
+  :root:has([data-unmute-pill]) {
+    --unmute-h: 3.25rem;
+  }
+
   /* The offline reader covers the app; what it covers can't be reached by Tab or a screen reader */
   html:has([data-reader]) [data-topbar],
   html:has([data-reader]) [data-generation-host] {

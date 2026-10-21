@@ -1,4 +1,5 @@
 import {
+  LockIcon,
   MaximizeIcon,
   MinimizeIcon,
   PauseIcon,
@@ -17,6 +18,7 @@ import { useArmed } from '@/hooks/use-armed'
 import type { CssVars } from '@/types'
 import { cn } from '@/utils/cn'
 
+import { StageLock } from './stage-lock'
 import { TAP_SEEK_SEC } from './use-stage-taps'
 import type { PlayerVolume, StagePlayer } from './use-you-tube-player'
 
@@ -105,6 +107,9 @@ interface StageControlsProps {
   onSeekBy: (seconds: number) => void
   volume: PlayerVolume
   onVolumeChange: (volume: PlayerVolume) => void
+  // Touch lock: the stage ignores every tap and swipe until unlocked
+  locked: boolean
+  onLockedChange: (locked: boolean) => void
 }
 
 const Clock = ({
@@ -143,6 +148,8 @@ export const StageControls = ({
   onSeekBy,
   volume,
   onVolumeChange: setVolume,
+  locked,
+  onLockedChange,
 }: StageControlsProps) => {
   const armed = useArmed(visible)
   const barRef = useRef<HTMLDivElement>(null)
@@ -199,142 +206,172 @@ export const StageControls = ({
     player.phase.kind === 'playing' || player.phase.kind === 'buffering'
 
   return (
-    <div
-      ref={barRef}
-      style={FADE_VARS}
-      className={cn(
-        'absolute inset-x-0 bottom-0 z-30 bg-linear-to-t from-black/80 via-black/40 to-transparent pt-10 pr-controls-right pb-controls-bottom pl-controls-left transition-opacity duration-(--controls-fade) short:pl-controls-rail',
-        visible ? 'opacity-100' : 'opacity-0',
-        !armed && 'pointer-events-none'
-      )}>
-      {/* On a phone on its side the seek bar joins the buttons' row: two rows would cover a third of the
-          screen and push the lyrics to its middle */}
+    <>
+      {/* Settings for the whole sitting rather than the song, so they keep out of the thumb's way: top right,
+          under the top bar. Touch screens only */}
       <div
-        ref={contentRef}
         data-player-chrome
-        className='short:flex short:items-center short:gap-1'>
-        {/* On a touch screen the clock sits at the end of the seek bar, so the buttons' row fits at 320px */}
-        <div className='mb-2 flex items-center gap-3 short:contents'>
-          <Slider
-            aria-label='Seek'
-            min={0}
-            max={Math.max(duration, 1)}
-            step={0.1}
-            value={[shown]}
-            onValueChange={([value]) => {
-              setHeld(value === undefined ? null : { committed: false, value })
-            }}
-            onValueCommit={([value]) => {
-              if (value === undefined) {
-                setHeld(null)
-                return
-              }
-              player.seek(value)
-              setHeld({ committed: true, value })
-              // A seek the player never reports lets go of the bar anyway
-              clearTimeout(releaseRef.current)
-              releaseRef.current = setTimeout(() => {
-                setHeld(null)
-              }, SEEK_HOLD_MAX_MS)
-            }}
-            className='min-w-0 flex-1 cursor-pointer short:order-1 short:mx-2'
-          />
-          <Clock
-            time={shown}
-            duration={duration}
-            className='hidden shrink-0 touch:block short:order-2'
-          />
-        </div>
-        <div className='flex items-center gap-1 touch:gap-0.5 short:contents'>
-          {/* Bottom left, where every player has it, although touch screens also have one mid-stage */}
-          <IconButton
-            label={isPlaying ? 'Pause' : 'Play'}
-            onClick={() => {
-              player.togglePlay()
-            }}>
-            {isPlaying ? (
-              <PauseIcon className='size-5' />
-            ) : (
-              <PlayIcon className='size-5' />
-            )}
-          </IconButton>
-          <IconButton
-            label={`Back ${TAP_SEEK_SEC} Seconds`}
-            onClick={() => {
-              onSeekBy(-TAP_SEEK_SEC)
-            }}>
-            <SeekGlyph direction='back' />
-          </IconButton>
-          <IconButton
-            label={`Forward ${TAP_SEEK_SEC} Seconds`}
-            onClick={() => {
-              onSeekBy(TAP_SEEK_SEC)
-            }}>
-            <SeekGlyph direction='forward' />
-          </IconButton>
-          {/* The slider only opens while the volume button is hovered or focused, so touch screens
-              keep just the mute button and the device's own volume */}
-          <div
-            className='group/volume flex items-center'
-            onWheel={(event) => {
-              const step =
-                event.deltaY < 0 ? VOLUME_WHEEL_STEP : -VOLUME_WHEEL_STEP
-              setVolume({
-                level: Math.min(1, Math.max(0, volume.level + step)),
-                muted: false,
-              })
-            }}>
-            <IconButton
-              label={volume.muted ? 'Unmute' : 'Mute'}
-              onClick={() => {
-                setVolume({ ...volume, muted: !volume.muted })
-              }}>
-              <VolumeGlyph level={volume.level} muted={volume.muted} />
-            </IconButton>
-            <div className='flex h-9 w-0 items-center overflow-hidden transition-width duration-200 ease-out group-focus-within/volume:w-24 group-hover/volume:w-24 touch:hidden'>
-              <div className='w-24 shrink-0 px-2.5'>
-                <Slider
-                  aria-label='Volume'
-                  min={0}
-                  max={1}
-                  step={0.01}
-                  value={[volume.muted ? 0 : volume.level]}
-                  onValueChange={([value]) => {
-                    if (value !== undefined) {
-                      setVolume({ level: value, muted: false })
-                    }
-                  }}
-                  className='cursor-pointer'
-                />
-              </div>
-            </div>
+        className={cn(
+          'hidden absolute top-(--stage-corner-top) right-controls-right z-30 items-center gap-0.5 rounded-full bg-black/55 p-0.5 shadow-rail backdrop-blur-md transition-opacity duration-(--controls-fade) touch:flex',
+          visible ? 'opacity-100' : 'opacity-0',
+          !armed && 'pointer-events-none'
+        )}
+        style={FADE_VARS}>
+        <IconButton
+          label='Lock Screen'
+          onClick={() => {
+            onLockedChange(true)
+          }}
+          className='rounded-full'>
+          <LockIcon className='size-5' />
+        </IconButton>
+      </div>
+      {locked && (
+        <StageLock
+          onUnlock={() => {
+            onLockedChange(false)
+          }}
+        />
+      )}
+      <div
+        ref={barRef}
+        style={FADE_VARS}
+        className={cn(
+          'absolute inset-x-0 bottom-0 z-30 bg-linear-to-t from-black/80 via-black/40 to-transparent pt-10 pr-controls-right pb-controls-bottom pl-controls-left transition-opacity duration-(--controls-fade) short:pl-controls-rail',
+          visible ? 'opacity-100' : 'opacity-0',
+          !armed && 'pointer-events-none'
+        )}>
+        {/* On a phone on its side the seek bar joins the buttons' row: two rows would cover a third of the
+          screen and push the lyrics to its middle */}
+        <div
+          ref={contentRef}
+          data-player-chrome
+          className='short:flex short:items-center short:gap-1'>
+          {/* On a touch screen the clock sits at the end of the seek bar, so the buttons' row fits at 320px */}
+          <div className='mb-2 flex items-center gap-3 short:contents'>
+            <Slider
+              aria-label='Seek'
+              min={0}
+              max={Math.max(duration, 1)}
+              step={0.1}
+              value={[shown]}
+              onValueChange={([value]) => {
+                setHeld(
+                  value === undefined ? null : { committed: false, value }
+                )
+              }}
+              onValueCommit={([value]) => {
+                if (value === undefined) {
+                  setHeld(null)
+                  return
+                }
+                player.seek(value)
+                setHeld({ committed: true, value })
+                // A seek the player never reports lets go of the bar anyway
+                clearTimeout(releaseRef.current)
+                releaseRef.current = setTimeout(() => {
+                  setHeld(null)
+                }, SEEK_HOLD_MAX_MS)
+              }}
+              className='min-w-0 flex-1 cursor-pointer short:order-1 short:mx-2'
+            />
+            <Clock
+              time={shown}
+              duration={duration}
+              className='hidden shrink-0 touch:block short:order-2'
+            />
           </div>
-          <Clock
-            time={shown}
-            duration={duration}
-            className='ml-2 touch:hidden short:order-2 short:ml-0 short:shrink-0'
-          />
-          <div className='ml-auto flex shrink-0 items-center gap-1 touch:gap-0.5 short:order-3 short:ml-1'>
+          <div className='flex items-center gap-1 touch:gap-0.5 short:contents'>
+            {/* Bottom left, where every player has it, although touch screens also have one mid-stage */}
             <IconButton
-              label='Loop'
-              active={loop}
+              label={isPlaying ? 'Pause' : 'Play'}
               onClick={() => {
-                onLoopChange(!loop)
+                player.togglePlay()
               }}>
-              <RepeatIcon className='size-5' />
-            </IconButton>
-            <IconButton
-              label={fullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
-              onClick={onToggleFullscreen}>
-              {fullscreen ? (
-                <MinimizeIcon className='size-5' />
+              {isPlaying ? (
+                <PauseIcon className='size-5' />
               ) : (
-                <MaximizeIcon className='size-5' />
+                <PlayIcon className='size-5' />
               )}
             </IconButton>
+            <IconButton
+              label={`Back ${TAP_SEEK_SEC} Seconds`}
+              onClick={() => {
+                onSeekBy(-TAP_SEEK_SEC)
+              }}>
+              <SeekGlyph direction='back' />
+            </IconButton>
+            <IconButton
+              label={`Forward ${TAP_SEEK_SEC} Seconds`}
+              onClick={() => {
+                onSeekBy(TAP_SEEK_SEC)
+              }}>
+              <SeekGlyph direction='forward' />
+            </IconButton>
+            {/* The slider only opens while the volume button is hovered or focused, so touch screens
+              keep just the mute button and the device's own volume */}
+            <div
+              className='group/volume flex items-center'
+              onWheel={(event) => {
+                const step =
+                  event.deltaY < 0 ? VOLUME_WHEEL_STEP : -VOLUME_WHEEL_STEP
+                setVolume({
+                  level: Math.min(1, Math.max(0, volume.level + step)),
+                  muted: false,
+                })
+              }}>
+              <IconButton
+                label={volume.muted ? 'Unmute' : 'Mute'}
+                onClick={() => {
+                  setVolume({ ...volume, muted: !volume.muted })
+                }}>
+                <VolumeGlyph level={volume.level} muted={volume.muted} />
+              </IconButton>
+              <div className='flex h-9 w-0 items-center overflow-hidden transition-width duration-200 ease-out group-focus-within/volume:w-24 group-hover/volume:w-24 touch:hidden'>
+                <div className='w-24 shrink-0 px-2.5'>
+                  <Slider
+                    aria-label='Volume'
+                    min={0}
+                    max={1}
+                    step={0.01}
+                    value={[volume.muted ? 0 : volume.level]}
+                    onValueChange={([value]) => {
+                      if (value !== undefined) {
+                        setVolume({ level: value, muted: false })
+                      }
+                    }}
+                    className='cursor-pointer'
+                  />
+                </div>
+              </div>
+            </div>
+            <Clock
+              time={shown}
+              duration={duration}
+              className='ml-2 touch:hidden short:order-2 short:ml-0 short:shrink-0'
+            />
+            <div className='ml-auto flex shrink-0 items-center gap-1 touch:gap-0.5 short:order-3 short:ml-1'>
+              <IconButton
+                label='Loop'
+                active={loop}
+                onClick={() => {
+                  onLoopChange(!loop)
+                }}>
+                <RepeatIcon className='size-5' />
+              </IconButton>
+              <IconButton
+                label={fullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
+                onClick={onToggleFullscreen}>
+                {fullscreen ? (
+                  <MinimizeIcon className='size-5' />
+                ) : (
+                  <MaximizeIcon className='size-5' />
+                )}
+              </IconButton>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </>
   )
 }
