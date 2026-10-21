@@ -35,7 +35,8 @@ const toastVariants = cva(
     variants: {
       variant: {
         default: 'bg-black/75 text-white',
-        destructive: 'group bg-destructive text-destructive-foreground',
+        // Errors and refusals: a dark red surface with light red text, like the tonal buttons
+        destructive: 'group bg-error-surface text-error-soft',
       },
     },
   }
@@ -63,7 +64,7 @@ const ToastActionRender: React.ForwardRefRenderFunction<
   <ToastPrimitives.Action
     ref={ref}
     className={cn(
-      'inline-flex h-8 shrink-0 items-center justify-center rounded-md bg-white/10 px-3 text-sm font-medium ring-offset-background transition-colors hover:bg-white/15 hover:group-data-[variant=destructive]:bg-destructive hover:group-data-[variant=destructive]:text-destructive-foreground focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:outline-hidden focus:group-data-[variant=destructive]:ring-destructive disabled:pointer-events-none disabled:opacity-50 touch:h-10',
+      'inline-flex h-8 shrink-0 items-center justify-center rounded-md bg-white/10 px-3 text-sm font-medium ring-offset-background transition-colors hover:bg-white/15 focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:outline-hidden focus:group-data-[variant=destructive]:ring-destructive disabled:pointer-events-none disabled:opacity-50 touch:h-10',
       className
     )}
     {...props}

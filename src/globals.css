@@ -69,6 +69,7 @@
   --color-error: var(--red-11);
   --color-error-soft: var(--red-12);
   --color-error-hover: var(--red-13);
+  --color-error-surface: var(--red-3);
   --color-error-border: var(--red-9);
   --color-error-ring-offset: var(--red-8);
   --color-error-strong: var(--red-10);
@@ -850,6 +851,9 @@
     --glow-a: oklch(0.33 0.09 356);
     --glow-b: oklch(0.25 0.07 340);
     --danger-9: oklch(0.45 0.17 25); /* destructive fill; white label 8.2:1 */
+    --red-3: oklch(
+      0.27 0.08 25
+    ); /* error surface; light red text on it 8.6:1 */
     --red-8: oklch(0.52 0.19 25);
     --red-9: oklch(0.62 0.19 25); /* error border, 4.6:1 on a card */
     --red-10: oklch(0.7 0.17 25); /* error text, 5.9:1 on a popover */

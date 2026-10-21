@@ -297,7 +297,7 @@ const HeroGenerateLyricsDefault = ({
               }
               handleOpenLandingPageDialog()
             }}
-            disabled={errorMessage !== '' || isCheckingLyrics}
+            disabled={errorMessage !== '' || isCheckingLyrics || checking}
             variant='hero'
             size='lg'
             gap='sm'
