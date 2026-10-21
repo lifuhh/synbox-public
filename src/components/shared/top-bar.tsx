@@ -94,7 +94,7 @@ const TopBar = () => {
   // buttons' own 40 px when there is not, so a lyrics generation docked first in the row fits beside them.
   // It stays while the others hide with the player's floating UI
   const buttons = cn(
-    'mr-1 ml-auto grid auto-cols-[minmax(2.5rem,3rem)] grid-flow-col justify-items-center sm:mr-2 sm:flex sm:items-center sm:gap-3',
+    'mr-1 ml-auto grid auto-cols-[minmax(2.5rem,3rem)] grid-flow-col justify-items-center sm:mr-2 sm:flex sm:items-center sm:gap-3 tabbar:hidden',
     isVideoPlayer && armed && 'pointer-events-auto',
     '*:not-data-generation-dock:transition-fade-translate *:not-data-generation-dock:duration-300 *:not-data-generation-dock:ease-out',
     !iconsShown &&

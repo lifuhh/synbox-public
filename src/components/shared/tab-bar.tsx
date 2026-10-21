@@ -11,9 +11,8 @@ import type { LucideIcon } from 'lucide-react'
 import { useEffect } from 'react'
 import { Link, NavLink, useLocation } from 'react-router'
 
-import { useMediaQuery } from '@/hooks/use-media-query'
 import { resumeSongAtom, songPath } from '@/lib/listening/store'
-import { isStandalone } from '@/lib/pwa'
+import { isInstalledPhone } from '@/lib/pwa'
 import { cn } from '@/utils/cn'
 
 const TABS: { to: string; label: string; icon: LucideIcon; end?: boolean }[] = [
@@ -71,12 +70,9 @@ const ResumeBar = () => {
 // The installed app on a phone moves its navigation to the thumb: four tabs in a floating pill over the
 // home indicator, with the resume bar above them. The website (and the app on a computer) keeps the top bar
 const TabBar = () => {
-  const touch = useMediaQuery('(pointer: coarse)')
-  const standalone =
-    useMediaQuery('(display-mode: standalone)') || isStandalone()
   const { pathname } = useLocation()
   const [song] = useAtom(resumeSongAtom)
-  const shown = standalone && touch && TAB_PAGES.test(pathname)
+  const shown = isInstalledPhone() && TAB_PAGES.test(pathname)
   const resume = shown && song !== null
 
   useEffect(() => {

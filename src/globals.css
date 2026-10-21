@@ -13,7 +13,9 @@
 }
 @custom-variant dark (&:is(.dark *));
 /* The app installed on a phone (opened from the Home Screen): its own navigation, no website pitch */
-@custom-variant installed (@media (display-mode: standalone) and (pointer: coarse));
+@custom-variant installed (&:where(html[data-installed] *));
+/* While the installed app's tab bar shows (not on the player or a song's reader) */
+@custom-variant tabbar (&:where(html[data-tabbar] *));
 /* Finger-driven screens: bigger hit areas, no hover-only affordances */
 @custom-variant touch (@media (pointer: coarse));
 /* A phone on its side: too short for the player's vertical rail. A page turned by Lock Landscape counts too */
@@ -1281,18 +1283,14 @@
   }
 
   /* The installed app on a phone: the tab bar floats 0.5rem over the home indicator, 4rem tall, with 1rem
-     clear above it; the resume bar adds its own height. The top bar keeps only the logo, as the tabs carry
-     Lyrics, Saved and the account */
+     clear above it; the resume bar adds its own height. The top bar keeps only the logo (tabbar: below), as
+     the tabs carry Lyrics, Saved and the account */
   html[data-tabbar] {
     --tabbar-h: 5.5rem;
   }
 
   html[data-tabbar][data-resume-bar] {
     --tabbar-h: 9.25rem;
-  }
-
-  html[data-tabbar] [data-topbar] [data-player-chrome] {
-    display: none;
   }
 
   /* The iPhone stand-in for fullscreen: the player without the app's top bar */

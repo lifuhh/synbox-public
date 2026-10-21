@@ -9,7 +9,7 @@ import {
 } from '@/components/search/search-result-cards'
 import DotsLoader from '@/components/shared/dots-loader'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { Input, InputField } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { noSongReason, signInWithGoogle, useAccess } from '@/lib/auth'
 import {
@@ -362,7 +362,7 @@ const SearchPage = () => {
       <title>Search · Synbox</title>
       <form
         key={query}
-        className='flex w-full gap-2 sm:mx-auto sm:w-4/5'
+        className='w-full sm:mx-auto sm:w-4/5'
         onSubmit={(e) => {
           e.preventDefault()
           const value = new FormData(e.currentTarget).get('q')
@@ -371,15 +371,34 @@ const SearchPage = () => {
             setParams({ q })
           }
         }}>
-        <Input
-          name='q'
-          defaultValue={query}
-          placeholder='Search for a song, or describe one: “sad songs by a female singer”'
-        />
-        <Button type='submit'>
-          <SearchIcon className='mr-2 size-4' />
-          Search
-        </Button>
+        {/* The home page's field: a pill with its action inside, an icon on phones and a labelled one wider */}
+        <InputField>
+          <Input
+            name='q'
+            defaultValue={query}
+            aria-label='Search Songs'
+            enterKeyHint='search'
+            placeholder='Search a song, or describe one: “sad songs by a female singer”'
+            variant='bare'
+          />
+          <Button
+            type='submit'
+            variant='hero'
+            size='icon'
+            aria-label='Search'
+            className='shrink-0 sm:hidden'>
+            <SearchIcon className='size-5' />
+          </Button>
+          <Button
+            type='submit'
+            variant='hero'
+            size='inset'
+            gap='sm'
+            className='hidden shrink-0 sm:inline-flex'>
+            <SearchIcon className='size-5' aria-hidden />
+            <span className='text-label'>Search</span>
+          </Button>
+        </InputField>
       </form>
 
       <div className='sm:mx-auto sm:w-4/5'>
