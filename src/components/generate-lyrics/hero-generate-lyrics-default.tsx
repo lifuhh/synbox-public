@@ -229,11 +229,11 @@ const HeroGenerateLyricsDefault = ({
   }, [])
 
   return (
-    <div className='mx-auto flex w-full max-w-3xl flex-col gap-5 pt-12 pb-10 md:items-center md:pt-20 md:pb-14'>
+    <div className='mx-auto flex w-full max-w-3xl flex-col gap-5 pt-12 pb-10 md:items-center md:pt-20 md:pb-14 short:gap-3 short:pt-4 short:pb-6'>
       <h1
         className={cn(
           animate && RISE_STEPS[0],
-          'text-left text-4xl font-semibold tracking-tight text-balance text-foreground no-select md:text-center md:text-6xl'
+          'text-left text-4xl font-semibold tracking-tight text-balance text-foreground no-select md:text-center md:text-6xl short:text-4xl'
         )}>
         AI-Powered Japanese Karaoke
       </h1>
@@ -241,7 +241,7 @@ const HeroGenerateLyricsDefault = ({
       <p
         className={cn(
           animate && RISE_STEPS[1],
-          'text-base text-pretty text-tagline no-select md:text-center md:text-lg'
+          'text-base text-pretty text-tagline no-select md:text-center md:text-lg short:text-base'
         )}>
         Paste a YouTube link and sing along with synced lyrics, furigana, romaji
         and translations
