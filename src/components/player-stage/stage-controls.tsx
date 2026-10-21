@@ -216,23 +216,27 @@ export const StageControls = ({
 
   return (
     <>
-      {/* Settings for the whole sitting rather than the song, so they keep out of the thumb's way: top right,
-          under the top bar. Touch screens only */}
+      {/* Settings for the whole sitting rather than the song, so they keep out of the thumb's way. Touch screens
+          only. Upright: a row under the top bar's icons, on their right edge. On a phone on its side: a column
+          on the right edge that mirrors the rail on the left (same buttons, padding, top and slide), so the two
+          frame the video */}
       <div
         data-player-chrome
         className={cn(
-          'hidden absolute top-(--stage-corner-top) right-controls-right z-30 items-center gap-0.5 rounded-full bg-black/55 p-0.5 shadow-rail backdrop-blur-md transition-opacity duration-(--controls-fade) touch:flex',
-          visible ? 'opacity-100' : 'opacity-0',
+          'hidden absolute top-(--stage-corner-top) right-controls-right z-30 items-center gap-0.5 rounded-full bg-black/55 p-0.5 shadow-rail backdrop-blur-md transition-translate-fade duration-300 ease-out touch:flex',
+          'short:top-[calc(var(--topbar-h)+0.25rem)] short:right-(--safe-right) short:flex-col short:gap-1 short:rounded-none short:rounded-l-2xl short:p-1',
+          visible
+            ? 'opacity-100'
+            : 'opacity-0 short:translate-x-[calc(100%+var(--safe-right))] short:opacity-100',
           !armed && 'pointer-events-none'
-        )}
-        style={FADE_VARS}>
+        )}>
         <IconButton
           label='Lock Landscape'
           active={landscape.locked}
           onClick={() => {
             void landscape.toggle()
           }}
-          className='rounded-full'>
+          className='rounded-full short:size-8 short:rounded-lg'>
           <SmartphoneIcon className='size-5 rotate-90' />
         </IconButton>
         <IconButton
@@ -240,7 +244,7 @@ export const StageControls = ({
           onClick={() => {
             onLockedChange(true)
           }}
-          className='rounded-full'>
+          className='rounded-full short:size-8 short:rounded-lg'>
           <LockIcon className='size-5' />
         </IconButton>
       </div>
