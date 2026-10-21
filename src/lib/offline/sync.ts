@@ -7,12 +7,15 @@ import { useEffect, useRef, useSyncExternalStore } from 'react'
 import { favoritesAtom, historyAtom } from '@/context/atoms'
 import { getGallerySongs, getLyricsRows } from '@/lib/appwrite/api'
 import { fetchMySongs, useMe } from '@/lib/auth'
+import { karaokeMatchesLyrics } from '@/lib/karaoke'
 import { parseLyricsDocument } from '@/lib/lyrics-document'
 import { useOnline } from '@/lib/pwa'
 import { QUERY_KEYS } from '@/lib/react-query/query-keys'
+import { getKaraoke } from '@/lib/synbox-flask/api'
+import type { KaraokeDocLine } from '@/types'
 
 import type { OfflineSong } from './song'
-import { offlineLines, romanizeTitle } from './song'
+import { OFFLINE_SONG_VERSION, offlineLines, romanizeTitle } from './song'
 
 // Which lists a saved song is on. Recent is the last RECENT_LIMIT songs opened, so songs generated before
 // sign-in existed are there too
@@ -157,6 +160,19 @@ const fetchThumbnail = async (videoId: string) => {
   }
 }
 
+// The song's karaoke timing when it belongs to these lyrics (it holds the newest generation, which an older
+// active version doesn't match); null when there is none. A failed request throws
+const fetchKaraoke = async (
+  videoId: string,
+  row: Record<string, unknown>
+): Promise<KaraokeDocLine[] | null> => {
+  const doc = await getKaraoke(videoId, null)
+  const plain = typeof row.plain_lyrics === 'string' ? row.plain_lyrics : ''
+  return doc !== null && karaokeMatchesLyrics(doc.lines, plain)
+    ? doc.lines
+    : null
+}
+
 // Saves one stretch of songs; returns how many could not be saved
 const saveChunk = async (
   ids: string[],
@@ -176,15 +192,24 @@ const saveChunk = async (
       const info = infos.find((song) => song.videoId === videoId)
       const known = wanted.get(videoId)
       const title = info?.title ?? known?.title ?? videoId
-      const lines = offlineLines(lyrics)
+      let karaoke: KaraokeDocLine[] | null = null
+      let timingPending = false
+      try {
+        karaoke = await fetchKaraoke(videoId, found.row)
+      } catch {
+        timingPending = true
+      }
+      const lines = offlineLines(lyrics, karaoke)
       const song: OfflineSong = {
         author: info?.author ?? known?.author ?? '',
         generatedAt: found.createdAt,
         lines,
         thumbnail: await fetchThumbnail(videoId),
+        timingPending,
         title,
         titleRomaji: romanizeTitle(title, lines),
         updatedAt: found.updatedAt,
+        version: OFFLINE_SONG_VERSION,
         videoId,
       }
       await set(videoId, song, songStore)
@@ -223,7 +248,10 @@ const syncSongs = async (
     const saved = stored.get(videoId)
     return (
       dates.has(videoId) &&
-      (saved === undefined || saved.updatedAt !== dates.get(videoId)?.updatedAt)
+      (saved === undefined ||
+        saved.version !== OFFLINE_SONG_VERSION ||
+        saved.timingPending ||
+        saved.updatedAt !== dates.get(videoId)?.updatedAt)
     )
   })
   // A missing thumbnail is fetched on its own, without the lyrics again

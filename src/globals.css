@@ -233,6 +233,8 @@
   --spacing-reader-top: calc(var(--spacing-safe-top) + 3.75rem);
   --spacing-reader-bottom: calc(var(--safe-bottom) + 2.5rem);
   --spacing-reader-bottom-bar: calc(var(--safe-bottom) + 6rem);
+  /* Synced lyrics: room for the play controls, and for the last line to scroll up to where the sung line sits */
+  --spacing-reader-follow: 55dvh;
   --spacing-reader-line: calc(0.875rem * var(--reader-scale));
   --spacing-reader-stanza: calc(1.25rem * var(--reader-scale));
   --text-reader-title: calc(1.0625rem * var(--reader-scale));
@@ -241,7 +243,7 @@
   --text-reader-ja--line-height: 1.95;
   --text-reader-romaji: calc(0.8125rem * var(--reader-scale));
   --text-reader-romaji--line-height: 1.35;
-  --text-reader-translation: calc(0.9375rem * var(--reader-scale));
+  --text-reader-translation: calc(1rem * var(--reader-scale));
   --text-reader-translation--line-height: 1.45;
 }
 
@@ -274,6 +276,17 @@
     text-shadow: none;
     opacity: 0.8;
   }
+}
+
+/* Synced lyrics' karaoke fill on the page: sung in the Japanese colour, unsung at half strength. A part
+   reads as sung until the clock writes --p, so only the line being played shows the wipe */
+@utility reader-karaoke-part {
+  --karaoke-stop: calc(var(--p, 1) * 100%);
+  --karaoke-gradient: linear-gradient(
+    to right,
+    var(--reader-accent) var(--karaoke-stop),
+    color-mix(in oklab, var(--reader-fg) 40%, transparent) var(--karaoke-stop)
+  );
 }
 
 /* The reader's custom colour swatch: every hue */
