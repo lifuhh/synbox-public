@@ -26,8 +26,9 @@ import { cn } from '@/utils/cn'
 
 const SECTION_HEADING =
   'text-xs font-medium tracking-wide text-muted-foreground uppercase'
+// A choice in a segmented track (rounded-lg, p-1): its corners are the track's less the padding
 const SEGMENT =
-  'rounded-md py-1.5 text-xs font-medium transition-colors focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-hidden touch:py-2.5 touch:text-sm'
+  'rounded-sm py-1.5 text-xs font-medium transition-colors focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-hidden touch:py-2.5 touch:text-sm'
 const TEXT_BUTTON =
   'rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-hidden touch:px-3 touch:py-2.5 touch:text-sm'
 
