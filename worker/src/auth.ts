@@ -9,12 +9,39 @@ export interface Env {
   GOOGLE_CLIENT_SECRET: string
   TRUSTED_ORIGINS: string
   INTERNAL_SECRET: string
+  // Comma-separated; a secret, so no address is ever in the repo. These accounts are admins from their
+  // first sign-in
+  ADMIN_EMAILS?: string
 }
+
+const adminEmails = (env: Env) =>
+  new Set(
+    (env.ADMIN_EMAILS ?? '')
+      .split(',')
+      .map((email) => email.trim().toLowerCase())
+      .filter((email) => email !== '')
+  )
 
 export const createAuth = (env: Env) =>
   betterAuth({
     baseURL: env.BETTER_AUTH_URL,
     database: env.DB,
+    // Google verifies the address, and Google is the only way in, so the address is enough to trust
+    databaseHooks: {
+      user: {
+        create: {
+          before: async (user) =>
+            await Promise.resolve({
+              data: {
+                ...user,
+                role: adminEmails(env).has(user.email.toLowerCase())
+                  ? 'admin'
+                  : 'user',
+              },
+            }),
+        },
+      },
+    },
     plugins: [
       admin(),
       // Cloud Run verifies these offline against /api/auth/jwks; it only needs who and what role

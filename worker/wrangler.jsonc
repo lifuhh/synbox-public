@@ -16,7 +16,7 @@
       "migrations_dir": "migrations",
     },
   ],
-  // Secrets (wrangler secret put): BETTER_AUTH_SECRET, GOOGLE_CLIENT_SECRET, INTERNAL_SECRET
+  // Secrets (wrangler secret put): BETTER_AUTH_SECRET, GOOGLE_CLIENT_SECRET, INTERNAL_SECRET, ADMIN_EMAILS
   "vars": {
     "BETTER_AUTH_URL": "https://synbox.io",
     "GOOGLE_CLIENT_ID": "",

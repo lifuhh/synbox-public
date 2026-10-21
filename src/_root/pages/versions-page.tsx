@@ -1,7 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { ArrowLeftIcon, ChevronDownIcon, PlayIcon } from 'lucide-react'
 import { useState } from 'react'
-import { Link, useParams } from 'react-router'
+import { Link, Navigate, useParams } from 'react-router'
 
 import { Button } from '@/components/ui/button'
 import {
@@ -123,8 +123,7 @@ interface VersionCardProps {
   videoId: string
   version: LyricsVersionSummary
   isDefault: boolean
-  // Absent for anyone but an admin
-  onMakeDefault?: () => void
+  onMakeDefault: () => void
 }
 
 const VersionCard = ({
@@ -175,7 +174,7 @@ const VersionCard = ({
             {isDefault ? 'Play' : 'Preview'}
           </Link>
         </Button>
-        {!isDefault && onMakeDefault !== undefined && (
+        {!isDefault && (
           <Button size='sm' variant='outline' onClick={onMakeDefault}>
             Make Default
           </Button>
@@ -268,13 +267,11 @@ const MakeDefaultDialog = ({
   )
 }
 
-const VersionsPage = () => {
-  const { videoId = '' } = useParams<{ videoId: string }>()
+const VersionsAdmin = ({ videoId }: { videoId: string }) => {
   const { data, error, isLoading } = useGetLyricsVersions(videoId)
   const { data: songInfo } = useGetSongInfoBySongId(videoId)
   const [confirming, setConfirming] = useState<number | null>(null)
   const versions = data ? data.versions.toReversed() : []
-  const { admin } = useAccess()
 
   const regenerate = (skipUploaderLyrics: boolean) => {
     startGeneration({
@@ -304,41 +301,39 @@ const VersionsPage = () => {
             {songInfo?.title ?? videoId}
           </p>
         </div>
-        {admin && (
-          <DropdownMenu modal={false}>
-            <DropdownMenuTrigger asChild>
-              <Button gap='sm' className='w-fit shrink-0'>
-                Regenerate
-                <ChevronDownIcon className='size-4' />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align='end'
-              variant='subtle-surface'
-              className='w-72'>
-              <DropdownMenuItem
-                variant='stacked'
-                onSelect={() => {
-                  regenerate(false)
-                }}>
-                <span>Regenerate</span>
-                <span className='text-xs text-muted-foreground'>
-                  A fresh run with every lyrics source
-                </span>
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                variant='stacked'
-                onSelect={() => {
-                  regenerate(true)
-                }}>
-                <span>Regenerate Without Uploader Lyrics</span>
-                <span className='text-xs text-muted-foreground'>
-                  For when the video&apos;s subtitles are wrong
-                </span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
+        <DropdownMenu modal={false}>
+          <DropdownMenuTrigger asChild>
+            <Button gap='sm' className='w-fit shrink-0'>
+              Regenerate
+              <ChevronDownIcon className='size-4' />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            align='end'
+            variant='subtle-surface'
+            className='w-72'>
+            <DropdownMenuItem
+              variant='stacked'
+              onSelect={() => {
+                regenerate(false)
+              }}>
+              <span>Regenerate</span>
+              <span className='text-xs text-muted-foreground'>
+                A fresh run with every lyrics source
+              </span>
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              variant='stacked'
+              onSelect={() => {
+                regenerate(true)
+              }}>
+              <span>Regenerate Without Uploader Lyrics</span>
+              <span className='text-xs text-muted-foreground'>
+                For when the video&apos;s subtitles are wrong
+              </span>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </header>
 
       <p className='-mt-2 text-sm text-muted-foreground'>
@@ -371,13 +366,9 @@ const VersionsPage = () => {
               videoId={videoId}
               version={version}
               isDefault={data?.active === version.version}
-              onMakeDefault={
-                admin
-                  ? () => {
-                      setConfirming(version.version)
-                    }
-                  : undefined
-              }
+              onMakeDefault={() => {
+                setConfirming(version.version)
+              }}
             />
           ))}
         </ul>
@@ -391,6 +382,20 @@ const VersionsPage = () => {
         }}
       />
     </div>
+  )
+}
+
+// Versions are an admin tool: anyone else goes to the song, once the sign-in check has answered
+const VersionsPage = () => {
+  const { videoId = '' } = useParams<{ videoId: string }>()
+  const { admin, ready } = useAccess()
+  if (!ready) {
+    return null
+  }
+  return admin ? (
+    <VersionsAdmin videoId={videoId} />
+  ) : (
+    <Navigate to={`/v/${videoId}`} replace />
   )
 }
 

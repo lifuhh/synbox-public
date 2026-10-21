@@ -121,9 +121,9 @@ const DoneView = ({ job }: { job: Job }) => {
           {outcome.play.label}
         </Link>
       </Button>
-      {(outcome.versions || (admin && !job.skipUploaderLyrics)) && (
+      {admin && (outcome.versions || !job.skipUploaderLyrics) && (
         <div className='flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs text-white/50'>
-          {outcome.versions && (
+          {admin && outcome.versions && (
             <Link
               to={`/v/${job.videoId}/versions`}
               onClick={close}

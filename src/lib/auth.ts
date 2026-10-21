@@ -83,16 +83,28 @@ const subscribeGuestSong = (listener: () => void) => {
 }
 
 // What the person on the page may do. `newSong` is false only when we know a request would be refused
+// `ready` is false until the sign-in check answers; until then everyone looks like a guest
 export type Access =
-  | { kind: 'guest'; newSong: boolean; admin: false }
-  | { kind: 'user'; newSong: boolean; admin: boolean; quota: Quota }
+  | { kind: 'guest'; newSong: boolean; admin: false; ready: boolean }
+  | {
+      kind: 'user'
+      newSong: boolean
+      admin: boolean
+      quota: Quota
+      ready: true
+    }
 
 export const useAccess = (): Access => {
-  const { data } = useMe()
+  const { data, isPending } = useMe()
   const guestUsed = useSyncExternalStore(subscribeGuestSong, guestSongUsed)
   const user = data?.user ?? null
   if (user === null || data?.quota === undefined) {
-    return { admin: false, kind: 'guest', newSong: !guestUsed }
+    return {
+      admin: false,
+      kind: 'guest',
+      newSong: !guestUsed,
+      ready: !isPending,
+    }
   }
   const { quota } = data
   return {
@@ -100,6 +112,7 @@ export const useAccess = (): Access => {
     kind: 'user',
     newSong: quota.limit === null || quota.used < quota.limit,
     quota,
+    ready: true,
   }
 }
 

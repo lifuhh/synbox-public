@@ -28,6 +28,7 @@ import {
 } from '@/context/atoms'
 import { useArmed } from '@/hooks/use-armed'
 import { useMediaQuery } from '@/hooks/use-media-query'
+import { useAccess } from '@/lib/auth'
 import type { LyricsStyle } from '@/lib/lyrics-style'
 import {
   DEFAULT_LYRICS_STYLE,
@@ -112,6 +113,7 @@ const Divider = () => (
 
 const PlayerRail = () => {
   const { videoId = '' } = useParams<{ videoId: string }>()
+  const { admin } = useAccess()
   const { toast } = useToast()
   const panelRef = useRef<HTMLElement>(null)
   const open = useAtomValue(playerChromeOpenAtom)
@@ -315,7 +317,9 @@ const PlayerRail = () => {
               </RailButton>
             </RailTooltip>
             <LyricsThemePicker anchorRef={panelRef} peek={peek} />
-            {videoId !== '' && <LyricsVersionsMenu videoId={videoId} />}
+            {admin && videoId !== '' && (
+              <LyricsVersionsMenu videoId={videoId} />
+            )}
 
             <Divider />
 
