@@ -60,6 +60,12 @@ const serveYoutube = async (
   }
 }
 
+const LIBRARY_SONGS_PROXY = {
+  changeOrigin: true,
+  rewrite: () => '/library/songs',
+  target: 'https://synbox-lookup-1045990822048.asia-southeast1.run.app',
+}
+
 export default defineConfig({
   build: {
     chunkSizeWarningLimit: 1000,
@@ -194,6 +200,8 @@ export default defineConfig({
       registerType: 'prompt',
       workbox: {
         cleanupOutdatedCaches: true,
+        // Or the precache would still answer "/" with its index.html, ahead of the pages route below
+        directoryIndex: '',
         // The app shell only. Lyrics, songs and videos always come from the network
         globIgnores: [
           'AppLogoV2.svg',
@@ -201,9 +209,21 @@ export default defineConfig({
           'assets/showcase/**',
         ],
         globPatterns: ['**/*.{js,css,html,png,svg,woff2}'],
-        navigateFallback: '/index.html',
-        navigateFallbackDenylist: [/^\/api\//u],
+        // Pages from the network first, so opening or reloading a tab shows the latest deploy (a precached page
+        // kept the deploy the worker was built with until a hard reload). The shell in the precache answers
+        // when the network fails or takes over 3 s
+        navigateFallback: null,
         runtimeCaching: [
+          {
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'pages',
+              networkTimeoutSeconds: 3,
+              precacheFallback: { fallbackURL: '/index.html' },
+            },
+            urlPattern: ({ request, url }) =>
+              request.mode === 'navigate' && !url.pathname.startsWith('/api/'),
+          },
           {
             handler: 'StaleWhileRevalidate',
             options: { cacheName: 'google-fonts-css' },
@@ -234,16 +254,20 @@ export default defineConfig({
       telemetry: false,
     }),
   ]),
+  // The gallery's song list, as in dev
+  preview: { proxy: { '/api/library/songs': LIBRARY_SONGS_PROXY } },
   resolve: {
     alias: {
       '@': `${import.meta.dirname}/src`,
     },
   },
-  // Netlify sends these to the auth Worker; locally that is `wrangler dev --env dev` in worker/
+  // Netlify sends these to the auth Worker; locally that is `wrangler dev --env dev` in worker/. The gallery's
+  // song list goes to the lookup service, as netlify.toml sends it
   server: {
     proxy: {
       '/api/admin': 'http://localhost:8787',
       '/api/auth': 'http://localhost:8787',
+      '/api/library/songs': LIBRARY_SONGS_PROXY,
       '/api/me': 'http://localhost:8787',
     },
   },

@@ -6,7 +6,6 @@ import type { CurrentPlayingInfo } from '@/types'
 import {
   createAppwriteIdFromYoutubeId,
   legacyAppwriteIdFromYoutubeId,
-  shuffleArray,
   youtubeIdFromAppwriteId,
 } from '@/utils'
 
@@ -166,34 +165,6 @@ export const songsWithLyrics = async (videoIds: string[]) => {
       page.rows.map((row) => youtubeIdFromAppwriteId(row.$id))
     )
   )
-}
-
-// Every song with lyrics on the site, in a fresh order each visit. A song-info row is also written when a
-// song is only opened, so the rows are checked against the lyrics
-// Every song with lyrics, as ids only and shuffled, so the gallery knows its whole length from a few small
-// requests; the lyrics table has a row exactly for each of them
-export const listGallerySongIds = async (): Promise<string[]> => {
-  const rowIds: string[] = []
-  for (;;) {
-    const last = rowIds.at(-1)
-    // oxlint-disable-next-line eslint/no-await-in-loop -- each page starts after the last row of the one before
-    const page = await tables.listRows({
-      databaseId: appwriteConfig.databaseId,
-      queries: [
-        Query.select(['$id']),
-        Query.limit(PAGE),
-        ...(last === undefined ? [] : [Query.cursorAfter(last)]),
-      ],
-      tableId: appwriteConfig.lyricsId,
-      total: false,
-    })
-    rowIds.push(...page.rows.map((row) => row.$id))
-    if (page.rows.length < PAGE) {
-      break
-    }
-  }
-  // A song saved under both id encodings has two rows
-  return shuffleArray([...new Set(rowIds.map(youtubeIdFromAppwriteId))])
 }
 
 // The cards for one stretch of the gallery, in the order asked for; a song without its info row is left out

@@ -12,9 +12,10 @@ import HomeFooter from '../shared/home-footer'
 
 // The gallery is part of the page's own scroll, so a finger on it never gets caught in a box inside the page.
 // Its title sticks under the top bar while the gallery is on screen, and a tap on it goes back to the
-// gallery's start. Only the rows near the view exist: each row's height follows from the card width (a 16:9
-// thumbnail plus fixed text), so the estimate is right before a row is measured and nothing jumps when rows
-// come and go. More cards load as the view nears the end of the ones loaded; the footer follows the last one.
+// gallery's start. Only the rows near the view exist. Every row is exactly as tall as the card width makes it
+// (a 16:9 thumbnail plus fixed text), so rows are sized by that arithmetic and never measured: a measured row
+// coming in above the view would move the scroll position to make up any difference, which stutters a scroll
+// upwards. Every card is known from the first request; the footer follows the last one.
 const GRID =
   'grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4'
 const CARD = 'block rounded-xl bg-card p-4'
@@ -25,8 +26,6 @@ const PAD_PX = 16
 const CARD_CHROME_PX = 92
 // The thumbnail is the card's width less its padding (p-4 on both sides)
 const CARD_PAD_X_PX = 32
-// Load the next cards when the view is this many rows from the end of the loaded ones
-const LOAD_AHEAD_ROWS = 2
 
 const SongCard = ({ song }: { song: GallerySong }) => (
   <Link
@@ -107,8 +106,7 @@ const VirtualRows = ({
   list: HTMLElement | null
   scroller: HTMLElement | null
 }) => {
-  const { fetchNextPage, hasNextPage, isFetchingNextPage, songs } =
-    useGallerySongs()
+  const { songs } = useGallerySongs()
   const columns = useColumns()
   const { top, width } = useListBox(list, scroller)
   const cardWidth = (width - (columns - 1) * GAP_PX) / columns
@@ -117,12 +115,9 @@ const VirtualRows = ({
     { length: Math.ceil(songs.length / columns) },
     (_, index) => songs.slice(index * columns, (index + 1) * columns)
   )
-  // One row of skeletons stands in for the cards still to load
-  const count = rows.length + (hasNextPage ? 1 : 0)
-
   // oxlint-disable-next-line react/incompatible-library -- TanStack Virtual hands back new functions each render, so the compiler leaves this component unmemoized, which is what it needs
   const virtualizer = useVirtualizer({
-    count,
+    count: rows.length,
     estimateSize: () => rowHeight,
     gap: GAP_PX,
     getScrollElement: () => scroller,
@@ -137,39 +132,24 @@ const VirtualRows = ({
     virtualizer.measure()
   }, [virtualizer, rowHeight])
 
-  const items = virtualizer.getVirtualItems()
-  const lastShown = items.at(-1)?.index ?? 0
-  useEffect(() => {
-    if (
-      hasNextPage &&
-      !isFetchingNextPage &&
-      lastShown >= rows.length - LOAD_AHEAD_ROWS
-    ) {
-      void fetchNextPage()
-    }
-  }, [fetchNextPage, hasNextPage, isFetchingNextPage, lastShown, rows.length])
-
-  const listVars: CssVars = { '--gallery-h': `${virtualizer.getTotalSize()}px` }
+  const listVars: CssVars = {
+    '--gallery-h': `${virtualizer.getTotalSize()}px`,
+    '--row-h': `${rowHeight}px`,
+  }
   return (
     <ul className='relative h-(--gallery-h)' style={listVars}>
-      {items.map((item) => {
-        const row = rows.at(item.index)
+      {virtualizer.getVirtualItems().map((item) => {
         const rowVars: CssVars = {
           '--row-y': `${item.start - virtualizer.options.scrollMargin}px`,
         }
         return (
           <li
             key={item.key}
-            data-index={item.index}
-            ref={virtualizer.measureElement}
-            className={`absolute inset-x-0 top-0 translate-y-(--row-y) ${GRID}`}
+            className={`absolute inset-x-0 top-0 h-(--row-h) translate-y-(--row-y) ${GRID}`}
             style={rowVars}>
-            {row === undefined
-              ? Array.from({ length: columns }, (_, index) => (
-                  // oxlint-disable-next-line no-array-index-key
-                  <CardSkeleton key={index} />
-                ))
-              : row.map((song) => <SongCard key={song.videoId} song={song} />)}
+            {rows[item.index].map((song) => (
+              <SongCard key={song.videoId} song={song} />
+            ))}
           </li>
         )
       })}
@@ -181,7 +161,7 @@ const VirtualRows = ({
 const SKELETON_CARDS = 8
 
 const SongGallery = () => {
-  const { hasNextPage, isLoading } = useGallerySongs()
+  const { isLoading } = useGallerySongs()
   // State, not refs: the virtualizer needs both once they exist
   const [section, setSection] = useState<HTMLElement | null>(null)
   const [list, setList] = useState<HTMLDivElement | null>(null)
@@ -246,7 +226,7 @@ const SongGallery = () => {
           )}
         </div>
       </div>
-      {!isLoading && !hasNextPage && <HomeFooter />}
+      {!isLoading && <HomeFooter />}
     </section>
   )
 }

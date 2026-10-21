@@ -1,6 +1,9 @@
 /* oxlint-disable promise/prefer-await-to-then -- zod's .catch() sets a schema's fallback value; it is not a promise */
 import { z } from 'zod'
 
+import type { GallerySong } from '@/lib/appwrite/api'
+import { shuffleArray } from '@/utils'
+
 import { LOOKUP_ADDRESS } from './address'
 
 const videoSearchResultSchema = z.object({
@@ -51,6 +54,36 @@ const similarSongsResponseSchema = z.object({
   video_id: z.string(),
 })
 export type SimilarSongsResponse = z.infer<typeof similarSongsResponseSchema>
+
+const gallerySongsSchema = z.object({
+  songs: z.array(
+    z.object({
+      artist: z.string(),
+      thumbnail_url: z.string(),
+      title: z.string(),
+      video_id: z.string(),
+    })
+  ),
+})
+
+// Every song in the library, in a fresh order each visit. Same-origin: Netlify proxies it to the lookup
+// service and keeps a copy at its edge (netlify.toml), so the home page costs no Appwrite reads and doesn't
+// wait on a cold start. It answers 503 for the few seconds a fresh lookup service loads the library
+export const getLibrarySongs = async (): Promise<GallerySong[]> => {
+  const response = await fetch('/api/library/songs')
+  if (!response.ok) {
+    throw new Error(`The gallery failed to load (HTTP ${response.status})`)
+  }
+  const { songs } = gallerySongsSchema.parse(await response.json())
+  return shuffleArray(
+    songs.map((song) => ({
+      author: song.artist,
+      thumbnailUrl: song.thumbnail_url,
+      title: song.title,
+      videoId: song.video_id,
+    }))
+  )
+}
 
 const getJson = async <T>(
   path: string,
