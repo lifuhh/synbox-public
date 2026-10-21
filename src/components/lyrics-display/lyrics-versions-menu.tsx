@@ -15,7 +15,8 @@ import { cn } from '@/utils/cn'
 
 import { RailButton, RailTooltip } from './rail-button'
 
-// A regeneration is saved as a new version and becomes the default; the versions page rolls back
+// Admins only (the rail shows it to no one else): a regeneration is saved as a new version and becomes the
+// default; the versions page rolls back
 export const LyricsVersionsMenu = ({ videoId }: { videoId: string }) => {
   const [menuOpen, setMenuOpen] = useState(false)
   const portrait = usePortrait()

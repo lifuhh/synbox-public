@@ -1,9 +1,10 @@
-import { Check, Minus, Play, RotateCcw, X } from 'lucide-react'
+import { Check, LogIn, Minus, Play, RotateCcw, X } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useRef } from 'react'
 import { Link } from 'react-router'
 
 import { Button } from '@/components/ui/button'
+import { SIGN_IN_CODES, signInWithGoogle, useAccess } from '@/lib/auth'
 import { overallValue } from '@/lib/generation/progress'
 import type { Job } from '@/lib/generation/store'
 import {
@@ -88,6 +89,7 @@ const SongHeader = ({ job, onClose }: { job: Job; onClose: () => void }) => {
 }
 
 const DoneView = ({ job }: { job: Job }) => {
+  const { admin } = useAccess()
   const outcome = outcomeOf(job)
   if (!outcome) {
     return null
@@ -119,9 +121,9 @@ const DoneView = ({ job }: { job: Job }) => {
           {outcome.play.label}
         </Link>
       </Button>
-      {(outcome.versions || !job.skipUploaderLyrics) && (
+      {admin && (outcome.versions || !job.skipUploaderLyrics) && (
         <div className='flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs text-white/50'>
-          {outcome.versions && (
+          {admin && outcome.versions && (
             <Link
               to={`/v/${job.videoId}/versions`}
               onClick={close}
@@ -129,7 +131,7 @@ const DoneView = ({ job }: { job: Job }) => {
               See All Versions
             </Link>
           )}
-          {!job.skipUploaderLyrics && (
+          {admin && !job.skipUploaderLyrics && (
             <button
               type='button'
               className='underline-offset-4 hover:text-white/80 hover:underline'
@@ -324,6 +326,18 @@ const GenerationPanel = ({
                     {status.message}
                   </p>
                   <div className='flex gap-2'>
+                    {status.code !== undefined &&
+                    SIGN_IN_CODES.has(status.code) ? (
+                      <Button
+                        gap='md'
+                        className='flex-1'
+                        onClick={() => {
+                          void signInWithGoogle()
+                        }}>
+                        <LogIn className='size-4' />
+                        Sign In
+                      </Button>
+                    ) : null}
                     {status.retry ? (
                       <Button
                         gap='md'

@@ -30,8 +30,15 @@ export type JobStatus =
       outcome: SaveOutcome
       karaoke: KaraokeDoc | null
     }
-  // `retry` is false when trying again cannot help, such as a video YouTube keeps to youtube.com
-  | { kind: 'failed'; at: number; message: string; retry: boolean }
+  // `retry` is false when trying again cannot help, such as a video YouTube keeps to youtube.com or a
+  // used-up daily limit; `code` is the backend's reason for refusing (services/accounts.py MESSAGES)
+  | {
+      kind: 'failed'
+      at: number
+      message: string
+      retry: boolean
+      code: string | undefined
+    }
 
 export interface GenerationRequest {
   videoId: string
@@ -246,14 +253,16 @@ const run = async (job: Job, signal: AbortSignal) => {
     }
     const message =
       error instanceof Error ? error.message : 'Something went wrong'
+    const code = error instanceof GenerationError ? error.code : undefined
     updateJob(id, (current) => ({
       ...current,
       ahead: 0,
       status: {
         at: Date.now(),
+        code,
         kind: 'failed',
         message,
-        retry: !(error instanceof YouTubeOnlyError),
+        retry: !(error instanceof YouTubeOnlyError) && code === undefined,
       },
     }))
   }

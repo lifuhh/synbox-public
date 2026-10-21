@@ -3,6 +3,7 @@ import { ArrowLeftIcon, ChevronDownIcon, PlayIcon } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useParams } from 'react-router'
 
+import Forbidden from '@/components/shared/forbidden'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -18,8 +19,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
+import { useAccess } from '@/lib/auth'
 import { startGeneration } from '@/lib/generation/store'
 import {
   useActivateLyricsVersion,
@@ -29,24 +30,6 @@ import {
 import { QUERY_KEYS } from '@/lib/react-query/query-keys'
 import type { LyricsVersionSummary } from '@/lib/synbox-flask/lyrics-versions'
 import { cn } from '@/utils/cn'
-
-const TOKEN_KEY = 'synbox-admin-token'
-
-const readToken = () => {
-  try {
-    return sessionStorage.getItem(TOKEN_KEY) ?? ''
-  } catch {
-    return ''
-  }
-}
-
-const saveToken = (token: string) => {
-  try {
-    sessionStorage.setItem(TOKEN_KEY, token)
-  } catch {
-    // Private windows can refuse storage; the token then lasts until reload.
-  }
-}
 
 // The backend's version sources (synbox-transcribe-whisper › services/lyrics_versions.py, lyrics/persist.py)
 const SOURCE_LABELS: Record<string, string> = {
@@ -208,14 +191,13 @@ interface MakeDefaultDialogProps {
   onClose: () => void
 }
 
-// Changing what everyone hears is an admin action, so it asks for the token, kept for the session
+// Changing what everyone hears is an admin action: only admins see the button, and the backend checks the role
 const MakeDefaultDialog = ({
   videoId,
   version,
   onClose,
 }: MakeDefaultDialogProps) => {
   const queryClient = useQueryClient()
-  const [token, setToken] = useState(readToken)
   const [error, setError] = useState<string | null>(null)
   const { isPending, mutate: activate } = useActivateLyricsVersion()
 
@@ -223,19 +205,14 @@ const MakeDefaultDialog = ({
     if (version === null) {
       return
     }
-    if (token.trim() === '') {
-      setError('Enter the admin token.')
-      return
-    }
     setError(null)
     activate(
-      { adminToken: token, version, videoId },
+      { version, videoId },
       {
         onError: (activateError) => {
           setError(activateError.message)
         },
         onSuccess: () => {
-          saveToken(token)
           void queryClient.invalidateQueries({
             queryKey: [QUERY_KEYS.GET_LYRICS_VERSIONS, videoId],
           })
@@ -272,22 +249,6 @@ const MakeDefaultDialog = ({
               back at any time.
             </DialogDescription>
           </DialogHeader>
-          <label
-            htmlFor='admin-token'
-            className='grid gap-1.5 text-sm text-muted-foreground'>
-            Admin Token
-            <Input
-              id='admin-token'
-              type='password'
-              autoComplete='off'
-              autoFocus
-              value={token}
-              onChange={(event) => {
-                setToken(event.target.value)
-                setError(null)
-              }}
-            />
-          </label>
           {error !== null && (
             <p role='alert' className='text-sm text-error'>
               {error}
@@ -307,8 +268,7 @@ const MakeDefaultDialog = ({
   )
 }
 
-const VersionsPage = () => {
-  const { videoId = '' } = useParams<{ videoId: string }>()
+const VersionsAdmin = ({ videoId }: { videoId: string }) => {
   const { data, error, isLoading } = useGetLyricsVersions(videoId)
   const { data: songInfo } = useGetSongInfoBySongId(videoId)
   const [confirming, setConfirming] = useState<number | null>(null)
@@ -424,6 +384,16 @@ const VersionsPage = () => {
       />
     </div>
   )
+}
+
+// Versions are an admin tool: anyone else gets a 403, once the sign-in check has answered
+const VersionsPage = () => {
+  const { videoId = '' } = useParams<{ videoId: string }>()
+  const { admin, ready } = useAccess()
+  if (!ready) {
+    return null
+  }
+  return admin ? <VersionsAdmin videoId={videoId} /> : <Forbidden />
 }
 
 export default VersionsPage

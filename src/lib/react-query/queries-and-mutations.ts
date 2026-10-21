@@ -172,12 +172,10 @@ export const useGetLyricsVersion = (videoId: string, version: number | null) =>
 export const useActivateLyricsVersion = () =>
   useMutation({
     mutationFn: async ({
-      adminToken,
       version,
       videoId,
     }: {
-      adminToken: string
       version: number
       videoId: string
-    }) => await activateLyricsVersion(videoId, version, adminToken),
+    }) => await activateLyricsVersion(videoId, version),
   })

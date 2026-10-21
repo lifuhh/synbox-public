@@ -27,6 +27,8 @@ const AboutPage = lazy(pageImports.about)
 const PlayerPage = lazy(pageImports.player)
 const SearchPage = lazy(pageImports.search)
 const VersionsPage = lazy(pageImports.versions)
+// Not prefetched: only admins open it
+const AdminPage = lazy(async () => await import('./_root/pages/admin-page'))
 
 const prefetchPages = () => {
   for (const load of Object.values(pageImports)) {
@@ -79,6 +81,14 @@ const App = () => {
             element={
               <Suspense>
                 <VersionsPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path='/admin'
+            element={
+              <Suspense>
+                <AdminPage />
               </Suspense>
             }
           />

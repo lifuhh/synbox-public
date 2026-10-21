@@ -48,6 +48,10 @@ test('songs past the running limit wait, and start when a slot frees', () => {
   expect(getGenerationState().focusedId).toBe(jobs[3].id)
 })
 
+vi.mock('@/lib/auth', () => ({
+  backendToken: async () => await Promise.resolve(null),
+}))
+
 // The player answers 150 for this id, as YouTube does for age-restricted videos
 const YOUTUBE_ONLY = 'x8VYWazR5mE'
 vi.mock('@/lib/youtube/embed-check', () => ({

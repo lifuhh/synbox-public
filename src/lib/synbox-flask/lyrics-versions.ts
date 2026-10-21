@@ -1,5 +1,7 @@
 import { z } from 'zod'
 
+import { backendToken } from '@/lib/auth'
+
 import { LOOKUP_ADDRESS } from './address'
 
 const lyricsFieldsSchema = z.object({
@@ -44,12 +46,18 @@ const lyricsVersionResponseSchema = z.object({
 
 const activatedVersionSchema = z.object({ active: z.number() })
 
+// Versions are an admin tool, so every call carries the login; the backend checks the role
 const request = async <T>(
   path: string,
   schema: z.ZodType<T>,
-  init?: RequestInit
+  init: RequestInit = {}
 ): Promise<T> => {
-  const response = await fetch(`${LOOKUP_ADDRESS}${path}`, init)
+  const token = await backendToken()
+  const headers = new Headers(init.headers)
+  if (token !== null) {
+    headers.set('Authorization', `Bearer ${token}`)
+  }
+  const response = await fetch(`${LOOKUP_ADDRESS}${path}`, { ...init, headers })
   const body: unknown = await response.json().catch(() => null)
   if (!response.ok) {
     const message =
@@ -81,20 +89,13 @@ export const getLyricsVersion = async (videoId: string, version: number) => {
   return { ...body.fields, videoId }
 }
 
-export const activateLyricsVersion = async (
-  videoId: string,
-  version: number,
-  adminToken: string
-) =>
+export const activateLyricsVersion = async (videoId: string, version: number) =>
   await request(
     `/lyrics/${encodeURIComponent(videoId)}/active`,
     activatedVersionSchema,
     {
       body: JSON.stringify({ version }),
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Admin-Token': adminToken,
-      },
+      headers: { 'Content-Type': 'application/json' },
       method: 'POST',
     }
   )

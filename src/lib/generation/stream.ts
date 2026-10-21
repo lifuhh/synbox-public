@@ -1,5 +1,6 @@
 // The three generation endpoints of synbox-transcribe-whisper, read as NDJSON streams of {type, data}.
 
+import { backendToken } from '@/lib/auth'
 import { BE_ADDRESS } from '@/lib/synbox-flask/address'
 import { isKaraokeDoc } from '@/lib/synbox-flask/api'
 import type { KaraokeDoc } from '@/types'
@@ -20,12 +21,20 @@ export class GenerationError extends Error {
   // The page came back from the background: its connection is stale, not failed, so reconnecting is
   // not a retry
   readonly resumed: boolean
+  // Why the backend refused, when it says: sign_in_required, quota_exceeded, generation_paused, ...
+  readonly code: string | undefined
 
-  constructor(message: string, retryable: boolean, resumed = false) {
+  constructor(
+    message: string,
+    retryable: boolean,
+    resumed = false,
+    code?: string
+  ) {
     super(message)
     this.name = 'GenerationError'
     this.retryable = retryable
     this.resumed = resumed
+    this.code = code
   }
 }
 
@@ -98,6 +107,7 @@ const readStream = async (
   }
   document.addEventListener('visibilitychange', handleVisibility)
   try {
+    const token = await backendToken()
     let response: Response
     try {
       response = await fetch(`${BE_ADDRESS}${path}`, {
@@ -105,6 +115,7 @@ const readStream = async (
         headers: {
           Accept: 'application/x-ndjson',
           'Content-Type': 'application/json',
+          ...(token === null ? {} : { Authorization: `Bearer ${token}` }),
         },
         method: 'POST',
         signal: AbortSignal.any([signal, idle.signal, resumed.signal]),
@@ -152,7 +163,12 @@ const readStream = async (
         return
       }
       if (content.type === 'error') {
-        throw new GenerationError(String(content.data), false)
+        throw new GenerationError(
+          String(content.data),
+          false,
+          false,
+          typeof content.code === 'string' ? content.code : undefined
+        )
       }
       onMessage({ data: content.data, type: content.type })
     }
