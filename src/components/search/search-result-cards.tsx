@@ -1,6 +1,7 @@
 import { SparklesIcon } from 'lucide-react'
 
 import { KaraokeCornerMark } from '@/components/shared/karaoke-badge'
+import { SongMenu } from '@/components/watch/song-menu'
 import type {
   LibrarySong,
   VideoSearchResult,
@@ -95,6 +96,14 @@ export const LibrarySongCard = ({
         className='-my-1 shrink-0 rounded-md p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-primary-text'>
         <SparklesIcon className='size-4' />
       </button>
+      <SongMenu
+        song={{
+          author: song.artist,
+          thumbnailUrl: song.thumbnail_url,
+          title: song.title,
+          videoId: song.video_id,
+        }}
+      />
     </div>
   </div>
 )
