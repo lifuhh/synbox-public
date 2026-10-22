@@ -81,12 +81,30 @@ export interface LineShow {
   bold: boolean
 }
 
+// Where a line stands once the song plays: sung, being sung (or the last one sung, through a gap), or to come
+export type LinePhase = 'past' | 'current' | 'upcoming'
+
+// null until the song has started: nothing is sung yet, and the whole song reads at full strength
+export const linePhase = (
+  index: number,
+  lit: number,
+  started: boolean
+): LinePhase | null => {
+  if (!started) {
+    return null
+  }
+  if (index === lit) {
+    return 'current'
+  }
+  return index < lit ? 'past' : 'upcoming'
+}
+
 export const LyricLineBlock = ({
   show: prefs,
   line,
   first,
   synced,
-  dimmed,
+  phase,
   blockRef,
   karaokeRef,
   onSeek,
@@ -95,7 +113,7 @@ export const LyricLineBlock = ({
   line: OfflineLine
   first: boolean
   synced: boolean
-  dimmed: boolean
+  phase: LinePhase | null
   blockRef: (element: HTMLDivElement | null) => void
   karaokeRef: Ref<KaraokeLineHandle>
   onSeek: (time: number) => void
@@ -116,6 +134,7 @@ export const LyricLineBlock = ({
     <div
       ref={blockRef}
       data-bench='lyrics-text'
+      data-phase={phase ?? undefined}
       onClick={
         synced
           ? () => {
@@ -130,7 +149,11 @@ export const LyricLineBlock = ({
         // the song
         synced &&
           'pointer-events-none justify-items-start *:pointer-events-auto *:cursor-pointer',
-        dimmed && 'opacity-40'
+        phase === 'past' && 'opacity-40',
+        // A line to come dims piece by piece: its karaoke text already draws unsung at the strength the rest
+        // dims to (globals.css, reader-karaoke-part) and stays as it is when the line is reached; only the
+        // other text brightens then
+        '*:transition-opacity *:duration-300 data-[phase=upcoming]:*:not-has-[.reader-karaoke-part]:opacity-40'
       )}>
       {source && (
         <div>

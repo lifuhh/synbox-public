@@ -4,7 +4,10 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 
 import type { KaraokeLineHandle } from '@/components/lyrics-display/karaoke-line'
 import type { LineShow } from '@/components/offline/lyric-line-block'
-import { LyricLineBlock } from '@/components/offline/lyric-line-block'
+import {
+  linePhase,
+  LyricLineBlock,
+} from '@/components/offline/lyric-line-block'
 import { useLyricsFollow } from '@/components/offline/use-lyrics-follow'
 import { lineReached } from '@/components/offline/use-silent-playback'
 import { parseLyricsText } from '@/components/player-stage/stage-lyrics'
@@ -204,7 +207,7 @@ export const LyricsPanel = ({
                 line={line}
                 first={index === 0}
                 synced
-                dimmed={started && index !== lit}
+                phase={linePhase(index, lit, started)}
                 blockRef={(element) => {
                   blocks.current[index] = element
                 }}
