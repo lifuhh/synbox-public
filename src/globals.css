@@ -765,15 +765,15 @@
   }
 }
 
-/* The narrow watch page's scroller under the video (NarrowBelow): its height is what the lyrics fill */
+/* The narrow watch page under the video (NarrowBelow): the lyrics take a share of its height */
 @utility watch-below {
   container-type: size;
 }
 
-/* The Lyrics tab's box: the scroller's height less the stuck tabs (2.75rem row, 0.5rem above and below)
-   and the safe area under it */
-@utility watch-lyrics-tab {
-  height: calc(100cqh - 3.75rem - var(--safe-bottom));
+/* The lyrics under the video on a phone: about half of what is left under it (four or five sung lines on an
+   iPhone), never so little that the line being sung has no room, nor so much that the song's buttons can't peek */
+@utility watch-lyrics-under {
+  height: clamp(11rem, 52cqh, 30rem);
 }
 
 @utility watch-side {
@@ -1420,7 +1420,12 @@
   @media (orientation: portrait) {
     html[data-landscape-lock] {
       --safe-left: env(safe-area-inset-top, 0px);
-      --safe-right: env(safe-area-inset-bottom, 0px);
+      /* The home indicator, unless it lies past the page's end: a page as long as what the screen shows
+         (below) stops above Safari's toolbar, and in the installed app above the band iOS 26 leaves blank */
+      --safe-right: max(
+        0px,
+        calc(env(safe-area-inset-bottom, 0px) - (100lvh - 100dvh))
+      );
       --safe-bottom: env(safe-area-inset-left, 0px);
       --topbar-h: var(--safe-top);
       --topbar-shown-h: var(--topbar-h);
@@ -1429,11 +1434,14 @@
       --stage-chrome-h: var(--stage-controls-h, 5rem);
     }
 
+    /* As long as what the screen shows, not the screen: in the installed app --screen-h runs into the band at
+       the bottom that iOS 26 paints nothing in (WebKit bugs 301108, 301994), which cut off the page's right
+       edge, the Lock buttons and Fullscreen with it */
     html[data-landscape-lock] body {
       position: fixed;
       top: 0;
       left: 0;
-      width: var(--screen-h);
+      width: 100dvh;
       height: 100vw;
       transform-origin: 0 0;
       transform: translateX(100vw) rotate(90deg);

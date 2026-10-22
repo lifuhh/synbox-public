@@ -24,7 +24,7 @@ export const RailInline = createContext(false)
 const railButtonClass = (inline: boolean, pressed: boolean | undefined) =>
   inline
     ? cn(
-        'grid size-10 shrink-0 place-items-center rounded-full bg-card text-foreground transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:pointer-events-none disabled:opacity-30',
+        'grid size-10 shrink-0 place-items-center rounded-full bg-card text-foreground transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:pointer-events-none disabled:opacity-30 watch-narrow:w-full',
         pressed === true &&
           'bg-primary-subtle text-primary-text hover:bg-primary-subtle-hover',
         pressed === false && 'text-muted-foreground'
