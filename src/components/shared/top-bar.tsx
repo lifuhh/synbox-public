@@ -15,10 +15,90 @@ import SavedMenu from '../topbar/saved-menu'
 
 // Within this many pixels of the top a page counts as unscrolled
 const TOP_SLACK_PX = 8
-// Smaller moves are ignored, so a resting finger or an inertia tail doesn't flicker the bar
-const JITTER_PX = 4
+// How far the page must move one way before the bar follows, counted from where that direction began: a slow
+// scroll adds up, while a resting finger or an inertia tail doesn't flicker the bar
+const TRAVEL_PX = 24
 // The bar only hides once the page has scrolled past its own height
 const HIDE_AFTER_PX = 96
+
+const scrolls = (el: HTMLElement) => el.scrollHeight > el.clientHeight + 1
+
+// A list that scrolls inside a scrolling page (the charts) moves within the page, not the page itself. A page
+// whose own box doesn't scroll (the lyrics list) leaves its inner list as the page's scroller
+const insideScroller = (box: HTMLElement) => {
+  for (let el = box.parentElement; el !== null; el = el.parentElement) {
+    const { overflowY } = getComputedStyle(el)
+    if ((overflowY === 'auto' || overflowY === 'scroll') && scrolls(el)) {
+      return true
+    }
+  }
+  return false
+}
+
+// The page's own scroller that moved, or null for anything else that scrolled
+const pageScroller = (target: EventTarget | null): HTMLElement | null => {
+  // The watch page's panels scroll inside a page that doesn't, so the bar stays
+  if (document.documentElement.dataset.watch !== undefined) {
+    return null
+  }
+  return target instanceof HTMLElement &&
+    scrolls(target) &&
+    !insideScroller(target)
+    ? target
+    : null
+}
+
+// One scroller's current run in one direction: where it began, where it is, and which way it goes
+interface Run {
+  from: number
+  last: number
+  dir: number
+}
+
+// Where the bar should go once the page reaches `top`, or null to leave it as it is
+const turnAfter = (run: Run, top: number): 'shown' | 'hidden' | null => {
+  const dir = Math.sign(top - run.last)
+  if (dir !== 0 && dir !== run.dir) {
+    run.from = run.last
+    run.dir = dir
+  }
+  run.last = top
+  const travelled = top - run.from
+  if (travelled > TRAVEL_PX && top > HIDE_AFTER_PX) {
+    return 'hidden'
+  }
+  if (travelled < -TRAVEL_PX) {
+    return 'shown'
+  }
+  return null
+}
+
+interface Bar {
+  box: HTMLElement
+  path: string
+  mode: 'shown' | 'hidden'
+}
+
+const nextBar = (
+  current: Bar | null,
+  scrolled: Omit<Bar, 'mode'>,
+  turned: Bar['mode'] | null
+): Bar => {
+  const same =
+    current !== null &&
+    current.box === scrolled.box &&
+    current.path === scrolled.path
+  // Content scrolled under the bar never sits under a clear one: off the top it is at least shown
+  const mode = turned ?? (same ? current.mode : 'shown')
+  return same && current.mode === mode ? current : { ...scrolled, mode }
+}
+
+// The bar on the page at `pathname`: clear at the top of a page. A page left and come back to has a new box,
+// back at its top, and the old one is gone
+const modeOn = (bar: Bar | null, pathname: string): Bar['mode'] | 'top' =>
+  bar !== null && bar.path === pathname && bar.box.isConnected
+    ? bar.mode
+    : 'top'
 
 const TopBar = () => {
   // The versions page under /v/:id is an ordinary page with an opaque bar, and so is the watch page around a
@@ -33,43 +113,27 @@ const TopBar = () => {
 
   // At the top of a page the bar is clear over the page glow, so the two read as one surface. Scrolling down
   // slides it away; scrolling up brings it back over a fade of the page color. Pages scroll in their own boxes,
-  // so any vertical scroller counts, and the path it happened on is kept so a new page starts clear
+  // so the outermost vertical scroller counts, and the box and path it happened on are kept so a new page, or
+  // the same page remounted, starts clear
   const { pathname } = useLocation()
-  const [scrollState, setScrollState] = useState<{
-    path: string
-    mode: 'shown' | 'hidden'
-  } | null>(null)
+  const [bar, setBar] = useState<Bar | null>(null)
   useEffect(() => {
-    const lastTop = new WeakMap<HTMLElement, number>()
+    const runs = new WeakMap<HTMLElement, Run>()
     const onScroll = (event: Event) => {
-      const box = event.target
-      // The watch page's panels scroll inside a page that doesn't, so the bar stays
-      if (document.documentElement.dataset.watch !== undefined) {
-        return
-      }
-      if (
-        !(box instanceof HTMLElement) ||
-        box.scrollHeight <= box.clientHeight + 1
-      ) {
+      const box = pageScroller(event.target)
+      if (box === null) {
         return
       }
       const top = box.scrollTop
-      const previous = lastTop.get(box) ?? 0
-      lastTop.set(box, top)
+      const run = runs.get(box) ?? { dir: 0, from: top, last: top }
+      runs.set(box, run)
+      const turned = turnAfter(run, top)
       if (top <= TOP_SLACK_PX) {
-        setScrollState(null)
-        return
-      }
-      if (Math.abs(top - previous) < JITTER_PX) {
+        setBar(null)
         return
       }
       const path = globalThis.location.pathname
-      const mode = top > previous && top > HIDE_AFTER_PX ? 'hidden' : 'shown'
-      setScrollState((current) =>
-        current?.path === path && current.mode === mode
-          ? current
-          : { mode, path }
-      )
+      setBar((current) => nextBar(current, { box, path }, turned))
     }
     document.addEventListener('scroll', onScroll, {
       capture: true,
@@ -79,7 +143,7 @@ const TopBar = () => {
       document.removeEventListener('scroll', onScroll, { capture: true })
     }
   }, [])
-  const mode = scrollState?.path === pathname ? scrollState.mode : 'top'
+  const mode = modeOn(bar, pathname)
   // Rows that stick under the bar move up to the screen's top while it is away (--topbar-shown-h)
   const away = !isVideoPlayer && mode === 'hidden'
   useEffect(() => {

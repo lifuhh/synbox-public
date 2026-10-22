@@ -400,13 +400,14 @@
 }
 
 /* The top bar once a page has scrolled under it: the page color behind the buttons, fading to clear below them,
-   so scrolled content slides under without a hard edge. The padding is the fade zone. No blur: WebKit drops a
-   backdrop filter that is masked */
+   so scrolled content slides under without a hard edge. The padding is the fade zone, so the fade never starts
+   behind the buttons; solid, like sticky-under-topbar, since at 94% scrolled text showed through beside the logo.
+   No blur: WebKit drops a backdrop filter that is masked */
 @utility topbar-frost {
   padding-bottom: 1.25rem;
   background: linear-gradient(
     to bottom,
-    color-mix(in oklab, var(--background) 94%, transparent) 55%,
+    var(--background) calc(100% - 1.25rem),
     transparent
   );
 }
