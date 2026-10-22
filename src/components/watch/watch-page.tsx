@@ -54,24 +54,28 @@ const SongInfo = ({
     )
   }
   return (
-    <div className={cn('flex min-w-0 flex-col gap-3 pt-2', inset && 'px-4')}>
-      <h1
-        className={cn(
-          'line-clamp-2 text-xl leading-snug font-semibold text-pretty text-foreground',
-          bracketStart(video?.title)
-        )}>
-        {video?.title ?? ''}
-      </h1>
-      {/* The buttons on the channel's line, as on YouTube: a long title keeps the full width */}
-      <div className='flex flex-wrap items-center justify-between gap-x-6 gap-y-2'>
-        <p
+    <div className='flex min-w-0 flex-col gap-3 pt-2'>
+      {/* Only the words take the inset: the facts card is a card like the lyrics panel, so it keeps the
+          panel's edges, and its own padding puts its text on the same line as the title's */}
+      <div className={cn('flex min-w-0 flex-col gap-3', inset && 'px-4')}>
+        <h1
           className={cn(
-            'min-w-0 truncate text-base font-medium text-foreground',
-            bracketStart(video?.author)
+            'line-clamp-2 text-xl leading-snug font-semibold text-pretty text-foreground',
+            bracketStart(video?.title)
           )}>
-          {video?.author ?? ''}
-        </p>
-        <PlayerRail inline />
+          {video?.title ?? ''}
+        </h1>
+        {/* The buttons on the channel's line, as on YouTube: a long title keeps the full width */}
+        <div className='flex flex-wrap items-center justify-between gap-x-6 gap-y-2'>
+          <p
+            className={cn(
+              'min-w-0 truncate text-base font-medium text-foreground',
+              bracketStart(video?.author)
+            )}>
+            {video?.author ?? ''}
+          </p>
+          <PlayerRail inline />
+        </div>
       </div>
       <SongFacts videoId={videoId} />
     </div>
