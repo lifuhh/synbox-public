@@ -96,15 +96,16 @@ const stagingWorktree = (): string => {
   return dir
 }
 
-const gatePaths = (): string[] => {
-  const config: unknown = JSON.parse(readFileSync(path.join(top, 'harness', 'gate.json'), 'utf-8'))
+// From staging's own gate.json: the main checkout's working tree may be on any branch
+const gatePaths = (dir: string): string[] => {
+  const config: unknown = JSON.parse(readFileSync(path.join(dir, 'harness', 'gate.json'), 'utf-8'))
   return isRecord(config) && Array.isArray(config.paths) ? config.paths.filter((p) => typeof p === 'string') : []
 }
 
 // The gate's verdict for staging's tree, running the gate first when there is none
 const ensureVerdict = (dir: string) => {
   const changed = git('diff', '--name-only', 'origin/main', `origin/${STAGING}`).split('\n').filter(Boolean)
-  const paths = gatePaths()
+  const paths = gatePaths(dir)
   if (!changed.some((file) => paths.some((p) => file === p || file.startsWith(p)))) {
     say('gate: staging changes nothing the gate measures')
     return
