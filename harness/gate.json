@@ -1,5 +1,5 @@
 {
-  "$comment": "Read by ~/.claude/hooks/harness-gate.py before `gh pr create` / `gh pr ready`. A branch touching `paths` needs a passing verdict for its HEAD tree in <main checkout>/.harness/verdicts/.",
+  "$comment": "Read by ~/.claude/hooks/harness-gate.py. `staging`: finished work merges there; nothing but `release` reaches main (no PR, merge or push into main). `paths`: a release whose staging touches them needs a passing gate verdict for staging's tree in <main checkout>/.harness/verdicts/ (harness/release.ts runs the gate when there is none).",
   "paths": [
     "src/",
     "public/",
@@ -10,5 +10,7 @@
     "harness/bench/"
   ],
   "command": "bun harness/bench/cli.ts gate",
-  "cost": "about 8 minutes on a laptop; the first run on a machine also measures origin/main"
+  "cost": "about 8 minutes on a laptop; the first run on a machine also measures origin/main",
+  "staging": "staging",
+  "release": "bun harness/release.ts"
 }
