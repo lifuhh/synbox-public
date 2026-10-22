@@ -3,6 +3,7 @@ import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { Link } from 'react-router'
 
+import { RecommendationsEditor } from '@/components/admin/recommendations-editor'
 import Forbidden from '@/components/shared/forbidden'
 import {
   AlertDialog,
@@ -769,6 +770,18 @@ const AdminPage = () => {
           </p>
         </div>
         <UsersTable />
+      </section>
+      <section className='flex flex-col gap-3'>
+        <div className='flex flex-col gap-1'>
+          <h2 className='text-lg font-semibold text-foreground'>
+            Recommendations
+          </h2>
+          <p className='text-sm text-muted-foreground'>
+            The landing page&apos;s carousel, shuffled for each visitor. The mic
+            marks songs that have karaoke lyrics.
+          </p>
+        </div>
+        <RecommendationsEditor />
       </section>
       <section className='flex flex-col gap-3'>
         <h2 className='text-lg font-semibold text-foreground'>Songs</h2>

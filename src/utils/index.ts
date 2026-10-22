@@ -1,5 +1,4 @@
 import type { YoutubePlaylist } from '@/lib/youtube/api'
-import type { formattedYoutubeVideoItemForCarousel } from '@/types'
 
 export const shuffleArray = <T>(array: T[]): T[] => {
   for (let i = array.length - 1; i > 0; i -= 1) {
@@ -11,14 +10,6 @@ export const shuffleArray = <T>(array: T[]): T[] => {
 
 export const handleRedirect = (url: string) => {
   window.open(url, '_blank', 'noopener,noreferrer')
-}
-
-const trimLength = (text: string, maxLength: number, trail: boolean) => {
-  const tooLong = text.length > maxLength
-
-  const editedText = tooLong ? text.slice(0, maxLength) : text
-
-  return trail && tooLong ? `${editedText}...` : editedText
 }
 
 // A private or deleted video stays in its playlist with no thumbnails
@@ -51,32 +42,6 @@ export const formatYoutubeChartsResponse = (
       KOREAN.test(title) || KOREAN.test(channel) || KOREAN_CHANNELS.has(channel)
     return korean ? [] : [{ id: resourceId.videoId, title }]
   })
-
-export const formatYoutubePlaylistResponse = (
-  data: YoutubePlaylist
-): formattedYoutubeVideoItemForCarousel[] => {
-  const items = playableItems(data).map(
-    ({ item, thumbnailUrl }): formattedYoutubeVideoItemForCarousel => {
-      const maxDescriptionLength = 80
-
-      return {
-        channel: item.snippet.videoOwnerChannelTitle || 'Unknown',
-        description: trimLength(
-          item.snippet.description,
-          maxDescriptionLength,
-          true
-        ),
-        thumbnailUrl,
-        title: item.snippet.title,
-        videoId: item.snippet.resourceId?.videoId,
-      }
-    }
-  )
-
-  const shuffledResults = shuffleArray(items)
-
-  return shuffledResults.slice(0, 50)
-}
 
 export const extractVideoId = (input: string): string | null => {
   const trimmed = input.trim()

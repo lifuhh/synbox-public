@@ -13,9 +13,18 @@ import { appwriteConfig, tables } from './config'
 
 const songInfoDocumentSchema = z.object({
   author: z.string(),
+  // The song's own name and artist, from the lyrics pipeline's metadata step; missing on songs it has not
+  // named, and on rows made here from YouTube's details
+  songArtist: z.string().nullish(),
+  songTitle: z.string().nullish(),
   thumbnailUrl: z.string(),
   title: z.string(),
 })
+
+const orElse = (value: string | null | undefined, fallback: string) => {
+  const trimmed = value?.trim() ?? ''
+  return trimmed === '' ? fallback : trimmed
+}
 
 // Reads fall back to the pre-migration id, so a song is found while its row is being moved.
 const getSongDocument = async (tableId: string, songId: string) => {
@@ -78,10 +87,12 @@ export const getSongInfoBySongId = async (
       throw new Error('Song info is malformed')
     }
 
+    // 月の温度 by JELEE rather than the video's "JELEE『月の温度』Music Video" by its channel
+    const { songTitle, songArtist } = songInfo.data
     const result = {
-      author: songInfo.data.author,
+      author: orElse(songArtist, songInfo.data.author),
       thumbnailUrl: songInfo.data.thumbnailUrl,
-      title: songInfo.data.title,
+      title: orElse(songTitle, songInfo.data.title),
       videoId: songId,
     }
 

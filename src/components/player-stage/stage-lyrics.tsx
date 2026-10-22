@@ -115,6 +115,7 @@ const LyricLine = ({
   return (
     <p
       key={html}
+      data-bench='lyrics-line'
       ref={balanceWrap}
       className={cn(
         'lyric-text-line mx-auto text-center',

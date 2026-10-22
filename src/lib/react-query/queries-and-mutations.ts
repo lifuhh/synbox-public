@@ -7,6 +7,7 @@ import {
   getSongInfoBySongId,
   getSongLyricsById,
 } from '../appwrite/api'
+import { getLandingPagePlaylist } from '../recommendations'
 import { getKaraoke } from '../synbox-flask/api'
 import type { LibraryListSong } from '../synbox-flask/discovery'
 import {
@@ -20,11 +21,7 @@ import {
   getLyricsVersion,
   listLyricsVersions,
 } from '../synbox-flask/lyrics-versions'
-import {
-  getChartsPlaylist,
-  getLandingPagePlaylist,
-  getYoutubeVideoInfo,
-} from '../youtube/api'
+import { getChartsPlaylist, getYoutubeVideoInfo } from '../youtube/api'
 import { QUERY_KEYS } from './query-keys'
 
 export const useGetLandingPagePlaylist = () =>

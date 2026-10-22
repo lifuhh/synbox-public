@@ -1,16 +1,9 @@
 import { z } from 'zod'
 
-import type {
-  YoutubeSearchResultInfo,
-  formattedYoutubeVideoItemForCarousel,
-} from '@/types'
-import {
-  formatYoutubeChartsResponse,
-  formatYoutubePlaylistResponse,
-} from '@/utils'
+import type { YoutubeSearchResultInfo } from '@/types'
+import { formatYoutubeChartsResponse } from '@/utils'
 
 // YouTube Data API reads go through our own /api/youtube proxy, which holds the key
-const LANDING_PLAYLIST = 'PLzJ1mqwxogpFxKR72a6M8br_UkLKFQASf'
 const CHARTS_PLAYLIST = 'PL4fGSI1pDJn4-UIb6RKHdxam-oAUULIGB'
 
 const thumbnailSchema = z.object({ url: z.string() }).optional()
@@ -28,7 +21,6 @@ const playlistSchema = z.object({
   items: z.array(
     z.object({
       snippet: z.object({
-        description: z.string().default(''),
         resourceId: z.object({ videoId: z.string() }),
         thumbnails: thumbnailsSchema,
         title: z.string(),
@@ -105,19 +97,6 @@ const getHighestResThumbnail = (
   }
 
   return 'https://example.com/placeholder-thumbnail.jpg'
-}
-
-export const getLandingPagePlaylist = async (): Promise<
-  formattedYoutubeVideoItemForCarousel[]
-> => {
-  const playlist = await getYoutube(
-    playlistSchema,
-    `/api/youtube/playlist/${LANDING_PLAYLIST}`
-  )
-
-  const processedResponse = formatYoutubePlaylistResponse(playlist)
-
-  return processedResponse
 }
 
 // The chart is 100 songs, two pages of the API's maximum

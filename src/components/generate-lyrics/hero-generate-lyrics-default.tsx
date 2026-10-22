@@ -292,6 +292,7 @@ const HeroGenerateLyricsDefault = ({
               autoCorrect='off'
               spellCheck={false}
               placeholder='Search or paste a YouTube URL'
+              data-bench='hero-input'
               variant='bare'
             />
             {showAction && (

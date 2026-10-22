@@ -33,8 +33,13 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { PlaylistCover } from '@/components/watch/playlist-cover'
-import { favoritesAtom, historyAtom, removeFavoriteAtom } from '@/context/atoms'
 import { useOverflow } from '@/hooks/use-overflow'
+import {
+  clearHistoryAtom,
+  favoritesAtom,
+  historyAtom,
+  removeFavoriteAtom,
+} from '@/lib/library/store'
 import { usePlaylists } from '@/lib/listening/store'
 
 type SavedTab = 'bookmarks' | 'history' | 'playlists'
@@ -113,7 +118,8 @@ const SavedMenu = () => {
   const [tab, setTab] = useState<SavedTab>('bookmarks')
   const [confirmingClear, setConfirmingClear] = useState(false)
   const [favorites] = useAtom(favoritesAtom)
-  const [history, setHistory] = useAtom(historyAtom)
+  const [history] = useAtom(historyAtom)
+  const clearHistory = useSetAtom(clearHistoryAtom)
   const removeFavorite = useSetAtom(removeFavoriteAtom)
   const playlists = usePlaylists()
 
@@ -296,7 +302,7 @@ const SavedMenu = () => {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
-                setHistory([])
+                clearHistory()
               }}>
               Clear History
             </AlertDialogAction>

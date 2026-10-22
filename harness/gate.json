@@ -1,0 +1,14 @@
+{
+  "$comment": "Read by ~/.claude/hooks/harness-gate.py before `gh pr create` / `gh pr ready`. A branch touching `paths` needs a passing verdict for its HEAD tree in <main checkout>/.harness/verdicts/.",
+  "paths": [
+    "src/",
+    "public/",
+    "index.html",
+    "vite.config.ts",
+    "package.json",
+    "netlify/",
+    "harness/bench/"
+  ],
+  "command": "bun harness/bench/cli.ts gate",
+  "cost": "about 8 minutes on a laptop; the first run on a machine also measures origin/main"
+}

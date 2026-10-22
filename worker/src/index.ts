@@ -3,6 +3,7 @@ import type { Context } from 'hono'
 
 import { createAuth } from './auth'
 import type { Env } from './auth'
+import { applyOps, parseOps, readLibrary } from './library'
 import {
   checkGeneration,
   expireStalled,
@@ -17,6 +18,11 @@ import type {
   Owner,
   Reservation,
 } from './quota'
+import {
+  listRecommendations,
+  parseRecommendations,
+  replaceRecommendations,
+} from './recommendations'
 
 type AppEnv = Env & {
   USER_HOURLY_LIMIT: string
@@ -74,6 +80,43 @@ app.get('/api/me/songs', async (c) => {
     .bind(session.user.id)
     .all()
   return c.json({ songs: results })
+})
+
+// The signed-in user's history, bookmarks and playlists, so a new device or a reinstalled app starts with them
+app.get('/api/me/library', async (c) => {
+  const session = await createAuth(c.env).api.getSession({
+    headers: c.req.raw.headers,
+  })
+  if (!session) {
+    return c.json({ code: 'unauthorized' }, 401)
+  }
+  return c.json(await readLibrary(c.env.DB, session.user.id))
+})
+
+// Changes the app made on a device, oldest first; the same ops sent again change nothing
+app.post('/api/me/library', async (c) => {
+  const session = await createAuth(c.env).api.getSession({
+    headers: c.req.raw.headers,
+  })
+  if (!session) {
+    return c.json({ code: 'unauthorized' }, 401)
+  }
+  const ops = parseOps(
+    await c.req.json<unknown>().catch(() => null),
+    Date.now()
+  )
+  if (ops === null) {
+    return c.json({ code: 'bad_request' }, 400)
+  }
+  await applyOps(c.env.DB, session.user.id, ops)
+  return c.body(null, 204)
+})
+
+// The landing page's Recommendations, in order. Public; browsers keep it a minute, so an admin's edit shows
+// within one
+app.get('/api/recommendations', async (c) => {
+  c.header('Cache-Control', 'public, max-age=60')
+  return c.json({ songs: await listRecommendations(c.env.DB) })
 })
 
 // Called only by the Cloud Run backend, after it has verified the user's JWT or hashed the guest's address
@@ -303,6 +346,17 @@ admin.put('/settings', async (c) => {
   )
     .bind(generationEnabled ? '1' : '0')
     .run()
+  return c.body(null, 204)
+})
+
+// The whole list, in the order to show; it replaces the current one
+admin.put('/recommendations', async (c) => {
+  const body = await c.req.json<unknown>().catch(() => null)
+  const parsed = parseRecommendations(body)
+  if (!parsed.ok) {
+    return c.json({ code: parsed.code }, 400)
+  }
+  await replaceRecommendations(c.env.DB, parsed.songs, c.get('adminId'))
   return c.body(null, 204)
 })
 

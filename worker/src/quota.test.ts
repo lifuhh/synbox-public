@@ -1,7 +1,5 @@
-import { Database } from 'bun:sqlite'
-import type { SQLQueryBindings } from 'bun:sqlite'
+import type { Database } from 'bun:sqlite'
 import { beforeEach, expect, test } from 'bun:test'
-import { readFileSync } from 'node:fs'
 
 import type { Owner } from './quota'
 import {
@@ -10,36 +8,7 @@ import {
   getQuota,
   reserveGeneration,
 } from './quota'
-
-// The subset of D1 that quota.ts uses, over bun:sqlite with the real migrations
-const asD1 = (sqlite: Database) =>
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- a stand-in for the parts of D1 quota.ts calls
-  ({
-    prepare(sql: string) {
-      let params: SQLQueryBindings[] = []
-      const statement = {
-        bind(...values: SQLQueryBindings[]) {
-          params = values
-          return statement
-        },
-        // oxlint-disable-next-line eslint/require-await -- D1's methods are async; bun:sqlite's are not
-        async first(column?: string) {
-          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- bun:sqlite returns rows untyped
-          const row = sqlite.query(sql).get(...params) as Record<
-            string,
-            unknown
-          > | null
-          return row !== null && column !== undefined ? row[column] : row
-        },
-        // oxlint-disable-next-line eslint/require-await -- as above
-        async run() {
-          const { changes } = sqlite.query(sql).run(...params)
-          return { meta: { changes } }
-        },
-      }
-      return statement
-    },
-  }) as unknown as D1Database
+import { migratedD1 } from './test-d1'
 
 let db: D1Database
 let sqlite: Database
@@ -64,26 +33,13 @@ const check = async (owner: Owner) =>
   await checkGeneration(db, { kind: 'new', owner, videoId: 'v' }, LIMITS, now)
 
 beforeEach(() => {
-  sqlite = new Database(':memory:')
-  for (const file of [
-    '0001_auth.sql',
-    '0002_generation.sql',
-    '0003_guest_generations.sql',
-    '0004_hourly_user_limit.sql',
-    '0005_unlimited_override.sql',
-    '0006_generation_progress.sql',
-  ]) {
-    sqlite.run(
-      readFileSync(`${import.meta.dir}/../migrations/${file}`, 'utf-8')
-    )
-  }
+  ;({ db, sqlite } = migratedD1())
   const user = sqlite.prepare(
     `insert into "user" ("id", "name", "email", "emailVerified", "createdAt", "updatedAt", "role", "banned") values (?, 'n', ?, 1, 0, 0, ?, ?)`
   )
   user.run('u1', 'a@x', 'user', 0)
   user.run('admin', 'b@x', 'admin', 0)
   user.run('banned', 'c@x', 'user', 1)
-  db = asD1(sqlite)
 })
 
 test('the daily limit holds and a reconnect is free', async () => {

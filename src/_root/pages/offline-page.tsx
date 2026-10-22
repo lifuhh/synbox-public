@@ -3,7 +3,7 @@ import { CloudOffIcon, SearchIcon, XIcon } from 'lucide-react'
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 
 import { OfflineSongRow } from '@/components/offline/offline-song-row'
-import { favoritesAtom, historyAtom } from '@/context/atoms'
+import { favoritesAtom, historyAtom } from '@/lib/library/store'
 import { indexSong, searchSongs } from '@/lib/offline/search'
 import type { OfflineSource, SyncStatus } from '@/lib/offline/sync'
 import {
