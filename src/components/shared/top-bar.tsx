@@ -12,6 +12,7 @@ import LyricsButton from '../topbar/lyrics-button'
 import Notifications from '../topbar/notifications'
 import ProfileButton from '../topbar/profile-button'
 import SavedMenu from '../topbar/saved-menu'
+import { TopbarSearch } from '../topbar/topbar-search'
 
 // Within this many pixels of the top a page counts as unscrolled
 const TOP_SLACK_PX = 8
@@ -122,6 +123,8 @@ const TopBar = () => {
   // backdrop behind it. Pages scroll in their own boxes, so the outermost vertical scroller counts, and the box and
   // path it happened on are kept so a new page, or the same page remounted, starts clear
   const { pathname } = useLocation()
+  const searchable =
+    !isVideoPlayer && pathname !== '/' && pathname !== '/search'
   const [bar, setBar] = useState<Bar | null>(null)
   useEffect(() => {
     const runs = new WeakMap<HTMLElement, Run>()
@@ -205,7 +208,20 @@ const TopBar = () => {
         ) : (
           <AppLogo />
         )}
+        {/* Search from any page but the two that have their own field (home and search) and the full-screen
+            player: in the bar on a wide screen, behind a button on a phone */}
+        {searchable && (
+          // Centred on the page once the bar has room on both sides, as on YouTube; narrower, between the two
+          <div className='hidden min-w-0 flex-1 justify-center md:flex xl:pointer-events-none xl:absolute xl:inset-x-0 xl:*:pointer-events-auto'>
+            <TopbarSearch variant='inline' />
+          </div>
+        )}
         <div data-player-chrome className={buttons}>
+          {searchable && (
+            <span className='md:hidden'>
+              <TopbarSearch variant='button' />
+            </span>
+          )}
           <Notifications />
           <LyricsButton />
           <SavedMenu />
