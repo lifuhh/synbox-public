@@ -7,7 +7,7 @@ import { useGallerySongs } from '@/lib/react-query/queries-and-mutations'
 
 import type { ListSong } from './model'
 
-// How many songs each row under More Like This holds
+// How many songs the More From and Recently Played rows hold
 const SHELF = 20
 
 const sameArtist = (a: string, b: string) =>
