@@ -12,7 +12,7 @@ const RootLayout: React.FC = () => (
       className='pointer-events-none fixed inset-0 -z-10 page-glow'
     />
 
-    <div className='relative h-(--app-h) w-full'>
+    <div className='relative h-(--app-h) w-full watch-wide:h-auto'>
       {/* The page's own backdrop (its color and the glow) over the status bar:
           above the pages, under the top bar, menus, dialogs and the generation panel */}
       <div
@@ -21,7 +21,7 @@ const RootLayout: React.FC = () => (
         className='status-scrim fixed inset-x-0 top-0 z-40 bg-background page-glow'
       />
       <TopBar />
-      <section className='flex h-full flex-1'>
+      <section className='flex h-full flex-1 watch-wide:h-auto'>
         <Outlet />
       </section>
       <TabBar />

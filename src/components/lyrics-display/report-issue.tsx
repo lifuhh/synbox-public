@@ -124,8 +124,8 @@ export const ReportIssue = ({
   )
 }
 
-// Opens Report Issue for the song on screen: what it is about is fixed then, and the song pauses there while the
-// listener writes
+// Opens Report Issue for the song on screen: what it is about, and the moment, are fixed at the press; the song
+// plays on while the listener writes
 export const useReportIssue = (videoId: string) => {
   const [target, setTarget] = useState<ReportTarget | null>(null)
   const clock = useAtomValue(stageClockAtom)
@@ -133,7 +133,6 @@ export const useReportIssue = (videoId: string) => {
   const { admin } = useAccess()
   const [searchParams] = useSearchParams()
   const open = () => {
-    clock?.pause()
     setTarget({
       atSeconds: clock?.getTime() ?? null,
       title: video?.title ?? '',

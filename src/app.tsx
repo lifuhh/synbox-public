@@ -71,7 +71,7 @@ const App = () => {
   }, [])
 
   return (
-    <main className='flex h-(--app-h)'>
+    <main className='flex h-(--app-h) watch-wide:h-auto'>
       <Routes>
         {StageLabPage && (
           <Route
