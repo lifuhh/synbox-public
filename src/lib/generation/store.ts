@@ -1,15 +1,17 @@
 // The lyrics generations the app runs. They live outside React so they carry on across pages; components
 // read them with useGeneration(). Up to MAX_RUNNING run at once and later ones wait their turn here; on the
 // backend, songs take turns on the CPU and each hears how many songs are ahead of it.
+//
+// Every tab of the browser shares one queue, kept in localStorage: one tab runs it, the others show it and
+// send it their commands (tabs.ts). A reload or a new tab finds the songs where they were, and a running
+// song carries on from its step by reconnecting with its request id.
 
 import { useSyncExternalStore } from 'react'
 
 import { playsOutsideYouTube } from '@/lib/youtube/embed-check'
-import type { KaraokeDoc } from '@/types'
 
 import { GenerationError } from './failure'
 import type { Phase } from './plan'
-import type { Runs } from './progress'
 import {
   beginStage,
   completePhase,
@@ -17,72 +19,28 @@ import {
   reportFraction,
   startPhase,
 } from './progress'
+import type { Command, GenerationRequest, Job } from './queue'
+import {
+  applyCommand,
+  decodeJobs,
+  encodeJobs,
+  isActive,
+  STORAGE_KEY,
+} from './queue'
 import { onResume } from './resume'
-import type {
-  Listeners,
-  ProgressEvent,
-  Refusal,
-  SaveOutcome,
-  VideoSummary,
-} from './stream'
+import type { Listeners, ProgressEvent, Refusal } from './stream'
 import { checkGeneration, transcribe, translate, validate } from './stream'
+import { Tabs } from './tabs'
 
-export type GenerationMode = 'new' | 'regenerate'
-
-export type JobStatus =
-  // Started after MAX_RUNNING others; runs when one of them ends
-  | { kind: 'waiting' }
-  | { kind: 'running'; phase: Phase }
-  | {
-      kind: 'complete'
-      at: number
-      outcome: SaveOutcome
-      karaoke: KaraokeDoc | null
-    }
-  // `retry` is false when trying again cannot help, such as a video YouTube keeps to youtube.com or a
-  // used-up daily limit; `code` is the backend's reason for refusing (services/accounts.py MESSAGES)
-  | {
-      kind: 'failed'
-      at: number
-      message: string
-      retry: boolean
-      code: string | undefined
-    }
-
-export interface GenerationRequest {
-  videoId: string
-  mode: GenerationMode
-  // Leaves the uploader's subtitles out; YouTube Music, LRCLIB and the audio still count
-  skipUploaderLyrics?: boolean
-  // Shown until the backend sends the song's details
-  title?: string
-  // A retry keeps its failed job's id, so the backend can hand back a result that finished after all
-  requestId?: string
-}
-
-// `requestId` is sent with every request of a generation, so a reconnect replays the backend's
-// finished job instead of running it again
-export interface Job extends Required<GenerationRequest> {
-  id: number
-  startedAt: number
-  video: VideoSummary | null
-  runs: Runs
-  status: JobStatus
-  // Songs ahead of this one on the backend while it waits for the CPU; 0 when it is not waiting
-  ahead: number
-  // Since when the connection is lost and being asked again, while the backend's job may still be running;
-  // null while the backend is heard
-  reconnectingSince: number | null
-  // Its result was on screen in the panel; a finished job not yet seen counts on the top bar's bell
-  seen: boolean
-}
+export type { GenerationMode, GenerationRequest, Job, JobStatus } from './queue'
+export { isActive } from './queue'
 
 export interface GenerationState {
-  // In the order they were started
+  // In the order they were started; the same in every tab
   jobs: readonly Job[]
-  // The job the panel shows
-  focusedId: number | null
-  // The top bar's panel is open
+  // The job this tab's panel shows
+  focusedId: string | null
+  // This tab's top bar panel is open
   expanded: boolean
 }
 
@@ -96,25 +54,81 @@ const RECONNECT_DELAYS_MS = [2000, 4000, 8000, 15_000, 30_000]
 // How long on screen a job keeps asking without hearing the backend before it says it lost it
 const RECONNECT_WINDOW_MS = 10 * 60_000
 // Each running job holds a stream open; more than this wait here rather than fill the backend's line, which
-// refuses songs past its own limit
+// refuses songs past its own limit. One limit for the whole browser: the leading tab runs every song
 export const MAX_RUNNING = 3
+// The leading tab writes the queue at most this often while progress comes in
+const SAVE_MS = 200
+// Which tab last took the queue over; a tab frozen while it led must not write over its successor on waking
+const LEADER_KEY = 'synbox:generation-leader'
+const TAB_ID = crypto.randomUUID()
+// A command this tab sent stays applied over the leader's copies this long, until the leader's own write has it
+const SENT_MS = 2000
 
-let state: GenerationState = { expanded: false, focusedId: null, jobs: [] }
-const controllers = new Map<number, AbortController>()
+const readStored = () => {
+  try {
+    return decodeJobs(localStorage.getItem(STORAGE_KEY), Date.now())
+  } catch {
+    // No storage (private windows can refuse it): this tab's queue lives only in memory
+    return []
+  }
+}
+
+let state: GenerationState = {
+  expanded: false,
+  focusedId: null,
+  jobs: readStored(),
+}
+const controllers = new Map<string, AbortController>()
 // When each job last heard the backend. Kept out of `state`: heartbeats would re-render for nothing
-const heardAt = new Map<number, number>()
-let nextId = 1
+const heardAt = new Map<string, number>()
 const listeners = new Set<() => void>()
+// Jobs waiting for this page to be on screen before they ask the backend again
+let waitingForScreen = 0
+
+const newest = (jobs: readonly Job[]) => jobs.at(-1)?.id ?? null
+
+// The panel keeps its song while it is listed; otherwise it moves on to the newest song still going, else the
+// newest left
+const withJobs = (jobs: readonly Job[]): GenerationState => {
+  let next = state.focusedId
+  if (next !== null && !jobs.some((job) => job.id === next)) {
+    const active = jobs.filter(isActive)
+    next = newest(active.length > 0 ? active : jobs)
+  }
+  return { expanded: next !== null && state.expanded, focusedId: next, jobs }
+}
+
+let saveTimer: ReturnType<typeof setTimeout> | undefined
+let leading = false
+
+const save = () => {
+  clearTimeout(saveTimer)
+  saveTimer = undefined
+  if (!leading) {
+    return
+  }
+  try {
+    if (localStorage.getItem(LEADER_KEY) === TAB_ID) {
+      localStorage.setItem(STORAGE_KEY, encodeJobs(state.jobs))
+    }
+  } catch {
+    // Full or refused: the other tabs miss this update, the next one may fit
+  }
+}
 
 const set = (next: GenerationState) => {
+  const jobsChanged = next.jobs !== state.jobs
   state = next
+  if (jobsChanged && leading) {
+    saveTimer ??= setTimeout(save, SAVE_MS)
+  }
   for (const listener of listeners) {
     listener()
   }
 }
 
 // Applies `change` only while job `id` is still listed
-const updateJob = (id: number, change: (job: Job) => Job) => {
+const updateJob = (id: string, change: (job: Job) => Job) => {
   if (state.jobs.some((job) => job.id === id)) {
     set({
       ...state,
@@ -126,7 +140,7 @@ const updateJob = (id: number, change: (job: Job) => Job) => {
 export const focusedJob = ({ jobs, focusedId }: GenerationState) =>
   jobs.find((job) => job.id === focusedId) ?? null
 
-const listenersFor = (id: number): Listeners => ({
+const listenersFor = (id: string): Listeners => ({
   onHeard: () => {
     heardAt.set(id, Date.now())
     if (
@@ -150,26 +164,33 @@ const listenersFor = (id: number): Listeners => ({
   },
 })
 
+// Set once the tabs are connected, below
+let tabs: Tabs<Command> | null = null
+
 // Retries wait for the page to be on screen: a suspended page cannot reach the backend. Resolves to how
-// long it waited
+// long it waited. Meanwhile a tab that is on screen may take the queue over (tabs.ts)
 const untilVisible = async (signal: AbortSignal) => {
   const since = Date.now()
-  // oxlint-disable-next-line promise/avoid-new -- turns the visibilitychange and abort events into a promise
-  await new Promise<void>((resolve) => {
-    if (document.visibilityState === 'visible' || signal.aborted) {
-      resolve()
-      return
+  if (document.visibilityState !== 'visible' && !signal.aborted) {
+    waitingForScreen += 1
+    tabs?.ping()
+    try {
+      // oxlint-disable-next-line promise/avoid-new -- turns the visibilitychange and abort events into a promise
+      await new Promise<void>((resolve) => {
+        const settle = () => {
+          if (document.visibilityState === 'visible' || signal.aborted) {
+            document.removeEventListener('visibilitychange', settle)
+            signal.removeEventListener('abort', settle)
+            resolve()
+          }
+        }
+        document.addEventListener('visibilitychange', settle)
+        signal.addEventListener('abort', settle)
+      })
+    } finally {
+      waitingForScreen -= 1
     }
-    const settle = () => {
-      if (document.visibilityState === 'visible' || signal.aborted) {
-        document.removeEventListener('visibilitychange', settle)
-        signal.removeEventListener('abort', settle)
-        resolve()
-      }
-    }
-    document.addEventListener('visibilitychange', settle)
-    signal.addEventListener('abort', settle)
-  })
+  }
   return Date.now() - since
 }
 
@@ -194,7 +215,7 @@ const sleep = async (ms: number, signal: AbortSignal) => {
 
 // Runs one phase; a dropped connection asks again, which attaches to the backend's running job
 const runPhase = async <T>(
-  id: number,
+  id: string,
   phase: Phase,
   signal: AbortSignal,
   call: () => Promise<T>
@@ -287,8 +308,11 @@ class YouTubeOnlyError extends Error {
 // finished and the replay window passed: the song is there to play
 const ALREADY_FINISHED = 'already_finished'
 
+// Runs a job from the step it is on: a song taken over from a closed tab carries on where it was, and asking
+// for that step again attaches to the backend's job
 const run = async (job: Job, signal: AbortSignal) => {
   const { id, videoId } = job
+  const from = job.status.kind === 'running' ? job.status.phase : 'validate'
   const progress = listenersFor(id)
   const options = {
     regenerate: job.mode === 'regenerate',
@@ -298,21 +322,25 @@ const run = async (job: Job, signal: AbortSignal) => {
   // Asked once per job: a reconnect does not load a player again
   let embeds: Promise<boolean> | null = null
   try {
-    const video = await runPhase(id, 'validate', signal, async () => {
-      // Before the backend spends minutes on a song our player could never play
-      embeds ??= playsOutsideYouTube(videoId, signal)
-      if (!(await embeds)) {
-        throw new YouTubeOnlyError()
-      }
-      return await validate(videoId, options, signal, progress)
-    })
-    updateJob(id, (current) => ({ ...current, video }))
-    await runPhase(id, 'transcribe', signal, async () => {
-      await transcribe(videoId, options, signal, progress, (ahead) => {
-        updateJob(id, (current) => ({ ...current, ahead }))
+    if (from === 'validate') {
+      const video = await runPhase(id, 'validate', signal, async () => {
+        // Before the backend spends minutes on a song our player could never play
+        embeds ??= playsOutsideYouTube(videoId, signal)
+        if (!(await embeds)) {
+          throw new YouTubeOnlyError()
+        }
+        return await validate(videoId, options, signal, progress)
       })
-    })
-    updateJob(id, (current) => ({ ...current, ahead: 0 }))
+      updateJob(id, (current) => ({ ...current, video }))
+    }
+    if (from !== 'translate') {
+      await runPhase(id, 'transcribe', signal, async () => {
+        await transcribe(videoId, options, signal, progress, (ahead) => {
+          updateJob(id, (current) => ({ ...current, ahead }))
+        })
+      })
+      updateJob(id, (current) => ({ ...current, ahead: 0 }))
+    }
     const { outcome, karaoke } = await runPhase(
       id,
       'translate',
@@ -366,22 +394,31 @@ const run = async (job: Job, signal: AbortSignal) => {
   }
 }
 
-// Not finished yet: running, or waiting for a free slot
-export const isActive = (job: Job | null) =>
-  job !== null &&
-  (job.status.kind === 'running' || job.status.kind === 'waiting')
-
 export const anyActive = ({ jobs }: GenerationState) => jobs.some(isActive)
+
+// Opens a stream for a job that has none, in the leading tab only; `then` runs when it ends here
+const launch = (job: Job, then: () => void) => {
+  const controller = new AbortController()
+  controllers.set(job.id, controller)
+  void (async () => {
+    await run(job, controller.signal)
+    if (controllers.get(job.id) === controller) {
+      controllers.delete(job.id)
+      then()
+    }
+  })()
+}
 
 // Starts the waiting jobs, oldest first, while fewer than MAX_RUNNING run
 const pump = () => {
+  if (!leading) {
+    return
+  }
   for (const job of state.jobs) {
     if (controllers.size >= MAX_RUNNING) {
       return
     }
     if (job.status.kind === 'waiting' && !controllers.has(job.id)) {
-      const controller = new AbortController()
-      controllers.set(job.id, controller)
       updateJob(job.id, (current) => ({
         ...current,
         startedAt: Date.now(),
@@ -389,14 +426,108 @@ const pump = () => {
       }))
       const started = state.jobs.find((current) => current.id === job.id)
       if (started) {
-        void (async () => {
-          await run(started, controller.signal)
-          controllers.delete(job.id)
-          pump()
-        })()
+        launch(started, pump)
       }
     }
   }
+}
+
+// What the leading tab does with a command, from any tab
+const apply = (command: Command) => {
+  if (command.type === 'cancel') {
+    // Stops listening. A backend job already running finishes on its own and saves what it made.
+    controllers.get(command.id)?.abort()
+    controllers.delete(command.id)
+  }
+  set(withJobs(applyCommand(state.jobs, command)))
+  pump()
+}
+
+// This tab runs the queue now: it takes the stored queue over and reconnects the songs that were running
+const lead = () => {
+  leading = true
+  try {
+    localStorage.setItem(LEADER_KEY, TAB_ID)
+  } catch {
+    // No storage: nothing to write over either
+  }
+  const stored = readStored()
+  // Nothing stored (no storage, or the first tab ever): this tab's own list stands
+  const jobs = stored.length > 0 ? stored : state.jobs
+  const now = Date.now()
+  set(
+    withJobs(
+      jobs.map((job) =>
+        isActive(job) ? { ...job, reconnectingSince: null } : job
+      )
+    )
+  )
+  for (const job of state.jobs) {
+    if (job.status.kind === 'running' && !controllers.has(job.id)) {
+      // The backend began it, so a dropped connection is a reconnect to its job
+      if (Object.values(job.runs).some((stage) => stage?.confirmed)) {
+        heardAt.set(job.id, now)
+      }
+      launch(job, pump)
+    }
+  }
+  pump()
+  save()
+}
+
+// Another tab took the queue over: this one stops its streams (the backend jobs run on) and shows the copy
+const follow = () => {
+  leading = false
+  clearTimeout(saveTimer)
+  saveTimer = undefined
+  for (const controller of controllers.values()) {
+    controller.abort()
+  }
+  controllers.clear()
+  heardAt.clear()
+  set(withJobs(readStored()))
+}
+
+const shared = new Tabs<Command>({
+  apply,
+  busy: () => state.jobs.some(isActive),
+  follow,
+  lead,
+  stalled: () => waitingForScreen > 0,
+})
+tabs = shared
+
+// Commands this tab sent to the leader lately
+const sent: { command: Command; at: number }[] = []
+
+if (typeof window !== 'undefined') {
+  // The leader's writes, in every other tab. A copy written before the leader had this tab's latest commands
+  // would undo them for a moment (a song just added vanishing from the panel), so they are applied over it
+  window.addEventListener('storage', (event) => {
+    if (event.key !== STORAGE_KEY || leading) {
+      return
+    }
+    const now = Date.now()
+    while (sent.length > 0 && now - sent[0].at > SENT_MS) {
+      sent.shift()
+    }
+    let jobs: readonly Job[] = decodeJobs(event.newValue, now)
+    for (const { command } of sent) {
+      jobs = applyCommand(jobs, command)
+    }
+    set(withJobs(jobs))
+  })
+  // The last progress reaches storage before the next tab takes over
+  window.addEventListener('pagehide', save)
+}
+
+// Applies a command here at once, so this tab's panel answers the press, and has the leading tab apply it
+const send = (command: Command) => {
+  if (!leading) {
+    sent.push({ at: Date.now(), command })
+    set(withJobs(applyCommand(state.jobs, command)))
+  }
+  shared.send(command)
 }
 
 // Adds a generation and opens its panel. A song already generating is opened instead, and this returns false.
@@ -408,11 +539,9 @@ export const startGeneration = (request: GenerationRequest): boolean => {
     set({ ...state, expanded: true, focusedId: same.id })
     return false
   }
-  const id = nextId
-  nextId += 1
   const job: Job = {
     ahead: 0,
-    id,
+    id: crypto.randomUUID(),
     reconnectingSince: null,
     runs: {},
     seen: false,
@@ -424,12 +553,8 @@ export const startGeneration = (request: GenerationRequest): boolean => {
     ...request,
     requestId: request.requestId ?? crypto.randomUUID(),
   }
-  // A finished run of the same song gives way to the new one
-  const kept = state.jobs.filter(
-    (current) => isActive(current) || current.videoId !== job.videoId
-  )
-  set({ expanded: true, focusedId: job.id, jobs: [...kept, job] })
-  pump()
+  set({ ...state, expanded: true, focusedId: job.id })
+  send({ job, replaces: null, type: 'add' })
   return true
 }
 
@@ -451,49 +576,37 @@ export const requestGeneration = async (
   return null
 }
 
-const newest = (jobs: readonly Job[]) => jobs.at(-1)?.id ?? null
-
-// Takes job `id` off the list; the panel moves on to the newest job still going, else the newest left
-const remove = (id: number) => {
-  const jobs = state.jobs.filter((job) => job.id !== id)
-  let next = state.focusedId
-  if (next === id) {
-    const active = jobs.filter(isActive)
-    next = newest(active.length > 0 ? active : jobs)
+export const retryGeneration = (id: string) => {
+  const failed = state.jobs.find((current) => current.id === id)
+  if (failed?.status.kind !== 'failed') {
+    return
   }
-  set({ expanded: next !== null && state.expanded, focusedId: next, jobs })
-}
-
-export const retryGeneration = (id: number) => {
-  const job = state.jobs.find((current) => current.id === id)
-  if (job && job.status.kind === 'failed') {
-    remove(id)
-    startGeneration({
-      mode: job.mode,
-      requestId: job.requestId,
-      skipUploaderLyrics: job.skipUploaderLyrics,
-      title: job.video?.title ?? job.title,
-      videoId: job.videoId,
-    })
+  const job: Job = {
+    ...failed,
+    ahead: 0,
+    id: crypto.randomUUID(),
+    reconnectingSince: null,
+    runs: {},
+    seen: false,
+    startedAt: Date.now(),
+    status: { kind: 'waiting' },
+    title: failed.video?.title ?? failed.title,
+    video: null,
   }
+  set({ ...state, expanded: true, focusedId: job.id })
+  send({ job, replaces: id, type: 'add' })
 }
 
 // Stops listening. A backend job already running finishes on its own and saves what it made.
-export const cancelGeneration = (id: number) => {
-  controllers.get(id)?.abort()
-  controllers.delete(id)
-  remove(id)
-  pump()
+export const cancelGeneration = (id: string) => {
+  send({ id, type: 'cancel' })
 }
 
-export const dismissGeneration = (id: number) => {
-  const job = state.jobs.find((current) => current.id === id)
-  if (job && !isActive(job)) {
-    remove(id)
-  }
+export const dismissGeneration = (id: string) => {
+  send({ id, type: 'dismiss' })
 }
 
-export const focusGeneration = (id: number) => {
+export const focusGeneration = (id: string) => {
   if (state.jobs.some((job) => job.id === id)) {
     set({ ...state, expanded: true, focusedId: id })
   }
@@ -513,12 +626,7 @@ export const unseenCount = ({ jobs }: GenerationState) =>
 
 export const markGenerationsSeen = () => {
   if (state.jobs.some((job) => isFinished(job) && !job.seen)) {
-    set({
-      ...state,
-      jobs: state.jobs.map((job) =>
-        isFinished(job) && !job.seen ? { ...job, seen: true } : job
-      ),
-    })
+    send({ type: 'seen' })
   }
 }
 

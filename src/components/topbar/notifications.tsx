@@ -96,7 +96,7 @@ const Notifications = () => {
   // oxlint-disable-next-line react/purity -- ties are broken on progress now; the ring's ticker re-renders this
   const lead = leadJob(jobs, Date.now())
   // The last song the ring followed, so the ring can close on it after it ends
-  const [followedId, setFollowedId] = useState<number | null>(null)
+  const [followedId, setFollowedId] = useState<string | null>(null)
   if (lead !== null && lead.id !== followedId) {
     setFollowedId(lead.id)
   }

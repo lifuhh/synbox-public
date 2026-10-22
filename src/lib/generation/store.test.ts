@@ -148,7 +148,7 @@ const jobAt = (
   separated = 0
 ): Job => ({
   ahead: 0,
-  id,
+  id: String(id),
   mode: 'new',
   reconnectingSince: null,
   requestId: String(id),
@@ -172,13 +172,13 @@ test('the ring follows the song that started running first, then the one further
   const head = jobAt(2, 100, RUNNING, 0.1)
   const later = jobAt(3, 200, RUNNING, 0.9)
   const waiting = jobAt(1, 50, { kind: 'waiting' })
-  expect(leadJob([waiting, head, later], 1000)?.id).toBe(2)
+  expect(leadJob([waiting, head, later], 1000)?.id).toBe('2')
   // Started at the same moment: the one further along
   const twin = jobAt(4, 100, RUNNING, 0.6)
-  expect(leadJob([head, twin], 1000)?.id).toBe(4)
+  expect(leadJob([head, twin], 1000)?.id).toBe('4')
   // Nothing running yet: the first in line; nothing in progress: none
   expect(leadJob([waiting, jobAt(5, 10, { kind: 'waiting' })], 1000)?.id).toBe(
-    1
+    '1'
   )
   const failed = {
     at: 0,
