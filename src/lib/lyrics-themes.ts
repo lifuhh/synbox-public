@@ -2,13 +2,13 @@
 // The accent is the lit, sung part, so it sits near the white's lightness (OKLCH 0.86+) rather than darker than it.
 // Presets are WCAG-checked: accent >= 13:1 on the fixed dark edge (.lyric-text-line), glow >= 3:1 darker than the white
 export const LYRICS_THEME_IDS = [
-  'sakura',
+  'sunset',
   'cinema',
   'amethyst',
   'aqua',
   'matcha',
   'lemon',
-  'sunset',
+  'sakura',
   'custom',
 ] as const
 export type LyricsThemeId = (typeof LYRICS_THEME_IDS)[number]
@@ -26,16 +26,16 @@ export interface LyricsTheme extends LyricsThemeColors {
   name: string
 }
 
-export const DEFAULT_LYRICS_THEME_ID: LyricsThemeId = 'sakura'
+export const DEFAULT_LYRICS_THEME_ID: LyricsThemeId = 'sunset'
 export const DEFAULT_LYRICS_BACKDROP: LyricsBackdrop = 'shadow'
 export const DEFAULT_LYRICS_CUSTOM_HUE = 200
 
 export const LYRICS_THEMES: LyricsTheme[] = [
   {
-    accent: '#FFBBD2',
-    glow: '#CA1960',
-    id: 'sakura',
-    name: 'Sakura',
+    accent: '#FEC29F',
+    glow: '#E0521A',
+    id: 'sunset',
+    name: 'Sunset',
   },
   {
     accent: '#B6D3FE',
@@ -68,10 +68,10 @@ export const LYRICS_THEMES: LyricsTheme[] = [
     name: 'Lemon',
   },
   {
-    accent: '#FEC29F',
-    glow: '#E0521A',
-    id: 'sunset',
-    name: 'Sunset',
+    accent: '#FFBBD2',
+    glow: '#CA1960',
+    id: 'sakura',
+    name: 'Sakura',
   },
 ]
 
@@ -97,17 +97,17 @@ export const LYRICS_BACKDROPS: {
   hint: string
 }[] = [
   {
-    hint: 'Soft dark edge, like streaming subtitles',
+    hint: 'Soft edge',
     id: 'shadow',
     name: 'Shadow',
   },
   {
-    hint: 'Darkens the video behind the lyrics',
+    hint: 'Dims video',
     id: 'band',
     name: 'Fade',
   },
   {
-    hint: 'Solid box, easiest to read',
+    hint: 'Easiest to read',
     id: 'box',
     name: 'Box',
   },

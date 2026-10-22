@@ -106,7 +106,8 @@ const StyleSwitch = ({
   onChange,
 }: {
   label: string
-  hint: string
+  // Only when the label alone doesn't say it
+  hint?: string
   checked: boolean
   onChange: (checked: boolean) => void
 }) => {
@@ -118,7 +119,7 @@ const StyleSwitch = ({
         // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- a switch: on and off, applied at once
         role='switch'
         aria-checked={checked}
-        aria-describedby={hintId}
+        aria-describedby={hint === undefined ? undefined : hintId}
         onClick={() => {
           onChange(!checked)
         }}
@@ -138,9 +139,11 @@ const StyleSwitch = ({
           />
         </span>
       </button>
-      <p id={hintId} className='text-xs text-muted-foreground'>
-        {hint}
-      </p>
+      {hint !== undefined && (
+        <p id={hintId} className='text-xs text-muted-foreground'>
+          {hint}
+        </p>
+      )}
     </section>
   )
 }
@@ -156,18 +159,14 @@ const TwoLinesSwitch = ({ portrait }: { portrait: boolean }) => {
         label='Two Lines'
         checked={twoLines}
         onChange={setTwoLines}
-        hint={
-          portrait
-            ? 'Shows the next line in a second row, on a wide screen or a phone turned sideways.'
-            : 'Shows the next line in a second row, so you can read ahead.'
-        }
+        hint={portrait ? 'Landscape only' : undefined}
       />
       {twoLines && (
         <StyleSwitch
           label='Karaoke Stagger'
           checked={stagger}
           onChange={setStagger}
-          hint='Lines take turns on the left and the right in smaller type, with the translation at the top, as on a karaoke machine.'
+          hint='Like a karaoke machine'
         />
       )}
     </>

@@ -86,7 +86,7 @@ test('a corrupt or out-of-range saved style falls back to the defaults', () => {
   )
   const store = createStore()
   store.set(lyricsStyleSongAtom, 'bad')
-  expect(store.get(lyricsThemeIdAtom)).toBe('sakura')
+  expect(store.get(lyricsThemeIdAtom)).toBe('sunset')
   store.set(lyricsStyleSongAtom, 'range')
   expect(store.get(fontSizeMultiplierAtom)).toBe(1)
 })
