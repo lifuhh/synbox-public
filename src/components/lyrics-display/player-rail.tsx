@@ -176,12 +176,16 @@ const SongActionsMenu = ({ actions }: { actions: SongAction[] }) => {
 
 // Inline (the watch page), the lyrics toggles and the song's actions are two groups that wrap whole, so a
 // narrow screen gets a row of each and never one button alone on a second row
+// On a phone each group is a row of equal cells across the whole width, every button filling its cell, so no row
+// leaves a third of the screen empty
 const groupClass = (inline: boolean) =>
-  inline ? 'flex items-center gap-2' : 'contents'
+  inline
+    ? 'flex items-center gap-2 watch-narrow:grid watch-narrow:grid-flow-col watch-narrow:auto-cols-fr'
+    : 'contents'
 
 const railClass = (inline: boolean, interactive: boolean, open: boolean) =>
   inline
-    ? 'flex w-fit max-w-full flex-wrap items-center gap-x-5 gap-y-2'
+    ? 'flex w-fit max-w-full flex-wrap items-center gap-x-5 gap-y-2 watch-narrow:w-full watch-narrow:flex-col watch-narrow:items-stretch'
     : cn(
         // Its corners are the buttons' 8px radius plus the 4px padding around them, in every layout
         'flex flex-col items-center gap-1 rounded-r-xl bg-black/55 p-1 shadow-rail backdrop-blur-md transition-translate-fade duration-300 ease-out',

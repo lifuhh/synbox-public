@@ -1,12 +1,11 @@
 import { useAtomValue } from 'jotai'
 import type { ReactNode } from 'react'
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 
 import PlayerRail from '@/components/lyrics-display/player-rail'
 import { currentVideoAtom } from '@/context/atoms'
 import { useMediaQuery } from '@/hooks/use-media-query'
 import { useNextList } from '@/lib/listening/recommendations'
-import { cn } from '@/utils/cn'
 
 import { LyricsPanel } from './lyrics-panel'
 import { MoreLikeThis } from './more-like-this'
@@ -58,16 +57,8 @@ const useMoreLikeThis = (videoId: string) => {
   return all.filter((song) => !listed.has(song.videoId))
 }
 
-type Tab = 'lyrics' | 'next'
-const TABS: { id: Tab; label: string }[] = [
-  { id: 'lyrics', label: 'Lyrics' },
-  { id: 'next', label: 'Up Next' },
-]
-
-// A phone or a narrow window: everything under the video scrolls as one page, as on YouTube, so a swipe
-// anywhere below the video moves it; the tabs stick under the video once the song's title has scrolled away.
-// Up Next is part of that page. The lyrics keep their own box (they follow the song), one screen tall, so
-// with the tabs stuck they fill what is left under the video
+// A phone or a narrow window: the lyrics straight under the video, where the eye already is, following the song;
+// the song, its buttons, Up Next and the rows scroll in their own box under the lyrics
 const NarrowBelow = ({
   videoId,
   version,
@@ -75,70 +66,23 @@ const NarrowBelow = ({
   videoId: string
   version: number | null
 }) => {
-  const [tab, setTab] = useState<Tab>('lyrics')
   const more = useMoreLikeThis(videoId)
   return (
-    <div className='watch-below min-h-0 flex-1 overflow-y-auto overscroll-contain'>
-      <div className='flex flex-col gap-3 px-4 pt-3 pb-(--safe-bottom)'>
-        <SongInfo compact />
-        <div className='sticky top-0 z-10 -mx-4 bg-background px-4 py-2'>
-          <div
-            role='tablist'
-            aria-label='Below the Video'
-            className='grid grid-cols-2 rounded-full bg-card p-1'>
-            {TABS.map(({ id, label }) => (
-              <button
-                key={id}
-                type='button'
-                role='tab'
-                id={`watch-tab-${id}`}
-                aria-selected={tab === id}
-                aria-controls={tab === id ? `watch-panel-${id}` : undefined}
-                tabIndex={tab === id ? 0 : -1}
-                onClick={() => {
-                  setTab(id)
-                }}
-                // Left and Right move between the tabs, as in any tab list
-                onKeyDown={(event) => {
-                  if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') {
-                    return
-                  }
-                  event.preventDefault()
-                  const next = id === 'lyrics' ? 'next' : 'lyrics'
-                  setTab(next)
-                  document
-                    .querySelector<HTMLElement>(`#watch-tab-${next}`)
-                    ?.focus()
-                }}
-                className={cn(
-                  'h-9 rounded-full text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden',
-                  tab === id
-                    ? 'bg-primary-subtle text-primary-text'
-                    : 'text-muted-foreground hover:text-foreground'
-                )}>
-                {label}
-              </button>
-            ))}
+    <div className='watch-below flex min-h-0 flex-1 flex-col'>
+      <LyricsPanel
+        videoId={videoId}
+        version={version}
+        heading={false}
+        className='mx-4 mt-3 watch-lyrics-under shrink-0'
+      />
+      <div className='min-h-0 flex-1 overflow-y-auto overscroll-contain'>
+        <div className='flex flex-col gap-4 px-4 pt-4 pb-(--safe-bottom)'>
+          <SongInfo compact />
+          <div className='pb-6'>
+            <UpNext videoId={videoId} autoplaySwitch />
+            <MoreLikeThis songs={more} className='mt-6 px-2' />
+            <Shelves videoId={videoId} className='mt-6 px-2' />
           </div>
-        </div>
-        <div
-          role='tabpanel'
-          id={`watch-panel-${tab}`}
-          aria-labelledby={`watch-tab-${tab}`}>
-          {tab === 'lyrics' ? (
-            <LyricsPanel
-              videoId={videoId}
-              version={version}
-              heading={false}
-              className='watch-lyrics-tab'
-            />
-          ) : (
-            <div className='pb-6'>
-              <UpNext videoId={videoId} autoplaySwitch />
-              <MoreLikeThis songs={more} className='mt-6 px-2' />
-              <Shelves videoId={videoId} className='mt-6 px-2' />
-            </div>
-          )}
         </div>
       </div>
     </div>
