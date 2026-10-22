@@ -3,7 +3,7 @@ import { useAtomValue } from 'jotai'
 import {
   ChevronRightIcon,
   CircleQuestionMarkIcon,
-  CircleUserRoundIcon,
+  UserIcon,
   ListMusicIcon,
   LogInIcon,
   LogOutIcon,
@@ -117,7 +117,7 @@ const YouPage = () => {
                     : user.image
                 }
                 fallback={
-                  <CircleUserRoundIcon className='size-7' aria-hidden />
+                  <UserIcon className='size-7 fill-current' aria-hidden />
                 }
               />
             </span>
