@@ -756,6 +756,17 @@
   }
 }
 
+/* The narrow watch page's scroller under the video (NarrowBelow): its height is what the lyrics fill */
+@utility watch-below {
+  container-type: size;
+}
+
+/* The Lyrics tab's box: the scroller's height less the stuck tabs (2.75rem row, 0.5rem above and below)
+   and the safe area under it */
+@utility watch-lyrics-tab {
+  height: calc(100cqh - 3.75rem - var(--safe-bottom));
+}
+
 @utility watch-side {
   grid-area: side;
   position: relative;
@@ -774,11 +785,6 @@
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
-}
-
-/* The karaoke corner on a card's picture (KaraokeCorner): the top-right half of its square */
-@utility corner-fold {
-  clip-path: polygon(0 0, 100% 0, 100% 100%);
 }
 
 /* A list that scrolls inside a box fades out over its last 2rem, so the cut-off row reads as more to scroll to */

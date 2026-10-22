@@ -1,8 +1,8 @@
 import { SparklesIcon } from 'lucide-react'
 
 import {
-  KaraokeCornerMark,
   KaraokeLabelMark,
+  KaraokeTitleIconMark,
 } from '@/components/shared/karaoke-badge'
 import { SongMenu } from '@/components/watch/song-menu'
 import type {
@@ -10,15 +10,7 @@ import type {
   VideoSearchResult,
 } from '@/lib/synbox-flask/discovery'
 
-const Thumbnail = ({
-  src,
-  alt,
-  videoId,
-}: {
-  src: string
-  alt: string
-  videoId: string
-}) => (
+const Thumbnail = ({ src, alt }: { src: string; alt: string }) => (
   <div className='relative aspect-video w-full overflow-hidden rounded-lg bg-input'>
     {src !== '' && (
       <img
@@ -28,7 +20,6 @@ const Thumbnail = ({
         className='absolute inset-0 h-full w-full object-cover'
       />
     )}
-    <KaraokeCornerMark videoId={videoId} />
   </div>
 )
 
@@ -36,10 +27,18 @@ const Thumbnail = ({
 const CARD =
   'flex flex-col gap-2 rounded-2xl p-2 transition-colors hover:bg-muted/60'
 
-// Two lines tall even when the title fits on one, so every card's next row lines up
-const Title = ({ children }: { children: string }) => (
-  <p className='line-clamp-2 min-h-[2lh] text-sm font-semibold text-foreground'>
-    {children}
+// Two lines tall even when the title fits on one, so every card's next row lines up; a song with karaoke
+// lyrics has the mic before it
+const Title = ({
+  children,
+  videoId,
+}: {
+  children: string
+  videoId: string
+}) => (
+  <p className='flex min-h-[2lh] gap-1.5 text-sm font-semibold text-foreground'>
+    <KaraokeTitleIconMark videoId={videoId} />
+    <span className='line-clamp-2'>{children}</span>
   </p>
 )
 
@@ -56,12 +55,8 @@ export const VideoResultCard = ({
       onSelect(result)
     }}
     className={`${CARD} text-left`}>
-    <Thumbnail
-      src={result.thumbnail_url}
-      alt={result.title}
-      videoId={result.video_id}
-    />
-    <Title>{result.title}</Title>
+    <Thumbnail src={result.thumbnail_url} alt={result.title} />
+    <Title videoId={result.video_id}>{result.title}</Title>
     <KaraokeLabelMark videoId={result.video_id} />
     <p className='truncate text-xs text-muted-foreground'>{result.channel}</p>
   </button>
@@ -83,12 +78,8 @@ export const LibrarySongCard = ({
         onPlay(song.video_id)
       }}
       className='flex flex-col gap-2 text-left'>
-      <Thumbnail
-        src={song.thumbnail_url}
-        alt={song.title}
-        videoId={song.video_id}
-      />
-      <Title>{song.title}</Title>
+      <Thumbnail src={song.thumbnail_url} alt={song.title} />
+      <Title videoId={song.video_id}>{song.title}</Title>
       <KaraokeLabelMark videoId={song.video_id} />
     </button>
     <div className='flex items-center gap-2'>

@@ -14,16 +14,6 @@ export const KaraokeBadge = ({ className }: { className?: string }) => (
   </span>
 )
 
-// The same mark on a card's picture: a folded top-right corner in the accent with a mic, like a sticker on
-// cover art, for cards whose title sits apart from the picture
-export const KaraokeCorner = () => (
-  <span
-    aria-hidden
-    className='pointer-events-none absolute top-0 right-0 size-8 bg-primary text-primary-foreground corner-fold'>
-    <MicVocalIcon aria-hidden className='absolute top-1 right-1 size-3.5' />
-  </span>
-)
-
 // The same mark on a list row's thumbnail: the picture's edge in the accent and a mic floating on its top-right
 // corner, half outside it, so a karaoke song stands out in a list at a glance. Laid over the thumbnail, which
 // must not clip it: the thumbnail rounds its own picture instead of hiding its overflow. Rounded as list
@@ -67,9 +57,6 @@ export const KaraokeLabel = () => (
 
 export const KaraokeLabelMark = ({ videoId }: { videoId: string }) =>
   useHasKaraoke(videoId) ? <KaraokeLabel /> : null
-
-export const KaraokeCornerMark = ({ videoId }: { videoId: string }) =>
-  useHasKaraoke(videoId) ? <KaraokeCorner /> : null
 
 export const KaraokeEdgeMark = ({
   videoId,
