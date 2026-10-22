@@ -6,7 +6,7 @@ import {
   RotateCwIcon,
   VolumeXIcon,
 } from 'lucide-react'
-import type { ReactNode } from 'react'
+import type { ReactNode, RefObject } from 'react'
 import {
   useCallback,
   useEffect,
@@ -149,8 +149,10 @@ const chromeBusy = () => {
   )
 }
 
-// Idle `ms` after the last pointer or key input anywhere in the window, and not while the UI is busy
-const useIdle = (ms: number) => {
+// Idle `ms` after the last pointer or key input, and not while the UI is busy. Any pointer in the window
+// counts while the stage is the whole screen; on the watch page only one over the video does, so scrolling
+// the page under it doesn't bring up its controls
+const useIdle = (ms: number, stageRef: RefObject<HTMLElement | null>) => {
   const [idle, setIdle] = useState(false)
   const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
@@ -174,16 +176,27 @@ const useIdle = (ms: number) => {
   useEffect(() => {
     // oxlint-disable-next-line react/set-state-in-effect -- arriving on the stage counts as activity: show the controls and start the idle timer
     wake()
-    window.addEventListener('pointermove', wake)
-    window.addEventListener('pointerdown', wake)
+    const wakeFromPointer = (event: PointerEvent) => {
+      const stage = stageRef.current
+      if (
+        !('watch' in document.documentElement.dataset) ||
+        (stage !== null &&
+          event.target instanceof Node &&
+          stage.contains(event.target))
+      ) {
+        wake()
+      }
+    }
+    window.addEventListener('pointermove', wakeFromPointer)
+    window.addEventListener('pointerdown', wakeFromPointer)
     window.addEventListener('keydown', wake)
     return () => {
       clearTimeout(timerRef.current)
-      window.removeEventListener('pointermove', wake)
-      window.removeEventListener('pointerdown', wake)
+      window.removeEventListener('pointermove', wakeFromPointer)
+      window.removeEventListener('pointerdown', wakeFromPointer)
       window.removeEventListener('keydown', wake)
     }
-  }, [wake])
+  }, [wake, stageRef])
   return { idle, sleep }
 }
 
@@ -368,7 +381,7 @@ export const PlayerStage = ({
     [autoplayMuted, unlockSound]
   )
 
-  const { idle, sleep } = useIdle(IDLE_MS)
+  const { idle, sleep } = useIdle(IDLE_MS, stageRef)
   const [dragging, setDragging] = useState(false)
   const [locked, setLocked] = useState(false)
   useWakeLock(phase.kind === 'playing' || phase.kind === 'buffering')

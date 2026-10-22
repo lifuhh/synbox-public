@@ -7,7 +7,7 @@ import {
 } from 'lucide-react'
 import { Link } from 'react-router'
 
-import { KaraokeCorner, KaraokeLabel } from '@/components/shared/karaoke-badge'
+import { KaraokeEdge, KaraokeLabel } from '@/components/shared/karaoke-badge'
 import type { SearchMatch } from '@/lib/offline/search'
 import type { OfflineSong } from '@/lib/offline/song'
 import { hasKaraoke } from '@/lib/offline/song'
@@ -38,7 +38,7 @@ const Thumbnail = ({
   src: string | null
   karaoke: boolean
 }) => (
-  <div className='relative aspect-video w-24 shrink-0 overflow-hidden rounded bg-thumbnail-placeholder'>
+  <div className='relative aspect-video w-24 shrink-0 rounded bg-thumbnail-placeholder'>
     {src === null ? (
       <MusicIcon className='absolute inset-0 m-auto size-5 text-muted-foreground' />
     ) : (
@@ -46,10 +46,10 @@ const Thumbnail = ({
         src={src}
         alt=''
         draggable={false}
-        className='size-full object-cover'
+        className='size-full rounded object-cover'
       />
     )}
-    {karaoke && <KaraokeCorner size='sm' />}
+    {karaoke && <KaraokeEdge />}
   </div>
 )
 

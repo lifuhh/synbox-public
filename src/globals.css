@@ -260,6 +260,18 @@
   --text-lyric-secondary: calc(
     max(min(2.1cqw, 4.48cqh), 0.75rem) * var(--lyric-scale)
   );
+  /* Karaoke Stagger: two lines side by side need less type than one centred line, so the Japanese is 0.65 of
+     the one-line size (the viewer's own size included), and the romaji and the translation step down from it
+     as on the reader (17 : 15 : 14) */
+  --text-lyric-stagger: calc(
+    max(min(3cqw, 6.4cqh), 1.0625rem) * var(--lyric-scale) * 0.65
+  );
+  --text-lyric-stagger-romaji: calc(
+    max(min(3cqw, 6.4cqh), 1.0625rem) * var(--lyric-scale) * 0.65 * 15 / 17
+  );
+  --text-lyric-stagger-translation: calc(
+    max(min(3cqw, 6.4cqh), 1.0625rem) * var(--lyric-scale) * 0.65 * 14 / 17
+  );
 
   /* The offline reader: room under its bar and over its text style row, and type times the reader's scale */
   --spacing-reader-top: calc(var(--safe-top) + 3.75rem);
@@ -493,13 +505,40 @@
   );
 }
 
-/* The landing carousel's row: one slide centred, its neighbours peeking in on both sides and fading out at
-   the edges. Its container (@container) sizes the slide, capped so a phone on its side or a monitor still
-   shows the neighbours; the side padding only shows when there is a single slide */
-@utility carousel-track {
+/* The landing carousel's box, around its row (or the loading row) and the glow under the centred slide. Its
+   container (@container) sizes the slide, capped so a phone on its side or a monitor still shows the
+   neighbours */
+@utility carousel-frame {
   --gap: 1rem;
   --peek: 2rem;
-  --slide: min(100cqw - 2 * (var(--gap) + var(--peek)), 28rem);
+  --slide: min(100cqw - 2 * (var(--gap) + var(--peek)), 30rem);
+  position: relative;
+
+  @media (orientation: landscape) and (max-height: 500px) {
+    --slide: min(100cqw - 2 * (var(--gap) + var(--peek)), 22rem);
+  }
+}
+
+/* The centred slide's picture, blurred and dimmed behind it, as if its light pooled around the card. Over the
+   centred slot (the row's top padding down), a little smaller and lower, so it spills past the card's sides
+   and under its title rather than over the heading */
+@utility carousel-glow {
+  position: absolute;
+  top: 0.125rem;
+  left: calc(50% - var(--slide) / 2);
+  width: var(--slide);
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  opacity: 0.5;
+  scale: 0.9;
+  translate: 0 1.25rem;
+  filter: blur(40px) saturate(1.5);
+  pointer-events: none;
+}
+
+/* The landing carousel's row: one slide centred, its neighbours peeking in on both sides and fading out at
+   the edges (sizes from carousel-frame); the side padding only shows when there is a single slide */
+@utility carousel-track {
   position: relative;
   display: grid;
   grid-auto-flow: column;
@@ -525,9 +564,6 @@
   &::-webkit-scrollbar {
     display: none;
   }
-  @media (orientation: landscape) and (max-height: 500px) {
-    --slide: min(100cqw - 2 * (var(--gap) + var(--peek)), 22rem);
-  }
   /* The loading row: a centred placeholder slide with one on each side */
   &[data-skeleton] {
     overflow: hidden;
@@ -549,32 +585,81 @@
   transition: var(--anchor-transition);
 }
 
-/* Karaoke Stagger: in the two-row layout the top row hugs the leading edge and the next row the trailing one,
-   as a karaoke machine shows them. [class] lifts these over the rows' own centring */
-@utility lyric-row-start {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
+/* Karaoke Stagger, the two-way karaoke screen: the top row's line starts at the left edge and the bottom row's
+   ends at the right, each in three quarters of the width, so the two read as left and right even when both are
+   long. A fixed width, not the text's: a row sized by its lines would resize as each line balances its wrap,
+   and set the other line rebalancing in turn. A row holds its line's Japanese and romaji; the translation hangs
+   at the top instead (lyric-stagger-translation). The p rules lift these over the lines' own centring, the Box
+   backdrop's too */
+@utility lyric-stagger-start {
+  justify-self: start;
+  width: 75%;
+  text-align: start;
 
-  & > [class] {
-    width: fit-content;
-    max-width: 100%;
-    margin-inline: 0;
+  .player-lyrics-overlay & p.lyric-text-line {
+    margin-inline: 0 auto;
     text-align: start;
   }
 }
 
-@utility lyric-row-end {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
+@utility lyric-stagger-end {
+  justify-self: end;
+  width: 75%;
+  text-align: end;
 
-  & > [class] {
-    width: fit-content;
-    max-width: 100%;
-    margin-inline: 0;
+  .player-lyrics-overlay & p.lyric-text-line {
+    margin-inline: auto 0;
     text-align: end;
   }
+}
+
+/* The stagger rows' outer edges. On the player's own screen the rail floats over the stage's left edge while the
+   controls show, and a line that starts at the edge would run under it: both sides keep the rail's width, so the
+   two lines stay mirror images. On a phone on its side the lyrics' layer already keeps clear of the rail */
+@utility lyric-stagger-rows {
+  html:not([data-watch]) & {
+    padding-inline: var(--spacing-controls-rail);
+
+    @variant short {
+      padding-inline: 0;
+    }
+  }
+}
+
+/* Where Karaoke Stagger's translation hangs: under the top bar, and under Tap to Unmute while that shows */
+@utility lyric-stagger-layer {
+  --lyric-stagger-top: calc(
+    var(--topbar-h) + var(--notices-h, 0px) + var(--preview-banner-h, 0px) +
+      0.5rem
+  );
+
+  [data-player-stage]:has([data-unmute-pill]) & {
+    --lyric-stagger-top: calc(
+      var(--topbar-h) + var(--notices-h, 0px) + var(--preview-banner-h, 0px) +
+        3.25rem
+    );
+  }
+}
+
+/* The one translation, for the line being sung: across the stage, so the Fade backdrop's band does too, with
+   the text centred and narrower than the stage so it keeps clear of the corner buttons */
+@utility lyric-stagger-translation {
+  position: absolute;
+  top: var(--lyric-stagger-top);
+  inset-inline: 0;
+
+  & > p {
+    max-width: 70%;
+  }
+}
+
+/* The room the stagger rows move in starts under two lines of translation, so the rows never cover it and a
+   longer translation never pushes them */
+@utility lyric-stagger-area {
+  top: calc(
+    var(--lyric-stagger-top) + 3 * --theme(--text-lyric-stagger-translation) +
+      0.5rem
+  );
 }
 
 /* Between the two rows of the two-line karaoke layout: a share of the lyric size, so each line's romaji and
@@ -640,13 +725,14 @@
   }
 }
 
+/* No background of its own: youtube-engine's fixed layer is the black behind the video, and the page's
+   positioned wrappers would paint one over that layer, hiding the video */
 @utility watch-stage {
   flex-shrink: 0;
   width: 100%;
   aspect-ratio: 16 / 9;
   max-height: 45%;
   overflow: hidden;
-  background: #000;
 
   @media (min-width: 1000px) {
     grid-area: stage;
@@ -661,6 +747,24 @@
       height: min(56.25vw, calc(var(--app-h) - var(--topbar-h) - 12rem));
     }
   }
+}
+
+/* youtube-engine's fixed video layer takes the wide watch page's rounded corners (watch-stage) */
+@media (min-width: 1000px) {
+  html[data-watch] [data-stage-video] {
+    border-radius: 0.75rem;
+  }
+}
+
+/* The narrow watch page's scroller under the video (NarrowBelow): its height is what the lyrics fill */
+@utility watch-below {
+  container-type: size;
+}
+
+/* The Lyrics tab's box: the scroller's height less the stuck tabs (2.75rem row, 0.5rem above and below)
+   and the safe area under it */
+@utility watch-lyrics-tab {
+  height: calc(100cqh - 3.75rem - var(--safe-bottom));
 }
 
 @utility watch-side {
@@ -681,11 +785,6 @@
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
-}
-
-/* The karaoke corner on a thumbnail (KaraokeCorner): the top-right half of its square */
-@utility corner-fold {
-  clip-path: polygon(0 0, 100% 0, 100% 100%);
 }
 
 /* A list that scrolls inside a box fades out over its last 2rem, so the cut-off row reads as more to scroll to */
@@ -1345,8 +1444,10 @@
   }
 
   /* On the watch page the stage is a box under the top bar: what hangs under the bar inside it (Tap to
-     Unmute, the lock column) hangs from the video's own top edge instead */
+     Unmute) hangs from the video's own top edge instead, and its controls sit on the video's bottom edge,
+     clear of no home indicator */
   html[data-watch] [data-player-stage] {
+    --safe-bottom: 0px;
     --topbar-h: 0px;
     --notices-h: 0px;
     --preview-banner-h: 0px;

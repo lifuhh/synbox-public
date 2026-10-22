@@ -5,7 +5,7 @@
 export const STAGES = [
   {
     id: 'check',
-    label: "Checking it's a Japanese song",
+    label: 'Checking the video',
     phase: 'validate',
     weight: 5,
   },

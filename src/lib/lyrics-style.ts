@@ -30,7 +30,8 @@ export interface LyricsStyle {
   anchorPortrait: number
   // The karaoke two-row layout: the next line waits, unfilled, in the other row. Desktop and phone landscape
   twoLines: boolean
-  // With two lines, the top row hugs the left and the next row the right, as a karaoke machine shows them
+  // With two lines, the top row's line starts at the left and the next row's ends at the right, as a karaoke
+  // machine shows them, in smaller type, with the sung line's translation alone at the top
   stagger: boolean
   // An optional extra factor on `fontSize` for one screen only; 1 leaves that screen at the shared size
   screenSizes: ScreenSizes

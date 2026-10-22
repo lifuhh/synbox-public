@@ -44,7 +44,10 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'next', label: 'Up Next' },
 ]
 
-// A phone or a narrow window: Lyrics and Up Next share the space under the song, one at a time
+// A phone or a narrow window: everything under the video scrolls as one page, as on YouTube, so a swipe
+// anywhere below the video moves it; the tabs stick under the video once the song's title has scrolled away.
+// Up Next is part of that page. The lyrics keep their own box (they follow the song), one screen tall, so
+// with the tabs stuck they fill what is left under the video
 const NarrowBelow = ({
   videoId,
   version,
@@ -55,65 +58,70 @@ const NarrowBelow = ({
   const [tab, setTab] = useState<Tab>('lyrics')
   const { songs } = useRecommendations(videoId)
   return (
-    <div className='flex min-h-0 flex-1 flex-col gap-3 px-4 pt-3'>
-      <SongInfo compact />
-      <div
-        role='tablist'
-        aria-label='Below the Video'
-        className='grid shrink-0 grid-cols-2 rounded-full bg-card p-1'>
-        {TABS.map(({ id, label }) => (
-          <button
-            key={id}
-            type='button'
-            role='tab'
-            id={`watch-tab-${id}`}
-            aria-selected={tab === id}
-            aria-controls={tab === id ? `watch-panel-${id}` : undefined}
-            tabIndex={tab === id ? 0 : -1}
-            onClick={() => {
-              setTab(id)
-            }}
-            // Left and Right move between the tabs, as in any tab list
-            onKeyDown={(event) => {
-              if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') {
-                return
-              }
-              event.preventDefault()
-              const next = id === 'lyrics' ? 'next' : 'lyrics'
-              setTab(next)
-              document.querySelector<HTMLElement>(`#watch-tab-${next}`)?.focus()
-            }}
-            className={cn(
-              'h-9 rounded-full text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden',
-              tab === id
-                ? 'bg-primary-subtle text-primary-text'
-                : 'text-muted-foreground hover:text-foreground'
-            )}>
-            {label}
-          </button>
-        ))}
-      </div>
-      <div
-        role='tabpanel'
-        id={`watch-panel-${tab}`}
-        aria-labelledby={`watch-tab-${tab}`}
-        className='flex min-h-0 flex-1 flex-col pb-(--safe-bottom)'>
-        {tab === 'lyrics' ? (
-          <LyricsPanel
-            videoId={videoId}
-            version={version}
-            heading={false}
-            className='flex-1'
-          />
-        ) : (
-          <div className='min-h-0 flex-1 overflow-y-auto overscroll-contain pb-6'>
-            <UpNext recommendations={songs} />
-            <MoreLikeThis
-              songs={songs.slice(UP_NEXT_COUNT)}
-              className='mt-6 px-2'
-            />
+    <div className='watch-below min-h-0 flex-1 overflow-y-auto overscroll-contain'>
+      <div className='flex flex-col gap-3 px-4 pt-3 pb-(--safe-bottom)'>
+        <SongInfo compact />
+        <div className='sticky top-0 z-10 -mx-4 bg-background px-4 py-2'>
+          <div
+            role='tablist'
+            aria-label='Below the Video'
+            className='grid grid-cols-2 rounded-full bg-card p-1'>
+            {TABS.map(({ id, label }) => (
+              <button
+                key={id}
+                type='button'
+                role='tab'
+                id={`watch-tab-${id}`}
+                aria-selected={tab === id}
+                aria-controls={tab === id ? `watch-panel-${id}` : undefined}
+                tabIndex={tab === id ? 0 : -1}
+                onClick={() => {
+                  setTab(id)
+                }}
+                // Left and Right move between the tabs, as in any tab list
+                onKeyDown={(event) => {
+                  if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') {
+                    return
+                  }
+                  event.preventDefault()
+                  const next = id === 'lyrics' ? 'next' : 'lyrics'
+                  setTab(next)
+                  document
+                    .querySelector<HTMLElement>(`#watch-tab-${next}`)
+                    ?.focus()
+                }}
+                className={cn(
+                  'h-9 rounded-full text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden',
+                  tab === id
+                    ? 'bg-primary-subtle text-primary-text'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}>
+                {label}
+              </button>
+            ))}
           </div>
-        )}
+        </div>
+        <div
+          role='tabpanel'
+          id={`watch-panel-${tab}`}
+          aria-labelledby={`watch-tab-${tab}`}>
+          {tab === 'lyrics' ? (
+            <LyricsPanel
+              videoId={videoId}
+              version={version}
+              heading={false}
+              className='watch-lyrics-tab'
+            />
+          ) : (
+            <div className='pb-6'>
+              <UpNext recommendations={songs} />
+              <MoreLikeThis
+                songs={songs.slice(UP_NEXT_COUNT)}
+                className='mt-6 px-2'
+              />
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )

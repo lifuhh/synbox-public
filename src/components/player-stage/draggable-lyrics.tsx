@@ -51,6 +51,8 @@ interface DraggableLyricsProps {
   scale: number
   backdrop: string
   colors: LyricsThemeColors
+  // The whole width to lay out in (Karaoke Stagger's left and right lines), instead of a centred fit
+  wide?: boolean
 }
 
 // `anchor` is where the viewer put the lyrics (0 = top, 1 = bottom of their
@@ -69,6 +71,7 @@ export const DraggableLyrics = ({
   scale,
   backdrop,
   colors,
+  wide = false,
 }: DraggableLyricsProps) => {
   const [savedAnchor, setSavedAnchor] = useAtom(
     usePortrait() ? lyricsAnchorPortraitAtom : lyricsAnchorAtom
@@ -192,7 +195,8 @@ export const DraggableLyrics = ({
           data-testid='lyrics-handle'
           data-lyrics-style-toggle
           className={cn(
-            'lyrics-hit-text mx-auto w-fit max-w-full cursor-grab touch-none rounded-xl px-cqw ring-white/25 transition-surface hover:bg-white/5 hover:ring-1',
+            'lyrics-hit-text mx-auto max-w-full cursor-grab touch-none rounded-xl px-cqw ring-white/25 transition-surface hover:bg-white/5 hover:ring-1',
+            wide ? 'w-full' : 'w-fit',
             dragging && 'cursor-grabbing bg-white/5 ring-1'
           )}
           onPointerDown={handlePointerDown}
