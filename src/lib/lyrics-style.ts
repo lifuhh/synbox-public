@@ -245,3 +245,18 @@ export const decodeSharedStyle = (
 
 export const sameLyricsStyle = (a: SharedLyricsStyle, b: SharedLyricsStyle) =>
   encodeSharedStyle(a) === encodeSharedStyle(b)
+
+// Whether the style on screen is a saved one. Fields that change nothing in a style don't count: the hue
+// away from the Custom colour, and the stagger on one line (the share code already leaves it out)
+export const sameSavedLyricsStyle = (a: LyricsStyle, b: LyricsStyle) => {
+  const shown = (style: LyricsStyle) => ({
+    ...style,
+    customHue: style.themeId === 'custom' ? style.customHue : 0,
+  })
+  return (
+    sameLyricsStyle(shown(a), shown(b)) &&
+    LYRICS_SURFACES.every(
+      (surface) => a.screenSizes[surface] === b.screenSizes[surface]
+    )
+  )
+}

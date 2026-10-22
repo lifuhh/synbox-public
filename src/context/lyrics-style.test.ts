@@ -6,10 +6,13 @@ import {
   DEFAULT_LYRICS_STYLE,
   decodeSharedStyle,
   encodeSharedStyle,
+  sameSavedLyricsStyle,
 } from '@/lib/lyrics-style'
 
 import {
   applyLyricsTemplateAtom,
+  lyricsCustomHueAtom,
+  lyricsScreenSizesAtom,
   applySongLyricsStyleToAllAtom,
   fontSizeMultiplierAtom,
   lyricsAnchorAtom,
@@ -242,4 +245,27 @@ test('a saved style applies where changes go, and survives a reload', () => {
       .get(lyricsTemplatesAtom)
       .map((t) => t.name)
   ).toEqual(['Duet'])
+})
+
+test('a saved style shows as in use only while the style on screen matches it', () => {
+  const store = createStore()
+  store.set(lyricsThemeIdAtom, 'matcha')
+  store.set(saveLyricsTemplateAtom, 'Green')
+  const [green] = store.get(lyricsTemplatesAtom)
+  const inUse = () =>
+    green !== undefined &&
+    sameSavedLyricsStyle(green.style, store.get(lyricsStyleAtom))
+  expect(inUse()).toBe(true)
+
+  store.set(lyricsThemeIdAtom, 'aqua')
+  expect(inUse()).toBe(false)
+  store.set(applyLyricsTemplateAtom, green?.id ?? '')
+  expect(inUse()).toBe(true)
+
+  // The hue shows only on the Custom colour, so off it a different hue is the same style
+  store.set(lyricsCustomHueAtom, 123)
+  expect(inUse()).toBe(true)
+  // A size on one screen only is part of the saved style
+  store.set(lyricsScreenSizesAtom, { desktop: 1.2, landscape: 1, portrait: 1 })
+  expect(inUse()).toBe(false)
 })
