@@ -2,10 +2,18 @@ import { useQueryClient } from '@tanstack/react-query'
 import { PlusIcon, XIcon } from 'lucide-react'
 import { useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { flushSync } from 'react-dom'
 import { Link } from 'react-router'
 
 import { KaraokeMark } from '@/components/shared/karaoke-badge'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -296,6 +304,11 @@ export const RecommendationsEditor = () => {
   const { isPending: saving, mutate: save } = useSaveRecommendations()
   const [draft, setDraft] = useState<Recommendation[] | null>(null)
   const [announcement, setAnnouncement] = useState('')
+  // The song whose Remove was pressed, until the confirm answers
+  const [removing, setRemoving] = useState<Recommendation | null>(null)
+  // The row whose Remove takes the keyboard when the confirm closes: the pressed one, or after a removal the
+  // one now in its place. The dialog's own restore lost it in both engines (Safari never focuses a pressed button)
+  const refocus = useRef<string | null>(null)
   const list = useRef<HTMLDivElement>(null)
   const songs = draft ?? saved ?? []
 
@@ -309,16 +322,14 @@ export const RecommendationsEditor = () => {
   const dirty = draft !== null && !sameOrder(draft, saved)
 
   // After a removal the keyboard goes to the row that took the removed one's place
-  const remove = (index: number) => {
-    const song = songs[index]
+  const remove = (song: Recommendation) => {
+    const index = songs.findIndex((item) => item.videoId === song.videoId)
+    if (index === -1) {
+      return
+    }
     const next = songs.toSpliced(index, 1)
-    flushSync(() => {
-      setDraft(next)
-    })
-    const row = list.current?.querySelector(
-      `[data-video-id="${next[Math.min(index, next.length - 1)]?.videoId}"]`
-    )
-    row?.querySelector<HTMLButtonElement>('[data-action="remove"]')?.focus()
+    setDraft(next)
+    refocus.current = next[Math.min(index, next.length - 1)]?.videoId ?? null
     setAnnouncement(`Removed ${song.title}.`)
   }
 
@@ -350,7 +361,8 @@ export const RecommendationsEditor = () => {
                 index={index}
                 grip={grip}
                 onRemove={() => {
-                  remove(index)
+                  refocus.current = song.videoId
+                  setRemoving(song)
                 }}
               />
             )}
@@ -398,6 +410,46 @@ export const RecommendationsEditor = () => {
           </Button>
         </div>
       </div>
+      <AlertDialog
+        open={removing !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setRemoving(null)
+          }
+        }}>
+        <AlertDialogContent
+          aria-describedby={undefined}
+          className='max-w-xs'
+          onCloseAutoFocus={(event) => {
+            const videoId = refocus.current
+            refocus.current = null
+            const button =
+              videoId === null
+                ? null
+                : list.current?.querySelector<HTMLButtonElement>(
+                    `[data-video-id="${videoId}"] [data-action="remove"]`
+                  )
+            if (button) {
+              event.preventDefault()
+              button.focus()
+            }
+          }}>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove Song?</AlertDialogTitle>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (removing !== null) {
+                  remove(removing)
+                }
+              }}>
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <output className='sr-only'>{announcement}</output>
     </div>
   )
