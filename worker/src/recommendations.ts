@@ -75,35 +75,31 @@ export const listRecommendations = async (db: D1Database) => {
   return results
 }
 
-// Replaces the list in one batch (one transaction). A song that stays keeps who added it and when
+// Replaces the list in one batch (one transaction) of two statements whatever its length, so a long list stays
+// under D1's per-request query limit. A song that stays keeps who added it and when
 export const replaceRecommendations = async (
   db: D1Database,
   songs: Recommendation[],
   adminId: string,
   now = Date.now()
 ) => {
+  const list = JSON.stringify(songs)
   await db.batch([
     db
       .prepare(
-        `delete from "recommendation" where "videoId" not in (select "value" from json_each(?1))`
+        `delete from "recommendation" where "videoId" not in
+           (select json_extract("value", '$.videoId') from json_each(?1))`
       )
-      .bind(JSON.stringify(songs.map((song) => song.videoId))),
-    ...songs.map((song, position) =>
-      db
-        .prepare(
-          `insert into "recommendation" ("videoId", "title", "author", "thumbnailUrl", "position", "addedBy", "addedAt")
-           values (?1, ?2, ?3, ?4, ?5, ?6, ?7)
-           on conflict ("videoId") do update set "title" = ?2, "author" = ?3, "thumbnailUrl" = ?4, "position" = ?5`
-        )
-        .bind(
-          song.videoId,
-          song.title,
-          song.author,
-          song.thumbnailUrl,
-          position,
-          adminId,
-          now
-        )
-    ),
+      .bind(list),
+    db
+      .prepare(
+        `insert into "recommendation" ("videoId", "title", "author", "thumbnailUrl", "position", "addedBy", "addedAt")
+         select json_extract(j.value, '$.videoId'), json_extract(j.value, '$.title'),
+           json_extract(j.value, '$.author'), json_extract(j.value, '$.thumbnailUrl'), j.key, ?2, ?3
+         from json_each(?1) j where true
+         on conflict ("videoId") do update set "title" = excluded."title", "author" = excluded."author",
+           "thumbnailUrl" = excluded."thumbnailUrl", "position" = excluded."position"`
+      )
+      .bind(list, adminId, now),
   ])
 }
