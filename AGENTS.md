@@ -52,7 +52,7 @@ Finished work collects in one long-lived branch, `staging`, and reaches producti
    - **The user must try it on a phone first:** `bun harness/release.ts --preview` builds one deploy preview of staging and prints its link. Hand the user the link; ship when they say so.
 6. **Clean up** after the merge into staging: `git worktree remove ../synbox-<slug>` and `git branch -D <type>/<slug>`.
 
-This repo is the frontend only. The backend (`synbox-transcribe-whisper`) deploys separately to Cloud Run; merging here never deploys it.
+This repo is the frontend only. The backend (`synbox-transcribe-whisper`) ships the same way, with its own staging branch and `python3 harness/release.py` (Cloud Run); merging here never deploys it. A request that changed both repos still asks one question, listing both stagings; Ship Now runs both releases, the backend's first when the frontend depends on it.
 
 ## Resolving conflicts
 
