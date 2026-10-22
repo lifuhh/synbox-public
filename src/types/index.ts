@@ -1,7 +1,6 @@
 export interface formattedYoutubeVideoItemForCarousel {
   title: string
   channel: string
-  description: string
   thumbnailUrl: string
   videoId: string
 }

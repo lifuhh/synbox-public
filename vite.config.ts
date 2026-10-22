@@ -270,6 +270,7 @@ export default defineConfig({
       '/api/auth': 'http://localhost:8787',
       '/api/library/songs': LIBRARY_SONGS_PROXY,
       '/api/me': 'http://localhost:8787',
+      '/api/recommendations': 'http://localhost:8787',
     },
   },
   // worker/ has its own tests, run with bun test there

@@ -4,11 +4,8 @@
 
 const API = 'https://www.googleapis.com/youtube/v3'
 
-// The landing page's recommendations and the YouTube Top 100 Songs Japan chart
-const PLAYLISTS = new Set([
-  'PLzJ1mqwxogpFxKR72a6M8br_UkLKFQASf',
-  'PL4fGSI1pDJn4-UIb6RKHdxam-oAUULIGB',
-])
+// The YouTube Top 100 Songs Japan chart
+const PLAYLISTS = new Set(['PL4fGSI1pDJn4-UIb6RKHdxam-oAUULIGB'])
 const VIDEO_ID = /^[\w-]{11}$/u
 const PAGE_TOKEN = /^[\w-]{1,64}$/u
 
