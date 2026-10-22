@@ -319,13 +319,8 @@ export const runCheck = async (
   // whatever the reason, is not a pass)
   if (!failed()) {
     const expected = [
-      ...(full
-        ? [
-            'evaluator untouched by app changes',
-            'audit list matches the router',
-            ...STATIC,
-          ]
-        : []),
+      ...(full ? ['evaluator untouched by app changes', ...STATIC] : []),
+      'audit list matches the router',
       'build',
       ...SUITE.filter(isExact)
         .filter(
