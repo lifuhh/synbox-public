@@ -3,7 +3,10 @@ import { z } from 'zod'
 
 import { authClient } from '@/lib/auth'
 import { QUERY_KEYS } from '@/lib/react-query/query-keys'
-import { fetchRecommendations } from '@/lib/recommendations'
+import {
+  fetchRecommendations,
+  MAX_RECOMMENDATIONS,
+} from '@/lib/recommendations'
 import type { Recommendation } from '@/lib/recommendations'
 
 // The auth Worker's /api/admin routes (worker/src/index.ts); each checks the admin role on the server
@@ -204,6 +207,39 @@ export const useSaveRecommendations = () => {
         method: 'PUT',
       }),
     onSuccess: async (_, songs) => {
+      queryClient.setQueryData([QUERY_KEYS.GET_ADMIN_RECOMMENDATIONS], songs)
+      await queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.GET_LANDING_PAGE_PLAYLIST],
+      })
+    },
+  })
+}
+
+export class RecommendationsFullError extends Error {
+  override name = 'RecommendationsFullError'
+}
+
+// Adds one song to the end of the list as it is saved now, not as this page last loaded it, so it never undoes
+// another edit. A song already in the list is left where it is
+export const useAddRecommendation = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (song: Recommendation) => {
+      const songs = await fetchRecommendations({ fresh: true })
+      if (songs.some((saved) => saved.videoId === song.videoId)) {
+        return songs
+      }
+      if (songs.length >= MAX_RECOMMENDATIONS) {
+        throw new RecommendationsFullError()
+      }
+      const next = [...songs, song]
+      await call('/recommendations', {
+        body: JSON.stringify({ songs: next }),
+        method: 'PUT',
+      })
+      return next
+    },
+    onSuccess: async (songs) => {
       queryClient.setQueryData([QUERY_KEYS.GET_ADMIN_RECOMMENDATIONS], songs)
       await queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.GET_LANDING_PAGE_PLAYLIST],

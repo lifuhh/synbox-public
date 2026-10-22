@@ -1,6 +1,9 @@
 import { z } from 'zod'
 
-import type { formattedYoutubeVideoItemForCarousel } from '@/types'
+import type {
+  CurrentPlayingInfo,
+  formattedYoutubeVideoItemForCarousel,
+} from '@/types'
 import { shuffleArray } from '@/utils'
 
 // The landing page's Recommendations, kept by the auth Worker (GET /api/recommendations) and edited on the
@@ -17,6 +20,17 @@ export type Recommendation = z.infer<typeof recommendationSchema>
 
 // The Worker caps the list at this many songs
 export const MAX_RECOMMENDATIONS = 100
+
+// The Worker takes only YouTube's own thumbnail host (worker/src/recommendations.ts › THUMBNAIL); any other
+// picture falls back to the video's standard one there
+export const toRecommendation = (song: CurrentPlayingInfo): Recommendation => ({
+  author: song.author,
+  thumbnailUrl: song.thumbnailUrl.startsWith('https://i.ytimg.com/')
+    ? song.thumbnailUrl
+    : `https://i.ytimg.com/vi/${song.videoId}/hqdefault.jpg`,
+  title: song.title,
+  videoId: song.videoId,
+})
 
 // `fresh` skips the browser's one-minute copy, so the admin page shows what was saved
 export const fetchRecommendations = async ({ fresh = false } = {}) => {
