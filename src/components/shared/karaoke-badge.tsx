@@ -14,20 +14,18 @@ export const KaraokeBadge = ({ className }: { className?: string }) => (
   </span>
 )
 
-// The same mark on a list row's thumbnail: the mic alone in the picture's bottom-left corner, on a small dark
-// disc so it reads on any picture. `small` for the saved menu's 80px thumbnails. The thumbnail must be positioned
+// The same mark on a list row's thumbnail: the bare mic in the picture's bottom-left corner, a few pixels in, with a
+// dark halo so it reads on any picture. `small` for the saved menu's 80px thumbnails. The thumbnail must be positioned
 export const KaraokeThumbBadge = ({ small = false }: { small?: boolean }) => (
-  <span
+  <MicVocalIcon
     aria-hidden
     data-karaoke-badge
+    strokeWidth={2.5}
     className={cn(
-      'pointer-events-none absolute flex items-center justify-center rounded-full bg-black/70',
-      small ? 'bottom-1 left-1 size-4' : 'bottom-1.5 left-1.5 size-5'
-    )}>
-    <MicVocalIcon
-      className={cn('text-primary-text', small ? 'size-2.5' : 'size-3')}
-    />
-  </span>
+      'pointer-events-none absolute text-primary-text drop-shadow-sm drop-shadow-black/90',
+      small ? 'bottom-1 left-1 size-3' : 'bottom-1.5 left-1.5 size-4'
+    )}
+  />
 )
 
 // The mark on a card's picture: a small dark pill in its bottom-left corner, as YouTube marks a video's length or
