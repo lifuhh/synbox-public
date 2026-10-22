@@ -23,6 +23,7 @@ import {
 } from '@/context/atoms'
 import { useThemeColor } from '@/hooks/use-theme-color'
 import { useWakeLock } from '@/hooks/use-wake-lock'
+import { transitionLayout } from '@/lib/view-transition'
 import type { CssVars } from '@/types'
 import { cn } from '@/utils/cn'
 
@@ -473,7 +474,9 @@ export const PlayerStage = ({
   // The player turns with the phone either way round, unless Lock Landscape holds it on its side
   const toggleFullscreen = () => {
     if (!document.fullscreenEnabled) {
-      setImmersive(!immersive)
+      transitionLayout('zoom', () => {
+        setImmersive(!immersive)
+      })
       return
     }
     if (document.fullscreenElement) {
@@ -507,7 +510,8 @@ export const PlayerStage = ({
     tapStage: taps.forward,
   }
 
-  useEffect(() => (immersive ? markImmersive() : undefined), [immersive])
+  // Before paint, so the zoom's view transition snapshots the full-screen layout
+  useLayoutEffect(() => (immersive ? markImmersive() : undefined), [immersive])
 
   usePublishStage(player, fullscreen, immersive, onEnded)
 

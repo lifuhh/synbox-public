@@ -6,6 +6,7 @@ import {
   MinimizeIcon,
   PauseIcon,
   PlayIcon,
+  RefreshCwIcon,
   RepeatIcon,
   RotateCcwIcon,
   RotateCwIcon,
@@ -275,6 +276,18 @@ const FullScreenChrome = ({
           className='rounded-full short:size-8 short:rounded-lg'>
           <SmartphoneIcon className='size-5 rotate-90' />
         </IconButton>
+        {/* The system turns a phone held either way only while its rotation lock is off; with it on, the
+            page turns one way, and this turns it to the other */}
+        {landscape.turned && (
+          <IconButton
+            label='Flip Screen'
+            onClick={() => {
+              landscape.flip()
+            }}
+            className='rounded-full short:size-8 short:rounded-lg'>
+            <RefreshCwIcon className='size-5' />
+          </IconButton>
+        )}
         <IconButton
           label='Lock Screen'
           onClick={() => {

@@ -1,4 +1,4 @@
-import { pageTurned } from '@/lib/page-turn'
+import { pageFlipped, pageTurned } from '@/lib/page-turn'
 import type { YTPlayer, YTStateCode } from '@/lib/youtube/iframe-api'
 import { loadYouTubeIframeApi, YTState } from '@/lib/youtube/iframe-api'
 
@@ -170,14 +170,22 @@ export const rebuildEngine = (start: number) => {
 // screen's, and a page turned by Lock Landscape runs down the screen
 const pageRect = (element: HTMLElement) => {
   const box = element.getBoundingClientRect()
-  return pageTurned()
+  if (!pageTurned()) {
+    return box
+  }
+  return pageFlipped()
     ? {
+        height: box.width,
+        left: window.innerHeight - box.bottom,
+        top: box.left,
+        width: box.height,
+      }
+    : {
         height: box.width,
         left: box.top,
         top: window.innerWidth - box.right,
         width: box.height,
       }
-    : box
 }
 
 // Lays the video over a stage and its video box, following both as they resize, until the cleanup
