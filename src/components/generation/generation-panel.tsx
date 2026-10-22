@@ -5,6 +5,7 @@ import { Link } from 'react-router'
 import { startFromButton } from '@/components/generation/start-generation'
 import { AdminMark } from '@/components/shared/admin-mark'
 import { KaraokeBadge, KaraokeMark } from '@/components/shared/karaoke-badge'
+import { MarqueeText } from '@/components/shared/marquee-text'
 import { Button } from '@/components/ui/button'
 import { toast } from '@/components/ui/use-toast'
 import { SIGN_IN_CODES, signInWithGoogle, useAccess } from '@/lib/auth'
@@ -235,6 +236,7 @@ const SongQueue = ({
       return (
         <li
           key={job.id}
+          data-marquee-host
           className={cn(
             'flex items-center gap-1 rounded-lg pr-1 hover:bg-accent',
             job.id === focusedId && 'bg-accent'
@@ -255,13 +257,13 @@ const SongQueue = ({
                 className='size-full object-cover'
               />
             </span>
-            <span
+            <MarqueeText
               className={cn(
-                'min-w-0 flex-1 truncate text-sm',
+                'min-w-0 flex-1 text-sm',
                 title === '' ? 'text-faint' : 'text-foreground'
               )}>
               {title === '' ? PENDING_TITLE : title}
-            </span>
+            </MarqueeText>
             {job.status.kind === 'complete' &&
               (madeKaraoke(job.status) ? (
                 <KaraokeBadge />

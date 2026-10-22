@@ -1,6 +1,6 @@
 import { useAtom, useSetAtom } from 'jotai'
 import { BookmarkIcon, PlayIcon, XIcon } from 'lucide-react'
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { Link } from 'react-router'
 
@@ -8,6 +8,7 @@ import {
   KaraokeThumbBadgeMark,
   KaraokeLabelMark,
 } from '@/components/shared/karaoke-badge'
+import { MarqueeText } from '@/components/shared/marquee-text'
 import OptimizedThumbnail from '@/components/shared/optimized-thumbnail'
 import {
   AlertDialog,
@@ -33,7 +34,6 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { PlaylistCover } from '@/components/watch/playlist-cover'
-import { useOverflow } from '@/hooks/use-overflow'
 import {
   clearHistoryAtom,
   favoritesAtom,
@@ -64,40 +64,30 @@ const SongRow = ({
   song: Song
   onOpen: () => void
   action?: ReactNode
-}) => {
-  const textRef = useRef<HTMLSpanElement>(null)
-  const containerRef = useRef<HTMLDivElement>(null)
-  const isOverflowing = useOverflow(textRef, containerRef)
-
-  return (
-    <li className='flex playlist-item items-center gap-1 rounded-md pr-1 hover:bg-accent has-focus-visible:bg-accent'>
-      <Link
-        to={`/v/${song.videoId}`}
-        onClick={onOpen}
-        className='flex min-w-0 grow items-center gap-2 rounded-md p-2 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden'>
-        <OptimizedThumbnail src={song.thumbnailUrl} alt=''>
-          <KaraokeThumbBadgeMark videoId={song.videoId} small />
-        </OptimizedThumbnail>
-        <span className='min-w-0 grow'>
-          <span
-            ref={containerRef}
-            className={`block font-bold tracking-wide text-song-title ${
-              isOverflowing ? 'marquee' : 'overflow-hidden'
-            }`}>
-            <span ref={textRef} className='inline-block whitespace-nowrap'>
-              {song.title}
-            </span>
-          </span>
-          <KaraokeLabelMark videoId={song.videoId} />
-          <span className='block truncate text-sm text-song-meta'>
-            {song.author}
-          </span>
+}) => (
+  <li
+    data-marquee-host
+    className='flex items-center gap-1 rounded-md pr-1 hover:bg-accent has-focus-visible:bg-accent'>
+    <Link
+      to={`/v/${song.videoId}`}
+      onClick={onOpen}
+      className='flex min-w-0 grow items-center gap-2 rounded-md p-2 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden'>
+      <OptimizedThumbnail src={song.thumbnailUrl} alt=''>
+        <KaraokeThumbBadgeMark videoId={song.videoId} small />
+      </OptimizedThumbnail>
+      <span className='min-w-0 grow'>
+        <MarqueeText className='font-bold tracking-wide text-song-title'>
+          {song.title}
+        </MarqueeText>
+        <KaraokeLabelMark videoId={song.videoId} />
+        <span className='block truncate text-sm text-song-meta'>
+          {song.author}
         </span>
-      </Link>
-      {action}
-    </li>
-  )
-}
+      </span>
+    </Link>
+    {action}
+  </li>
+)
 
 const EmptyState = ({ title, body }: { title: string; body: string }) => (
   <div className='flex flex-col items-center gap-2 px-6 py-8 text-center'>
