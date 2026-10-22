@@ -2,6 +2,16 @@
 
 The checks that judge a change before it ships, so an agent's "done" comes with evidence. The first piece is the bench: performance and layout of the key journeys, judged against a rolling baseline, with a verdict the PR gate reads.
 
+## A task's worktree: `wt.ts`
+
+```sh
+bun harness/wt.ts start fix/<slug> --session <name>   # ../synbox-<slug> from origin/staging, owner recorded, packages installed
+bun harness/wt.ts serve                                # in the worktree, as a background task: dev server on the first free port
+bun harness/wt.ts finish <slug>                        # keep .reports/, remove the worktree, delete the merged branch
+```
+
+Nothing in it kills a process or forces a removal. `serve` is stopped by stopping its task, which takes the server and its port note with it. `finish` refuses while the worktree has uncommitted changes, while the branch is not in `staging`, or while its dev server still answers, and says which.
+
 ## Shipping: staging, then one release
 
 Finished work is merged into `staging`, never into `main`. `bun harness/release.ts` ships everything in staging as one merge to `main`, which is one Netlify build. A global Claude Code hook (`~/.claude/hooks/harness-gate.py`, configured by `harness/gate.json` › `staging` and `release`) blocks every other way into `main`: a PR into it, a merge into it and a push to it.

@@ -10,5 +10,5 @@
     "strict": true,
     "skipLibCheck": true
   },
-  "include": ["bench", "release.ts"]
+  "include": ["bench", "release.ts", "wt.ts"]
 }
