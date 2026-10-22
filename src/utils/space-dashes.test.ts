@@ -2,27 +2,32 @@ import { expect, test } from 'vite-plus/test'
 
 import { spaceDashes } from '@/utils'
 
-test('a dash between two words gets a space each side, whichever dash was written', () => {
+test('a dash between two words becomes a spaced hyphen, whichever dash was written', () => {
   expect(spaceDashes('It was late—we kept on walking')).toBe(
-    'It was late — we kept on walking'
+    'It was late - we kept on walking'
   )
   expect(spaceDashes('It was late–we kept on walking')).toBe(
-    'It was late — we kept on walking'
+    'It was late - we kept on walking'
   )
   expect(spaceDashes('It was late--we kept on walking')).toBe(
-    'It was late — we kept on walking'
+    'It was late - we kept on walking'
   )
   expect(spaceDashes('It was late —we kept on walking')).toBe(
-    'It was late — we kept on walking'
+    'It was late - we kept on walking'
   )
   expect(spaceDashes('It was late——we kept on walking')).toBe(
-    'It was late — we kept on walking'
+    'It was late - we kept on walking'
   )
-  // Already spaced: unchanged
   expect(spaceDashes('It was late — we kept on walking')).toBe(
-    'It was late — we kept on walking'
+    'It was late - we kept on walking'
   )
-  expect(spaceDashes('one—two—three')).toBe('one — two — three')
+  expect(spaceDashes('one—two—three')).toBe('one - two - three')
+  // Already the rule's shape: unchanged
+  expect(spaceDashes('It was late - we kept on walking')).toBe(
+    'It was late - we kept on walking'
+  )
+  // Chinese, under the same rule
+  expect(spaceDashes('我们走着——天亮了')).toBe('我们走着 - 天亮了')
 })
 
 test('hyphenated words, number ranges and a dash at either end stay as written', () => {

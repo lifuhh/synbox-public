@@ -100,7 +100,7 @@ export const LyricLineBlock = ({
   karaokeRef: Ref<KaraokeLineHandle>
   onSeek: (time: number) => void
 }) => {
-  const translation = prefs.language === 'en' ? spaceDashes(line.en) : line.zh
+  const translation = spaceDashes(prefs.language === 'en' ? line.en : line.zh)
   const source = prefs.japanese || (prefs.romaji && line.romaji !== '')
   // The clock drives one handle per line; it fills the Japanese and the romaji together
   const japanese = useRef<KaraokeLineHandle>(null)

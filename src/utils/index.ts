@@ -14,9 +14,10 @@ const OPENING_BRACKET = /^\s*[【「『（〔［｛〈《〖〘〚｟]/u
 export const bracketStart = (text: string | undefined) =>
   OPENING_BRACKET.test(text ?? '') && 'bracket-start'
 
-// An English translation's dash between two words reads as " — ": an em dash, an en dash or "--", spaced or
-// not, becomes one em dash with a space each side. Hyphenated words, number ranges (1–2) and a dash at either
-// end of the line (a cut-off "I was—") stay as written. Chinese keeps its own unspaced ——
+// A translation's dash between two words reads as " - ", the owner's rule for translations (the backend's
+// tidy() writes new ones that way): an em dash, the Chinese ——, an en dash or "--", spaced or not, becomes a
+// hyphen with a space each side, so songs translated before the rule read the same. Hyphenated words, number
+// ranges (1–2) and a dash at either end of the line (a cut-off "I was—") stay as written
 const DASH = /[ \t]*(?:—+|–+|-{2,})[ \t]*/gu
 export const spaceDashes = (text: string) =>
   text.replaceAll(DASH, (match, offset: number) => {
@@ -30,7 +31,7 @@ export const spaceDashes = (text: string) =>
       match.trim() === match &&
       /\d$/u.test(before) &&
       /^\d/u.test(after)
-    return range ? match : ' — '
+    return range ? match : ' - '
   })
 
 export const handleRedirect = (url: string) => {
