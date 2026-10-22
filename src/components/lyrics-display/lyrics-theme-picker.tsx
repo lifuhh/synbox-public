@@ -32,7 +32,12 @@ import {
   SaveStyle,
   ScreenSizeTweak,
 } from './lyrics-style-scope'
-import { RailButton, RailInline, RailTooltip } from './rail-button'
+import {
+  RailButton,
+  RailInline,
+  RailTooltip,
+  railMenuSide,
+} from './rail-button'
 
 const HALF_FILLED: CSSProperties & Record<'--p', number> = { '--p': 0.5 }
 
@@ -389,7 +394,7 @@ export const LyricsThemePicker = ({
 
       <PopoverContent
         data-player-chrome
-        side={portrait || inline ? 'bottom' : 'right'}
+        side={railMenuSide(inline, portrait)}
         sideOffset={portrait || inline ? 8 : 14}
         collisionPadding={8}
         // Follows the rail as it slides in, when a click on the lyrics opens both at once

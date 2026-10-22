@@ -15,7 +15,12 @@ import { usePortrait } from '@/hooks/use-media-query'
 import { useGetLyricsVersions } from '@/lib/react-query/queries-and-mutations'
 import { cn } from '@/utils/cn'
 
-import { RailButton, RailInline, RailTooltip } from './rail-button'
+import {
+  RailButton,
+  RailInline,
+  RailTooltip,
+  railMenuSide,
+} from './rail-button'
 
 // As the style button's peek: a short rest on the button opens the menu, and a grace after leaving lets the
 // pointer cross the gap to it
@@ -90,7 +95,8 @@ export const LyricsVersionsMenu = ({ videoId }: { videoId: string }) => {
   const menu = useHoverMenu()
   const portrait = usePortrait()
   const inline = use(RailInline)
-  const below = portrait || inline
+  // In a row (the watch page, or a phone's rail) the menu centres on its button
+  const inRow = portrait || inline
   const { data } = useGetLyricsVersions(videoId)
   const count = data?.versions.length ?? 0
 
@@ -114,8 +120,8 @@ export const LyricsVersionsMenu = ({ videoId }: { videoId: string }) => {
       <DropdownMenuContent
         {...menu.hover}
         onPointerDownOutside={menu.handlePointerDownOutside}
-        side={below ? 'bottom' : 'right'}
-        align={below ? 'center' : 'start'}
+        side={railMenuSide(inline, portrait)}
+        align={inRow ? 'center' : 'start'}
         sideOffset={8}
         collisionPadding={8}>
         <DropdownMenuItem
