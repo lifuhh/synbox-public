@@ -177,8 +177,9 @@ export const LyricsPanel = ({
       <div
         ref={scroller}
         {...handlers}
-        // The line before the sung one fades out at the top edge instead of being cut through
-        className='min-h-0 flex-1 overflow-y-auto overscroll-contain [mask-image:linear-gradient(to_bottom,transparent,#000_1.25rem)] px-4 pb-48 font-reader [overflow-anchor:none]'>
+        // The line before the sung one fades out at the top edge instead of being cut through. Under the last
+        // line, only room to clear Current Line (12px off the foot, 36px tall) and a gap
+        className='min-h-0 flex-1 overflow-y-auto overscroll-contain [mask-image:linear-gradient(to_bottom,transparent,#000_1.25rem)] px-4 pb-16 font-reader [overflow-anchor:none]'>
         <div ref={content}>
           {empty === null ? (
             lines.map((line, index) => (
