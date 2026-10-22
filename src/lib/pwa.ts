@@ -137,6 +137,30 @@ const announceNewBuild = () => {
 }
 announceNewBuild()
 
+// A page from one deploy asks for a part it hasn't loaded yet (a route opened for the first time) after a later
+// deploy deleted it. Loading the page again gets the current deploy. Once a minute at most, so a part that is
+// really missing shows its error instead of reloading forever
+const CHUNK_RELOAD_KEY = 'synboxChunkReload'
+const CHUNK_RELOAD_MS = 60 * 1000
+window.addEventListener('vite:preloadError', (event) => {
+  try {
+    const last = Number(sessionStorage.getItem(CHUNK_RELOAD_KEY) ?? 0)
+    if (Date.now() - last < CHUNK_RELOAD_MS) {
+      return
+    }
+    sessionStorage.setItem(CHUNK_RELOAD_KEY, String(Date.now()))
+  } catch {
+    return
+  }
+  event.preventDefault()
+  window.location.reload()
+})
+
+// Earlier workers kept pages in this cache; nothing reads it any more
+if ('caches' in window) {
+  void caches.delete('pages')
+}
+
 // A new deploy is downloaded in the background and waits. It is swapped in only by the next in-app page
 // change, which then loads the new page from the server as one ordinary page load. Never by reloading a page
 // that is already showing: that redraws it in front of the viewer and can cut off what they just did (a play
