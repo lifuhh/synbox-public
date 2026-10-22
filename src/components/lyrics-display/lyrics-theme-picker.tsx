@@ -253,7 +253,7 @@ export const LyricsThemePicker = ({
 
         {/* The karaoke machine's two rows: top row left, next row right, the translation at the top */}
         <StyleSwitch
-          label='Two Lines'
+          label='Karaoke Style'
           checked={twoLines}
           onChange={setTwoLines}
           hint={portrait ? 'Landscape only' : undefined}

@@ -617,6 +617,7 @@
 @utility anchor-spacer {
   flex-basis: 0;
   flex-grow: var(--anchor-grow);
+  min-height: var(--anchor-min-h, 0px);
   transition: var(--anchor-transition);
 }
 
