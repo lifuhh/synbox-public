@@ -1,4 +1,5 @@
 import { useAtom, useSetAtom } from 'jotai'
+import type { WritableAtom } from 'jotai'
 import type { ReactNode } from 'react'
 import { useEffect, useRef, useState } from 'react'
 
@@ -39,6 +40,14 @@ const swallowNextClick = () => {
 
 const clamp01 = (value: number) => Math.min(1, Math.max(0, value))
 
+// While the floating UI shows the block clears it; with it away, the home indicator
+const liftMinHeight = (lifts: boolean, controlsVisible: boolean) => {
+  if (!lifts) {
+    return '0px'
+  }
+  return controlsVisible ? 'var(--stage-chrome-h)' : 'var(--safe-bottom, 0px)'
+}
+
 interface DragStart {
   pointerY: number
   slop: number
@@ -55,6 +64,11 @@ interface DraggableLyricsProps {
   colors: LyricsThemeColors
   // The whole width to lay out in (Two Lines' left and right lines), instead of a centred fit
   wide?: boolean
+  // Where the block's place is saved, when not the lyrics' own (Two Lines' translation keeps its own)
+  anchorAtom?: WritableAtom<number, [number], void>
+  // Whether the block rises over the floating UI while it shows; a block at the top of the stage has nothing
+  // to clear
+  lifts?: boolean
 }
 
 // `anchor` is where the viewer put the lyrics (0 = top, 1 = bottom of their
@@ -74,10 +88,13 @@ export const DraggableLyrics = ({
   scale,
   colors,
   wide = false,
+  anchorAtom,
+  lifts = true,
 }: DraggableLyricsProps) => {
-  const [savedAnchor, setSavedAnchor] = useAtom(
-    usePortrait() ? lyricsAnchorPortraitAtom : lyricsAnchorAtom
-  )
+  const lyricsAnchor = usePortrait()
+    ? lyricsAnchorPortraitAtom
+    : lyricsAnchorAtom
+  const [savedAnchor, setSavedAnchor] = useAtom(anchorAtom ?? lyricsAnchor)
   // Where the block follows the pointer during a drag; saved on the drop, not on every move
   const [dragAnchor, setDragAnchor] = useState<number | null>(null)
   const anchor = dragAnchor ?? savedAnchor
@@ -190,9 +207,7 @@ export const DraggableLyrics = ({
   const liftVars: CssVars = {
     '--lift-grow': 1 - anchor,
     // With the floating UI away, the lyrics still keep clear of the home indicator
-    '--lift-min-h': layout.controlsVisible
-      ? 'var(--stage-chrome-h)'
-      : 'var(--safe-bottom, 0px)',
+    '--lift-min-h': liftMinHeight(lifts, layout.controlsVisible),
     // Lift at once when the controls appear; drop only after they fade. A
     // docking drop slides down with the spacer above, never delayed
     '--lift-transition': dragging
