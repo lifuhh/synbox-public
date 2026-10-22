@@ -5,7 +5,7 @@ import { Link } from 'react-router'
 
 import {
   KaraokeLabel,
-  KaraokeTitleIcon,
+  KaraokeMetaIcon,
 } from '@/components/shared/karaoke-badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { SongMenu } from '@/components/watch/song-menu'
@@ -56,15 +56,13 @@ const SongCard = ({ song }: { song: LibraryListSong }) => (
       </span>
       {/* A fixed-height block, so every row is the same height; the channel sits right under one line or two */}
       <span className='mt-3 flex h-18 flex-col gap-1 pe-10'>
-        <span className='flex gap-1.5 text-base leading-6 font-semibold text-foreground'>
-          {song.karaoke && <KaraokeTitleIcon />}
-          <span className='line-clamp-2'>
-            {song.title}
-            {song.karaoke && <KaraokeLabel />}
-          </span>
+        <span className='line-clamp-2 text-base leading-6 font-semibold text-foreground'>
+          {song.title}
+          {song.karaoke && <KaraokeLabel />}
         </span>
-        <span className='truncate text-sm leading-5 text-muted-foreground'>
-          {song.author}
+        <span className='flex min-w-0 items-center gap-1.5 text-sm leading-5 text-muted-foreground'>
+          <span className='truncate'>{song.author}</span>
+          {song.karaoke && <KaraokeMetaIcon />}
         </span>
       </span>
     </Link>
