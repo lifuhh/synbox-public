@@ -93,7 +93,7 @@ export const SongRow = ({
           aria-current='true'
           className={cn(
             'flex min-w-0 flex-1 items-center gap-3 p-2',
-            large && 'gap-2 p-1.5'
+            large && 'gap-3 p-1.5'
           )}>
           {body}
         </div>
@@ -104,12 +104,18 @@ export const SongRow = ({
           onClick={onOpen}
           className={cn(
             'flex min-w-0 flex-1 items-center gap-3 rounded-xl p-2 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden',
-            large && 'gap-2 p-1.5'
+            large && 'gap-3 p-1.5'
           )}>
           {body}
         </Link>
       )}
-      {actions}
+      {/* A big row's menu on the title's first line: the 40px button centred on its 20px line, 6px into the
+          row's padding */}
+      {large && actions !== undefined ? (
+        <div className='-mt-1'>{actions}</div>
+      ) : (
+        actions
+      )}
     </Root>
   )
 }
