@@ -2,7 +2,7 @@ import { PlayIcon } from 'lucide-react'
 import { Link } from 'react-router'
 
 import {
-  KaraokeCornerMark,
+  KaraokeTitleIconMark,
   KaraokeLabelMark,
 } from '@/components/shared/karaoke-badge'
 import type { ListSong } from '@/lib/listening/model'
@@ -45,7 +45,6 @@ export const MoreLikeThis = ({
                 <span className='absolute right-2 bottom-2 grid size-9 place-items-center rounded-full bg-black/70 text-white opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100'>
                   <PlayIcon className='size-4 fill-current' aria-hidden />
                 </span>
-                <KaraokeCornerMark videoId={song.videoId} />
               </span>
               <span className='sr-only'>
                 {song.title}
@@ -54,8 +53,9 @@ export const MoreLikeThis = ({
             </Link>
             <div className='mt-2 flex items-start gap-1'>
               <div className={cn('min-w-0 flex-1')}>
-                <p className='line-clamp-2 text-sm leading-5 font-medium text-foreground'>
-                  {song.title}
+                <p className='flex gap-1.5 text-sm leading-5 font-medium text-foreground'>
+                  <KaraokeTitleIconMark videoId={song.videoId} />
+                  <span className='line-clamp-2'>{song.title}</span>
                 </p>
                 <p className='truncate text-xs text-muted-foreground'>
                   {song.author}
