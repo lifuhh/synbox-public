@@ -16,8 +16,15 @@ import { UP_NEXT_COUNT, UpNext } from './up-next'
 const WIDE = '(min-width: 1000px)'
 
 // The song under the video: its title and channel, then the player's own buttons as a row. Wide, as on
-// YouTube: the title with room above it, then the channel on the left and the buttons on the right
-const SongInfo = ({ compact }: { compact: boolean }) => {
+// YouTube: the title with room above it, then the channel on the left and the buttons on the right. `inset`
+// (Theater, the lyrics panel right under it) takes the panel's px-4, so the title starts where its lyrics do
+const SongInfo = ({
+  compact,
+  inset = false,
+}: {
+  compact: boolean
+  inset?: boolean
+}) => {
   const video = useAtomValue(currentVideoAtom)
   if (compact) {
     return (
@@ -43,7 +50,7 @@ const SongInfo = ({ compact }: { compact: boolean }) => {
     )
   }
   return (
-    <div className='flex min-w-0 flex-col gap-3 pt-2'>
+    <div className={cn('flex min-w-0 flex-col gap-3 pt-2', inset && 'px-4')}>
       <h1
         className={cn(
           'line-clamp-2 text-xl leading-snug font-semibold text-pretty text-foreground',
@@ -143,7 +150,7 @@ const WideBelow = ({
         </div>
       )}
       <div className='flex watch-main flex-col gap-6 pb-8'>
-        <SongInfo compact={false} />
+        <SongInfo compact={false} inset={theater} />
         {theater && (
           <LyricsPanel videoId={videoId} version={version} className='h-112' />
         )}
