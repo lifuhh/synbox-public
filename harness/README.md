@@ -2,19 +2,23 @@
 
 The checks that judge a change before it ships, so an agent's "done" comes with evidence. The first piece is the bench: performance and layout of the key journeys, judged against a rolling baseline, with a verdict the PR gate reads.
 
-## Before you open a PR into main
+## Shipping: staging, then one release
+
+Finished work is merged into `staging`, never into `main`. `bun harness/release.ts` ships everything in staging as one merge to `main`, which is one Netlify build. A global Claude Code hook (`~/.claude/hooks/harness-gate.py`, configured by `harness/gate.json` › `staging` and `release`) blocks every other way into `main`: a PR into it, a merge into it and a push to it.
 
 ```sh
-bun run bench:gate        # = bun harness/bench/cli.ts gate; commit first, it judges the committed tree
+bun harness/release.ts --dry-run   # what staging would ship, and whether its gate verdict exists
+bun harness/release.ts --preview   # one deploy preview of staging, for a phone check
+bun harness/release.ts             # gate staging if needed, PR staging → main, merge, wait until live
 ```
 
-A global Claude Code hook (`~/.claude/hooks/harness-gate.py`, configured by `harness/gate.json`) blocks `gh pr create` / `gh pr ready` for a PR into `main` that touches the app until this tree has a `pass`, `warn` or `waived` verdict. That is where work is consolidated: the batch's integration PR, or a lone fix. A piece of a batch opened into `integrate/<batch>` is not gated; the batch is, as a whole. The gate takes about 8 minutes; the first run on a machine, or after a probe changes, also measures the merge base to create the baseline, which roughly doubles it.
+The release runs the gate (`bun run bench:gate`, about 8 minutes, longer when the baseline must be measured first) on staging's tree when it has no verdict, and stops on `fail`. One release runs at a time on a machine: it holds a lock in `.harness/release/`. A release that changes only docs, the harness, scripts or Markdown costs no build: `scripts/netlify-ignore.sh` skips it.
 
 | Verdict | Meaning | Do |
 | --- | --- | --- |
-| `pass` | No gated metric regressed | Open the PR |
-| `warn` | A gated metric drifted the wrong way without proof, a run errored, or a landmark moved | Read the report; mention the drift in the PR if it is real |
-| `fail` | A gated metric regressed (confirmed against `origin/main` measured interleaved), a benchmark produced no samples, or the branch edits the scorer and the app together | Fix it and re-run. If the regression is intended: `bun harness/bench/cli.ts waive --reason "<why>"`, and say so in the PR |
+| `pass` | No gated metric regressed | The release goes ahead |
+| `warn` | A gated metric drifted the wrong way without proof, a run errored, or a landmark moved | The release goes ahead; read the report and tell the user about drift that is real |
+| `fail` | A gated metric regressed (confirmed against `origin/main` measured interleaved), a benchmark produced no samples, or the branch edits the scorer and the app together | The release stops. Fix it in a PR into staging. If the regression is intended, run `bun harness/bench/cli.ts waive --reason "<why>"` in the release worktree and tell the user |
 
 The report prints to the terminal and is saved under the main checkout's `.harness/bench/runs/<run id>/report.md`, next to each layout audit's screenshot.
 
