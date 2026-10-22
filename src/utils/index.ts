@@ -14,6 +14,25 @@ const OPENING_BRACKET = /^\s*[【「『（〔［｛〈《〖〘〚｟]/u
 export const bracketStart = (text: string | undefined) =>
   OPENING_BRACKET.test(text ?? '') && 'bracket-start'
 
+// An English translation's dash between two words reads as " — ": an em dash, an en dash or "--", spaced or
+// not, becomes one em dash with a space each side. Hyphenated words, number ranges (1–2) and a dash at either
+// end of the line (a cut-off "I was—") stay as written. Chinese keeps its own unspaced ——
+const DASH = /[ \t]*(?:—+|–+|-{2,})[ \t]*/gu
+export const spaceDashes = (text: string) =>
+  text.replaceAll(DASH, (match, offset: number) => {
+    const before = text.slice(0, offset)
+    const after = text.slice(offset + match.length)
+    if (before.trim() === '' || after.trim() === '') {
+      return match
+    }
+    const range =
+      !match.includes('—') &&
+      match.trim() === match &&
+      /\d$/u.test(before) &&
+      /^\d/u.test(after)
+    return range ? match : ' — '
+  })
+
 export const handleRedirect = (url: string) => {
   window.open(url, '_blank', 'noopener,noreferrer')
 }

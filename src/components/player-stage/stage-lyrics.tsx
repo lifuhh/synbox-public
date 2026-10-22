@@ -48,6 +48,7 @@ import {
 import type { ProbeSample } from '@/lib/timing-probe'
 import { summarizeProbe, timingProbeEnabled } from '@/lib/timing-probe'
 import type { CssVars, KaraokeDocLine } from '@/types'
+import { spaceDashes } from '@/utils'
 import { cn } from '@/utils/cn'
 
 import { DraggableLyrics } from './draggable-lyrics'
@@ -155,7 +156,9 @@ const lineAt = (
   const karaokeLine = karaokeLines?.[index]
   const line = lyrics?.lines[index]
   const text = karaokeLine?.text ?? line?.text ?? placeholder
-  const translation = (english ? lyrics?.eng : lyrics?.chi)?.[index] ?? ''
+  const translation = english
+    ? spaceDashes(lyrics?.eng[index] ?? '')
+    : (lyrics?.chi[index] ?? '')
   const romaji = lyrics?.romaji[index] ?? ''
   return { karaokeLine, romaji, text, translation }
 }
