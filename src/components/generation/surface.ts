@@ -1,44 +1,6 @@
 import type { Job } from '@/lib/generation/store'
 
-// Both sit in the same corner. Minimizing tucks the panel into it while the button grows out of it, and
-// expanding runs the other way; each scales from that corner, so nothing travels across the screen.
-const ENTER = { duration: 0.22, ease: [0.16, 1, 0.3, 1] } as const
-const EXIT = { duration: 0.14, ease: [0.4, 0, 1, 1] } as const
-// Minimizing on its own, the panel tucks away slowly enough to be followed: the listener was looking elsewhere
-const GENTLE_EXIT = { duration: 0.34, ease: [0.4, 0, 0.2, 1] } as const
-
-// 'gentle' when the panel minimizes itself, 'quick' when the listener closes it
-export type PanelExit = 'quick' | 'gentle'
-
-// On a touch screen the panel is a card in the middle of the screen, so it scales from its centre there.
-// The exit is a variant so AnimatePresence's `custom` can pick its pace after the panel has left the tree.
-export const PANEL_MOTION = {
-  animate: 'shown',
-  exit: 'hidden',
-  initial: 'hidden',
-  style: { transformOrigin: 'var(--panel-origin, bottom right)' },
-  variants: {
-    hidden: (exit: PanelExit = 'quick') =>
-      exit === 'gentle'
-        ? { opacity: 0, scale: 0.6, transition: GENTLE_EXIT }
-        : { opacity: 0, scale: 0.8, transition: EXIT },
-    shown: { opacity: 1, scale: 1, transition: ENTER },
-  },
-} as const
-
-export const FAB_MOTION = {
-  animate: { opacity: 1, scale: 1, transition: { ...ENTER, delay: 0.06 } },
-  exit: { opacity: 0, scale: 0.6, transition: EXIT },
-  initial: { opacity: 0, scale: 0.6 },
-} as const
-
 // YouTube's thumbnail is known from the id alone, so the song shows from the first frame
-// Bottom-right, clear of the home indicator, and on the player just above its control bar
-export const surfacePlacement = (aboveStageControls: boolean) =>
-  aboveStageControls
-    ? 'right-[max(1rem,var(--safe-right))] bottom-[calc(var(--stage-controls-h,5rem)+0.5rem)] sm:right-6 portrait:bottom-(--stage-chrome-h)'
-    : 'right-[max(1rem,var(--safe-right))] bottom-[calc(max(1rem,var(--safe-bottom))+var(--tabbar-h))] sm:right-6 sm:bottom-[calc(1.5rem+var(--tabbar-h))]'
-
 export const thumbnailOf = (job: Job) =>
   job.video !== null && job.video.thumbnail !== ''
     ? job.video.thumbnail
@@ -60,7 +22,6 @@ export const hidePlaceholderImage = (event: {
 
 interface Outcome {
   title: string
-  detail: string
   play: { label: string; to: string }
   versions: boolean
 }
@@ -76,14 +37,11 @@ export const outcomeOf = (job: Job): Outcome | null => {
   if (outcome.kind === 'version') {
     return outcome.active
       ? {
-          detail:
-            'Everyone now gets the new lyrics. The old ones are kept in case you want them back.',
           play: { label: 'Play Now', to: song },
           title: 'Lyrics Updated',
           versions: true,
         }
       : {
-          detail: 'Have a listen before they replace the current lyrics.',
           play: { label: 'Preview', to: `${song}?version=${outcome.version}` },
           title: 'New Lyrics Ready',
           versions: true,
@@ -91,7 +49,6 @@ export const outcomeOf = (job: Job): Outcome | null => {
   }
   if (outcome.kind === 'finished') {
     return {
-      detail: 'It finished while this page was away.',
       play: { label: 'Play Now', to: song },
       title: job.mode === 'regenerate' ? 'Lyrics Updated' : 'Ready to Sing',
       versions: job.mode === 'regenerate',
@@ -99,17 +56,12 @@ export const outcomeOf = (job: Job): Outcome | null => {
   }
   if (outcome.kind === 'unchanged' && job.mode === 'regenerate') {
     return {
-      detail: 'This run came out the same as the current lyrics.',
       play: { label: 'Play Now', to: song },
       title: 'Already Up to Date',
       versions: false,
     }
   }
   return {
-    detail:
-      outcome.kind === 'unchanged'
-        ? 'This song already had lyrics.'
-        : 'Synced, translated and ready to sing along.',
     play: { label: 'Start Singing', to: song },
     title: 'Ready to Sing',
     versions: false,

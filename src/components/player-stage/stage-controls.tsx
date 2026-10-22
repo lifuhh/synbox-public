@@ -323,8 +323,8 @@ export const StageControls = ({
 
   useEffect(() => {
     const observe = (bar: HTMLDivElement, content: HTMLDivElement) => {
-      // Published for what floats above the controls: the lyrics, the rail in portrait, notices and the
-      // generation button (see --stage-chrome-h)
+      // Published for what floats above the controls: the lyrics, the rail in portrait and notices
+      // (see --stage-chrome-h)
       const root = document.documentElement
       const observer = new ResizeObserver(() => {
         // The gradient above the controls is see-through, so only the rows count

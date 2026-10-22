@@ -1,6 +1,5 @@
-import { Check, LogIn, Minus, Play, RotateCcw, X } from 'lucide-react'
+import { Check, LogIn, Play, RotateCcw, X } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
-import { useRef } from 'react'
 import { Link } from 'react-router'
 
 import { startFromButton } from '@/components/generation/start-generation'
@@ -16,7 +15,6 @@ import {
   focusGeneration,
   isActive,
   retryGeneration,
-  setGenerationExpanded,
 } from '@/lib/generation/store'
 import { cn } from '@/utils/cn'
 
@@ -25,15 +23,11 @@ import {
   hideBrokenImage,
   hidePlaceholderImage,
   outcomeOf,
-  PANEL_MOTION,
   queueLabelOf,
-  surfacePlacement,
   thumbnailOf,
   titleOf,
 } from './surface'
-import { useOutsideActivity } from './use-outside-activity'
-import type { Presentation } from './use-presentation'
-import { isReconnecting } from './use-presentation'
+import { isReconnecting, usePresentation } from './use-presentation'
 
 // What a song shows until the backend sends its details, when nothing named it before
 const PENDING_TITLE = 'Fetching Song Details…'
@@ -56,7 +50,7 @@ const generatingLabel = (job: Job, running: boolean) => {
   return job.mode === 'regenerate' ? 'Regenerating Lyrics' : 'Generating Lyrics'
 }
 
-const SongHeader = ({ job, onClose }: { job: Job; onClose: () => void }) => {
+const SongHeader = ({ job }: { job: Job }) => {
   const running = isActive(job)
   let title = titleOf(job)
   if (title === '') {
@@ -82,14 +76,19 @@ const SongHeader = ({ job, onClose }: { job: Job; onClose: () => void }) => {
           <p className='truncate text-xs text-muted-foreground'>{subtitle}</p>
         )}
       </div>
-      <Button
-        variant='overlay-icon'
-        size='icon'
-        className='size-8 shrink-0 touch:size-10'
-        aria-label={running ? 'Minimize' : 'Close'}
-        onClick={onClose}>
-        {running ? <Minus className='size-4' /> : <X className='size-4' />}
-      </Button>
+      {/* A failed song says Dismiss beside Try Again instead */}
+      {job.status.kind === 'complete' && (
+        <Button
+          variant='overlay-icon'
+          size='icon'
+          className='size-8 shrink-0 touch:size-10'
+          aria-label='Dismiss'
+          onClick={() => {
+            dismissGeneration(job.id)
+          }}>
+          <X className='size-4' />
+        </Button>
+      )}
     </div>
   )
 }
@@ -117,10 +116,7 @@ const DoneView = ({ job }: { job: Job }) => {
         className='flex size-12 items-center justify-center rounded-full bg-primary-subtle text-primary-text'>
         <Check className='size-6' strokeWidth={3} aria-hidden />
       </motion.span>
-      <div className='space-y-1 px-2'>
-        <p className='text-lg font-semibold text-white'>{outcome.title}</p>
-        <p className='text-sm text-muted-foreground'>{outcome.detail}</p>
-      </div>
+      <p className='px-2 text-lg font-semibold text-white'>{outcome.title}</p>
       <Button asChild gap='md' className='w-full'>
         <Link to={outcome.play.to} onClick={close}>
           <Play className='size-4 fill-current' />
@@ -227,95 +223,77 @@ const SongQueue = ({
   jobs: readonly Job[]
   focusedId: number
 }) => (
-  <div className='flex flex-col gap-1'>
-    <p className='px-1 text-xs font-medium text-faint'>
-      Your Songs · {jobs.length}
-    </p>
-    <ul className='flex max-h-36 flex-col gap-0.5 overflow-y-auto touch:max-h-44'>
-      {jobs.map((job) => {
-        const title = titleOf(job)
-        const status = rowStatus(job)
-        return (
-          <li
-            key={job.id}
-            className={cn(
-              'flex items-center gap-1 rounded-lg pr-1 hover:bg-accent',
-              job.id === focusedId && 'bg-accent'
-            )}>
-            <button
-              type='button'
-              aria-current={job.id === focusedId}
-              onClick={() => {
-                focusGeneration(job.id)
-              }}
-              className='flex min-w-0 flex-1 items-center gap-2 self-stretch rounded-lg px-1.5 py-1 text-left outline-none focus-visible:ring-2 focus-visible:ring-brand-light touch:py-2'>
-              <span className='h-6 w-[43px] shrink-0 overflow-hidden rounded bg-thumbnail-placeholder'>
-                <img
-                  src={thumbnailOf(job)}
-                  alt=''
-                  onError={hideBrokenImage}
-                  onLoad={hidePlaceholderImage}
-                  className='size-full object-cover'
-                />
-              </span>
+  <ul aria-label='Songs' className='flex flex-col gap-0.5'>
+    {jobs.map((job) => {
+      const title = titleOf(job)
+      const status = rowStatus(job)
+      return (
+        <li
+          key={job.id}
+          className={cn(
+            'flex items-center gap-1 rounded-lg pr-1 hover:bg-accent',
+            job.id === focusedId && 'bg-accent'
+          )}>
+          <button
+            type='button'
+            aria-current={job.id === focusedId}
+            onClick={() => {
+              focusGeneration(job.id)
+            }}
+            className='flex min-w-0 flex-1 items-center gap-2 self-stretch rounded-lg px-1.5 py-1 text-left outline-none focus-visible:ring-2 focus-visible:ring-brand-light touch:py-2'>
+            <span className='h-6 w-[43px] shrink-0 overflow-hidden rounded bg-thumbnail-placeholder'>
+              <img
+                src={thumbnailOf(job)}
+                alt=''
+                onError={hideBrokenImage}
+                onLoad={hidePlaceholderImage}
+                className='size-full object-cover'
+              />
+            </span>
+            <span
+              className={cn(
+                'min-w-0 flex-1 truncate text-xs',
+                title === '' ? 'text-faint' : 'text-foreground'
+              )}>
+              {title === '' ? PENDING_TITLE : title}
+            </span>
+            {job.status.kind === 'complete' &&
+              (madeKaraoke(job.status) ? (
+                <KaraokeBadge />
+              ) : (
+                <KaraokeMark videoId={job.videoId} />
+              ))}
+            {status !== null && (
               <span
                 className={cn(
-                  'min-w-0 flex-1 truncate text-xs',
-                  title === '' ? 'text-faint' : 'text-foreground'
+                  'shrink-0 text-xs tabular-nums',
+                  job.status.kind === 'failed'
+                    ? 'text-error'
+                    : 'text-muted-foreground'
                 )}>
-                {title === '' ? PENDING_TITLE : title}
+                {status}
               </span>
-              {job.status.kind === 'complete' &&
-                (madeKaraoke(job.status) ? (
-                  <KaraokeBadge />
-                ) : (
-                  <KaraokeMark videoId={job.videoId} />
-                ))}
-              {status !== null && (
-                <span
-                  className={cn(
-                    'shrink-0 text-xs tabular-nums',
-                    job.status.kind === 'failed'
-                      ? 'text-error'
-                      : 'text-muted-foreground'
-                  )}>
-                  {status}
-                </span>
-              )}
-            </button>
-            <RowAction job={job} title={title} />
-          </li>
-        )
-      })}
-    </ul>
-  </div>
+            )}
+          </button>
+          <RowAction job={job} title={title} />
+        </li>
+      )
+    })}
+  </ul>
 )
 
-const minimize = () => {
-  setGenerationExpanded(false)
-}
-
 interface GenerationPanelProps {
+  // The song whose steps show under the list
   job: Job
   jobs: readonly Job[]
-  view: Presentation
-  raised: boolean
-  // Minimized, the job sits in the top bar rather than the corner (phones)
-  docked: boolean
-  // The listener got on with something else on the page; the panel steps aside to its button
-  onOutsideActivity: () => void
 }
 
-const GenerationPanel = ({
-  job,
-  jobs,
-  view,
-  raised,
-  docked,
-  onOutsideActivity,
-}: GenerationPanelProps) => {
-  const ref = useRef<HTMLElement>(null)
-  useOutsideActivity(ref, onOutsideActivity)
+// The top bar panel's body: every song started from this tab, and the steps of the one picked
+const GenerationPanel = ({ job, jobs }: GenerationPanelProps) => {
+  const view = usePresentation(job)
+  if (!view) {
+    return null
+  }
   const { status } = job
   const active = isActive(job)
   const percent = Math.floor(view.overall * 100)
@@ -335,136 +313,106 @@ const GenerationPanel = ({
     }
     return queueLabel ?? timeLeft(view.remainingS)
   }
-  let hint = `Keep browsing. This carries on ${docked ? 'up top' : 'in the corner'}.`
-  if (status.kind === 'complete') {
-    hint = 'Finishing up…'
-  } else if (view.reconnecting) {
-    hint = 'The connection dropped. Catching up with the server…'
-  } else if (queueLabel !== null) {
-    hint = 'Songs take turns on the server. Add more any time.'
-  }
 
   return (
-    <motion.section
-      {...PANEL_MOTION}
-      ref={ref}
-      aria-label='Lyrics generation'
-      onKeyDown={(event) => {
-        if (event.key === 'Escape') {
-          if (active) {
-            minimize()
-          } else {
-            dismiss()
-          }
-        }
-      }}
-      className={cn(
-        surfacePlacement(raised),
-        // Centred on a touch screen, like every other panel there
-        'touch:inset-x-0 touch:top-1/2 touch:bottom-auto touch:mx-auto touch:max-h-[calc(var(--app-h)-var(--topbar-h)-2rem)] touch:-translate-y-1/2 touch:[--panel-origin:center]',
-        'fixed z-50 max-h-[calc(var(--app-h)-var(--topbar-h)-var(--stage-controls-h,0px)-2rem)] w-[min(400px,calc(100vw-2rem))] overflow-x-hidden overflow-y-auto rounded-panel bg-generation-panel shadow-panel backdrop-blur-xl'
-      )}>
-      <div className='flex flex-col gap-4 p-4'>
-        <SongHeader job={job} onClose={active ? minimize : dismiss} />
+    <div className='flex flex-col gap-4 p-4'>
+      {jobs.length > 1 && <SongQueue jobs={jobs} focusedId={job.id} />}
 
-        {jobs.length > 1 && <SongQueue jobs={jobs} focusedId={job.id} />}
+      <SongHeader job={job} />
 
-        <AnimatePresence mode='wait' initial={false}>
-          {view.revealed ? (
-            <DoneView job={job} />
-          ) : (
-            <motion.div
-              key='progress'
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.2 }}
-              className='flex flex-col gap-2'>
-              <div
-                // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- a styled bar with progressbar semantics; <progress> cannot be styled the same in every browser
-                role='progressbar'
-                aria-label='Overall progress'
-                aria-valuemin={0}
-                aria-valuemax={100}
-                aria-valuenow={percent}
-                className='flex items-end justify-between px-1'>
-                <span className='text-5xl leading-none font-light tracking-tight text-white tabular-nums'>
-                  {percent}
-                  <span className='ml-0.5 text-xl text-faint'>%</span>
-                </span>
-                <span className='pb-1 text-xs text-muted-foreground'>
-                  {progressNote()}
-                </span>
-              </div>
-              <StepWheel
-                views={view.views}
-                index={view.index}
-                failed={status.kind === 'failed'}
-              />
-              {status.kind === 'failed' ? (
-                <div className='flex flex-col gap-3'>
-                  <p
-                    role='alert'
-                    className='rounded-lg bg-error-strong/10 px-3 py-2 text-sm text-error-soft'>
-                    {status.message}
-                  </p>
-                  <div className='flex gap-2'>
-                    {status.code !== undefined &&
-                    SIGN_IN_CODES.has(status.code) ? (
-                      <Button
-                        gap='md'
-                        className='flex-1'
-                        onClick={() => {
-                          void signInWithGoogle()
-                        }}>
-                        <LogIn className='size-4' />
-                        Sign In
-                      </Button>
-                    ) : null}
-                    {status.retry ? (
-                      <Button
-                        gap='md'
-                        className='flex-1'
-                        onClick={() => {
-                          retryGeneration(job.id)
-                        }}>
-                        <RotateCcw className='size-4' />
-                        Try Again
-                      </Button>
-                    ) : null}
+      <AnimatePresence mode='wait' initial={false}>
+        {view.revealed ? (
+          <DoneView job={job} />
+        ) : (
+          <motion.div
+            key='progress'
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.2 }}
+            className='flex flex-col gap-2'>
+            <div
+              // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- a styled bar with progressbar semantics; <progress> cannot be styled the same in every browser
+              role='progressbar'
+              aria-label='Overall progress'
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={percent}
+              className='flex items-end justify-between px-1'>
+              <span className='text-5xl leading-none font-light tracking-tight text-white tabular-nums'>
+                {percent}
+                <span className='ml-0.5 text-xl text-faint'>%</span>
+              </span>
+              <span className='pb-1 text-xs text-muted-foreground'>
+                {progressNote()}
+              </span>
+            </div>
+            <StepWheel
+              views={view.views}
+              index={view.index}
+              failed={status.kind === 'failed'}
+            />
+            {status.kind === 'failed' ? (
+              <div className='flex flex-col gap-3'>
+                <p
+                  role='alert'
+                  className='rounded-lg bg-error-strong/10 px-3 py-2 text-sm text-error-soft'>
+                  {status.message}
+                </p>
+                <div className='flex gap-2'>
+                  {status.code !== undefined &&
+                  SIGN_IN_CODES.has(status.code) ? (
                     <Button
-                      variant='overlay-outline'
+                      gap='md'
                       className='flex-1'
-                      onClick={dismiss}>
-                      Close
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <div className='flex h-9 items-center justify-between gap-3 px-1'>
-                  <p className='text-xs text-faint'>{hint}</p>
-                  {active && (
-                    <Button
-                      variant='overlay-muted'
-                      size='sm'
-                      className='shrink-0'
                       onClick={() => {
-                        cancelGeneration(job.id)
-                        // Nothing can stop the server's job once it runs: this only stops showing it
-                        toast({
-                          description:
-                            'The server may still finish it and add it to the library.',
-                          title: 'Stopped Watching This Song',
-                        })
+                        void signInWithGoogle()
                       }}>
-                      Stop Watching
+                      <LogIn className='size-4' />
+                      Sign In
                     </Button>
-                  )}
+                  ) : null}
+                  {status.retry ? (
+                    <Button
+                      gap='md'
+                      className='flex-1'
+                      onClick={() => {
+                        retryGeneration(job.id)
+                      }}>
+                      <RotateCcw className='size-4' />
+                      Try Again
+                    </Button>
+                  ) : null}
+                  <Button
+                    variant='overlay-outline'
+                    className='flex-1'
+                    onClick={dismiss}>
+                    Dismiss
+                  </Button>
                 </div>
-              )}
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-    </motion.section>
+              </div>
+            ) : (
+              active && (
+                <div className='flex justify-end px-1'>
+                  <Button
+                    variant='overlay-muted'
+                    size='sm'
+                    onClick={() => {
+                      cancelGeneration(job.id)
+                      // Nothing can stop the server's job once it runs: this only stops showing it
+                      toast({
+                        description:
+                          'The server may still finish it and add it to the library.',
+                        title: 'Stopped Watching This Song',
+                      })
+                    }}>
+                    Stop Watching
+                  </Button>
+                </div>
+              )
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   )
 }
 

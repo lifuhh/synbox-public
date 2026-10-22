@@ -91,5 +91,5 @@ export interface KaraokeDoc {
   translations: Partial<Record<'en' | 'zh', KaraokeTranslation>>
 }
 
-// CSS custom properties set inline for classes to read, such as size-(--fab-size)
+// CSS custom properties set inline for classes to read, such as transform-(--ring-turn)
 export type CssVars = Record<`--${string}`, string | number>
