@@ -56,18 +56,29 @@ export const holdMachine = async (
   for (;;) {
     const holder = holderOf(file)
     if (holder === null) {
-      // A dead holder's file is stale: clear it, then create ours only if no other run got there first
+      // A dead holder's file is stale: clear it, then create ours only if no other run got there first. Two runs
+      // clearing the same stale file at once could each delete the other's new one, so ours counts only once it
+      // reads back as ours
       rmSync(file, { force: true })
       try {
         writeFileSync(
           file,
-          JSON.stringify({ at: new Date().toISOString(), pid: process.pid, what }),
+          JSON.stringify({
+            at: new Date().toISOString(),
+            pid: process.pid,
+            what,
+          }),
           { flag: 'wx' }
         )
-        break
       } catch {
         continue
       }
+      // oxlint-disable-next-line eslint/no-await-in-loop -- a beat for a racing run's delete to land
+      await Bun.sleep(200)
+      if (holderOf(file)?.pid === process.pid) {
+        break
+      }
+      continue
     }
     if (Date.now() > deadline) {
       throw new Error(

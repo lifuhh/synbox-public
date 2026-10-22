@@ -22,8 +22,8 @@ import {
   speedProbe,
 } from './engines/browser'
 import { evaluatorTouched } from './gate'
-import { holdMachine } from './lock'
 import { isRecord, parseJson } from './json'
+import { holdMachine } from './lock'
 import { cv } from './scorer/stats'
 import { compareMetrics, score, statusOf } from './scorer/verdict'
 import { serveBuild } from './server'
@@ -459,8 +459,8 @@ const measureBaseline = async (
       label: 'base',
       runs: 1,
     })
-    const rest = bench.runs * 2 - 1
-    if (trial.samples.length === 0 || rest <= 0) {
+    const remaining = bench.runs * 2 - 1
+    if (trial.samples.length === 0 || remaining <= 0) {
       if (trial.samples.length === 0) {
         log(`  ${bench.id}: no sample on the merge base; it gets no baseline`)
       }
@@ -470,7 +470,7 @@ const measureBaseline = async (
     // oxlint-disable-next-line eslint/no-await-in-loop -- measurements must run one at a time
     const [more] = await measure(s.repo, dist, [bench], runId, s.api, {
       label: 'base',
-      runs: rest,
+      runs: remaining,
       warmup: 0,
     })
     measured.push({
