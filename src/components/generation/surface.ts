@@ -125,7 +125,7 @@ export const queueLabelOf = (job: Job) => {
     return 'Waiting to Start'
   }
   if (job.status.kind === 'running' && job.ahead > 0) {
-    return `In Line · ${job.ahead} ${job.ahead === 1 ? 'Song' : 'Songs'} Ahead`
+    return `Queued · ${job.ahead} ${job.ahead === 1 ? 'Song' : 'Songs'} Ahead`
   }
   return null
 }
