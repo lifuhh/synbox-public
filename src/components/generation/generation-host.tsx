@@ -5,6 +5,7 @@ import { markGuestSongUsed, useAccess } from '@/lib/auth'
 import { STEPS } from '@/lib/generation/plan'
 import type { Job } from '@/lib/generation/store'
 import { focusedJob, useGeneration } from '@/lib/generation/store'
+import { setLibrarySong } from '@/lib/react-query/queries-and-mutations'
 import { QUERY_KEYS } from '@/lib/react-query/query-keys'
 
 import type { Presentation } from './use-presentation'
@@ -18,12 +19,8 @@ const SONG_QUERIES = [
   QUERY_KEYS.GET_SONG_INFO_BY_SONG_ID,
   QUERY_KEYS.GET_LYRICS_VERSIONS,
 ]
-// Lists that may now include the song
-const LIST_QUERIES = [
-  QUERY_KEYS.SEARCH_VIDEOS,
-  QUERY_KEYS.SEARCH_LIBRARY,
-  QUERY_KEYS.GET_GALLERY_SONGS,
-]
+// Lists that may now include the song. Not the library list: refetched now, it still lacks the song
+const LIST_QUERIES = [QUERY_KEYS.SEARCH_VIDEOS, QUERY_KEYS.SEARCH_LIBRARY]
 
 const announcementOf = (job: Job | null, view: Presentation | null) => {
   if (!job || !view) {
@@ -69,11 +66,25 @@ const GenerationHost = () => {
       }
       // The run hands over the timing it saved, so the player starts with karaoke even while the
       // lookup service that answers GET /karaoke is still starting up
-      if (done.status.karaoke) {
+      const { karaoke, outcome } = done.status
+      if (karaoke) {
         queryClient.setQueryData(
           [QUERY_KEYS.GET_KARAOKE_BY_ID, done.videoId, null],
-          done.status.karaoke
+          karaoke
         )
+      }
+      // Its karaoke mark on every list; lyrics made live without timing lose it
+      const live =
+        outcome.kind === 'created' ||
+        (outcome.kind === 'version' && outcome.active)
+      if (done.video && (karaoke || live)) {
+        setLibrarySong(queryClient, {
+          author: done.video.channel,
+          karaoke: karaoke !== null,
+          thumbnailUrl: done.video.thumbnail,
+          title: done.video.title,
+          videoId: done.videoId,
+        })
       }
       for (const key of LIST_QUERIES) {
         void queryClient.invalidateQueries({ queryKey: [key] })
