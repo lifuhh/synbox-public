@@ -400,13 +400,14 @@
 }
 
 /* The top bar once a page has scrolled under it: the page color behind the buttons, fading to clear below them,
-   so scrolled content slides under without a hard edge. The padding is the fade zone. No blur: WebKit drops a
-   backdrop filter that is masked */
+   so scrolled content slides under without a hard edge. The padding is the fade zone, so the fade never starts
+   behind the buttons; solid, like sticky-under-topbar, since at 94% scrolled text showed through beside the logo.
+   No blur: WebKit drops a backdrop filter that is masked */
 @utility topbar-frost {
   padding-bottom: 1.25rem;
   background: linear-gradient(
     to bottom,
-    color-mix(in oklab, var(--background) 94%, transparent) 55%,
+    var(--background) calc(100% - 1.25rem),
     transparent
   );
 }
@@ -699,11 +700,11 @@
   );
 }
 
-/* The player's watch page (src/components/watch/watch-page.tsx). Narrow: the video on top, the song under it,
-   then Lyrics and Up Next as tabs. From 1000px wide (YouTube's two-column point) the video sits top left, as
-   large as leaves 12rem below it, the lyrics beside it in a 320-402px column, the song and More Like This
-   under the video and Up Next under the lyrics; Theater gives the video both columns. Only the boxes below
-   scroll, so the video never moves under youtube-engine's fixed layer */
+/* The player's watch page (src/components/watch/watch-page.tsx). Narrow, as in a phone app: the video stays on
+   top and the song, then Lyrics and Up Next as tabs, scroll under it. From 1000px wide (YouTube's two-column
+   point) it is a web page that scrolls as a whole, the video with it (playing on out of view): the video top
+   left, as large as leaves 12rem below it, the lyrics beside it in a 320-402px column, the song and More Like
+   This under the video and Up Next under the lyrics; Theater gives the video both columns */
 @utility watch-page {
   display: flex;
   flex-direction: column;
@@ -713,11 +714,14 @@
 
   @media (min-width: 1000px) {
     display: grid;
+    height: auto;
+    min-height: 100%;
     grid-template-columns: minmax(0, 1fr) minmax(20rem, 25.125rem);
-    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-rows: auto auto;
     grid-template-areas: 'stage side' 'main next';
+    align-content: start;
     gap: 1rem 1.5rem;
-    padding: calc(var(--topbar-h) + 0.25rem) 1.5rem 0;
+    padding: calc(var(--topbar-h) + 0.25rem) 1.5rem 3rem;
 
     &[data-theater] {
       grid-template-areas: 'stage stage' 'main next';
@@ -732,7 +736,9 @@
   width: 100%;
   aspect-ratio: 16 / 9;
   max-height: 45%;
-  overflow: hidden;
+  /* Clip, not hidden: a box that hides overflow is a scroll container, and the wide page's grid then sized
+     the video's row as if it had no height, so the song's title ran up over the video */
+  overflow: clip;
 
   @media (min-width: 1000px) {
     grid-area: stage;
@@ -775,16 +781,12 @@
 
 @utility watch-main {
   grid-area: main;
-  min-height: 0;
-  overflow-y: auto;
-  overscroll-behavior: contain;
+  min-width: 0;
 }
 
 @utility watch-next {
   grid-area: next;
-  min-height: 0;
-  overflow-y: auto;
-  overscroll-behavior: contain;
+  min-width: 0;
 }
 
 /* A list that scrolls inside a box fades out over its last 2rem, so the cut-off row reads as more to scroll to */
@@ -1286,8 +1288,10 @@
     --magenta-11: oklch(
       0.77 0.16 350
     ); /* magenta text: 8.2:1 on a card, 5.1:1 on the tonal fill */
-    --glow-a: oklch(0.33 0.09 356);
-    --glow-b: oklch(0.25 0.07 340);
+    /* A faint tint at the top of the page, near the page colour, so the band behind the top bar reads as the same
+       backdrop as the rest of the page rather than a coloured header */
+    --glow-a: oklch(0.22 0.045 356);
+    --glow-b: oklch(0.19 0.035 340);
     --danger-9: oklch(0.45 0.17 25); /* destructive fill; white label 8.2:1 */
     --red-3: oklch(
       0.27 0.08 25
@@ -1478,6 +1482,19 @@
     width: 100%;
     height: 100%;
     position: relative;
+  }
+
+  /* Except the wide watch page, a web page that scrolls as a whole (watch-page); the video's layer is placed in
+     the document, so it scrolls with it */
+  @media (min-width: 1000px) {
+    html[data-watch] {
+      overflow-y: auto;
+    }
+
+    html[data-watch] body {
+      overflow: visible;
+      height: auto;
+    }
   }
 
   /* An app installed on an iPhone (iOS 26) gets a page short by the status bar's height: dvh, svh, 100% and

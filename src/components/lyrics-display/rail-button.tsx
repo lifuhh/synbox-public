@@ -15,6 +15,27 @@ interface RailButtonProps extends ComponentProps<'button'> {
   pressed?: boolean
 }
 
+// Set when the rail is a row under the video on the watch page: its labels and panels open above or below
+// it instead of to its side
+export const RailInline = createContext(false)
+
+// Floating on the stage, a square on the rail's dark glass. Inline under the video, a round button of its own,
+// spaced from the next, as YouTube's row under a video is
+const railButtonClass = (inline: boolean, pressed: boolean | undefined) =>
+  inline
+    ? cn(
+        'grid size-10 shrink-0 place-items-center rounded-full bg-card text-foreground transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:pointer-events-none disabled:opacity-30',
+        pressed === true &&
+          'bg-primary-subtle text-primary-text hover:bg-primary-subtle-hover',
+        pressed === false && 'text-muted-foreground'
+      )
+    : cn(
+        'grid size-9 shrink-0 place-items-center rounded-lg text-white/85 transition-colors hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:pointer-events-none disabled:opacity-30 touch:size-10 portrait:touch:size-9.5 short:size-8',
+        pressed === true &&
+          'bg-primary-subtle text-primary-text hover:bg-primary-subtle-hover',
+        pressed === false && 'text-white/45'
+      )
+
 export const RailButton = ({
   label,
   pressed,
@@ -25,22 +46,13 @@ export const RailButton = ({
     type='button'
     aria-label={label}
     aria-pressed={pressed}
-    className={cn(
-      'grid size-9 shrink-0 place-items-center rounded-lg text-white/85 transition-colors hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:pointer-events-none disabled:opacity-30 touch:size-10 portrait:touch:size-9.5 short:size-8',
-      pressed === true &&
-        'bg-primary-subtle text-primary-text hover:bg-primary-subtle-hover',
-      pressed === false && 'text-white/45',
-      className
-    )}
+    className={cn(railButtonClass(use(RailInline), pressed), className)}
     {...props}
   />
 )
 
 // Set while the rail's style panel is open: it covers the space the tooltips open into
 export const RailTooltipsOff = createContext(false)
-// Set when the rail is a row under the video on the watch page: its labels and panels open above or below
-// it instead of to its side
-export const RailInline = createContext(false)
 
 export const RailTooltip = ({
   label,
