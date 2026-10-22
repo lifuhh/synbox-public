@@ -4,14 +4,22 @@ import {
   ListPlusIcon,
   BookmarkCheckIcon,
   BookmarkIcon,
+  EllipsisIcon,
   LanguagesIcon,
   MessageSquareTextIcon,
   Share2Icon,
   ShareIcon,
 } from 'lucide-react'
+import type { ReactNode } from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
 
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { ToastAction } from '@/components/ui/toast'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { useToast } from '@/components/ui/use-toast'
@@ -115,22 +123,63 @@ const shareUrl = (style: LyricsStyle) => {
   return url
 }
 
-// Inline and too narrow for one row (a phone), the lyrics toggles and the song's actions take a row each,
-// rather than leaving one button alone on the second
-const Divider = ({ inline }: { inline: boolean }) => (
-  <div
-    className={cn(
-      'shrink-0 bg-white/15',
-      inline
-        ? 'h-6 w-px max-[27rem]:h-0 max-[27rem]:basis-full'
-        : 'my-0.5 h-px w-6 portrait:my-0 portrait:h-6 portrait:w-px'
-    )}
-  />
-)
+// One of the song's own actions (bookmark, playlist, share, read), drawn as a rail button or a menu item
+interface SongAction {
+  label: string
+  icon: ReactNode
+  disabled: boolean
+  handleSelect: () => void
+}
+
+const BookmarkGlyph = ({ bookmarked }: { bookmarked: boolean }) =>
+  bookmarked ? (
+    <BookmarkCheckIcon className='size-5 shrink-0 fill-current [&>path:last-child]:stroke-black' />
+  ) : (
+    <BookmarkIcon className='size-5 shrink-0 -scale-x-100' />
+  )
+
+// On a phone on its side the rail is a column beside a video only ~390px tall: the lyrics' buttons fill it,
+// so the song's own actions wait behind More
+const SongActionsMenu = ({ actions }: { actions: SongAction[] }) => {
+  const [open, setOpen] = useState(false)
+  return (
+    <DropdownMenu modal={false} open={open} onOpenChange={setOpen}>
+      <RailTooltip label='More Actions' hidden={open}>
+        <DropdownMenuTrigger asChild>
+          <RailButton
+            label='More Actions'
+            className={cn('hidden short:grid', open && 'bg-white/10')}>
+            <EllipsisIcon className='size-5 shrink-0' />
+          </RailButton>
+        </DropdownMenuTrigger>
+      </RailTooltip>
+      <DropdownMenuContent
+        side='right'
+        align='end'
+        sideOffset={8}
+        collisionPadding={8}>
+        {actions.map((action) => (
+          <DropdownMenuItem
+            key={action.label}
+            disabled={action.disabled}
+            onSelect={action.handleSelect}>
+            {action.icon}
+            {action.label}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
+
+// Inline (the watch page), the lyrics toggles and the song's actions are two groups that wrap whole, so a
+// narrow screen gets a row of each and never one button alone on a second row
+const groupClass = (inline: boolean) =>
+  inline ? 'flex items-center gap-0.5' : 'contents'
 
 const railClass = (inline: boolean, interactive: boolean, open: boolean) =>
   inline
-    ? 'flex w-fit max-w-full flex-wrap items-center gap-0.5 rounded-2xl bg-card p-1'
+    ? 'flex w-fit max-w-full flex-wrap items-center gap-x-3 gap-y-1 rounded-2xl bg-card p-1'
     : cn(
         // Its corners are the buttons' 8px radius plus the 4px padding around them, in every layout
         'flex flex-col items-center gap-1 rounded-r-xl bg-black/55 p-1 shadow-rail backdrop-blur-md transition-translate-fade duration-300 ease-out',
@@ -278,6 +327,40 @@ const PlayerRail = ({ inline = false }: { inline?: boolean }) => {
     return bookmarked ? 'Remove from Bookmarks' : 'Add to Bookmarks'
   })()
 
+  const actions: SongAction[] = [
+    {
+      disabled: !currentVideo,
+      handleSelect: handleBookmark,
+      icon: <BookmarkGlyph bookmarked={bookmarked} />,
+      label: bookmarkLabel,
+    },
+    {
+      disabled: !currentVideo,
+      handleSelect: () => {
+        setSaving(true)
+      },
+      icon: <ListPlusIcon className='size-5 shrink-0' />,
+      label: 'Save to Playlist',
+    },
+    {
+      disabled: false,
+      handleSelect: () => {
+        void handleShare()
+      },
+      icon: <PlatformShareIcon className='size-5 shrink-0' />,
+      label: shareLabel,
+    },
+    // The song's lyrics as a page to read or play along without the video
+    {
+      disabled: videoId === '',
+      handleSelect: () => {
+        void navigate(`/lyrics/${videoId}`)
+      },
+      icon: <BookOpenTextIcon className='size-5 shrink-0' />,
+      label: 'Read Lyrics',
+    },
+  ]
+
   return (
     // Hoverable tooltips wait for a pointer move to close after the trigger is left, and none comes once
     // the pointer is outside the window or over the YouTube iframe, so the label outlived the hidden rail
@@ -297,109 +380,88 @@ const PlayerRail = ({ inline = false }: { inline?: boolean }) => {
               data-player-chrome={inline ? undefined : true}
               aria-label='Player Controls'
               className={railClass(inline, open && armed, open)}>
-              <RailTooltip label={showLyrics ? 'Hide Lyrics' : 'Show Lyrics'}>
-                <RailButton
-                  label='Lyrics'
-                  pressed={showLyrics}
-                  onClick={() => {
-                    setShowLyrics(!showLyrics)
-                  }}>
-                  <MessageSquareTextIcon className='size-5 shrink-0' />
-                </RailButton>
-              </RailTooltip>
-              <RailTooltip label={showRomaji ? 'Hide Romaji' : 'Show Romaji'}>
-                <RailButton
-                  label='Romaji'
-                  pressed={showRomaji}
-                  onClick={() => {
-                    setShowRomaji(!showRomaji)
-                  }}>
-                  <span className='text-base leading-none font-bold'>R</span>
-                </RailButton>
-              </RailTooltip>
-              <RailTooltip
-                label={
-                  showTranslation ? 'Hide Translations' : 'Show Translations'
-                }>
-                <RailButton
-                  label='Translations'
-                  pressed={showTranslation}
-                  onClick={() => {
-                    setShowTranslation(!showTranslation)
-                  }}>
-                  <LanguagesIcon className='size-5 shrink-0' />
-                </RailButton>
-              </RailTooltip>
-              <RailTooltip
-                label={
-                  english
-                    ? 'View Chinese Translations'
-                    : 'View English Translations'
-                }>
-                <RailButton
+              <div className={groupClass(inline)}>
+                <RailTooltip label={showLyrics ? 'Hide Lyrics' : 'Show Lyrics'}>
+                  <RailButton
+                    label='Lyrics'
+                    pressed={showLyrics}
+                    onClick={() => {
+                      setShowLyrics(!showLyrics)
+                    }}>
+                    <MessageSquareTextIcon className='size-5 shrink-0' />
+                  </RailButton>
+                </RailTooltip>
+                <RailTooltip label={showRomaji ? 'Hide Romaji' : 'Show Romaji'}>
+                  <RailButton
+                    label='Romaji'
+                    pressed={showRomaji}
+                    onClick={() => {
+                      setShowRomaji(!showRomaji)
+                    }}>
+                    <span className='text-base leading-none font-bold'>R</span>
+                  </RailButton>
+                </RailTooltip>
+                <RailTooltip
+                  label={
+                    showTranslation ? 'Hide Translations' : 'Show Translations'
+                  }>
+                  <RailButton
+                    label='Translations'
+                    pressed={showTranslation}
+                    onClick={() => {
+                      setShowTranslation(!showTranslation)
+                    }}>
+                    <LanguagesIcon className='size-5 shrink-0' />
+                  </RailButton>
+                </RailTooltip>
+                <RailTooltip
                   label={
                     english
                       ? 'View Chinese Translations'
                       : 'View English Translations'
-                  }
-                  onClick={() => {
-                    setEnglish(!english)
-                  }}>
-                  <span className='text-sm leading-none font-bold'>
-                    {english ? 'EN' : '中'}
-                  </span>
-                </RailButton>
-              </RailTooltip>
-              <LyricsThemePicker anchorRef={panelRef} peek={peek} />
-              {admin && videoId !== '' && (
-                <LyricsVersionsMenu videoId={videoId} />
+                  }>
+                  <RailButton
+                    label={
+                      english
+                        ? 'View Chinese Translations'
+                        : 'View English Translations'
+                    }
+                    onClick={() => {
+                      setEnglish(!english)
+                    }}>
+                    <span className='text-sm leading-none font-bold'>
+                      {english ? 'EN' : '中'}
+                    </span>
+                  </RailButton>
+                </RailTooltip>
+                <LyricsThemePicker anchorRef={panelRef} peek={peek} />
+                {admin && videoId !== '' && (
+                  <LyricsVersionsMenu videoId={videoId} />
+                )}
+              </div>
+
+              {!inline && (
+                <div className='my-0.5 h-px w-6 shrink-0 bg-white/15 portrait:my-0 portrait:h-6 portrait:w-px' />
               )}
 
-              <Divider inline={inline} />
-
-              <RailTooltip label={bookmarkLabel}>
-                <RailButton
-                  label={bookmarkLabel}
-                  disabled={!currentVideo}
-                  onClick={handleBookmark}>
-                  {bookmarked ? (
-                    <BookmarkCheckIcon className='size-5 shrink-0 fill-current [&>path:last-child]:stroke-black' />
-                  ) : (
-                    <BookmarkIcon className='size-5 shrink-0 -scale-x-100' />
-                  )}
-                </RailButton>
-              </RailTooltip>
-              <RailTooltip label='Save to Playlist'>
-                <RailButton
-                  ref={saveButton}
-                  label='Save to Playlist'
-                  disabled={!currentVideo}
-                  onClick={() => {
-                    setSaving(true)
-                  }}>
-                  <ListPlusIcon className='size-5 shrink-0' />
-                </RailButton>
-              </RailTooltip>
-              <RailTooltip label={shareLabel}>
-                <RailButton
-                  label={shareLabel}
-                  onClick={() => {
-                    void handleShare()
-                  }}>
-                  <PlatformShareIcon className='size-5 shrink-0' />
-                </RailButton>
-              </RailTooltip>
-              {/* The song's lyrics as a page to read or play along without the video */}
-              <RailTooltip label='Read Lyrics'>
-                <RailButton
-                  label='Read Lyrics'
-                  disabled={videoId === ''}
-                  onClick={() => {
-                    void navigate(`/lyrics/${videoId}`)
-                  }}>
-                  <BookOpenTextIcon className='size-5 shrink-0' />
-                </RailButton>
-              </RailTooltip>
+              <div className={cn(groupClass(inline), 'short:hidden')}>
+                {actions.map((action) => (
+                  <RailTooltip key={action.label} label={action.label}>
+                    <RailButton
+                      ref={
+                        action.label === 'Save to Playlist'
+                          ? saveButton
+                          : undefined
+                      }
+                      label={action.label}
+                      disabled={action.disabled}
+                      onClick={action.handleSelect}>
+                      {action.icon}
+                    </RailButton>
+                  </RailTooltip>
+                ))}
+              </div>
+              {!inline && <SongActionsMenu actions={actions} />}
             </nav>
           </div>
         </RailTooltipsOff>

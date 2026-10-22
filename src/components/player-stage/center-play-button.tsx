@@ -53,9 +53,7 @@ export const CenterPlayButton = ({
       aria-hidden={!visible}
       onClick={onToggle}
       className={cn(
-        // In the small video on a narrow watch page the control bar's own play button is enough; this one
-        // would cover the seek bar
-        'absolute top-(--video-cy) left-1/2 z-26 grid size-16 -translate-1/2 place-items-center rounded-full bg-black/60 text-white shadow-stage backdrop-blur-md transition-opacity duration-300 watch-narrow:hidden',
+        'absolute top-(--video-cy) left-1/2 z-26 grid size-16 -translate-1/2 place-items-center rounded-full bg-black/60 text-white shadow-stage backdrop-blur-md transition-opacity duration-300',
         visible ? 'opacity-100' : 'opacity-0',
         !armed && 'pointer-events-none'
       )}>

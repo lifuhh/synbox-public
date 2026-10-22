@@ -640,13 +640,14 @@
   }
 }
 
+/* No background of its own: youtube-engine's fixed layer is the black behind the video, and the page's
+   positioned wrappers would paint one over that layer, hiding the video */
 @utility watch-stage {
   flex-shrink: 0;
   width: 100%;
   aspect-ratio: 16 / 9;
   max-height: 45%;
   overflow: hidden;
-  background: #000;
 
   @media (min-width: 1000px) {
     grid-area: stage;
@@ -660,6 +661,13 @@
       aspect-ratio: auto;
       height: min(56.25vw, calc(var(--app-h) - var(--topbar-h) - 12rem));
     }
+  }
+}
+
+/* youtube-engine's fixed video layer takes the wide watch page's rounded corners (watch-stage) */
+@media (min-width: 1000px) {
+  html[data-watch] [data-stage-video] {
+    border-radius: 0.75rem;
   }
 }
 
@@ -1345,8 +1353,10 @@
   }
 
   /* On the watch page the stage is a box under the top bar: what hangs under the bar inside it (Tap to
-     Unmute, the lock column) hangs from the video's own top edge instead */
+     Unmute) hangs from the video's own top edge instead, and its controls sit on the video's bottom edge,
+     clear of no home indicator */
   html[data-watch] [data-player-stage] {
+    --safe-bottom: 0px;
     --topbar-h: 0px;
     --notices-h: 0px;
     --preview-banner-h: 0px;

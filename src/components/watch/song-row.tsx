@@ -35,8 +35,10 @@ export const SongRow = ({
   const body = (
     <>
       <span className='relative aspect-video w-20 shrink-0 overflow-hidden rounded-sm bg-thumbnail-placeholder min-[360px]:w-24'>
+        {/* YouTube's 320x180 picture: the song's own thumbnail URL is often the 1280x720 one, and decoding a
+          list of those for a 96px box stalls a phone's scrolling */}
         <img
-          src={song.thumbnailUrl}
+          src={`https://i.ytimg.com/vi/${song.videoId}/mqdefault.jpg`}
           alt=''
           width='320'
           height='180'
