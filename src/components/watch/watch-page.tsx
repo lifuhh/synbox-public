@@ -16,7 +16,7 @@ import { UP_NEXT_COUNT, UpNext } from './up-next'
 const WIDE = '(min-width: 1000px)'
 
 // The song under the video: its title and channel, then the player's own buttons as a row. Wide, as on
-// YouTube: the title with room above it and the buttons on its first line, then the channel
+// YouTube: the title with room above it, then the channel on the left and the buttons on the right
 const SongInfo = ({ compact }: { compact: boolean }) => {
   const video = useAtomValue(currentVideoAtom)
   if (compact) {
@@ -43,27 +43,25 @@ const SongInfo = ({ compact }: { compact: boolean }) => {
     )
   }
   return (
-    <div className='flex min-w-0 flex-col gap-1 pt-2'>
-      {/* The buttons on the title's first line, centred on it: a long title wraps beside them */}
-      <div className='flex flex-wrap items-start justify-between gap-x-6 gap-y-2'>
-        <h1
-          className={cn(
-            'line-clamp-2 min-w-0 flex-1 basis-72 text-xl leading-7 font-semibold text-pretty text-foreground',
-            bracketStart(video?.title)
-          )}>
-          {video?.title ?? ''}
-        </h1>
-        <div className='-my-1.5'>
-          <PlayerRail inline />
-        </div>
-      </div>
-      <p
+    <div className='flex min-w-0 flex-col gap-3 pt-2'>
+      <h1
         className={cn(
-          'min-w-0 truncate text-base font-medium text-muted-foreground',
-          bracketStart(video?.author)
+          'line-clamp-2 text-xl leading-snug font-semibold text-pretty text-foreground',
+          bracketStart(video?.title)
         )}>
-        {video?.author ?? ''}
-      </p>
+        {video?.title ?? ''}
+      </h1>
+      {/* The buttons on the channel's line, as on YouTube: a long title keeps the full width */}
+      <div className='flex flex-wrap items-center justify-between gap-x-6 gap-y-2'>
+        <p
+          className={cn(
+            'min-w-0 truncate text-base font-medium text-foreground',
+            bracketStart(video?.author)
+          )}>
+          {video?.author ?? ''}
+        </p>
+        <PlayerRail inline />
+      </div>
     </div>
   )
 }
