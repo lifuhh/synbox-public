@@ -630,7 +630,8 @@
   }
 }
 
-/* The stagger rows' outer edges: a little in from the stage's, so the eye travels less between the two lines.
+/* The stagger rows' outer edges: a little in from the stage's (4.5% of its width), so the eye travels less between
+   the two lines.
    On the player's own screen the rail floats over the stage's left edge while the controls show, and a line
    that starts under it would run beneath it: both sides keep at least the rail's width, so the two lines stay
    mirror images. On a phone on its side the lyrics' layer already keeps clear of the rail, which leaves the rows
@@ -638,7 +639,7 @@
    A long line wraps where its words part (a space or punctuation), not between any two characters, so each
    half reads as a phrase; a line with nowhere to part still wraps where it must */
 @utility lyric-stagger-rows {
-  --stagger-inset: 6cqw;
+  --stagger-inset: 4.5cqw;
   padding-inline: var(--stagger-inset);
 
   html:not([data-watch]) & {
