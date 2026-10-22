@@ -179,7 +179,8 @@ export const LyricLineBlock = ({
         <p
           lang={prefs.language}
           className={cn(
-            'font-reader text-reader-translation italic',
+            prefs.language === 'zh' ? 'font-reader-zh' : 'font-reader',
+            'text-reader-translation italic',
             // A little apart, so the romaji reads as part of the Japanese above it
             source && 'pt-1',
             prefs.bold ? 'font-medium' : 'font-normal'

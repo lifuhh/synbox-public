@@ -1,8 +1,11 @@
+import { useAtomValue } from 'jotai'
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router'
 
 import { parsePreviewVersion } from '@/components/lyrics-display/version-preview-banner'
 import { parseLyricsText } from '@/components/player-stage/stage-lyrics'
+import { translationIsEnglishAtom } from '@/context/atoms'
+import { parseLyricsDocument } from '@/lib/lyrics-document'
 import { loadLyricsFont } from '@/lib/lyrics-font'
 import {
   useGetKaraokeById,
@@ -26,9 +29,15 @@ export const useLyricsReady = (videoId: string) => {
   const lyrics = previewVersion === null ? active : preview
   const settled = !lyrics.isPending && !karaoke.isPending
 
-  // Translations render in Noto Sans, so only the Japanese and romaji count
+  // Translations render in Noto Sans, so only the Japanese and romaji count, and the Chinese translation (Noto
+  // Sans SC) while it is the one shown
   const [fontsLoadedFor, setFontsLoadedFor] = useState<string | null>(null)
   const doc = parseLyricsText(lyrics.data)
+  const english = useAtomValue(translationIsEnglishAtom)
+  const chinese =
+    settled && !english
+      ? (parseLyricsDocument(lyrics.data)?.chi.join('') ?? '')
+      : ''
   const fontText = settled
     ? [
         doc.labelled_full_lyrics,
@@ -40,7 +49,7 @@ export const useLyricsReady = (videoId: string) => {
     let current = true
     const load = async (text: string) => {
       try {
-        await loadLyricsFont(text)
+        await loadLyricsFont(text, chinese)
       } catch {
         // A font that fails to load counts as loaded
       }
@@ -54,7 +63,7 @@ export const useLyricsReady = (videoId: string) => {
     return () => {
       current = false
     }
-  }, [fontText, videoId])
+  }, [fontText, chinese, videoId])
 
   const [timedOutFor, setTimedOutFor] = useState<string | null>(null)
   useEffect(() => {

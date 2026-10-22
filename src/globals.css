@@ -72,6 +72,12 @@
   --font-reader:
     -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP',
     'Noto Sans CJK JP', 'PingFang SC', 'Yu Gothic', system-ui, sans-serif;
+  /* The reader's Chinese translation: one Simplified Chinese font for every character, so none falls back to
+     another font at another weight. Apple's PingFang, the partner of the Hiragino above; elsewhere Noto Sans SC,
+     the Noto Sans JP family's Chinese (loaded, or Android's own Noto CJK SC) */
+  --font-reader-zh:
+    -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Noto Sans SC',
+    'Noto Sans CJK SC', system-ui, sans-serif;
 
   --color-border: var(--border);
   --color-input: var(--input);
@@ -1169,10 +1175,12 @@
 }
 
 @utility font_noto_sans_reg {
-  font-family: 'Noto Sans', 'Noto Sans JP', sans-serif !important;
+  font-family:
+    'Noto Sans', 'Noto Sans SC', 'Noto Sans JP', sans-serif !important;
 
   &.lyric-text-line {
-    font-family: 'Noto Sans', 'Noto Sans JP', sans-serif !important;
+    font-family:
+      'Noto Sans', 'Noto Sans SC', 'Noto Sans JP', sans-serif !important;
     font-weight: 900 !important;
   }
 }
@@ -1269,7 +1277,8 @@
     0 0 18px var(--lyric-glow, transparent);
 
   &.font_noto_sans_reg {
-    font-family: 'Noto Sans', 'Noto Sans JP', sans-serif !important;
+    font-family:
+      'Noto Sans', 'Noto Sans SC', 'Noto Sans JP', sans-serif !important;
     font-weight: 900 !important;
   }
 
