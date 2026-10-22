@@ -843,6 +843,44 @@
   height: clamp(11rem, 62cqh, 34rem);
 }
 
+/* The karaoke band under the video on a phone held upright: the stage's lyrics (StageLyrics, portalled in), with
+   room for the sung line's Japanese over two lines, its romaji and its translation.
+   - Its own type: a share of the band's width, times the viewer's size, never taller than a share of the band,
+     so the largest size still fits a line that wraps (the player floors its type for a whole screen instead)
+   - Centred, whatever the saved portrait position: that is the full-screen player's, and a drag here would move
+     it, so the lines take no presses here
+   - Nothing of the stage's floating UI or the home indicator to clear */
+@utility watch-karaoke-band {
+  container-type: size;
+  height: clamp(9rem, 34cqh, 13rem);
+  --stage-chrome-h: 0px;
+  --safe-bottom: 0px;
+
+  /* The player's sizes are inlined into these utilities (@theme inline), so the band sets the sizes, not the
+     tokens */
+  & .text-lyric {
+    font-size: min(calc(max(5cqw, 1.0625rem) * var(--lyric-scale)), 13cqh);
+  }
+
+  & .text-lyric-romaji {
+    font-size: min(calc(max(4cqw, 0.875rem) * var(--lyric-scale)), 10.4cqh);
+  }
+
+  & .text-lyric-secondary {
+    font-size: min(calc(max(3.5cqw, 0.75rem) * var(--lyric-scale)), 9.1cqh);
+  }
+
+  & .anchor-spacer,
+  & .lyrics-lift {
+    flex-grow: 1;
+    min-height: 0;
+  }
+
+  & [data-lyrics-style-toggle] {
+    pointer-events: none;
+  }
+}
+
 @utility watch-side {
   grid-area: side;
   position: relative;

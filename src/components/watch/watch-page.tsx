@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react'
 
 import PlayerRail from '@/components/lyrics-display/player-rail'
 import { DocScroll } from '@/components/shared/doc-scroll'
+import { KaraokeBand, usePhoneUpright } from '@/components/watch/karaoke-band'
 import { currentVideoAtom } from '@/context/atoms'
 import { useMediaQuery } from '@/hooks/use-media-query'
 import { useNextList } from '@/lib/listening/recommendations'
@@ -110,16 +111,21 @@ const NarrowBelow = ({
       scroller.current?.scrollTo({ behavior: 'instant', top: 0 })
     }
   }, [videoId])
+  const upright = usePhoneUpright()
   return (
     <div className='watch-below flex min-h-0 flex-1 flex-col'>
-      <LyricsPanel
-        videoId={videoId}
-        version={version}
-        heading={false}
-        // The line being sung right under the video, with a sliver of the line before it
-        followAt={0.08}
-        className='mx-4 mt-2 watch-lyrics-under shrink-0'
-      />
+      {upright ? (
+        <KaraokeBand />
+      ) : (
+        <LyricsPanel
+          videoId={videoId}
+          version={version}
+          heading={false}
+          // The line being sung right under the video, with a sliver of the line before it
+          followAt={0.08}
+          className='mx-4 mt-2 watch-lyrics-under shrink-0'
+        />
+      )}
       <div
         ref={scroller}
         className='min-h-0 flex-1 overflow-y-auto overscroll-contain'>
