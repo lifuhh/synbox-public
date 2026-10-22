@@ -220,13 +220,13 @@ const RowAction = ({ job, title }: { job: Job; title: string }) => {
   return null
 }
 
-// Every song started from this tab, oldest first; picking one shows it in the panel
+// Every song in the queue, shared by all tabs, oldest first; picking one shows it in the panel
 const SongQueue = ({
   jobs,
   focusedId,
 }: {
   jobs: readonly Job[]
-  focusedId: number
+  focusedId: string
 }) => (
   <ul aria-label='Songs' className='-mx-1.5 flex flex-col gap-0.5'>
     {jobs.map((job) => {
@@ -293,7 +293,7 @@ interface GenerationPanelProps {
   jobs: readonly Job[]
 }
 
-// The top bar panel's body: every song started from this tab, and the steps of the one picked
+// The top bar panel's body: every song in the queue, and the steps of the one picked
 const GenerationPanel = ({ job, jobs }: GenerationPanelProps) => {
   const view = usePresentation(job)
   if (!view) {

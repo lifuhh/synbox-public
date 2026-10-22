@@ -24,7 +24,7 @@ export const isReconnecting = (job: Job, now: number) =>
   now - job.reconnectingSince >= RECONNECTING_NOTICE_MS
 
 interface Tick {
-  jobId: number | null
+  jobId: string | null
   cursor: Cursor
   now: number
 }

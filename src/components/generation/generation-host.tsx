@@ -44,7 +44,7 @@ const GenerationHost = () => {
   const view = usePresentation(job)
   const queryClient = useQueryClient()
   // Every job that finishes refreshes its song, whichever one the panel shows, and today's song count
-  const refreshed = useRef(new Set<number>())
+  const refreshed = useRef(new Set<string>())
   const access = useAccess()
   useEffect(() => {
     for (const done of jobs) {
