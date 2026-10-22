@@ -1,9 +1,18 @@
-import { CheckIcon, ChevronDownIcon, EllipsisIcon } from 'lucide-react'
+import {
+  CheckIcon,
+  ChevronDownIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  EllipsisIcon,
+} from 'lucide-react'
 import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { Link } from 'react-router'
 
-import { RecommendationsEditor } from '@/components/admin/recommendations-editor'
+import {
+  RecommendButton,
+  RecommendationsEditor,
+} from '@/components/admin/recommendations-editor'
 import Forbidden from '@/components/shared/forbidden'
 import {
   AlertDialog,
@@ -684,6 +693,11 @@ const SongRow = ({ generation }: { generation: AdminGeneration }) => (
     <td className='truncate pl-4 text-muted-foreground'>
       <When value={generation.createdAt} />
     </td>
+    <td className='pl-2 text-right'>
+      {generation.status === 'succeeded' && (
+        <RecommendButton videoId={generation.videoId} />
+      )}
+    </td>
   </tr>
 )
 
@@ -694,8 +708,13 @@ const SongCard = ({ generation }: { generation: AdminGeneration }) => (
       <div className='min-w-0'>
         <SongTitle generation={generation} />
       </div>
-      <span className={cn('shrink-0', statusClass(generation))}>
-        {statusLabel(generation)}
+      <span className='flex shrink-0 items-center gap-1'>
+        <span className={statusClass(generation)}>
+          {statusLabel(generation)}
+        </span>
+        {generation.status === 'succeeded' && (
+          <RecommendButton videoId={generation.videoId} />
+        )}
       </span>
     </div>
     <p className='truncate text-xs text-muted-foreground'>
@@ -705,9 +724,12 @@ const SongCard = ({ generation }: { generation: AdminGeneration }) => (
   </li>
 )
 
-// Every song generated since accounts arrived, newest first
+const SONGS_PER_PAGE = 20
+
+// Every song generated since accounts arrived (the latest 200), newest first, a page at a time
 const SongsTable = () => {
   const { data: generations, error } = useAdminGenerations()
+  const [page, setPage] = useState(0)
   if (error !== null) {
     return <p className='text-sm text-error'>{error.message}</p>
   }
@@ -721,10 +743,15 @@ const SongsTable = () => {
       </p>
     )
   }
+  const pages = Math.ceil(generations.length / SONGS_PER_PAGE)
+  // A shorter list (a refresh) never leaves the page past its end
+  const shown = Math.min(page, pages - 1)
+  const first = shown * SONGS_PER_PAGE
+  const rows = generations.slice(first, first + SONGS_PER_PAGE)
   return (
     <>
       <ul className='text-sm md:hidden'>
-        {generations.map((generation) => (
+        {rows.map((generation) => (
           <SongCard key={generation.id} generation={generation} />
         ))}
       </ul>
@@ -735,6 +762,7 @@ const SongsTable = () => {
           <col className='w-28' />
           <col className='w-28' />
           <col className='w-36' />
+          <col className='w-12' />
         </colgroup>
         <thead className='text-xs text-muted-foreground'>
           <tr>
@@ -743,14 +771,49 @@ const SongsTable = () => {
             <th className='px-4 pb-2 font-medium'>Kind</th>
             <th className='px-4 pb-2 font-medium'>Status</th>
             <th className='pb-2 pl-4 font-medium'>When</th>
+            <th className='pb-2 pl-2 font-medium'>
+              <span className='sr-only'>Recommend</span>
+            </th>
           </tr>
         </thead>
         <tbody>
-          {generations.map((generation) => (
+          {rows.map((generation) => (
             <SongRow key={generation.id} generation={generation} />
           ))}
         </tbody>
       </table>
+      {pages > 1 && (
+        <nav
+          aria-label='Songs Pages'
+          className='flex items-center justify-end gap-2 border-t border-border pt-3 text-sm text-muted-foreground'>
+          <span className='mr-auto tabular-nums'>
+            {first + 1}–{first + rows.length} of {generations.length}
+          </span>
+          <Button
+            variant='row-icon'
+            size='icon'
+            aria-label='Previous Page'
+            disabled={shown === 0}
+            onClick={() => {
+              setPage(shown - 1)
+            }}>
+            <ChevronLeftIcon className='size-4' />
+          </Button>
+          <span className='tabular-nums'>
+            {shown + 1} / {pages}
+          </span>
+          <Button
+            variant='row-icon'
+            size='icon'
+            aria-label='Next Page'
+            disabled={shown === pages - 1}
+            onClick={() => {
+              setPage(shown + 1)
+            }}>
+            <ChevronRightIcon className='size-4' />
+          </Button>
+        </nav>
+      )}
     </>
   )
 }

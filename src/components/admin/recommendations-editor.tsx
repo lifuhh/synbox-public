@@ -1,5 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query'
-import { PlusIcon, XIcon } from 'lucide-react'
+import { CheckIcon, PlusIcon, SparklesIcon, XIcon } from 'lucide-react'
 import { useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Link } from 'react-router'
@@ -19,17 +19,19 @@ import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useToast } from '@/components/ui/use-toast'
 import { SortableList } from '@/components/watch/sortable-list'
-import { useAdminRecommendations, useSaveRecommendations } from '@/lib/admin'
+import {
+  RecommendationsFullError,
+  useAddRecommendation,
+  useAdminRecommendations,
+  useSaveRecommendations,
+} from '@/lib/admin'
+import { getSongInfoBySongId } from '@/lib/appwrite/api'
 import { useGallerySongs } from '@/lib/react-query/queries-and-mutations'
 import { QUERY_KEYS } from '@/lib/react-query/query-keys'
-import { MAX_RECOMMENDATIONS } from '@/lib/recommendations'
+import { MAX_RECOMMENDATIONS, toRecommendation } from '@/lib/recommendations'
 import type { Recommendation } from '@/lib/recommendations'
 import { getYoutubeVideoInfo } from '@/lib/youtube/api'
 import { extractVideoId } from '@/utils'
-
-const sameOrder = (a: Recommendation[], b: Recommendation[]) =>
-  a.length === b.length &&
-  a.every((song, index) => song.videoId === b[index].videoId)
 
 // The carousel's size: 480x360, as the playlist gave it before
 const thumbnailOf = (videoId: string) =>
@@ -154,7 +156,7 @@ const AddSong = ({
   const full = songs.length >= MAX_RECOMMENDATIONS
   const hint = full
     ? `The list holds at most ${MAX_RECOMMENDATIONS} songs.`
-    : 'Or any YouTube video, by link or ID. Added songs go to the end of the list.'
+    : 'Or any YouTube or Synbox link, or a video ID. Added to the end, saved at once.'
 
   // The field keeps focus on an error, so the fix is one keystroke away
   const refuse = (message: string) => {
@@ -296,13 +298,92 @@ const Row = ({
   </div>
 )
 
-// The landing page's carousel, in the order saved (each visitor sees it shuffled). Edits stay on this page
-// until Save Changes
+// Says how adding to Recommended went, wherever an admin adds from
+const useAddFeedback = () => {
+  const { toast } = useToast()
+  return {
+    added: (song: Recommendation) => {
+      toast({
+        description: song.title,
+        duration: 2500,
+        title: 'Added to Recommended',
+      })
+    },
+    failed: (error: Error) => {
+      toast({
+        title:
+          error instanceof RecommendationsFullError
+            ? 'Recommended Is Full'
+            : "Couldn't Add to Recommended",
+        variant: 'destructive',
+      })
+    },
+  }
+}
+
+// A song from the Songs table, added to the end of Recommended with its title and artist from our song info,
+// or YouTube's for a video we don't have. Ticked once it's in the list
+export const RecommendButton = ({ videoId }: { videoId: string }) => {
+  const { data: songs } = useAdminRecommendations()
+  const add = useAddRecommendation()
+  const feedback = useAddFeedback()
+  const [looking, setLooking] = useState(false)
+  const listed = songs?.some((song) => song.videoId === videoId) ?? false
+  const busy = looking || add.isPending
+  const recommend = async () => {
+    setLooking(true)
+    const ours = await getSongInfoBySongId(videoId).catch(() => null)
+    const song =
+      ours === null
+        ? await getYoutubeVideoInfo(videoId)
+            .then((info) => ({
+              author: info.channelTitle,
+              thumbnailUrl: thumbnailOf(videoId),
+              title: info.title,
+              videoId,
+            }))
+            .catch(() => null)
+        : toRecommendation(ours)
+    setLooking(false)
+    if (song === null) {
+      feedback.failed(new Error('No song info'))
+      return
+    }
+    add.mutate(song, {
+      onError: feedback.failed,
+      onSuccess: () => {
+        feedback.added(song)
+      },
+    })
+  }
+  return (
+    <Button
+      variant='row-icon'
+      size='icon'
+      disabled={songs === undefined || listed || busy}
+      aria-label={listed ? 'In Recommended' : 'Add to Recommended'}
+      title={listed ? 'In Recommended' : 'Add to Recommended'}
+      onClick={() => {
+        void recommend()
+      }}>
+      {listed ? (
+        <CheckIcon className='size-4 text-primary-text' />
+      ) : (
+        <SparklesIcon className='size-4' />
+      )}
+    </Button>
+  )
+}
+
+// The landing page's carousel, in the order saved (each visitor sees it shuffled). Every change saves at once:
+// an add, a confirmed removal, a move. A failed save puts the list back as it was
 export const RecommendationsEditor = () => {
   const { toast } = useToast()
+  const queryClient = useQueryClient()
   const { data: saved, error } = useAdminRecommendations()
-  const { isPending: saving, mutate: save } = useSaveRecommendations()
-  const [draft, setDraft] = useState<Recommendation[] | null>(null)
+  const save = useSaveRecommendations()
+  const addSong = useAddRecommendation()
+  const feedback = useAddFeedback()
   const [announcement, setAnnouncement] = useState('')
   // The song whose Remove was pressed, until the confirm answers
   const [removing, setRemoving] = useState<Recommendation | null>(null)
@@ -310,7 +391,7 @@ export const RecommendationsEditor = () => {
   // one now in its place. The dialog's own restore lost it in both engines (Safari never focuses a pressed button)
   const refocus = useRef<string | null>(null)
   const list = useRef<HTMLDivElement>(null)
-  const songs = draft ?? saved ?? []
+  const songs = saved ?? []
 
   if (error !== null) {
     return <p className='text-sm text-error'>{error.message}</p>
@@ -319,7 +400,22 @@ export const RecommendationsEditor = () => {
     return <Skeleton className='h-40 w-full' />
   }
 
-  const dirty = draft !== null && !sameOrder(draft, saved)
+  // Shows the new list at once and saves it; puts the old one back if the save fails
+  const commit = (next: Recommendation[], onSaved?: () => void) => {
+    const key = [QUERY_KEYS.GET_ADMIN_RECOMMENDATIONS]
+    queryClient.setQueryData(key, next)
+    save.mutate(next, {
+      onError: () => {
+        queryClient.setQueryData(key, saved)
+        toast({
+          description: 'The list is unchanged. Try again.',
+          title: "Couldn't Save Recommended",
+          variant: 'destructive',
+        })
+      },
+      onSuccess: onSaved,
+    })
+  }
 
   // After a removal the keyboard goes to the row that took the removed one's place
   const remove = (song: Recommendation) => {
@@ -327,15 +423,33 @@ export const RecommendationsEditor = () => {
     if (index === -1) {
       return
     }
+    if (songs.length === 1) {
+      toast({
+        title: 'Recommended Needs One Song',
+        variant: 'destructive',
+      })
+      return
+    }
     const next = songs.toSpliced(index, 1)
-    setDraft(next)
     refocus.current = next[Math.min(index, next.length - 1)]?.videoId ?? null
-    setAnnouncement(`Removed ${song.title}.`)
+    commit(next, () => {
+      setAnnouncement(`Removed ${song.title}.`)
+      toast({
+        description: song.title,
+        duration: 2500,
+        title: 'Removed from Recommended',
+      })
+    })
   }
 
   const add = (song: Recommendation) => {
-    setDraft([...songs, song])
-    setAnnouncement(`Added ${song.title}.`)
+    addSong.mutate(song, {
+      onError: feedback.failed,
+      onSuccess: () => {
+        setAnnouncement(`Added ${song.title}.`)
+        feedback.added(song)
+      },
+    })
   }
 
   return (
@@ -344,7 +458,7 @@ export const RecommendationsEditor = () => {
       <AddSong songs={songs} onAdd={add} />
       {songs.length === 0 ? (
         <p className='py-6 text-center text-sm text-muted-foreground'>
-          The list is empty. Add at least one song to save it.
+          The list is empty.
         </p>
       ) : (
         <div ref={list}>
@@ -353,7 +467,7 @@ export const RecommendationsEditor = () => {
             keyOf={(song) => song.videoId}
             labelOf={(song) => song.title}
             onMove={(from, to) => {
-              setDraft(songs.toSpliced(from, 1).toSpliced(to, 0, songs[from]))
+              commit(songs.toSpliced(from, 1).toSpliced(to, 0, songs[from]))
             }}
             renderItem={(song, grip, index) => (
               <Row
@@ -369,47 +483,10 @@ export const RecommendationsEditor = () => {
           />
         </div>
       )}
-      <div className='flex flex-wrap items-center gap-3 border-t border-border pt-4'>
-        <span className='text-sm text-muted-foreground tabular-nums'>
-          {songs.length === 1 ? '1 song' : `${songs.length} songs`}
-          {dirty && ' · Unsaved Changes'}
-        </span>
-        <div className='flex w-full gap-2 sm:ml-auto sm:w-auto'>
-          <Button
-            variant='outline'
-            className='flex-1 sm:flex-none'
-            disabled={!dirty || saving}
-            onClick={() => {
-              setDraft(null)
-              setAnnouncement('Changes discarded.')
-            }}>
-            Discard
-          </Button>
-          <Button
-            className='flex-1 sm:flex-none'
-            disabled={!dirty || saving || songs.length === 0}
-            onClick={() => {
-              save(songs, {
-                onError: () => {
-                  toast({
-                    description: 'The list is unchanged. Try again.',
-                    title: 'Could Not Save Recommendations',
-                    variant: 'destructive',
-                  })
-                },
-                onSuccess: () => {
-                  setDraft(null)
-                  toast({
-                    description: 'Visitors see the new list within a minute.',
-                    title: 'Recommendations Saved',
-                  })
-                },
-              })
-            }}>
-            {saving ? 'Saving…' : 'Save Changes'}
-          </Button>
-        </div>
-      </div>
+      <p className='border-t border-border pt-4 text-sm text-muted-foreground tabular-nums'>
+        {songs.length === 1 ? '1 song' : `${songs.length} songs`}
+        {save.isPending && ' · Saving…'}
+      </p>
       <AlertDialog
         open={removing !== null}
         onOpenChange={(open) => {
