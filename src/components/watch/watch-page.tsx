@@ -1,6 +1,6 @@
 import { useAtomValue } from 'jotai'
 import type { ReactNode } from 'react'
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 
 import PlayerRail from '@/components/lyrics-display/player-rail'
 import { currentVideoAtom } from '@/context/atoms'
@@ -85,6 +85,11 @@ const NarrowBelow = ({
   version: number | null
 }) => {
   const more = useMoreLikeThis(videoId)
+  // A new song starts at the top of the list under the video, as on YouTube
+  const scroller = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    scroller.current?.scrollTo({ behavior: 'instant', top: 0 })
+  }, [videoId])
   return (
     <div className='watch-below flex min-h-0 flex-1 flex-col'>
       <LyricsPanel
@@ -95,7 +100,9 @@ const NarrowBelow = ({
         followAt={0.08}
         className='mx-4 mt-2 watch-lyrics-under shrink-0'
       />
-      <div className='min-h-0 flex-1 overflow-y-auto overscroll-contain'>
+      <div
+        ref={scroller}
+        className='min-h-0 flex-1 overflow-y-auto overscroll-contain'>
         <div className='flex flex-col gap-4 px-4 pt-4 pb-(--safe-bottom)'>
           <SongInfo compact />
           <div className='pb-6'>
@@ -163,6 +170,12 @@ export const WatchPage = ({
 }) => {
   const wide = useMediaQuery(WIDE)
   const watch = surface === 'watch'
+  // Wide, the page scrolls as a whole: a new song brings it back to the top, video first, as on YouTube
+  useEffect(() => {
+    if (watch && wide) {
+      window.scrollTo({ behavior: 'instant', top: 0 })
+    }
+  }, [videoId, watch, wide])
   useEffect(() => {
     document.documentElement.toggleAttribute('data-watch', watch)
     return () => {
