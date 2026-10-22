@@ -1198,30 +1198,48 @@
   }
 }
 
+/* MarqueeText: one line, clipped. Too long (data-marquee), it fades at its end; while its row is hovered or holds
+   the keyboard's focus it sweeps to its end and back by the hidden distance (--marquee-shift), pausing at each
+   end. The text keeps 1.5rem of room after it, so its last letters stop clear of the fade */
 @utility marquee {
-  white-space: nowrap;
   overflow: hidden;
-  position: relative;
-  /* Clipped text fades out instead of stopping mid-letter; on touch nothing hovers, so this is all it shows */
-  mask-image: linear-gradient(to right, #000 calc(100% - 2rem), transparent);
+  white-space: nowrap;
 
-  & span {
+  & > span {
     display: inline-block;
-    transition: transform 0.3s ease;
   }
 
-  @media (prefers-reduced-motion: no-preference) {
-    .playlist-item:hover & span {
-      animation: marquee 20s linear infinite;
+  &[data-marquee] {
+    mask-image: linear-gradient(
+      to right,
+      #000 calc(100% - 1.5rem),
+      transparent
+    );
+
+    & > span {
+      padding-inline-end: 1.5rem;
+    }
+  }
+
+  @media (hover: hover) and (prefers-reduced-motion: no-preference) {
+    [data-marquee-host]:is(:hover, :has(:focus-visible))
+      &[data-marquee]
+      > span {
+      animation: marquee-scroll var(--marquee-duration) ease-in-out infinite
+        alternate;
     }
   }
 }
 
-@utility playlist-item {
-  @media (prefers-reduced-motion: no-preference) {
-    &:hover .marquee span {
-      animation: marquee 20s linear infinite;
-    }
+@keyframes marquee-scroll {
+  0%,
+  8% {
+    transform: none;
+  }
+
+  92%,
+  100% {
+    transform: translateX(var(--marquee-shift));
   }
 }
 
@@ -1816,15 +1834,6 @@
   button:focus,
   select:focus {
     outline: none;
-  }
-
-  @keyframes marquee {
-    0% {
-      transform: translate(0, 0);
-    }
-    100% {
-      transform: translate(-100%, 0);
-    }
   }
 }
 
