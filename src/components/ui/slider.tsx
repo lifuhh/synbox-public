@@ -18,20 +18,48 @@ const alongTurnedPage = (event: React.PointerEvent<HTMLSpanElement>) => {
     box.left + box.width * fractionAcross(event, event.currentTarget)
 }
 
-// `thin`: a player's seek line, as YouTube's: 3px, a little thicker under the pointer, with a small dot that shows
-// only while the pointer is over it, the keyboard is on it or it is dragged (always, on a touch screen). The box
-// stays tall, so the line is as easy to hit as before
+// How the slider looks. `block`: the panels' slider, a thick bar and a big knob. `seek`: a player's seek line, as
+// YouTube's: 3px, a little thicker under the pointer, with a small dot that shows only while the pointer is over
+// it, the keyboard is on it or it is dragged (always, on a touch screen). `volume`: YouTube's volume line, 3px of
+// white with a small white knob that always shows. The thin ones keep a tall box, so they are as easy to hit
+type SliderLook = 'block' | 'seek' | 'volume'
+
+const LOOKS: Record<
+  SliderLook,
+  { track: string; range: string; thumb: string }
+> = {
+  block: {
+    range: 'bg-primary',
+    thumb: 'h-5 w-5 bg-foreground transition-colors touch:h-6 touch:w-6',
+    track:
+      "data-[orientation='horizontal']:h-2 data-[orientation='horizontal']:w-full",
+  },
+  seek: {
+    range: 'bg-primary',
+    thumb:
+      'size-3 bg-primary opacity-0 transition-opacity duration-150 group-hover/slider:opacity-100 group-active/slider:opacity-100 focus-visible:opacity-100 touch:size-3.5 touch:opacity-100',
+    track:
+      "transition-[height] duration-150 data-[orientation='horizontal']:h-0.75 data-[orientation='horizontal']:w-full group-hover/slider:data-[orientation='horizontal']:h-1.25 touch:data-[orientation='horizontal']:h-1",
+  },
+  volume: {
+    range: 'bg-white',
+    thumb: 'size-3 bg-white',
+    track:
+      "data-[orientation='horizontal']:h-0.75 data-[orientation='horizontal']:w-full",
+  },
+}
+
 const SliderRender: React.ForwardRefRenderFunction<
   React.ComponentRef<typeof SliderPrimitive.Root>,
   React.ComponentPropsWithoutRef<typeof SliderPrimitive.Root> & {
-    thin?: boolean
+    look?: SliderLook
   }
 > = (
   {
     className,
     onPointerDown,
     onPointerMove,
-    thin = false,
+    look = 'block',
     'aria-label': ariaLabel,
     ...props
   },
@@ -51,7 +79,7 @@ const SliderRender: React.ForwardRefRenderFunction<
       'group/slider relative flex touch-none select-none',
       "data-[orientation='horizontal']:h-2 data-[orientation='horizontal']:w-full data-[orientation='horizontal']:items-center touch:data-[orientation='horizontal']:h-8",
       // Later in the list, so it wins over the h-2 above (tailwind-merge)
-      thin && "data-[orientation='horizontal']:h-4",
+      look !== 'block' && "data-[orientation='horizontal']:h-4",
       "data-[orientation='vertical']:h-full data-[orientation='vertical']:w-2 data-[orientation='vertical']:justify-center",
       className
     )}
@@ -59,14 +87,13 @@ const SliderRender: React.ForwardRefRenderFunction<
     <SliderPrimitive.Track
       className={cn(
         'relative grow overflow-hidden rounded-full bg-white/25',
-        thin
-          ? "transition-[height] duration-150 data-[orientation='horizontal']:h-0.75 data-[orientation='horizontal']:w-full group-hover/slider:data-[orientation='horizontal']:h-1.25 touch:data-[orientation='horizontal']:h-1"
-          : "data-[orientation='horizontal']:h-2 data-[orientation='horizontal']:w-full",
+        LOOKS[look].track,
         "data-[orientation='vertical']:h-full data-[orientation='vertical']:w-2"
       )}>
       <SliderPrimitive.Range
         className={cn(
-          'absolute bg-primary',
+          'absolute',
+          LOOKS[look].range,
           "data-[orientation='horizontal']:h-full",
           "data-[orientation='vertical']:w-full"
         )}
@@ -77,9 +104,7 @@ const SliderRender: React.ForwardRefRenderFunction<
       aria-label={ariaLabel}
       className={cn(
         'block rounded-full shadow-md ring-offset-accent-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-hidden disabled:pointer-events-none disabled:opacity-50',
-        thin
-          ? 'size-3 bg-primary opacity-0 transition-opacity duration-150 group-hover/slider:opacity-100 group-active/slider:opacity-100 focus-visible:opacity-100 touch:size-3.5 touch:opacity-100'
-          : 'h-5 w-5 bg-foreground transition-colors touch:h-6 touch:w-6'
+        LOOKS[look].thumb
       )}
     />
   </SliderPrimitive.Root>
