@@ -7,7 +7,10 @@ import {
 } from 'lucide-react'
 import { Link } from 'react-router'
 
-import { KaraokeEdge, KaraokeLabel } from '@/components/shared/karaoke-badge'
+import {
+  KaraokeThumbBadge,
+  KaraokeLabel,
+} from '@/components/shared/karaoke-badge'
 import type { SearchMatch } from '@/lib/offline/search'
 import type { OfflineSong } from '@/lib/offline/song'
 import { hasKaraoke } from '@/lib/offline/song'
@@ -49,7 +52,7 @@ const Thumbnail = ({
         className='size-full rounded object-cover'
       />
     )}
-    {karaoke && <KaraokeEdge />}
+    {karaoke && <KaraokeThumbBadge />}
   </div>
 )
 
