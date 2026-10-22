@@ -60,36 +60,32 @@ export const LyricsStyleScopeSection = () => {
   return (
     <section className='flex flex-col gap-2'>
       {/* A change to a shared style keeps it for this song, so there is no choice to make while it shows */}
+      {/* No visible heading: "All Songs" and "This Song" say what they choose */}
       {source !== 'shared' && (
-        <>
-          <h3 id='lyrics-style-scope' className={SECTION_HEADING}>
-            Changes Apply To
-          </h3>
-          <div
-            role='radiogroup'
-            aria-labelledby='lyrics-style-scope'
-            className='grid grid-cols-2 gap-1 rounded-lg bg-secondary p-1'>
-            {SCOPES.map((option) => (
-              <button
-                key={option.id}
-                type='button'
-                // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- segmented buttons in an ARIA radio group, like the backdrop picker
-                role='radio'
-                aria-checked={scope === option.id}
-                onClick={() => {
-                  setScope(option.id)
-                }}
-                className={cn(
-                  SEGMENT,
-                  scope === option.id
-                    ? 'bg-accent text-foreground'
-                    : 'text-muted-foreground hover:text-foreground'
-                )}>
-                {option.name}
-              </button>
-            ))}
-          </div>
-        </>
+        <div
+          role='radiogroup'
+          aria-label='Changes Apply To'
+          className='grid grid-cols-2 gap-1 rounded-lg bg-secondary p-1'>
+          {SCOPES.map((option) => (
+            <button
+              key={option.id}
+              type='button'
+              // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- segmented buttons in an ARIA radio group, like the backdrop picker
+              role='radio'
+              aria-checked={scope === option.id}
+              onClick={() => {
+                setScope(option.id)
+              }}
+              className={cn(
+                SEGMENT,
+                scope === option.id
+                  ? 'bg-accent text-foreground'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}>
+              {option.name}
+            </button>
+          ))}
+        </div>
       )}
       {note !== null && <p className='text-xs text-muted-foreground'>{note}</p>}
       {ownStyle && (
