@@ -72,9 +72,9 @@ const SongHeader = ({ job }: { job: Job }) => {
         />
       </span>
       <div className='min-w-0 flex-1'>
-        <p className='truncate text-sm font-semibold text-white'>{title}</p>
+        <p className='truncate text-label font-semibold text-white'>{title}</p>
         {subtitle !== '' && (
-          <p className='truncate text-xs text-muted-foreground'>{subtitle}</p>
+          <p className='truncate text-sm text-muted-foreground'>{subtitle}</p>
         )}
       </div>
       {/* A failed song says Dismiss beside Try Again instead */}
@@ -117,7 +117,9 @@ const DoneView = ({ job }: { job: Job }) => {
         className='flex size-12 items-center justify-center rounded-full bg-primary-subtle text-primary-text'>
         <Check className='size-6' strokeWidth={3} aria-hidden />
       </motion.span>
-      <p className='px-2 text-lg font-semibold text-white'>{outcome.title}</p>
+      <p className='px-2 text-label font-semibold text-white'>
+        {outcome.title}
+      </p>
       <Button asChild gap='md' className='w-full'>
         <Link to={outcome.play.to} onClick={close}>
           <Play className='size-4 fill-current' />
@@ -125,7 +127,7 @@ const DoneView = ({ job }: { job: Job }) => {
         </Link>
       </Button>
       {admin && (outcome.versions || !job.skipUploaderLyrics) && (
-        <div className='flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs text-faint'>
+        <div className='flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-sm text-faint'>
           {admin && outcome.versions && (
             <Link
               to={`/v/${job.videoId}/versions`}
@@ -226,7 +228,7 @@ const SongQueue = ({
   jobs: readonly Job[]
   focusedId: number
 }) => (
-  <ul aria-label='Songs' className='flex flex-col gap-0.5'>
+  <ul aria-label='Songs' className='-mx-1.5 flex flex-col gap-0.5'>
     {jobs.map((job) => {
       const title = titleOf(job)
       const status = rowStatus(job)
@@ -244,7 +246,7 @@ const SongQueue = ({
               focusGeneration(job.id)
             }}
             className='flex min-w-0 flex-1 items-center gap-2 self-stretch rounded-lg px-1.5 py-1 text-left outline-none focus-visible:ring-2 focus-visible:ring-brand-light touch:py-2'>
-            <span className='h-6 w-[43px] shrink-0 overflow-hidden rounded bg-thumbnail-placeholder'>
+            <span className='h-8 w-[57px] shrink-0 overflow-hidden rounded bg-thumbnail-placeholder'>
               <img
                 src={thumbnailOf(job)}
                 alt=''
@@ -255,7 +257,7 @@ const SongQueue = ({
             </span>
             <span
               className={cn(
-                'min-w-0 flex-1 truncate text-xs',
+                'min-w-0 flex-1 truncate text-sm',
                 title === '' ? 'text-faint' : 'text-foreground'
               )}>
               {title === '' ? PENDING_TITLE : title}
@@ -269,7 +271,7 @@ const SongQueue = ({
             {status !== null && (
               <span
                 className={cn(
-                  'shrink-0 text-xs tabular-nums',
+                  'shrink-0 text-sm tabular-nums',
                   job.status.kind === 'failed'
                     ? 'text-error'
                     : 'text-muted-foreground'
@@ -339,12 +341,12 @@ const GenerationPanel = ({ job, jobs }: GenerationPanelProps) => {
               aria-valuemin={0}
               aria-valuemax={100}
               aria-valuenow={percent}
-              className='flex items-end justify-between px-1'>
-              <span className='text-5xl leading-none font-light tracking-tight text-white tabular-nums'>
+              className='flex items-baseline justify-between'>
+              <span className='text-2xl leading-tight font-semibold tracking-tight text-white tabular-nums'>
                 {percent}
-                <span className='ml-0.5 text-xl text-faint'>%</span>
+                <span className='text-muted-foreground'>%</span>
               </span>
-              <span className='pb-1 text-xs text-muted-foreground'>
+              <span className='text-sm text-muted-foreground'>
                 {progressNote()}
               </span>
             </div>
@@ -394,7 +396,7 @@ const GenerationPanel = ({ job, jobs }: GenerationPanelProps) => {
               </div>
             ) : (
               active && (
-                <div className='flex justify-end px-1'>
+                <div className='flex justify-end'>
                   <Button
                     variant='overlay-muted'
                     size='sm'
