@@ -61,15 +61,18 @@ export const OfflineSongRow = ({
   sources,
   sortAt,
   match,
+  onOpen,
 }: {
   song: OfflineSong
   sources: Set<OfflineSource>
   sortAt: number
   match: SearchMatch | null
+  onOpen?: () => void
 }) => (
   <li>
     <Link
       to={`/lyrics/${song.videoId}`}
+      onClick={onOpen}
       className='flex items-center gap-3 rounded-lg px-2 py-1.5 transition-colors hover:bg-accent active:bg-muted'>
       <Thumbnail src={song.thumbnail} karaoke={hasKaraoke(song)} />
       <div className='flex min-w-0 flex-1 flex-col'>
