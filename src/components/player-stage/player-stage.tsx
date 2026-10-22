@@ -15,7 +15,6 @@ import {
   useState,
 } from 'react'
 
-import { useToast } from '@/components/ui/use-toast'
 import {
   playerChromeOpenAtom,
   playerVolumeAtom,
@@ -24,7 +23,6 @@ import {
 } from '@/context/atoms'
 import { useThemeColor } from '@/hooks/use-theme-color'
 import { useWakeLock } from '@/hooks/use-wake-lock'
-import { isStandalone } from '@/lib/pwa'
 import type { CssVars } from '@/types'
 import { cn } from '@/utils/cn'
 
@@ -296,20 +294,6 @@ const StageCover = ({
   )
 }
 
-// Whether this browser has already been told how Full Screen works on an iPhone; marks it told
-const FULL_SCREEN_TIP_KEY = 'synboxFullScreenTip'
-const fullScreenTipSeen = () => {
-  try {
-    if (localStorage.getItem(FULL_SCREEN_TIP_KEY) !== null) {
-      return true
-    }
-    localStorage.setItem(FULL_SCREEN_TIP_KEY, '1')
-  } catch {
-    // Storage blocked: tell them every time, as before
-  }
-  return false
-}
-
 export interface StageLayout {
   // While true the floating UI covers --stage-chrome-h of the stage's bottom edge
   controlsVisible: boolean
@@ -412,7 +396,6 @@ export const PlayerStage = ({
   const controlsVisible =
     !locked && !dragging && (!idle || phase.kind !== 'playing')
   const blockInput = quirks.blockIframeInput && !handsOff
-  const { toast } = useToast()
   const setChromeOpen = useSetAtom(playerChromeOpenAtom)
   useEffect(() => {
     setChromeOpen(controlsVisible)
@@ -427,15 +410,6 @@ export const PlayerStage = ({
   // The player turns with the phone either way round, unless Lock Landscape holds it on its side
   const toggleFullscreen = () => {
     if (!document.fullscreenEnabled) {
-      // In Safari, unlike the Home Screen app, the browser's own bars stay; say how to lose them, once
-      if (!immersive && !isStandalone() && !fullScreenTipSeen()) {
-        toast({
-          description:
-            'Add Synbox to your Home Screen (Share › Add to Home Screen) to hide Safari’s bars too.',
-          duration: 5000,
-          title: 'Full Screen on iPhone',
-        })
-      }
       setImmersive(!immersive)
       return
     }

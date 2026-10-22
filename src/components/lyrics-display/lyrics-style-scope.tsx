@@ -47,14 +47,12 @@ export const LyricsStyleScopeSection = () => {
     return null
   }
   const ownStyle = source !== 'default'
-  let note = 'Changes apply to this song only.'
+  // Only what the buttons above don't already say
+  let note: string | null = null
   if (source === 'shared') {
-    note =
-      'Showing the style this link was shared with. A change keeps it for this song.'
-  } else if (scope === 'all') {
-    note = ownStyle
-      ? 'Changes apply to every song. This song keeps its own settings for anything you have not changed here.'
-      : 'Changes apply to every song that has no style of its own.'
+    note = 'Shared style. Edits stay on this song'
+  } else if (scope === 'all' && ownStyle) {
+    note = 'This song keeps its own tweaks'
   }
   return (
     <section className='flex flex-col gap-2'>
@@ -90,7 +88,7 @@ export const LyricsStyleScopeSection = () => {
           </div>
         </>
       )}
-      <p className='text-xs text-muted-foreground'>{note}</p>
+      {note !== null && <p className='text-xs text-muted-foreground'>{note}</p>}
       {ownStyle && (
         <div className='flex flex-wrap gap-2'>
           <button
@@ -196,11 +194,7 @@ export const MyStyles = ({ onApplied }: { onApplied: () => void }) => {
   return (
     <section className='flex flex-col gap-2'>
       <h3 className={SECTION_HEADING}>My Styles</h3>
-      {templates.length === 0 ? (
-        <p className='text-xs text-muted-foreground'>
-          Save the style you see to reuse it on any song.
-        </p>
-      ) : (
+      {templates.length > 0 && (
         <ul className='flex flex-wrap gap-1.5'>
           {templates.map((template) => (
             <li
