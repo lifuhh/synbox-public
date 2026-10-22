@@ -1,6 +1,6 @@
 <p align="center">
   <a href="https://synbox.io" target="_blank" rel="noopener noreferrer">
-    <img src="public/assets/icons/Synbox.svg" alt="Synbox Logo" width="340px" />
+    <img src="docs/readme/Synbox.svg" alt="Synbox Logo" width="340px" />
   </a>
 </p>
 
@@ -46,14 +46,14 @@ This frustration inspired me to create Synbox — a tool that helps fans like me
 🔊 **Accurate Transcriptions** - Leverage the latest OpenAI Whisper model to transcribe any Japanese song with precision.
 
 <p align="center">
-  <img src="public/assets/showcase/overlay.gif" alt="Overlay Display" width="90%">
+  <img src="docs/readme/showcase/overlay.gif" alt="Overlay Display" width="90%">
 </p>
 
 <p align="center">-</p>
 
 🎵 **Discover New Music** - Explore a landing page with a carousel, an infinite scroll gallery, and links to top songs played in Japan, curated from YouTube’s popular playlists.
 <p align="center">
-  <img src="public/assets/showcase/landingpage.gif" alt="Landing Page" width="90%">
+  <img src="docs/readme/showcase/landingpage.gif" alt="Landing Page" width="90%">
 </p>
 
 <p align="center">-</p>
@@ -68,7 +68,7 @@ This frustration inspired me to create Synbox — a tool that helps fans like me
 
 <h5 align="center">Transcription</h5>
 <p align="center">
-  <img src="public/assets/showcase/transcription.gif" alt="Transcription Showcase" width="90%">
+  <img src="docs/readme/showcase/transcription.gif" alt="Transcription Showcase" width="90%">
 </p>
 
 🎯 **Intelligent Detection** - Automatically detects and utilises existing YouTube subtitles.
@@ -77,7 +77,7 @@ This frustration inspired me to create Synbox — a tool that helps fans like me
 
 <h5 align="center">Translation & Annotation</h5>
 <p align="center">
-  <img src="public/assets/showcase/annotation.gif" alt="Annotation Showcase" width="90%">
+  <img src="docs/readme/showcase/annotation.gif" alt="Annotation Showcase" width="90%">
 </p>
 
 📝 **Complete Language Support** - Japanese lyrics are annotated with Romaji and Furigana annotations to provide a tailored viewing experience that meets the needs of diverse users.
@@ -87,7 +87,7 @@ This frustration inspired me to create Synbox — a tool that helps fans like me
 ⚙️ **Customizable Lyrics Overlay** - Adjust the size, position, and appearance of the lyrics overlay to match your preferences and the music video’s styling.
 
 <p align="center">
-  <img src="public/assets/showcase/customize.gif" alt="Customizable Overlay" width="90%">
+  <img src="docs/readme/showcase/customize.gif" alt="Customizable Overlay" width="90%">
 </p>
 
 <p align="center">-</p>
@@ -95,7 +95,7 @@ This frustration inspired me to create Synbox — a tool that helps fans like me
 📌 **History and Bookmarks** - Keep track of your favorite songs with history and bookmark features, ensuring easy access to revisit and enjoy.
 
 <p align="center">
-  <img src="public/assets/showcase/bookmark.png" alt="Bookmark Feature" width="90%">
+  <img src="docs/readme/showcase/bookmark.png" alt="Bookmark Feature" width="90%">
 </p>
 
 ## **Infrastructure / Technologies**
