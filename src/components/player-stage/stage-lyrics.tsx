@@ -111,11 +111,14 @@ const LyricLine = ({
   kind,
   size = LINE_SIZE[kind],
   className,
+  row,
 }: {
   html: string
   kind: keyof typeof LINE_SIZE
   size?: string
   className?: string
+  // Which of a line's rows this is, for the one-line spacing (lyric-line-rows)
+  row?: keyof typeof LINE_SIZE
 }) => {
   const segments = useMemo(() => parseRubyHtml(html), [html])
   const latin = kind !== 'japanese' || isLatinOnly(html)
@@ -123,6 +126,7 @@ const LyricLine = ({
     <p
       key={html}
       data-bench='lyrics-line'
+      data-row={row}
       ref={balanceWrap}
       className={cn(
         'lyric-text-line mx-auto text-center',
@@ -176,36 +180,56 @@ const LineRows = ({
   shown: ShownRows
   sizes: LineSizes
   track: (handle: KaraokeLineHandle | null) => () => void
-}) => (
-  <>
-    {shown.lyrics &&
-      (karaokeLine ? (
-        <div className={cn('text-center', sizes.japanese)}>
-          <KaraokeLine key={lineKey} ref={track} line={karaokeLine} />
-        </div>
-      ) : (
-        <LyricLine html={text} kind='japanese' size={sizes.japanese} />
-      ))}
-    {shown.romaji &&
-      (karaokeLine ? (
-        <div className={cn('text-center', sizes.romaji)}>
-          <KaraokeRomajiLine key={lineKey} ref={track} line={karaokeLine} />
-        </div>
-      ) : (
-        romaji &&
-        !sameText(romaji, text) && (
-          <LyricLine html={romaji} kind='romaji' size={sizes.romaji} />
-        )
-      ))}
-    {shown.translation && translation && !sameText(translation, text) && (
-      <LyricLine
-        html={translation}
-        kind='translation'
-        size={sizes.translation}
-      />
-    )}
-  </>
-)
+}) => {
+  // One line tags its rows for its own spacing (lyric-line-rows); two lines space theirs as they are
+  const rowOf = (row: keyof typeof LINE_SIZE) =>
+    sizes === LINE_SIZE ? row : undefined
+  return (
+    <>
+      {shown.lyrics &&
+        (karaokeLine ? (
+          <div
+            data-row={rowOf('japanese')}
+            className={cn('text-center', sizes.japanese)}>
+            <KaraokeLine key={lineKey} ref={track} line={karaokeLine} />
+          </div>
+        ) : (
+          <LyricLine
+            html={text}
+            kind='japanese'
+            size={sizes.japanese}
+            row={rowOf('japanese')}
+          />
+        ))}
+      {shown.romaji &&
+        (karaokeLine ? (
+          <div
+            data-row={rowOf('romaji')}
+            className={cn('text-center', sizes.romaji)}>
+            <KaraokeRomajiLine key={lineKey} ref={track} line={karaokeLine} />
+          </div>
+        ) : (
+          romaji &&
+          !sameText(romaji, text) && (
+            <LyricLine
+              html={romaji}
+              kind='romaji'
+              size={sizes.romaji}
+              row={rowOf('romaji')}
+            />
+          )
+        ))}
+      {shown.translation && translation && !sameText(translation, text) && (
+        <LyricLine
+          html={translation}
+          kind='translation'
+          size={sizes.translation}
+          row={rowOf('translation')}
+        />
+      )}
+    </>
+  )
+}
 
 // The least a two-line row's type shrinks to, as a share of its size, when its line runs long
 const ROW_FIT_FLOOR = 0.6

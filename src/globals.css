@@ -705,6 +705,20 @@
   }
 }
 
+/* One line's rows: the Japanese line's double leading (room for furigana when it wraps) leaves about half its
+   size free below it, so its romaji sat further from it (8px at 1440) than from the translation (3px). The romaji
+   moves up into that room and the translation down by as much (0.25em of the romaji, 0.29em of the translation,
+   both 5px of a 24.6px line), so the block keeps its height. Not on the Box backdrop, whose boxes would overlap */
+.player-lyrics-overlay:not([data-backdrop='box']) {
+  & [data-row='japanese'] + [data-row='romaji'] {
+    margin-top: -0.25em;
+  }
+
+  & [data-row='japanese'] + [data-row='romaji'] + [data-row='translation'] {
+    margin-top: 0.29em;
+  }
+}
+
 /* Between the two rows of the two-line karaoke layout: a share of the lyric size, so each line's romaji and
    translation read as its own at every size */
 @utility lyric-rows-gap {
