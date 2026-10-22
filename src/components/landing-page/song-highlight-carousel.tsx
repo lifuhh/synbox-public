@@ -2,11 +2,11 @@ import { ChevronLeftIcon, ChevronRightIcon, PlayIcon } from 'lucide-react'
 import { useState } from 'react'
 import { Link } from 'react-router'
 
+import { EditRecommendations } from '@/components/admin/edit-recommendations'
 import {
   KaraokeLabelMark,
   KaraokeTitleIconMark,
 } from '@/components/shared/karaoke-badge'
-import { EditRecommendations } from '@/components/admin/edit-recommendations'
 import LoadError from '@/components/shared/load-error'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'

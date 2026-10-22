@@ -62,7 +62,9 @@ const LibrarySearch = ({
         autoComplete='off'
         aria-label='Search Our Songs'
         placeholder={
-          isPending ? 'Loading our songs…' : 'Search our songs by title or artist'
+          isPending
+            ? 'Loading our songs…'
+            : 'Search our songs by title or artist'
         }
         value={query}
         className='h-10'
@@ -107,7 +109,9 @@ const LibrarySearch = ({
                     variant='outline'
                     size='sm'
                     disabled={added || full}
-                    aria-label={added ? `Added: ${song.title}` : `Add: ${song.title}`}
+                    aria-label={
+                      added ? `Added: ${song.title}` : `Add: ${song.title}`
+                    }
                     onClick={() => {
                       onAdd({
                         author: song.author,

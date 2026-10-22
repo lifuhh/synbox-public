@@ -43,7 +43,8 @@ export const EditRecommendations = () => {
           <DialogHeader>
             <DialogTitle>Edit Recommendations</DialogTitle>
             <DialogDescription>
-              Add songs from our library, drag them into order, then save. Each visitor sees the list shuffled.
+              Add songs from our library, drag them into order, then save. Each
+              visitor sees the list shuffled.
             </DialogDescription>
           </DialogHeader>
           {open && (
