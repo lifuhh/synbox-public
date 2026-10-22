@@ -61,7 +61,7 @@ const DropdownMenuItemRender: React.ForwardRefRenderFunction<
     ref={ref}
     // rounded-lg: the menu's 12px corners less its 4px padding, so a highlighted row nests in them
     className={cn(
-      'relative flex cursor-default items-center rounded-lg px-2 py-1.5 text-sm outline-hidden transition-colors select-none focus:bg-accent focus:text-accent-foreground data-disabled:pointer-events-none data-disabled:opacity-50',
+      'relative flex cursor-pointer items-center rounded-lg px-2 py-1.5 text-sm outline-hidden transition-colors select-none focus:bg-accent focus:text-accent-foreground data-disabled:pointer-events-none data-disabled:opacity-50',
       inset === true && 'pl-8',
       dropdownMenuItemVariants({ variant }),
       className

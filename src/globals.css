@@ -997,9 +997,26 @@
     user-select: text;
   }
 
-  /* Tailwind v4 resets buttons to cursor: default; this keeps the v3 pointer */
-  button:not(:disabled),
-  [role='button']:not(:disabled) {
+  /* Tailwind v4 resets buttons to cursor: default; this keeps the v3 pointer, for every control a press acts on:
+     buttons, menu rows, list options, tabs, radios, switches and checkboxes, a slider's knob, a summary and a
+     label for a control. Not when disabled */
+  :is(
+    button,
+    summary,
+    select,
+    label[for],
+    input:is([type='checkbox'], [type='radio'], [type='range'], [type='color']),
+    [role='button'],
+    [role='menuitem'],
+    [role='menuitemradio'],
+    [role='menuitemcheckbox'],
+    [role='option'],
+    [role='tab'],
+    [role='radio'],
+    [role='switch'],
+    [role='checkbox'],
+    [role='slider']
+  ):not(:disabled, [aria-disabled='true'], [data-disabled]) {
     cursor: pointer;
   }
 }
