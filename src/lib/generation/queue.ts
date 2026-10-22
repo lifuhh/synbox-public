@@ -73,6 +73,8 @@ export type Command =
   | { type: 'cancel'; id: string }
   // Clears a finished song
   | { type: 'dismiss'; id: string }
+  // Clears every finished song
+  | { type: 'dismiss-all' }
   // Every finished song was on screen
   | { type: 'seen' }
 
@@ -111,6 +113,9 @@ export const applyCommand = (
       return jobs.some((job) => job.id === command.id && !isActive(job))
         ? jobs.filter((job) => job.id !== command.id)
         : jobs
+    }
+    case 'dismiss-all': {
+      return jobs.some((job) => !isActive(job)) ? jobs.filter(isActive) : jobs
     }
     case 'seen': {
       return jobs.some((job) => !isActive(job) && !job.seen)

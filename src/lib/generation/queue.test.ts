@@ -93,3 +93,23 @@ test('a song added from two tabs at once runs once, behind the songs already in 
   })
   expect(jobs.map(({ id }) => id)).toEqual(['a', 'b', 'x', 'g'])
 })
+
+test('Dismiss All clears finished and failed songs and keeps the ones still going', () => {
+  const failed: JobStatus = {
+    at: NOW,
+    code: undefined,
+    kind: 'failed',
+    message: 'x',
+    retry: true,
+  }
+  const jobs = [
+    job('a', 'v1', done(1)),
+    job('b', 'v2', { kind: 'running', phase: 'transcribe' }),
+    job('c', 'v3', failed),
+    job('d', 'v4', { kind: 'waiting' }),
+  ]
+  const kept = applyCommand(jobs, { type: 'dismiss-all' })
+  expect(kept.map(({ id }) => id)).toEqual(['b', 'd'])
+  // Nothing left to clear: the same list back, so no tab saves or re-renders for it
+  expect(applyCommand(kept, { type: 'dismiss-all' })).toBe(kept)
+})
