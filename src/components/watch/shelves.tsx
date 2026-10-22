@@ -101,21 +101,25 @@ const Shelf = ({ title, songs }: { title: string; songs: ListSong[] }) => {
 const SongShelf = ({ title, songs }: { title: string; songs: ListSong[] }) =>
   songs.length === 0 ? null : <Shelf title={title} songs={songs} />
 
-// The rows under More Like This: the artist's other songs, then what this device played lately
+// The rows under the song: songs like it past the ones in Up Next, the artist's other songs, then what this device
+// played lately
 export const Shelves = ({
   videoId,
+  similar,
   className,
 }: {
   videoId: string
+  similar: ListSong[]
   className?: string
 }) => {
   const { artist, songs: fromArtist } = useArtistSongs(videoId)
   const recent = useRecentlyPlayed(videoId)
-  if (fromArtist.length === 0 && recent.length === 0) {
+  if (similar.length === 0 && fromArtist.length === 0 && recent.length === 0) {
     return null
   }
   return (
     <div className={cn('flex flex-col gap-6', className)}>
+      <SongShelf title='More Like This' songs={similar} />
       <SongShelf title={`More From ${artist}`} songs={fromArtist} />
       <SongShelf title='Recently Played' songs={recent} />
     </div>

@@ -8,7 +8,6 @@ import { useMediaQuery } from '@/hooks/use-media-query'
 import { useNextList } from '@/lib/listening/recommendations'
 
 import { LyricsPanel } from './lyrics-panel'
-import { MoreLikeThis } from './more-like-this'
 import { Shelves } from './shelves'
 import { UP_NEXT_COUNT, UpNext } from './up-next'
 
@@ -82,8 +81,7 @@ const NarrowBelow = ({
           <SongInfo compact />
           <div className='pb-6'>
             <UpNext videoId={videoId} autoplaySwitch />
-            <MoreLikeThis songs={more} className='mt-6 px-2' />
-            <Shelves videoId={videoId} className='mt-6 px-2' />
+            <Shelves videoId={videoId} similar={more} className='mt-6 px-2' />
           </div>
         </div>
       </div>
@@ -91,8 +89,8 @@ const NarrowBelow = ({
   )
 }
 
-// From 1000px wide: the lyrics beside the video (under it in Theater), the song, More Like This and its rows under the
-// video, Up Next in the right-hand column
+// From 1000px wide: the lyrics beside the video (under it in Theater), the song and its rows (More Like This first)
+// under the video, Up Next in the right-hand column
 const WideBelow = ({
   videoId,
   version,
@@ -119,8 +117,7 @@ const WideBelow = ({
         {theater && (
           <LyricsPanel videoId={videoId} version={version} className='h-112' />
         )}
-        <MoreLikeThis songs={more} />
-        <Shelves videoId={videoId} />
+        <Shelves videoId={videoId} similar={more} />
       </div>
       <div className='watch-next pb-8'>
         <UpNext videoId={videoId} autoplaySwitch={false} large />

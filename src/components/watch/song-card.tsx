@@ -11,7 +11,9 @@ import { cn } from '@/utils/cn'
 
 import { SongMenu } from './song-menu'
 
-// A picture-first song card (the gallery's), with its menu: More Like This's grid and the rows under it
+// A picture-first song card (the gallery's), with its menu: the rows under the song on the watch page
+// Positioned so its sr-only title stays inside a row's scroll box: unpositioned, the title escaped the row's clip and
+// widened the page by the row's hidden cards
 export const SongCard = ({
   song,
   className,
@@ -19,7 +21,7 @@ export const SongCard = ({
   song: ListSong
   className?: string
 }) => (
-  <li className={cn('flex min-w-0 flex-col', className)}>
+  <li className={cn('relative flex min-w-0 flex-col', className)}>
     <Link
       to={songPath(song.videoId)}
       state={{ videoId: song.videoId }}
