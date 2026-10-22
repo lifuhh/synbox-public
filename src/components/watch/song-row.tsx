@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { Link } from 'react-router'
 
 import {
-  KaraokeEdgeMark,
+  KaraokeThumbBadgeMark,
   KaraokeLabelMark,
 } from '@/components/shared/karaoke-badge'
 import type { ListSong } from '@/lib/listening/model'
@@ -57,7 +57,7 @@ export const SongRow = ({
           decoding='async'
           className='size-full rounded-inherit object-cover'
         />
-        <KaraokeEdgeMark videoId={song.videoId} />
+        <KaraokeThumbBadgeMark videoId={song.videoId} />
       </span>
       <span
         className={cn(

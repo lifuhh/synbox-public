@@ -3,7 +3,7 @@ import type React from 'react'
 import { Link } from 'react-router'
 
 import {
-  KaraokeEdgeMark,
+  KaraokeThumbBadgeMark,
   KaraokeLabelMark,
 } from '@/components/shared/karaoke-badge'
 import LoadError from '@/components/shared/load-error'
@@ -57,7 +57,7 @@ const SongRow = ({ rank, song }: SongRowProps) => (
           decoding='async'
           className='size-full rounded-sm object-cover'
         />
-        <KaraokeEdgeMark videoId={song.vidURL} />
+        <KaraokeThumbBadgeMark videoId={song.vidURL} />
       </span>
       <span className='line-clamp-2 min-w-0 flex-1 text-sm leading-5 text-pretty'>
         {song.title}

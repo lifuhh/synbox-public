@@ -1,7 +1,6 @@
 import { MicVocalIcon } from 'lucide-react'
 
 import { useHasKaraoke } from '@/lib/react-query/queries-and-mutations'
-import type { CssVars } from '@/types'
 import { cn } from '@/utils/cn'
 
 // Marks a song whose lyrics are timed word by word, so the player fills them as they are sung. Every other
@@ -15,23 +14,19 @@ export const KaraokeBadge = ({ className }: { className?: string }) => (
   </span>
 )
 
-// The mic's box, and how far the traced corner runs along each edge
-const EDGE: CssVars = { '--mic': '1rem', '--reach': '1.5rem' }
-const SMALL_EDGE: CssVars = { '--mic': '0.75rem', '--reach': '1rem' }
-
-// The same mark on a list row's thumbnail: the thumbnail's own top-right corner traced in the accent, along
-// the top edge, round the curve and down the right edge, fading out both ways, with the mic just outside the
-// corner, its handle on the curve. The trace takes the thumbnail's radius (border-radius: inherit), so it follows the curve exactly.
-// Laid over the thumbnail, which must not clip it: the thumbnail rounds its own picture instead of hiding
-// its overflow. `small` for the saved menu's 80px thumbnails
-export const KaraokeEdge = ({ small = false }: { small?: boolean }) => (
+// The same mark on a list row's thumbnail: the mic alone in the picture's bottom-left corner, on a small dark
+// disc so it reads on any picture. `small` for the saved menu's 80px thumbnails. The thumbnail must be positioned
+export const KaraokeThumbBadge = ({ small = false }: { small?: boolean }) => (
   <span
     aria-hidden
     data-karaoke-badge
-    style={small ? SMALL_EDGE : EDGE}
-    className='pointer-events-none absolute inset-0 rounded-inherit'>
-    <span className='absolute -top-px -right-px size-(--reach) rounded-tr-inherit border-t-2 border-r-2 border-primary [mask-image:linear-gradient(to_bottom_left,#000_45%,transparent)]' />
-    <MicVocalIcon className='absolute -top-[calc(var(--mic)*0.62)] -right-[calc(var(--mic)*0.62)] size-(--mic) text-primary-text drop-shadow-sm' />
+    className={cn(
+      'pointer-events-none absolute flex items-center justify-center rounded-full bg-black/70',
+      small ? 'bottom-1 left-1 size-4' : 'bottom-1.5 left-1.5 size-5'
+    )}>
+    <MicVocalIcon
+      className={cn('text-primary-text', small ? 'size-2.5' : 'size-3')}
+    />
   </span>
 )
 
@@ -57,13 +52,13 @@ export const KaraokeLabel = () => (
 export const KaraokeLabelMark = ({ videoId }: { videoId: string }) =>
   useHasKaraoke(videoId) ? <KaraokeLabel /> : null
 
-export const KaraokeEdgeMark = ({
+export const KaraokeThumbBadgeMark = ({
   videoId,
   small,
 }: {
   videoId: string
   small?: boolean
-}) => (useHasKaraoke(videoId) ? <KaraokeEdge small={small} /> : null)
+}) => (useHasKaraoke(videoId) ? <KaraokeThumbBadge small={small} /> : null)
 
 export const KaraokePictureBadgeMark = ({ videoId }: { videoId: string }) =>
   useHasKaraoke(videoId) ? <KaraokePictureBadge /> : null
