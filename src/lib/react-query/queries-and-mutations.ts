@@ -1,3 +1,4 @@
+import type { QueryClient } from '@tanstack/react-query'
 import { queryOptions, useMutation, useQuery } from '@tanstack/react-query'
 
 import type { CurrentPlayingInfo } from '@/types'
@@ -54,6 +55,26 @@ const librarySongs = queryOptions({
 export const useGallerySongs = () => {
   const query = useQuery(librarySongs)
   return { ...query, songs: query.data ?? [] }
+}
+
+// The lookup service learns of a saved song at its next library refresh (up to 10 minutes, then the edge's
+// copy), and this list is read once a visit, so a finished run puts its song in the list itself
+export const setLibrarySong = (
+  queryClient: QueryClient,
+  song: LibraryListSong
+) => {
+  queryClient.setQueryData(librarySongs.queryKey, (songs) => {
+    if (songs === undefined) {
+      return songs
+    }
+    return songs.some((listed) => listed.videoId === song.videoId)
+      ? songs.map((listed) =>
+          listed.videoId === song.videoId
+            ? { ...listed, karaoke: song.karaoke }
+            : listed
+        )
+      : [...songs, song]
+  })
 }
 
 const karaokeIds = (songs: LibraryListSong[]) =>
