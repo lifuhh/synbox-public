@@ -356,10 +356,9 @@
 }
 
 /* The watch page's lyrics: the reader's type and karaoke fill on the app's own surface, the Japanese in the
-   accent and the romaji in the page's ink */
+   lyrics colour (LyricsPanel sets --reader-accent from Lyrics Style) and the romaji in the page's ink */
 @utility lyrics-sheet {
   --reader-fg: var(--foreground);
-  --reader-accent: var(--primary-text);
   --reader-muted: var(--muted-foreground);
   --reader-scale: 1;
   --furigana-size: 0.5em;

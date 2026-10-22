@@ -10,6 +10,8 @@ import { lineReached } from '@/components/offline/use-silent-playback'
 import { parseLyricsText } from '@/components/player-stage/stage-lyrics'
 import { Button } from '@/components/ui/button'
 import {
+  lyricsCustomHueAtom,
+  lyricsThemeIdAtom,
   lyricsVisibilityAtom,
   romajiVisibilityAtom,
   stageClockAtom,
@@ -18,6 +20,7 @@ import {
 } from '@/context/atoms'
 import { currentLineIndex, karaokeMatchesLyrics } from '@/lib/karaoke'
 import { parseLyricsDocument } from '@/lib/lyrics-document'
+import { getLyricsThemeColors } from '@/lib/lyrics-themes'
 import type { OfflineLine } from '@/lib/offline/song'
 import { offlineLines } from '@/lib/offline/song'
 import {
@@ -25,6 +28,7 @@ import {
   useGetLyricsBySongId,
   useGetLyricsVersion,
 } from '@/lib/react-query/queries-and-mutations'
+import type { CssVars } from '@/types'
 import { cn } from '@/utils/cn'
 
 // The overlay's lead over the player's clock (stage-lyrics), so the panel and the video agree
@@ -78,6 +82,12 @@ export const LyricsPanel = ({
 }) => {
   const { lines, loading } = useSongLines(videoId, version)
   const clock = useAtomValue(stageClockAtom)
+  // The Japanese and the karaoke fill take the lyrics colour (Lyrics Style), as the lyrics over the video do
+  const { accent } = getLyricsThemeColors(
+    useAtomValue(lyricsThemeIdAtom),
+    useAtomValue(lyricsCustomHueAtom)
+  )
+  const sheetVars: CssVars = { '--reader-accent': accent }
   const show: LineShow = {
     bold: false,
     japanese: useAtomValue(lyricsVisibilityAtom),
@@ -151,6 +161,7 @@ export const LyricsPanel = ({
     <section
       aria-labelledby={heading ? 'lyrics-panel-title' : undefined}
       aria-label={heading ? undefined : 'Lyrics'}
+      style={sheetVars}
       className={cn(
         'relative page-ruby flex min-h-0 flex-col overflow-hidden rounded-2xl bg-card text-(--reader-fg) lyrics-sheet',
         !heading && 'pt-3',
