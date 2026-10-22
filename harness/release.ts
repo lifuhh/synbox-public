@@ -102,7 +102,31 @@ const gatePaths = (dir: string): string[] => {
   return isRecord(config) && Array.isArray(config.paths) ? config.paths.filter((p) => typeof p === 'string') : []
 }
 
-// The gate's verdict for staging's tree, running the gate first when there is none
+const isVerdict = (v: unknown): v is { status: string; summary: string } =>
+  isRecord(v) && v.schema === 'harness/verdict@1' && typeof v.status === 'string'
+
+// The verdict that covers staging: its own tree's, or that of the newest commit before it (first parent) after
+// which nothing the gate measures changed. So merging harness or docs work on top of a gated tree needs no
+// second gate run; any measured change does
+const coveringVerdict = (dir: string, paths: string[]) => {
+  const inDir = (...args: string[]) => run('git', ['-C', dir, ...args], dir)
+  for (const sha of inDir('rev-list', '--first-parent', '--max-count=50', 'HEAD').split('\n')) {
+    const tree = inDir('rev-parse', `${sha}^{tree}`)
+    const file = path.join(storeDir(here, 'verdicts'), `${tree}.json`)
+    if (existsSync(file)) {
+      const measured = inDir('diff', '--name-only', sha, 'HEAD')
+        .split('\n')
+        .filter(Boolean)
+        .filter((f) => paths.some((p) => f === p || f.startsWith(p)))
+      return measured.length === 0
+        ? { from: sha, verdict: parseJson(readFileSync(file, 'utf-8'), isVerdict, file) }
+        : null
+    }
+  }
+  return null
+}
+
+// The gate's verdict for staging, running the gate first when no verdict covers it
 const ensureVerdict = (dir: string) => {
   const changed = git('diff', '--name-only', 'origin/main', `origin/${STAGING}`).split('\n').filter(Boolean)
   const paths = gatePaths(dir)
@@ -110,11 +134,15 @@ const ensureVerdict = (dir: string) => {
     say('gate: staging changes nothing the gate measures')
     return
   }
-  const repo = repoAt(dir)
-  let verdict = readVerdict(repo)
+  const covering = coveringVerdict(dir, paths)
+  let verdict = covering?.verdict ?? null
+  if (covering !== null) {
+    say(`gate: reusing the verdict for ${covering.from.slice(0, 8)}; nothing it measures changed since`)
+  }
   if (verdict === null) {
+    const repo = repoAt(dir)
     if (flags['dry-run'] === true) {
-      say(`gate: no verdict yet for staging's tree ${repo.tree.slice(0, 8)}; a release runs it (about 8 minutes)`)
+      say(`gate: no verdict covers staging's tree ${repo.tree.slice(0, 8)}; a release runs it (about 8 minutes)`)
       return
     }
     say('gate: running on staging (keep the machine idle)')
