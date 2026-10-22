@@ -8,6 +8,8 @@ export const TAP_SEEK_SEC = 10
 const DOUBLE_TAP_MS = 280
 // Taps that follow a double tap within this long keep seeking the same way
 const STREAK_MS = 700
+// A tap passed on from the lyrics may also reach the stage as the browser's own click, straight after
+const FORWARDED_CLICK_MS = 100
 
 type Side = 'back' | 'forward'
 
@@ -95,16 +97,20 @@ export const useStageTaps = ({
     }, STREAK_MS)
   }
 
-  const onPointerDown = (event: PointerEvent<HTMLElement>) => {
-    pointerRef.current = event.pointerType
-    if (event.pointerType === 'mouse' || showCover) {
+  const press = (pointerType: string, across: number) => {
+    pointerRef.current = pointerType
+    if (pointerType === 'mouse' || showCover) {
       intentRef.current = 'toggle'
     } else {
       intentRef.current = controlsVisible ? 'hide' : 'reveal'
     }
-    sideRef.current = sideAt(fractionAcross(event, event.currentTarget))
+    sideRef.current = sideAt(across)
+  }
+  const onPointerDown = (event: PointerEvent<HTMLElement>) => {
+    press(event.pointerType, fractionAcross(event, event.currentTarget))
   }
 
+  const forwardedAt = useRef(0)
   const onClick = () => {
     const side = sideRef.current
     if (pointerRef.current === 'mouse' || side === null) {
@@ -143,5 +149,23 @@ export const useStageTaps = ({
     }
   }
 
-  return { flash, handlers: { onClick, onDoubleClick, onPointerDown } }
+  // A tap that landed on something over the stage (the lyrics) and is passed on to it: `press` as it lands,
+  // while the controls still show what was there before it, with how far across the stage (0 to 1), and
+  // `forward` once it lifts without dragging
+  const forward = () => {
+    forwardedAt.current = performance.now()
+    onClick()
+  }
+  const onStageClick = () => {
+    if (performance.now() - forwardedAt.current >= FORWARDED_CLICK_MS) {
+      onClick()
+    }
+  }
+
+  return {
+    flash,
+    forward,
+    handlers: { onClick: onStageClick, onDoubleClick, onPointerDown },
+    press,
+  }
 }

@@ -424,9 +424,8 @@
   top: var(--topbar-shown-h);
   /* Over the status bar scrim (z-40), whose fade would otherwise dim the row's top; under the bar (z-50) */
   z-index: 45;
-  transition:
-    top 300ms ease-out,
-    background-color 200ms;
+  /* The background comes in at once when it sticks: faded in, the cards showed through it for 200ms of a fling */
+  transition: top 300ms ease-out;
 
   &[data-stuck] {
     background-color: var(--background);
@@ -774,10 +773,10 @@
   container-type: size;
 }
 
-/* The lyrics under the video on a phone: about half of what is left under it (four or five sung lines on an
-   iPhone), never so little that the line being sung has no room, nor so much that the song's buttons can't peek */
+/* The lyrics under the video on a phone: most of what is left under it (five or six sung lines on an iPhone),
+   never so little that the line being sung has no room, nor so much that the song's title and buttons can't peek */
 @utility watch-lyrics-under {
-  height: clamp(11rem, 52cqh, 30rem);
+  height: clamp(11rem, 62cqh, 34rem);
 }
 
 @utility watch-side {

@@ -290,18 +290,19 @@ const ReaderPage = () => {
   const timed = song?.version === OFFLINE_SONG_VERSION
   const synced = timed && prefs.mode === 'synced'
   const {
-    active,
+    lit,
     duration,
     following,
     karaokeLines,
     playback,
     playedTime,
     blocks,
+    content,
     scroller,
+    follow,
+    followHandlers,
     seek,
-    setFollowing,
     togglePlay,
-    userScrolled,
   } = useSyncedLyrics(song?.lines ?? NO_LINES, synced)
   const {
     barsShown,
@@ -353,9 +354,11 @@ const ReaderPage = () => {
 
       <div
         ref={scroller}
-        onScroll={onScroll}
-        onWheel={userScrolled}
-        onTouchMove={userScrolled}
+        {...followHandlers}
+        onScroll={(event) => {
+          onScroll(event)
+          followHandlers.onScroll()
+        }}
         className={cn(
           'flex-1 overflow-y-auto overscroll-contain scroll-auto pt-reader-top pr-(--safe-right) pl-(--safe-left)',
           synced && 'pb-reader-follow',
@@ -364,6 +367,7 @@ const ReaderPage = () => {
         {song ? (
           // oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions -- a tap anywhere toggles the bars; every control is also a button in them
           <article
+            ref={content}
             onClick={onPageTap}
             className='mx-auto max-w-xl px-5 font-reader'>
             <header className='pb-5'>
@@ -384,7 +388,7 @@ const ReaderPage = () => {
                 line={line}
                 first={index === 0}
                 synced={synced}
-                dimmed={started && index !== active}
+                dimmed={started && index !== lit}
                 blockRef={(element) => {
                   blocks.current[index] = element
                 }}
@@ -404,9 +408,7 @@ const ReaderPage = () => {
         typeOpen={typeOpen}
         synced={synced}
         following={following}
-        onFollow={() => {
-          setFollowing(true)
-        }}
+        onFollow={follow}
         time={playedTime}
         duration={duration}
         playing={playback.playing}

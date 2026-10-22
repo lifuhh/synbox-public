@@ -296,11 +296,30 @@ const StageCover = ({
   )
 }
 
+// Whether this browser has already been told how Full Screen works on an iPhone; marks it told
+const FULL_SCREEN_TIP_KEY = 'synboxFullScreenTip'
+const fullScreenTipSeen = () => {
+  try {
+    if (localStorage.getItem(FULL_SCREEN_TIP_KEY) !== null) {
+      return true
+    }
+    localStorage.setItem(FULL_SCREEN_TIP_KEY, '1')
+  } catch {
+    // Storage blocked: tell them every time, as before
+  }
+  return false
+}
+
 export interface StageLayout {
   // While true the floating UI covers --stage-chrome-h of the stage's bottom edge
   controlsVisible: boolean
   // Controls stay hidden while dragging, so the drop position is the real one
   onDragChange: (dragging: boolean) => void
+  // A finger's tap on the lyrics, passed on to the stage as if it had landed on the video: pressStage as it
+  // lands, tapStage when it lifts without a drag
+  // `across`: how far across the stage it landed, 0 to 1
+  pressStage: (pointerType: string, across: number) => void
+  tapStage: () => void
 }
 
 interface PlayerStageProps {
@@ -404,23 +423,12 @@ export const PlayerStage = ({
     },
     [setChromeOpen]
   )
-  const layout: StageLayout = {
-    controlsVisible,
-    onDragChange: (next) => {
-      setDragging(next)
-      // After a drop, keep the controls away until the pointer moves again
-      if (!next) {
-        sleep()
-      }
-    },
-  }
-
   // The whole page goes fullscreen, not just the stage, so the rail and the controls stay in reach.
   // The player turns with the phone either way round, unless Lock Landscape holds it on its side
   const toggleFullscreen = () => {
     if (!document.fullscreenEnabled) {
-      // In Safari, unlike the Home Screen app, the browser's own bars stay; say how to lose them
-      if (!immersive && !isStandalone()) {
+      // In Safari, unlike the Home Screen app, the browser's own bars stay; say how to lose them, once
+      if (!immersive && !isStandalone() && !fullScreenTipSeen()) {
         toast({
           description:
             'Add Synbox to your Home Screen (Share › Add to Home Screen) to hide Safari’s bars too.',
@@ -449,6 +457,18 @@ export const PlayerStage = ({
     toggleFullscreen,
     togglePlay: player.togglePlay,
   })
+  const layout: StageLayout = {
+    controlsVisible,
+    onDragChange: (next) => {
+      setDragging(next)
+      // After a drop, keep the controls away until the pointer moves again
+      if (!next) {
+        sleep()
+      }
+    },
+    pressStage: taps.press,
+    tapStage: taps.forward,
+  }
 
   useEffect(() => (immersive ? markImmersive() : undefined), [immersive])
 

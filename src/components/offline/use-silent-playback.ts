@@ -25,7 +25,10 @@ const readClock = (clock: Clock) =>
     : clock.time
 
 // The last line whose lead-in has begun: where the page stays scrolled through an instrumental gap
-const lineReached = (lines: readonly { start: number }[], time: number) => {
+export const lineReached = (
+  lines: readonly { start: number }[],
+  time: number
+) => {
   let reached = 0
   for (const [index, line] of lines.entries()) {
     if (line.start - 0.5 <= time) {

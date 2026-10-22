@@ -70,8 +70,8 @@ const LineRomaji = ({
   )
 }
 
-// One sung line as a block: the Japanese, its romaji, then the translation. Synced, a tap seeks to it, the
-// line being sung is the bright one, and its Japanese and romaji fill as they are sung
+// One sung line as a block: the Japanese, its romaji, then the translation. Synced, a tap on its text seeks to
+// it, the line being sung is the bright one, and its Japanese and romaji fill as they are sung
 export interface LineShow {
   japanese: boolean
   romaji: boolean
@@ -125,7 +125,10 @@ export const LyricLineBlock = ({
       className={cn(
         'grid gap-y-0.5 pb-reader-line transition-opacity duration-300',
         line.stanza && !first && 'pt-reader-stanza',
-        synced && 'cursor-pointer',
+        // Only the drawn text seeks: a thumb landing beside or between lines while scrolling must not jump
+        // the song
+        synced &&
+          'pointer-events-none justify-items-start *:pointer-events-auto *:cursor-pointer',
         dimmed && 'opacity-40'
       )}>
       {source && (

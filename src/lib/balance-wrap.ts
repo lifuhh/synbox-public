@@ -21,7 +21,12 @@ const keepBalanced = (element: HTMLElement) => {
     while (wide - narrow > 1) {
       const middle = (narrow + wide) / 2
       style.maxInlineSize = `${middle}px`
-      if (element.offsetHeight > lineAdded) {
+      // Too narrow once a line is added, or once a word that can't break sticks out of the box: a one-word
+      // line never gains a row, and squeezed to nothing it would start at the centre and run off to the right
+      if (
+        element.offsetHeight > lineAdded ||
+        element.scrollWidth > element.clientWidth
+      ) {
         narrow = middle
       } else {
         wide = middle
