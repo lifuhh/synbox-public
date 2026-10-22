@@ -1,5 +1,5 @@
 import { useAtom, useAtomValue, useSetAtom } from 'jotai'
-import { MinusIcon, PlusIcon, XIcon } from 'lucide-react'
+import { CheckIcon, MinusIcon, PlusIcon, XIcon } from 'lucide-react'
 import { useId, useState } from 'react'
 
 import {
@@ -7,6 +7,7 @@ import {
   applySongLyricsStyleToAllAtom,
   deleteLyricsTemplateAtom,
   lyricsScreenSizesAtom,
+  lyricsStyleAtom,
   lyricsStyleScopeAtom,
   lyricsStyleSourceAtom,
   lyricsTemplatesAtom,
@@ -21,6 +22,7 @@ import {
   SCREEN_SIZE_MAX,
   SCREEN_SIZE_MIN,
   TEMPLATE_NAME_MAX,
+  sameSavedLyricsStyle,
 } from '@/lib/lyrics-style'
 import { cn } from '@/utils/cn'
 
@@ -176,9 +178,10 @@ export const ScreenSizeTweak = () => {
 }
 
 // Named styles to reuse on any song. A pick applies where changes go (this song, or every song) and closes
-// the panel, like the colour presets
+// the panel, like the colour presets. The one on screen shows as picked, as the colour tiles do
 export const MyStyles = ({ onApplied }: { onApplied: () => void }) => {
   const templates = useAtomValue(lyricsTemplatesAtom)
+  const current = useAtomValue(lyricsStyleAtom)
   const apply = useSetAtom(applyLyricsTemplateAtom)
   const remove = useSetAtom(deleteLyricsTemplateAtom)
   const save = useSetAtom(saveLyricsTemplateAtom)
@@ -196,30 +199,43 @@ export const MyStyles = ({ onApplied }: { onApplied: () => void }) => {
       <h3 className={SECTION_HEADING}>My Styles</h3>
       {templates.length > 0 && (
         <ul className='flex flex-wrap gap-1.5'>
-          {templates.map((template) => (
-            <li
-              key={template.id}
-              className='flex items-center rounded-full bg-secondary'>
-              <button
-                type='button'
-                onClick={() => {
-                  apply(template.id)
-                  onApplied()
-                }}
-                className='max-w-40 truncate rounded-full py-1.5 pr-1 pl-3 text-xs font-medium text-foreground transition-colors hover:text-primary-text focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-hidden touch:py-2.5 touch:text-sm'>
-                {template.name}
-              </button>
-              <button
-                type='button'
-                aria-label={`Delete ${template.name}`}
-                onClick={() => {
-                  remove(template.id)
-                }}
-                className='flex size-7 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-hidden touch:size-10'>
-                <XIcon className='size-3.5 shrink-0' />
-              </button>
-            </li>
-          ))}
+          {templates.map((template) => {
+            const selected = sameSavedLyricsStyle(template.style, current)
+            return (
+              <li
+                key={template.id}
+                className={cn(
+                  'flex items-center rounded-full ring-2 transition-colors',
+                  selected
+                    ? 'bg-accent ring-foreground'
+                    : 'bg-secondary ring-transparent'
+                )}>
+                <button
+                  type='button'
+                  aria-pressed={selected}
+                  onClick={() => {
+                    apply(template.id)
+                    onApplied()
+                  }}
+                  className={cn(
+                    'flex max-w-40 items-center gap-1 rounded-full py-1.5 pr-1 text-xs font-medium text-foreground transition-colors hover:text-primary-text focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-hidden touch:py-2.5 touch:text-sm',
+                    selected ? 'pl-2' : 'pl-3'
+                  )}>
+                  {selected && <CheckIcon className='size-3.5 shrink-0' />}
+                  <span className='truncate'>{template.name}</span>
+                </button>
+                <button
+                  type='button'
+                  aria-label={`Delete ${template.name}`}
+                  onClick={() => {
+                    remove(template.id)
+                  }}
+                  className='flex size-7 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-hidden touch:size-10'>
+                  <XIcon className='size-3.5 shrink-0' />
+                </button>
+              </li>
+            )
+          })}
         </ul>
       )}
       {naming ? (
