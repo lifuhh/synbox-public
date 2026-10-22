@@ -1,3 +1,4 @@
+import { useAtomValue } from 'jotai'
 import {
   ExpandIcon,
   LockIcon,
@@ -18,6 +19,7 @@ import {
 import { useEffect, useRef, useState } from 'react'
 
 import { Slider } from '@/components/ui/slider'
+import { playerSurfaceAtom } from '@/context/atoms'
 import { useArmed } from '@/hooks/use-armed'
 import { useLandscapeLock } from '@/hooks/use-landscape-lock'
 import type { CssVars } from '@/types'
@@ -94,7 +96,7 @@ const IconButton = ({
     aria-pressed={active}
     onClick={onClick}
     className={cn(
-      'grid size-9 shrink-0 place-items-center rounded-md text-white/85 transition-colors hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none touch:size-11',
+      'grid size-9 shrink-0 place-items-center rounded-md text-white/85 transition-colors hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none touch:size-11 touch:watch-narrow:size-10',
       active === true && 'text-primary-text hover:text-primary-text',
       className
     )}>
@@ -179,6 +181,79 @@ const ViewButtons = ({
   </>
 )
 
+// What only the full-screen player has; on the watch page the video is a box among the page's own controls,
+// which a lock could not cover and turning the page would not help, so arriving there unlocks.
+// - A shade over the top (the control bar's, mirrored) while the floating UI shows: the top bar's white logo
+//   and icons lie over the video, and a bright one swallows them.
+// - The settings for the whole sitting rather than the song, kept out of the thumb's way: a column down the
+//   right edge, touch screens only, sliding out to the right with the rest of the UI. Upright it hangs under
+//   the top bar's last icon, centred on it; on a phone on its side it mirrors the rail on the left (same
+//   buttons, padding and top), so the two frame the video
+const FullScreenChrome = ({
+  visible,
+  locked,
+  onLockedChange,
+}: Pick<StageControlsProps, 'visible' | 'locked' | 'onLockedChange'>) => {
+  const armed = useArmed(visible)
+  const landscape = useLandscapeLock()
+  const watch = useAtomValue(playerSurfaceAtom) === 'watch'
+  useEffect(() => {
+    if (watch && locked) {
+      onLockedChange(false)
+    }
+  }, [watch, locked, onLockedChange])
+  if (watch) {
+    return null
+  }
+  return (
+    <>
+      <div
+        aria-hidden='true'
+        style={FADE_VARS}
+        className={cn(
+          'pointer-events-none absolute inset-x-0 top-0 z-30 h-[calc(var(--topbar-h)+3rem)] bg-linear-to-b from-black/60 to-transparent transition-opacity duration-(--controls-fade)',
+          visible ? 'opacity-100' : 'opacity-0'
+        )}
+      />
+      <div
+        data-player-chrome
+        className={cn(
+          'hidden absolute top-(--stage-corner-top) right-[calc(var(--safe-right)+0.625rem)] z-30 flex-col items-center gap-1 rounded-full bg-black/55 p-1 shadow-rail backdrop-blur-md transition-translate-fade duration-300 ease-out sm:right-[calc(var(--safe-right)+1.125rem)] touch:flex',
+          'short:top-[calc(var(--topbar-h)+0.25rem)] short:right-(--safe-right) short:rounded-none short:rounded-l-xl',
+          visible
+            ? 'translate-x-0'
+            : 'translate-x-[calc(100%+var(--safe-right)+1.125rem)]',
+          !armed && 'pointer-events-none'
+        )}>
+        <IconButton
+          label='Lock Landscape'
+          active={landscape.locked}
+          onClick={() => {
+            void landscape.toggle()
+          }}
+          className='rounded-full short:size-8 short:rounded-lg'>
+          <SmartphoneIcon className='size-5 rotate-90' />
+        </IconButton>
+        <IconButton
+          label='Lock Screen'
+          onClick={() => {
+            onLockedChange(true)
+          }}
+          className='rounded-full short:size-8 short:rounded-lg'>
+          <LockIcon className='size-5' />
+        </IconButton>
+      </div>
+      {locked && (
+        <StageLock
+          onUnlock={() => {
+            onLockedChange(false)
+          }}
+        />
+      )}
+    </>
+  )
+}
+
 export const StageControls = ({
   player,
   visible,
@@ -197,7 +272,6 @@ export const StageControls = ({
   onLockedChange,
 }: StageControlsProps) => {
   const armed = useArmed(visible)
-  const landscape = useLandscapeLock()
   const barRef = useRef<HTMLDivElement>(null)
   const contentRef = useRef<HTMLDivElement>(null)
 
@@ -253,61 +327,28 @@ export const StageControls = ({
 
   return (
     <>
-      {/* Settings for the whole sitting rather than the song, so they keep out of the thumb's way: a column
-          down the right edge, touch screens only, sliding out to the right with the rest of the UI. Upright it
-          hangs under the top bar's last icon, centred on it; on a phone on its side it mirrors the rail on the
-          left (same buttons, padding and top), so the two frame the video */}
-      <div
-        data-player-chrome
-        className={cn(
-          'hidden absolute top-(--stage-corner-top) right-[calc(var(--safe-right)+0.625rem)] z-30 flex-col items-center gap-1 rounded-full bg-black/55 p-1 shadow-rail backdrop-blur-md transition-translate-fade duration-300 ease-out sm:right-[calc(var(--safe-right)+1.125rem)] touch:flex',
-          'short:top-[calc(var(--topbar-h)+0.25rem)] short:right-(--safe-right) short:rounded-none short:rounded-l-xl',
-          visible
-            ? 'translate-x-0'
-            : 'translate-x-[calc(100%+var(--safe-right)+1.125rem)]',
-          !armed && 'pointer-events-none'
-        )}>
-        <IconButton
-          label='Lock Landscape'
-          active={landscape.locked}
-          onClick={() => {
-            void landscape.toggle()
-          }}
-          className='rounded-full short:size-8 short:rounded-lg'>
-          <SmartphoneIcon className='size-5 rotate-90' />
-        </IconButton>
-        <IconButton
-          label='Lock Screen'
-          onClick={() => {
-            onLockedChange(true)
-          }}
-          className='rounded-full short:size-8 short:rounded-lg'>
-          <LockIcon className='size-5' />
-        </IconButton>
-      </div>
-      {locked && (
-        <StageLock
-          onUnlock={() => {
-            onLockedChange(false)
-          }}
-        />
-      )}
+      <FullScreenChrome
+        visible={visible}
+        locked={locked}
+        onLockedChange={onLockedChange}
+      />
       <div
         ref={barRef}
         style={FADE_VARS}
         className={cn(
-          'absolute inset-x-0 bottom-0 z-30 bg-linear-to-t from-black/80 via-black/40 to-transparent pt-10 pr-controls-right pb-controls-bottom pl-controls-left transition-opacity duration-(--controls-fade) short:pl-controls-rail',
+          'absolute inset-x-0 bottom-0 z-30 bg-linear-to-t from-black/80 via-black/40 to-transparent pt-10 pr-controls-right pb-controls-bottom pl-controls-left transition-opacity duration-(--controls-fade) watch-narrow:pt-6 watch-narrow:pr-2 watch-narrow:pb-1 watch-narrow:pl-2 short:pl-controls-rail',
           visible ? 'opacity-100' : 'opacity-0',
           !armed && 'pointer-events-none'
         )}>
         {/* On a phone on its side the seek bar joins the buttons' row: two rows would cover a third of the
-          screen and push the lyrics to its middle */}
+          screen and push the lyrics to its middle. So it does in the small video of a narrow watch page, where
+          the middle of the video has play and pause and a double tap seeks, as on YouTube */}
         <div
           ref={contentRef}
           data-player-chrome
-          className='short:flex short:items-center short:gap-1'>
+          className='watch-narrow:flex watch-narrow:items-center watch-narrow:gap-0.5 short:flex short:items-center short:gap-1'>
           {/* On a touch screen the clock sits at the end of the seek bar, so the buttons' row fits at 320px */}
-          <div className='mb-2 flex items-center gap-3 short:contents'>
+          <div className='mb-2 flex items-center gap-3 watch-narrow:contents short:contents'>
             <Slider
               aria-label='Seek'
               min={0}
@@ -332,18 +373,19 @@ export const StageControls = ({
                   setHeld(null)
                 }, SEEK_HOLD_MAX_MS)
               }}
-              className='min-w-0 flex-1 cursor-pointer short:order-1 short:mx-2'
+              className='min-w-0 flex-1 cursor-pointer watch-narrow:order-1 watch-narrow:mx-2 short:order-1 short:mx-2'
             />
             <Clock
               time={shown}
               duration={duration}
-              className='hidden shrink-0 touch:block short:order-2'
+              className='hidden shrink-0 watch-narrow:order-2 touch:block short:order-2'
             />
           </div>
-          <div className='flex items-center gap-1 touch:gap-0.5 short:contents'>
+          <div className='flex items-center gap-1 watch-narrow:contents touch:gap-0.5 short:contents'>
             {/* Bottom left, where every player has it, although touch screens also have one mid-stage */}
             <IconButton
               label={isPlaying ? 'Pause' : 'Play'}
+              className='watch-narrow:hidden'
               onClick={() => {
                 player.togglePlay()
               }}>
@@ -355,6 +397,7 @@ export const StageControls = ({
             </IconButton>
             <IconButton
               label={`Back ${TAP_SEEK_SEC} Seconds`}
+              className='watch-narrow:hidden'
               onClick={() => {
                 onSeekBy(-TAP_SEEK_SEC)
               }}>
@@ -362,6 +405,7 @@ export const StageControls = ({
             </IconButton>
             <IconButton
               label={`Forward ${TAP_SEEK_SEC} Seconds`}
+              className='watch-narrow:hidden'
               onClick={() => {
                 onSeekBy(TAP_SEEK_SEC)
               }}>
@@ -407,9 +451,9 @@ export const StageControls = ({
             <Clock
               time={shown}
               duration={duration}
-              className='ml-2 touch:hidden short:order-2 short:ml-0 short:shrink-0'
+              className='ml-2 watch-narrow:order-2 watch-narrow:ml-0 watch-narrow:shrink-0 touch:hidden short:order-2 short:ml-0 short:shrink-0'
             />
-            <div className='ml-auto flex shrink-0 items-center gap-1 touch:gap-0.5 short:order-3 short:ml-1'>
+            <div className='ml-auto flex shrink-0 items-center gap-1 watch-narrow:order-3 watch-narrow:ml-1 touch:gap-0.5 short:order-3 short:ml-1'>
               <IconButton
                 label='Loop'
                 active={loop}

@@ -10,6 +10,8 @@ import type { StagePhase } from './use-you-tube-player'
 // YouTube's phone player draws its own play/pause button (a 56px see-through disc) in the middle of the video
 // for about 4s each time playback starts or resumes after a seek, controls=0 or not. Ours covers it that long
 const YOUTUBE_CENTER_MS = 4500
+// The `short:` variant: a phone on its side
+const SHORT = '(orientation: landscape) and (max-height: 500px)'
 
 // True from each time the player reports playing until YOUTUBE_CENTER_MS after it. A new phase object
 // comes with every PLAYING report, so a seek that resumes starts the time again
@@ -43,7 +45,10 @@ export const CenterPlayButton = ({
   onToggle: () => void
 }) => {
   const youTubeCenterShowing = useYouTubeCenterShowing(phase)
-  const visible = controlsVisible || youTubeCenterShowing
+  // On a phone on its side the lyrics, lifted over the control bar, reach the middle of the screen: there
+  // the bar's own play button is enough, and this one only covers YouTube's while that shows
+  const short = useMediaQuery(SHORT)
+  const visible = (controlsVisible && !short) || youTubeCenterShowing
   const armed = useArmed(visible)
   return (
     <button
@@ -53,9 +58,7 @@ export const CenterPlayButton = ({
       aria-hidden={!visible}
       onClick={onToggle}
       className={cn(
-        // In the small video on a narrow watch page the control bar's own play button is enough; this one
-        // would cover the seek bar
-        'absolute top-(--video-cy) left-1/2 z-26 grid size-16 -translate-1/2 place-items-center rounded-full bg-black/60 text-white shadow-stage backdrop-blur-md transition-opacity duration-300 watch-narrow:hidden',
+        'absolute top-(--video-cy) left-1/2 z-26 grid size-16 -translate-1/2 place-items-center rounded-full bg-black/60 text-white shadow-stage backdrop-blur-md transition-opacity duration-300',
         visible ? 'opacity-100' : 'opacity-0',
         !armed && 'pointer-events-none'
       )}>

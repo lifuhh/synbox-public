@@ -32,8 +32,9 @@ export const MoreLikeThis = ({
               state={{ videoId: song.videoId }}
               className='group rounded-xl focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden'>
               <span className='relative block aspect-video overflow-hidden rounded-xl bg-thumbnail-placeholder'>
+                {/* 480x360, its letterbox cropped away: enough for a card at 3x without the 1280x720 decode */}
                 <img
-                  src={song.thumbnailUrl}
+                  src={`https://i.ytimg.com/vi/${song.videoId}/hqdefault.jpg`}
                   alt=''
                   width='320'
                   height='180'
