@@ -948,6 +948,18 @@
   padding-right: calc(1rem + var(--safe-right));
 }
 
+/* A box that eases to its content's height (--smooth-h, measured by the search page), clipped up and down only,
+   so cards' hover surfaces still reach past its sides. Instant under reduced motion */
+@utility smooth-height {
+  height: var(--smooth-h, auto);
+  overflow-y: clip;
+  transition: height 250ms cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+}
+
 @utility watch-side {
   grid-area: side;
   position: relative;
