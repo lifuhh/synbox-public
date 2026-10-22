@@ -31,11 +31,12 @@ export interface LyricsStyle {
   // In portrait the lyrics have their own band under the video, so they keep their own place in it: by
   // default its top, right under the video
   anchorPortrait: number
-  // The karaoke two-row layout: the next line waits, unfilled, in the other row. Desktop and phone landscape
+  // The karaoke two-row layout, as a karaoke machine shows it: the top row's line starts at the left and the
+  // next row's, waiting unfilled, ends at the right, with the sung line's translation alone at the top.
+  // Desktop and phone landscape
   twoLines: boolean
-  // With two lines, the top row's line starts at the left and the next row's ends at the right, as a karaoke
-  // machine shows them, in smaller type, with the sung line's translation alone at the top
-  stagger: boolean
+  // Two lines' own size, kept apart from the one-line size: a share of the one-line base size
+  fontSizeTwoLines: number
   // An optional extra factor on `fontSize` for one screen only; 1 leaves that screen at the shared size
   screenSizes: ScreenSizes
 }
@@ -43,15 +44,20 @@ export interface LyricsStyle {
 export const SCREEN_SIZE_MIN = 0.6
 export const SCREEN_SIZE_MAX = 1.5
 
+// The size slider's ends for each layout. Two lines sit side by side, so they get smaller type than one
+// centred line, on a narrower range whose smallest end still reads over a video
+export const FONT_SIZE_RANGE = { max: 1.6, min: 0.4 } as const
+export const TWO_LINES_SIZE_RANGE = { max: 1.1, min: 0.6 } as const
+
 export const DEFAULT_LYRICS_STYLE: LyricsStyle = {
   anchor: 1,
   anchorPortrait: 0,
   backdrop: DEFAULT_LYRICS_BACKDROP,
   customHue: DEFAULT_LYRICS_CUSTOM_HUE,
   fontSize: 1,
+  fontSizeTwoLines: 0.85,
   // Desktop starts a size down: at 100% one line spans most of a wide stage
   screenSizes: { desktop: 0.85, landscape: 1, portrait: 1 },
-  stagger: false,
   themeId: DEFAULT_LYRICS_THEME_ID,
   twoLines: false,
 }
@@ -76,16 +82,20 @@ export const screenSizesSchema = z.object({
   portrait: screenSize,
 })
 // Every field optional: a saved record keeps what it had when it was saved, and fields added since (twoLines,
-// screenSizes, stagger) read as absent, so records from before them load unchanged
+// screenSizes, fontSizeTwoLines) read as absent, so records from before them load unchanged. A field
+// dropped since (stagger) is left out of what loads
 const styleFieldsSchema = z
   .object({
     anchor: unit,
     anchorPortrait: unit,
     backdrop: z.enum(LYRICS_BACKDROP_IDS),
     customHue: z.number().min(0).max(359),
-    fontSize: z.number().min(0.4).max(1.6),
+    fontSize: z.number().min(FONT_SIZE_RANGE.min).max(FONT_SIZE_RANGE.max),
+    fontSizeTwoLines: z
+      .number()
+      .min(TWO_LINES_SIZE_RANGE.min)
+      .max(TWO_LINES_SIZE_RANGE.max),
     screenSizes: screenSizesSchema,
-    stagger: z.boolean(),
     themeId: lyricsThemeIdSchema,
     twoLines: z.boolean(),
   })
@@ -186,8 +196,9 @@ export const writeLyricsTemplates = (templates: readonly LyricsTemplate[]) => {
 }
 
 // A shared link carries the sender's whole style as ?style=1.<theme>.<backdrop>.<size%>.<anchor%>.<portrait%>.<hue>,
-// short enough to sit in a chat message. The leading number is the format's version: 2 adds a last field, 1
-// for two lines. A style on one line still goes out as 1, which an app version from before 2 can read
+// short enough to sit in a chat message. The leading number is the format's version: 3 is two lines, with
+// their own size as a last field. A style on one line still goes out as 1, which any app version can read.
+// 2 (a last field: 0 one line, 1 two centred lines, 2 two staggered lines) is read, never written
 const SHARE_SEPARATOR = '.'
 const percent = (value: number) => Math.round(value * 100)
 
@@ -200,9 +211,10 @@ export const encodeSharedStyle = (style: SharedLyricsStyle) => {
     percent(style.anchorPortrait),
     Math.round(style.customHue),
   ]
-  // Format 2's last field: 1 two centred lines, 2 two staggered lines
   return (
-    style.twoLines ? [2, ...fields, style.stagger ? 2 : 1] : [1, ...fields]
+    style.twoLines
+      ? [3, ...fields, percent(style.fontSizeTwoLines)]
+      : [1, ...fields]
   ).join(SHARE_SEPARATOR)
 }
 
@@ -218,26 +230,30 @@ const sharedStyleSchema = z
   .union([
     z.tuple([z.literal('1'), ...sharedFields]),
     z.tuple([z.literal('2'), ...sharedFields, z.enum(['0', '1', '2'])]),
+    z.tuple([
+      z.literal('3'),
+      ...sharedFields,
+      z.coerce
+        .number()
+        .int()
+        .min(percent(TWO_LINES_SIZE_RANGE.min))
+        .max(percent(TWO_LINES_SIZE_RANGE.max)),
+    ]),
   ])
   .transform(
-    ([
-      ,
-      themeId,
-      backdrop,
-      size,
-      anchor,
-      anchorPortrait,
-      customHue,
-      lines,
-    ]) => ({
+    ([, themeId, backdrop, size, anchor, anchorPortrait, customHue, last]) => ({
       anchor: anchor / 100,
       anchorPortrait: anchorPortrait / 100,
       backdrop,
       customHue,
       fontSize: size / 100,
-      stagger: lines === '2',
+      // Only format 3's last field is a number, the two-line size
+      fontSizeTwoLines:
+        typeof last === 'number'
+          ? last / 100
+          : DEFAULT_LYRICS_STYLE.fontSizeTwoLines,
       themeId,
-      twoLines: lines === '1' || lines === '2',
+      twoLines: typeof last === 'number' || last === '1' || last === '2',
     })
   )
 
@@ -258,7 +274,7 @@ export const sameLyricsStyle = (a: SharedLyricsStyle, b: SharedLyricsStyle) =>
   encodeSharedStyle(a) === encodeSharedStyle(b)
 
 // Whether the style on screen is a saved one. Fields that change nothing in a style don't count: the hue
-// away from the Custom colour, and the stagger on one line (the share code already leaves it out)
+// away from the Custom colour, and the two-line size on one line (the share code already leaves it out)
 export const sameSavedLyricsStyle = (a: LyricsStyle, b: LyricsStyle) => {
   const shown = (style: LyricsStyle) => ({
     ...style,

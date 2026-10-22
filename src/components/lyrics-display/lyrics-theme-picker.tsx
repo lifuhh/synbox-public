@@ -15,12 +15,13 @@ import {
   fontSizeMultiplierAtom,
   lyricsBackdropAtom,
   lyricsCustomHueAtom,
+  lyricsFontSizeTwoLinesAtom,
   lyricsStylePanelAtom,
   lyricsThemeIdAtom,
-  lyricsStaggerAtom,
   lyricsTwoLinesAtom,
 } from '@/context/atoms'
 import { useMediaQuery, usePortrait } from '@/hooks/use-media-query'
+import { FONT_SIZE_RANGE, TWO_LINES_SIZE_RANGE } from '@/lib/lyrics-style'
 import type { LyricsThemeColors } from '@/lib/lyrics-themes'
 import {
   LYRICS_BACKDROPS,
@@ -165,30 +166,6 @@ const StyleSwitch = ({
   )
 }
 
-// The karaoke two-row layout, and with it the karaoke machine's stagger: top row left, next row right, the
-// translation at the top
-const TwoLinesSwitch = ({ portrait }: { portrait: boolean }) => {
-  const [twoLines, setTwoLines] = useAtom(lyricsTwoLinesAtom)
-  const [stagger, setStagger] = useAtom(lyricsStaggerAtom)
-  return (
-    <>
-      <StyleSwitch
-        label='Two Lines'
-        checked={twoLines}
-        onChange={setTwoLines}
-        hint={portrait ? 'Landscape only' : undefined}
-      />
-      {twoLines && (
-        <StyleSwitch
-          label='Karaoke Stagger'
-          checked={stagger}
-          onChange={setStagger}
-        />
-      )}
-    </>
-  )
-}
-
 // A discrete pick (a preset colour, a backdrop) applies and closes, like a menu. Size and the custom hue
 // are adjusted by dragging and previewed live, so those keep the panel open until Done, Escape or a click
 // outside. The panel centers on the rail (`anchorRef`) rather than on its button. With a mouse, resting on
@@ -214,6 +191,19 @@ export const LyricsThemePicker = ({
     setPanel('closed')
   }
   const [fontSize, setFontSize] = useAtom(fontSizeMultiplierAtom)
+  const [fontSizeTwoLines, setFontSizeTwoLines] = useAtom(
+    lyricsFontSizeTwoLinesAtom
+  )
+  const [twoLines, setTwoLines] = useAtom(lyricsTwoLinesAtom)
+  // The slider sizes the layout on screen: two lines keep their own size, on their own range
+  const size =
+    twoLines && !portrait
+      ? {
+          range: TWO_LINES_SIZE_RANGE,
+          set: setFontSizeTwoLines,
+          value: fontSizeTwoLines,
+        }
+      : { range: FONT_SIZE_RANGE, set: setFontSize, value: fontSize }
   const [themeId, setThemeId] = useAtom(lyricsThemeIdAtom)
   const [customHue, setCustomHue] = useAtom(lyricsCustomHueAtom)
   const [backdrop, setBackdrop] = useAtom(lyricsBackdropAtom)
@@ -248,13 +238,13 @@ export const LyricsThemePicker = ({
             </span>
             <Slider
               aria-label='Lyrics Size'
-              min={0.4}
-              max={1.6}
+              min={size.range.min}
+              max={size.range.max}
               step={0.01}
-              value={[fontSize]}
+              value={[size.value]}
               onValueChange={([value]) => {
                 if (value !== undefined) {
-                  setFontSize(value)
+                  size.set(value)
                 }
               }}
               className='flex-1 cursor-pointer'
@@ -268,7 +258,13 @@ export const LyricsThemePicker = ({
           <ScreenSizeTweak />
         </section>
 
-        <TwoLinesSwitch portrait={portrait} />
+        {/* The karaoke machine's two rows: top row left, next row right, the translation at the top */}
+        <StyleSwitch
+          label='Two Lines'
+          checked={twoLines}
+          onChange={setTwoLines}
+          hint={portrait ? 'Landscape only' : undefined}
+        />
       </div>
 
       <section className='flex flex-col gap-2'>

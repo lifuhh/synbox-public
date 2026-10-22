@@ -157,19 +157,31 @@ test('two lines travel in a shared link; a one-line style stays readable by olde
   expect(decodeSharedStyle('2.lemon.shadow.100.10.50.200.7')).toBeNull()
 })
 
-test('staggered two lines travel in a shared link, and a link from before them reads as centred', () => {
-  const staggered = {
+test('two lines carry their own size in a shared link; links from before it read as two lines at the default size', () => {
+  const twoLines = {
     ...DEFAULT_LYRICS_STYLE,
-    stagger: true,
+    fontSize: 1.4,
+    fontSizeTwoLines: 1.05,
     twoLines: true,
   }
-  expect(decodeSharedStyle(encodeSharedStyle(staggered))).toMatchObject({
-    stagger: true,
+  expect(decodeSharedStyle(encodeSharedStyle(twoLines))).toMatchObject({
+    fontSize: 1.4,
+    fontSizeTwoLines: 1.05,
     twoLines: true,
   })
-  expect(decodeSharedStyle('2.lemon.shadow.100.10.50.200.1')).toMatchObject({
-    stagger: false,
-    twoLines: true,
+  // A two-line size off its range is not a style this app makes
+  expect(decodeSharedStyle('3.lemon.shadow.100.10.50.200.30')).toBeNull()
+  // Format 2: 1 was two centred lines, 2 two staggered ones; both are now the one two-line layout
+  for (const lines of ['1', '2']) {
+    expect(
+      decodeSharedStyle(`2.lemon.shadow.100.10.50.200.${lines}`)
+    ).toMatchObject({
+      fontSizeTwoLines: DEFAULT_LYRICS_STYLE.fontSizeTwoLines,
+      twoLines: true,
+    })
+  }
+  expect(decodeSharedStyle('2.lemon.shadow.100.10.50.200.0')).toMatchObject({
+    twoLines: false,
   })
 })
 

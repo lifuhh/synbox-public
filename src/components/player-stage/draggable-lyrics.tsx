@@ -54,7 +54,7 @@ interface DraggableLyricsProps {
   scale: number
   backdrop: string
   colors: LyricsThemeColors
-  // The whole width to lay out in (Karaoke Stagger's left and right lines), instead of a centred fit
+  // The whole width to lay out in (Two Lines' left and right lines), instead of a centred fit
   wide?: boolean
 }
 
