@@ -111,3 +111,9 @@ export const legacyAppwriteIdFromYoutubeId = (id: string): string =>
   /^[a-zA-Z0-9_]{1,36}$/u.test(id) && !id.startsWith('_')
     ? id
     : `yt_${id.split('-').join('_')}`
+
+// A song's time as the player shows it: 83.4 → "1:23"
+export const formatClock = (seconds: number) => {
+  const whole = Math.max(0, Math.floor(seconds))
+  return `${Math.floor(whole / 60)}:${String(whole % 60).padStart(2, '0')}`
+}

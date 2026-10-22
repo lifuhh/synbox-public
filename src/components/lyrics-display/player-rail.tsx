@@ -5,6 +5,7 @@ import {
   BookmarkCheckIcon,
   BookmarkIcon,
   EllipsisIcon,
+  FlagIcon,
   LanguagesIcon,
   MessageSquareTextIcon,
   Share2Icon,
@@ -58,6 +59,7 @@ import {
   RailTooltip,
   RailTooltipsOff,
 } from './rail-button'
+import { useReportIssue } from './report-issue'
 
 // The pointer has to rest on the style button this long before the panel peeks open, so crossing it does not
 const PEEK_DELAY_MS = 150
@@ -131,6 +133,10 @@ interface SongAction {
   icon: ReactNode
   disabled: boolean
   handleSelect: () => void
+  // Shown beside the icon in the watch page's row, so the action can't be missed
+  shortLabel?: string
+  // Left out of the watch page's row
+  stageOnly?: boolean
 }
 
 const BookmarkGlyph = ({ bookmarked }: { bookmarked: boolean }) =>
@@ -230,6 +236,7 @@ const PlayerRail = ({ inline = false }: { inline?: boolean }) => {
 
   const currentVideo = useAtomValue(currentVideoAtom)
   const [saving, setSaving] = useState(false)
+  const report = useReportIssue(videoId)
   const saveButton = useRef<HTMLButtonElement>(null)
   const addFavorite = useSetAtom(addFavoriteAtom)
   const removeFavorite = useSetAtom(removeFavoriteAtom)
@@ -356,7 +363,8 @@ const PlayerRail = ({ inline = false }: { inline?: boolean }) => {
       icon: <PlatformShareIcon className='size-5 shrink-0' />,
       label: shareLabel,
     },
-    // The song's lyrics as a page to read or play along without the video
+    // The song's lyrics as a page to read or play along without the video. The watch page has them right
+    // under the video already
     {
       disabled: videoId === '',
       handleSelect: () => {
@@ -364,8 +372,16 @@ const PlayerRail = ({ inline = false }: { inline?: boolean }) => {
       },
       icon: <BookOpenTextIcon className='size-5 shrink-0' />,
       label: 'Read Lyrics',
+      stageOnly: true,
     },
-  ]
+    {
+      disabled: videoId === '',
+      handleSelect: report.open,
+      icon: <FlagIcon className='size-5 shrink-0' />,
+      label: 'Report Issue',
+      shortLabel: 'Report',
+    },
+  ].filter((action) => !(inline && action.stageOnly === true))
 
   return (
     // Hoverable tooltips wait for a pointer move to close after the trigger is left, and none comes once
@@ -461,8 +477,18 @@ const PlayerRail = ({ inline = false }: { inline?: boolean }) => {
                       }
                       label={action.label}
                       disabled={action.disabled}
-                      onClick={action.handleSelect}>
+                      onClick={action.handleSelect}
+                      className={cn(
+                        inline &&
+                          action.shortLabel !== undefined &&
+                          'w-auto grid-flow-col gap-1.5 px-4 watch-narrow:px-0'
+                      )}>
                       {action.icon}
+                      {inline && action.shortLabel !== undefined && (
+                        <span className='text-sm font-medium watch-narrow:hidden'>
+                          {action.shortLabel}
+                        </span>
+                      )}
                     </RailButton>
                   </RailTooltip>
                 ))}
@@ -480,6 +506,7 @@ const PlayerRail = ({ inline = false }: { inline?: boolean }) => {
           returnFocusRef={saveButton}
         />
       )}
+      {report.dialog}
     </TooltipProvider>
   )
 }

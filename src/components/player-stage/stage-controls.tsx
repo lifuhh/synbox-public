@@ -24,17 +24,12 @@ import { useArmed } from '@/hooks/use-armed'
 import { useLandscapeLock } from '@/hooks/use-landscape-lock'
 import { autoplayAtom } from '@/lib/listening/store'
 import type { CssVars } from '@/types'
+import { formatClock } from '@/utils'
 import { cn } from '@/utils/cn'
 
 import { StageLock } from './stage-lock'
 import { TAP_SEEK_SEC } from './use-stage-taps'
 import type { PlayerVolume, StagePlayer } from './use-you-tube-player'
-
-const formatTime = (seconds: number) => {
-  const whole = Math.max(0, Math.floor(seconds))
-  const minutes = Math.floor(whole / 60)
-  return `${minutes}:${String(whole % 60).padStart(2, '0')}`
-}
 
 const usePlaybackClock = ({ subscribeFrame }: StagePlayer) => {
   const [time, setTime] = useState(0)
@@ -139,7 +134,7 @@ const Clock = ({
       'min-w-0 truncate text-sm whitespace-nowrap text-white tabular-nums',
       className
     )}>
-    {formatTime(time)} / {formatTime(duration)}
+    {formatClock(time)} / {formatClock(duration)}
   </span>
 )
 

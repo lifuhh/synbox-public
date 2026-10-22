@@ -24,6 +24,14 @@ import {
   parseRecommendations,
   replaceRecommendations,
 } from './recommendations'
+import {
+  guestKeyOf,
+  listReports,
+  parseReport,
+  reportAllowed,
+  saveReport,
+} from './reports'
+import type { Reporter } from './reports'
 
 type AppEnv = Env & {
   USER_HOURLY_LIMIT: string
@@ -141,6 +149,35 @@ app.post('/api/me/prefs', async (c) => {
   }
   await applyPrefOps(c.env.DB, session.user.id, ops)
   return c.body(null, 204)
+})
+
+// A listener's report of something wrong with a song's lyrics. Anyone may send one, a few a day (reports.ts)
+app.post('/api/reports', async (c) => {
+  const report = parseReport(await c.req.json<unknown>().catch(() => null))
+  if (report === null) {
+    return c.json({ code: 'bad_request' }, 400)
+  }
+  const session = await createAuth(c.env).api.getSession({
+    headers: c.req.raw.headers,
+  })
+  const reporter: Reporter = session
+    ? { id: session.user.id, kind: 'user' }
+    : {
+        key: await guestKeyOf(c.req.raw.headers, c.env.BETTER_AUTH_SECRET),
+        kind: 'guest',
+      }
+  const now = Date.now()
+  if (!(await reportAllowed(c.env.DB, reporter, now))) {
+    return c.json({ code: 'too_many_reports' }, 429)
+  }
+  await saveReport(
+    c.env.DB,
+    reporter,
+    report,
+    c.req.header('user-agent') ?? '',
+    now
+  )
+  return c.body(null, 201)
 })
 
 // The landing page's Recommendations, in order. Public; browsers keep it a minute, so an admin's edit shows
@@ -390,6 +427,11 @@ admin.put('/recommendations', async (c) => {
   await replaceRecommendations(c.env.DB, parsed.songs, c.get('adminId'))
   return c.body(null, 204)
 })
+
+// The latest listener reports, for fixing the lyrics they point at
+admin.get('/reports', async (c) =>
+  c.json({ reports: await listReports(c.env.DB) })
+)
 
 app.route('/api/admin', admin)
 

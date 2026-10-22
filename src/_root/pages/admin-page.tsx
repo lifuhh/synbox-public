@@ -28,17 +28,24 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useToast } from '@/components/ui/use-toast'
 import {
   useAdminGenerations,
+  useAdminReports,
   useAdminSettings,
   useAdminUsers,
   useSetBlocked,
   useSetGenerationEnabled,
   useSetHourlyLimit,
 } from '@/lib/admin'
-import type { AdminGeneration, AdminUser, HourlyLimit } from '@/lib/admin'
+import type {
+  AdminGeneration,
+  AdminReport,
+  AdminUser,
+  HourlyLimit,
+} from '@/lib/admin'
 import { useAccess, useMe } from '@/lib/auth'
 import { isStageId, overallAt, stepOf } from '@/lib/generation/plan'
 import { useGetSongInfoBySongId } from '@/lib/react-query/queries-and-mutations'
 import type { CssVars } from '@/types'
+import { formatClock } from '@/utils'
 import { cn } from '@/utils/cn'
 
 const toDate = (value: string | number | null) => {
@@ -634,7 +641,7 @@ const statusClass = (generation: AdminGeneration) =>
       'text-muted-foreground tabular-nums'
   )
 
-const isGuest = (generation: AdminGeneration) =>
+const isGuest = (generation: Pick<AdminGeneration, 'guest'>) =>
   generation.guest === 1 || generation.guest === true
 
 const requester = (generation: AdminGeneration) =>
@@ -748,6 +755,83 @@ const SongsTable = () => {
   )
 }
 
+// The device and browser a report came from, from its user agent: many lyric bugs are one engine's
+const DEVICES: [string, RegExp][] = [
+  ['iPhone', /iPhone/u],
+  ['iPad', /iPad/u],
+  ['Android', /Android/u],
+  ['Mac', /Macintosh/u],
+  ['Windows', /Windows/u],
+]
+// Chrome's agent names Safari too, so Chrome is asked first
+const BROWSERS: [string, RegExp][] = [
+  ['Firefox', /Firefox\//u],
+  ['Chrome', /Chrome\/|CriOS\//u],
+  ['Safari', /Safari\//u],
+]
+const clientLabel = (client: string | null) => {
+  const match = (list: [string, RegExp][]) =>
+    list.find(([, pattern]) => pattern.test(client ?? ''))?.[0]
+  return [match(DEVICES), match(BROWSERS)].filter(Boolean).join(' ') || null
+}
+
+const ReportItem = ({ report }: { report: AdminReport }) => {
+  const { data: songInfo } = useGetSongInfoBySongId(report.videoId)
+  const by = isGuest(report) ? 'Guest' : (report.name ?? 'Deleted Account')
+  const where = [
+    report.atSeconds === null ? null : formatClock(report.atSeconds),
+    report.version === null ? null : `Version ${report.version}`,
+  ]
+    .filter(Boolean)
+    .join(' · ')
+  return (
+    <li className='flex flex-col gap-1.5 border-t border-border py-3'>
+      <div className='flex items-baseline justify-between gap-3'>
+        <Link
+          to={`/v/${report.videoId}`}
+          className='min-w-0 truncate font-medium text-foreground hover:underline'>
+          {songInfo?.title ?? report.videoId}
+        </Link>
+        <span className='shrink-0 text-muted-foreground tabular-nums'>
+          {where}
+        </span>
+      </div>
+      <p className='text-pretty whitespace-pre-wrap text-foreground'>
+        {report.message}
+      </p>
+      <p className='truncate text-xs text-muted-foreground'>
+        {[by, clientLabel(report.client)].filter(Boolean).join(' · ')} ·{' '}
+        <When value={report.createdAt} />
+      </p>
+    </li>
+  )
+}
+
+// What listeners reported, newest first: the song, where in it, and what was wrong
+const ReportsList = () => {
+  const { data: reports, error } = useAdminReports()
+  if (error !== null) {
+    return <p className='text-sm text-error'>{error.message}</p>
+  }
+  if (reports === undefined) {
+    return <Skeleton className='h-40 w-full' />
+  }
+  if (reports.length === 0) {
+    return (
+      <p className='py-6 text-center text-sm text-muted-foreground'>
+        No reports yet.
+      </p>
+    )
+  }
+  return (
+    <ul className='text-sm'>
+      {reports.map((report) => (
+        <ReportItem key={report.id} report={report} />
+      ))}
+    </ul>
+  )
+}
+
 // Admins only: anyone else gets a 403, once the sign-in check has answered
 const AdminPage = () => {
   const { admin, ready } = useAccess()
@@ -762,6 +846,10 @@ const AdminPage = () => {
       <title>Admin · Synbox</title>
       <h1 className='text-2xl font-bold text-foreground'>Admin</h1>
       <GenerationPanel />
+      <section className='flex flex-col gap-3'>
+        <h2 className='text-lg font-semibold text-foreground'>Reports</h2>
+        <ReportsList />
+      </section>
       <section className='flex flex-col gap-3'>
         <div className='flex flex-col gap-1'>
           <h2 className='text-lg font-semibold text-foreground'>Accounts</h2>
