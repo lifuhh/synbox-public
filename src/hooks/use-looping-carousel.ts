@@ -40,15 +40,21 @@ const ARROWS: Partial<Record<string, 1 | -1>> = {
   ArrowRight: 1,
 }
 
+// The browser's own drag of a thumbnail or a link would take the mouse away from the row
+const onDragStart = (event: DragEvent) => {
+  event.preventDefault()
+}
+
 const reducedMotion = () =>
   matchMedia('(prefers-reduced-motion: reduce)').matches
 
 // Drives a scroll-snap row whose slides repeat `copies` times, so it can run on forever both ways.
 // The row rests in the middle copy: whenever it comes to rest elsewhere it jumps by whole copies, which
 // shows the same slides, so the jump can't be seen.
-// Trackpads, wheels and keyboard scrolling stay native. Touch is driven here, because iOS gives any
-// scroller with snap points its fast deceleration, which stops a flick after about one slide: a release
-// glides as far as the page itself would, then lands on the slide nearest to that point
+// Trackpads, wheels and keyboard scrolling stay native. Touch and a mouse's drag are driven here: iOS gives
+// any scroller with snap points its fast deceleration, which stops a flick after about one slide, and a mouse
+// can't scroll a row by dragging at all. A release glides as far as the page itself would, then lands on the
+// slide nearest to that point
 const driveCarousel = (
   track: HTMLElement,
   count: number,
@@ -183,7 +189,8 @@ const driveCarousel = (
   }
 
   const onPointerDown = (event: PointerEvent) => {
-    if (event.pointerType === 'mouse' || drag) {
+    // A mouse drags with its main button only
+    if (drag || (event.pointerType === 'mouse' && event.button !== 0)) {
       return
     }
     suppressClick = false
@@ -217,6 +224,11 @@ const driveCarousel = (
       drag.startX = event.clientX
       drag.startScroll = track.scrollLeft
       snap(false)
+      // A mouse that leaves the row keeps dragging it, and selects no text on the way
+      if (event.pointerType === 'mouse') {
+        track.setPointerCapture(event.pointerId)
+        getSelection()?.removeAllRanges()
+      }
     }
     jump(drag.startScroll - (event.clientX - drag.startX))
     const t = event.timeStamp
@@ -307,6 +319,7 @@ const driveCarousel = (
   track.addEventListener('pointercancel', onPointerCancel)
   track.addEventListener('click', onClick, { capture: true })
   track.addEventListener('keydown', onKeyDown)
+  track.addEventListener('dragstart', onDragStart)
   const stop = () => {
     stopGlide()
     window.clearTimeout(settleTimer)
@@ -318,6 +331,7 @@ const driveCarousel = (
     track.removeEventListener('pointercancel', onPointerCancel)
     track.removeEventListener('click', onClick, { capture: true })
     track.removeEventListener('keydown', onKeyDown)
+    track.removeEventListener('dragstart', onDragStart)
   }
   return { step, stop }
 }
