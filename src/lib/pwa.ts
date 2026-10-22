@@ -1,7 +1,6 @@
 import { useSyncExternalStore } from 'react'
 import { registerSW } from 'virtual:pwa-register'
 
-import { toast } from '@/components/ui/use-toast'
 import { anyActive, getGenerationState } from '@/lib/generation/store'
 
 // Chromium's install prompt event; not in the DOM typings
@@ -113,29 +112,22 @@ export const useOnline = () =>
   useSyncExternalStore(subscribeOnline, () => navigator.onLine)
 
 // Updates swap in without asking (below), so the first load on a new version says so once, whichever way it
-// arrived: a page change, a reopen or a reload. The build last seen is kept per browser; a first visit and a
-// development build say nothing
+// arrived: a page change, a reopen or a reload (AppNotices shows it). The build last seen is kept per browser; a
+// first visit and a development build say nothing
 const LAST_BUILD_KEY = 'synboxLastBuild'
-const announceNewBuild = () => {
+const isNewBuild = () => {
   try {
     const previous = localStorage.getItem(LAST_BUILD_KEY)
     localStorage.setItem(LAST_BUILD_KEY, __BUILD_ID__)
-    if (
-      previous !== null &&
-      previous !== __BUILD_ID__ &&
-      __BUILD_ID__ !== 'local'
-    ) {
-      toast({
-        description: `Version ${__BUILD_ID__}`,
-        duration: 4000,
-        title: 'Updated to the Latest Version',
-      })
-    }
+    return (
+      previous !== null && previous !== __BUILD_ID__ && __BUILD_ID__ !== 'local'
+    )
   } catch {
-    // Storage blocked (a private window): no note, nothing else changes
+    // Storage blocked (a private window): no note
+    return false
   }
 }
-announceNewBuild()
+export const appJustUpdated = isNewBuild()
 
 // A page from one deploy asks for a part it hasn't loaded yet (a route opened for the first time) after a later
 // deploy deleted it. Loading the page again gets the current deploy. Once a minute at most, so a part that is
