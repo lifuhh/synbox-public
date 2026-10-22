@@ -120,20 +120,13 @@ const AboutPage = () => (
       <p className='text-xs text-pretty text-muted-foreground'>
         A non-commercial personal project with no ads. Songs, videos and lyrics
         belong to their owners and are shown for learning and singing along;
-        rights holders can ask for removal on GitHub, where the code is too.
+        rights holders can ask for removal through the link below.
       </p>
     </div>
 
     <nav
       aria-label='Links'
       className='mx-auto flex gap-6 pt-4 text-sm text-muted-foreground'>
-      <a
-        href='https://github.com/lifuhh/synbox'
-        target='_blank'
-        rel='noreferrer'
-        className='hover:text-foreground'>
-        GitHub
-      </a>
       <a
         href='https://www.linkedin.com/in/lifuhh/'
         target='_blank'
