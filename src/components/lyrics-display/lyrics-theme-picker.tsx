@@ -33,6 +33,7 @@ import { cn } from '@/utils/cn'
 import {
   LyricsStyleScopeSection,
   MyStyles,
+  SaveStyle,
   ScreenSizeTweak,
 } from './lyrics-style-scope'
 import { RailButton, RailInline, RailTooltip } from './rail-button'
@@ -345,6 +346,8 @@ export const LyricsThemePicker = ({
       </section>
 
       <MyStyles onApplied={close} />
+
+      <SaveStyle />
     </div>
   )
 
@@ -374,7 +377,7 @@ export const LyricsThemePicker = ({
             event.preventDefault()
           }}
           variant='bare'
-          className='max-w-sm'>
+          className='max-w-sm scroll-pb-20'>
           {body}
         </DialogContent>
       </Dialog>
@@ -450,7 +453,7 @@ export const LyricsThemePicker = ({
           peek.leave(false)
         }}
         variant='floating'
-        className='z-300 max-h-(--radix-popover-content-available-height) w-[min(300px,calc(100vw-1rem))] overflow-y-auto'>
+        className='z-300 max-h-(--radix-popover-content-available-height) w-[min(300px,calc(100vw-1rem))] scroll-pb-20 overflow-y-auto'>
         {body}
       </PopoverContent>
     </Popover>

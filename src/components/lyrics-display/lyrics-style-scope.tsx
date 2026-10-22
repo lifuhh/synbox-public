@@ -2,6 +2,7 @@ import { useAtom, useAtomValue, useSetAtom } from 'jotai'
 import { CheckIcon, MinusIcon, PlusIcon, XIcon } from 'lucide-react'
 import { useId, useState } from 'react'
 
+import { Button } from '@/components/ui/button'
 import {
   applyLyricsTemplateAtom,
   applySongLyricsStyleToAllAtom,
@@ -184,6 +185,61 @@ export const MyStyles = ({ onApplied }: { onApplied: () => void }) => {
   const current = useAtomValue(lyricsStyleAtom)
   const apply = useSetAtom(applyLyricsTemplateAtom)
   const remove = useSetAtom(deleteLyricsTemplateAtom)
+  if (templates.length === 0) {
+    return null
+  }
+  return (
+    <section className='flex flex-col gap-2'>
+      <h3 className={SECTION_HEADING}>My Styles</h3>
+      <ul className='flex flex-wrap gap-1.5'>
+        {templates.map((template) => {
+          const selected = sameSavedLyricsStyle(template.style, current)
+          return (
+            <li
+              key={template.id}
+              className={cn(
+                'flex items-center rounded-full ring-2 transition-colors',
+                selected
+                  ? 'bg-accent ring-foreground'
+                  : 'bg-secondary ring-transparent'
+              )}>
+              <button
+                type='button'
+                aria-pressed={selected}
+                onClick={() => {
+                  apply(template.id)
+                  onApplied()
+                }}
+                className={cn(
+                  'flex max-w-40 items-center gap-1 rounded-full py-1.5 pr-1 text-xs font-medium text-foreground transition-colors hover:text-primary-text focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-hidden touch:py-2.5 touch:text-sm',
+                  selected ? 'pl-2' : 'pl-3'
+                )}>
+                {selected && <CheckIcon className='size-3.5 shrink-0' />}
+                <span className='truncate'>{template.name}</span>
+              </button>
+              <button
+                type='button'
+                aria-label={`Delete ${template.name}`}
+                onClick={() => {
+                  remove(template.id)
+                }}
+                className='flex size-7 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-hidden touch:size-10'>
+                <XIcon className='size-3.5 shrink-0' />
+              </button>
+            </li>
+          )
+        })}
+      </ul>
+    </section>
+  )
+}
+
+const FOOTER_BUTTON = 'shrink-0 touch:h-11'
+
+// The panel's main action, in its bottom-right corner. It stays in view while the panel scrolls (a phone
+// on its side, or a desktop window with little height), and becomes the name field in place
+export const SaveStyle = () => {
+  const templates = useAtomValue(lyricsTemplatesAtom)
   const save = useSetAtom(saveLyricsTemplateAtom)
   const [naming, setNaming] = useState(false)
   const inputId = useId()
@@ -195,52 +251,10 @@ export const MyStyles = ({ onApplied }: { onApplied: () => void }) => {
   }
 
   return (
-    <section className='flex flex-col gap-2'>
-      <h3 className={SECTION_HEADING}>My Styles</h3>
-      {templates.length > 0 && (
-        <ul className='flex flex-wrap gap-1.5'>
-          {templates.map((template) => {
-            const selected = sameSavedLyricsStyle(template.style, current)
-            return (
-              <li
-                key={template.id}
-                className={cn(
-                  'flex items-center rounded-full ring-2 transition-colors',
-                  selected
-                    ? 'bg-accent ring-foreground'
-                    : 'bg-secondary ring-transparent'
-                )}>
-                <button
-                  type='button'
-                  aria-pressed={selected}
-                  onClick={() => {
-                    apply(template.id)
-                    onApplied()
-                  }}
-                  className={cn(
-                    'flex max-w-40 items-center gap-1 rounded-full py-1.5 pr-1 text-xs font-medium text-foreground transition-colors hover:text-primary-text focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-hidden touch:py-2.5 touch:text-sm',
-                    selected ? 'pl-2' : 'pl-3'
-                  )}>
-                  {selected && <CheckIcon className='size-3.5 shrink-0' />}
-                  <span className='truncate'>{template.name}</span>
-                </button>
-                <button
-                  type='button'
-                  aria-label={`Delete ${template.name}`}
-                  onClick={() => {
-                    remove(template.id)
-                  }}
-                  className='flex size-7 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-hidden touch:size-10'>
-                  <XIcon className='size-3.5 shrink-0' />
-                </button>
-              </li>
-            )
-          })}
-        </ul>
-      )}
+    <div className='sticky bottom-0 -mx-4 -mb-4 flex items-center gap-2 border-t border-border bg-popover p-4 pt-3'>
       {naming ? (
         <form
-          className='flex items-center gap-2'
+          className='flex flex-1 items-center gap-2'
           onSubmit={(event) => {
             event.preventDefault()
             const field = new FormData(event.currentTarget).get('name')
@@ -271,38 +285,29 @@ export const MyStyles = ({ onApplied }: { onApplied: () => void }) => {
                 setNaming(false)
               }
             }}
-            className='h-8 min-w-0 flex-1 rounded-md border border-border bg-transparent px-2 text-xs text-foreground focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-hidden touch:h-11 touch:text-base'
+            className='h-10 min-w-0 flex-1 rounded-md border border-border bg-transparent px-2 text-sm text-foreground focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-hidden touch:h-11 touch:text-base'
           />
-          <button
-            type='submit'
-            className={cn(
-              TEXT_BUTTON,
-              'bg-primary-subtle text-primary-text hover:bg-primary-subtle-hover'
-            )}>
+          <Button type='submit' className={FOOTER_BUTTON}>
             Save
-          </button>
+          </Button>
         </form>
       ) : (
-        <div className='flex items-center gap-2'>
-          <button
-            type='button'
-            disabled={full}
-            onClick={() => {
-              setNaming(true)
-            }}
-            className={cn(
-              TEXT_BUTTON,
-              'bg-secondary text-foreground hover:bg-accent disabled:opacity-50'
-            )}>
-            Save Current Style
-          </button>
+        <>
           {full && (
             <p className='text-xs text-muted-foreground'>
               Delete one to save another.
             </p>
           )}
-        </div>
+          <Button
+            disabled={full}
+            onClick={() => {
+              setNaming(true)
+            }}
+            className={cn('ml-auto', FOOTER_BUTTON)}>
+            Save Current Style
+          </Button>
+        </>
       )}
-    </section>
+    </div>
   )
 }
