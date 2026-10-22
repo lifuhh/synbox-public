@@ -40,3 +40,29 @@ export const YouTubeIcon = ({ className, ...props }: ComponentProps<'svg'>) => (
     <path className='fill-white' d='M11.2 14.3 18.4 10l-7.2-4.3z' />
   </svg>
 )
+
+// YouTube's Theater toggle in Lucide's line style (24px, 2px stroke): a wide frame with chevrons pointing out to
+// widen the video, and in once it is wide (`theater`) to go back
+export const TheaterIcon = ({
+  theater = false,
+  className,
+  ...props
+}: ComponentProps<'svg'> & { theater?: boolean }) => (
+  <svg
+    xmlns='http://www.w3.org/2000/svg'
+    viewBox='0 0 24 24'
+    fill='none'
+    stroke='currentColor'
+    strokeWidth={2}
+    strokeLinecap='round'
+    strokeLinejoin='round'
+    className={className}
+    {...props}>
+    <rect x='2' y='5' width='20' height='14' rx='3' />
+    {theater ? (
+      <path d='m6.5 9.5 2.5 2.5-2.5 2.5m11-5L15 12l2.5 2.5' />
+    ) : (
+      <path d='M9 9.5 6.5 12 9 14.5m6-5 2.5 2.5-2.5 2.5' />
+    )}
+  </svg>
+)
