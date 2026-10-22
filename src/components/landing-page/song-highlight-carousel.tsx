@@ -113,7 +113,7 @@ const SongHighlightCarousel = () => {
     <section
       aria-label='Recommendations'
       aria-roledescription='carousel'
-      className='@container flex min-w-0 flex-1 flex-col gap-3'>
+      className='@container flex min-w-0 flex-1 flex-col gap-3 in-data-rise:rise-in in-data-rise:rise-delay-300'>
       <div className='flex items-center justify-between px-4 md:px-0'>
         <div className='flex items-center gap-1'>
           <h2 className='text-xl font-semibold tracking-tight text-foreground'>
