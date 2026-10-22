@@ -14,26 +14,36 @@ import { UP_NEXT_COUNT, UpNext } from './up-next'
 
 const WIDE = '(min-width: 1000px)'
 
-// The song under the video: its title and channel, then the player's own buttons as a row
+// The song under the video: its title and channel, then the player's own buttons as a row. Wide, as on
+// YouTube: the title with room above it, then the channel on the left and the buttons on the right
 const SongInfo = ({ compact }: { compact: boolean }) => {
   const video = useAtomValue(currentVideoAtom)
+  if (compact) {
+    return (
+      <div className='flex min-w-0 flex-col gap-2'>
+        <div className='min-w-0'>
+          <h1 className='line-clamp-2 text-base leading-snug font-semibold text-pretty text-foreground'>
+            {video?.title ?? ''}
+          </h1>
+          <p className='truncate text-sm text-muted-foreground'>
+            {video?.author ?? ''}
+          </p>
+        </div>
+        <PlayerRail inline />
+      </div>
+    )
+  }
   return (
-    <div className='flex min-w-0 flex-col gap-2'>
-      <div className='min-w-0'>
-        <h1
-          className={cn(
-            'font-semibold text-pretty text-foreground',
-            compact
-              ? 'line-clamp-2 text-base leading-snug'
-              : 'line-clamp-2 text-xl leading-snug'
-          )}>
-          {video?.title ?? ''}
-        </h1>
-        <p className='truncate text-sm text-muted-foreground'>
+    <div className='flex min-w-0 flex-col gap-3 pt-2'>
+      <h1 className='line-clamp-2 text-xl leading-snug font-semibold text-pretty text-foreground'>
+        {video?.title ?? ''}
+      </h1>
+      <div className='flex flex-wrap items-center justify-between gap-x-6 gap-y-2'>
+        <p className='min-w-0 truncate text-base font-medium text-foreground'>
           {video?.author ?? ''}
         </p>
+        <PlayerRail inline />
       </div>
-      <PlayerRail inline />
     </div>
   )
 }
