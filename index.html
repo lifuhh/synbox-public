@@ -33,9 +33,11 @@
       href="/apple-touch-icon-180x180-b75d2442.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <!-- Noto Sans draws the latin lyric lines; phones do not ship it, so it is loaded like the rest -->
+    <!-- Noto Sans draws the latin lyric lines, and Noto Sans SC the Chinese translations at the lyrics' weight (the
+         Japanese font lacks simplified characters, which fell back to a lighter system font); phones ship neither, so
+         they load like the rest, a unicode-range slice at a time -->
     <link
-      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400..800&family=Noto+Sans:wght@900&family=Noto+Sans+JP:wght@100..900&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400..800&family=Noto+Sans:wght@900&family=Noto+Sans+JP:wght@100..900&family=Noto+Sans+SC:wght@400..900&display=swap"
       rel="stylesheet" />
     <title>Synbox</title>
   </head>
