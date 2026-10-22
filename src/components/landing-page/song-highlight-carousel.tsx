@@ -164,7 +164,9 @@ const SongHighlightCarousel = () => {
           {centred && (
             <img
               key={centred.videoId}
-              src={centred.thumbnailUrl}
+              // YouTube's 320x180 picture: already soft when stretched to the card, so the glow stays a glow
+              // even where the blur isn't drawn
+              src={`https://i.ytimg.com/vi/${centred.videoId}/mqdefault.jpg`}
               alt=''
               aria-hidden
               className='carousel-glow appear'

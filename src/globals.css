@@ -537,6 +537,10 @@
   scale: 0.9;
   translate: 0 1.25rem;
   filter: blur(40px) saturate(1.5);
+  /* Faded to nothing at its edges whatever the blur does: iOS Safari can drop the blur on it, and the strip
+     below the card then showed as a hard grey bar */
+  -webkit-mask-image: radial-gradient(closest-side, #000 35%, transparent);
+  mask-image: radial-gradient(closest-side, #000 35%, transparent);
   pointer-events: none;
 }
 
