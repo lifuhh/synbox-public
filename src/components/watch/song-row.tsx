@@ -7,6 +7,7 @@ import {
 } from '@/components/shared/karaoke-badge'
 import type { ListSong } from '@/lib/listening/model'
 import { songPath } from '@/lib/listening/store'
+import { bracketStart } from '@/utils'
 import { cn } from '@/utils/cn'
 
 // A song in a list: a 96×54 thumbnail (16:9) with the karaoke edge, then the title on up to two lines and
@@ -67,12 +68,17 @@ export const SongRow = ({
           className={cn(
             'text-sm leading-5 text-pretty',
             large ? 'line-clamp-3 font-semibold' : 'line-clamp-2 font-medium',
-            current ? 'text-primary-text' : 'text-foreground'
+            current ? 'text-primary-text' : 'text-foreground',
+            bracketStart(song.title)
           )}>
           {song.title}
         </span>
         <KaraokeLabelMark videoId={song.videoId} />
-        <span className='truncate text-xs text-muted-foreground'>
+        <span
+          className={cn(
+            'truncate text-xs text-muted-foreground',
+            bracketStart(song.author)
+          )}>
           {song.author}
         </span>
       </span>

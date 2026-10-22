@@ -778,6 +778,13 @@
   border-top-right-radius: inherit;
 }
 
+/* Text that starts with a CJK opening bracket (`bracketStart`): the bracket's ink starts 0.52-0.71em into its
+   square in Noto Sans JP, so pull the first line back by 0.55em, which puts 【「『 within a pixel of the lines
+   under it. text-spacing-trim: trim-start only halves the square (still 2px off at 20px), and WebKit lacks it */
+@utility bracket-start {
+  text-indent: -0.55em;
+}
+
 @utility watch-below {
   container-type: size;
 }
