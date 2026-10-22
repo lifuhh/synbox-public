@@ -35,6 +35,7 @@ const CARD_CHROME_PX = 84
 const SongCard = ({ song }: { song: LibraryListSong }) => (
   <div className='relative'>
     <Link
+      data-bench='gallery-tile'
       to={`/v/${song.videoId}`}
       state={{ videoId: song.videoId }}
       title={song.title}
@@ -230,6 +231,7 @@ const SongGallery = () => {
     <section
       ref={setSection}
       aria-labelledby='gallery-title'
+      data-bench='gallery'
       className='relative mt-12 pb-page-bottom'>
       <h2
         ref={title}

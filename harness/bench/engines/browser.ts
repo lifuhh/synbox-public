@@ -1,11 +1,74 @@
 // Playwright contexts for probes. Every run gets a fresh context (cold cache, no storage), the app's randomness
-// seeded (the gallery shuffles), Sentry blocked, and an in-page recorder for marks, frames and layout.
+// seeded (the gallery shuffles), Sentry blocked, Google Fonts replayed, and an in-page recorder for marks,
+// frames and layout.
+
+import { createHash } from 'node:crypto'
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  renameSync,
+  writeFileSync,
+} from 'node:fs'
+import path from 'node:path'
 
 import { chromium, webkit } from 'playwright'
-import type { Browser, BrowserContext, Page } from 'playwright'
+import type { Browser, BrowserContext, Page, Route } from 'playwright'
 
+import { isRecord, parseJson } from '../json'
 import type { Surface } from '../types'
 import { RECORDER } from './recorder'
+
+const GOOGLE_FONTS = /^https:\/\/fonts\.(?:googleapis|gstatic)\.com\//u
+let fontDir: string | null = null
+
+/**
+ * Google Fonts answered from a local copy, recorded on first use. Live, Playwright's WebKit stalled on the ~60
+ * parallel Noto Sans JP subset requests, so fonts never finished loading and every screenshot timed out
+ * (2026-10-22), and font downloads were timing noise on every engine. The stylesheet differs by browser, so it is
+ * keyed by user agent too; the font files are not.
+ */
+export const replayFonts = (dir: string): void => {
+  mkdirSync(dir, { recursive: true })
+  fontDir = dir
+}
+
+const fromFontCache = async (route: Route, dir: string): Promise<void> => {
+  const request = route.request()
+  const url = request.url()
+  const agent = url.includes('fonts.googleapis.com')
+    ? ((await request.headerValue('user-agent')) ?? '')
+    : ''
+  const file = path.join(
+    dir,
+    createHash('sha256').update(`${url}\n${agent}`).digest('hex').slice(0, 24)
+  )
+  if (!existsSync(file)) {
+    const response = await fetch(url, { headers: { 'user-agent': agent } })
+    if (!response.ok) {
+      await route.abort()
+      return
+    }
+    const body = Buffer.from(await response.arrayBuffer())
+    const type = response.headers.get('content-type') ?? ''
+    writeFileSync(`${file}.json`, JSON.stringify({ type, url }))
+    writeFileSync(`${file}.tmp`, body)
+    renameSync(`${file}.tmp`, file)
+  }
+  const { type } = parseJson(
+    readFileSync(`${file}.json`, 'utf-8'),
+    (v): v is { type: string } => isRecord(v) && typeof v.type === 'string',
+    `font fixture ${file}.json`
+  )
+  await route.fulfill({
+    body: readFileSync(file),
+    headers: {
+      'access-control-allow-origin': '*',
+      'cache-control': 'public, max-age=31536000',
+      'content-type': type,
+    },
+  })
+}
 
 const SAFE = {
   landscape: { bottom: 21, left: 47, right: 47, top: 0 },
@@ -79,6 +142,12 @@ export const open = async (
   await context.route(/sentry\.io/u, async (route) => {
     await route.abort()
   })
+  if (fontDir !== null) {
+    const dir = fontDir
+    await context.route(GOOGLE_FONTS, async (route) => {
+      await fromFontCache(route, dir)
+    })
+  }
   await context.addInitScript(RECORDER)
   const safe = phone
     ? SAFE[surface.orientation]
@@ -134,6 +203,17 @@ export const open = async (
         subtree: true,
       })
     }, safe)
+  }
+  if (phone && surface.installed === true) {
+    // iOS reports an app opened from the Home Screen through navigator.standalone, which the app reads for its
+    // installed layout (src/lib/pwa.ts › isStandalone). CSS `display-mode: standalone` can't be emulated; the app
+    // uses it only to work around an iOS bug the lab doesn't have
+    await context.addInitScript(() => {
+      Object.defineProperty(Navigator.prototype, 'standalone', {
+        configurable: true,
+        get: () => true,
+      })
+    })
   }
   const page = await context.newPage()
   if (surface.engine === 'chromium' && opts.cpu !== undefined && opts.cpu > 1) {

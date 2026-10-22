@@ -22,7 +22,13 @@ export type Tier = 'smoke' | 'full'
 
 export type Surface =
   | { kind: 'desktop'; engine: 'chromium' }
-  | { kind: 'phone'; engine: 'webkit'; orientation: 'portrait' | 'landscape' }
+  | {
+      kind: 'phone'
+      engine: 'webkit'
+      orientation: 'portrait' | 'landscape'
+      /** Opened from the Home Screen: the installed app's own layout (tab bar, short top bar) */
+      installed?: true
+    }
 
 export interface BenchContext {
   /** Origin of the bench server for the build under test, e.g. http://localhost:4317 */

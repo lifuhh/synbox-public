@@ -28,13 +28,20 @@ The report prints to the terminal and is saved under the main checkout's `.harne
 | `home` | desktop Chrome, 4× CPU | FCP, LCP, CLS, hero box visible, first typed character, recommendations / charts / gallery ready, Next press → scroll end, gallery scroll fps, dropped frames, blank tiles, blocking |
 | `home-load` | cdp-perf mobile lab (4× CPU, slow 4G) | FCP, LCP, CLS, TBT |
 | `player-<id>` | desktop Chrome, 4× CPU | iframe, player ready, lyrics data, playback start, pause / resume / seek latency, playback fps and dropped frames |
-| `layout-<page>-<screen>` | home, gallery, player, search × desktop Chromium 1440×900, WebKit iPhone 390×844 and 844×390 with safe areas | sideways overflow, covered, small (< 24px), off-screen and safe-area press targets; landmark moves are reported |
+| `layout-<page>-<screen>` | every route in `src/app.tsx` × desktop Chromium 1440×900, WebKit iPhone 390×844 in Safari and as the installed app, all with safe areas; home, gallery, player and search also at 844×390 | sideways overflow, covered, small (< 24px), off-screen and safe-area press targets; landmark moves are reported |
 
 Tiers: `smoke` runs at the gate; `full` (`--tier full`) adds two more songs, the player page load and typing latency. `player-Dta27KjGpJs` is held out: it runs at the gate but never counts in the hill-climb score.
 
 ## How it decides
 
-- **Same data every run.** The bench serves a production build the way Netlify does (brotli, cache headers, the `/api` proxies from `netlify.toml`). API responses, the lookup service included, are recorded once and replayed. `Math.random` is seeded. Sentry is blocked.
+- **Same data every run.** The bench serves a production build the way Netlify does (brotli, cache headers, the `/api` proxies from `netlify.toml`). API responses, the lookup service included, and Google Fonts are recorded once and replayed. `Math.random` is seeded. Sentry is blocked.
+
+## How it keeps up with the app
+
+- **Hooks, not markup.** Probes wait for elements the app marks with `data-bench` (`carousel`, `carousel-slide`, `charts`, `charts-row`, `gallery`, `gallery-tile`, `hero-input`, `lyrics-line` (the stage's current lines), `lyrics-text` (the lyrics panel and reader), `search-result`; `engines/recorder.ts` › `WATCH`). Player controls are found by their accessible names (Play, Pause, Seek). A redesign keeps the bench working as long as it keeps the attribute on the element that means the same thing. When one goes missing, the run fails with `mark "<name>" never fired` and lists the marks it did see.
+- **Pages from the router.** The layout audits read the routes in `src/app.tsx`. A new route without parameters is audited on its own once it settles. A route with parameters needs a sample URL in `probes/layout.ts` › `LAYOUT_PAGES`, or a reason in `LAYOUT_SKIP`. Until it has one, its audit fails and says so.
+- **The installed app.** The `installed` screen is the iPhone portrait screen with `navigator.standalone` set, which is what the app reads for its tab bar and short top bar. The audit fails if the page didn't switch to the installed layout.
+- **Who fixes it.** The gate runs on every PR into `main`, so a change that breaks a probe fails its own PR. Its author updates the hook or the probe there, in the same PR.
 - **Rolling baseline.** Samples pooled from the last 3 accepted runs of the merge base's tree on this machine, under the same conditions and benchmark definition. A branch merged on top of `main` produces exactly that tree, so its own passing gate run becomes the baseline for the next branch: the average updates after every successful gate, with no extra measuring. When `main` has moved and its tree has no runs yet, the gate measures it first. An abandoned branch or a reverted climb step never counts.
 - **Statistics.** Mann–Whitney U per metric, Holm-corrected across the gated metrics, and the change must exceed `max(floor, pct × baseline)` (set per metric in `suite.ts`). Byte and layout counts compare exactly.
 - **No re-rolling.** Re-running an unchanged tree adds samples to the same pool.

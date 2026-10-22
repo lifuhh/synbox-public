@@ -43,6 +43,7 @@ export const KaraokeRomajiLine = ({
   // theme accent as it is sung
   return (
     <p
+      data-bench='lyrics-line'
       className={cn(
         'lyric-text-line align-middle font_noto_sans_jp_black_900 leading-normal text-balance',
         className

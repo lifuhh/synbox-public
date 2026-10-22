@@ -3,7 +3,7 @@
 
 import { cdpPerf } from './engines/cdp'
 import { homeVisit } from './probes/home'
-import { layoutAudit } from './probes/layout'
+import { layoutAudit, layoutPages } from './probes/layout'
 import type { LayoutPage } from './probes/layout'
 import { playerSession } from './probes/player'
 import { buildSize } from './probes/size'
@@ -78,6 +78,8 @@ const LANDSCAPE: Surface = {
   kind: 'phone',
   orientation: 'landscape',
 }
+const INSTALLED: Surface = { ...PORTRAIT, installed: true }
+const BUSY_PAGES = new Set(['home', 'gallery', 'player', 'search'])
 
 /**
  * Lighthouse's mobile lab: a mid-range phone on slow 4G, where load regressions show first. The service worker is
@@ -145,7 +147,7 @@ const layout = (
   surface: Surface,
   name: string
 ): Benchmark => ({
-  id: `layout-${page}-${name}`,
+  id: `layout-${page.name}-${name}`,
   metrics: [
     count('overflowXPx'),
     count('occludedTargets'),
@@ -154,13 +156,13 @@ const layout = (
     count('unsafeTargets'),
     count('targets', false),
   ],
-  params: { page },
+  params: { page: page.path },
   run: layoutAudit(page, surface),
   runs: 1,
   sources: [...PROBE, 'harness/bench/probes/layout.ts'],
   surface,
   tier: 'smoke',
-  title: `Layout of ${page} on ${name}: target sizes, covered targets, overflow, safe areas, landmark positions`,
+  title: `Layout of ${page.name} (${page.path}) on ${name}: target sizes, covered targets, overflow, safe areas, landmark positions`,
 })
 
 const cdpFlow = (
@@ -181,7 +183,7 @@ const cdpFlow = (
   }),
 })
 
-const HERO_BOX = 'input[placeholder="Search or paste a YouTube URL"]'
+const HERO_BOX = '[data-bench=hero-input]'
 const HERO_TYPE = {
   name: 'hero-type',
   path: '/',
@@ -261,10 +263,15 @@ export const SUITE: Benchmark[] = [
       'Home page load, mobile lab (cdp-perf: 4× CPU, slow 4G, 412px phone)',
   },
   player('6rG_irmOQsM', 'smoke'),
-  ...(['home', 'gallery', 'player', 'search'] as const).flatMap((page) => [
+  // Every route in src/app.tsx, so a new page is audited without anyone adding it. Phones on their side matter
+  // most where the layout is busiest
+  ...layoutPages().flatMap((page) => [
     layout(page, DESKTOP, 'desktop'),
     layout(page, PORTRAIT, 'phone'),
-    layout(page, LANDSCAPE, 'phone-landscape'),
+    layout(page, INSTALLED, 'installed'),
+    ...(BUSY_PAGES.has(page.name)
+      ? [layout(page, LANDSCAPE, 'phone-landscape')]
+      : []),
   ]),
   player('x1FV6IrjZCY', 'full'),
   player('ZRtdQ81jPUQ', 'full'),

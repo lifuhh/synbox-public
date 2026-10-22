@@ -13,9 +13,7 @@ const carouselNext = async (
   page: Page
 ): Promise<{ ms: number; frames: FrameStats }> => {
   await page.evaluate(() => {
-    const track = document.querySelector(
-      'section[aria-label=Recommendations] .carousel-track'
-    )
+    const track = document.querySelector('[data-bench=carousel]')
     // oxlint-disable-next-line promise/avoid-new -- turns the scrollend event and a timeout into one promise
     window.__benchScrollEnd = new Promise<number>((resolve) => {
       track?.addEventListener(
@@ -66,9 +64,7 @@ const galleryScroll = async (
     })
     // oxlint-disable-next-line unicorn/consistent-function-scoping -- page.evaluate serialises this callback, so it can't reach module scope
     const tiles = () => [
-      ...document.querySelectorAll(
-        'section[aria-labelledby=gallery-title] ul > li'
-      ),
+      ...document.querySelectorAll('[data-bench=gallery] ul > li'),
     ]
     let blank = 0
     let seen = 0
@@ -120,7 +116,7 @@ export const homeVisit = async (ctx: BenchContext, runs: number) =>
       await page.goto(`${ctx.origin}/`, { waitUntil: 'commit' })
       const heroInputMs = await mark(page, 'hero-input')
       // First input: type one character the moment the box shows, and time until the box holds it
-      const input = 'input[placeholder="Search or paste a YouTube URL"]'
+      const input = '[data-bench=hero-input]'
       await page.locator(input).pressSequentially('a')
       const interactiveMs = await settledNumber(
         await page.waitForFunction(
@@ -134,11 +130,7 @@ export const homeVisit = async (ctx: BenchContext, runs: number) =>
       const carouselMs = await mark(page, 'carousel-slide')
       const chartsMs = await mark(page, 'charts-row')
       const chartsDoneMs = await mark(page, 'charts-done')
-      const chartsRows = await page
-        .locator(
-          'section[aria-labelledby=charts-title] ul:not([aria-hidden]) > li'
-        )
-        .count()
+      const chartsRows = await page.locator('[data-bench=charts-row]').count()
       const galleryMs = await mark(page, 'gallery-tile')
       await page.waitForTimeout(1500)
       const paint = await page.evaluate(() => ({

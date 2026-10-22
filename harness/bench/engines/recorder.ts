@@ -8,33 +8,28 @@ import type { Rect } from '../types'
 
 /** Named elements to timestamp. `img: true` waits until an image inside has decoded, not just the box */
 export const WATCH: Record<string, { selector: string; img?: boolean }> = {
+  // The app marks what the probes wait for with data-bench, so a redesign keeps them working unless it removes
+  // the element; a mark that never fires names the missing hook
   'carousel-slide': {
     img: true,
-    selector:
-      'section[aria-label=Recommendations] .carousel-track a[href^="/v/"]',
+    selector: '[data-bench=carousel] [data-bench=carousel-slide]',
   },
   // Every chart row in, both playlist pages fetched (deleted or private videos drop out, so not always 100)
   'charts-done': {
-    selector:
-      'section[aria-labelledby=charts-title][aria-busy=false] ul:not([aria-hidden]) > li',
+    selector: '[data-bench=charts][aria-busy=false] [data-bench=charts-row]',
   },
-  'charts-row': {
-    selector:
-      'section[aria-labelledby=charts-title] ul:not([aria-hidden]) > li > a[href^="/v/"]',
+  'charts-row': { selector: '[data-bench=charts-row]' },
+  'gallery-tile': { img: true, selector: '[data-bench=gallery-tile]' },
+  'hero-input': { selector: '[data-bench=hero-input]' },
+  // Lyrics on screen: the stage's current lines, or the lyrics panel's and the reader's full list
+  'lyrics-line': {
+    selector: '[data-bench=lyrics-line], [data-bench=lyrics-text]',
   },
-  'gallery-tile': {
-    img: true,
-    selector: 'section[aria-labelledby=gallery-title] ul > li a[href^="/v/"]',
-  },
-  'hero-input': {
-    selector: 'input[placeholder="Search or paste a YouTube URL"]',
-  },
-  'lyrics-line': { selector: '.player-lyrics-overlay p.lyric-text-line' },
   // The YouTube player lives in one persistent layer at the top of the body, outside the stage
   'player-iframe': {
     selector: '[data-stage-video] iframe, [data-player-stage] iframe',
   },
-  'search-result': { img: true, selector: 'button:has(> div > img)' },
+  'search-result': { img: true, selector: '[data-bench=search-result]' },
   topbar: { selector: '[data-topbar]' },
 }
 
@@ -209,8 +204,7 @@ const recorder = (watch: typeof WATCH) => {
       lastPhase = phase
     }
     const line =
-      document.querySelector('.player-lyrics-overlay p.lyric-text-line')
-        ?.textContent ?? ''
+      document.querySelector('[data-bench=lyrics-line]')?.textContent ?? ''
     if (line && line !== lastLine) {
       bench.lines.push(now)
       lastLine = line
@@ -418,12 +412,12 @@ const recorder = (watch: typeof WATCH) => {
     }
     const landmarks: Record<string, Rect> = {}
     for (const [name, sel] of Object.entries({
-      carousel: 'section[aria-label=Recommendations]',
-      charts: 'section[aria-labelledby=charts-title]',
+      carousel: '[data-bench=carousel]',
+      charts: '[data-bench=charts]',
       controls: '[data-player-chrome]',
       'gallery-title': '#gallery-title',
-      'hero-input': 'input[placeholder="Search or paste a YouTube URL"]',
-      lyrics: '.player-lyrics-overlay',
+      'hero-input': '[data-bench=hero-input]',
+      lyrics: '[data-bench=lyrics-line]',
       stage: '[data-player-stage]',
       topbar: '[data-topbar]',
     })) {

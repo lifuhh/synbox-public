@@ -15,7 +15,12 @@ import path from 'node:path'
 import { parseArgs } from 'node:util'
 
 import { buildRef, buildWorkingTree } from './build'
-import { browserVersions, closeBrowsers, speedProbe } from './engines/browser'
+import {
+  browserVersions,
+  closeBrowsers,
+  replayFonts,
+  speedProbe,
+} from './engines/browser'
 import { evaluatorTouched } from './gate'
 import { isRecord, parseJson } from './json'
 import { cv } from './scorer/stats'
@@ -164,6 +169,7 @@ const measure = async (
     mode: api,
     repoTop: repo.top,
   })
+  replayFonts(storeDir(repo, 'bench', 'fixtures', 'fonts'))
   const out: Measured[] = []
   const label = opts.label ?? ''
   try {
