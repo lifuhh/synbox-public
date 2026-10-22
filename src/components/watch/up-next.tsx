@@ -27,7 +27,7 @@ import { SortableList } from './sortable-list'
 import { Switch } from './switch'
 
 // How many songs the list beside the video shows; More Like This has the rest
-export const UP_NEXT_COUNT = 12
+export const UP_NEXT_COUNT = 20
 
 // What plays after this song: the listener's queue first (drag to reorder, × to remove), then the list, which
 // chips narrow to the song's artist, mood or kind of singer, as YouTube's do. Autoplay plays the top of the
