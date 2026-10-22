@@ -181,13 +181,15 @@ const ViewButtons = ({
   </>
 )
 
-// Settings for the whole sitting rather than the song, so they keep out of the thumb's way: a column down the
-// right edge, touch screens only, sliding out to the right with the rest of the UI. Upright it hangs under
-// the top bar's last icon, centred on it; on a phone on its side it mirrors the rail on the left (same
-// buttons, padding and top), so the two frame the video. Only the full-screen player has them: on the watch
-// page the video is a box among the page's own controls, which a lock could not cover and turning the page
-// would not help, so arriving there unlocks
-const SittingColumn = ({
+// What only the full-screen player has; on the watch page the video is a box among the page's own controls,
+// which a lock could not cover and turning the page would not help, so arriving there unlocks.
+// - A shade over the top (the control bar's, mirrored) while the floating UI shows: the top bar's white logo
+//   and icons lie over the video, and a bright one swallows them.
+// - The settings for the whole sitting rather than the song, kept out of the thumb's way: a column down the
+//   right edge, touch screens only, sliding out to the right with the rest of the UI. Upright it hangs under
+//   the top bar's last icon, centred on it; on a phone on its side it mirrors the rail on the left (same
+//   buttons, padding and top), so the two frame the video
+const FullScreenChrome = ({
   visible,
   locked,
   onLockedChange,
@@ -205,6 +207,14 @@ const SittingColumn = ({
   }
   return (
     <>
+      <div
+        aria-hidden='true'
+        style={FADE_VARS}
+        className={cn(
+          'pointer-events-none absolute inset-x-0 top-0 z-30 h-[calc(var(--topbar-h)+3rem)] bg-linear-to-b from-black/60 to-transparent transition-opacity duration-(--controls-fade)',
+          visible ? 'opacity-100' : 'opacity-0'
+        )}
+      />
       <div
         data-player-chrome
         className={cn(
@@ -317,7 +327,7 @@ export const StageControls = ({
 
   return (
     <>
-      <SittingColumn
+      <FullScreenChrome
         visible={visible}
         locked={locked}
         onLockedChange={onLockedChange}
