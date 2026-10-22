@@ -39,6 +39,9 @@ export interface BenchContext {
   artifactDir: string
   /** Discarded runs before measuring (1 normally; 0 when interleaving blocks that are already warm) */
   warmup: number
+  /** Whether a single-run audit may try once more after an error; not on the merge base, where a probe that
+   * can't run there fails twice as slowly for nothing */
+  retry: boolean
   log: (message: string) => void
 }
 

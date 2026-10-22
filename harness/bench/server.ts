@@ -200,7 +200,9 @@ export const serveBuild = (opts: {
     const body = await res.text()
     const contentType =
       res.headers.get('content-type') ?? 'application/octet-stream'
-    if (opts.mode === 'replay' && req.method === 'GET' && res.status < 500) {
+    // Only a success is kept: a 404 recorded while a route was not live yet (the Worker's /api/recommendations,
+    // 2026-10-22) replayed for good and failed every home probe. An error passes through and is asked again next run
+    if (opts.mode === 'replay' && req.method === 'GET' && res.ok) {
       counts.recorded += 1
       const fixture: Fixture = {
         body,

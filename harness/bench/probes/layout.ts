@@ -254,7 +254,7 @@ export const layoutAudit =
     ctx: BenchContext
   ): Promise<{ samples: Sample[]; errors: string[] }> => {
     const first = await auditOnce(p, surface)(ctx)
-    if (first.errors.length === 0) {
+    if (first.errors.length === 0 || !ctx.retry) {
       return first
     }
     const second = await auditOnce(p, surface)(ctx)
