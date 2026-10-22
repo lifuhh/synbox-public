@@ -151,9 +151,10 @@ const VOLUME_WHEEL_STEP = 0.05
 const SEEK_SETTLED_SEC = 1
 const SEEK_HOLD_MAX_MS = 3000
 
-// One of the control bar's pills: dark glass behind a group of buttons, on a wide screen with a mouse
+// One of the control bar's pills: a light glass behind a group of buttons, on a wide screen with a mouse. Over the
+// bar's shade a dark pill vanished; a light one reads over dark and bright video alike
 const PILL =
-  'pills:flex pills:items-center pills:rounded-full pills:bg-black/45 pills:backdrop-blur-md'
+  'pills:flex pills:items-center pills:rounded-full pills:bg-white/12 pills:backdrop-blur-md'
 
 // Autoplay, where YouTube has it, first in the right-hand pill: on, the song at the top of the list beside the
 // video plays when this one ends. The thumb's side and the track's brightness both show the state, and its
@@ -378,7 +379,7 @@ export const StageControls = ({
         ref={barRef}
         style={FADE_VARS}
         className={cn(
-          'absolute inset-x-0 bottom-0 z-30 bg-linear-to-t from-black/80 via-black/40 to-transparent pt-10 pr-controls-right pb-controls-bottom pl-controls-left transition-opacity duration-(--controls-fade) watch-narrow:pt-6 watch-narrow:pr-2 watch-narrow:pb-1 watch-narrow:pl-2 short:pl-controls-rail',
+          'absolute inset-x-0 bottom-0 z-30 bg-linear-to-t from-black/80 via-black/40 to-transparent pt-10 pr-controls-right pb-controls-bottom pl-controls-left transition-opacity duration-(--controls-fade) watch-narrow:pt-6 watch-narrow:pr-2 watch-narrow:pb-1 watch-narrow:pl-2 pills:from-black/60 pills:via-black/20 short:pl-controls-rail',
           visible ? 'opacity-100' : 'opacity-0',
           !armed && 'pointer-events-none'
         )}>
