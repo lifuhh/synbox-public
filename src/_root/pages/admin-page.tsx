@@ -624,19 +624,46 @@ const KIND_LABELS = {
 
 // A running song shows its step and how far the whole job is, as the progress panel does; one the backend
 // stopped reporting on was let go ('abandoned') and shows as stopped
-const statusLabel = (generation: AdminGeneration) => {
+// A running song's step and how far along it is, or where the song ended up
+const statusOf = (
+  generation: AdminGeneration
+): { label: string; percent?: number } => {
   if (generation.status === 'succeeded') {
-    return 'Done'
+    return { label: 'Done' }
   }
   if (generation.status === 'failed') {
-    return generation.errorCode === 'abandoned' ? 'Stopped' : 'Failed'
+    return {
+      label: generation.errorCode === 'abandoned' ? 'Stopped' : 'Failed',
+    }
   }
   const { stage, fraction } = generation
   if (!isStageId(stage)) {
-    return 'Starting'
+    return { label: 'Starting' }
   }
-  const percent = Math.round(overallAt(stage, fraction ?? 0) * 100)
-  return `${stepOf(stage)?.title ?? 'In Progress'} · ${percent}%`
+  return {
+    label: stepOf(stage)?.title ?? 'In Progress',
+    percent: Math.round(overallAt(stage, fraction ?? 0) * 100),
+  }
+}
+
+const statusLabel = (generation: AdminGeneration) => {
+  const { label, percent } = statusOf(generation)
+  return percent === undefined ? label : `${label} · ${percent}%`
+}
+
+// The table's cell: the step on one line, its percent under it
+const StatusCell = ({ generation }: { generation: AdminGeneration }) => {
+  const { label, percent } = statusOf(generation)
+  return (
+    <>
+      <span className='block truncate'>{label}</span>
+      {percent !== undefined && (
+        <span className='block text-xs text-muted-foreground tabular-nums'>
+          {percent}%
+        </span>
+      )}
+    </>
+  )
 }
 
 const statusClass = (generation: AdminGeneration) =>
@@ -688,7 +715,7 @@ const SongRow = ({ generation }: { generation: AdminGeneration }) => (
     </td>
     <td className='px-4'>{KIND_LABELS[generation.kind]}</td>
     <td className={cn('px-4', statusClass(generation))}>
-      {statusLabel(generation)}
+      <StatusCell generation={generation} />
     </td>
     <td className='truncate pl-4 text-muted-foreground'>
       <When value={generation.createdAt} />
@@ -760,7 +787,7 @@ const SongsTable = () => {
           <col />
           <col className='w-56' />
           <col className='w-28' />
-          <col className='w-28' />
+          <col className='w-48' />
           <col className='w-36' />
           <col className='w-12' />
         </colgroup>
