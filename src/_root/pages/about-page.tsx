@@ -41,11 +41,26 @@ const FAQS = [
       "Yes. Add Synbox to your home screen from your browser's share menu, and it opens full screen like an app.",
     question: 'Can I Install It?',
   },
-  {
-    answer:
-      'React and TypeScript on Netlify, a Cloudflare Worker for accounts, and a Python service on Google Cloud Run that builds the lyrics. The code is on GitHub.',
-    question: 'How Is It Built?',
-  },
+]
+
+const BUILT_WITH = [
+  'React',
+  'TypeScript',
+  'Vite',
+  'Tailwind CSS',
+  'Radix UI',
+  'TanStack Query',
+  'Jotai',
+  'Cloudflare Workers',
+  'Better Auth',
+  'Netlify',
+  'Python',
+  'Flask',
+  'Google Cloud Run',
+  'Appwrite',
+  'ElevenLabs Scribe',
+  'OpenAI',
+  'pyopenjtalk',
 ]
 
 // One screen on a desktop: what Synbox does, how, the questions people ask, and the fine print
@@ -87,10 +102,25 @@ const AboutPage = () => (
         ))}
       </Accordion>
 
+      <section aria-labelledby='built-with' className='flex flex-col gap-3'>
+        <h2 id='built-with' className='text-sm font-semibold'>
+          Built With
+        </h2>
+        <ul className='flex flex-wrap gap-1.5'>
+          {BUILT_WITH.map((name) => (
+            <li
+              key={name}
+              className='rounded-full bg-card px-2.5 py-1 text-xs text-muted-foreground'>
+              {name}
+            </li>
+          ))}
+        </ul>
+      </section>
+
       <p className='text-xs text-pretty text-muted-foreground'>
         A non-commercial personal project with no ads. Songs, videos and lyrics
         belong to their owners and are shown for learning and singing along;
-        rights holders can ask for removal on GitHub.
+        rights holders can ask for removal on GitHub, where the code is too.
       </p>
     </div>
 
