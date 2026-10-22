@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Link, useParams } from 'react-router'
 
 import { startFromButton } from '@/components/generation/start-generation'
+import { AdminMark } from '@/components/shared/admin-mark'
 import Forbidden from '@/components/shared/forbidden'
 import { Button } from '@/components/ui/button'
 import {
@@ -291,8 +292,9 @@ const VersionsAdmin = ({ videoId }: { videoId: string }) => {
 
       <header className='flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between'>
         <div className='min-w-0 space-y-1'>
-          <h1 className='text-2xl font-bold text-foreground'>
+          <h1 className='flex items-center gap-2 text-2xl font-bold text-foreground'>
             Lyrics Versions
+            <AdminMark className='size-4' />
           </h1>
           <p className='truncate text-sm text-muted-foreground'>
             {songInfo?.title ?? videoId}

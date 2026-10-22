@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import { Link } from 'react-router'
 
 import { startFromButton } from '@/components/generation/start-generation'
+import { AdminMark } from '@/components/shared/admin-mark'
 import { KaraokeBadge, KaraokeMark } from '@/components/shared/karaoke-badge'
 import { Button } from '@/components/ui/button'
 import { toast } from '@/components/ui/use-toast'
@@ -129,14 +130,15 @@ const DoneView = ({ job }: { job: Job }) => {
             <Link
               to={`/v/${job.videoId}/versions`}
               onClick={close}
-              className='underline-offset-4 hover:text-foreground hover:underline'>
+              className='inline-flex items-center gap-1 underline-offset-4 hover:text-foreground hover:underline'>
+              <AdminMark />
               See All Versions
             </Link>
           )}
           {admin && !job.skipUploaderLyrics && (
             <button
               type='button'
-              className='underline-offset-4 hover:text-foreground hover:underline'
+              className='inline-flex items-center gap-1 underline-offset-4 hover:text-foreground hover:underline'
               onClick={() => {
                 void startFromButton({
                   mode: 'regenerate',
@@ -145,6 +147,7 @@ const DoneView = ({ job }: { job: Job }) => {
                   videoId: job.videoId,
                 })
               }}>
+              <AdminMark />
               Lyrics look off? Try without the video&apos;s subtitles
             </button>
           )}
