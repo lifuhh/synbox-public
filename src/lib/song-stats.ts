@@ -111,6 +111,23 @@ export const useLikeSong = (videoId: string) => {
   })
 }
 
+const recentSchema = z.object({ videoIds: z.array(z.string()) })
+
+// The songs anyone played most recently, latest first: video ids only, any video (the caller keeps its library's)
+export const useRecentListens = () =>
+  useQuery({
+    queryFn: async () => {
+      const response = await fetch('/api/songs/recent')
+      if (!response.ok) {
+        throw new Error(`Recent listens answered ${response.status}`)
+      }
+      return recentSchema.parse(await response.json()).videoIds
+    },
+    queryKey: [QUERY_KEYS.GET_RECENT_LISTENS],
+    // The Worker's answer is cached for a minute anyway
+    staleTime: 60_000,
+  })
+
 const compact = new Intl.NumberFormat('en', { notation: 'compact' })
 // "1 listen", "980 listens", "1.2K listens"
 export const listensText = (listens: number) =>

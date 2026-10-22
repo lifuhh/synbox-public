@@ -32,7 +32,14 @@ import {
   saveReport,
 } from './reports'
 import type { Reporter } from './reports'
-import { addListen, isVideoId, likerOf, readStats, setLike } from './songs'
+import {
+  addListen,
+  isVideoId,
+  likerOf,
+  listRecentListens,
+  readStats,
+  setLike,
+} from './songs'
 
 type AppEnv = Env & {
   USER_HOURLY_LIMIT: string
@@ -187,8 +194,14 @@ app.post('/api/songs/:videoId/listen', async (c) => {
   if (!isVideoId(videoId)) {
     return c.json({ code: 'bad_request' }, 400)
   }
-  await addListen(c.env.DB, videoId)
+  await addListen(c.env.DB, videoId, Date.now())
   return c.body(null, 204)
+})
+
+// The songs anyone played most recently, latest first. Public; browsers keep it a minute
+app.get('/api/songs/recent', async (c) => {
+  c.header('Cache-Control', 'public, max-age=60')
+  return c.json({ videoIds: await listRecentListens(c.env.DB) })
 })
 
 const userIdOf = async (env: AppEnv, headers: Headers) => {

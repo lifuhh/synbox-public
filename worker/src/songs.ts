@@ -15,14 +15,32 @@ export const likerOf = (userId: string | null, device: string | null) => {
   return device !== null && DEVICE.test(device) ? `d:${device}` : null
 }
 
-export const addListen = async (db: D1Database, videoId: string) => {
+export const addListen = async (
+  db: D1Database,
+  videoId: string,
+  now: number
+) => {
   await db
     .prepare(
-      `insert into "songStat" ("videoId", "listens") values (?1, 1)
-       on conflict ("videoId") do update set "listens" = "listens" + 1`
+      `insert into "songStat" ("videoId", "listens", "lastListenedAt") values (?1, 1, ?2)
+       on conflict ("videoId") do update set "listens" = "listens" + 1, "lastListenedAt" = ?2`
     )
-    .bind(videoId)
+    .bind(videoId, now)
     .run()
+}
+
+// The songs anyone played most recently, latest first. Any video id can be sent a listen, so the app keeps only
+// its library's songs from these
+export const RECENT_LISTENS = 60
+export const listRecentListens = async (db: D1Database) => {
+  const { results } = await db
+    .prepare(
+      `select "videoId" from "songStat" where "lastListenedAt" is not null
+       order by "lastListenedAt" desc limit ?1`
+    )
+    .bind(RECENT_LISTENS)
+    .all<{ videoId: string }>()
+  return results.map((row) => row.videoId)
 }
 
 export interface SongStats {
