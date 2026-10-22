@@ -1520,6 +1520,22 @@
       transform: translateX(100vw) rotate(90deg);
     }
 
+    /* Flip: the other way round, a quarter anticlockwise, for a phone held top to the right. The notch is on
+       the page's right and the home indicator on its left */
+    html[data-landscape-lock][data-landscape-flip] {
+      --safe-left: max(
+        0px,
+        calc(env(safe-area-inset-bottom, 0px) - (100lvh - 100dvh))
+      );
+      --safe-right: env(safe-area-inset-top, 0px);
+      --safe-top: env(safe-area-inset-left, 0px);
+      --safe-bottom: env(safe-area-inset-right, 0px);
+    }
+
+    html[data-landscape-lock][data-landscape-flip] body {
+      transform: translateY(100dvh) rotate(-90deg);
+    }
+
     html[data-landscape-lock] [data-topbar] {
       display: none;
     }
@@ -1662,5 +1678,97 @@
     100% {
       transform: translate(-100%, 0);
     }
+  }
+}
+
+/* Layout changes that move (src/lib/view-transition.ts): the browser cross-fades a snapshot of the page before
+   into the page after. A turn rotates both a quarter, on black like the system's own rotation, the turning page
+   shrunk by the screen's width over its height (--turn-scale) so it stays on screen; a flip turns them half
+   round; a zoom grows the video's box into the full-screen player */
+html[data-transition]::view-transition {
+  background: #000;
+}
+
+html[data-transition]::view-transition-group(*) {
+  animation-duration: 0.4s;
+  animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+html[data-transition='zoom'] [data-player-stage] {
+  view-transition-name: player-stage;
+}
+
+html[data-transition^='turn']::view-transition-old(root),
+html[data-transition^='turn']::view-transition-new(root),
+html[data-transition='flip']::view-transition-old(root),
+html[data-transition='flip']::view-transition-new(root) {
+  animation-duration: 0.45s;
+  animation-timing-function: cubic-bezier(0.3, 0.7, 0.2, 1);
+  animation-fill-mode: both;
+  mix-blend-mode: normal;
+}
+
+html[data-transition='turn-in']::view-transition-old(root),
+html[data-transition='turn-back']::view-transition-old(root) {
+  animation-name: turn-away-clockwise;
+}
+
+html[data-transition='turn-in']::view-transition-new(root),
+html[data-transition='turn-back']::view-transition-new(root) {
+  animation-name: turn-in-clockwise;
+}
+
+html[data-transition='turn-out']::view-transition-old(root) {
+  animation-name: turn-away-anticlockwise;
+}
+
+html[data-transition='turn-out']::view-transition-new(root) {
+  animation-name: turn-in-anticlockwise;
+}
+
+html[data-transition='flip']::view-transition-old(root) {
+  animation-name: flip-away;
+}
+
+html[data-transition='flip']::view-transition-new(root) {
+  animation-name: flip-in;
+}
+
+@keyframes turn-away-clockwise {
+  to {
+    transform: rotate(90deg) scale(var(--turn-scale, 1));
+    opacity: 0;
+  }
+}
+
+@keyframes turn-in-clockwise {
+  from {
+    transform: rotate(-90deg) scale(var(--turn-scale, 1));
+  }
+}
+
+@keyframes turn-away-anticlockwise {
+  to {
+    transform: rotate(-90deg) scale(var(--turn-scale, 1));
+    opacity: 0;
+  }
+}
+
+@keyframes turn-in-anticlockwise {
+  from {
+    transform: rotate(90deg) scale(var(--turn-scale, 1));
+  }
+}
+
+@keyframes flip-away {
+  to {
+    transform: rotate(180deg);
+    opacity: 0;
+  }
+}
+
+@keyframes flip-in {
+  from {
+    transform: rotate(-180deg);
   }
 }

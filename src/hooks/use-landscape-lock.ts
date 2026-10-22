@@ -1,7 +1,8 @@
 import { atom, useAtom, useAtomValue } from 'jotai'
-import { useEffect, useRef } from 'react'
+import { useEffect, useLayoutEffect, useRef } from 'react'
 
-import { LANDSCAPE_LOCK_ATTR } from '@/lib/page-turn'
+import { LANDSCAPE_FLIP_ATTR, LANDSCAPE_LOCK_ATTR } from '@/lib/page-turn'
+import { transitionLayout } from '@/lib/view-transition'
 
 // 'native': the browser holds the orientation (Android: only while the page is fullscreen). 'turned': no
 // orientation lock (iPhone), so the page turns itself on its side whenever the screen stands upright
@@ -9,6 +10,9 @@ type LandscapeLock = 'off' | 'native' | 'turned'
 
 // For this visit only: from one song to the next, not to the next time the app opens
 const landscapeLockAtom = atom<LandscapeLock>('off')
+// A turned page the other way round, top to the screen's left, for a phone held top to the right: the system
+// won't turn it while its rotation lock holds the screen upright
+const landscapeFlipAtom = atom(false)
 
 export const usePageTurned = () => useAtomValue(landscapeLockAtom) === 'turned'
 
@@ -28,9 +32,23 @@ const lockNatively = async () => {
   return enter
 }
 
+// The page turns only while the screen stands upright (see globals.css): on a phone already on its side the lock
+// changes nothing on screen, so nothing turns
+const turn = (
+  kind: 'turn-in' | 'turn-out' | 'turn-back' | 'flip',
+  update: () => void
+) => {
+  if (matchMedia('(orientation: portrait)').matches) {
+    transitionLayout(kind, update)
+  } else {
+    update()
+  }
+}
+
 // Mounted with the player: a page elsewhere in the app is never turned
 export const useLandscapeLock = () => {
   const [mode, setMode] = useAtom(landscapeLockAtom)
+  const [flipped, setFlipped] = useAtom(landscapeFlipAtom)
   // Fullscreen entered for the lock ends with it
   const enteredFullscreenRef = useRef(false)
 
@@ -48,13 +66,16 @@ export const useLandscapeLock = () => {
     }
   }, [setMode])
 
-  useEffect(() => {
+  // Before paint, so a turn's view transition snapshots the page already turned
+  useLayoutEffect(() => {
     const root = document.documentElement
     root.toggleAttribute(LANDSCAPE_LOCK_ATTR, mode === 'turned')
+    root.toggleAttribute(LANDSCAPE_FLIP_ATTR, mode === 'turned' && flipped)
     return () => {
       root.removeAttribute(LANDSCAPE_LOCK_ATTR)
+      root.removeAttribute(LANDSCAPE_FLIP_ATTR)
     }
-  }, [mode])
+  }, [mode, flipped])
 
   const toggle = async () => {
     if (mode === 'native') {
@@ -66,7 +87,10 @@ export const useLandscapeLock = () => {
       return
     }
     if (mode === 'turned') {
-      setMode('off')
+      turn(flipped ? 'turn-back' : 'turn-out', () => {
+        setMode('off')
+        setFlipped(false)
+      })
       return
     }
     // Fullscreen needs the tap that asked for it, so this runs straight from the click
@@ -79,8 +103,16 @@ export const useLandscapeLock = () => {
         // No lock here (iPad Safari, a browser that refuses it): turn the page instead
       }
     }
-    setMode('turned')
+    turn('turn-in', () => {
+      setMode('turned')
+    })
   }
 
-  return { locked: mode !== 'off', toggle }
+  const flip = () => {
+    turn('flip', () => {
+      setFlipped(!flipped)
+    })
+  }
+
+  return { flip, locked: mode !== 'off', toggle, turned: mode === 'turned' }
 }
