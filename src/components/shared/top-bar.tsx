@@ -107,6 +107,24 @@ const modeOn = (bar: Bar | null, pathname: string): Bar['mode'] | 'top' =>
     ? bar.mode
     : 'top'
 
+// The bar's soft lower edge, in its own layer (topbar-fade): it shows with the bar over a scrolled page
+const TopBarFade = ({
+  player,
+  mode,
+}: {
+  player: boolean
+  mode: Bar['mode'] | 'top'
+}) => (
+  <div
+    aria-hidden
+    data-topbar-fade
+    className={cn(
+      'topbar-fade transition-opacity duration-300 ease-out motion-reduce:transition-none',
+      (player || mode !== 'shown') && 'opacity-0'
+    )}
+  />
+)
+
 const TopBar = () => {
   // The versions page under /v/:id is an ordinary page with an opaque bar, and so is the watch page around a
   // player that is not the whole screen
@@ -177,49 +195,52 @@ const TopBar = () => {
   )
 
   return (
-    <header
-      data-topbar
-      className={cn(
-        'fixed top-0 right-0 left-0 z-50 pt-safe-top pr-(--safe-right) pl-(--safe-left)',
-        isVideoPlayer
-          ? 'pointer-events-none'
-          : 'transition-transform duration-300 ease-out motion-reduce:transition-none',
-        !isVideoPlayer && mode !== 'top' && 'topbar-frost',
-        // Keyboard focus inside a hidden bar brings it back
-        !isVideoPlayer &&
-          mode === 'hidden' &&
-          '-translate-y-full focus-within:translate-y-0'
-      )}>
-      {/* The logo is taller than the bar and centred on it, so its waveform would start at the very
-          top; with no bar behind it on the player, the row sits lower so the logo clears the edge */}
-      <nav
+    <>
+      <header
+        data-topbar
         className={cn(
-          'flex-between h-14 w-full pr-2 sm:px-4',
-          isVideoPlayer && 'mt-2'
+          'fixed top-0 right-0 left-0 z-50 pt-safe-top pr-(--safe-right) pl-(--safe-left)',
+          isVideoPlayer
+            ? 'pointer-events-none'
+            : 'transition-transform duration-300 ease-out motion-reduce:transition-none',
+          !isVideoPlayer && mode !== 'top' && 'topbar-frost',
+          // Keyboard focus inside a hidden bar brings it back
+          !isVideoPlayer &&
+            mode === 'hidden' &&
+            '-translate-y-full focus-within:translate-y-0'
         )}>
-        {/* The logo is the way home on every page, the player included */}
-        {isVideoPlayer ? (
-          <div data-player-chrome className={cluster}>
+        {/* The logo is taller than the bar and centred on it, so its waveform would start at the very
+          top; with no bar behind it on the player, the row sits lower so the logo clears the edge */}
+        <nav
+          className={cn(
+            'flex-between h-14 w-full pr-2 sm:px-4',
+            isVideoPlayer && 'mt-2'
+          )}>
+          {/* The logo is the way home on every page, the player included */}
+          {isVideoPlayer ? (
+            <div data-player-chrome className={cluster}>
+              <AppLogo />
+            </div>
+          ) : (
             <AppLogo />
-          </div>
-        ) : (
-          <AppLogo />
-        )}
-        <div data-player-chrome className={buttons}>
-          <Notifications />
-          <LyricsButton />
-          <SavedMenu />
-          {!isVideoPlayer && (
-            <>
-              <span className='max-sm:hidden'>
-                <GitHubButton />
-              </span>
-              <ProfileButton />
-            </>
           )}
-        </div>
-      </nav>
-    </header>
+          <div data-player-chrome className={buttons}>
+            <Notifications />
+            <LyricsButton />
+            <SavedMenu />
+            {!isVideoPlayer && (
+              <>
+                <span className='max-sm:hidden'>
+                  <GitHubButton />
+                </span>
+                <ProfileButton />
+              </>
+            )}
+          </div>
+        </nav>
+      </header>
+      <TopBarFade player={isVideoPlayer} mode={mode} />
+    </>
   )
 }
 
