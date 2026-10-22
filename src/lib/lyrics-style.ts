@@ -8,6 +8,7 @@ import {
   LYRICS_BACKDROP_IDS,
   LYRICS_THEME_IDS,
 } from '@/lib/lyrics-themes'
+import { touchPref } from '@/lib/prefs/storage'
 
 // The three screens a style is seen on. Phone landscape is the `short` variant in globals.css
 export const LYRICS_SURFACES = ['desktop', 'landscape', 'portrait'] as const
@@ -106,12 +107,13 @@ export const writeSongStyle = (
   try {
     if (Object.keys(style).length === 0) {
       localStorage.removeItem(songStyleKey(videoId))
-      return
+    } else {
+      localStorage.setItem(
+        songStyleKey(videoId),
+        JSON.stringify({ style, updatedAt: Date.now(), v: 1 })
+      )
     }
-    localStorage.setItem(
-      songStyleKey(videoId),
-      JSON.stringify({ style, updatedAt: Date.now(), v: 1 })
-    )
+    touchPref(songStyleKey(videoId))
   } catch {
     // Storage full or blocked: the style still applies for this visit
   }
@@ -165,6 +167,7 @@ export const readLyricsTemplates = (): LyricsTemplate[] => {
 export const writeLyricsTemplates = (templates: readonly LyricsTemplate[]) => {
   try {
     localStorage.setItem(TEMPLATES_KEY, JSON.stringify({ templates, v: 1 }))
+    touchPref(TEMPLATES_KEY)
   } catch {
     // Storage full or blocked: the templates still apply for this visit
   }

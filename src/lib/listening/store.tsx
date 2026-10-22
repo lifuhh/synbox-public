@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router'
 import { ToastAction } from '@/components/ui/toast'
 import { useToast } from '@/components/ui/use-toast'
 import { playlistsAtom, recordLibraryAtom } from '@/lib/library/store'
+import { syncedStorage } from '@/lib/prefs/storage'
 
 import type { ListSong, Playlist, QueueSource } from './model'
 import {
@@ -23,7 +24,12 @@ export const queueSourceAtom = atomWithStorage<QueueSource>(
   'listeningSource',
   null
 )
-export const autoplayAtom = atomWithStorage('listeningAutoplay', true)
+export const autoplayAtom = atomWithStorage(
+  'listeningAutoplay',
+  true,
+  syncedStorage(),
+  { getOnInit: true }
+)
 // The song opened last in this visit, for the installed app's bar that takes you back to it
 export const resumeSongAtom = atom<ListSong | null>(null)
 
