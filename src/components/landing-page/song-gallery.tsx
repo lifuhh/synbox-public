@@ -3,7 +3,10 @@ import { PlayIcon } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router'
 
-import { KaraokeCorner, KaraokeLabel } from '@/components/shared/karaoke-badge'
+import {
+  KaraokeLabel,
+  KaraokeTitleIcon,
+} from '@/components/shared/karaoke-badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { SongMenu } from '@/components/watch/song-menu'
 import { useMediaQuery } from '@/hooks/use-media-query'
@@ -37,8 +40,10 @@ const SongCard = ({ song }: { song: LibraryListSong }) => (
       title={song.title}
       className='group block rounded-xl focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden'>
       <span className='relative block aspect-video overflow-hidden rounded-xl bg-thumbnail-placeholder'>
+        {/* YouTube's 480×360 picture (object-cover crops its letterbox), not the 1280×720 one the list
+            gives: decoding dozens of those stalls scrolling on a phone */}
         <img
-          src={song.thumbnailUrl}
+          src={`https://i.ytimg.com/vi/${song.videoId}/hqdefault.jpg`}
           alt=''
           loading='lazy'
           decoding='async'
@@ -47,13 +52,15 @@ const SongCard = ({ song }: { song: LibraryListSong }) => (
         <span className='absolute right-2.5 bottom-2.5 grid size-10 place-items-center rounded-full bg-black/70 text-white opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100'>
           <PlayIcon className='size-4 fill-current' aria-hidden />
         </span>
-        {song.karaoke && <KaraokeCorner />}
       </span>
       {/* A fixed-height block, so every row is the same height; the channel sits right under one line or two */}
       <span className='mt-3 flex h-18 flex-col gap-1 pe-10'>
-        <span className='line-clamp-2 text-base leading-6 font-semibold text-foreground'>
-          {song.title}
-          {song.karaoke && <KaraokeLabel />}
+        <span className='flex gap-1.5 text-base leading-6 font-semibold text-foreground'>
+          {song.karaoke && <KaraokeTitleIcon />}
+          <span className='line-clamp-2'>
+            {song.title}
+            {song.karaoke && <KaraokeLabel />}
+          </span>
         </span>
         <span className='truncate text-sm leading-5 text-muted-foreground'>
           {song.author}
@@ -183,7 +190,7 @@ const VirtualRows = ({
 const SKELETON_CARDS = 8
 
 const SongGallery = () => {
-  const { isLoading } = useGallerySongs()
+  const { isLoading, isSuccess, songs } = useGallerySongs()
   // State, not refs: the virtualizer needs both once they exist
   const [section, setSection] = useState<HTMLElement | null>(null)
   const [list, setList] = useState<HTMLDivElement | null>(null)
@@ -247,6 +254,14 @@ const SongGallery = () => {
             <VirtualRows list={list} scroller={scroller} />
           )}
         </div>
+        {/* The whole list comes in one request, so once it is here this is the end */}
+        {isSuccess && songs.length > 0 && (
+          <p
+            data-gallery-end
+            className='appear pt-6 text-center text-sm text-faint'>
+            That&apos;s every song in the gallery, for now
+          </p>
+        )}
       </div>
     </section>
   )

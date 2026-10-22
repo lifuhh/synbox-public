@@ -505,13 +505,40 @@
   );
 }
 
-/* The landing carousel's row: one slide centred, its neighbours peeking in on both sides and fading out at
-   the edges. Its container (@container) sizes the slide, capped so a phone on its side or a monitor still
-   shows the neighbours; the side padding only shows when there is a single slide */
-@utility carousel-track {
+/* The landing carousel's box, around its row (or the loading row) and the glow under the centred slide. Its
+   container (@container) sizes the slide, capped so a phone on its side or a monitor still shows the
+   neighbours */
+@utility carousel-frame {
   --gap: 1rem;
   --peek: 2rem;
-  --slide: min(100cqw - 2 * (var(--gap) + var(--peek)), 28rem);
+  --slide: min(100cqw - 2 * (var(--gap) + var(--peek)), 30rem);
+  position: relative;
+
+  @media (orientation: landscape) and (max-height: 500px) {
+    --slide: min(100cqw - 2 * (var(--gap) + var(--peek)), 22rem);
+  }
+}
+
+/* The centred slide's picture, blurred and dimmed behind it, as if its light pooled around the card. Over the
+   centred slot (the row's top padding down), a little smaller and lower, so it spills past the card's sides
+   and under its title rather than over the heading */
+@utility carousel-glow {
+  position: absolute;
+  top: 0.125rem;
+  left: calc(50% - var(--slide) / 2);
+  width: var(--slide);
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  opacity: 0.5;
+  scale: 0.9;
+  translate: 0 1.25rem;
+  filter: blur(40px) saturate(1.5);
+  pointer-events: none;
+}
+
+/* The landing carousel's row: one slide centred, its neighbours peeking in on both sides and fading out at
+   the edges (sizes from carousel-frame); the side padding only shows when there is a single slide */
+@utility carousel-track {
   position: relative;
   display: grid;
   grid-auto-flow: column;
@@ -536,9 +563,6 @@
 
   &::-webkit-scrollbar {
     display: none;
-  }
-  @media (orientation: landscape) and (max-height: 500px) {
-    --slide: min(100cqw - 2 * (var(--gap) + var(--peek)), 22rem);
   }
   /* The loading row: a centred placeholder slide with one on each side */
   &[data-skeleton] {
@@ -752,7 +776,7 @@
   overscroll-behavior: contain;
 }
 
-/* The karaoke corner on a thumbnail (KaraokeCorner): the top-right half of its square */
+/* The karaoke corner on a card's picture (KaraokeCorner): the top-right half of its square */
 @utility corner-fold {
   clip-path: polygon(0 0, 100% 0, 100% 100%);
 }
