@@ -37,6 +37,9 @@ const toastVariants = cva(
         default: 'bg-popover text-popover-foreground',
         // Errors and refusals: a dark red surface with light red text, like the tonal buttons
         destructive: 'group bg-error-surface text-error-soft',
+        // Something under way the user is waiting on: the tonal surface of the main action, lifted off the page
+        progress:
+          'bg-primary-subtle text-foreground shadow-[0_12px_32px_rgb(0_0_0/0.5)]',
       },
     },
   }
