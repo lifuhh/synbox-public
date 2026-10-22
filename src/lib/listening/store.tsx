@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router'
 
 import { ToastAction } from '@/components/ui/toast'
 import { useToast } from '@/components/ui/use-toast'
+import { playlistsAtom, recordLibraryAtom } from '@/lib/library/store'
 
 import type { ListSong, Playlist, QueueSource } from './model'
 import {
@@ -16,14 +17,13 @@ import {
   removeSong,
 } from './model'
 
-// The queue, the playlists and autoplay live on this device, as bookmarks and history do
+// The queue and autoplay live on this device; playlists follow the account (lib/library)
 export const queueAtom = atomWithStorage<ListSong[]>('listeningQueue', [])
 export const queueSourceAtom = atomWithStorage<QueueSource>(
   'listeningSource',
   null
 )
 export const autoplayAtom = atomWithStorage('listeningAutoplay', true)
-export const playlistsAtom = atomWithStorage<Playlist[]>('playlists', [])
 // The song opened last in this visit, for the installed app's bar that takes you back to it
 export const resumeSongAtom = atom<ListSong | null>(null)
 
@@ -34,7 +34,7 @@ export const useListening = () => {
   const store = useStore()
   const setQueue = useSetAtom(queueAtom)
   const setSource = useSetAtom(queueSourceAtom)
-  const setPlaylists = useSetAtom(playlistsAtom)
+  const record = useSetAtom(recordLibraryAtom)
   const navigate = useNavigate()
   const { toast } = useToast()
 
@@ -88,14 +88,19 @@ export const useListening = () => {
     )
   }
 
+  // Every change, an undo included, is newer than the last, so the account keeps it
   const updatePlaylist = (id: string, change: (list: Playlist) => Playlist) => {
-    setPlaylists((lists) =>
-      lists.map((list) => (list.id === id ? change(list) : list))
-    )
+    const list = store.get(playlistsAtom).find((saved) => saved.id === id)
+    if (list !== undefined) {
+      record({
+        kind: 'playlist',
+        playlist: { ...change(list), updatedAt: Date.now() },
+      })
+    }
   }
   const createPlaylist = (name: string, songs: ListSong[] = []) => {
     const list = newPlaylist(name, songs, Date.now(), crypto.randomUUID())
-    setPlaylists((lists) => [list, ...lists])
+    record({ kind: 'playlist', playlist: list })
     return list
   }
   const addToPlaylist = (id: string, song: ListSong) => {
@@ -119,7 +124,6 @@ export const useListening = () => {
     updatePlaylist(id, (saved) => ({
       ...saved,
       songs: removeSong(saved.songs, videoId),
-      updatedAt: Date.now(),
     }))
     undoable(`Removed from ${list.name}`, song.title, () => {
       updatePlaylist(id, (saved) => ({ ...saved, songs: list.songs }))
@@ -129,37 +133,29 @@ export const useListening = () => {
     updatePlaylist(id, (list) => ({
       ...list,
       songs: move(list.songs, from, to),
-      updatedAt: Date.now(),
     }))
   }
   const renamePlaylist = (id: string, name: string) => {
     if (name.trim() === '') {
       return
     }
-    updatePlaylist(id, (list) => ({
-      ...list,
-      name: name.trim(),
-      updatedAt: Date.now(),
-    }))
+    updatePlaylist(id, (list) => ({ ...list, name: name.trim() }))
   }
   const deletePlaylist = (id: string) => {
-    const lists = store.get(playlistsAtom)
-    const index = lists.findIndex((list) => list.id === id)
-    if (index === -1) {
+    const removed = store.get(playlistsAtom).find((list) => list.id === id)
+    if (removed === undefined) {
       return
     }
-    const removed = lists[index]
-    setPlaylists(lists.filter((list) => list.id !== id))
+    record({ at: Date.now(), id, kind: 'deletePlaylist' })
     toast({
       action: (
         <ToastAction
           altText='Undo delete'
           onClick={() => {
-            setPlaylists((current) => [
-              ...current.slice(0, index),
-              removed,
-              ...current.slice(index),
-            ])
+            record({
+              kind: 'playlist',
+              playlist: { ...removed, updatedAt: Date.now() },
+            })
           }}>
           Undo
         </ToastAction>

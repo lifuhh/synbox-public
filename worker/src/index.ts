@@ -3,6 +3,7 @@ import type { Context } from 'hono'
 
 import { createAuth } from './auth'
 import type { Env } from './auth'
+import { applyOps, parseOps, readLibrary } from './library'
 import {
   checkGeneration,
   expireStalled,
@@ -74,6 +75,36 @@ app.get('/api/me/songs', async (c) => {
     .bind(session.user.id)
     .all()
   return c.json({ songs: results })
+})
+
+// The signed-in user's history, bookmarks and playlists, so a new device or a reinstalled app starts with them
+app.get('/api/me/library', async (c) => {
+  const session = await createAuth(c.env).api.getSession({
+    headers: c.req.raw.headers,
+  })
+  if (!session) {
+    return c.json({ code: 'unauthorized' }, 401)
+  }
+  return c.json(await readLibrary(c.env.DB, session.user.id))
+})
+
+// Changes the app made on a device, oldest first; the same ops sent again change nothing
+app.post('/api/me/library', async (c) => {
+  const session = await createAuth(c.env).api.getSession({
+    headers: c.req.raw.headers,
+  })
+  if (!session) {
+    return c.json({ code: 'unauthorized' }, 401)
+  }
+  const ops = parseOps(
+    await c.req.json<unknown>().catch(() => null),
+    Date.now()
+  )
+  if (ops === null) {
+    return c.json({ code: 'bad_request' }, 400)
+  }
+  await applyOps(c.env.DB, session.user.id, ops)
+  return c.body(null, 204)
 })
 
 // Called only by the Cloud Run backend, after it has verified the user's JWT or hashed the guest's address

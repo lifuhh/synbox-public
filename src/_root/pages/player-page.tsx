@@ -13,7 +13,6 @@ import { DEFAULT_YOUTUBE_QUIRKS } from '@/components/player-stage/youtube-quirks
 import { WatchPage } from '@/components/watch/watch-page'
 import {
   currentVideoAtom,
-  historyAtom,
   lyricsStyleSongAtom,
   playerSurfaceAtom,
   showSharedLyricsStyleAtom,
@@ -25,6 +24,7 @@ import { useLyricsReady } from '@/hooks/use-lyrics-ready'
 import { useMediaQuery } from '@/hooks/use-media-query'
 import { useSongVisit } from '@/hooks/use-song-visit'
 import { useAccess } from '@/lib/auth'
+import { historyAtom } from '@/lib/library/store'
 import { nextSong } from '@/lib/listening/model'
 import { useRecommendations } from '@/lib/listening/recommendations'
 import {
