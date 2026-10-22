@@ -11,10 +11,11 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useGetChartsPlaylist } from '@/lib/react-query/queries-and-mutations'
 import type { CssVars } from '@/types'
 
-// A row: rank, a 96×54 thumbnail (16:9), then the title. 12 px apart inside a row; rows are 8 px padded and
-// 8 px apart, so neighbouring thumbnails sit 24 px apart, twice the gap inside a row. The list starts 2 px down so
-// the first row's karaoke mic, floating over its thumbnail's corner, isn't cut off
-const ROW_PITCH_PX = 54 + 16 + 8
+// A row: rank, a 72×41 thumbnail (16:9), then the title on up to two 20px lines. 12 px apart inside a row; rows
+// are 4 px padded top and bottom and 2 px apart, so six fit beside the recommendations. The rank starts 16px in,
+// on the footer's first letter, and the play cue ends 16px from the other edge. The list starts 2 px down so the
+// first row's karaoke mic, floating over its thumbnail's corner, isn't cut off
+const ROW_PITCH_PX = 41 + 8 + 2
 
 // Placeholder rows, varied in title width so the column doesn't read as a block
 const SKELETON_TITLES = [
@@ -23,6 +24,8 @@ const SKELETON_TITLES = [
   <Skeleton key='c' className='h-3.5 w-11/12' />,
   <Skeleton key='d' className='h-3.5 w-3/5' />,
   <Skeleton key='e' className='h-3.5 w-3/4' />,
+  <Skeleton key='f' className='h-3.5 w-4/5' />,
+  <Skeleton key='g' className='h-3.5 w-2/3' />,
 ]
 
 interface SongRowProps {
@@ -40,11 +43,11 @@ const SongRow = ({ rank, song }: SongRowProps) => (
     <Link
       data-bench='charts-row'
       to={`/v/${song.vidURL}`}
-      className='group flex items-center gap-3 rounded-xl p-2 text-foreground transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden'>
-      <span className='w-5 shrink-0 text-end text-sm font-medium text-muted-foreground tabular-nums'>
+      className='group flex items-center gap-3 rounded-xl px-2 py-1 text-foreground transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden'>
+      <span className='w-5 shrink-0 text-sm font-medium text-muted-foreground tabular-nums'>
         {rank}
       </span>
-      <span className='relative aspect-video w-24 shrink-0 rounded-sm bg-thumbnail-placeholder max-[359px]:w-20'>
+      <span className='relative aspect-video w-18 shrink-0 rounded-sm bg-thumbnail-placeholder'>
         <img
           src={`https://i.ytimg.com/vi/${song.vidURL}/mqdefault.jpg`}
           alt=''
@@ -111,21 +114,20 @@ const LandingPageCharts: React.FC = () => {
             />
           )}
           {!isError && isLoading && (
-            <ul aria-hidden className='flex flex-col gap-2 pt-0.5'>
+            <ul aria-hidden className='flex flex-col gap-0.5 pt-0.5'>
               {SKELETON_TITLES.map((title) => (
-                <li key={title.key} className='flex items-center gap-3 p-2'>
+                <li
+                  key={title.key}
+                  className='flex items-center gap-3 px-2 py-1'>
                   <span className='w-5 shrink-0' />
-                  <Skeleton
-                    shape='thumbnail'
-                    className='aspect-video w-24 max-[359px]:w-20'
-                  />
+                  <Skeleton shape='thumbnail' className='aspect-video w-18' />
                   <span className='flex-1'>{title}</span>
                 </li>
               ))}
             </ul>
           )}
           {!isError && !isLoading && (
-            <ul className='flex appear flex-col gap-2 pt-0.5'>
+            <ul className='flex appear flex-col gap-0.5 pt-0.5'>
               {chartsData?.map((song, index) => (
                 <SongRow
                   key={`${song.title}-${index}`}
