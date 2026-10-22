@@ -256,11 +256,15 @@ export const layoutAudit =
     const logged: string[] = []
     page.on('console', (message) => {
       const [text] = message.text().split('\n')
+      const from = message.location().url
+      // The app's own scripts only: the YouTube player's scripts log their own complaints (seen: "Unable to post
+      // message to https://www.youtube-nocookie.com", once in three runs)
       if (
         message.type() === 'error' &&
+        from.startsWith(ctx.origin) &&
         !BENIGN_CONSOLE.some((b) => b.test(text))
       ) {
-        logged.push(`${text} (${message.location().url})`)
+        logged.push(`${text} (${from})`)
         errored?.()
       }
     })
