@@ -28,6 +28,7 @@ const pageImports = {
   player: async () => await import('./_root/pages/player-page'),
   playlist: async () => await import('./_root/pages/playlist-page'),
   playlists: async () => await import('./_root/pages/playlists-page'),
+  privacy: async () => await import('./_root/pages/privacy-page'),
   reader: async () => await import('./_root/pages/reader-page'),
   search: async () => await import('./_root/pages/search-page'),
   versions: async () => await import('./_root/pages/versions-page'),
@@ -36,6 +37,7 @@ const pageImports = {
 const AboutPage = lazy(pageImports.about)
 const OfflinePage = lazy(pageImports.offline)
 const PlayerPage = lazy(pageImports.player)
+const PrivacyPage = lazy(pageImports.privacy)
 const PlaylistPage = lazy(pageImports.playlist)
 const PlaylistsPage = lazy(pageImports.playlists)
 const YouPage = lazy(pageImports.you)
@@ -115,6 +117,14 @@ const App = () => {
             element={
               <Suspense>
                 <AboutPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path='/privacy'
+            element={
+              <Suspense>
+                <PrivacyPage />
               </Suspense>
             }
           />

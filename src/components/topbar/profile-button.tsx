@@ -176,6 +176,19 @@ const ProfileButtonDropdown = () => {
                   <LogInIcon className='mr-2 size-5 shrink-0' />
                   <span>Continue With Google</span>
                 </DropdownMenuItem>
+                <DropdownMenuItem
+                  asChild
+                  variant='note'
+                  className='cursor-pointer'>
+                  <Link to='/privacy'>
+                    <span>
+                      By signing in, you accept our{' '}
+                      <span className='underline underline-offset-2'>
+                        Privacy Policy
+                      </span>
+                    </span>
+                  </Link>
+                </DropdownMenuItem>
               </div>
               <DropdownMenuSeparator />
             </>

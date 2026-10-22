@@ -1,3 +1,5 @@
+import { Link } from 'react-router'
+
 import {
   Accordion,
   AccordionContent,
@@ -134,6 +136,9 @@ const AboutPage = () => (
         className='hover:text-foreground'>
         LinkedIn
       </a>
+      <Link to='/privacy' className='hover:text-foreground'>
+        Privacy
+      </Link>
     </nav>
   </section>
 )
