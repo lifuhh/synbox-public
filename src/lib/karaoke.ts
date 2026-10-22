@@ -215,6 +215,23 @@ export interface TwoLineView {
 
 const NO_LINES: TwoLineView = { active: -1, rows: [-1, -1] }
 
+// When a line takes over from the one before it: its lead-in, or the previous line's end if that comes later
+// (but never after the line itself starts). currentLineIndex switches at the same moment
+const takesOverAt = (
+  lines: readonly Pick<KaraokeDocLine, 'start' | 'end'>[],
+  index: number,
+  leadIn: number
+) =>
+  Math.max(
+    lines[index].start - leadIn,
+    Math.min(lines[index].start, lines[index - 1].end)
+  )
+
+// A finished line stays in its row this long after the next takes over, so it doesn't vanish the moment it ends;
+// not when the line now sung is too short to give the one after it time to be read
+export const FINISHED_HOLD = 0.5
+export const HOLD_MIN_LINE = 1
+
 const startsPassage = (
   lines: readonly Pick<KaraokeDocLine, 'start' | 'end'>[],
   index: number
@@ -238,9 +255,15 @@ export const twoLineView = (
     active + 1 < lines.length && !startsPassage(lines, active + 1)
       ? active + 1
       : -1
+  const holding =
+    active > first &&
+    lines[active].end - lines[active].start >= HOLD_MIN_LINE &&
+    time < takesOverAt(lines, active, leadIn) + FINISHED_HOLD
+  // The other row is where the line before finished; it keeps that line through the hold
+  const other = holding ? active - 1 : next
   return {
     active,
-    rows: (active - first) % 2 === 0 ? [active, next] : [next, active],
+    rows: (active - first) % 2 === 0 ? [active, other] : [other, active],
   }
 }
 
