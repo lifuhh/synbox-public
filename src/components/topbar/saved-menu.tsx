@@ -5,7 +5,7 @@ import type { ReactNode } from 'react'
 import { Link } from 'react-router'
 
 import {
-  KaraokeCornerMark,
+  KaraokeEdgeMark,
   KaraokeLabelMark,
 } from '@/components/shared/karaoke-badge'
 import OptimizedThumbnail from '@/components/shared/optimized-thumbnail'
@@ -70,7 +70,7 @@ const SongRow = ({
         onClick={onOpen}
         className='flex min-w-0 grow items-center gap-2 rounded-md p-2 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden'>
         <OptimizedThumbnail src={song.thumbnailUrl} alt=''>
-          <KaraokeCornerMark videoId={song.videoId} size='sm' />
+          <KaraokeEdgeMark videoId={song.videoId} small />
         </OptimizedThumbnail>
         <span className='min-w-0 grow'>
           <span

@@ -3,7 +3,7 @@ import type React from 'react'
 import { Link } from 'react-router'
 
 import {
-  KaraokeCornerMark,
+  KaraokeEdgeMark,
   KaraokeLabelMark,
 } from '@/components/shared/karaoke-badge'
 import LoadError from '@/components/shared/load-error'
@@ -12,7 +12,8 @@ import { useGetChartsPlaylist } from '@/lib/react-query/queries-and-mutations'
 import type { CssVars } from '@/types'
 
 // A row: rank, a 96×54 thumbnail (16:9), then the title. 12 px apart inside a row; rows are 8 px padded and
-// 8 px apart, so neighbouring thumbnails sit 24 px apart, twice the gap inside a row
+// 8 px apart, so neighbouring thumbnails sit 24 px apart, twice the gap inside a row. The list starts 2 px down so
+// the first row's karaoke mic, floating over its thumbnail's corner, isn't cut off
 const ROW_PITCH_PX = 54 + 16 + 8
 
 // Placeholder rows, varied in title width so the column doesn't read as a block
@@ -42,7 +43,7 @@ const SongRow = ({ rank, song }: SongRowProps) => (
       <span className='w-5 shrink-0 text-end text-sm font-medium text-muted-foreground tabular-nums'>
         {rank}
       </span>
-      <span className='relative aspect-video w-24 shrink-0 overflow-hidden rounded-sm bg-thumbnail-placeholder max-[359px]:w-20'>
+      <span className='relative aspect-video w-24 shrink-0 rounded-sm bg-thumbnail-placeholder max-[359px]:w-20'>
         <img
           src={`https://i.ytimg.com/vi/${song.vidURL}/mqdefault.jpg`}
           alt=''
@@ -50,9 +51,9 @@ const SongRow = ({ rank, song }: SongRowProps) => (
           height='180'
           loading='lazy'
           decoding='async'
-          className='size-full object-cover'
+          className='size-full rounded-sm object-cover'
         />
-        <KaraokeCornerMark videoId={song.vidURL} size='sm' />
+        <KaraokeEdgeMark videoId={song.vidURL} />
       </span>
       <span className='line-clamp-2 min-w-0 flex-1 text-sm leading-5 text-pretty'>
         {song.title}
@@ -67,7 +68,9 @@ const SongRow = ({ rank, song }: SongRowProps) => (
   </li>
 )
 
-// Four rows and part of a fifth, so the cut-off row shows the list scrolls
+// Four rows and part of a fifth, so the cut-off row shows the list scrolls. Beside the recommendations (lg) the
+// card instead runs exactly as tall as their row, from the centred card's picture to its channel line (the
+// margins skip the row's 2px top and 6px bottom padding, carousel-track), so the two read as one band
 const LIST_VARS: CssVars = {
   '--charts-list-h': `${4 * ROW_PITCH_PX + 28}px`,
 }
@@ -85,15 +88,15 @@ const LandingPageCharts: React.FC = () => {
     <section
       aria-labelledby='charts-title'
       aria-busy={isLoading}
-      className='flex flex-col gap-3 lg:w-100 lg:shrink-0 lg:self-start'>
+      className='flex flex-col gap-3 lg:w-100 lg:shrink-0'>
       <h2
         id='charts-title'
         className='flex min-h-9 items-center px-4 text-xl font-semibold tracking-tight text-foreground md:px-0 touch:min-h-0'>
         YouTube Charts
       </h2>
-      <div className='mx-4 rounded-xl bg-card p-2 md:mx-0'>
+      <div className='mx-4 rounded-xl bg-card p-2 md:mx-0 lg:mt-0.5 lg:mb-1.5 lg:flex lg:grow lg:flex-col'>
         <div
-          className='no-scrollbar h-(--charts-list-h) overflow-y-auto mask-fade-end'
+          className='no-scrollbar h-(--charts-list-h) overflow-y-auto mask-fade-end lg:h-0 lg:grow'
           style={LIST_VARS}>
           {isError && (
             <LoadError
@@ -106,7 +109,7 @@ const LandingPageCharts: React.FC = () => {
             />
           )}
           {!isError && isLoading && (
-            <ul aria-hidden className='flex flex-col gap-2'>
+            <ul aria-hidden className='flex flex-col gap-2 pt-0.5'>
               {SKELETON_TITLES.map((title) => (
                 <li key={title.key} className='flex items-center gap-3 p-2'>
                   <span className='w-5 shrink-0' />
@@ -120,7 +123,7 @@ const LandingPageCharts: React.FC = () => {
             </ul>
           )}
           {!isError && !isLoading && (
-            <ul className='flex appear flex-col gap-2'>
+            <ul className='flex appear flex-col gap-2 pt-0.5'>
               {chartsData?.map((song, index) => (
                 <SongRow
                   key={`${song.title}-${index}`}

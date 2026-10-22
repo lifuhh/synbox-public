@@ -3,8 +3,8 @@ import { useState } from 'react'
 import { Link } from 'react-router'
 
 import {
-  KaraokeCornerMark,
   KaraokeLabelMark,
+  KaraokeTitleIconMark,
 } from '@/components/shared/karaoke-badge'
 import LoadError from '@/components/shared/load-error'
 import { Button } from '@/components/ui/button'
@@ -37,10 +37,10 @@ const SongCard = ({
     aria-hidden={clone || undefined}
     tabIndex={clone ? -1 : undefined}
     data-active={active}
-    className='group flex min-w-0 snap-center flex-col gap-1 rounded-xl focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden motion-safe:transition-transform motion-safe:duration-150 data-[active=false]:motion-safe:scale-94'>
+    className='group flex min-w-0 snap-center flex-col rounded-xl focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden motion-safe:transition-transform motion-safe:duration-150 data-[active=false]:motion-safe:scale-94'>
     {/* Off-centre slides shrink, fade their picture and mute their title, so the centred one stands out
         whatever the pictures look like. Text is muted, not faded: faded text would fall below 4.5:1 */}
-    <span className='relative mb-2 aspect-video overflow-hidden rounded-xl bg-thumbnail-placeholder transition-opacity duration-150 group-data-[active=false]:opacity-40'>
+    <span className='relative aspect-video overflow-hidden rounded-xl bg-thumbnail-placeholder transition-opacity duration-150 group-data-[active=false]:opacity-40'>
       <img
         src={item.thumbnailUrl}
         alt=''
@@ -53,23 +53,32 @@ const SongCard = ({
       <span className='absolute right-2.5 bottom-2.5 grid size-10 place-items-center rounded-full bg-black/70 text-white opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100'>
         <PlayIcon className='size-4 fill-current' aria-hidden />
       </span>
-      <KaraokeCornerMark videoId={item.videoId} />
     </span>
-    <span className='line-clamp-2 text-label leading-snug font-semibold text-foreground transition-colors duration-150 group-data-[active=false]:text-muted-foreground'>
-      {item.title}
-      <KaraokeLabelMark videoId={item.videoId} />
-    </span>
-    <span className='truncate text-sm text-muted-foreground'>
-      {item.channel}
+    {/* Two title lines and the channel's, however long the title, so every card (and the loading one) is
+        the same height and the row matches the charts beside it */}
+    <span className='mt-3 flex h-16 flex-col gap-1'>
+      <span className='flex gap-1.5 text-label leading-5 font-semibold text-foreground transition-colors duration-150 group-data-[active=false]:text-muted-foreground'>
+        <KaraokeTitleIconMark videoId={item.videoId} />
+        <span className='line-clamp-2'>
+          {item.title}
+          <KaraokeLabelMark videoId={item.videoId} />
+        </span>
+      </span>
+      <span className='truncate text-sm leading-5 text-muted-foreground'>
+        {item.channel}
+      </span>
     </span>
   </Link>
 )
 
+// A card's exact box: the picture, then the same fixed text block
 const CardSkeleton = () => (
-  <div className='flex min-w-0 flex-col gap-2'>
-    <Skeleton className='aspect-video w-full' />
-    <Skeleton className='h-4 w-4/5' />
-    <Skeleton className='h-4 w-1/3' />
+  <div className='flex min-w-0 flex-col'>
+    <Skeleton shape='card' className='aspect-video w-full' />
+    <div className='mt-3 flex h-16 flex-col gap-2 pt-0.5'>
+      <Skeleton className='h-4 w-4/5' />
+      <Skeleton className='h-3.5 w-1/3' />
+    </div>
   </div>
 )
 
@@ -98,6 +107,7 @@ const SongHighlightCarousel = () => {
 
   const loading = isLoading || !playlistData
   const current = settled === null ? undefined : songs[settled]
+  const centred = songs.at(active)
 
   return (
     <section
@@ -143,33 +153,46 @@ const SongHighlightCarousel = () => {
           className='mx-4 aspect-video rounded-xl bg-card md:mx-0 md:aspect-auto md:h-60'
         />
       )}
-      {!isError && loading && (
-        <output
-          aria-label='Loading recommendations'
-          data-skeleton
-          className='carousel-track'>
-          {Array.from({ length: SKELETON_CARDS }, (_, index) => (
-            // oxlint-disable-next-line no-array-index-key
-            <CardSkeleton key={index} />
-          ))}
-        </output>
-      )}
-      {!isError && !loading && (
-        <div
-          ref={setTrack}
-          // oxlint-disable-next-line no-noninteractive-tabindex -- a scrolling region must be focusable so the arrow keys can scroll it
-          tabIndex={0}
-          className='carousel-track appear rounded-xl focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden'>
-          {slides.map(({ index, item }) => (
-            <SongCard
-              // oxlint-disable-next-line no-array-index-key -- each song appears once per copy
-              key={index}
-              item={item}
-              active={index % count === active}
-              clone={index < home || index >= home + count}
-              eager={Math.abs(index - home) < SKELETON_CARDS}
+      {!isError && (
+        <div className='carousel-frame'>
+          {/* The centred song's picture, blurred, glowing under its card; a new one fades in as the row moves */}
+          {centred && (
+            <img
+              key={centred.videoId}
+              src={centred.thumbnailUrl}
+              alt=''
+              aria-hidden
+              className='carousel-glow appear'
             />
-          ))}
+          )}
+          {loading ? (
+            <output
+              aria-label='Loading recommendations'
+              data-skeleton
+              className='carousel-track'>
+              {Array.from({ length: SKELETON_CARDS }, (_, index) => (
+                // oxlint-disable-next-line no-array-index-key
+                <CardSkeleton key={index} />
+              ))}
+            </output>
+          ) : (
+            <div
+              ref={setTrack}
+              // oxlint-disable-next-line no-noninteractive-tabindex -- a scrolling region must be focusable so the arrow keys can scroll it
+              tabIndex={0}
+              className='carousel-track appear rounded-xl focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden'>
+              {slides.map(({ index, item }) => (
+                <SongCard
+                  // oxlint-disable-next-line no-array-index-key -- each song appears once per copy
+                  key={index}
+                  item={item}
+                  active={index % count === active}
+                  clone={index < home || index >= home + count}
+                  eager={Math.abs(index - home) < SKELETON_CARDS}
+                />
+              ))}
+            </div>
+          )}
         </div>
       )}
       <output className='sr-only'>

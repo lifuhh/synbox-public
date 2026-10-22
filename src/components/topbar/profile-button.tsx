@@ -76,7 +76,8 @@ const IosInstallDialog = ({
 // Pictures this page has already shown, so a remounted top bar shows them at once instead of fading in again
 const loadedAvatars = new Set<string>()
 
-// The person icon stays until the picture has fully loaded, then the two crossfade; signing out fades back
+// The person icon stays until the picture has fully loaded, then the two crossfade; signing out fades back. The
+// picture is the icon's size, so it sits in the top bar's row like the icons beside it
 const Avatar = ({ src }: { src: string | null }) => {
   const [lastSrc, setLastSrc] = useState(src)
   const [loaded, setLoaded] = useState(src !== null && loadedAvatars.has(src))
@@ -87,7 +88,7 @@ const Avatar = ({ src }: { src: string | null }) => {
   const shown = src !== null && loaded
 
   return (
-    <span className='relative grid size-full place-items-center'>
+    <span className='relative grid size-6 place-items-center'>
       <UserIcon
         className={cn(
           'size-6 shrink-0 fill-current transition-opacity duration-300 motion-reduce:transition-none',
