@@ -1,4 +1,4 @@
-import { useAtomValue } from 'jotai'
+import { useAtom, useAtomValue } from 'jotai'
 import {
   ExpandIcon,
   LockIcon,
@@ -22,6 +22,7 @@ import { Slider } from '@/components/ui/slider'
 import { playerSurfaceAtom } from '@/context/atoms'
 import { useArmed } from '@/hooks/use-armed'
 import { useLandscapeLock } from '@/hooks/use-landscape-lock'
+import { autoplayAtom } from '@/lib/listening/store'
 import type { CssVars } from '@/types'
 import { cn } from '@/utils/cn'
 
@@ -96,7 +97,7 @@ const IconButton = ({
     aria-pressed={active}
     onClick={onClick}
     className={cn(
-      'grid size-9 shrink-0 place-items-center rounded-md text-white/85 transition-colors hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none touch:size-11 touch:watch-narrow:size-10',
+      'grid size-9 shrink-0 place-items-center rounded-md text-white/85 transition-colors hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none touch:size-11 touch:watch-narrow:size-10 pills:size-10 pills:rounded-full',
       active === true && 'text-primary-text hover:text-primary-text',
       className
     )}>
@@ -149,6 +150,49 @@ const VOLUME_WHEEL_STEP = 0.05
 // The clock counts a seek as landed within this of its target
 const SEEK_SETTLED_SEC = 1
 const SEEK_HOLD_MAX_MS = 3000
+
+// One of the control bar's pills: a light glass behind a group of buttons, on a wide screen with a mouse. Over the
+// bar's shade a dark pill vanished; a light one reads over dark and bright video alike
+const PILL_GLASS = 'pills:rounded-full pills:bg-white/12 pills:backdrop-blur-md'
+// A group of buttons on one glass; a lone button takes the glass alone and keeps its own centring
+const PILL = `pills:flex pills:items-center ${PILL_GLASS}`
+
+// Autoplay, where YouTube has it, first in the right-hand pill: on, the song at the top of the list beside the
+// video plays when this one ends. The thumb's side and the track's brightness both show the state, and its
+// glyph says play or pause
+const AutoplaySwitch = () => {
+  const [autoplay, setAutoplay] = useAtom(autoplayAtom)
+  return (
+    <button
+      type='button'
+      role='switch'
+      aria-checked={autoplay}
+      aria-label='Autoplay'
+      title={autoplay ? 'Autoplay Is On' : 'Autoplay Is Off'}
+      onClick={() => {
+        setAutoplay(!autoplay)
+      }}
+      className='hidden h-10 w-13 shrink-0 place-items-center rounded-full focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none pills:grid'>
+      <span
+        className={cn(
+          'flex h-3.5 w-9 items-center rounded-full transition-colors',
+          autoplay ? 'bg-white/75' : 'bg-white/30'
+        )}>
+        <span
+          className={cn(
+            'grid size-5 place-items-center rounded-full text-black shadow-sm transition-transform duration-150 ease-out motion-reduce:transition-none',
+            autoplay ? 'translate-x-4 bg-white' : '-translate-x-0.5 bg-white/85'
+          )}>
+          {autoplay ? (
+            <PlayIcon className='size-3 fill-current' />
+          ) : (
+            <PauseIcon className='size-3 fill-current' />
+          )}
+        </span>
+      </span>
+    </button>
+  )
+}
 
 // Theater (on a wide watch page) and Fullscreen: the ways the player can take more of the screen
 const ViewButtons = ({
@@ -336,7 +380,7 @@ export const StageControls = ({
         ref={barRef}
         style={FADE_VARS}
         className={cn(
-          'absolute inset-x-0 bottom-0 z-30 bg-linear-to-t from-black/80 via-black/40 to-transparent pt-10 pr-controls-right pb-controls-bottom pl-controls-left transition-opacity duration-(--controls-fade) watch-narrow:pt-6 watch-narrow:pr-2 watch-narrow:pb-1 watch-narrow:pl-2 short:pl-controls-rail',
+          'absolute inset-x-0 bottom-0 z-30 bg-linear-to-t from-black/80 via-black/40 to-transparent pt-10 pr-controls-right pb-controls-bottom pl-controls-left transition-opacity duration-(--controls-fade) watch-narrow:pt-6 watch-narrow:pr-2 watch-narrow:pb-1 watch-narrow:pl-2 pills:from-black/60 pills:via-black/20 short:pl-controls-rail',
           visible ? 'opacity-100' : 'opacity-0',
           !armed && 'pointer-events-none'
         )}>
@@ -350,6 +394,7 @@ export const StageControls = ({
           {/* On a touch screen the clock sits at the end of the seek bar, so the buttons' row fits at 320px */}
           <div className='mb-2 flex items-center gap-3 watch-narrow:contents short:contents'>
             <Slider
+              thin
               aria-label='Seek'
               min={0}
               max={Math.max(duration, 1)}
@@ -381,11 +426,11 @@ export const StageControls = ({
               className='hidden shrink-0 watch-narrow:order-2 touch:block short:order-2'
             />
           </div>
-          <div className='flex items-center gap-1 watch-narrow:contents touch:gap-0.5 short:contents'>
+          <div className='flex items-center gap-1 watch-narrow:contents touch:gap-0.5 pills:gap-2 short:contents'>
             {/* Bottom left, where every player has it, although touch screens also have one mid-stage */}
             <IconButton
               label={isPlaying ? 'Pause' : 'Play'}
-              className='watch-narrow:hidden'
+              className={cn('watch-narrow:hidden', PILL_GLASS)}
               onClick={() => {
                 player.togglePlay()
               }}>
@@ -395,26 +440,28 @@ export const StageControls = ({
                 <PlayIcon className='size-5' />
               )}
             </IconButton>
-            <IconButton
-              label={`Back ${TAP_SEEK_SEC} Seconds`}
-              className='watch-narrow:hidden'
-              onClick={() => {
-                onSeekBy(-TAP_SEEK_SEC)
-              }}>
-              <SeekGlyph direction='back' />
-            </IconButton>
-            <IconButton
-              label={`Forward ${TAP_SEEK_SEC} Seconds`}
-              className='watch-narrow:hidden'
-              onClick={() => {
-                onSeekBy(TAP_SEEK_SEC)
-              }}>
-              <SeekGlyph direction='forward' />
-            </IconButton>
+            <div className={cn('contents', PILL)}>
+              <IconButton
+                label={`Back ${TAP_SEEK_SEC} Seconds`}
+                className='watch-narrow:hidden'
+                onClick={() => {
+                  onSeekBy(-TAP_SEEK_SEC)
+                }}>
+                <SeekGlyph direction='back' />
+              </IconButton>
+              <IconButton
+                label={`Forward ${TAP_SEEK_SEC} Seconds`}
+                className='watch-narrow:hidden'
+                onClick={() => {
+                  onSeekBy(TAP_SEEK_SEC)
+                }}>
+                <SeekGlyph direction='forward' />
+              </IconButton>
+            </div>
             {/* The slider only opens while the volume button is hovered or focused, so touch screens
               keep just the mute button and the device's own volume */}
             <div
-              className='group/volume flex items-center'
+              className={cn('group/volume flex items-center', PILL)}
               onWheel={(event) => {
                 const step =
                   event.deltaY < 0 ? VOLUME_WHEEL_STEP : -VOLUME_WHEEL_STEP
@@ -451,9 +498,17 @@ export const StageControls = ({
             <Clock
               time={shown}
               duration={duration}
-              className='ml-2 watch-narrow:order-2 watch-narrow:ml-0 watch-narrow:shrink-0 touch:hidden short:order-2 short:ml-0 short:shrink-0'
+              className={cn(
+                'ml-2 watch-narrow:order-2 watch-narrow:ml-0 watch-narrow:shrink-0 touch:hidden pills:ml-0 pills:h-10 pills:px-4 short:order-2 short:ml-0 short:shrink-0',
+                PILL
+              )}
             />
-            <div className='ml-auto flex shrink-0 items-center gap-1 watch-narrow:order-3 watch-narrow:ml-1 touch:gap-0.5 short:order-3 short:ml-1'>
+            <div
+              className={cn(
+                'ml-auto flex shrink-0 items-center gap-1 watch-narrow:order-3 watch-narrow:ml-1 touch:gap-0.5 pills:gap-0.5 pills:px-1 short:order-3 short:ml-1',
+                PILL
+              )}>
+              <AutoplaySwitch />
               <IconButton
                 label='Loop'
                 active={loop}

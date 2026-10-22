@@ -26,6 +26,9 @@
 @custom-variant tabbar (&:where(html[data-tabbar] *));
 /* Finger-driven screens: bigger hit areas, no hover-only affordances */
 @custom-variant touch (@media (pointer: coarse));
+/* A mouse on a wide screen: the player's control bar groups its buttons into pills on dark glass, as YouTube's
+   does. Phones keep their own bar, ordered for the thumb */
+@custom-variant pills (@media (pointer: fine) and (min-width: 1000px));
 /* A phone on its side: too short for the player's vertical rail. A page turned by Lock Landscape counts too */
 @custom-variant short {
   @media (orientation: landscape) and (max-height: 500px) {
