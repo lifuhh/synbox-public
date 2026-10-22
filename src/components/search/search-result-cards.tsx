@@ -40,7 +40,7 @@ const CARD =
 
 // Two lines tall even when the title fits on one, so every card's next row lines up
 const Title = ({ children }: { children: string }) => (
-  <p className='line-clamp-2 min-h-[2lh] text-sm font-semibold text-foreground'>
+  <p className='line-clamp-2 min-h-[2lh] text-sm font-semibold wrap-anywhere text-foreground'>
     {children}
   </p>
 )

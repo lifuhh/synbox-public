@@ -69,6 +69,8 @@ export const SongRow = ({
           className={cn(
             'text-sm leading-5 text-pretty',
             large ? 'line-clamp-3 font-semibold' : 'line-clamp-2 font-medium',
+            // A title with no spaces (a romanised one) breaks anywhere, so the clamp can end it in an ellipsis
+            'wrap-anywhere',
             current ? 'text-primary-text' : 'text-foreground',
             bracketStart(song.title)
           )}>

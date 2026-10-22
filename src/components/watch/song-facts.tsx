@@ -26,10 +26,10 @@ export const SongFacts = ({ videoId }: { videoId: string }) => {
   return (
     <div className='flex min-h-14 items-center justify-between gap-3 rounded-xl bg-card py-2 pr-2 pl-4'>
       {/* A blank until the count settles, so the line never jumps; without a count, the date alone */}
-      <p className='min-w-0 truncate text-sm font-semibold text-foreground tabular-nums'>
+      <p className='min-w-0 text-sm font-semibold text-pretty text-foreground tabular-nums'>
         {isPending ? '\u00A0' : stats && listensText(stats.listens)}
         {!isPending && added !== null && (
-          <span className='font-normal text-muted-foreground'>
+          <span className='font-normal whitespace-nowrap text-muted-foreground'>
             {stats ? ` · ${added}` : added}
           </span>
         )}
