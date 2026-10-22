@@ -1,0 +1,52 @@
+import { useAtomValue } from 'jotai'
+import { ArrowUpRightIcon } from 'lucide-react'
+
+import { YouTubeIcon } from '@/components/svgicons'
+import { stageClockAtom } from '@/context/atoms'
+import { useGetSongInfoBySongId } from '@/lib/react-query/queries-and-mutations'
+import { listensText, useSongStats } from '@/lib/song-stats'
+
+const ADDED = new Intl.DateTimeFormat('en-GB', {
+  day: '2-digit',
+  month: '2-digit',
+  year: '2-digit',
+})
+
+// Under the song's title and channel, as YouTube's description box without the description: how often it was
+// played, when it came to Synbox, and the way to the video on YouTube
+export const SongFacts = ({ videoId }: { videoId: string }) => {
+  const { data: stats } = useSongStats(videoId)
+  const { data: info } = useGetSongInfoBySongId(videoId)
+  const clock = useAtomValue(stageClockAtom)
+  const addedAt = info?.addedAt === undefined ? null : new Date(info.addedAt)
+  return (
+    <div className='flex min-h-14 items-center justify-between gap-3 rounded-xl bg-card py-2 pr-2 pl-4'>
+      {/* A blank until the count arrives, so the line never jumps */}
+      <p className='min-w-0 truncate text-sm font-semibold text-foreground tabular-nums'>
+        {stats ? listensText(stats.listens) : '\u00A0'}
+        {addedAt !== null && !Number.isNaN(addedAt.getTime()) && (
+          <span className='font-normal text-muted-foreground'>
+            {' · '}Added {ADDED.format(addedAt)}
+          </span>
+        )}
+      </p>
+      <a
+        href={`https://www.youtube.com/watch?v=${videoId}`}
+        target='_blank'
+        rel='noreferrer'
+        aria-label='Open on YouTube'
+        // The song here stops while it plays there
+        onClick={() => {
+          clock?.pause()
+        }}
+        className='flex h-10 shrink-0 items-center gap-2 rounded-full px-3.5 text-sm font-medium text-foreground transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none'>
+        <YouTubeIcon aria-hidden className='h-3.5 w-auto shrink-0' />
+        YouTube
+        <ArrowUpRightIcon
+          aria-hidden
+          className='size-4 shrink-0 text-muted-foreground'
+        />
+      </a>
+    </div>
+  )
+}

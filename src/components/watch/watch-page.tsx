@@ -11,6 +11,7 @@ import { cn } from '@/utils/cn'
 
 import { LyricsPanel } from './lyrics-panel'
 import { Shelves } from './shelves'
+import { SongFacts } from './song-facts'
 import { UP_NEXT_COUNT, UpNext } from './up-next'
 
 const WIDE = '(min-width: 1000px)'
@@ -19,6 +20,7 @@ const WIDE = '(min-width: 1000px)'
 // YouTube: the title with room above it, then the channel on the left and the buttons on the right
 const SongInfo = ({ compact }: { compact: boolean }) => {
   const video = useAtomValue(currentVideoAtom)
+  const videoId = video?.videoId ?? ''
   if (compact) {
     return (
       <div className='flex min-w-0 flex-col gap-2'>
@@ -39,6 +41,7 @@ const SongInfo = ({ compact }: { compact: boolean }) => {
           </p>
         </div>
         <PlayerRail inline />
+        <SongFacts videoId={videoId} />
       </div>
     )
   }
@@ -62,6 +65,7 @@ const SongInfo = ({ compact }: { compact: boolean }) => {
         </p>
         <PlayerRail inline />
       </div>
+      <SongFacts videoId={videoId} />
     </div>
   )
 }

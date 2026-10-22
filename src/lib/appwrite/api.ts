@@ -12,6 +12,8 @@ import {
 import { appwriteConfig, tables } from './config'
 
 const songInfoDocumentSchema = z.object({
+  // When the song was added to Synbox (Appwrite's own column)
+  $createdAt: z.string().optional(),
   author: z.string(),
   // The song's own name and artist, from the lyrics pipeline's metadata step; missing on songs it has not
   // named, and on rows made here from YouTube's details
@@ -90,6 +92,7 @@ export const getSongInfoBySongId = async (
     // 月の温度 by JELEE rather than the video's "JELEE『月の温度』Music Video" by its channel
     const { songTitle, songArtist } = songInfo.data
     const result = {
+      addedAt: songInfo.data.$createdAt,
       author: orElse(songArtist, songInfo.data.author),
       thumbnailUrl: songInfo.data.thumbnailUrl,
       title: orElse(songTitle, songInfo.data.title),

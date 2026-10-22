@@ -28,6 +28,8 @@ export interface CurrentPlayingInfo {
   title: string
   author: string
   thumbnailUrl: string
+  // When the song was added to Synbox; only songs in its database have one
+  addedAt?: string
 }
 
 // GET /karaoke/<videoId> (KaraokeDoc v1). lines[] is index-aligned with the
