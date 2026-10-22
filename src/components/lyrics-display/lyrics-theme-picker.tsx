@@ -40,6 +40,17 @@ import { RailButton, RailInline, RailTooltip } from './rail-button'
 
 const HALF_FILLED: CSSProperties & Record<'--p', number> = { '--p': 0.5 }
 
+// A hint on its label's line ("Two Lines · Landscape only"): quieter than the label, after a centred dot.
+// The dot takes its label's size, raised a little so it centres on the capitals as well as the x-height
+const INLINE_HINT = 'text-xs font-normal text-faint'
+const InlineHintDot = () => (
+  <span
+    aria-hidden='true'
+    className='relative -top-[0.075em] px-1.5 font-normal text-faint'>
+    ·
+  </span>
+)
+
 interface ThemeSwatchProps {
   name: string
   colors: LyricsThemeColors
@@ -99,19 +110,23 @@ const ThemeSwatch = ({
   )
 }
 
-// A switch row in the panel: on and off, applied at once without closing it
+// A switch row in the panel: on and off, applied at once without closing it. A short hint sits on the
+// label's line after a dot (`inlineHint`); a longer one goes under it
 const StyleSwitch = ({
   label,
   hint,
+  inlineHint = false,
   checked,
   onChange,
 }: {
   label: string
   // Only when the label alone doesn't say it
   hint?: string
+  inlineHint?: boolean
   checked: boolean
   onChange: (checked: boolean) => void
 }) => {
+  const labelId = useId()
   const hintId = useId()
   return (
     <section className='flex flex-col gap-1'>
@@ -120,12 +135,23 @@ const StyleSwitch = ({
         // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- a switch: on and off, applied at once
         role='switch'
         aria-checked={checked}
+        aria-labelledby={labelId}
         aria-describedby={hint === undefined ? undefined : hintId}
         onClick={() => {
           onChange(!checked)
         }}
         className='group -mx-2 flex min-h-10 items-center justify-between gap-3 rounded-md px-2 text-sm font-medium focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-hidden touch:min-h-11'>
-        {label}
+        <span className='flex min-w-0 items-baseline'>
+          <span id={labelId}>{label}</span>
+          {hint !== undefined && inlineHint && (
+            <>
+              <InlineHintDot />
+              <span id={hintId} className={INLINE_HINT}>
+                {hint}
+              </span>
+            </>
+          )}
+        </span>
         <span
           aria-hidden='true'
           className={cn(
@@ -140,7 +166,7 @@ const StyleSwitch = ({
           />
         </span>
       </button>
-      {hint !== undefined && (
+      {hint !== undefined && !inlineHint && (
         <p id={hintId} className='text-xs text-muted-foreground'>
           {hint}
         </p>
@@ -161,6 +187,7 @@ const TwoLinesSwitch = ({ portrait }: { portrait: boolean }) => {
         checked={twoLines}
         onChange={setTwoLines}
         hint={portrait ? 'Landscape only' : undefined}
+        inlineHint
       />
       {twoLines && (
         <StyleSwitch
@@ -204,6 +231,7 @@ export const LyricsThemePicker = ({
   const [backdrop, setBackdrop] = useAtom(lyricsBackdropAtom)
 
   const activeBackdrop = LYRICS_BACKDROPS.find((b) => b.id === backdrop)
+  const backdropHintId = useId()
 
   const heading = touch ? (
     <DialogTitle size='sm'>Lyrics Style</DialogTitle>
@@ -216,39 +244,43 @@ export const LyricsThemePicker = ({
 
       <LyricsStyleScopeSection />
 
-      <section className='flex flex-col gap-2'>
-        <h3 className='text-xs font-medium tracking-wide text-muted-foreground uppercase'>
-          Size
-        </h3>
-        <div className='flex items-center gap-3'>
-          <span
-            aria-hidden='true'
-            className='text-xs font-semibold text-muted-foreground'>
-            A
-          </span>
-          <Slider
-            aria-label='Lyrics Size'
-            min={0.4}
-            max={1.6}
-            step={0.01}
-            value={[fontSize]}
-            onValueChange={([value]) => {
-              if (value !== undefined) {
-                setFontSize(value)
-              }
-            }}
-            className='flex-1 cursor-pointer'
-          />
-          <span
-            aria-hidden='true'
-            className='text-lg font-semibold text-muted-foreground'>
-            A
-          </span>
-        </div>
-        <ScreenSizeTweak />
-      </section>
+      {/* The layout switches sit a section's inner gap under the size row, not a full section gap: their 40px
+          press targets already pad them */}
+      <div className='flex flex-col gap-2'>
+        <section className='flex flex-col gap-2'>
+          <h3 className='text-xs font-medium tracking-wide text-muted-foreground uppercase'>
+            Size
+          </h3>
+          <div className='flex items-center gap-3'>
+            <span
+              aria-hidden='true'
+              className='text-xs font-semibold text-muted-foreground'>
+              A
+            </span>
+            <Slider
+              aria-label='Lyrics Size'
+              min={0.4}
+              max={1.6}
+              step={0.01}
+              value={[fontSize]}
+              onValueChange={([value]) => {
+                if (value !== undefined) {
+                  setFontSize(value)
+                }
+              }}
+              className='flex-1 cursor-pointer'
+            />
+            <span
+              aria-hidden='true'
+              className='text-lg font-semibold text-muted-foreground'>
+              A
+            </span>
+          </div>
+          <ScreenSizeTweak />
+        </section>
 
-      <TwoLinesSwitch portrait={portrait} />
+        <TwoLinesSwitch portrait={portrait} />
+      </div>
 
       <section className='flex flex-col gap-2'>
         <h3 className='text-xs font-medium tracking-wide text-muted-foreground uppercase'>
@@ -314,12 +346,19 @@ export const LyricsThemePicker = ({
       </section>
 
       <section className='flex flex-col gap-2'>
-        <h3 className='text-xs font-medium tracking-wide text-muted-foreground uppercase'>
-          Backdrop
-        </h3>
+        <div className='flex min-w-0 items-baseline text-xs'>
+          <h3 className='text-xs font-medium tracking-wide text-muted-foreground uppercase'>
+            Backdrop
+          </h3>
+          <InlineHintDot />
+          <p id={backdropHintId} className={INLINE_HINT}>
+            {activeBackdrop?.hint}
+          </p>
+        </div>
         <div
           role='radiogroup'
           aria-label='Lyrics backdrop'
+          aria-describedby={backdropHintId}
           className='grid grid-cols-3 gap-1 rounded-lg bg-secondary p-1'>
           {LYRICS_BACKDROPS.map((option) => (
             <button
@@ -342,7 +381,6 @@ export const LyricsThemePicker = ({
             </button>
           ))}
         </div>
-        <p className='text-xs text-muted-foreground'>{activeBackdrop?.hint}</p>
       </section>
 
       <MyStyles onApplied={close} />
