@@ -153,8 +153,9 @@ const SEEK_HOLD_MAX_MS = 3000
 
 // One of the control bar's pills: a light glass behind a group of buttons, on a wide screen with a mouse. Over the
 // bar's shade a dark pill vanished; a light one reads over dark and bright video alike
-const PILL =
-  'pills:flex pills:items-center pills:rounded-full pills:bg-white/12 pills:backdrop-blur-md'
+const PILL_GLASS = 'pills:rounded-full pills:bg-white/12 pills:backdrop-blur-md'
+// A group of buttons on one glass; a lone button takes the glass alone and keeps its own centring
+const PILL = `pills:flex pills:items-center ${PILL_GLASS}`
 
 // Autoplay, where YouTube has it, first in the right-hand pill: on, the song at the top of the list beside the
 // video plays when this one ends. The thumb's side and the track's brightness both show the state, and its
@@ -429,7 +430,7 @@ export const StageControls = ({
             {/* Bottom left, where every player has it, although touch screens also have one mid-stage */}
             <IconButton
               label={isPlaying ? 'Pause' : 'Play'}
-              className={cn('watch-narrow:hidden', PILL)}
+              className={cn('watch-narrow:hidden', PILL_GLASS)}
               onClick={() => {
                 player.togglePlay()
               }}>
