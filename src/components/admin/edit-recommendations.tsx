@@ -1,0 +1,58 @@
+import { PencilIcon } from 'lucide-react'
+import { lazy, Suspense, useState } from 'react'
+
+import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Skeleton } from '@/components/ui/skeleton'
+import { useAccess } from '@/lib/auth'
+
+// Loaded on first open: only admins ever see it, so it stays out of every visitor's first page
+const RecommendationsEditor = lazy(async () => {
+  const module = await import('./recommendations-editor')
+  return { default: module.RecommendationsEditor }
+})
+
+// Beside the home page's Recommendations title, for admins only: the list's editor in a dialog, so the carousel
+// it changes stays in sight once it closes
+export const EditRecommendations = () => {
+  const { admin } = useAccess()
+  const [open, setOpen] = useState(false)
+  if (!admin) {
+    return null
+  }
+  return (
+    <>
+      <Button
+        variant='ghost'
+        size='icon-round'
+        aria-label='Edit Recommendations'
+        title='Edit Recommendations'
+        onClick={() => {
+          setOpen(true)
+        }}>
+        <PencilIcon className='size-4' />
+      </Button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className='max-w-2xl'>
+          <DialogHeader>
+            <DialogTitle>Edit Recommendations</DialogTitle>
+            <DialogDescription>
+              Add songs from our library, drag them into order, then save. Each visitor sees the list shuffled.
+            </DialogDescription>
+          </DialogHeader>
+          {open && (
+            <Suspense fallback={<Skeleton className='h-40 w-full' />}>
+              <RecommendationsEditor />
+            </Suspense>
+          )}
+        </DialogContent>
+      </Dialog>
+    </>
+  )
+}

@@ -6,6 +6,7 @@ import {
   KaraokeLabelMark,
   KaraokeTitleIconMark,
 } from '@/components/shared/karaoke-badge'
+import { EditRecommendations } from '@/components/admin/edit-recommendations'
 import LoadError from '@/components/shared/load-error'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -116,9 +117,12 @@ const SongHighlightCarousel = () => {
       aria-roledescription='carousel'
       className='@container flex min-w-0 flex-1 flex-col gap-3'>
       <div className='flex items-center justify-between px-4 md:px-0'>
-        <h2 className='text-xl font-semibold tracking-tight text-foreground'>
-          Recommendations
-        </h2>
+        <div className='flex items-center gap-1'>
+          <h2 className='text-xl font-semibold tracking-tight text-foreground'>
+            Recommendations
+          </h2>
+          <EditRecommendations />
+        </div>
         {!isError && (loading || copies > 1) && (
           <div className='flex gap-2 touch:hidden'>
             <Button
