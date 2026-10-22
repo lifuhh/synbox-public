@@ -115,12 +115,14 @@ const shareUrl = (style: LyricsStyle) => {
   return url
 }
 
+// Inline and too narrow for one row (a phone), the lyrics toggles and the song's actions take a row each,
+// rather than leaving one button alone on the second
 const Divider = ({ inline }: { inline: boolean }) => (
   <div
     className={cn(
       'shrink-0 bg-white/15',
       inline
-        ? 'h-6 w-px'
+        ? 'h-6 w-px max-[27rem]:h-0 max-[27rem]:basis-full'
         : 'my-0.5 h-px w-6 portrait:my-0 portrait:h-6 portrait:w-px'
     )}
   />
