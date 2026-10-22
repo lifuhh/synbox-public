@@ -75,6 +75,14 @@ export const extractVideoId = (input: string): string | null => {
     if (videoId !== null && /^[\w-]{11}$/u.test(videoId)) {
       return videoId
     }
+
+    // Our own links: a song's player (/v/<id>, /v/<id>/versions) or its lyrics (/lyrics/<id>)
+    const ownId = /^\/(?:v|lyrics)\/(?<id>[\w-]{11})(?:\/|$)/u.exec(
+      parsedUrl.pathname
+    )?.groups?.id
+    if (ownId !== undefined) {
+      return ownId
+    }
   } catch (error) {
     console.error('Error parsing YouTube URL:', error)
   }
