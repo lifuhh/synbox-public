@@ -244,7 +244,7 @@ export const SaveStyle = () => {
   }
 
   return (
-    <div className='sticky bottom-0 -mx-4 -mb-4 flex items-center gap-2 border-t border-border bg-popover p-4 pt-3'>
+    <div className='sticky bottom-0 z-10 -mx-4 -mb-4 flex items-center gap-2 border-t border-border bg-popover p-4 pt-3'>
       {naming ? (
         <form
           className='flex flex-1 items-center gap-2'

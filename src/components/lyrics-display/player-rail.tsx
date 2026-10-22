@@ -192,7 +192,8 @@ const SongActionsMenu = ({ actions }: { actions: SongAction[] }) => {
             key={action.label}
             disabled={action.disabled}
             onSelect={action.handleSelect}>
-            {action.icon}
+            {/* As the other menus space their icons */}
+            <span className='mr-2 flex'>{action.icon}</span>
             {action.label}
           </DropdownMenuItem>
         ))}

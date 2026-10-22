@@ -241,7 +241,7 @@ const HeroGenerateLyricsDefault = ({
                 onClick={() => {
                   setInfoOpen((open) => !open)
                 }}
-                className='-my-2 ml-1 inline-flex rounded-full p-1.5 align-middle'>
+                className='relative -top-0.5 -my-2 ml-1 inline-flex rounded-full p-1.5 align-middle'>
                 <Info className='h-4 w-4 text-tagline' />
               </button>
             </TooltipTrigger>
