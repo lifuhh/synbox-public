@@ -1,5 +1,6 @@
 import type { UseQueryResult } from '@tanstack/react-query'
 import { LogInIcon, SearchIcon } from 'lucide-react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
 
 import { startFromButton } from '@/components/generation/start-generation'
@@ -22,6 +23,7 @@ import type {
   VideoSearchResponse,
   VideoSearchResult,
 } from '@/lib/synbox-flask/discovery'
+import type { CssVars } from '@/types'
 
 const Notice = ({ children }: { children: React.ReactNode }) => (
   <p className='rounded-md bg-muted/60 px-3 py-2 text-sm text-muted-foreground'>
@@ -37,18 +39,53 @@ const ResultGrid = ({ children }: { children: React.ReactNode }) => (
   </div>
 )
 
+// A quieter hint can follow the heading on its line, as the Lyrics Style panel's do
 const Section = ({
   title,
+  hint,
   children,
 }: {
   title: string
+  hint?: string
   children: React.ReactNode
 }) => (
   <div className='flex flex-col gap-3'>
-    <h2 className='text-lg font-semibold text-foreground'>{title}</h2>
+    <div className='flex min-w-0 flex-wrap items-baseline gap-x-2'>
+      <h2 className='text-lg font-semibold text-foreground'>{title}</h2>
+      {hint !== undefined && (
+        <p className='text-sm text-muted-foreground'>{hint}</p>
+      )}
+    </div>
     {children}
   </div>
 )
+
+const NoResults = () => (
+  <p className='text-sm text-muted-foreground'>No results found</p>
+)
+
+// The height of a box's content, followed as it changes: the box under it (smooth-height in globals.css) eases
+// to it, so what sits under the box glides instead of jumping when the content grows or shrinks (placeholders
+// giving way to results, or to none)
+const useContentHeight = () => {
+  const inner = useRef<HTMLDivElement>(null)
+  const [height, setHeight] = useState<number | null>(null)
+  useLayoutEffect(() => {
+    const element = inner.current
+    const observer = new ResizeObserver(() => {
+      if (element !== null) {
+        setHeight(element.offsetHeight)
+      }
+    })
+    if (element !== null) {
+      observer.observe(element)
+    }
+    return () => {
+      observer.disconnect()
+    }
+  }, [])
+  return [inner, height] as const
+}
 
 type LibraryQuery = UseQueryResult<LibrarySearchResponse>
 
@@ -69,60 +106,74 @@ const ReadyToSing = ({
   // A retry after the library gave up has data already, so isLoading stays false while it waits again
   const notReady = library.data?.ready === false
   const searching = library.isLoading || (notReady && library.isFetching)
+  const empty =
+    !searching &&
+    library.error === null &&
+    !notReady &&
+    (library.data?.results.length ?? 0) + extra.length === 0
+  const [inner, height] = useContentHeight()
+  const heightVars: CssVars | undefined =
+    height === null ? undefined : { '--smooth-h': `${height}px` }
   return (
-    <Section title='Ready To Sing'>
-      {searching && (
-        <div className='flex items-center gap-3 text-sm text-muted-foreground'>
-          <DotsLoader size='sm' />
-          Searching your library
-        </div>
-      )}
-      {library.error && <Notice>{library.error.message}</Notice>}
-      {notReady && !searching && (
-        <div className='flex flex-wrap items-center gap-3'>
-          <Notice>
-            Your library is taking longer than usual to load, so songs already
-            in Synbox may be missing.
-          </Notice>
-          <Button
-            variant='ghost'
-            onClick={() => {
-              void library.refetch()
-            }}>
-            Try Again
-          </Button>
-        </div>
-      )}
-      {library.data?.mode === 'title_match' && (
-        <Notice>
-          Smart search is unavailable, so these match titles and artists only.
-        </Notice>
-      )}
-      <ResultGrid>
-        {library.data?.results.map((song) => (
-          <LibrarySongCard
-            key={song.video_id}
-            song={song}
-            onMoreLikeThis={onMoreLikeThis}
-          />
-        ))}
-        {extra.map((result) => (
-          <VideoResultCard
-            key={result.video_id}
-            result={result}
-            onSelect={onSelect}
-          />
-        ))}
-        {searching &&
-          SKELETON_CARDS.map((i) => (
-            <div key={i} className='flex flex-col gap-2 p-2'>
-              <Skeleton shape='thumbnail' className='aspect-video w-full' />
-              <Skeleton className='h-4 w-3/4' />
-              <Skeleton className='h-3 w-1/2' />
+    <div style={heightVars} className='smooth-height'>
+      <div ref={inner}>
+        <Section title='Ready To Sing'>
+          {empty && <NoResults />}
+          {searching && (
+            <div className='flex items-center gap-3 text-sm text-muted-foreground'>
+              <DotsLoader size='sm' />
+              Searching your library
             </div>
-          ))}
-      </ResultGrid>
-    </Section>
+          )}
+          {library.error && <Notice>{library.error.message}</Notice>}
+          {notReady && !searching && (
+            <div className='flex flex-wrap items-center gap-3'>
+              <Notice>
+                Your library is taking longer than usual to load, so songs
+                already in Synbox may be missing.
+              </Notice>
+              <Button
+                variant='ghost'
+                onClick={() => {
+                  void library.refetch()
+                }}>
+                Try Again
+              </Button>
+            </div>
+          )}
+          {library.data?.mode === 'title_match' && (
+            <Notice>
+              Smart search is unavailable, so these match titles and artists
+              only.
+            </Notice>
+          )}
+          <ResultGrid>
+            {library.data?.results.map((song) => (
+              <LibrarySongCard
+                key={song.video_id}
+                song={song}
+                onMoreLikeThis={onMoreLikeThis}
+              />
+            ))}
+            {extra.map((result) => (
+              <VideoResultCard
+                key={result.video_id}
+                result={result}
+                onSelect={onSelect}
+              />
+            ))}
+            {searching &&
+              SKELETON_CARDS.map((i) => (
+                <div key={i} className='flex flex-col gap-2 p-2'>
+                  <Skeleton shape='thumbnail' className='aspect-video w-full' />
+                  <Skeleton className='h-4 w-3/4' />
+                  <Skeleton className='h-3 w-1/2' />
+                </div>
+              ))}
+          </ResultGrid>
+        </Section>
+      </div>
+    </div>
   )
 }
 
@@ -131,7 +182,7 @@ const ReadyToSing = ({
 const NoNewSongs = () => {
   const access = useAccess()
   return (
-    <Section title='Add From YouTube'>
+    <Section title='From YouTube'>
       <div className='flex flex-wrap items-center gap-3'>
         <Notice>
           {access.kind === 'user'
@@ -153,7 +204,7 @@ const NoNewSongs = () => {
   )
 }
 
-const AddFromYoutube = ({
+const FromYoutube = ({
   videos,
   results,
   onSelect,
@@ -162,8 +213,11 @@ const AddFromYoutube = ({
   results: VideoSearchResult[]
   onSelect: (result: VideoSearchResult) => void
 }) => (
-  <Section title='Add From YouTube'>
+  <Section title='From YouTube' hint='Pick a song to generate its lyrics'>
     {videos.isLoading && <DotsLoader />}
+    {!videos.isLoading && videos.error === null && results.length === 0 && (
+      <NoResults />
+    )}
     {videos.error && <Notice>{videos.error.message}</Notice>}
     {videos.data?.source === 'youtube' && !videos.data.filtered && (
       <Notice>
@@ -202,42 +256,25 @@ const SearchResults = ({
     (r) => r.processed && !libraryIds.has(r.video_id)
   )
   const newVideos = youtube.filter((r) => !r.processed)
-  const showReady =
-    library.isLoading ||
-    library.error !== null ||
-    library.data?.ready === false ||
-    libraryIds.size + readyVideos.length > 0
-  const showNew =
-    videos.isLoading || videos.error !== null || newVideos.length > 0
-
+  // Both sections always show, each saying when it found nothing, so neither appears or goes and moves the other
   return (
     <div className='flex flex-col gap-6'>
-      {showReady && (
-        <ReadyToSing
-          library={library}
-          extra={readyVideos}
-          onSelect={onSelect}
-          onMoreLikeThis={onMoreLikeThis}
-        />
+      <ReadyToSing
+        library={library}
+        extra={readyVideos}
+        onSelect={onSelect}
+        onMoreLikeThis={onMoreLikeThis}
+      />
+      {newSong ? (
+        <FromYoutube videos={videos} results={newVideos} onSelect={onSelect} />
+      ) : (
+        <NoNewSongs />
       )}
-      {showNew &&
-        (newSong ? (
-          <AddFromYoutube
-            videos={videos}
-            results={newVideos}
-            onSelect={onSelect}
-          />
-        ) : (
-          <NoNewSongs />
-        ))}
       {videos.data?.source === 'library_only' && (
         <Notice>
           YouTube search is unavailable right now, so only songs already in
           Synbox are shown.
         </Notice>
-      )}
-      {!showReady && !showNew && library.data?.ready !== false && (
-        <Notice>No singable songs found for “{query}”.</Notice>
       )}
     </div>
   )
