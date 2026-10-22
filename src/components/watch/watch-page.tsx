@@ -6,6 +6,8 @@ import PlayerRail from '@/components/lyrics-display/player-rail'
 import { currentVideoAtom } from '@/context/atoms'
 import { useMediaQuery } from '@/hooks/use-media-query'
 import { useNextList } from '@/lib/listening/recommendations'
+import { bracketStart } from '@/utils'
+import { cn } from '@/utils/cn'
 
 import { LyricsPanel } from './lyrics-panel'
 import { Shelves } from './shelves'
@@ -21,10 +23,18 @@ const SongInfo = ({ compact }: { compact: boolean }) => {
     return (
       <div className='flex min-w-0 flex-col gap-2'>
         <div className='min-w-0'>
-          <h1 className='line-clamp-2 text-base leading-snug font-semibold text-pretty text-foreground'>
+          <h1
+            className={cn(
+              'line-clamp-2 text-base leading-snug font-semibold text-pretty text-foreground',
+              bracketStart(video?.title)
+            )}>
             {video?.title ?? ''}
           </h1>
-          <p className='truncate text-sm text-muted-foreground'>
+          <p
+            className={cn(
+              'truncate text-sm text-muted-foreground',
+              bracketStart(video?.author)
+            )}>
             {video?.author ?? ''}
           </p>
         </div>
@@ -36,14 +46,22 @@ const SongInfo = ({ compact }: { compact: boolean }) => {
     <div className='flex min-w-0 flex-col gap-1 pt-2'>
       {/* The buttons on the title's first line, centred on it: a long title wraps beside them */}
       <div className='flex flex-wrap items-start justify-between gap-x-6 gap-y-2'>
-        <h1 className='line-clamp-2 min-w-0 flex-1 basis-72 text-xl leading-7 font-semibold text-pretty text-foreground'>
+        <h1
+          className={cn(
+            'line-clamp-2 min-w-0 flex-1 basis-72 text-xl leading-7 font-semibold text-pretty text-foreground',
+            bracketStart(video?.title)
+          )}>
           {video?.title ?? ''}
         </h1>
         <div className='-my-1.5'>
           <PlayerRail inline />
         </div>
       </div>
-      <p className='min-w-0 truncate text-base font-medium text-muted-foreground'>
+      <p
+        className={cn(
+          'min-w-0 truncate text-base font-medium text-muted-foreground',
+          bracketStart(video?.author)
+        )}>
         {video?.author ?? ''}
       </p>
     </div>

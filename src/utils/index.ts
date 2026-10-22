@@ -8,6 +8,12 @@ export const shuffleArray = <T>(array: T[]): T[] => {
   return array
 }
 
+// A CJK opening bracket (【「『（) draws in the right half of its square, so text that starts with one looks
+// indented by half a character
+const OPENING_BRACKET = /^\s*[【「『（〔［｛〈《〖〘〚｟]/u
+export const bracketStart = (text: string | undefined) =>
+  OPENING_BRACKET.test(text ?? '') && 'bracket-start'
+
 export const handleRedirect = (url: string) => {
   window.open(url, '_blank', 'noopener,noreferrer')
 }

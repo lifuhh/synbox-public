@@ -7,6 +7,7 @@ import {
 } from '@/components/shared/karaoke-badge'
 import type { ListSong } from '@/lib/listening/model'
 import { songPath } from '@/lib/listening/store'
+import { bracketStart } from '@/utils'
 import { cn } from '@/utils/cn'
 
 import { SongMenu } from './song-menu'
@@ -49,10 +50,20 @@ export const SongCard = ({
     </Link>
     <div className='mt-2 flex items-start gap-1'>
       <div className='min-w-0 flex-1'>
-        <p className='line-clamp-2 text-sm leading-5 font-medium text-foreground'>
+        <p
+          className={cn(
+            'line-clamp-2 text-sm leading-5 font-medium text-foreground',
+            bracketStart(song.title)
+          )}>
           {song.title}
         </p>
-        <p className='truncate text-xs text-muted-foreground'>{song.author}</p>
+        <p
+          className={cn(
+            'truncate text-xs text-muted-foreground',
+            bracketStart(song.author)
+          )}>
+          {song.author}
+        </p>
       </div>
       <div className='-me-2 -mt-2'>
         <SongMenu song={song} />
