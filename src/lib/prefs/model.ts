@@ -6,12 +6,12 @@
 const SYNCED_KEYS = new Set([
   // My Default lyrics style, one key per field
   'fontSizeMultiplier',
+  'lyricsFontSizeTwoLines',
   'lyricsAnchor',
   'lyricsAnchorPortrait',
   'lyricsBackdrop',
   'lyricsCustomHue',
   'lyricsScreenSizes',
-  'lyricsStagger',
   'lyricsTheme',
   'lyricsTwoLines',
   // My Styles

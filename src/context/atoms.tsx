@@ -94,15 +94,15 @@ const defaultLyricsStyleAtoms: {
     syncedStorage(),
     initOptions
   ),
-  screenSizes: atomWithStorage<ScreenSizes>(
-    'lyricsScreenSizes',
-    DEFAULT_LYRICS_STYLE.screenSizes,
+  fontSizeTwoLines: atomWithStorage(
+    'lyricsFontSizeTwoLines',
+    DEFAULT_LYRICS_STYLE.fontSizeTwoLines,
     syncedStorage(),
     initOptions
   ),
-  stagger: atomWithStorage(
-    'lyricsStagger',
-    DEFAULT_LYRICS_STYLE.stagger,
+  screenSizes: atomWithStorage<ScreenSizes>(
+    'lyricsScreenSizes',
+    DEFAULT_LYRICS_STYLE.screenSizes,
     syncedStorage(),
     initOptions
   ),
@@ -133,10 +133,10 @@ const readDefaults = (get: Getter): LyricsStyle => {
     backdrop: get(defaultLyricsStyleAtoms.backdrop),
     customHue: get(defaultLyricsStyleAtoms.customHue),
     fontSize: get(defaultLyricsStyleAtoms.fontSize),
+    fontSizeTwoLines: get(defaultLyricsStyleAtoms.fontSizeTwoLines),
     screenSizes: screenSizes.success
       ? screenSizes.data
       : DEFAULT_LYRICS_STYLE.screenSizes,
-    stagger: get(defaultLyricsStyleAtoms.stagger),
     themeId: themeId.success ? themeId.data : DEFAULT_LYRICS_STYLE.themeId,
     twoLines: get(defaultLyricsStyleAtoms.twoLines),
   }
@@ -148,8 +148,8 @@ const LYRICS_STYLE_KEYS = [
   'backdrop',
   'customHue',
   'fontSize',
+  'fontSizeTwoLines',
   'screenSizes',
-  'stagger',
   'themeId',
   'twoLines',
 ] as const satisfies readonly (keyof LyricsStyle)[]
@@ -300,7 +300,7 @@ export const lyricsBackdropAtom = lyricsStyleField('backdrop')
 export const lyricsAnchorAtom = lyricsStyleField('anchor')
 export const lyricsAnchorPortraitAtom = lyricsStyleField('anchorPortrait')
 export const lyricsTwoLinesAtom = lyricsStyleField('twoLines')
-export const lyricsStaggerAtom = lyricsStyleField('stagger')
+export const lyricsFontSizeTwoLinesAtom = lyricsStyleField('fontSizeTwoLines')
 export const lyricsScreenSizesAtom = lyricsStyleField('screenSizes')
 
 // A shared style that matches the viewer's own changes nothing, so it is not shown as shared

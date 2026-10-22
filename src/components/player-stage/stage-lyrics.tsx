@@ -1,6 +1,13 @@
 import { useAtomValue } from 'jotai'
 import type { ReactNode } from 'react'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import { z } from 'zod'
 
 import type { KaraokeLineHandle } from '@/components/lyrics-display/karaoke-line'
@@ -9,11 +16,11 @@ import { KaraokeRomajiLine } from '@/components/lyrics-display/karaoke-romaji-li
 import { RubyText } from '@/components/lyrics-display/ruby-text'
 import {
   fontSizeMultiplierAtom,
+  lyricsFontSizeTwoLinesAtom,
   lyricsBackdropAtom,
   lyricsCustomHueAtom,
   lyricsScreenSizesAtom,
   lyricsThemeIdAtom,
-  lyricsStaggerAtom,
   lyricsTwoLinesAtom,
   lyricsVisibilityAtom,
   romajiVisibilityAtom,
@@ -91,7 +98,7 @@ const LINE_SIZE = {
   romaji: 'text-lyric-romaji',
   translation: 'text-lyric-secondary',
 } as const
-// Karaoke Stagger's smaller type: 0.65 of the one-line sizes (see --text-lyric-stagger)
+// Two lines' type, on their own size (see --text-lyric-stagger)
 const STAGGER_SIZE = {
   japanese: 'text-lyric-stagger',
   romaji: 'text-lyric-stagger-romaji',
@@ -200,43 +207,114 @@ const LineRows = ({
   </>
 )
 
-// Two Lines: equal rows, so a longer line in one row never moves the other, set apart so each line's own rows
-// read as its own; the waiting line dimmed. With Karaoke Stagger, the two-way karaoke screen: smaller type, the
-// top row's line at the left and the bottom row's at the right
+// The least a two-line row's type shrinks to, as a share of its size, when its line runs long
+const ROW_FIT_FLOOR = 0.6
+
+// oxlint-disable-next-line unicorn/prefer-number-coercion -- the value ends in px, which Number() rejects
+const pixels = (value: string) => Number.parseFloat(value) || 0
+
+// Each of the two rows gets half the room under the translation. A line that wraps taller than that shrinks
+// until it fits, so the rows never climb over the translation; each new line starts again at full size, so
+// a row never changes size while its line is sung. The room is the layer's, less what the controls cover
+const fitRow = (content: HTMLElement) => {
+  const row = content.parentElement
+  const grid = row?.parentElement
+  const block = row?.closest<HTMLElement>('.player-lyrics-overlay')
+  const layer = block?.parentElement
+  const lift = block?.nextElementSibling
+  let fit = 1
+  row?.style.setProperty('--row-fit', '1')
+  const shrink = () => {
+    if (!(row && grid && block && layer && lift instanceof HTMLElement)) {
+      return
+    }
+    const pad = getComputedStyle(block)
+    const room =
+      (layer.clientHeight -
+        pixels(getComputedStyle(lift).minHeight) -
+        pixels(pad.paddingTop) -
+        pixels(pad.paddingBottom) -
+        pixels(getComputedStyle(grid).rowGap)) /
+      2
+    const height = content.offsetHeight
+    if (height > room + 1 && fit > ROW_FIT_FLOOR) {
+      fit = Math.max(ROW_FIT_FLOOR, fit * (room / height) * 0.98)
+      row.style.setProperty('--row-fit', String(fit))
+    }
+  }
+  // Wrapping settles after the type changes (balanceWrap), so the height is checked each time it moves
+  const observer = new ResizeObserver(shrink)
+  observer.observe(content)
+  if (layer) {
+    observer.observe(layer)
+  }
+  return () => {
+    observer.disconnect()
+  }
+}
+
+// Keyed by its line, so each new line is fitted afresh
+const RowFit = ({ children }: { children: ReactNode }) => {
+  const contentRef = useRef<HTMLDivElement>(null)
+  useLayoutEffect(
+    () => (contentRef.current ? fitRow(contentRef.current) : undefined),
+    []
+  )
+  return <div ref={contentRef}>{children}</div>
+}
+
+const TwoLineRow = ({
+  index,
+  sung,
+  start,
+  children,
+}: {
+  index: number
+  sung: boolean
+  start: boolean
+  children: ReactNode
+}) => (
+  <div
+    data-lyric-row={sung ? 'sung' : 'next'}
+    className={cn(
+      'transition-opacity duration-200',
+      !sung && 'opacity-60',
+      start ? 'lyric-stagger-start' : 'lyric-stagger-end'
+    )}>
+    <RowFit key={index}>{children}</RowFit>
+  </div>
+)
+
+// Two Lines, the two-way karaoke screen: equal rows, so a longer line in one row never moves the other, set
+// apart so each line's own rows read as its own; the top row's line at the left and the bottom row's at the
+// right, the waiting line dimmed
 const TwoRows = ({
   view,
-  stagger,
   rowsOf,
 }: {
   view: TwoLineView
-  stagger: boolean
   rowsOf: (index: number) => ReactNode
 }) => (
   <div
     className={cn(
-      'grid auto-rows-fr lyric-rows-gap',
-      stagger
-        ? ['lyric-stagger-rows', STAGGER_SIZE.japanese]
-        : LINE_SIZE.japanese
+      'grid auto-rows-fr lyric-rows-gap lyric-stagger-rows',
+      STAGGER_SIZE.japanese
     )}>
     {view.rows.map((index, row) => (
-      <div
+      <TwoLineRow
         // The rows are fixed places; only the lines in them change
         // oxlint-disable-next-line no-array-index-key
         key={row}
-        data-lyric-row={index === view.active ? 'sung' : 'next'}
-        className={cn(
-          'transition-opacity duration-200',
-          index !== view.active && 'opacity-60',
-          stagger && (row === 0 ? 'lyric-stagger-start' : 'lyric-stagger-end')
-        )}>
+        index={index}
+        sung={index === view.active}
+        start={row === 0}>
         {index >= 0 && rowsOf(index)}
-      </div>
+      </TwoLineRow>
     ))}
   </div>
 )
 
-// Karaoke Stagger's one translation, for the line being sung, centred at the top of the video. It changes with
+// Two Lines' one translation, for the line being sung, centred at the top of the video. It changes with
 // the line, fading in where motion is welcome
 const StaggerTranslation = ({
   line: { text, translation },
@@ -327,18 +405,18 @@ export const StageLyrics = ({
   const showRomaji = useAtomValue(romajiVisibilityAtom)
   const showTranslation = useAtomValue(translationVisibilityAtom)
   const english = useAtomValue(translationIsEnglishAtom)
-  // One size for every screen, times this screen's own optional tweak
   const surface = useLyricsSurface()
-  const scale =
-    useAtomValue(fontSizeMultiplierAtom) *
-    useAtomValue(lyricsScreenSizesAtom)[surface]
+  const oneLineSize = useAtomValue(fontSizeMultiplierAtom)
+  const twoLinesSize = useAtomValue(lyricsFontSizeTwoLinesAtom)
+  const screenSize = useAtomValue(lyricsScreenSizesAtom)[surface]
   const backdrop = useAtomValue(lyricsBackdropAtom)
   const themeId = useAtomValue(lyricsThemeIdAtom)
   const hue = useAtomValue(lyricsCustomHueAtom)
   // Upright, a phone's lines wrap at its narrow width and the band under the video also holds the controls,
   // so two lines (each with its romaji and translation) would crowd it: one line there
   const twoLines = useAtomValue(lyricsTwoLinesAtom) && surface !== 'portrait'
-  const stagger = useAtomValue(lyricsStaggerAtom) && twoLines
+  // Each layout's own size for every screen, times this screen's own optional tweak
+  const scale = (twoLines ? twoLinesSize : oneLineSize) * screenSize
   const colors = useMemo(
     () => getLyricsThemeColors(themeId, hue),
     [themeId, hue]
@@ -431,8 +509,8 @@ export const StageLyrics = ({
     romaji: showRomaji,
     translation: showTranslation,
   }
-  // Karaoke Stagger keeps the translation out of the rows, for its own place at the top
-  const rowShown = stagger ? { ...shown, translation: false } : shown
+  // Two lines keep the translation out of the rows, for its own place at the top
+  const rowShown = twoLines ? { ...shown, translation: false } : shown
   // Nothing between lines: DraggableLyrics keeps its block mounted but hidden
   const rowsOf = (index: number) => {
     const line = lineAt(lyrics, karaokeLines, index, english, placeholder)
@@ -441,7 +519,7 @@ export const StageLyrics = ({
         line={{ ...line, text: line.text }}
         lineKey={index}
         shown={rowShown}
-        sizes={stagger ? STAGGER_SIZE : LINE_SIZE}
+        sizes={twoLines ? STAGGER_SIZE : LINE_SIZE}
         track={track}
       />
     )
@@ -452,28 +530,29 @@ export const StageLyrics = ({
   }
   return (
     <div className='absolute inset-0 lyric-stagger-layer' style={layerVars}>
-      {stagger && showTranslation && (
+      {twoLines && showTranslation && (
         <StaggerTranslation
           line={lineAt(lyrics, karaokeLines, view.active, english, placeholder)}
           lineKey={view.active}
           backdrop={backdrop}
         />
       )}
-      {/* Always this box, so the lyrics stay mounted when the stagger turns on or off; with the stagger's
-          translation on, the lyrics move only in the room under it */}
+      {/* Always this box, so the lyrics stay mounted when two lines turn on or off; two lines move only in
+          the stage's lower part, under their translation */}
       <div
+        data-translation={(twoLines && showTranslation) || undefined}
         className={cn(
           'absolute inset-x-0 bottom-0',
-          stagger && showTranslation ? 'lyric-stagger-area' : 'top-0'
+          twoLines ? 'lyric-stagger-area' : 'top-0'
         )}>
         <DraggableLyrics
           layout={layout}
           scale={scale}
           backdrop={backdrop}
           colors={colors}
-          wide={stagger}>
+          wide={twoLines}>
           {twoLines && view.active >= 0 ? (
-            <TwoRows view={view} stagger={stagger} rowsOf={rowsOf} />
+            <TwoRows view={view} rowsOf={rowsOf} />
           ) : (
             rowsOf(view.active)
           )}
