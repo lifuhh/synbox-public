@@ -21,9 +21,6 @@ export const RETIRED_LYRICS_THEME_IDS: Readonly<Record<string, LyricsThemeId>> =
     aqua: 'frost',
   }
 
-export const LYRICS_BACKDROP_IDS = ['shadow', 'band', 'box'] as const
-export type LyricsBackdrop = (typeof LYRICS_BACKDROP_IDS)[number]
-
 export interface LyricsThemeColors {
   accent: string
   glow: string
@@ -35,7 +32,6 @@ export interface LyricsTheme extends LyricsThemeColors {
 }
 
 export const DEFAULT_LYRICS_THEME_ID: LyricsThemeId = 'frost'
-export const DEFAULT_LYRICS_BACKDROP: LyricsBackdrop = 'shadow'
 export const DEFAULT_LYRICS_CUSTOM_HUE = 200
 
 export const LYRICS_THEMES: LyricsTheme[] = [
@@ -98,25 +94,3 @@ export const getLyricsThemeColors = (
   }
   return LYRICS_THEMES.find((theme) => theme.id === themeId) ?? LYRICS_THEMES[0]
 }
-
-export const LYRICS_BACKDROPS: {
-  id: LyricsBackdrop
-  name: string
-  hint: string
-}[] = [
-  {
-    hint: 'Soft edge',
-    id: 'shadow',
-    name: 'Shadow',
-  },
-  {
-    hint: 'Dims video',
-    id: 'band',
-    name: 'Fade',
-  },
-  {
-    hint: 'Easiest to read',
-    id: 'box',
-    name: 'Box',
-  },
-]

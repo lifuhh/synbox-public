@@ -1,11 +1,9 @@
 import { z } from 'zod'
 
-import type { LyricsBackdrop, LyricsThemeId } from '@/lib/lyrics-themes'
+import type { LyricsThemeId } from '@/lib/lyrics-themes'
 import {
-  DEFAULT_LYRICS_BACKDROP,
   DEFAULT_LYRICS_CUSTOM_HUE,
   DEFAULT_LYRICS_THEME_ID,
-  LYRICS_BACKDROP_IDS,
   LYRICS_THEME_IDS,
   RETIRED_LYRICS_THEME_IDS,
 } from '@/lib/lyrics-themes'
@@ -24,7 +22,6 @@ export interface LyricsStyle {
   fontSize: number
   themeId: LyricsThemeId
   customHue: number
-  backdrop: LyricsBackdrop
   // Over the video, on desktop and phone landscape: 0 pins the lyrics block to the top of the stage, 1 to the
   // bottom. Both show the same 16:9 picture, so one fraction clears the same burned-in subtitles on both
   anchor: number
@@ -52,7 +49,6 @@ export const TWO_LINES_SIZE_RANGE = { max: 1.1, min: 0.6 } as const
 export const DEFAULT_LYRICS_STYLE: LyricsStyle = {
   anchor: 1,
   anchorPortrait: 0,
-  backdrop: DEFAULT_LYRICS_BACKDROP,
   customHue: DEFAULT_LYRICS_CUSTOM_HUE,
   fontSize: 1,
   fontSizeTwoLines: 0.85,
@@ -83,12 +79,11 @@ export const screenSizesSchema = z.object({
 })
 // Every field optional: a saved record keeps what it had when it was saved, and fields added since (twoLines,
 // screenSizes, fontSizeTwoLines) read as absent, so records from before them load unchanged. A field
-// dropped since (stagger) is left out of what loads
+// dropped since (stagger, backdrop) is left out of what loads
 const styleFieldsSchema = z
   .object({
     anchor: unit,
     anchorPortrait: unit,
-    backdrop: z.enum(LYRICS_BACKDROP_IDS),
     customHue: z.number().min(0).max(359),
     fontSize: z.number().min(FONT_SIZE_RANGE.min).max(FONT_SIZE_RANGE.max),
     fontSizeTwoLines: z
@@ -196,6 +191,8 @@ export const writeLyricsTemplates = (templates: readonly LyricsTemplate[]) => {
 }
 
 // A shared link carries the sender's whole style as ?style=1.<theme>.<backdrop>.<size%>.<anchor%>.<portrait%>.<hue>,
+// the backdrop always `shadow` now that it is the only one (an older app reads it; one from before reads Fade or Box
+// and lands on the same look);
 // short enough to sit in a chat message. The leading number is the format's version: 3 is two lines, with
 // their own size as a last field. A style on one line still goes out as 1, which any app version can read.
 // 2 (a last field: 0 one line, 1 two centred lines, 2 two staggered lines) is read, never written
@@ -205,7 +202,7 @@ const percent = (value: number) => Math.round(value * 100)
 export const encodeSharedStyle = (style: SharedLyricsStyle) => {
   const fields = [
     style.themeId,
-    style.backdrop,
+    'shadow',
     percent(style.fontSize),
     percent(style.anchor),
     percent(style.anchorPortrait),
@@ -220,7 +217,7 @@ export const encodeSharedStyle = (style: SharedLyricsStyle) => {
 
 const sharedFields = [
   lyricsThemeIdSchema,
-  z.enum(LYRICS_BACKDROP_IDS),
+  z.enum(['shadow', 'band', 'box']),
   z.coerce.number().int().min(40).max(160),
   z.coerce.number().int().min(0).max(100),
   z.coerce.number().int().min(0).max(100),
@@ -241,10 +238,9 @@ const sharedStyleSchema = z
     ]),
   ])
   .transform(
-    ([, themeId, backdrop, size, anchor, anchorPortrait, customHue, last]) => ({
+    ([, themeId, , size, anchor, anchorPortrait, customHue, last]) => ({
       anchor: anchor / 100,
       anchorPortrait: anchorPortrait / 100,
-      backdrop,
       customHue,
       fontSize: size / 100,
       // Only format 3's last field is a number, the two-line size
