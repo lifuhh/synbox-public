@@ -12,6 +12,7 @@ import {
 import { useState } from 'react'
 import { useNavigate } from 'react-router'
 
+import { UserAvatar } from '@/components/shared/user-avatar'
 import {
   Dialog,
   DialogContent,
@@ -73,48 +74,6 @@ const IosInstallDialog = ({
   </Dialog>
 )
 
-// Pictures this page has already shown, so a remounted top bar shows them at once instead of fading in again
-const loadedAvatars = new Set<string>()
-
-// The person icon stays until the picture has fully loaded, then the two crossfade; signing out fades back. The
-// picture is the icon's size, so it sits in the top bar's row like the icons beside it
-const Avatar = ({ src }: { src: string | null }) => {
-  const [lastSrc, setLastSrc] = useState(src)
-  const [loaded, setLoaded] = useState(src !== null && loadedAvatars.has(src))
-  if (src !== null && src !== lastSrc) {
-    setLastSrc(src)
-    setLoaded(loadedAvatars.has(src))
-  }
-  const shown = src !== null && loaded
-
-  return (
-    <span className='relative grid size-6 place-items-center'>
-      <UserIcon
-        className={cn(
-          'size-6 shrink-0 fill-current transition-opacity duration-300 motion-reduce:transition-none',
-          shown && 'opacity-0'
-        )}
-      />
-      {lastSrc !== null && (
-        <img
-          key={lastSrc}
-          src={lastSrc}
-          alt=''
-          referrerPolicy='no-referrer'
-          onLoad={() => {
-            loadedAvatars.add(lastSrc)
-            setLoaded(true)
-          }}
-          className={cn(
-            'absolute inset-0 size-full rounded-full object-cover transition-opacity duration-300 motion-reduce:transition-none',
-            !shown && 'opacity-0'
-          )}
-        />
-      )}
-    </span>
-  )
-}
-
 export const quotaText = ({ limit, used }: Quota) => {
   if (limit === null) {
     return 'No song limit'
@@ -132,6 +91,10 @@ const ProfileButtonDropdown = () => {
   const queryClient = useQueryClient()
   const { data: me, isPending } = useMe()
   const user = me?.user ?? null
+  const slot = user ? 'account' : 'guest'
+  // The slot fades in when the session check answers or changes. The top bar remounts it on leaving the player,
+  // with the session already known: that shows it at once, not as a reload
+  const [shownSlot, setShownSlot] = useState(isPending ? null : slot)
 
   const handleSignOut = async () => {
     await signOut()
@@ -152,17 +115,25 @@ const ProfileButtonDropdown = () => {
           <span aria-hidden className='size-10' />
         ) : (
           <span
-            key={user ? 'account' : 'guest'}
+            key={slot}
             // On a phone the top bar is a grid of icon-sized cells; the Sign In pill takes two, centred in the row
             className={cn(
-              'flex appear items-center',
+              'flex items-center',
+              slot !== shownSlot && 'appear',
               user === null && 'max-sm:col-span-2'
-            )}>
+            )}
+            onAnimationEnd={() => {
+              setShownSlot(slot)
+            }}>
             <DropdownMenuTrigger asChild>
               {user ? (
                 <Button variant='toolbar' size='icon'>
-                  <Avatar
+                  <UserAvatar
+                    className='size-6'
                     src={user.image === '' ? null : (user.image ?? null)}
+                    fallback={
+                      <UserIcon className='size-6 shrink-0 fill-current' />
+                    }
                   />
                   <span className='sr-only'>Account</span>
                 </Button>
