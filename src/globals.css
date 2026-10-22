@@ -416,62 +416,16 @@
   );
 }
 
-/* The top bar once a page has scrolled under it: the page color behind the buttons, solid, like
-   sticky-under-topbar, since at 94% scrolled text showed through beside the logo. No blur: WebKit drops a
-   backdrop filter that is masked */
-@utility topbar-frost {
-  background: var(--background);
-}
-
-/* Under the bar while it shows over a scrolled page: the page color fading to clear, so content slides under
-   without a hard edge. Its own layer, not part of the bar: under a row stuck below the bar (z-45, with its own
-   fade), which would otherwise sit under this strip, its text veiled and its press caught by the bar; over the
-   page. Presses pass through it */
-@utility topbar-fade {
-  position: fixed;
-  inset-inline: 0;
-  top: var(--topbar-h);
-  z-index: 44;
-  height: 1.25rem;
-  pointer-events: none;
-  background: linear-gradient(to bottom, var(--background), transparent);
-}
-
-/* A row that sticks under the top bar, and slides up to the screen's top while the bar is scrolled away. See-
-   through over the page glow until it sticks (data-stuck); then it is page-coloured up to the screen's top
-   edge, so nothing ghosts through behind its text, and fades out over 1.25rem below it, like topbar-frost's
-   lower edge, so cards pass under it softly instead of meeting a hard line */
+/* A row that sticks under the top bar, and slides up to the screen's top while the bar is scrolled away, in step
+   with it. See-through: once it sticks (data-stuck, set through lib/stuck-row.ts) the top scrim behind the bar
+   reaches down past it, so the row, the bar and the status bar share one backdrop and one soft lower edge */
 @utility sticky-under-topbar {
   position: sticky;
   top: var(--topbar-shown-h);
-  /* Over the status bar scrim (z-40), whose fade would otherwise dim the row's top; under the bar (z-50) */
+  /* Over the top scrim (z-40); under the bar (z-50) */
   z-index: 45;
-  /* The background comes in at once when it sticks: faded in, the cards showed through it for 200ms of a fling */
-  transition: top 300ms ease-out;
-
-  &[data-stuck] {
-    background-color: var(--background);
-  }
-
-  &[data-stuck]::before,
-  &[data-stuck]::after {
-    content: '';
-    position: absolute;
-    inset-inline: 0;
-    pointer-events: none;
-  }
-
-  &[data-stuck]::before {
-    bottom: 100%;
-    height: var(--topbar-shown-h);
-    background-color: var(--background);
-  }
-
-  &[data-stuck]::after {
-    top: 100%;
-    height: 1.25rem;
-    background: linear-gradient(to bottom, var(--background), transparent);
-  }
+  /* The same curve as the bar's slide (Tailwind's ease-out), or the two drift apart mid-way */
+  transition: top 300ms var(--ease-out);
 
   @media (prefers-reduced-motion: reduce) {
     transition: none;
@@ -497,7 +451,7 @@
 }
 
 /* The glow behind the top of every page: two soft washes of the brand glow over the page color. Sized to the
-   screen, so a layer shorter than it (the status bar scrim) paints the same pixels as the full-screen one */
+   screen, so a layer shorter than it (the top scrim) paints the same pixels as the full-screen one */
 @utility page-glow {
   background-image:
     radial-gradient(110% 40% at 18% -4%, var(--glow-a), transparent 72%),
@@ -506,7 +460,7 @@
   background-repeat: no-repeat;
 }
 
-/* Over the status bar of an app drawn under it (installed on an iPhone): the surface's own backdrop, solid behind
+/* The reader's strip over the status bar of an app drawn under it (installed on an iPhone): its own backdrop, solid behind
    the clock and fading out just below it, so content scrolling up under the status bar dissolves instead of
    running into the clock. With no top inset (Android, a browser tab, a phone on its side) it has no height */
 @utility status-scrim {
@@ -528,6 +482,42 @@
     rgb(0 0 0 / 0.15) calc(var(--scrim-solid) + var(--scrim-ease) * 0.8),
     transparent
   );
+}
+
+/* The one backdrop behind the app's floating top: the status bar, the top bar while it shows over a scrolled page,
+   and a row stuck under them. It paints the page's own backdrop (page-glow, sized to the screen from the screen's
+   top), solid behind all three and fading out below them, so scrolled content dissolves into the page instead of
+   meeting a band of another colour. The bar's row (--topbar-cover) slides in and out with the bar; a row that
+   sticks (--stuck-cover) is covered at once, or cards would show through it for a frame. The fade is measured up
+   from the bottom, so it rides the bottom edge as that moves. Nothing covered (a desktop page at its top): no
+   height */
+@utility top-scrim {
+  --scrim-fade: min(
+    2rem,
+    calc(
+      (var(--safe-top) + var(--topbar-cover) + var(--stuck-cover, 0px)) * 100
+    )
+  );
+  --scrim-ease: calc(
+    min(var(--scrim-lead), var(--scrim-fade)) + var(--scrim-fade)
+  );
+  box-sizing: content-box;
+  height: calc(var(--safe-top) + var(--stuck-cover, 0px) + var(--scrim-fade));
+  padding-bottom: var(--topbar-cover);
+  pointer-events: none;
+  transition: padding-bottom 300ms var(--ease-out);
+  mask-image: linear-gradient(
+    to top,
+    transparent,
+    rgb(0 0 0 / 0.15) calc(var(--scrim-ease) * 0.2),
+    rgb(0 0 0 / 0.45) calc(var(--scrim-ease) * 0.45),
+    rgb(0 0 0 / 0.8) calc(var(--scrim-ease) * 0.7),
+    #000 var(--scrim-ease)
+  );
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
 }
 
 /* The landing carousel's box, around its row (or the loading row) and the glow under the centred slide. Its
@@ -957,8 +947,10 @@
     opacity: 0;
   }
 }
+/* Held at its start through the delay, then let go: an animation still filling forwards keeps its block a
+   stacking context (the blur), and a row stuck inside it (the Gallery title) then fell under the top scrim */
 @utility rise-in {
-  animation: rise-in 0.3s ease-out var(--rise-delay, 0ms) both;
+  animation: rise-in 0.3s ease-out var(--rise-delay, 0ms) backwards;
   @media (prefers-reduced-motion: reduce) {
     animation-name: appear;
   }
@@ -1424,6 +1416,11 @@
     --topbar-h: calc(3.5rem + var(--safe-top));
     /* How much of the top the bar covers right now: all of it, or only the status bar while it is scrolled away */
     --topbar-shown-h: var(--topbar-h);
+    /* The bar's own row, while the top scrim backs it (it shows over a scrolled page); 0 when it is clear at a
+       page's top or scrolled away */
+    --topbar-cover: 0px;
+    /* With only the status bar to cover, the top scrim starts fading a little above the inset's bottom edge */
+    --scrim-lead: calc(var(--safe-top) * 0.3);
     --safe-bottom: env(safe-area-inset-bottom, 0px);
     --safe-left: env(safe-area-inset-left, 0px);
     --safe-right: env(safe-area-inset-right, 0px);
@@ -1472,13 +1469,40 @@
 
   /* The offline reader covers the app; what it covers can't be reached by Tab or a screen reader */
   html:has([data-reader]) [data-topbar],
-  html:has([data-reader]) [data-topbar-fade],
   html:has([data-reader]) [data-generation-host] {
     visibility: hidden;
   }
 
-  html[data-topbar-hidden] {
+  /* The top bar's state, set by top-bar.tsx: top (clear over the page glow), shown (over a scrolled page) or
+     hidden (scrolled away, touch only). The bar, a row stuck under it and the top scrim all follow it in the same
+     frame, over the same 300ms, by the same distance (the bar's row: the status bar part stays), so they move
+     as one */
+  html[data-topbar-state='shown'] {
+    --topbar-cover: calc(var(--topbar-h) - var(--safe-top));
+  }
+
+  html[data-topbar-state='hidden'] {
     --topbar-shown-h: var(--safe-top);
+  }
+
+  /* The bar's row slides up under the status bar and fades as it goes (with reduced motion it only fades).
+     Keyboard focus inside brings it back */
+  html[data-topbar-state='hidden'] [data-topbar]:not(:focus-within) {
+    translate: 0 calc(var(--safe-top) - var(--topbar-h));
+    pointer-events: none;
+
+    & > nav {
+      opacity: 0;
+    }
+  }
+
+  /* A row stuck under the bar is see-through; the top scrim covers it, solid down to its bottom edge */
+  html:has([data-stuck]) {
+    --stuck-cover: var(--stuck-row-h, 0px);
+  }
+
+  html:is([data-topbar-state='shown'], :has([data-stuck])) {
+    --scrim-lead: 0px;
   }
 
   /* The installed app on a phone: the tab bar floats 0.5rem over the home indicator, 4rem tall, with 1rem
@@ -1493,8 +1517,7 @@
   }
 
   /* The iPhone stand-in for fullscreen: the player without the app's top bar */
-  html[data-immersive] [data-topbar],
-  html[data-immersive] [data-topbar-fade] {
+  html[data-immersive] [data-topbar] {
     display: none;
   }
 
@@ -1533,8 +1556,7 @@
       transform: translateX(100vw) rotate(90deg);
     }
 
-    html[data-landscape-lock] [data-topbar],
-    html[data-landscape-lock] [data-topbar-fade] {
+    html[data-landscape-lock] [data-topbar] {
       display: none;
     }
   }
