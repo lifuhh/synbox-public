@@ -37,7 +37,7 @@ import {
   lyricsStylePanelAtom,
 } from '@/context/atoms'
 import { useArmed } from '@/hooks/use-armed'
-import { useMediaQuery } from '@/hooks/use-media-query'
+import { useMediaQuery, usePortrait } from '@/hooks/use-media-query'
 import { useAccess } from '@/lib/auth'
 import {
   addFavoriteAtom,
@@ -167,23 +167,28 @@ const BookmarkGlyph = ({ bookmarked }: { bookmarked: boolean }) =>
     <BookmarkIcon className='size-5 shrink-0 -scale-x-100' />
   )
 
-// On a phone on its side the rail is a column beside a video only ~390px tall: the lyrics' buttons fill it,
-// so the song's own actions wait behind More
+// On a phone on its side the rail is a column beside a video only ~390px tall, and upright a row across a screen
+// ~400px wide: the lyrics' buttons fill either, so the song's own actions wait behind More
 const SongActionsMenu = ({ actions }: { actions: SongAction[] }) => {
   const [open, setOpen] = useState(false)
+  // Upright the rail lies along the bottom, so the menu opens up from it
+  const portrait = usePortrait()
   return (
     <DropdownMenu modal={false} open={open} onOpenChange={setOpen}>
       <RailTooltip label='More Actions' hidden={open}>
         <DropdownMenuTrigger asChild>
           <RailButton
             label='More Actions'
-            className={cn('hidden short:grid', open && 'bg-white/10')}>
+            className={cn(
+              'hidden portrait:grid short:grid',
+              open && 'bg-white/10'
+            )}>
             <EllipsisIcon className='size-5 shrink-0' />
           </RailButton>
         </DropdownMenuTrigger>
       </RailTooltip>
       <DropdownMenuContent
-        side='right'
+        side={portrait ? 'top' : 'right'}
         align='end'
         sideOffset={8}
         collisionPadding={8}>
@@ -210,6 +215,10 @@ const groupClass = (inline: boolean) =>
   inline
     ? 'flex items-center gap-2 watch-narrow:grid watch-narrow:grid-flow-col watch-narrow:auto-cols-fr'
     : 'contents'
+
+// The song's actions as buttons, but on a phone's floating rail (on its side or upright) behind More instead
+const actionsClass = (inline: boolean) =>
+  cn(groupClass(inline), 'short:hidden', !inline && 'portrait:hidden')
 
 const railClass = (inline: boolean, interactive: boolean, open: boolean) =>
   inline
@@ -489,7 +498,7 @@ const PlayerRail = ({ inline = false }: { inline?: boolean }) => {
                 <div className='my-0.5 h-px w-6 shrink-0 bg-white/15 portrait:my-0 portrait:h-6 portrait:w-px' />
               )}
 
-              <div className={cn(groupClass(inline), 'short:hidden')}>
+              <div className={actionsClass(inline)}>
                 {actions.map((action) => (
                   <RailTooltip key={action.label} label={action.label}>
                     <RailButton
