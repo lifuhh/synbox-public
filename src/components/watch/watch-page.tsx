@@ -123,7 +123,7 @@ const WideBelow = ({
         <Shelves videoId={videoId} />
       </div>
       <div className='watch-next pb-8'>
-        <UpNext videoId={videoId} autoplaySwitch={false} />
+        <UpNext videoId={videoId} autoplaySwitch={false} large />
       </div>
     </>
   )

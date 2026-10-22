@@ -21,6 +21,7 @@ export const SongRow = ({
   onOpen,
   className,
   as: Root = 'li',
+  large = false,
 }: {
   song: ListSong
   lead?: ReactNode
@@ -31,10 +32,19 @@ export const SongRow = ({
   className?: string
   // A row inside another list item (a sortable row) is a div
   as?: 'li' | 'div'
+  // The watch page's right-hand column, as on YouTube: a picture almost half the row wide, the text beside
+  // its top
+  large?: boolean
 }) => {
   const body = (
     <>
-      <span className='relative aspect-video w-20 shrink-0 rounded-sm bg-thumbnail-placeholder min-[360px]:w-24'>
+      <span
+        className={cn(
+          'relative aspect-video shrink-0 bg-thumbnail-placeholder',
+          large
+            ? 'w-[min(10.5rem,48%)] rounded-lg'
+            : 'w-20 rounded-sm min-[360px]:w-24'
+        )}>
         {/* YouTube's 320x180 picture: the song's own thumbnail URL is often the 1280x720 one, and decoding a
           list of those for a 96px box stalls a phone's scrolling */}
         <img
@@ -44,14 +54,19 @@ export const SongRow = ({
           height='180'
           loading='lazy'
           decoding='async'
-          className='size-full rounded-sm object-cover'
+          className='size-full rounded-inherit object-cover'
         />
         <KaraokeEdgeMark videoId={song.videoId} />
       </span>
-      <span className='flex min-w-0 flex-1 flex-col gap-0.5'>
+      <span
+        className={cn(
+          'flex min-w-0 flex-1 flex-col',
+          large ? 'gap-1 self-start' : 'gap-0.5'
+        )}>
         <span
           className={cn(
-            'line-clamp-2 text-sm leading-5 font-medium text-pretty',
+            'text-sm leading-5 text-pretty',
+            large ? 'line-clamp-3 font-semibold' : 'line-clamp-2 font-medium',
             current ? 'text-primary-text' : 'text-foreground'
           )}>
           {song.title}
@@ -67,6 +82,8 @@ export const SongRow = ({
     <Root
       className={cn(
         'group/row flex items-center gap-1 rounded-xl transition-colors has-[a:hover]:bg-accent',
+        // A big row's menu sits at the top beside the title, as on YouTube
+        large && 'items-start',
         current && 'bg-accent',
         className
       )}>
@@ -74,7 +91,10 @@ export const SongRow = ({
       {current ? (
         <div
           aria-current='true'
-          className='flex min-w-0 flex-1 items-center gap-3 p-2'>
+          className={cn(
+            'flex min-w-0 flex-1 items-center gap-3 p-2',
+            large && 'gap-2 p-1.5'
+          )}>
           {body}
         </div>
       ) : (
@@ -82,7 +102,10 @@ export const SongRow = ({
           to={songPath(song.videoId)}
           state={{ videoId: song.videoId }}
           onClick={onOpen}
-          className='flex min-w-0 flex-1 items-center gap-3 rounded-xl p-2 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden'>
+          className={cn(
+            'flex min-w-0 flex-1 items-center gap-3 rounded-xl p-2 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden',
+            large && 'gap-2 p-1.5'
+          )}>
           {body}
         </Link>
       )}
