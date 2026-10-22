@@ -58,13 +58,11 @@ type VideosQuery = UseQueryResult<VideoSearchResponse>
 const ReadyToSing = ({
   library,
   extra,
-  onPlay,
   onSelect,
   onMoreLikeThis,
 }: {
   library: LibraryQuery
   extra: VideoSearchResult[]
-  onPlay: (videoId: string) => void
   onSelect: (result: VideoSearchResult) => void
   onMoreLikeThis: (videoId: string) => void
 }) => {
@@ -105,7 +103,6 @@ const ReadyToSing = ({
           <LibrarySongCard
             key={song.video_id}
             song={song}
-            onPlay={onPlay}
             onMoreLikeThis={onMoreLikeThis}
           />
         ))}
@@ -188,12 +185,10 @@ const AddFromYoutube = ({
 // One list for both searches: songs already in Synbox first, then YouTube videos that can be added.
 const SearchResults = ({
   query,
-  onPlay,
   onSelect,
   onMoreLikeThis,
 }: {
   query: string
-  onPlay: (videoId: string) => void
   onSelect: (result: VideoSearchResult) => void
   onMoreLikeThis: (videoId: string) => void
 }) => {
@@ -221,7 +216,6 @@ const SearchResults = ({
         <ReadyToSing
           library={library}
           extra={readyVideos}
-          onPlay={onPlay}
           onSelect={onSelect}
           onMoreLikeThis={onMoreLikeThis}
         />
@@ -252,12 +246,10 @@ const SearchResults = ({
 const SimilarSongs = ({
   videoId,
   onBack,
-  onPlay,
   onMoreLikeThis,
 }: {
   videoId: string
   onBack: () => void
-  onPlay: (videoId: string) => void
   onMoreLikeThis: (videoId: string) => void
 }) => {
   const { data, error, isLoading } = useGetSimilarSongs(videoId)
@@ -279,7 +271,6 @@ const SimilarSongs = ({
           <LibrarySongCard
             key={song.video_id}
             song={song}
-            onPlay={onPlay}
             onMoreLikeThis={onMoreLikeThis}
           />
         ))}
@@ -292,14 +283,12 @@ const SearchBody = ({
   query,
   similarTo,
   onBack,
-  onPlay,
   onSelect,
   onMoreLikeThis,
 }: {
   query: string
   similarTo: string
   onBack: () => void
-  onPlay: (videoId: string) => void
   onSelect: (result: VideoSearchResult) => void
   onMoreLikeThis: (videoId: string) => void
 }) => {
@@ -308,7 +297,6 @@ const SearchBody = ({
       <SimilarSongs
         videoId={similarTo}
         onBack={onBack}
-        onPlay={onPlay}
         onMoreLikeThis={onMoreLikeThis}
       />
     )
@@ -324,7 +312,6 @@ const SearchBody = ({
   return (
     <SearchResults
       query={query}
-      onPlay={onPlay}
       onSelect={onSelect}
       onMoreLikeThis={onMoreLikeThis}
     />
@@ -408,7 +395,6 @@ const SearchPage = () => {
           onBack={() => {
             setParams({ q: query })
           }}
-          onPlay={handlePlay}
           onSelect={handleSelect}
           onMoreLikeThis={handleMoreLikeThis}
         />

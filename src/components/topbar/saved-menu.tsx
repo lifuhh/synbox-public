@@ -41,6 +41,7 @@ import {
   removeFavoriteAtom,
 } from '@/lib/library/store'
 import { usePlaylists } from '@/lib/listening/store'
+import { newTabHandlers } from '@/lib/selectable-links'
 
 type SavedTab = 'bookmarks' | 'history' | 'playlists'
 
@@ -133,7 +134,7 @@ const SavedMenu = () => {
         <Tooltip>
           <PopoverTrigger asChild>
             <TooltipTrigger asChild>
-              <Button variant='toolbar' size='icon'>
+              <Button variant='toolbar' size='icon' {...newTabHandlers('/you')}>
                 {/* Filled while the menu is open, as a selected icon is */}
                 <BookmarkIcon className='h-6 w-6 shrink-0 in-aria-expanded:fill-current' />
                 <span className='sr-only'>Saved</span>

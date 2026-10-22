@@ -885,6 +885,14 @@
     border-color: var(--border);
   }
 
+  /* A drag over a link selects its text instead of dragging the link (lib/selectable-links.ts). Chromium
+     keeps a press in a link for dragging it while user-select is auto, so links say text outright; a
+     component that must not select (select-none) still wins, being a utility */
+  a {
+    -webkit-user-drag: none;
+    user-select: text;
+  }
+
   /* Tailwind v4 resets buttons to cursor: default; this keeps the v3 pointer */
   button:not(:disabled),
   [role='button']:not(:disabled) {

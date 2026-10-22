@@ -14,6 +14,7 @@ import RootLayout from './_root/root-layout'
 import './globals.css'
 // Registers the service worker, and swaps a new deploy in at the next page change
 import '@/lib/pwa'
+import '@/lib/selectable-links'
 
 // Dev-only: the static `import.meta.env.DEV` check drops the lab from production builds
 const StageLabPage = import.meta.env.DEV
