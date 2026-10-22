@@ -250,7 +250,7 @@ const SongGallery = () => {
       ref={setSection}
       aria-labelledby='gallery-title'
       data-bench='gallery'
-      className='relative mt-12 pb-page-bottom'>
+      className='relative mt-12 pb-page-bottom in-data-rise:rise-in in-data-rise:rise-delay-500'>
       <h2
         ref={title}
         id='gallery-title'

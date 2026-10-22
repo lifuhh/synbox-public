@@ -90,7 +90,7 @@ const LandingPageCharts: React.FC = () => {
       aria-labelledby='charts-title'
       data-bench='charts'
       aria-busy={isLoading}
-      className='flex flex-col gap-3 lg:w-100 lg:shrink-0'>
+      className='flex flex-col gap-3 in-data-rise:rise-in in-data-rise:rise-delay-400 lg:w-100 lg:shrink-0'>
       <h2
         id='charts-title'
         className='flex min-h-9 items-center px-4 text-xl font-semibold tracking-tight text-foreground md:px-0 touch:min-h-0'>
