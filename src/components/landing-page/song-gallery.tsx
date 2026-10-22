@@ -11,6 +11,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { SongMenu } from '@/components/watch/song-menu'
 import { useMediaQuery } from '@/hooks/use-media-query'
 import { useGallerySongs } from '@/lib/react-query/queries-and-mutations'
+import { markStuck } from '@/lib/stuck-row'
 import type { LibraryListSong } from '@/lib/synbox-flask/discovery'
 import type { CssVars } from '@/types'
 
@@ -195,8 +196,8 @@ const watchStuck = (
   scroller: HTMLElement | null
 ) => {
   const update = () => {
-    heading.toggleAttribute(
-      'data-stuck',
+    markStuck(
+      heading,
       section.getBoundingClientRect().top <
         heading.getBoundingClientRect().top - 0.5
     )

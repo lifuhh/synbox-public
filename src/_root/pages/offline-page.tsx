@@ -14,6 +14,7 @@ import {
   useSyncStatus,
 } from '@/lib/offline/sync'
 import { useOnline } from '@/lib/pwa'
+import { markStuck } from '@/lib/stuck-row'
 import { cn } from '@/utils/cn'
 
 type Filter = 'all' | OfflineSource
@@ -121,7 +122,7 @@ const OfflinePage = () => {
   const [query, setQuery] = useState('')
   const deferredQuery = useDeferredValue(query)
   const [filter, setFilter] = useState<Filter>('all')
-  // Whether the search row has stuck under the top bar (it is page-coloured then): data-stuck, set on the row as
+  // Whether the search row has stuck under the top bar (the top scrim covers it then): data-stuck, set on the row as
   // the page scrolls, so a fling never shows it see-through over the list for a render's delay
   const header = useRef<HTMLElement>(null)
   const bar = useRef<HTMLDivElement>(null)
@@ -193,7 +194,9 @@ const OfflinePage = () => {
         // Stuck once the header has scrolled up past where the row holds
         const bottom = header.current?.getBoundingClientRect().bottom ?? 0
         const top = bar.current?.getBoundingClientRect().top ?? 0
-        bar.current?.toggleAttribute('data-stuck', bottom < top - 0.5)
+        if (bar.current !== null) {
+          markStuck(bar.current, bottom < top - 0.5)
+        }
       }}
       className='flex custom-scrollbar flex-1 flex-col overflow-y-auto overscroll-contain pr-(--safe-right) pb-page-bottom pl-(--safe-left)'>
       <title>Lyrics · Synbox</title>

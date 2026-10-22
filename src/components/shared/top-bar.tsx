@@ -1,5 +1,5 @@
 import { useAtomValue } from 'jotai'
-import { useEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useState } from 'react'
 import { useLocation, useMatch } from 'react-router'
 
 import { playerChromeOpenAtom, playerSurfaceAtom } from '@/context/atoms'
@@ -107,24 +107,6 @@ const modeOn = (bar: Bar | null, pathname: string): Bar['mode'] | 'top' =>
     ? bar.mode
     : 'top'
 
-// The bar's soft lower edge, in its own layer (topbar-fade): it shows with the bar over a scrolled page
-const TopBarFade = ({
-  player,
-  mode,
-}: {
-  player: boolean
-  mode: Bar['mode'] | 'top'
-}) => (
-  <div
-    aria-hidden
-    data-topbar-fade
-    className={cn(
-      'topbar-fade transition-opacity duration-300 ease-out motion-reduce:transition-none',
-      (player || mode !== 'shown') && 'opacity-0'
-    )}
-  />
-)
-
 const TopBar = () => {
   // The versions page under /v/:id is an ordinary page with an opaque bar, and so is the watch page around a
   // player that is not the whole screen
@@ -137,9 +119,9 @@ const TopBar = () => {
   const armed = useArmed(iconsShown)
 
   // At the top of a page the bar is clear over the page glow, so the two read as one surface. Scrolling down
-  // slides it away; scrolling up brings it back over a fade of the page color. Pages scroll in their own boxes,
-  // so the outermost vertical scroller counts, and the box and path it happened on are kept so a new page, or
-  // the same page remounted, starts clear
+  // slides it away; scrolling up brings it back over the top scrim (root-layout.tsx), which paints the page's own
+  // backdrop behind it. Pages scroll in their own boxes, so the outermost vertical scroller counts, and the box and
+  // path it happened on are kept so a new page, or the same page remounted, starts clear
   const { pathname } = useLocation()
   const [bar, setBar] = useState<Bar | null>(null)
   useEffect(() => {
@@ -149,7 +131,12 @@ const TopBar = () => {
       if (box === null) {
         return
       }
-      const top = box.scrollTop
+      // iOS reports the rubber band past either end (below 0 at the top, past the end at the bottom). Read as
+      // the end it springs back to, a bounce is no travel: the bar doesn't come back at the end of a list
+      const top = Math.min(
+        Math.max(box.scrollTop, 0),
+        box.scrollHeight - box.clientHeight
+      )
       const run = runs.get(box) ?? { dir: 0, from: top, last: top }
       runs.set(box, run)
       const turned = turnAfter(run, top)
@@ -173,11 +160,17 @@ const TopBar = () => {
   const pointerFine = useMediaQuery('(pointer: fine)')
   const scrolledMode = modeOn(bar, pathname)
   const mode = pointerFine && scrolledMode === 'hidden' ? 'shown' : scrolledMode
-  // Rows that stick under the bar move up to the screen's top while it is away (--topbar-shown-h)
-  const away = !isVideoPlayer && mode === 'hidden'
-  useEffect(() => {
-    document.documentElement.toggleAttribute('data-topbar-hidden', away)
-  }, [away])
+  // The state goes on <html> (data-topbar-state), where the bar's slide, a stuck row's slide and the top scrim all
+  // read it, so the three start in the same frame. Set before paint, in the same frame as the bar's render
+  const state = isVideoPlayer ? null : mode
+  useLayoutEffect(() => {
+    const root = document.documentElement
+    if (state === null) {
+      delete root.dataset.topbarState
+    } else {
+      root.dataset.topbarState = state
+    }
+  }, [state])
   const cluster = cn(
     'flex items-center gap-2 transition-fade-translate duration-300 ease-out sm:gap-3',
     isVideoPlayer && armed && 'pointer-events-auto',
@@ -195,46 +188,39 @@ const TopBar = () => {
   )
 
   return (
-    <>
-      <header
-        data-topbar
-        className={cn(
-          'fixed top-0 right-0 left-0 z-50 pt-safe-top pr-(--safe-right) pl-(--safe-left)',
-          isVideoPlayer
-            ? 'pointer-events-none'
-            : 'transition-transform duration-300 ease-out motion-reduce:transition-none',
-          !isVideoPlayer && mode !== 'top' && 'topbar-frost',
-          // Keyboard focus inside a hidden bar brings it back
-          !isVideoPlayer &&
-            mode === 'hidden' &&
-            '-translate-y-full focus-within:translate-y-0'
-        )}>
-        <nav className='flex-between h-14 w-full pr-2 pl-4 sm:px-4'>
-          {/* The logo is the way home on every page, the player included */}
-          {isVideoPlayer ? (
-            <div data-player-chrome className={cluster}>
-              <AppLogo />
-            </div>
-          ) : (
+    <header
+      data-topbar
+      className={cn(
+        'fixed top-0 right-0 left-0 z-50 pt-safe-top pr-(--safe-right) pl-(--safe-left)',
+        // Slid away and faded by html[data-topbar-state='hidden'] (globals.css)
+        isVideoPlayer
+          ? 'pointer-events-none'
+          : 'transition-transform duration-300 ease-out motion-reduce:transition-none'
+      )}>
+      <nav className='flex-between h-14 w-full pr-2 pl-4 transition-opacity duration-300 ease-out sm:px-4'>
+        {/* The logo is the way home on every page, the player included */}
+        {isVideoPlayer ? (
+          <div data-player-chrome className={cluster}>
             <AppLogo />
-          )}
-          <div data-player-chrome className={buttons}>
-            <Notifications />
-            <LyricsButton />
-            <SavedMenu />
-            {!isVideoPlayer && (
-              <>
-                <span className='max-sm:hidden'>
-                  <GitHubButton />
-                </span>
-                <ProfileButton />
-              </>
-            )}
           </div>
-        </nav>
-      </header>
-      <TopBarFade player={isVideoPlayer} mode={mode} />
-    </>
+        ) : (
+          <AppLogo />
+        )}
+        <div data-player-chrome className={buttons}>
+          <Notifications />
+          <LyricsButton />
+          <SavedMenu />
+          {!isVideoPlayer && (
+            <>
+              <span className='max-sm:hidden'>
+                <GitHubButton />
+              </span>
+              <ProfileButton />
+            </>
+          )}
+        </div>
+      </nav>
+    </header>
   )
 }
 
