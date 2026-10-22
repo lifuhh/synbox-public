@@ -25,11 +25,8 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import { useToast } from '@/components/ui/use-toast'
 import { SaveToPlaylist } from '@/components/watch/save-to-playlist'
 import {
-  addFavoriteAtom,
   currentVideoAtom,
-  isFavoriteAtom,
   lyricsVisibilityAtom,
-  removeFavoriteAtom,
   romajiVisibilityAtom,
   translationIsEnglishAtom,
   translationVisibilityAtom,
@@ -40,6 +37,11 @@ import {
 import { useArmed } from '@/hooks/use-armed'
 import { useMediaQuery } from '@/hooks/use-media-query'
 import { useAccess } from '@/lib/auth'
+import {
+  addFavoriteAtom,
+  isFavoriteAtom,
+  removeFavoriteAtom,
+} from '@/lib/library/store'
 import type { LyricsStyle } from '@/lib/lyrics-style'
 import {
   DEFAULT_LYRICS_STYLE,

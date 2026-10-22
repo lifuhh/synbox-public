@@ -4,6 +4,7 @@ import { Navigate, Route, Routes, useParams } from 'react-router'
 import AppNotices from '@/components/shared/app-notices'
 import { Toaster } from '@/components/ui/toaster'
 import useKeyboardNavigation from '@/hooks/use-keyboard-navigation'
+import { LibrarySync } from '@/lib/library/sync'
 import { useOfflineSync } from '@/lib/offline/sync'
 
 import LandingPage from './_root/pages/landing-page'
@@ -169,6 +170,7 @@ const App = () => {
         </Route>
       </Routes>
       <AppNotices />
+      <LibrarySync />
       <Toaster />
     </main>
   )

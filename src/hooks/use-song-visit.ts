@@ -1,7 +1,8 @@
 import { useSetAtom } from 'jotai'
 import { useEffect } from 'react'
 
-import { addToHistoryAtom, currentVideoAtom } from '@/context/atoms'
+import { currentVideoAtom } from '@/context/atoms'
+import { addToHistoryAtom } from '@/lib/library/store'
 import {
   useAddSongInfoBySongId,
   useGetSongInfoBySongId,
