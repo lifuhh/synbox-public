@@ -38,7 +38,7 @@ Tiers: `smoke` runs at the gate; `full` (`--tier full`) adds two more songs, the
 
 ## How it decides
 
-- **Same data every run.** The bench serves a production build the way Netlify does (brotli, cache headers, the `/api` proxies from `netlify.toml`). API responses, the lookup service included, and Google Fonts are recorded once and replayed. `Math.random` is seeded. Sentry is blocked.
+- **Same data every run.** The bench serves a production build the way Netlify does (brotli, cache headers, the `/api` proxies from `netlify.toml`). API responses, the lookup service included, and Google Fonts are recorded once and replayed. Only successful responses are recorded; an error is asked for again next run, so a route that wasn't live yet never stays broken in the fixtures. `Math.random` is seeded. Sentry is blocked.
 
 ## How it keeps up with the app
 
@@ -48,6 +48,8 @@ Tiers: `smoke` runs at the gate; `full` (`--tier full`) adds two more songs, the
 - **Who fixes it.** The gate runs on every PR into `main`, so a change that breaks a probe fails its own PR. Its author updates the hook or the probe there, in the same PR.
 - **Rolling baseline.** Samples pooled from the last 3 accepted runs of the merge base's tree on this machine, under the same conditions and benchmark definition. A branch merged on top of `main` produces exactly that tree, so its own passing gate run becomes the baseline for the next branch: the average updates after every successful gate, with no extra measuring. When `main` has moved and its tree has no runs yet, the gate measures it first. An abandoned branch or a reverted climb step never counts.
 - **Statistics.** Mann–Whitney U per metric, Holm-corrected across the gated metrics, and the change must exceed `max(floor, pct × baseline)` (set per metric in `suite.ts`). Byte and layout counts compare exactly.
+- **One run at a time.** A gate, run, baseline or climb eval takes a lock on the machine (`.harness/bench/machine.lock.json`, shared by every worktree) and waits while another live run holds it. Two runs at once would each read the other's load as their own slowness.
+- **A base that can't run a probe costs one try.** When the gate measures the merge base, each benchmark gets one trial run first; one that yields nothing there (a hook it waits for isn't on the base yet) is skipped and gets no baseline, so its metrics read as new rather than regressed. Layout audits don't retry on the base.
 - **No re-rolling.** Re-running an unchanged tree adds samples to the same pool.
 - **Confirm before failing.** A suspected regression is re-measured against the merge base, interleaved in B A A B blocks of 4 runs (each warmed up), so a busy laptop can't fake one or hide one. The confirm samples are kept in the run record.
 - **New definition, new baseline.** Each benchmark's spec hash covers its metrics and the source of its probe files. Change a probe and its old baselines stop matching; the gate then measures the merge base afresh.

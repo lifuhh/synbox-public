@@ -22,6 +22,7 @@ import {
   speedProbe,
 } from './engines/browser'
 import { evaluatorTouched } from './gate'
+import { holdMachine } from './lock'
 import { isRecord, parseJson } from './json'
 import { cv } from './scorer/stats'
 import { compareMetrics, score, statusOf } from './scorer/verdict'
@@ -194,6 +195,7 @@ const measure = async (
               log(`  ${bench.id}: ${m}`)
             },
             origin: server.origin,
+            retry: label !== 'base',
             warmup: exactOnly ? 0 : (opts.warmup ?? 1),
           },
           opts.runs ?? bench.runs
@@ -448,15 +450,34 @@ const measureBaseline = async (
   const { dist, tree } = buildRef(s.repo, sha, log)
   // Twice the runs: a fresh baseline has no earlier runs to pool with, and 5 against 5 can't reach significance
   // once the gated metrics are corrected for
+  // A trial run first: a probe that can't run on the base (a hook it waits for isn't there yet) fails once, not
+  // ten times over its timeout, and leaves that benchmark without a baseline, so its metrics read as new
   const measured: Measured[] = []
   for (const bench of benches) {
-    measured.push(
-      // oxlint-disable-next-line eslint/no-await-in-loop -- measurements must run one at a time
-      ...(await measure(s.repo, dist, [bench], runId, s.api, {
-        label: 'base',
-        runs: bench.runs * 2,
-      }))
-    )
+    // oxlint-disable-next-line eslint/no-await-in-loop -- measurements must run one at a time
+    const [trial] = await measure(s.repo, dist, [bench], runId, s.api, {
+      label: 'base',
+      runs: 1,
+    })
+    const rest = bench.runs * 2 - 1
+    if (trial.samples.length === 0 || rest <= 0) {
+      if (trial.samples.length === 0) {
+        log(`  ${bench.id}: no sample on the merge base; it gets no baseline`)
+      }
+      measured.push(trial)
+      continue
+    }
+    // oxlint-disable-next-line eslint/no-await-in-loop -- measurements must run one at a time
+    const [more] = await measure(s.repo, dist, [bench], runId, s.api, {
+      label: 'base',
+      runs: rest,
+      warmup: 0,
+    })
+    measured.push({
+      ...trial,
+      errors: [...trial.errors, ...more.errors],
+      samples: [...trial.samples, ...more.samples],
+    })
   }
   const baseRepo = { ...s.repo, tree }
   const results = judge(
@@ -1037,8 +1058,24 @@ const main = async () => {
   }
 }
 
+// What measures, and so needs the machine to itself
+const measuring =
+  command === 'gate' ||
+  command === 'run' ||
+  command === 'baseline' ||
+  (command === 'climb' && positionals[1] === 'eval')
+
 try {
-  await main()
+  const release = measuring
+    ? await holdMachine(repoAt(cwd), command, log)
+    : () => {
+        // nothing held
+      }
+  try {
+    await main()
+  } finally {
+    release()
+  }
 } catch (error) {
   process.stderr.write(
     `bench: ${error instanceof Error ? error.message : String(error)}\n`
