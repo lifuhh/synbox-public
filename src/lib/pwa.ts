@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react'
 import { registerSW } from 'virtual:pwa-register'
 
+import { toast } from '@/components/ui/use-toast'
 import { anyActive, getGenerationState } from '@/lib/generation/store'
 
 // Chromium's install prompt event; not in the DOM typings
@@ -110,6 +111,31 @@ const subscribeOnline = (listener: () => void) => {
 
 export const useOnline = () =>
   useSyncExternalStore(subscribeOnline, () => navigator.onLine)
+
+// Updates swap in without asking (below), so the first load on a new version says so once, whichever way it
+// arrived: a page change, a reopen or a reload. The build last seen is kept per browser; a first visit and a
+// development build say nothing
+const LAST_BUILD_KEY = 'synboxLastBuild'
+const announceNewBuild = () => {
+  try {
+    const previous = localStorage.getItem(LAST_BUILD_KEY)
+    localStorage.setItem(LAST_BUILD_KEY, __BUILD_ID__)
+    if (
+      previous !== null &&
+      previous !== __BUILD_ID__ &&
+      __BUILD_ID__ !== 'local'
+    ) {
+      toast({
+        description: `Version ${__BUILD_ID__}`,
+        duration: 4000,
+        title: 'Updated to the Latest Version',
+      })
+    }
+  } catch {
+    // Storage blocked (a private window): no note, nothing else changes
+  }
+}
+announceNewBuild()
 
 // A new deploy is downloaded in the background and waits. It is swapped in only by the next in-app page
 // change, which then loads the new page from the server as one ordinary page load. Never by reloading a page
