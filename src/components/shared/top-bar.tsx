@@ -5,6 +5,7 @@ import { useLocation, useMatch } from 'react-router'
 import { setGenerationDock } from '@/components/generation/dock'
 import { playerChromeOpenAtom, playerSurfaceAtom } from '@/context/atoms'
 import { useArmed } from '@/hooks/use-armed'
+import { useMediaQuery } from '@/hooks/use-media-query'
 import { cn } from '@/utils/cn'
 
 import AppLogo from '../topbar/app-logo'
@@ -149,7 +150,11 @@ const TopBar = () => {
       document.removeEventListener('scroll', onScroll, { capture: true })
     }
   }, [])
-  const mode = modeOn(bar, pathname)
+  // With a mouse the bar never slides away, as on YouTube: it costs a desktop little height, and its buttons
+  // stay in reach without scrolling back up. Fingers keep the hide-on-scroll a phone needs the room for
+  const pointerFine = useMediaQuery('(pointer: fine)')
+  const scrolledMode = modeOn(bar, pathname)
+  const mode = pointerFine && scrolledMode === 'hidden' ? 'shown' : scrolledMode
   // Rows that stick under the bar move up to the screen's top while it is away (--topbar-shown-h)
   const away = !isVideoPlayer && mode === 'hidden'
   useEffect(() => {

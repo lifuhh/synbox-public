@@ -35,12 +35,39 @@ const meSchema = z.object({
 export type Quota = z.infer<typeof quotaSchema>
 export type Me = z.infer<typeof meSchema>
 
+// Who was signed in when this browser last asked: their picture's URL ('' for none), or nothing for a guest.
+// The top bar draws its account control from it before /api/me answers, about a second into a phone's load
+const LAST_ACCOUNT_KEY = 'synboxLastAccount'
+
+export const lastAccount = (): { image: string | null } | null => {
+  try {
+    const image = localStorage.getItem(LAST_ACCOUNT_KEY)
+    return image === null ? null : { image: image === '' ? null : image }
+  } catch {
+    return null
+  }
+}
+
+const rememberAccount = ({ user }: Me) => {
+  try {
+    if (user === null) {
+      localStorage.removeItem(LAST_ACCOUNT_KEY)
+    } else {
+      localStorage.setItem(LAST_ACCOUNT_KEY, user.image ?? '')
+    }
+  } catch {
+    // Storage blocked: the bar waits for the answer instead
+  }
+}
+
 export const fetchMe = async (): Promise<Me> => {
   const response = await fetch('/api/me', { credentials: 'same-origin' })
   if (!response.ok) {
     throw new Error(`/api/me answered ${response.status}`)
   }
-  return meSchema.parse(await response.json())
+  const me = meSchema.parse(await response.json())
+  rememberAccount(me)
+  return me
 }
 
 const mySongsSchema = z.object({
