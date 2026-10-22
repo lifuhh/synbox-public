@@ -1,16 +1,17 @@
 import type { ComponentProps } from 'react'
 
-// A 352px WebP (14KB): the logo shows at most 176px wide, so it is sharp at 2x on a desktop and 3x on a
-// phone. The SVG it was drawn from carries eight embedded PNGs (270KB) and arrived last on a phone, seconds
-// after the rest of the bar. Not preloaded: on a slow phone a preload delayed the first paint by ~80ms, and
-// this small file arrives ~0.4s after the bar anyway
+// The logo cropped to its drawing (waveform and wordmark), with clear space under it so the wordmark is the image's
+// vertical centre: centring the image centres the wordmark on the bar's buttons, and the whole mark fits inside
+// the 56px bar. At 254×128 it is sharp at 2.5x its largest size (48px tall). A WebP (15KB): the SVG it was drawn
+// from carries eight embedded PNGs (270KB). Not preloaded: on a slow phone a preload delayed the first paint by
+// ~80ms, and this small file arrives ~0.4s after the bar anyway
 export const SynboxLogo: React.FC = () => (
   <img
-    src='/synbox-logo-491b58f2.webp'
+    src='/synbox-logo-4213026f.webp'
     alt=''
-    width={352}
-    height={130}
-    className='pointer-events-none w-auto py-4'
+    width={254}
+    height={128}
+    className='pointer-events-none h-9 w-auto min-[360px]:h-10 sm:h-12'
   />
 )
 
