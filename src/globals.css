@@ -881,6 +881,35 @@
   }
 }
 
+/* A page's side gutters plus the screen's side safe areas, as the top bar has them: on a phone on its side the
+   notch and the home indicator take 47-62px of each side, and a plain px-4 put cards and buttons under them.
+   page-x: 1rem, 2.5rem from md. page-x-md: none under md (the page's sections pad themselves), 2.5rem from md.
+   page-x-tight: 1rem at every width */
+@utility page-x {
+  --page-gutter: 1rem;
+  padding-left: calc(var(--page-gutter) + var(--safe-left));
+  padding-right: calc(var(--page-gutter) + var(--safe-right));
+
+  @media (width >= 48rem) {
+    --page-gutter: 2.5rem;
+  }
+}
+
+@utility page-x-md {
+  --page-gutter: 0px;
+  padding-left: calc(var(--page-gutter) + var(--safe-left));
+  padding-right: calc(var(--page-gutter) + var(--safe-right));
+
+  @media (width >= 48rem) {
+    --page-gutter: 2.5rem;
+  }
+}
+
+@utility page-x-tight {
+  padding-left: calc(1rem + var(--safe-left));
+  padding-right: calc(1rem + var(--safe-right));
+}
+
 @utility watch-side {
   grid-area: side;
   position: relative;

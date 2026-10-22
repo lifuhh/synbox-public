@@ -18,7 +18,7 @@ const PlaylistsPage = () => {
   return (
     <section
       data-scroll-top
-      className='flex flex-1 flex-col overflow-y-auto px-4 pt-(--topbar-h) pb-page-bottom md:px-10'>
+      className='flex flex-1 flex-col overflow-y-auto pt-(--topbar-h) page-x pb-page-bottom'>
       <title>Playlists | Synbox</title>
       <div className='mx-auto flex w-full max-w-3xl flex-col gap-6 pt-6'>
         <h1 className='text-3xl font-semibold tracking-tight text-foreground'>
