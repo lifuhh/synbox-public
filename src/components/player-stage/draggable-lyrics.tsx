@@ -52,7 +52,6 @@ interface DraggableLyricsProps {
   children?: ReactNode
   layout: StageLayout
   scale: number
-  backdrop: string
   colors: LyricsThemeColors
   // The whole width to lay out in (Two Lines' left and right lines), instead of a centred fit
   wide?: boolean
@@ -73,7 +72,6 @@ export const DraggableLyrics = ({
   children,
   layout,
   scale,
-  backdrop,
   colors,
   wide = false,
 }: DraggableLyricsProps) => {
@@ -211,8 +209,7 @@ export const DraggableLyrics = ({
           'player-lyrics-overlay relative isolate shrink-0 px-3 py-cqh select-none',
           children === undefined && 'invisible'
         )}
-        style={blockVars}
-        data-backdrop={backdrop}>
+        style={blockVars}>
         <div
           data-testid='lyrics-handle'
           data-lyrics-style-toggle

@@ -293,12 +293,9 @@ test('Aqua, retired, reads as Frost in saved song styles and in links shared bef
   )
   const store = createStore()
   store.set(lyricsStyleSongAtom, 'mv')
-  expect(store.get(lyricsStyleAtom)).toMatchObject({
-    backdrop: 'box',
-    themeId: 'frost',
-  })
+  expect(store.get(lyricsStyleAtom)).toMatchObject({ themeId: 'frost' })
+  // Box and Fade, retired, still open as the one backdrop there is
   expect(decodeSharedStyle('1.aqua.box.100.10.50.200')).toMatchObject({
-    backdrop: 'box',
     themeId: 'frost',
   })
 })

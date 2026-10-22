@@ -13,7 +13,6 @@ import {
 import { Slider } from '@/components/ui/slider'
 import {
   fontSizeMultiplierAtom,
-  lyricsBackdropAtom,
   lyricsCustomHueAtom,
   lyricsFontSizeTwoLinesAtom,
   lyricsStylePanelAtom,
@@ -23,11 +22,7 @@ import {
 import { useMediaQuery, usePortrait } from '@/hooks/use-media-query'
 import { FONT_SIZE_RANGE, TWO_LINES_SIZE_RANGE } from '@/lib/lyrics-style'
 import type { LyricsThemeColors } from '@/lib/lyrics-themes'
-import {
-  LYRICS_BACKDROPS,
-  LYRICS_THEMES,
-  getCustomThemeColors,
-} from '@/lib/lyrics-themes'
+import { LYRICS_THEMES, getCustomThemeColors } from '@/lib/lyrics-themes'
 import type { CssVars } from '@/types'
 import { cn } from '@/utils/cn'
 
@@ -166,7 +161,7 @@ const StyleSwitch = ({
   )
 }
 
-// A discrete pick (a preset colour, a backdrop) applies and closes, like a menu. Size and the custom hue
+// A discrete pick (a preset colour) applies and closes, like a menu. Size and the custom hue
 // are adjusted by dragging and previewed live, so those keep the panel open until Done, Escape or a click
 // outside. The panel centers on the rail (`anchorRef`) rather than on its button. With a mouse, resting on
 // the button peeks the panel open (`peek`), and the panel stays while the pointer is on either
@@ -206,11 +201,6 @@ export const LyricsThemePicker = ({
       : { range: FONT_SIZE_RANGE, set: setFontSize, value: fontSize }
   const [themeId, setThemeId] = useAtom(lyricsThemeIdAtom)
   const [customHue, setCustomHue] = useAtom(lyricsCustomHueAtom)
-  const [backdrop, setBackdrop] = useAtom(lyricsBackdropAtom)
-
-  const activeBackdrop = LYRICS_BACKDROPS.find((b) => b.id === backdrop)
-  const backdropLabelId = useId()
-  const backdropHintId = useId()
 
   const heading = touch ? (
     <DialogTitle size='sm'>Lyrics Style</DialogTitle>
@@ -321,42 +311,6 @@ export const LyricsThemePicker = ({
             </button>
           </div>
         )}
-      </section>
-
-      <section className='flex flex-col gap-2'>
-        <div className='flex min-w-0 items-baseline text-sm font-medium'>
-          <h3 id={backdropLabelId}>Backdrop</h3>
-          <InlineHintDot />
-          <p id={backdropHintId} className={INLINE_HINT}>
-            {activeBackdrop?.hint}
-          </p>
-        </div>
-        <div
-          role='radiogroup'
-          aria-labelledby={backdropLabelId}
-          aria-describedby={backdropHintId}
-          className='grid grid-cols-3 gap-1 rounded-lg bg-secondary p-1'>
-          {LYRICS_BACKDROPS.map((option) => (
-            <button
-              key={option.id}
-              type='button'
-              // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- swatch buttons in an ARIA radio group; a native radio input is a different control
-              role='radio'
-              aria-checked={backdrop === option.id}
-              onClick={() => {
-                setBackdrop(option.id)
-                close()
-              }}
-              className={cn(
-                'rounded-sm py-1.5 text-xs font-medium transition-colors focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-hidden touch:py-2.5 touch:text-sm',
-                backdrop === option.id
-                  ? 'bg-accent text-foreground'
-                  : 'text-muted-foreground hover:text-foreground'
-              )}>
-              {option.name}
-            </button>
-          ))}
-        </div>
       </section>
 
       <MyStyles onApplied={close} />

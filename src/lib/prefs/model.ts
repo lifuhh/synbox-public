@@ -9,7 +9,6 @@ const SYNCED_KEYS = new Set([
   'lyricsFontSizeTwoLines',
   'lyricsAnchor',
   'lyricsAnchorPortrait',
-  'lyricsBackdrop',
   'lyricsCustomHue',
   'lyricsScreenSizes',
   'lyricsTheme',

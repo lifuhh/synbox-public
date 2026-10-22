@@ -33,7 +33,7 @@ const SECTION_HEADING =
 const SEGMENT =
   'rounded-sm py-1.5 text-xs font-medium transition-colors focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-hidden touch:py-2.5 touch:text-sm'
 const TEXT_BUTTON =
-  'rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-hidden touch:px-3 touch:py-2.5 touch:text-sm'
+  'rounded-lg px-2 py-2 text-xs font-medium transition-colors focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-hidden touch:py-2.5 touch:text-sm'
 
 const SCOPES: { id: LyricsStyleScope; name: string }[] = [
   { id: 'all', name: 'All Songs' },
@@ -50,13 +50,6 @@ export const LyricsStyleScopeSection = () => {
     return null
   }
   const ownStyle = source !== 'default'
-  // Only what the buttons above don't already say
-  let note: string | null = null
-  if (source === 'shared') {
-    note = 'Shared style. Edits stay on this song'
-  } else if (scope === 'all' && ownStyle) {
-    note = 'This song keeps its own tweaks'
-  }
   return (
     <section className='flex flex-col gap-2'>
       {/* A change to a shared style keeps it for this song, so there is no choice to make while it shows */}
@@ -87,9 +80,13 @@ export const LyricsStyleScopeSection = () => {
           ))}
         </div>
       )}
-      {note !== null && <p className='text-xs text-muted-foreground'>{note}</p>}
+      {source === 'shared' && (
+        <p className='text-xs text-muted-foreground'>
+          Shared style. Edits stay on this song
+        </p>
+      )}
       {ownStyle && (
-        <div className='flex flex-wrap gap-2'>
+        <div className='grid grid-cols-2 gap-2'>
           <button
             type='button'
             onClick={saveAsDefault}
@@ -97,7 +94,7 @@ export const LyricsStyleScopeSection = () => {
               TEXT_BUTTON,
               'bg-primary-subtle text-primary-text hover:bg-primary-subtle-hover'
             )}>
-            Save as My Default
+            Apply to All Songs
           </button>
           <button
             type='button'
@@ -106,7 +103,7 @@ export const LyricsStyleScopeSection = () => {
               TEXT_BUTTON,
               'bg-secondary text-foreground hover:bg-accent'
             )}>
-            Reset This Song to My Default
+            Reset This Song
           </button>
         </div>
       )}

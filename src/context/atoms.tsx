@@ -20,7 +20,7 @@ import {
   writeLyricsTemplates,
   writeSongStyle,
 } from '@/lib/lyrics-style'
-import type { LyricsBackdrop, LyricsThemeId } from '@/lib/lyrics-themes'
+import type { LyricsThemeId } from '@/lib/lyrics-themes'
 import { syncedStorage } from '@/lib/prefs/storage'
 import type { CurrentPlayingInfo } from '@/types'
 
@@ -76,12 +76,6 @@ const defaultLyricsStyleAtoms: {
     syncedStorage(),
     initOptions
   ),
-  backdrop: atomWithStorage<LyricsBackdrop>(
-    'lyricsBackdrop',
-    DEFAULT_LYRICS_STYLE.backdrop,
-    syncedStorage(),
-    initOptions
-  ),
   customHue: atomWithStorage(
     'lyricsCustomHue',
     DEFAULT_LYRICS_STYLE.customHue,
@@ -130,7 +124,6 @@ const readDefaults = (get: Getter): LyricsStyle => {
   return {
     anchor: get(defaultLyricsStyleAtoms.anchor),
     anchorPortrait: get(defaultLyricsStyleAtoms.anchorPortrait),
-    backdrop: get(defaultLyricsStyleAtoms.backdrop),
     customHue: get(defaultLyricsStyleAtoms.customHue),
     fontSize: get(defaultLyricsStyleAtoms.fontSize),
     fontSizeTwoLines: get(defaultLyricsStyleAtoms.fontSizeTwoLines),
@@ -145,7 +138,6 @@ const readDefaults = (get: Getter): LyricsStyle => {
 const LYRICS_STYLE_KEYS = [
   'anchor',
   'anchorPortrait',
-  'backdrop',
   'customHue',
   'fontSize',
   'fontSizeTwoLines',
@@ -296,7 +288,6 @@ const lyricsStyleField = <K extends keyof LyricsStyle>(key: K) =>
 export const fontSizeMultiplierAtom = lyricsStyleField('fontSize')
 export const lyricsThemeIdAtom = lyricsStyleField('themeId')
 export const lyricsCustomHueAtom = lyricsStyleField('customHue')
-export const lyricsBackdropAtom = lyricsStyleField('backdrop')
 export const lyricsAnchorAtom = lyricsStyleField('anchor')
 export const lyricsAnchorPortraitAtom = lyricsStyleField('anchorPortrait')
 export const lyricsTwoLinesAtom = lyricsStyleField('twoLines')

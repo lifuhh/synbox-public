@@ -17,7 +17,6 @@ import { RubyText } from '@/components/lyrics-display/ruby-text'
 import {
   fontSizeMultiplierAtom,
   lyricsFontSizeTwoLinesAtom,
-  lyricsBackdropAtom,
   lyricsCustomHueAtom,
   lyricsScreenSizesAtom,
   lyricsThemeIdAtom,
@@ -346,19 +345,16 @@ const TwoRows = ({
 const StaggerTranslation = ({
   line: { text, translation },
   lineKey,
-  backdrop,
 }: {
   line: ReturnType<typeof lineAt>
   lineKey: number
-  backdrop: string
 }) =>
   translation &&
   text !== undefined &&
   !sameText(translation, text) && (
     <div
       data-lyric-translation
-      className='player-lyrics-overlay lyric-stagger-translation isolate px-3'
-      data-backdrop={backdrop}>
+      className='player-lyrics-overlay lyric-stagger-translation isolate px-3'>
       <LyricLine
         key={lineKey}
         html={translation}
@@ -436,7 +432,6 @@ export const StageLyrics = ({
   const oneLineSize = useAtomValue(fontSizeMultiplierAtom)
   const twoLinesSize = useAtomValue(lyricsFontSizeTwoLinesAtom)
   const screenSize = useAtomValue(lyricsScreenSizesAtom)[surface]
-  const backdrop = useAtomValue(lyricsBackdropAtom)
   const themeId = useAtomValue(lyricsThemeIdAtom)
   const hue = useAtomValue(lyricsCustomHueAtom)
   // Upright, a phone's lines wrap at its narrow width and the band under the video also holds the controls,
@@ -561,7 +556,6 @@ export const StageLyrics = ({
         <StaggerTranslation
           line={lineAt(lyrics, karaokeLines, view.active, english, placeholder)}
           lineKey={view.active}
-          backdrop={backdrop}
         />
       )}
       {/* Always this box, so the lyrics stay mounted when two lines turn on or off; two lines move only in
@@ -575,7 +569,6 @@ export const StageLyrics = ({
         <DraggableLyrics
           layout={layout}
           scale={scale}
-          backdrop={backdrop}
           colors={colors}
           wide={twoLines}>
           {twoLines && view.active >= 0 ? (
