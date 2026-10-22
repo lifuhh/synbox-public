@@ -1,14 +1,31 @@
-import { CloudOffIcon, WifiIcon } from 'lucide-react'
+import { CheckIcon, CloudOffIcon, WifiIcon } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useMatch } from 'react-router'
 
-import { useOnline } from '@/lib/pwa'
+import { appJustUpdated, useOnline } from '@/lib/pwa'
+import { cn } from '@/utils/cn'
 
 const pill =
   'pointer-events-auto flex h-8 items-center gap-1.5 rounded-full bg-popover/90 px-3 text-xs text-foreground shadow-lg backdrop-blur-md'
 
 // How long the note about a connection change stays up
 const NOTICE_MS = 2000
+// How long the note that the app just updated itself stays up
+const UPDATED_MS = 2500
+
+// True for UPDATED_MS on the first load of a new version
+const useUpdatedNotice = () => {
+  const [shown, setShown] = useState(appJustUpdated)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShown(false)
+    }, UPDATED_MS)
+    return () => {
+      clearTimeout(timer)
+    }
+  }, [])
+  return shown
+}
 
 type ConnectionNotice = 'offline' | 'online' | null
 
@@ -43,6 +60,7 @@ const useConnectionNotice = () => {
 // over it. None over the lyrics reader: it works the same without a connection, and nothing should cover it
 const AppNotices = () => {
   const notice = useConnectionNotice()
+  const updated = useUpdatedNotice()
   const onReader = useMatch('/lyrics/:videoId') !== null
   const publishHeight = useCallback((stack: HTMLDivElement) => {
     const root = document.documentElement
@@ -60,6 +78,12 @@ const AppNotices = () => {
     <div
       ref={publishHeight}
       className='pointer-events-none fixed inset-x-0 top-(--topbar-h) z-100 flex flex-col items-center gap-2 px-4 empty:hidden [&:not(:empty)]:pt-2'>
+      {!onReader && updated && (
+        <output className={cn(pill, 'bg-primary-subtle')}>
+          <CheckIcon className='size-3.5 shrink-0 text-primary-text' />
+          App Updated
+        </output>
+      )}
       {!onReader && notice === 'offline' && (
         <output className={pill}>
           <CloudOffIcon className='size-3.5 shrink-0 text-primary-text' />
