@@ -18,7 +18,7 @@ const alongTurnedPage = (event: React.PointerEvent<HTMLSpanElement>) => {
     box.left + box.width * fractionAcross(event, event.currentTarget)
 }
 
-// How the slider looks. `block`: the panels' slider, a thick bar and a big knob. `seek`: a player's seek line, as
+// How the slider looks. `block`: the panels' slider, a slim 4px line and a 16px knob (20px to a finger). `seek`: a player's seek line, as
 // YouTube's: 3px, a little thicker under the pointer, with a small dot that shows only while the pointer is over
 // it, the keyboard is on it or it is dragged (always, on a touch screen). `volume`: YouTube's volume line, 3px of
 // white with a small white knob that always shows. The thin ones keep a tall box, so they are as easy to hit
@@ -30,9 +30,10 @@ const LOOKS: Record<
 > = {
   block: {
     range: 'bg-primary',
-    thumb: 'h-5 w-5 bg-foreground transition-colors touch:h-6 touch:w-6',
+    thumb:
+      'size-4 bg-foreground shadow-sm transition-transform active:scale-110 touch:size-5',
     track:
-      "data-[orientation='horizontal']:h-2 data-[orientation='horizontal']:w-full",
+      "data-[orientation='horizontal']:h-1 data-[orientation='horizontal']:w-full",
   },
   seek: {
     range: 'bg-primary',
