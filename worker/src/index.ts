@@ -18,6 +18,11 @@ import type {
   Owner,
   Reservation,
 } from './quota'
+import {
+  listRecommendations,
+  parseRecommendations,
+  replaceRecommendations,
+} from './recommendations'
 
 type AppEnv = Env & {
   USER_HOURLY_LIMIT: string
@@ -105,6 +110,13 @@ app.post('/api/me/library', async (c) => {
   }
   await applyOps(c.env.DB, session.user.id, ops)
   return c.body(null, 204)
+})
+
+// The landing page's Recommendations, in order. Public; browsers keep it a minute, so an admin's edit shows
+// within one
+app.get('/api/recommendations', async (c) => {
+  c.header('Cache-Control', 'public, max-age=60')
+  return c.json({ songs: await listRecommendations(c.env.DB) })
 })
 
 // Called only by the Cloud Run backend, after it has verified the user's JWT or hashed the guest's address
@@ -334,6 +346,17 @@ admin.put('/settings', async (c) => {
   )
     .bind(generationEnabled ? '1' : '0')
     .run()
+  return c.body(null, 204)
+})
+
+// The whole list, in the order to show; it replaces the current one
+admin.put('/recommendations', async (c) => {
+  const body = await c.req.json<unknown>().catch(() => null)
+  const parsed = parseRecommendations(body)
+  if (!parsed.ok) {
+    return c.json({ code: parsed.code }, 400)
+  }
+  await replaceRecommendations(c.env.DB, parsed.songs, c.get('adminId'))
   return c.body(null, 204)
 })
 

@@ -3,6 +3,8 @@ import { z } from 'zod'
 
 import { authClient } from '@/lib/auth'
 import { QUERY_KEYS } from '@/lib/react-query/query-keys'
+import { fetchRecommendations } from '@/lib/recommendations'
+import type { Recommendation } from '@/lib/recommendations'
 
 // The auth Worker's /api/admin routes (worker/src/index.ts); each checks the admin role on the server
 
@@ -159,3 +161,28 @@ export const useSetGenerationEnabled = () =>
         method: 'PUT',
       })
   )
+
+// The list as saved, in its order (the landing page shuffles it)
+export const useAdminRecommendations = () =>
+  useQuery({
+    queryFn: async () => await fetchRecommendations({ fresh: true }),
+    queryKey: [QUERY_KEYS.GET_ADMIN_RECOMMENDATIONS],
+  })
+
+// Replaces the whole list
+export const useSaveRecommendations = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (songs: Recommendation[]) =>
+      await call('/recommendations', {
+        body: JSON.stringify({ songs }),
+        method: 'PUT',
+      }),
+    onSuccess: async (_, songs) => {
+      queryClient.setQueryData([QUERY_KEYS.GET_ADMIN_RECOMMENDATIONS], songs)
+      await queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.GET_LANDING_PAGE_PLAYLIST],
+      })
+    },
+  })
+}

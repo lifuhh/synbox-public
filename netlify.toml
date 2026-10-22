@@ -51,6 +51,13 @@ to = "https://api.synbox.io/api/admin/:splat"
 status = 200
 force = true
 
+# The landing page's Recommendations, which admins edit on the admin page
+[[redirects]]
+from = "/api/recommendations"
+to = "https://api.synbox.io/api/recommendations"
+status = 200
+force = true
+
 # The home gallery's song list, from the backend's lookup service. Netlify keeps the copy that service allows
 # (its Netlify-CDN-Cache-Control header), so most visits never reach it
 [[redirects]]
