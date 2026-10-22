@@ -245,16 +245,13 @@ const HeroGenerateLyricsDefault = ({
                 <Info className='h-4 w-4 text-tagline' />
               </button>
             </TooltipTrigger>
+            {/* Above the icon and centred on it, clear of the link field under the line */}
             <TooltipContent
               className='max-w-[calc(100vw-2rem)]'
               collisionPadding={16}
-              side='bottom'
-              sideOffset={10}
-              align='end'>
-              <p className='text-center text-pretty'>
-                While AI strives for accuracy, occasional discrepancies in
-                transcription or syncing may occur.
-              </p>
+              side='top'
+              sideOffset={6}>
+              Synbox is powered by AI and can make mistakes.
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
