@@ -1,5 +1,5 @@
 import { WandSparklesIcon } from 'lucide-react'
-import { useState } from 'react'
+import { use, useState } from 'react'
 import { Link } from 'react-router'
 
 import { startFromButton } from '@/components/generation/start-generation'
@@ -13,13 +13,15 @@ import { usePortrait } from '@/hooks/use-media-query'
 import { useGetLyricsVersions } from '@/lib/react-query/queries-and-mutations'
 import { cn } from '@/utils/cn'
 
-import { RailButton, RailTooltip } from './rail-button'
+import { RailButton, RailInline, RailTooltip } from './rail-button'
 
 // Admins only (the rail shows it to no one else): a regeneration is saved as a new version and becomes the
 // default; the versions page rolls back
 export const LyricsVersionsMenu = ({ videoId }: { videoId: string }) => {
   const [menuOpen, setMenuOpen] = useState(false)
   const portrait = usePortrait()
+  const inline = use(RailInline)
+  const below = portrait || inline
   const { data } = useGetLyricsVersions(videoId)
   const count = data?.versions.length ?? 0
 
@@ -35,8 +37,8 @@ export const LyricsVersionsMenu = ({ videoId }: { videoId: string }) => {
         </DropdownMenuTrigger>
       </RailTooltip>
       <DropdownMenuContent
-        side={portrait ? 'bottom' : 'right'}
-        align={portrait ? 'center' : 'start'}
+        side={below ? 'bottom' : 'right'}
+        align={below ? 'center' : 'start'}
         sideOffset={8}
         collisionPadding={8}>
         <DropdownMenuItem

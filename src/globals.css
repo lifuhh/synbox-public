@@ -12,6 +12,18 @@
   }
 }
 @custom-variant dark (&:is(.dark *));
+/* The app installed on a phone (opened from the Home Screen): its own navigation, no website pitch */
+@custom-variant installed (&:where(html[data-installed] *));
+/* The watch page below 1000px wide, where the video is a small box over the song and its tabs */
+@custom-variant watch-narrow {
+  @media (max-width: 999px) {
+    &:where(html[data-watch] *) {
+      @slot;
+    }
+  }
+}
+/* While the installed app's tab bar shows (not on the player or a song's reader) */
+@custom-variant tabbar (&:where(html[data-tabbar] *));
 /* Finger-driven screens: bigger hit areas, no hover-only affordances */
 @custom-variant touch (@media (pointer: coarse));
 /* A phone on its side: too short for the player's vertical rail. A page turned by Lock Landscape counts too */
@@ -227,9 +239,9 @@
 @theme inline {
   --spacing-safe-top: var(--safe-top);
   --spacing-page-top: calc(var(--topbar-h) + 1.5rem);
-  --spacing-page-bottom-sm: calc(1rem + var(--safe-bottom));
-  --spacing-page-bottom: calc(2.5rem + var(--safe-bottom));
-  --spacing-page-bottom-lg: calc(4rem + var(--safe-bottom));
+  --spacing-page-bottom-sm: calc(1rem + var(--safe-bottom) + var(--tabbar-h));
+  --spacing-page-bottom: calc(2.5rem + var(--safe-bottom) + var(--tabbar-h));
+  --spacing-page-bottom-lg: calc(4rem + var(--safe-bottom) + var(--tabbar-h));
   --spacing-controls-bottom: max(0.75rem, var(--safe-bottom));
   --spacing-controls-left: max(1rem, var(--safe-left));
   --spacing-controls-right: max(1rem, var(--safe-right));
@@ -239,9 +251,12 @@
 
   /* The player's lyric lines, times the viewer's scale: a share of the stage's width, but never more than a
      share of its height, so a phone on its side (wide, very short) is not sized like a monitor. A phone held
-     upright gets the floor: 17px, 25px on its side, 43px on a 1440px-wide desktop. Translation and romaji
-     are 0.7 of that */
+     upright gets the floor: 17px, 25px on its side, 43px on a 1440px-wide desktop. Sizes step down as on the
+     reader: the romaji, read with the Japanese, 0.8 of it (floor 14px); the translation 0.7 (floor 12px) */
   --text-lyric: calc(max(min(3cqw, 6.4cqh), 1.0625rem) * var(--lyric-scale));
+  --text-lyric-romaji: calc(
+    max(min(2.4cqw, 5.12cqh), 0.875rem) * var(--lyric-scale)
+  );
   --text-lyric-secondary: calc(
     max(min(2.1cqw, 4.48cqh), 0.75rem) * var(--lyric-scale)
   );
@@ -292,10 +307,13 @@
     --reader-status: #1f1c17;
     --status-scrim-fade: 0px;
   }
+}
 
-  /* Furigana over the page, not over a video: no shadow, a little quieter than the kanji. The player's -0.9em
-     is tuned to its web font; with the reader's system fonts it sets the reading on the kanji. About 2px
-     clear takes 0 in Chromium and -0.3em in iPhone WebKit, which stands the reading higher */
+/* Furigana over a page, not over a video (the reader, the watch page's lyrics): no shadow, a little quieter
+   than the kanji. The player's -0.9em is tuned to its web font; with the reader's system fonts it sets the
+   reading on the kanji. About 2px clear takes 0 in Chromium and -0.3em in iPhone WebKit, which stands the
+   reading higher */
+@utility page-ruby {
   & .lyric-ruby-text {
     margin-bottom: 0;
     text-shadow: none;
@@ -305,6 +323,16 @@
       margin-bottom: -0.3em;
     }
   }
+}
+
+/* The watch page's lyrics: the reader's type and karaoke fill on the app's own surface, the Japanese in the
+   accent and the romaji in the page's ink */
+@utility lyrics-sheet {
+  --reader-fg: var(--foreground);
+  --reader-accent: var(--primary-text);
+  --reader-muted: var(--muted-foreground);
+  --reader-scale: 1;
+  --furigana-size: 0.5em;
 }
 
 /* Synced lyrics' karaoke fill on the page: sung in the Japanese colour, unsung at half strength. A part
@@ -521,6 +549,34 @@
   transition: var(--anchor-transition);
 }
 
+/* Karaoke Stagger: in the two-row layout the top row hugs the leading edge and the next row the trailing one,
+   as a karaoke machine shows them. [class] lifts these over the rows' own centring */
+@utility lyric-row-start {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+
+  & > [class] {
+    width: fit-content;
+    max-width: 100%;
+    margin-inline: 0;
+    text-align: start;
+  }
+}
+
+@utility lyric-row-end {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+
+  & > [class] {
+    width: fit-content;
+    max-width: 100%;
+    margin-inline: 0;
+    text-align: end;
+  }
+}
+
 /* Between the two rows of the two-line karaoke layout: a share of the lyric size, so each line's romaji and
    translation read as its own at every size */
 @utility lyric-rows-gap {
@@ -556,6 +612,80 @@
     black 72%,
     transparent
   );
+}
+
+/* The player's watch page (src/components/watch/watch-page.tsx). Narrow: the video on top, the song under it,
+   then Lyrics and Up Next as tabs. From 1000px wide (YouTube's two-column point) the video sits top left, as
+   large as leaves 12rem below it, the lyrics beside it in a 320-402px column, the song and More Like This
+   under the video and Up Next under the lyrics; Theater gives the video both columns. Only the boxes below
+   scroll, so the video never moves under youtube-engine's fixed layer */
+@utility watch-page {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  padding-top: var(--topbar-h);
+
+  @media (min-width: 1000px) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(20rem, 25.125rem);
+    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-areas: 'stage side' 'main next';
+    gap: 1rem 1.5rem;
+    padding: calc(var(--topbar-h) + 0.25rem) 1.5rem 0;
+
+    &[data-theater] {
+      grid-template-areas: 'stage stage' 'main next';
+    }
+  }
+}
+
+@utility watch-stage {
+  flex-shrink: 0;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  max-height: 45%;
+  overflow: hidden;
+  background: #000;
+
+  @media (min-width: 1000px) {
+    grid-area: stage;
+    justify-self: start;
+    width: min(100%, calc((var(--app-h) - var(--topbar-h) - 12rem) * 16 / 9));
+    max-height: none;
+    border-radius: 0.75rem;
+
+    [data-theater] > & {
+      width: 100%;
+      aspect-ratio: auto;
+      height: min(56.25vw, calc(var(--app-h) - var(--topbar-h) - 12rem));
+    }
+  }
+}
+
+@utility watch-side {
+  grid-area: side;
+  position: relative;
+  min-height: 0;
+}
+
+@utility watch-main {
+  grid-area: main;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+@utility watch-next {
+  grid-area: next;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* The karaoke corner on a thumbnail (KaraokeCorner): the top-right half of its square */
+@utility corner-fold {
+  clip-path: polygon(0 0, 100% 0, 100% 100%);
 }
 
 /* A list that scrolls inside a box fades out over its last 2rem, so the cut-off row reads as more to scroll to */
@@ -1113,6 +1243,8 @@
     --safe-bottom: env(safe-area-inset-bottom, 0px);
     --safe-left: env(safe-area-inset-left, 0px);
     --safe-right: env(safe-area-inset-right, 0px);
+    /* What the installed app's tab bar (and the resume bar over it) covers at the bottom; 0 without them */
+    --tabbar-h: 0px;
     /* The screen's height; full-screen layers use it instead of dvh (see the standalone rule below) */
     --screen-h: 100dvh;
     --app-h: var(--screen-h);
@@ -1158,6 +1290,17 @@
     --topbar-shown-h: var(--safe-top);
   }
 
+  /* The installed app on a phone: the tab bar floats 0.5rem over the home indicator, 4rem tall, with 1rem
+     clear above it; the resume bar adds its own height. The top bar keeps only the logo (tabbar: below), as
+     the tabs carry Lyrics, Saved and the account */
+  html[data-tabbar] {
+    --tabbar-h: 5.5rem;
+  }
+
+  html[data-tabbar][data-resume-bar] {
+    --tabbar-h: 9.25rem;
+  }
+
   /* The iPhone stand-in for fullscreen: the player without the app's top bar */
   html[data-immersive] [data-topbar] {
     display: none;
@@ -1196,9 +1339,18 @@
   }
 
   /* The player is black edge to edge, including any strip a mobile browser's toolbar leaves */
-  html:has([data-player-stage]),
-  html:has([data-player-stage]) body {
+  html:has([data-player-stage]):not([data-watch]),
+  html:has([data-player-stage]):not([data-watch]) body {
     background-color: #000;
+  }
+
+  /* On the watch page the stage is a box under the top bar: what hangs under the bar inside it (Tap to
+     Unmute, the lock column) hangs from the video's own top edge instead */
+  html[data-watch] [data-player-stage] {
+    --topbar-h: 0px;
+    --notices-h: 0px;
+    --preview-banner-h: 0px;
+    --stage-corner-top: 0.25rem;
   }
 
   [data-player-stage] {
@@ -1207,7 +1359,7 @@
 
   /* Nothing scrolls on the player, and its black already carries the white clock. In fullscreen the video is
      meant to reach the screen's edge, so no scrim darkens its top */
-  html:has([data-player-stage]) [data-status-scrim] {
+  html:has([data-player-stage]):not([data-watch]) [data-status-scrim] {
     display: none;
   }
 

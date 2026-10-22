@@ -154,6 +154,22 @@ test('two lines travel in a shared link; a one-line style stays readable by olde
   expect(decodeSharedStyle('2.lemon.shadow.100.10.50.200.7')).toBeNull()
 })
 
+test('staggered two lines travel in a shared link, and a link from before them reads as centred', () => {
+  const staggered = {
+    ...DEFAULT_LYRICS_STYLE,
+    stagger: true,
+    twoLines: true,
+  }
+  expect(decodeSharedStyle(encodeSharedStyle(staggered))).toMatchObject({
+    stagger: true,
+    twoLines: true,
+  })
+  expect(decodeSharedStyle('2.lemon.shadow.100.10.50.200.1')).toMatchObject({
+    stagger: false,
+    twoLines: true,
+  })
+})
+
 test('a change carries to every song, unless the song has its own style; old saved styles load unchanged', () => {
   // Saved by the app before two lines, screen sizes and templates existed
   localStorage.setItem('lyricsTheme', JSON.stringify('aqua'))

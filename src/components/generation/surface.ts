@@ -37,7 +37,7 @@ export const FAB_MOTION = {
 export const surfacePlacement = (aboveStageControls: boolean) =>
   aboveStageControls
     ? 'right-[max(1rem,var(--safe-right))] bottom-[calc(var(--stage-controls-h,5rem)+0.5rem)] sm:right-6 portrait:bottom-(--stage-chrome-h)'
-    : 'right-[max(1rem,var(--safe-right))] bottom-[max(1rem,var(--safe-bottom))] sm:right-6 sm:bottom-6'
+    : 'right-[max(1rem,var(--safe-right))] bottom-[calc(max(1rem,var(--safe-bottom))+var(--tabbar-h))] sm:right-6 sm:bottom-[calc(1.5rem+var(--tabbar-h))]'
 
 export const thumbnailOf = (job: Job) =>
   job.video !== null && job.video.thumbnail !== ''

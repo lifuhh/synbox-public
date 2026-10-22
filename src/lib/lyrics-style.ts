@@ -30,6 +30,8 @@ export interface LyricsStyle {
   anchorPortrait: number
   // The karaoke two-row layout: the next line waits, unfilled, in the other row. Desktop and phone landscape
   twoLines: boolean
+  // With two lines, the top row hugs the left and the next row the right, as a karaoke machine shows them
+  stagger: boolean
   // An optional extra factor on `fontSize` for one screen only; 1 leaves that screen at the shared size
   screenSizes: ScreenSizes
 }
@@ -44,6 +46,7 @@ export const DEFAULT_LYRICS_STYLE: LyricsStyle = {
   customHue: DEFAULT_LYRICS_CUSTOM_HUE,
   fontSize: 1,
   screenSizes: { desktop: 1, landscape: 1, portrait: 1 },
+  stagger: false,
   themeId: DEFAULT_LYRICS_THEME_ID,
   twoLines: false,
 }
@@ -59,7 +62,7 @@ export const screenSizesSchema = z.object({
   portrait: screenSize,
 })
 // Every field optional: a saved record keeps what it had when it was saved, and fields added since (twoLines,
-// screenSizes) read as absent, so records from before them load unchanged
+// screenSizes, stagger) read as absent, so records from before them load unchanged
 const styleFieldsSchema = z
   .object({
     anchor: unit,
@@ -68,6 +71,7 @@ const styleFieldsSchema = z
     customHue: z.number().min(0).max(359),
     fontSize: z.number().min(0.4).max(1.6),
     screenSizes: screenSizesSchema,
+    stagger: z.boolean(),
     themeId: z.enum(LYRICS_THEME_IDS),
     twoLines: z.boolean(),
   })
@@ -180,9 +184,10 @@ export const encodeSharedStyle = (style: SharedLyricsStyle) => {
     percent(style.anchorPortrait),
     Math.round(style.customHue),
   ]
-  return (style.twoLines ? [2, ...fields, 1] : [1, ...fields]).join(
-    SHARE_SEPARATOR
-  )
+  // Format 2's last field: 1 two centred lines, 2 two staggered lines
+  return (
+    style.twoLines ? [2, ...fields, style.stagger ? 2 : 1] : [1, ...fields]
+  ).join(SHARE_SEPARATOR)
 }
 
 const sharedFields = [
@@ -196,7 +201,7 @@ const sharedFields = [
 const sharedStyleSchema = z
   .union([
     z.tuple([z.literal('1'), ...sharedFields]),
-    z.tuple([z.literal('2'), ...sharedFields, z.enum(['0', '1'])]),
+    z.tuple([z.literal('2'), ...sharedFields, z.enum(['0', '1', '2'])]),
   ])
   .transform(
     ([
@@ -214,8 +219,9 @@ const sharedStyleSchema = z
       backdrop,
       customHue,
       fontSize: size / 100,
+      stagger: lines === '2',
       themeId,
-      twoLines: lines === '1',
+      twoLines: lines === '1' || lines === '2',
     })
   )
 

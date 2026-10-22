@@ -1,6 +1,7 @@
 import { useAtom, useAtomValue, useSetAtom } from 'jotai'
 import {
   BookOpenTextIcon,
+  ListPlusIcon,
   BookmarkCheckIcon,
   BookmarkIcon,
   LanguagesIcon,
@@ -8,12 +9,13 @@ import {
   Share2Icon,
   ShareIcon,
 } from 'lucide-react'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
 
 import { ToastAction } from '@/components/ui/toast'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { useToast } from '@/components/ui/use-toast'
+import { SaveToPlaylist } from '@/components/watch/save-to-playlist'
 import {
   addFavoriteAtom,
   currentVideoAtom,
@@ -40,7 +42,12 @@ import { cn } from '@/utils/cn'
 
 import { LyricsThemePicker } from './lyrics-theme-picker'
 import { LyricsVersionsMenu } from './lyrics-versions-menu'
-import { RailButton, RailTooltip, RailTooltipsOff } from './rail-button'
+import {
+  RailButton,
+  RailInline,
+  RailTooltip,
+  RailTooltipsOff,
+} from './rail-button'
 
 // The pointer has to rest on the style button this long before the panel peeks open, so crossing it does not
 const PEEK_DELAY_MS = 150
@@ -108,11 +115,37 @@ const shareUrl = (style: LyricsStyle) => {
   return url
 }
 
-const Divider = () => (
-  <div className='my-0.5 h-px w-6 shrink-0 bg-white/15 portrait:my-0 portrait:h-6 portrait:w-px' />
+// Inline and too narrow for one row (a phone), the lyrics toggles and the song's actions take a row each,
+// rather than leaving one button alone on the second
+const Divider = ({ inline }: { inline: boolean }) => (
+  <div
+    className={cn(
+      'shrink-0 bg-white/15',
+      inline
+        ? 'h-6 w-px max-[27rem]:h-0 max-[27rem]:basis-full'
+        : 'my-0.5 h-px w-6 portrait:my-0 portrait:h-6 portrait:w-px'
+    )}
+  />
 )
 
-const PlayerRail = () => {
+const railClass = (inline: boolean, interactive: boolean, open: boolean) =>
+  inline
+    ? 'flex w-fit max-w-full flex-wrap items-center gap-0.5 rounded-2xl bg-card p-1'
+    : cn(
+        // Its corners are the buttons' 8px radius plus the 4px padding around them, in every layout
+        'flex flex-col items-center gap-1 rounded-r-xl bg-black/55 p-1 shadow-rail backdrop-blur-md transition-translate-fade duration-300 ease-out',
+        'portrait:no-scrollbar portrait:max-w-[calc(100vw-0.5rem)] portrait:flex-row portrait:gap-1 portrait:overflow-x-auto portrait:rounded-xl',
+        interactive && 'pointer-events-auto',
+        // Past the notch inset too, or a phone on its side shows the rail's edge beside it
+        open
+          ? 'translate-x-0'
+          : '-translate-x-[calc(100%+var(--safe-left))] portrait:translate-x-0 portrait:opacity-0'
+      )
+
+// The player's own buttons: the lyrics toggles and style, versions (admins), bookmark, share and Read Lyrics.
+// Floating, it is the stage's rail that shows and hides with the rest of its UI. Inline, it is a row under the
+// video on the watch page, always there
+const PlayerRail = ({ inline = false }: { inline?: boolean }) => {
   const { videoId = '' } = useParams<{ videoId: string }>()
   const navigate = useNavigate()
   const { admin } = useAccess()
@@ -137,10 +170,12 @@ const PlayerRail = () => {
       }
     }
     const panel = panelRef.current
-    return panel ? observe(panel) : undefined
-  }, [])
+    return panel && !inline ? observe(panel) : undefined
+  }, [inline])
 
   const currentVideo = useAtomValue(currentVideoAtom)
+  const [saving, setSaving] = useState(false)
+  const saveButton = useRef<HTMLButtonElement>(null)
   const addFavorite = useSetAtom(addFavoriteAtom)
   const removeFavorite = useSetAtom(removeFavoriteAtom)
   const isFavorite = useAtomValue(isFavoriteAtom)
@@ -247,119 +282,136 @@ const PlayerRail = () => {
     // Hoverable tooltips wait for a pointer move to close after the trigger is left, and none comes once
     // the pointer is outside the window or over the YouTube iframe, so the label outlived the hidden rail
     <TooltipProvider delayDuration={190} disableHoverableContent>
-      <RailTooltipsOff value={peek.panelOpen}>
-        {/* Left edge, vertically centred; in portrait a row on the control bar, in thumb reach; on a phone
+      <RailInline value={inline}>
+        <RailTooltipsOff value={peek.panelOpen}>
+          {/* Left edge, vertically centred; in portrait a row on the control bar, in thumb reach; on a phone
             on its side a compact column under the top bar, with the control bar starting to its right */}
-        <div className='pointer-events-none fixed top-1/2 left-(--safe-left) z-50 -translate-y-1/2 portrait:top-auto portrait:bottom-[var(--stage-controls-h,5rem)] portrait:left-1/2 portrait:-translate-x-1/2 portrait:translate-y-0 short:top-[calc(var(--topbar-h)+0.25rem)] short:translate-y-0'>
-          <nav
-            ref={panelRef}
-            data-player-chrome
-            aria-label='Player Controls'
-            // Its corners are the buttons' 8px radius plus the 4px padding around them, in every layout
-            className={cn(
-              'flex flex-col items-center gap-1 rounded-r-xl bg-black/55 p-1 shadow-rail backdrop-blur-md transition-translate-fade duration-300 ease-out',
-              'portrait:no-scrollbar portrait:max-w-[calc(100vw-0.5rem)] portrait:flex-row portrait:gap-1 portrait:overflow-x-auto portrait:rounded-xl',
-              // Past the notch inset too, or a phone on its side shows the rail's edge beside it
-              open && armed && 'pointer-events-auto',
-              open
-                ? 'translate-x-0'
-                : '-translate-x-[calc(100%+var(--safe-left))] portrait:translate-x-0 portrait:opacity-0'
-            )}>
-            <RailTooltip label={showLyrics ? 'Hide Lyrics' : 'Show Lyrics'}>
-              <RailButton
-                label='Lyrics'
-                pressed={showLyrics}
-                onClick={() => {
-                  setShowLyrics(!showLyrics)
-                }}>
-                <MessageSquareTextIcon className='size-5 shrink-0' />
-              </RailButton>
-            </RailTooltip>
-            <RailTooltip label={showRomaji ? 'Hide Romaji' : 'Show Romaji'}>
-              <RailButton
-                label='Romaji'
-                pressed={showRomaji}
-                onClick={() => {
-                  setShowRomaji(!showRomaji)
-                }}>
-                <span className='text-base leading-none font-bold'>R</span>
-              </RailButton>
-            </RailTooltip>
-            <RailTooltip
-              label={
-                showTranslation ? 'Hide Translations' : 'Show Translations'
-              }>
-              <RailButton
-                label='Translations'
-                pressed={showTranslation}
-                onClick={() => {
-                  setShowTranslation(!showTranslation)
-                }}>
-                <LanguagesIcon className='size-5 shrink-0' />
-              </RailButton>
-            </RailTooltip>
-            <RailTooltip
-              label={
-                english
-                  ? 'View Chinese Translations'
-                  : 'View English Translations'
-              }>
-              <RailButton
+          <div
+            className={
+              inline
+                ? 'min-w-0'
+                : 'pointer-events-none fixed top-1/2 left-(--safe-left) z-50 -translate-y-1/2 portrait:top-auto portrait:bottom-[var(--stage-controls-h,5rem)] portrait:left-1/2 portrait:-translate-x-1/2 portrait:translate-y-0 short:top-[calc(var(--topbar-h)+0.25rem)] short:translate-y-0'
+            }>
+            <nav
+              ref={panelRef}
+              data-player-chrome={inline ? undefined : true}
+              aria-label='Player Controls'
+              className={railClass(inline, open && armed, open)}>
+              <RailTooltip label={showLyrics ? 'Hide Lyrics' : 'Show Lyrics'}>
+                <RailButton
+                  label='Lyrics'
+                  pressed={showLyrics}
+                  onClick={() => {
+                    setShowLyrics(!showLyrics)
+                  }}>
+                  <MessageSquareTextIcon className='size-5 shrink-0' />
+                </RailButton>
+              </RailTooltip>
+              <RailTooltip label={showRomaji ? 'Hide Romaji' : 'Show Romaji'}>
+                <RailButton
+                  label='Romaji'
+                  pressed={showRomaji}
+                  onClick={() => {
+                    setShowRomaji(!showRomaji)
+                  }}>
+                  <span className='text-base leading-none font-bold'>R</span>
+                </RailButton>
+              </RailTooltip>
+              <RailTooltip
+                label={
+                  showTranslation ? 'Hide Translations' : 'Show Translations'
+                }>
+                <RailButton
+                  label='Translations'
+                  pressed={showTranslation}
+                  onClick={() => {
+                    setShowTranslation(!showTranslation)
+                  }}>
+                  <LanguagesIcon className='size-5 shrink-0' />
+                </RailButton>
+              </RailTooltip>
+              <RailTooltip
                 label={
                   english
                     ? 'View Chinese Translations'
                     : 'View English Translations'
-                }
-                onClick={() => {
-                  setEnglish(!english)
-                }}>
-                <span className='text-sm leading-none font-bold'>
-                  {english ? 'EN' : '中'}
-                </span>
-              </RailButton>
-            </RailTooltip>
-            <LyricsThemePicker anchorRef={panelRef} peek={peek} />
-            {admin && videoId !== '' && (
-              <LyricsVersionsMenu videoId={videoId} />
-            )}
+                }>
+                <RailButton
+                  label={
+                    english
+                      ? 'View Chinese Translations'
+                      : 'View English Translations'
+                  }
+                  onClick={() => {
+                    setEnglish(!english)
+                  }}>
+                  <span className='text-sm leading-none font-bold'>
+                    {english ? 'EN' : '中'}
+                  </span>
+                </RailButton>
+              </RailTooltip>
+              <LyricsThemePicker anchorRef={panelRef} peek={peek} />
+              {admin && videoId !== '' && (
+                <LyricsVersionsMenu videoId={videoId} />
+              )}
 
-            <Divider />
+              <Divider inline={inline} />
 
-            <RailTooltip label={bookmarkLabel}>
-              <RailButton
-                label={bookmarkLabel}
-                disabled={!currentVideo}
-                onClick={handleBookmark}>
-                {bookmarked ? (
-                  <BookmarkCheckIcon className='size-5 shrink-0 fill-current [&>path:last-child]:stroke-black' />
-                ) : (
-                  <BookmarkIcon className='size-5 shrink-0 -scale-x-100' />
-                )}
-              </RailButton>
-            </RailTooltip>
-            <RailTooltip label={shareLabel}>
-              <RailButton
-                label={shareLabel}
-                onClick={() => {
-                  void handleShare()
-                }}>
-                <PlatformShareIcon className='size-5 shrink-0' />
-              </RailButton>
-            </RailTooltip>
-            {/* The song's lyrics as a page to read or play along without the video */}
-            <RailTooltip label='Read Lyrics'>
-              <RailButton
-                label='Read Lyrics'
-                disabled={videoId === ''}
-                onClick={() => {
-                  void navigate(`/lyrics/${videoId}`)
-                }}>
-                <BookOpenTextIcon className='size-5 shrink-0' />
-              </RailButton>
-            </RailTooltip>
-          </nav>
-        </div>
-      </RailTooltipsOff>
+              <RailTooltip label={bookmarkLabel}>
+                <RailButton
+                  label={bookmarkLabel}
+                  disabled={!currentVideo}
+                  onClick={handleBookmark}>
+                  {bookmarked ? (
+                    <BookmarkCheckIcon className='size-5 shrink-0 fill-current [&>path:last-child]:stroke-black' />
+                  ) : (
+                    <BookmarkIcon className='size-5 shrink-0 -scale-x-100' />
+                  )}
+                </RailButton>
+              </RailTooltip>
+              <RailTooltip label='Save to Playlist'>
+                <RailButton
+                  ref={saveButton}
+                  label='Save to Playlist'
+                  disabled={!currentVideo}
+                  onClick={() => {
+                    setSaving(true)
+                  }}>
+                  <ListPlusIcon className='size-5 shrink-0' />
+                </RailButton>
+              </RailTooltip>
+              <RailTooltip label={shareLabel}>
+                <RailButton
+                  label={shareLabel}
+                  onClick={() => {
+                    void handleShare()
+                  }}>
+                  <PlatformShareIcon className='size-5 shrink-0' />
+                </RailButton>
+              </RailTooltip>
+              {/* The song's lyrics as a page to read or play along without the video */}
+              <RailTooltip label='Read Lyrics'>
+                <RailButton
+                  label='Read Lyrics'
+                  disabled={videoId === ''}
+                  onClick={() => {
+                    void navigate(`/lyrics/${videoId}`)
+                  }}>
+                  <BookOpenTextIcon className='size-5 shrink-0' />
+                </RailButton>
+              </RailTooltip>
+            </nav>
+          </div>
+        </RailTooltipsOff>
+      </RailInline>
+      {currentVideo && (
+        <SaveToPlaylist
+          song={currentVideo}
+          open={saving}
+          onOpenChange={setSaving}
+          returnFocusRef={saveButton}
+        />
+      )}
     </TooltipProvider>
   )
 }

@@ -4,12 +4,15 @@ interface OptimizedThumbnailProps {
   src: string
   alt: string
   className?: string
+  // Laid over the picture, as the karaoke corner
+  children?: React.ReactNode
 }
 
 const OptimizedThumbnail = ({
   src,
   alt,
   className,
+  children,
 }: OptimizedThumbnailProps) => {
   const [isLoading, setIsLoading] = useState(true)
 
@@ -29,6 +32,7 @@ const OptimizedThumbnail = ({
         }}
         loading='lazy'
       />
+      {children}
     </div>
   )
 }
