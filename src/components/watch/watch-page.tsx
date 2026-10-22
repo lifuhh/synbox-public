@@ -35,7 +35,7 @@ const SongInfo = ({
         <div className='min-w-0'>
           <h1
             className={cn(
-              'line-clamp-2 text-base leading-snug font-semibold text-pretty text-foreground',
+              'line-clamp-2 text-base leading-snug font-bold text-pretty text-foreground',
               bracketStart(video?.title)
             )}>
             {video?.title ?? ''}
@@ -57,10 +57,10 @@ const SongInfo = ({
     <div className='flex min-w-0 flex-col gap-3 pt-2'>
       {/* Only the words take the inset: the facts card is a card like the lyrics panel, so it keeps the
           panel's edges, and its own padding puts its text on the same line as the title's */}
-      <div className={cn('flex min-w-0 flex-col gap-3', inset && 'px-4')}>
+      <div className={cn('flex min-w-0 flex-col gap-1', inset && 'px-4')}>
         <h1
           className={cn(
-            'line-clamp-2 text-xl leading-snug font-semibold text-pretty text-foreground',
+            'line-clamp-2 text-xl leading-snug font-bold text-pretty text-foreground',
             bracketStart(video?.title)
           )}>
           {video?.title ?? ''}
@@ -69,7 +69,7 @@ const SongInfo = ({
         <div className='flex flex-wrap items-center justify-between gap-x-6 gap-y-2'>
           <p
             className={cn(
-              'min-w-0 truncate text-base font-medium text-foreground',
+              'min-w-0 truncate text-sm font-medium text-muted-foreground',
               bracketStart(video?.author)
             )}>
             {video?.author ?? ''}

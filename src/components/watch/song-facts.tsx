@@ -15,18 +15,22 @@ const ADDED = new Intl.DateTimeFormat('en-GB', {
 // Under the song's title and channel, as YouTube's description box without the description: how often it was
 // played, when it came to Synbox, and the way to the video on YouTube
 export const SongFacts = ({ videoId }: { videoId: string }) => {
-  const { data: stats } = useSongStats(videoId)
+  const { data: stats, isPending } = useSongStats(videoId)
   const { data: info } = useGetSongInfoBySongId(videoId)
   const clock = useAtomValue(stageClockAtom)
   const addedAt = info?.addedAt === undefined ? null : new Date(info.addedAt)
+  const added =
+    addedAt !== null && !Number.isNaN(addedAt.getTime())
+      ? `Added ${ADDED.format(addedAt)}`
+      : null
   return (
     <div className='flex min-h-14 items-center justify-between gap-3 rounded-xl bg-card py-2 pr-2 pl-4'>
-      {/* A blank until the count arrives, so the line never jumps */}
+      {/* A blank until the count settles, so the line never jumps; without a count, the date alone */}
       <p className='min-w-0 truncate text-sm font-semibold text-foreground tabular-nums'>
-        {stats ? listensText(stats.listens) : '\u00A0'}
-        {addedAt !== null && !Number.isNaN(addedAt.getTime()) && (
+        {isPending ? '\u00A0' : stats && listensText(stats.listens)}
+        {!isPending && added !== null && (
           <span className='font-normal text-muted-foreground'>
-            {' · '}Added {ADDED.format(addedAt)}
+            {stats ? ` · ${added}` : added}
           </span>
         )}
       </p>
