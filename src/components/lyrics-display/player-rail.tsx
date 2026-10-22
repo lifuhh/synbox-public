@@ -173,6 +173,7 @@ const PlayerRail = ({ inline = false }: { inline?: boolean }) => {
 
   const currentVideo = useAtomValue(currentVideoAtom)
   const [saving, setSaving] = useState(false)
+  const saveButton = useRef<HTMLButtonElement>(null)
   const addFavorite = useSetAtom(addFavoriteAtom)
   const removeFavorite = useSetAtom(removeFavoriteAtom)
   const isFavorite = useAtomValue(isFavoriteAtom)
@@ -368,6 +369,7 @@ const PlayerRail = ({ inline = false }: { inline?: boolean }) => {
               </RailTooltip>
               <RailTooltip label='Save to Playlist'>
                 <RailButton
+                  ref={saveButton}
                   label='Save to Playlist'
                   disabled={!currentVideo}
                   onClick={() => {
@@ -405,6 +407,7 @@ const PlayerRail = ({ inline = false }: { inline?: boolean }) => {
           song={currentVideo}
           open={saving}
           onOpenChange={setSaving}
+          returnFocusRef={saveButton}
         />
       )}
     </TooltipProvider>

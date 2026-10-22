@@ -1,4 +1,5 @@
 import { CheckIcon, ListPlusIcon, PlusIcon } from 'lucide-react'
+import type { RefObject } from 'react'
 import { useState } from 'react'
 
 import { Button } from '@/components/ui/button'
@@ -18,10 +19,13 @@ export const SaveToPlaylist = ({
   song,
   open,
   onOpenChange,
+  returnFocusRef,
 }: {
   song: ListSong
   open: boolean
   onOpenChange: (open: boolean) => void
+  // What opened it (a menu's trigger, the rail's button), which gets the focus back on close
+  returnFocusRef?: RefObject<HTMLElement | null>
 }) => {
   const playlists = usePlaylists()
   const { addToPlaylist, createPlaylist } = useListening()
@@ -35,7 +39,15 @@ export const SaveToPlaylist = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className='max-w-sm'>
+      <DialogContent
+        className='max-w-sm'
+        onCloseAutoFocus={(event) => {
+          const target = returnFocusRef?.current
+          if (target) {
+            event.preventDefault()
+            target.focus()
+          }
+        }}>
         <DialogHeader>
           <DialogTitle>Save to Playlist</DialogTitle>
           <DialogDescription>
@@ -52,12 +64,15 @@ export const SaveToPlaylist = ({
                 <li key={list.id}>
                   <button
                     type='button'
-                    disabled={saved}
+                    aria-disabled={saved}
                     onClick={() => {
+                      if (saved) {
+                        return
+                      }
                       addToPlaylist(list.id, song)
                       onOpenChange(false)
                     }}
-                    className='flex min-h-11 w-full items-center gap-3 rounded-lg px-2 text-start transition-colors hover:bg-accent disabled:cursor-default disabled:hover:bg-transparent'>
+                    className='flex min-h-11 w-full items-center gap-3 rounded-lg px-2 text-start transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden aria-disabled:cursor-default aria-disabled:hover:bg-transparent'>
                     <span className='grid size-5 shrink-0 place-items-center text-muted-foreground'>
                       {saved ? (
                         <CheckIcon className='size-5 text-primary-text' />
@@ -65,9 +80,13 @@ export const SaveToPlaylist = ({
                         <ListPlusIcon className='size-5' />
                       )}
                     </span>
-                    <span className='min-w-0 flex-1 truncate'>{list.name}</span>
+                    <span className='min-w-0 flex-1 truncate'>
+                      {list.name}
+                      {saved && <span className='sr-only'>, Saved</span>}
+                    </span>
                     <span className='text-sm text-muted-foreground tabular-nums'>
                       {list.songs.length}
+                      <span className='sr-only'> songs</span>
                     </span>
                   </button>
                 </li>

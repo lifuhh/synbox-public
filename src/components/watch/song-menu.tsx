@@ -4,7 +4,7 @@ import {
   ListPlusIcon,
   ListStartIcon,
 } from 'lucide-react'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
 import {
@@ -22,11 +22,13 @@ import { SaveToPlaylist } from './save-to-playlist'
 export const SongMenu = ({ song }: { song: ListSong }) => {
   const { addToQueue, playNext } = useListening()
   const [saving, setSaving] = useState(false)
+  const trigger = useRef<HTMLButtonElement>(null)
   return (
     <>
       <DropdownMenu modal={false}>
         <DropdownMenuTrigger asChild>
           <Button
+            ref={trigger}
             variant='row-icon'
             size='icon'
             aria-label={`More Actions for ${song.title}`}>
@@ -57,7 +59,12 @@ export const SongMenu = ({ song }: { song: ListSong }) => {
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-      <SaveToPlaylist song={song} open={saving} onOpenChange={setSaving} />
+      <SaveToPlaylist
+        song={song}
+        open={saving}
+        onOpenChange={setSaving}
+        returnFocusRef={trigger}
+      />
     </>
   )
 }

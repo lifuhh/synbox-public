@@ -68,9 +68,20 @@ const NarrowBelow = ({
             role='tab'
             id={`watch-tab-${id}`}
             aria-selected={tab === id}
-            aria-controls={`watch-panel-${id}`}
+            aria-controls={tab === id ? `watch-panel-${id}` : undefined}
+            tabIndex={tab === id ? 0 : -1}
             onClick={() => {
               setTab(id)
+            }}
+            // Left and Right move between the tabs, as in any tab list
+            onKeyDown={(event) => {
+              if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') {
+                return
+              }
+              event.preventDefault()
+              const next = id === 'lyrics' ? 'next' : 'lyrics'
+              setTab(next)
+              document.querySelector<HTMLElement>(`#watch-tab-${next}`)?.focus()
             }}
             className={cn(
               'h-9 rounded-full text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden',

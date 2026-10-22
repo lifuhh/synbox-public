@@ -2,15 +2,19 @@ import { cn } from '@/utils/cn'
 
 // An on/off control: the thumb's side and the track's fill both show the state, not the colour alone
 export const Switch = ({
+  id,
   checked,
   onCheckedChange,
   label,
 }: {
+  id?: string
   checked: boolean
   onCheckedChange: (checked: boolean) => void
-  label: string
+  // Its name when no <label> names it
+  label?: string
 }) => (
   <button
+    id={id}
     type='button'
     role='switch'
     aria-checked={checked}

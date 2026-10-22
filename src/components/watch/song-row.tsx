@@ -34,7 +34,7 @@ export const SongRow = ({
 }) => {
   const body = (
     <>
-      <span className='relative aspect-video w-24 shrink-0 overflow-hidden rounded-sm bg-thumbnail-placeholder'>
+      <span className='relative aspect-video w-20 shrink-0 overflow-hidden rounded-sm bg-thumbnail-placeholder min-[360px]:w-24'>
         <img
           src={song.thumbnailUrl}
           alt=''

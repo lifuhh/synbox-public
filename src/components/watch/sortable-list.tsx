@@ -63,10 +63,27 @@ export const SortableList = <T,>({
   keyOf: (item: T) => string
   labelOf: (item: T) => string
   onMove: (from: number, to: number) => void
-  renderItem: (item: T, grip: ReactNode, index: number) => ReactNode
+  // `moveTo` moves this row to an index and says so, for a menu's Move Up and Move Down
+  renderItem: (
+    item: T,
+    grip: ReactNode,
+    index: number,
+    moveTo: (to: number) => void
+  ) => ReactNode
   className?: string
 }) => {
   const [drag, setDrag] = useState<Drag | null>(null)
+  // Read out after every move, by drag, arrow key or menu
+  const [announcement, setAnnouncement] = useState('')
+  const moveItem = (from: number, to: number) => {
+    if (to < 0 || to >= items.length || to === from) {
+      return
+    }
+    onMove(from, to)
+    setAnnouncement(
+      `Moved ${labelOf(items[from])} to ${to + 1} of ${items.length}`
+    )
+  }
   const rowRefs = useRef(new Map<string, HTMLElement>())
   const listRef = useRef<HTMLUListElement>(null)
   // After a keyboard move the grip of the moved row keeps the focus
@@ -106,8 +123,8 @@ export const SortableList = <T,>({
     })
   }
   const drop = () => {
-    if (drag !== null && drag.to !== drag.from) {
-      onMove(drag.from, drag.to)
+    if (drag !== null) {
+      moveItem(drag.from, drag.to)
     }
     setDrag(null)
   }
@@ -123,55 +140,60 @@ export const SortableList = <T,>({
       if (to < 0 || to >= items.length) {
         return
       }
-      onMove(index, to)
+      moveItem(index, to)
       focusKey.current = key
     }
 
   return (
-    <ul ref={listRef} className={cn('relative flex flex-col', className)}>
-      {items.map((item, index) => {
-        const key = keyOf(item)
-        const vars: CssVars = { '--drag-y': `${shift(drag, index)}px` }
-        const dragging = drag?.from === index
-        const grip = (
-          <button
-            type='button'
-            data-grip
-            aria-label={`Move ${labelOf(item)}`}
-            aria-keyshortcuts='ArrowUp ArrowDown'
-            onPointerDown={start(index)}
-            onPointerMove={drag === null ? undefined : moveTo}
-            onPointerUp={drop}
-            onPointerCancel={() => {
-              setDrag(null)
-            }}
-            onKeyDown={keyMove(index, key)}
-            className='grid h-11 w-8 shrink-0 cursor-grab touch-none place-items-center rounded-lg text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden active:cursor-grabbing'>
-            <GripVerticalIcon className='size-4' aria-hidden />
-          </button>
-        )
-        return (
-          <li
-            key={key}
-            ref={(element) => {
-              if (element === null) {
-                rowRefs.current.delete(key)
-              } else {
-                rowRefs.current.set(key, element)
-              }
-            }}
-            style={vars}
-            className={cn(
-              'translate-y-(--drag-y) list-none',
-              dragging
-                ? 'relative z-10 rounded-xl bg-popover shadow-lg'
-                : drag !== null &&
-                    'motion-safe:transition-transform motion-safe:duration-150 motion-safe:ease-out'
-            )}>
-            {renderItem(item, grip, index)}
-          </li>
-        )
-      })}
-    </ul>
+    <>
+      <output className='sr-only'>{announcement}</output>
+      <ul ref={listRef} className={cn('relative flex flex-col', className)}>
+        {items.map((item, index) => {
+          const key = keyOf(item)
+          const vars: CssVars = { '--drag-y': `${shift(drag, index)}px` }
+          const dragging = drag?.from === index
+          const grip = (
+            <button
+              type='button'
+              data-grip
+              aria-label={`Move ${labelOf(item)}`}
+              aria-keyshortcuts='ArrowUp ArrowDown'
+              onPointerDown={start(index)}
+              onPointerMove={drag === null ? undefined : moveTo}
+              onPointerUp={drop}
+              onPointerCancel={() => {
+                setDrag(null)
+              }}
+              onKeyDown={keyMove(index, key)}
+              className='grid h-11 w-8 shrink-0 cursor-grab touch-none place-items-center rounded-lg text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden active:cursor-grabbing'>
+              <GripVerticalIcon className='size-4' aria-hidden />
+            </button>
+          )
+          return (
+            <li
+              key={key}
+              ref={(element) => {
+                if (element === null) {
+                  rowRefs.current.delete(key)
+                } else {
+                  rowRefs.current.set(key, element)
+                }
+              }}
+              style={vars}
+              className={cn(
+                'translate-y-(--drag-y) list-none',
+                dragging
+                  ? 'relative z-10 rounded-xl bg-popover shadow-lg'
+                  : drag !== null &&
+                      'motion-safe:transition-transform motion-safe:duration-150 motion-safe:ease-out'
+              )}>
+              {renderItem(item, grip, index, (to) => {
+                moveItem(index, to)
+              })}
+            </li>
+          )
+        })}
+      </ul>
+    </>
   )
 }

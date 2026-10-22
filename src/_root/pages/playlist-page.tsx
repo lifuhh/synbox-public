@@ -1,4 +1,5 @@
 import {
+  ChevronLeftIcon,
   EllipsisIcon,
   ListEndIcon,
   ListStartIcon,
@@ -25,6 +26,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Input, InputField } from '@/components/ui/input'
+import { MoveItems } from '@/components/watch/move-items'
 import { PlaylistCover } from '@/components/watch/playlist-cover'
 import { SongRow } from '@/components/watch/song-row'
 import { SortableList } from '@/components/watch/sortable-list'
@@ -35,9 +37,13 @@ import { useListening, usePlaylists } from '@/lib/listening/store'
 const PlaylistSongMenu = ({
   playlist,
   song,
+  index,
+  moveTo,
 }: {
   playlist: Playlist
   song: ListSong
+  index: number
+  moveTo: (to: number) => void
 }) => {
   const { addToQueue, playNext, removeFromPlaylist } = useListening()
   return (
@@ -65,6 +71,12 @@ const PlaylistSongMenu = ({
           <ListEndIcon className='mr-2 size-5 shrink-0' />
           Add to Queue
         </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <MoveItems
+          index={index}
+          count={playlist.songs.length}
+          moveTo={moveTo}
+        />
         <DropdownMenuSeparator />
         <DropdownMenuItem
           variant='destructive'
@@ -99,6 +111,7 @@ const RenameDialog = ({
         <form
           onSubmit={(event) => {
             event.preventDefault()
+            // An empty name keeps the old one
             renamePlaylist(playlist.id, name)
             onOpenChange(false)
           }}
@@ -113,9 +126,7 @@ const RenameDialog = ({
               variant='bare'
             />
           </InputField>
-          <Button type='submit' disabled={name.trim() === ''}>
-            Save
-          </Button>
+          <Button type='submit'>Save</Button>
         </form>
       </DialogContent>
     </Dialog>
@@ -150,6 +161,12 @@ const PlaylistPage = () => {
           </div>
         ) : (
           <>
+            <Link
+              to='/playlists'
+              className='-mb-3 flex w-fit items-center gap-1 rounded-md text-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden'>
+              <ChevronLeftIcon className='size-4' aria-hidden />
+              All Playlists
+            </Link>
             <header className='flex items-end gap-4'>
               <PlaylistCover
                 playlist={playlist}
@@ -220,7 +237,7 @@ const PlaylistPage = () => {
                 onMove={(from, to) => {
                   moveInPlaylist(playlist.id, from, to)
                 }}
-                renderItem={(song, grip, index) => (
+                renderItem={(song, grip, index, moveTo) => (
                   <SongRow
                     as='div'
                     song={song}
@@ -229,7 +246,12 @@ const PlaylistPage = () => {
                       queuePlaylistFrom(playlist.id, index)
                     }}
                     actions={
-                      <PlaylistSongMenu playlist={playlist} song={song} />
+                      <PlaylistSongMenu
+                        playlist={playlist}
+                        song={song}
+                        index={index}
+                        moveTo={moveTo}
+                      />
                     }
                   />
                 )}

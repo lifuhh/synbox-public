@@ -15,11 +15,23 @@ import { resumeSongAtom, songPath } from '@/lib/listening/store'
 import { isInstalledPhone } from '@/lib/pwa'
 import { cn } from '@/utils/cn'
 
-const TABS: { to: string; label: string; icon: LucideIcon; end?: boolean }[] = [
+// `also`: other pages the tab is the home of (playlists open from You)
+const TABS: {
+  to: string
+  label: string
+  icon: LucideIcon
+  end?: boolean
+  also?: RegExp
+}[] = [
   { end: true, icon: HouseIcon, label: 'Home', to: '/' },
   { icon: SearchIcon, label: 'Search', to: '/search' },
   { end: true, icon: BookOpenTextIcon, label: 'Lyrics', to: '/lyrics' },
-  { icon: CircleUserRoundIcon, label: 'You', to: '/you' },
+  {
+    also: /^\/playlists/u,
+    icon: CircleUserRoundIcon,
+    label: 'You',
+    to: '/you',
+  },
 ]
 
 // The player, a song's reader and the admin pages own the whole screen; every other page gets the tabs
@@ -56,7 +68,7 @@ const ResumeBar = () => {
       </Link>
       <button
         type='button'
-        aria-label='Close'
+        aria-label='Close Resume Bar'
         onClick={() => {
           setSong(null)
         }}
@@ -94,15 +106,16 @@ const TabBar = () => {
       <nav
         aria-label='App'
         className='grid h-16 grid-cols-4 gap-1 rounded-full bg-popover/85 p-1 shadow-lg ring-1 ring-white/10 backdrop-blur-xl'>
-        {TABS.map(({ to, label, icon: Icon, end }) => (
+        {TABS.map(({ to, label, icon: Icon, end, also }) => (
           <NavLink
             key={to}
             to={to}
             end={end}
+            aria-current={also?.test(pathname) === true ? 'page' : undefined}
             className={({ isActive }) =>
               cn(
                 'flex flex-col items-center justify-center gap-0.5 rounded-full text-xs font-medium transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden',
-                isActive
+                isActive || also?.test(pathname) === true
                   ? 'bg-primary-subtle text-primary-text'
                   : 'text-muted-foreground'
               )

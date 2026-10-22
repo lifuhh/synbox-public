@@ -46,15 +46,46 @@ export const useListening = () => {
     setQueue((queue) => addSongToQueue(queue, song))
     toast({ description: song.title, duration: 2500, title: 'Added to Queue' })
   }
+  // A short toast with Undo, for changes that drop songs
+  const undoable = (title: string, description: string, undo: () => void) => {
+    toast({
+      action: (
+        <ToastAction altText={`Undo: ${title}`} onClick={undo}>
+          Undo
+        </ToastAction>
+      ),
+      description,
+      duration: 5000,
+      title,
+    })
+  }
+
   const removeFromQueue = (videoId: string) => {
-    setQueue((queue) => removeSong(queue, videoId))
+    const before = store.get(queueAtom)
+    const song = before.find((queued) => queued.videoId === videoId)
+    setQueue(removeSong(before, videoId))
+    if (song !== undefined) {
+      undoable('Removed from Queue', song.title, () => {
+        setQueue(before)
+      })
+    }
   }
   const moveInQueue = (from: number, to: number) => {
     setQueue((queue) => move(queue, from, to))
   }
   const clearQueue = () => {
+    const before = store.get(queueAtom)
+    const source = store.get(queueSourceAtom)
     setQueue([])
     setSource(null)
+    undoable(
+      'Queue Cleared',
+      before.length === 1 ? '1 song' : `${before.length} songs`,
+      () => {
+        setQueue(before)
+        setSource(source)
+      }
+    )
   }
 
   const updatePlaylist = (id: string, change: (list: Playlist) => Playlist) => {
@@ -80,11 +111,19 @@ export const useListening = () => {
     })
   }
   const removeFromPlaylist = (id: string, videoId: string) => {
-    updatePlaylist(id, (list) => ({
-      ...list,
-      songs: removeSong(list.songs, videoId),
+    const list = store.get(playlistsAtom).find((saved) => saved.id === id)
+    const song = list?.songs.find((saved) => saved.videoId === videoId)
+    if (list === undefined || song === undefined) {
+      return
+    }
+    updatePlaylist(id, (saved) => ({
+      ...saved,
+      songs: removeSong(saved.songs, videoId),
       updatedAt: Date.now(),
     }))
+    undoable(`Removed from ${list.name}`, song.title, () => {
+      updatePlaylist(id, (saved) => ({ ...saved, songs: list.songs }))
+    })
   }
   const moveInPlaylist = (id: string, from: number, to: number) => {
     updatePlaylist(id, (list) => ({
