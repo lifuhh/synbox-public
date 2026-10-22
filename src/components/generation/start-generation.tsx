@@ -19,7 +19,6 @@ export const startFromButton = async (
   const timer = announce
     ? setTimeout(() => {
         notice = toast({
-          description: 'Getting the song ready',
           duration: Infinity,
           icon: (
             <LoaderCircleIcon
@@ -27,7 +26,8 @@ export const startFromButton = async (
               className='size-5 shrink-0 animate-spin text-primary-text motion-reduce:animate-none'
             />
           ),
-          title: 'Starting Lyrics',
+          // What is happening: the server is asked whether it can take the song
+          title: 'Checking Song',
           variant: 'progress',
         })
       }, STARTING_NOTICE_DELAY_MS)
