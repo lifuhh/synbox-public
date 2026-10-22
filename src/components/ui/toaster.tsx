@@ -20,18 +20,23 @@ export const Toaster = () => {
 
   return (
     <ToastProvider duration={TOAST_REMOVE_DELAY}>
-      {toasts.map(({ id, title, description, action, duration, ...props }) => (
-        <Toast key={id} duration={duration} {...props}>
-          <div className='grid gap-1'>
-            {hasContent(title) && <ToastTitle>{title}</ToastTitle>}
-            {hasContent(description) && (
-              <ToastDescription>{description}</ToastDescription>
-            )}
-          </div>
-          {action}
-          <ToastClose />
-        </Toast>
-      ))}
+      {toasts.map(
+        ({ id, title, description, icon, action, duration, ...props }) => (
+          <Toast key={id} duration={duration} {...props}>
+            <div className='flex min-w-0 items-center gap-3'>
+              {icon}
+              <div className='grid gap-0.5'>
+                {hasContent(title) && <ToastTitle>{title}</ToastTitle>}
+                {hasContent(description) && (
+                  <ToastDescription>{description}</ToastDescription>
+                )}
+              </div>
+            </div>
+            {action}
+            <ToastClose />
+          </Toast>
+        )
+      )}
       <ToastViewport />
     </ToastProvider>
   )

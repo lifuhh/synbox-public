@@ -10,6 +10,8 @@ type ToasterToast = Omit<ToastProps, 'title'> & {
   id: string
   title?: React.ReactNode
   description?: React.ReactNode
+  // Before the text, e.g. a spinner on a notice that waits
+  icon?: React.ReactNode
   action?: ToastActionElement
 }
 

@@ -1,3 +1,5 @@
+import { LoaderCircleIcon } from 'lucide-react'
+
 import { ToastAction } from '@/components/ui/toast'
 import { toast } from '@/components/ui/use-toast'
 import { signInWithGoogle, SIGN_IN_CODES } from '@/lib/auth'
@@ -16,7 +18,18 @@ export const startFromButton = async (
   let notice: ReturnType<typeof toast> | undefined
   const timer = announce
     ? setTimeout(() => {
-        notice = toast({ duration: Infinity, title: 'Starting…' })
+        notice = toast({
+          description: 'Getting the song ready',
+          duration: Infinity,
+          icon: (
+            <LoaderCircleIcon
+              aria-hidden
+              className='size-5 shrink-0 animate-spin text-primary-text motion-reduce:animate-none'
+            />
+          ),
+          title: 'Starting Lyrics',
+          variant: 'progress',
+        })
       }, STARTING_NOTICE_DELAY_MS)
     : undefined
   const refusal = await requestGeneration(request)
@@ -38,6 +51,7 @@ export const startFromButton = async (
     description: refusal.message,
     // Long enough to read the reason, unlike the app's 2-second confirmations
     duration: 6000,
+    icon: undefined,
     title: "Can't Generate This Song",
     variant: 'destructive' as const,
   }
