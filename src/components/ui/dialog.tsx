@@ -59,7 +59,7 @@ const DialogContentRender: React.ForwardRefRenderFunction<
       )}
       {...props}>
       {children}
-      <DialogPrimitive.Close className='absolute top-4 right-4 rounded-xs opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground touch:top-2 touch:right-2 touch:p-2.5'>
+      <DialogPrimitive.Close className='absolute top-3 right-3 rounded-xs p-1 opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground touch:top-2 touch:right-2 touch:p-2.5'>
         <X className='h-4 w-4' />
         <span className='sr-only'>Close</span>
       </DialogPrimitive.Close>

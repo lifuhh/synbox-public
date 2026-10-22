@@ -268,13 +268,17 @@
   /* The player's lyric lines, times the viewer's scale: a share of the stage's width, but never more than a
      share of its height, so a phone on its side (wide, very short) is not sized like a monitor. A phone held
      upright gets the floor: 17px, 25px on its side, 43px on a 1440px-wide desktop. Sizes step down as on the
-     reader: the romaji, read with the Japanese, 0.8 of it (floor 14px); the translation 0.7 (floor 12px) */
+     reader: the romaji, read with the Japanese, 0.8 of it (floor 14px); the translation 0.7 (floor 12px). The
+     viewer's scale applies after those floors, so the romaji and the translation also keep 12px after it: at
+     1024px wide the default desktop 85% had put the translation at 10px */
   --text-lyric: calc(max(min(3cqw, 6.4cqh), 1.0625rem) * var(--lyric-scale));
-  --text-lyric-romaji: calc(
-    max(min(2.4cqw, 5.12cqh), 0.875rem) * var(--lyric-scale)
+  --text-lyric-romaji: max(
+    calc(max(min(2.4cqw, 5.12cqh), 0.875rem) * var(--lyric-scale)),
+    0.75rem
   );
-  --text-lyric-secondary: calc(
-    max(min(2.1cqw, 4.48cqh), 0.75rem) * var(--lyric-scale)
+  --text-lyric-secondary: max(
+    calc(max(min(2.1cqw, 4.48cqh), 0.75rem) * var(--lyric-scale)),
+    0.75rem
   );
   /* Two lines, side by side: the Japanese is the one-line base times the two-line size (its own scale, which
      keeps it smaller than one centred line). The romaji runs longer than its Japanese, so it is well under it
@@ -283,12 +287,16 @@
   --text-lyric-stagger: calc(
     max(min(3cqw, 6.4cqh), 1.0625rem) * var(--lyric-scale) * var(--row-fit, 1)
   );
-  --text-lyric-stagger-romaji: calc(
-    max(min(3cqw, 6.4cqh), 1.0625rem) * var(--lyric-scale) * var(--row-fit, 1) *
-      12 / 17
+  --text-lyric-stagger-romaji: max(
+    calc(
+      max(min(3cqw, 6.4cqh), 1.0625rem) * var(--lyric-scale) *
+        var(--row-fit, 1) * 12 / 17
+    ),
+    0.75rem
   );
-  --text-lyric-stagger-translation: calc(
-    max(min(3cqw, 6.4cqh), 1.0625rem) * var(--lyric-scale) * 14 / 17
+  --text-lyric-stagger-translation: max(
+    calc(max(min(3cqw, 6.4cqh), 1.0625rem) * var(--lyric-scale) * 14 / 17),
+    0.75rem
   );
 
   /* The offline reader: room under its bar and over its text style row, and type times the reader's scale */
