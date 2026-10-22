@@ -37,12 +37,16 @@ const MASKABLE_LOGO = 0.94
 const SAFE_RADIUS = 0.4
 const SAFE_GAP = 0.02
 const MIN_EDGE_GAP = 0.08
+// The tab icon has no square behind it, so the lockup grows until SYNBOX spans 98% of the box and the bars' ends
+// run past its edges
+const TAB_LOGO = 1.42
 
 const BACKGROUND =
   'radial-gradient(circle at 50% 50%, #3b0c26 0%, #22091a 45%, #150406 100%)'
 
 // Every icon is the same picture, the bars with SYNBOX and カラオケ over them, drawn at its own size
 interface Icon {
+  background: boolean
   logo: number
   name: string
   safeZone: boolean
@@ -50,15 +54,24 @@ interface Icon {
 }
 
 const square = (name: string, size: number, logo = REGULAR_LOGO): Icon => ({
+  background: true,
   logo,
   name,
   safeZone: logo === MASKABLE_LOGO,
   size,
 })
 
+const tab = (name: string, size: number): Icon => ({
+  background: false,
+  logo: TAB_LOGO,
+  name,
+  safeZone: false,
+  size,
+})
+
 const ICONS: Icon[] = [
-  square('favicon-16x16', 16),
-  square('favicon-32x32', 32),
+  tab('favicon-16x16', 16),
+  tab('favicon-32x32', 32),
   square('pwa-64x64', 64),
   square('pwa-192x192', 192),
   square('pwa-512x512', 512),
@@ -109,7 +122,7 @@ const layout = (logo: number, scale: number) => {
 
 const check = (icon: Icon, shape: ReturnType<typeof layout>) => {
   const edgeGap = 0.5 - Math.max(...shape.corners.map(({ x }) => Math.abs(x)))
-  if (edgeGap < MIN_EDGE_GAP) {
+  if (edgeGap < (icon.background ? MIN_EDGE_GAP : 0)) {
     throw new Error(
       `${icon.name}: the wordmark comes within ${edgeGap.toFixed(3)} of the edge`
     )
@@ -160,7 +173,7 @@ const render = (
   writeFileSync(
     page,
     // Headless Chrome lays out wider than the screenshot, so the square is a box of its own rather than the page
-    `<!doctype html><body style="margin:0"><div style="position:relative;overflow:hidden;width:${size}px;height:${size}px;background:${BACKGROUND}">${place('bars.svg', shape.bars)}${place('wordmark.svg', shape.wordmark)}</div></body>`
+    `<!doctype html><body style="margin:0"><div style="position:relative;overflow:hidden;width:${size}px;height:${size}px${icon.background ? `;background:${BACKGROUND}` : ''}">${place('bars.svg', shape.bars)}${place('wordmark.svg', shape.wordmark)}</div></body>`
   )
   execFileSync(
     chrome,
@@ -168,6 +181,7 @@ const render = (
       '--headless',
       '--disable-gpu',
       '--hide-scrollbars',
+      ...(icon.background ? [] : ['--default-background-color=00000000']),
       '--force-device-scale-factor=1',
       `--window-size=${size},${size}`,
       `--screenshot=${out}`,
