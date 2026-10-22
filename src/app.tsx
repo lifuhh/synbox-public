@@ -6,6 +6,7 @@ import { Toaster } from '@/components/ui/toaster'
 import useKeyboardNavigation from '@/hooks/use-keyboard-navigation'
 import { LibrarySync } from '@/lib/library/sync'
 import { useOfflineSync } from '@/lib/offline/sync'
+import { PrefsSync } from '@/lib/prefs/sync'
 
 import LandingPage from './_root/pages/landing-page'
 import RootLayout from './_root/root-layout'
@@ -171,6 +172,7 @@ const App = () => {
       </Routes>
       <AppNotices />
       <LibrarySync />
+      <PrefsSync />
       <Toaster />
     </main>
   )

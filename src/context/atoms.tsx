@@ -20,14 +20,37 @@ import {
   writeSongStyle,
 } from '@/lib/lyrics-style'
 import type { LyricsBackdrop, LyricsThemeId } from '@/lib/lyrics-themes'
+import { syncedStorage } from '@/lib/prefs/storage'
 import type { CurrentPlayingInfo } from '@/types'
 
-export const lyricsVisibilityAtom = atom(true)
-export const romajiVisibilityAtom = atom(true)
-export const translationVisibilityAtom = atom(true)
-export const translationIsEnglishAtom = atom(true)
+// What the lyrics show, kept across visits and synced to the account like the style (src/lib/prefs)
+const shownOptions = { getOnInit: true }
+export const lyricsVisibilityAtom = atomWithStorage(
+  'lyricsShowLyrics',
+  true,
+  syncedStorage(),
+  shownOptions
+)
+export const romajiVisibilityAtom = atomWithStorage(
+  'lyricsShowRomaji',
+  true,
+  syncedStorage(),
+  shownOptions
+)
+export const translationVisibilityAtom = atomWithStorage(
+  'lyricsShowTranslation',
+  true,
+  syncedStorage(),
+  shownOptions
+)
+export const translationIsEnglishAtom = atomWithStorage(
+  'lyricsTranslationEnglish',
+  true,
+  syncedStorage(),
+  shownOptions
+)
 
-// The lyrics style has three layers, each on this device only:
+// The lyrics style has three layers, kept on the device and synced to a signed-in account (src/lib/prefs):
 // - My Default: what every song looks like until it is given its own style
 // - This Song: the fields the viewer changed for one song (`lyricsStyle:<videoId>`), which win over the default
 // - Shared: a style from a shared link, shown over the viewer's own for one visit
@@ -43,55 +66,55 @@ const defaultLyricsStyleAtoms: {
   anchor: atomWithStorage(
     'lyricsAnchor',
     DEFAULT_LYRICS_STYLE.anchor,
-    undefined,
+    syncedStorage(),
     initOptions
   ),
   anchorPortrait: atomWithStorage(
     'lyricsAnchorPortrait',
     DEFAULT_LYRICS_STYLE.anchorPortrait,
-    undefined,
+    syncedStorage(),
     initOptions
   ),
   backdrop: atomWithStorage<LyricsBackdrop>(
     'lyricsBackdrop',
     DEFAULT_LYRICS_STYLE.backdrop,
-    undefined,
+    syncedStorage(),
     initOptions
   ),
   customHue: atomWithStorage(
     'lyricsCustomHue',
     DEFAULT_LYRICS_STYLE.customHue,
-    undefined,
+    syncedStorage(),
     initOptions
   ),
   fontSize: atomWithStorage(
     'fontSizeMultiplier',
     DEFAULT_LYRICS_STYLE.fontSize,
-    undefined,
+    syncedStorage(),
     initOptions
   ),
   screenSizes: atomWithStorage<ScreenSizes>(
     'lyricsScreenSizes',
     DEFAULT_LYRICS_STYLE.screenSizes,
-    undefined,
+    syncedStorage(),
     initOptions
   ),
   stagger: atomWithStorage(
     'lyricsStagger',
     DEFAULT_LYRICS_STYLE.stagger,
-    undefined,
+    syncedStorage(),
     initOptions
   ),
   themeId: atomWithStorage<LyricsThemeId>(
     'lyricsTheme',
     DEFAULT_LYRICS_STYLE.themeId,
-    undefined,
+    syncedStorage(),
     initOptions
   ),
   twoLines: atomWithStorage(
     'lyricsTwoLines',
     DEFAULT_LYRICS_STYLE.twoLines,
-    undefined,
+    syncedStorage(),
     initOptions
   ),
 }
@@ -322,6 +345,18 @@ export const applySongLyricsStyleToAllAtom = atom(null, (get, set) => {
 
 // My Styles
 const templatesSavedAtom = atom<LyricsTemplate[] | null>(null)
+
+// The account's newer value for a style key has just been written to the device (src/lib/prefs/sync.tsx):
+// what is read once rather than through an atom over the key is read again
+export const reloadStoredStyleAtom = atom(null, (get, set, key: string) => {
+  if (key === 'lyricsTemplates') {
+    set(templatesSavedAtom, null)
+  }
+  const song = get(songLyricsStyleAtom)
+  if (song !== null && key === `lyricsStyle:${song.videoId}`) {
+    set(lyricsStyleSongAtom, song.videoId)
+  }
+})
 export const lyricsTemplatesAtom = atom(
   (get) => get(templatesSavedAtom) ?? readLyricsTemplates()
 )

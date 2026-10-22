@@ -3,6 +3,8 @@ import { atom } from 'jotai'
 import { atomWithStorage } from 'jotai/utils'
 import { z } from 'zod'
 
+import { syncedStorage } from '@/lib/prefs/storage'
+
 // How the offline reader looks, kept on this device. Separate from the player's lyrics style: a page of
 // text wants different sizes and colours from lyrics over a video
 export const READER_SIZES = [0.85, 1, 1.15, 1.3, 1.5, 1.75] as const
@@ -38,10 +40,11 @@ export type ReaderPrefs = z.infer<typeof readerPrefsSchema>
 export type ReaderTheme = ReaderPrefs['theme']
 export type ReaderLayer = 'japanese' | 'romaji' | 'translation'
 
+// Synced to a signed-in account like the lyrics style (src/lib/prefs)
 const storedReaderPrefsAtom = atomWithStorage<unknown>(
   'offlineReader',
   {},
-  undefined,
+  syncedStorage(),
   { getOnInit: true }
 )
 

@@ -4,6 +4,7 @@ import type { Context } from 'hono'
 import { createAuth } from './auth'
 import type { Env } from './auth'
 import { applyOps, parseOps, readLibrary } from './library'
+import { applyPrefOps, parsePrefOps, readPrefs } from './prefs'
 import {
   checkGeneration,
   expireStalled,
@@ -109,6 +110,36 @@ app.post('/api/me/library', async (c) => {
     return c.json({ code: 'bad_request' }, 400)
   }
   await applyOps(c.env.DB, session.user.id, ops)
+  return c.body(null, 204)
+})
+
+// The signed-in user's synced settings, so a new device or a reinstalled app looks the way they left it
+app.get('/api/me/prefs', async (c) => {
+  const session = await createAuth(c.env).api.getSession({
+    headers: c.req.raw.headers,
+  })
+  if (!session) {
+    return c.json({ code: 'unauthorized' }, 401)
+  }
+  return c.json({ prefs: await readPrefs(c.env.DB, session.user.id) })
+})
+
+// Settings changed on a device, oldest first; the same ops sent again change nothing
+app.post('/api/me/prefs', async (c) => {
+  const session = await createAuth(c.env).api.getSession({
+    headers: c.req.raw.headers,
+  })
+  if (!session) {
+    return c.json({ code: 'unauthorized' }, 401)
+  }
+  const ops = parsePrefOps(
+    await c.req.json<unknown>().catch(() => null),
+    Date.now()
+  )
+  if (ops === null) {
+    return c.json({ code: 'bad_request' }, 400)
+  }
+  await applyPrefOps(c.env.DB, session.user.id, ops)
   return c.body(null, 204)
 })
 
