@@ -13,8 +13,6 @@ import type { ReactNode } from 'react'
 import { Link } from 'react-router'
 
 import { UserAvatar } from '@/components/shared/user-avatar'
-import { GitHubIcon } from '@/components/svgicons'
-import { REPO_URL } from '@/components/topbar/github-button'
 import { quotaText } from '@/components/topbar/profile-button'
 import { Button } from '@/components/ui/button'
 import { SongRow } from '@/components/watch/song-row'
@@ -197,12 +195,6 @@ const YouPage = () => {
             to='/about'
             icon={<CircleQuestionMarkIcon className='size-5' />}
             label='About Synbox'
-          />
-          <LinkRow
-            to={REPO_URL}
-            external
-            icon={<GitHubIcon className='size-4.5 fill-current' />}
-            label='GitHub'
           />
         </div>
         <p className='px-3 text-xs text-muted-foreground'>

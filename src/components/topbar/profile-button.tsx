@@ -36,9 +36,7 @@ import { QUERY_KEYS } from '@/lib/react-query/query-keys'
 import { newTabHandlers } from '@/lib/selectable-links'
 import { cn } from '@/utils/cn'
 
-import { GitHubIcon } from '../svgicons'
 import { Button } from '../ui/button'
-import { REPO_URL } from './github-button'
 
 // iOS has no install prompt; Safari installs from its Share sheet
 const IosInstallDialog = ({
@@ -183,13 +181,6 @@ const ProfileButtonDropdown = () => {
             </>
           )}
           <DropdownMenuGroup>
-            {/* From sm up the top bar shows GitHub itself */}
-            <DropdownMenuItem asChild className='cursor-pointer sm:hidden'>
-              <a href={REPO_URL} target='_blank' rel='noreferrer'>
-                <GitHubIcon className='mr-2 ml-[3px] h-4 w-4 fill-white' />
-                <span>GitHub</span>
-              </a>
-            </DropdownMenuItem>
             {user?.role === 'admin' && (
               <DropdownMenuItem asChild className='cursor-pointer'>
                 <Link to='/admin'>

@@ -8,7 +8,6 @@ import { useMediaQuery } from '@/hooks/use-media-query'
 import { cn } from '@/utils/cn'
 
 import AppLogo from '../topbar/app-logo'
-import GitHubButton from '../topbar/github-button'
 import LyricsButton from '../topbar/lyrics-button'
 import Notifications from '../topbar/notifications'
 import ProfileButton from '../topbar/profile-button'
@@ -210,14 +209,9 @@ const TopBar = () => {
           <Notifications />
           <LyricsButton />
           <SavedMenu />
-          {!isVideoPlayer && (
-            <>
-              <span className='max-sm:hidden'>
-                <GitHubButton />
-              </span>
-              <ProfileButton />
-            </>
-          )}
+          {/* The owner's portfolio link goes here, with its own icon, once that site is up (the GitHub button
+              sat here until the project went closed source) */}
+          {!isVideoPlayer && <ProfileButton />}
         </div>
       </nav>
     </header>
