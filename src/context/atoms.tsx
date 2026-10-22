@@ -425,11 +425,12 @@ export const playerSurfaceAtom = atom<'stage' | 'watch' | null>(null)
 // Whether the stage is the whole screen right now: browser fullscreen, or iPhone's stand-in for it.
 // PlayerStage owns it
 export const stageFullscreenAtom = atom(false)
-// The playing song's clock for what sits outside the stage (the watch page's lyrics): its time, a seek, and
-// a call on every frame. PlayerStage sets it while it is mounted
+// The playing song's clock for what sits outside the stage (the watch page's lyrics, Report Issue): its time, a
+// seek, a pause, and a call on every frame. PlayerStage sets it while it is mounted
 export interface StageClock {
   getTime: () => number
   seek: (seconds: number) => void
+  pause: () => void
   subscribeFrame: (listener: (time: number) => void) => () => void
 }
 export const stageClockAtom = atom<StageClock | null>(null)

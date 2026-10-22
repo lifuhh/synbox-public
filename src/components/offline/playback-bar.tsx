@@ -1,9 +1,6 @@
 import { PauseIcon, PlayIcon } from 'lucide-react'
 
-const clockText = (seconds: number) => {
-  const whole = Math.max(Math.floor(seconds), 0)
-  return `${Math.floor(whole / 60)}:${String(whole % 60).padStart(2, '0')}`
-}
+import { formatClock } from '@/utils'
 
 // Spotify's lyrics controls: a scrubbable bar with elapsed and remaining time over one large play button
 export const PlaybackBar = ({
@@ -23,7 +20,7 @@ export const PlaybackBar = ({
     <input
       type='range'
       aria-label='Song Position'
-      aria-valuetext={`${clockText(time)} of ${clockText(duration)}`}
+      aria-valuetext={`${formatClock(time)} of ${formatClock(duration)}`}
       min={0}
       max={duration}
       step={0.1}
@@ -34,8 +31,8 @@ export const PlaybackBar = ({
       className='h-6 w-full cursor-pointer accent-(--reader-fg)'
     />
     <div className='flex justify-between text-xs text-(--reader-muted) tabular-nums'>
-      <span>{clockText(time)}</span>
-      <span>-{clockText(duration - time)}</span>
+      <span>{formatClock(time)}</span>
+      <span>-{formatClock(duration - time)}</span>
     </div>
     <button
       type='button'

@@ -101,6 +101,31 @@ export const useAdminGenerations = () =>
         : false,
   })
 
+// A listener's report of a song's lyrics (worker/src/reports.ts)
+const reportSchema = z.object({
+  atSeconds: z.number().nullable(),
+  build: z.string().nullable(),
+  client: z.string().nullable(),
+  createdAt: z.number(),
+  email: z.string().nullable(),
+  // SQLite's boolean
+  guest: z.union([z.number(), z.boolean()]),
+  id: z.string(),
+  message: z.string(),
+  name: z.string().nullable(),
+  version: z.number().nullable(),
+  videoId: z.string(),
+})
+export type AdminReport = z.infer<typeof reportSchema>
+
+export const useAdminReports = () =>
+  useQuery({
+    queryFn: async () =>
+      z.object({ reports: z.array(reportSchema) }).parse(await call('/reports'))
+        .reports,
+    queryKey: [QUERY_KEYS.GET_ADMIN_REPORTS],
+  })
+
 export const useAdminSettings = () =>
   useQuery({
     queryFn: async () => settingsSchema.parse(await call('/settings')),
