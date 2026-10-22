@@ -1,7 +1,8 @@
 import { useAtomValue } from 'jotai'
 import { useMemo } from 'react'
 
-import { currentVideoAtom, historyAtom } from '@/context/atoms'
+import { currentVideoAtom } from '@/context/atoms'
+import { historyAtom } from '@/lib/library/store'
 import { useGallerySongs } from '@/lib/react-query/queries-and-mutations'
 
 import type { ListSong } from './model'
