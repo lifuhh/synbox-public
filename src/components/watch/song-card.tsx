@@ -59,7 +59,7 @@ export const SongCard = ({
         className='min-w-0 flex-1'>
         <p
           className={cn(
-            'line-clamp-2 text-sm leading-5 font-medium text-foreground',
+            'line-clamp-2 text-sm leading-5 font-medium wrap-anywhere text-foreground',
             bracketStart(song.title)
           )}>
           {song.title}

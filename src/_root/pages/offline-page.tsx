@@ -30,7 +30,7 @@ const OfflinePage = () => {
       <title>Lyrics · Synbox</title>
       <header
         ref={header}
-        className='mx-auto w-full max-w-xl px-4 pt-(--topbar-h) pb-1 text-center'>
+        className='mx-auto w-full max-w-xl px-4 pt-page-top pb-1 text-center'>
         <h1 className='text-base font-semibold text-foreground'>Lyrics</h1>
         <SyncStatusLine shelf={shelf} />
       </header>

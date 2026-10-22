@@ -59,7 +59,7 @@ const SongCard = ({ song }: { song: LibraryListSong }) => (
       </span>
       {/* A fixed-height block, so every row is the same height; the channel sits right under one line or two */}
       <span className='mt-3 flex h-18 flex-col gap-1 pe-10'>
-        <span className='line-clamp-2 text-base leading-6 font-semibold text-foreground'>
+        <span className='line-clamp-2 text-base leading-6 font-semibold wrap-anywhere text-foreground'>
           {song.title}
         </span>
         {song.karaoke && <KaraokeLabel />}
