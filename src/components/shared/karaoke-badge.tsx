@@ -19,6 +19,7 @@ export const KaraokeBadge = ({ className }: { className?: string }) => (
 // 'md' for cards
 export const KaraokeCorner = ({ size = 'md' }: { size?: 'sm' | 'md' }) => (
   <span
+    aria-hidden
     className={cn(
       'pointer-events-none absolute top-0 right-0 bg-primary text-primary-foreground corner-fold',
       size === 'sm' ? 'size-5' : 'size-8'
@@ -30,9 +31,16 @@ export const KaraokeCorner = ({ size = 'md' }: { size?: 'sm' | 'md' }) => (
         size === 'sm' ? 'top-0.5 right-0.5 size-2.5' : 'top-1 right-1 size-3.5'
       )}
     />
-    <span className='sr-only'>Karaoke Lyrics</span>
   </span>
 )
+
+// What the corner says, for a screen reader, placed after a song's title so the title is read first
+export const KaraokeLabel = () => (
+  <span className='sr-only'>, Karaoke Lyrics</span>
+)
+
+export const KaraokeLabelMark = ({ videoId }: { videoId: string }) =>
+  useHasKaraoke(videoId) ? <KaraokeLabel /> : null
 
 export const KaraokeCornerMark = ({
   videoId,

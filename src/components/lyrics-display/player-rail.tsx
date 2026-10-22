@@ -128,7 +128,7 @@ const Divider = ({ inline }: { inline: boolean }) => (
 
 const railClass = (inline: boolean, interactive: boolean, open: boolean) =>
   inline
-    ? 'no-scrollbar flex w-fit max-w-full items-center gap-1 overflow-x-auto rounded-2xl bg-card p-1'
+    ? 'flex w-fit max-w-full flex-wrap items-center gap-0.5 rounded-2xl bg-card p-1'
     : cn(
         // Its corners are the buttons' 8px radius plus the 4px padding around them, in every layout
         'flex flex-col items-center gap-1 rounded-r-xl bg-black/55 p-1 shadow-rail backdrop-blur-md transition-translate-fade duration-300 ease-out',

@@ -7,7 +7,7 @@ import {
 } from 'lucide-react'
 import { Link } from 'react-router'
 
-import { KaraokeCorner } from '@/components/shared/karaoke-badge'
+import { KaraokeCorner, KaraokeLabel } from '@/components/shared/karaoke-badge'
 import type { SearchMatch } from '@/lib/offline/search'
 import type { OfflineSong } from '@/lib/offline/song'
 import { hasKaraoke } from '@/lib/offline/song'
@@ -72,6 +72,7 @@ export const OfflineSongRow = ({
       <div className='flex min-w-0 flex-1 flex-col'>
         <p className='line-clamp-2 text-sm leading-snug font-medium text-foreground'>
           {song.title}
+          {hasKaraoke(song) && <KaraokeLabel />}
         </p>
         <p className='truncate text-xs text-muted-foreground'>{song.author}</p>
         {match?.kind === 'lyrics' ? (

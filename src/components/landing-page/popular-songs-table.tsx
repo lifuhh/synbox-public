@@ -2,7 +2,10 @@ import { PlayIcon } from 'lucide-react'
 import type React from 'react'
 import { Link } from 'react-router'
 
-import { KaraokeCornerMark } from '@/components/shared/karaoke-badge'
+import {
+  KaraokeCornerMark,
+  KaraokeLabelMark,
+} from '@/components/shared/karaoke-badge'
 import LoadError from '@/components/shared/load-error'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useGetChartsPlaylist } from '@/lib/react-query/queries-and-mutations'
@@ -53,6 +56,7 @@ const SongRow = ({ rank, song }: SongRowProps) => (
       </span>
       <span className='line-clamp-2 min-w-0 flex-1 text-sm leading-5 text-pretty'>
         {song.title}
+        <KaraokeLabelMark videoId={song.vidURL} />
       </span>
       {/* A pointer's cue that the row plays; on touch the title gets the room */}
       <PlayIcon

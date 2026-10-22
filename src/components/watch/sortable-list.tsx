@@ -165,7 +165,8 @@ export const SortableList = <T,>({
               'translate-y-(--drag-y) list-none',
               dragging
                 ? 'relative z-10 rounded-xl bg-popover shadow-lg'
-                : drag !== null && 'transition-transform duration-150 ease-out'
+                : drag !== null &&
+                    'motion-safe:transition-transform motion-safe:duration-150 motion-safe:ease-out'
             )}>
             {renderItem(item, grip, index)}
           </li>

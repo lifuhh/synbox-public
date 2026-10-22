@@ -421,6 +421,8 @@ export const StageControls = ({
               <IconButton
                 label='Zoom to Fill'
                 active={zoomed}
+                // A 320px phone's bar has no room for it beside Fullscreen; Z still toggles it
+                className='max-[359px]:hidden'
                 onClick={onToggleZoom}>
                 {zoomed ? (
                   <ShrinkIcon className='size-5' />

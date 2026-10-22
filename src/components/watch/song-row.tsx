@@ -1,7 +1,10 @@
 import type { ReactNode } from 'react'
 import { Link } from 'react-router'
 
-import { KaraokeCornerMark } from '@/components/shared/karaoke-badge'
+import {
+  KaraokeCornerMark,
+  KaraokeLabelMark,
+} from '@/components/shared/karaoke-badge'
 import type { ListSong } from '@/lib/listening/model'
 import { songPath } from '@/lib/listening/store'
 import { cn } from '@/utils/cn'
@@ -50,6 +53,7 @@ export const SongRow = ({
             current ? 'text-primary-text' : 'text-foreground'
           )}>
           {song.title}
+          <KaraokeLabelMark videoId={song.videoId} />
         </span>
         <span className='truncate text-xs text-muted-foreground'>
           {song.author}

@@ -24,7 +24,7 @@ const SongInfo = ({ compact }: { compact: boolean }) => {
           className={cn(
             'font-semibold text-pretty text-foreground',
             compact
-              ? 'line-clamp-1 text-base'
+              ? 'line-clamp-2 text-base leading-snug'
               : 'line-clamp-2 text-xl leading-snug'
           )}>
           {video?.title ?? ''}

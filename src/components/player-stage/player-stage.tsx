@@ -218,6 +218,37 @@ const isEditable = (target: EventTarget | null) =>
   (target.isContentEditable ||
     ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName))
 
+const INTERACTIVE =
+  'button, a, [role=switch], [role=tab], [role=menuitem], [role=option], [data-grip]'
+
+// Whether a key press is the player's. Not one a menu or a control already took, nor Space or Enter on a
+// focused control (they press it). On the watch page only presses on the page itself or inside the stage
+// count: the arrows reorder a queue or move through a menu there, not the volume or the song
+const playerOwnsKey = (event: KeyboardEvent) => {
+  if (
+    event.defaultPrevented ||
+    isEditable(event.target) ||
+    event.metaKey ||
+    event.ctrlKey
+  ) {
+    return false
+  }
+  const target = event.target instanceof Element ? event.target : null
+  if (target === null || target === document.body) {
+    return true
+  }
+  if (
+    (event.key === ' ' || event.key === 'Enter') &&
+    target.closest(INTERACTIVE) !== null
+  ) {
+    return false
+  }
+  if (document.documentElement.dataset.watch !== undefined) {
+    return target.closest('[data-player-stage]') !== null
+  }
+  return target.closest('[role=menu], [role=dialog], [data-grip]') === null
+}
+
 const StageCover = ({
   videoId,
   phase,
@@ -452,7 +483,7 @@ export const PlayerStage = ({
   const keyDownRef = useRef<((event: KeyboardEvent) => void) | null>(null)
   useLayoutEffect(() => {
     keyDownRef.current = (event: KeyboardEvent) => {
-      if (isEditable(event.target) || event.metaKey || event.ctrlKey) {
+      if (!playerOwnsKey(event)) {
         return
       }
       const onSlider =

@@ -4,7 +4,10 @@ import { useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Link } from 'react-router'
 
-import { KaraokeCornerMark } from '@/components/shared/karaoke-badge'
+import {
+  KaraokeCornerMark,
+  KaraokeLabelMark,
+} from '@/components/shared/karaoke-badge'
 import OptimizedThumbnail from '@/components/shared/optimized-thumbnail'
 import {
   AlertDialog,
@@ -79,6 +82,7 @@ const SongRow = ({
               {song.title}
             </span>
           </span>
+          <KaraokeLabelMark videoId={song.videoId} />
           <span className='block truncate text-sm text-song-meta'>
             {song.author}
           </span>

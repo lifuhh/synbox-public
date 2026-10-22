@@ -14,6 +14,14 @@
 @custom-variant dark (&:is(.dark *));
 /* The app installed on a phone (opened from the Home Screen): its own navigation, no website pitch */
 @custom-variant installed (&:where(html[data-installed] *));
+/* The watch page below 1000px wide, where the video is a small box over the song and its tabs */
+@custom-variant watch-narrow {
+  @media (max-width: 999px) {
+    &:where(html[data-watch] *) {
+      @slot;
+    }
+  }
+}
 /* While the installed app's tab bar shows (not on the player or a song's reader) */
 @custom-variant tabbar (&:where(html[data-tabbar] *));
 /* Finger-driven screens: bigger hit areas, no hover-only affordances */

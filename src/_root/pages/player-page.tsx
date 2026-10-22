@@ -230,14 +230,19 @@ const PlayerPage = () => {
             theater={layout === 'theater'}
             onToggleTheater={toggleTheater}
             onEnded={playNext}
-            renderLyrics={(player, stageLayout) => (
-              <StageLyrics
-                videoId={stageVideoId}
-                player={player}
-                layout={stageLayout}
-                version={previewVersion}
-              />
-            )}
+            // On a narrow watch page the Lyrics tab carries the lyrics; the small video stays clear
+            renderLyrics={
+              surface === 'watch' && !wide
+                ? undefined
+                : (player, stageLayout) => (
+                    <StageLyrics
+                      videoId={stageVideoId}
+                      player={player}
+                      layout={stageLayout}
+                      version={previewVersion}
+                    />
+                  )
+            }
           />
         }
       />
