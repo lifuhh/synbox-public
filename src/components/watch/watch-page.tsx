@@ -10,6 +10,7 @@ import { cn } from '@/utils/cn'
 
 import { LyricsPanel } from './lyrics-panel'
 import { MoreLikeThis } from './more-like-this'
+import { Shelves } from './shelves'
 import { UP_NEXT_COUNT, UpNext } from './up-next'
 
 const WIDE = '(min-width: 1000px)'
@@ -129,6 +130,7 @@ const NarrowBelow = ({
                 songs={songs.slice(UP_NEXT_COUNT)}
                 className='mt-6 px-2'
               />
+              <Shelves videoId={videoId} className='mt-6 px-2' />
             </div>
           )}
         </div>
@@ -137,7 +139,7 @@ const NarrowBelow = ({
   )
 }
 
-// From 1000px wide: the lyrics beside the video (under it in Theater), the song and More Like This under the
+// From 1000px wide: the lyrics beside the video (under it in Theater), the song, More Like This and its rows under the
 // video, Up Next in the right-hand column
 const WideBelow = ({
   videoId,
@@ -166,6 +168,7 @@ const WideBelow = ({
           <LyricsPanel videoId={videoId} version={version} className='h-112' />
         )}
         <MoreLikeThis songs={songs.slice(UP_NEXT_COUNT)} />
+        <Shelves videoId={videoId} />
       </div>
       <div className='watch-next pb-8'>
         <UpNext recommendations={songs} />
