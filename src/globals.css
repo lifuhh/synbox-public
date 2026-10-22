@@ -243,7 +243,9 @@
   --spacing-safe-top: var(--safe-top);
   --spacing-page-top: calc(var(--topbar-h) + 1.5rem);
   --spacing-page-bottom-sm: calc(1rem + var(--safe-bottom) + var(--tabbar-h));
-  --spacing-page-bottom: calc(2.5rem + var(--safe-bottom) + var(--tabbar-h));
+  --spacing-page-bottom: calc(
+    var(--page-end) + var(--safe-bottom) + var(--tabbar-h)
+  );
   --spacing-page-bottom-lg: calc(4rem + var(--safe-bottom) + var(--tabbar-h));
   --spacing-controls-bottom: max(0.75rem, var(--safe-bottom));
   --spacing-controls-left: max(1rem, var(--safe-left));
@@ -1363,6 +1365,12 @@
     --safe-right: env(safe-area-inset-right, 0px);
     /* What the installed app's tab bar (and the resume bar over it) covers at the bottom; 0 without them */
     --tabbar-h: 0px;
+    /* Room after a page's last content. A finger needs it to lift the last row clear of the screen's edge
+       and the browser's own bars; a mouse doesn't, and 40px of nothing read as a layout gap on desktop */
+    --page-end: 2.5rem;
+    @media (pointer: fine) {
+      --page-end: 1rem;
+    }
     /* The screen's height; full-screen layers use it instead of dvh (see the standalone rule below) */
     --screen-h: 100dvh;
     --app-h: var(--screen-h);
