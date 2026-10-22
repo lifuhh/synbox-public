@@ -1,7 +1,8 @@
 // Layout audit of one page on one screen: every visible press target is checked for size (WCAG 2.2's 24px
 // minimum), for being covered at its centre by something else (a press would land on the wrong thing), for
 // sticking out of the viewport, and, when fixed or sticky on a phone, for sitting under the status bar or home
-// indicator. Landmark positions are recorded so a move can be reported. Layout is deterministic: one run.
+// indicator. Uncaught page errors are counted too (a route that throws). Layout is deterministic: one run, on a
+// page that has come to rest (signals, not sleeps: see `settle`).
 
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
@@ -23,7 +24,11 @@ export interface LayoutPage {
 
 const PLAYER_SONG = '6rG_irmOQsM'
 
-// Whatever the page fetched has arrived: no region still says it is busy, then a moment for images and fonts
+/** Waits for the layout to rest (recorder.ts › settle); a page that never rests is audited as it is, with a note */
+const settle = async (page: Page): Promise<string | null> =>
+  await page.evaluate(async () => await window.__bench.settle(5000))
+
+// Whatever the page fetched has arrived: no region still says it is busy
 const settled = async (page: Page) => {
   await mark(page, 'topbar')
   await page
@@ -35,8 +40,10 @@ const settled = async (page: Page) => {
     .catch(() => {
       // A region that stays busy is audited as it is
     })
-  await page.waitForTimeout(1000)
 }
+
+// The player's passing states; the audit waits until it is out of them
+const PASSING_PHASES = ['loading', 'starting', 'buffering']
 
 /** Pages with their own readiness; every other route in src/app.tsx is audited once settled */
 export const LAYOUT_PAGES: LayoutPage[] = [
@@ -66,8 +73,8 @@ export const LAYOUT_PAGES: LayoutPage[] = [
       await mark(page, 'charts-done')
       await toTitle()
       await mark(page, 'gallery-tile')
+      await settle(page)
       await toTitle()
-      await page.waitForTimeout(800)
     },
     route: '/',
   },
@@ -77,14 +84,25 @@ export const LAYOUT_PAGES: LayoutPage[] = [
     ready: async (page) => {
       await mark(page, 'lyrics-line', 30_000)
       // WebKit in Playwright may never play the video; audit whatever the player settled into, controls shown
-      await page.waitForTimeout(3000)
+      await page
+        .waitForFunction(
+          (passing) =>
+            !passing.includes(
+              document.querySelector<HTMLElement>('[data-player-stage]')
+                ?.dataset.phase ?? 'loading'
+            ),
+          PASSING_PHASES,
+          { timeout: 10_000 }
+        )
+        .catch(() => {
+          // A player stuck loading is audited as it is; its phase is in the notes
+        })
       await page
         .locator('[data-player-stage]')
         .hover({ force: true, position: { x: 40, y: 40 } })
         .catch(() => {
           // The hover only brings the controls back; audit the page either way
         })
-      await page.waitForTimeout(400)
     },
     route: '/v/:videoId',
   },
@@ -101,7 +119,6 @@ export const LAYOUT_PAGES: LayoutPage[] = [
     path: `/lyrics/${PLAYER_SONG}`,
     ready: async (page) => {
       await mark(page, 'lyrics-line', 30_000)
-      await page.waitForTimeout(800)
     },
     route: '/lyrics/:videoId',
   },
@@ -143,12 +160,14 @@ export const appRoutes = (): string[] => {
  * page whose audit fails and says what to add.
  */
 export const layoutPages = (): LayoutPage[] => {
+  const routes = appRoutes()
   const known = new Set(LAYOUT_PAGES.map((p) => p.route))
-  const found = appRoutes().filter(
+  const found = routes.filter(
     (route) => !known.has(route) && !(route in LAYOUT_SKIP)
   )
   return [
-    ...LAYOUT_PAGES,
+    // An entry whose route is gone (or not yet added) audits nothing
+    ...LAYOUT_PAGES.filter((p) => routes.includes(p.route)),
     ...found.map((route) => ({
       name: route.slice(1).replaceAll(/[/:]+/gu, '-') || 'index',
       path: route,
@@ -164,15 +183,23 @@ export const layoutPages = (): LayoutPage[] => {
   ]
 }
 
-const auditOnce =
+export const layoutAudit =
   (p: LayoutPage, surface: Surface) =>
   async (
     ctx: BenchContext
   ): Promise<{ samples: Sample[]; errors: string[] }> => {
     const { page, close, safe } = await open(surface)
+    const thrown: string[] = []
+    page.on('pageerror', (error) => {
+      // WebKit reports a ResizeObserver callback deferred to the next frame as an error; it is not the app throwing
+      if (!error.message.startsWith('ResizeObserver loop')) {
+        thrown.push(error.message.split('\n')[0])
+      }
+    })
     try {
       await page.goto(`${ctx.origin}${p.path}`, { waitUntil: 'commit' })
       await p.ready(page)
+      const unsettled = await settle(page)
       if (
         surface.kind === 'phone' &&
         surface.installed === true &&
@@ -210,6 +237,8 @@ const auditOnce =
         ...(audit.overflowX
           ? [`page scrolls sideways by ${audit.overflowX}px`]
           : []),
+        ...thrown.map((m) => `page error: ${m}`),
+        ...(unsettled === null ? [] : [`not settled: ${unsettled}`]),
         ...(phase !== undefined && phase !== ''
           ? [`player phase at audit: ${phase}`]
           : []),
@@ -218,12 +247,12 @@ const auditOnce =
         errors: [],
         samples: [
           {
-            landmarks: audit.landmarks,
             notes,
             values: {
               occludedTargets: audit.occluded.length,
               offscreenTargets: audit.offscreen.length,
               overflowXPx: audit.overflowX,
+              pageErrors: thrown.length,
               smallTargets: audit.small.length,
               targets: audit.targets,
               unsafeTargets: audit.unsafe.length,
@@ -241,28 +270,5 @@ const auditOnce =
       return { errors: [message.split('\n')[0]], samples: [] }
     } finally {
       await close()
-    }
-  }
-
-/**
- * One retry: the audit is a single run, and a live YouTube player that never finishes loading (seen once in four
- * runs of the desktop player) would otherwise fail the gate on its own. A retried audit says so in its notes.
- */
-export const layoutAudit =
-  (p: LayoutPage, surface: Surface) =>
-  async (
-    ctx: BenchContext
-  ): Promise<{ samples: Sample[]; errors: string[] }> => {
-    const first = await auditOnce(p, surface)(ctx)
-    if (first.errors.length === 0 || !ctx.retry) {
-      return first
-    }
-    const second = await auditOnce(p, surface)(ctx)
-    return {
-      ...second,
-      samples: second.samples.map((sample) => ({
-        ...sample,
-        notes: [...(sample.notes ?? []), `retried after: ${first.errors[0]}`],
-      })),
     }
   }

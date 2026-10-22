@@ -1,5 +1,6 @@
-// What the bench measures. Each benchmark names its metrics, which of them gate, and how big a change matters.
-// Thresholds are the evaluator's; changing them in the same branch as app code fails the gate (gate.ts).
+// What the bench measures. Exact benchmarks (size, layout-*) run in `check` against harness/budgets.json; timing
+// benchmarks run in `trend`, where each metric says whether it gates and how big a change matters. Specs are the
+// evaluator's: changing them in the same branch as app code fails `check` (gate.ts).
 
 import { cdpPerf } from './engines/cdp'
 import { homeVisit } from './probes/home'
@@ -61,12 +62,6 @@ const count = (key: string, gate = true): MetricSpec => ({
   unit: 'count',
 })
 
-const PROBE = [
-  'harness/bench/engines/browser.ts',
-  'harness/bench/engines/recorder.ts',
-  'harness/bench/probes/common.ts',
-]
-const CDP = ['harness/bench/engines/cdp.ts']
 const DESKTOP: Surface = { engine: 'chromium', kind: 'desktop' }
 const PORTRAIT: Surface = {
   engine: 'webkit',
@@ -102,20 +97,14 @@ const cdpLoad = (
   path: string,
   pick: Record<string, string>,
   flags = MOBILE_LAB
-): Pick<Benchmark, 'params' | 'run'> => ({
-  params: { flags, path, pick },
+): Pick<Benchmark, 'run'> => ({
   run: async (ctx, runs) => ({
     errors: [],
     samples: await cdpPerf(ctx, { flags, path, pick, runs }),
   }),
 })
 
-const player = (
-  videoId: string,
-  tier: Benchmark['tier'],
-  heldOut = false
-): Benchmark => ({
-  heldOut,
+const player = (videoId: string): Benchmark => ({
   id: `player-${videoId}`,
   metrics: [
     ms('iframeMs'),
@@ -133,12 +122,9 @@ const player = (
     { ...cls(false) },
     loadMs('lcpMs', false),
   ],
-  params: { videoId },
   run: playerSession(videoId),
-  runs: 4,
-  sources: [...PROBE, 'harness/bench/probes/player.ts'],
+  runs: 12,
   surface: DESKTOP,
-  tier,
   title: `Player session for ${videoId}: iframe, ready, lyrics, autoplay, pause, resume, seek, playback frames`,
 })
 
@@ -154,23 +140,20 @@ const layout = (
     count('smallTargets'),
     count('offscreenTargets'),
     count('unsafeTargets'),
+    count('pageErrors'),
     count('targets', false),
   ],
-  params: { page: page.path },
   run: layoutAudit(page, surface),
   runs: 1,
-  sources: [...PROBE, 'harness/bench/probes/layout.ts'],
   surface,
-  tier: 'smoke',
-  title: `Layout of ${page.name} (${page.path}) on ${name}: target sizes, covered targets, overflow, safe areas, landmark positions`,
+  title: `Layout of ${page.name} (${page.path}) on ${name}: target sizes, covered targets, overflow, safe areas, page errors`,
 })
 
 const cdpFlow = (
   flow: { name: string; path: string; steps: object[] },
   flags: string[],
   pick: Record<string, string>
-): Pick<Benchmark, 'params' | 'run'> => ({
-  params: { flags, flow, pick },
+): Pick<Benchmark, 'run'> => ({
   run: async (ctx, runs) => ({
     errors: [],
     samples: await cdpPerf(ctx, {
@@ -199,9 +182,7 @@ export const SUITE: Benchmark[] = [
     metrics: [kb('initialJsKB'), kb('cssKB'), kb('allJsKB')],
     run: buildSize,
     runs: 1,
-    sources: ['harness/bench/probes/size.ts'],
     surface: null,
-    tier: 'smoke',
     title: 'Bytes shipped (brotli): first-load JS and CSS, all JS',
   },
   {
@@ -228,10 +209,8 @@ export const SUITE: Benchmark[] = [
       ms('galleryScrollBlockingMs', true, 30, 0.25),
     ],
     run: homeVisit,
-    runs: 5,
-    sources: [...PROBE, 'harness/bench/probes/home.ts'],
+    runs: 12,
     surface: DESKTOP,
-    tier: 'smoke',
     title:
       'Home visit (desktop, 4× CPU): paint, first input, carousel, charts, gallery, Next press, gallery scroll',
   },
@@ -255,14 +234,12 @@ export const SUITE: Benchmark[] = [
       transferKB: 'load.transferKB',
       ttiMs: 'load.ttiMs',
     }),
-    runs: 5,
-    sources: CDP,
+    runs: 12,
     surface: null,
-    tier: 'smoke',
     title:
       'Home page load, mobile lab (cdp-perf: 4× CPU, slow 4G, 412px phone)',
   },
-  player('6rG_irmOQsM', 'smoke'),
+  player('6rG_irmOQsM'),
   // Every route in src/app.tsx, so a new page is audited without anyone adding it. Phones on their side matter
   // most where the layout is busiest
   ...layoutPages().flatMap((page) => [
@@ -273,8 +250,8 @@ export const SUITE: Benchmark[] = [
       ? [layout(page, LANDSCAPE, 'phone-landscape')]
       : []),
   ]),
-  player('x1FV6IrjZCY', 'full'),
-  player('ZRtdQ81jPUQ', 'full'),
+  player('x1FV6IrjZCY'),
+  player('ZRtdQ81jPUQ'),
   {
     id: 'player-load',
     metrics: [
@@ -289,10 +266,8 @@ export const SUITE: Benchmark[] = [
       lcpMs: 'load.lcpMs',
       tbtMs: 'load.tbtMs',
     }),
-    runs: 5,
-    sources: CDP,
+    runs: 12,
     surface: null,
-    tier: 'full',
     title: 'Player page load, mobile lab (cdp-perf)',
   },
   {
@@ -305,13 +280,10 @@ export const SUITE: Benchmark[] = [
       flowBlockingMs: 'flow.blockingMs',
       flowInpMs: 'flow.inpMs',
     }),
-    runs: 5,
-    sources: CDP,
+    runs: 12,
     surface: null,
-    tier: 'full',
     title:
       'Typing in the hero box (cdp-perf flow, 4× CPU): interaction latency and blocking',
   },
-  // Held out: never in the hill-climb score, only at the gate, to catch a change tuned to the songs above
-  player('Dta27KjGpJs', 'full', true),
+  player('Dta27KjGpJs'),
 ]

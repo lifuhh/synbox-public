@@ -1,9 +1,10 @@
 // Production builds for the bench, one per source tree and cached, so a tree is only ever built once. The lookup
 // service is pointed at the bench server (/__lookup) so its reads are recorded and replayed like /api.
 
-import { execFileSync } from 'node:child_process'
+import { execFile, execFileSync } from 'node:child_process'
 import { existsSync, readFileSync, rmSync, symlinkSync } from 'node:fs'
 import path from 'node:path'
+import { promisify } from 'node:util'
 
 import { storeDir } from './store'
 import type { Repo } from './store'
@@ -20,16 +21,25 @@ const run = (
     stdio: ['ignore', 'pipe', 'pipe'],
   })
 
-const vpBuild = (srcDir: string, outDir: string) =>
-  run('bunx', ['vp', 'build', '--outDir', outDir, '--emptyOutDir'], srcDir, {
-    VITE_SYNBOX_LOOKUP_URL: '/__lookup',
-  })
+// Asynchronous, so `check` can run the static checks beside it
+const vpBuild = async (srcDir: string, outDir: string): Promise<void> => {
+  // oxlint-disable-next-line typescript/strict-void-return -- promisify takes Node's callback-style execFile; the ChildProcess it returns goes unused
+  await promisify(execFile)(
+    'bunx',
+    ['vp', 'build', '--outDir', outDir, '--emptyOutDir'],
+    {
+      cwd: srcDir,
+      env: { ...process.env, VITE_SYNBOX_LOOKUP_URL: '/__lookup' },
+      maxBuffer: 64 * 1024 * 1024,
+    }
+  )
+}
 
 /** Builds the working tree as it is (uncommitted edits included), keyed by HEAD's tree plus a dirty marker */
-export const buildWorkingTree = (
+export const buildWorkingTree = async (
   repo: Repo,
   log: (m: string) => void
-): string => {
+): Promise<string> => {
   const out = path.join(
     storeDir(repo, 'bench', 'builds'),
     repo.dirty ? `${repo.tree}-dirty` : repo.tree
@@ -38,17 +48,17 @@ export const buildWorkingTree = (
     log(
       `building ${repo.dirty ? 'working tree (uncommitted changes)' : repo.tree.slice(0, 8)}`
     )
-    vpBuild(repo.top, out)
+    await vpBuild(repo.top, out)
   }
   return out
 }
 
-/** Builds another commit (the merge base, for a baseline) in a throwaway worktree */
-export const buildRef = (
+/** Builds another commit (a side of a `trend` comparison) in a throwaway worktree */
+export const buildRef = async (
   repo: Repo,
   sha: string,
   log: (m: string) => void
-): { dist: string; tree: string } => {
+): Promise<{ dist: string; tree: string }> => {
   const tree = execFileSync(
     'git',
     ['-C', repo.top, 'rev-parse', `${sha}^{tree}`],
@@ -74,8 +84,8 @@ export const buildRef = (
       log(`installing packages for ${sha.slice(0, 8)}`)
       run('bun', ['install', '--frozen-lockfile'], wt)
     }
-    log(`building ${sha.slice(0, 8)} (baseline)`)
-    vpBuild(wt, out)
+    log(`building ${sha.slice(0, 8)}`)
+    await vpBuild(wt, out)
   } finally {
     run('git', ['-C', repo.top, 'worktree', 'remove', '--force', wt], repo.top)
   }

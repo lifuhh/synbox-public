@@ -36,5 +36,5 @@ docs/log/
 .wrangler/
 .dev.vars*
 
-# Harness state: bench history, baselines, builds, API fixtures, verdicts (local, per machine; see harness/README.md)
+# Harness state: builds, API fixtures, run artifacts, verdicts, the trend queue (local, per machine; see harness/README.md)
 .harness/
