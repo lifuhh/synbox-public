@@ -4,6 +4,7 @@ import { useMemo } from 'react'
 import { currentVideoAtom } from '@/context/atoms'
 import { historyAtom } from '@/lib/library/store'
 import { useGallerySongs } from '@/lib/react-query/queries-and-mutations'
+import { useRecentListens } from '@/lib/song-stats'
 
 import type { ListSong } from './model'
 
@@ -56,4 +57,25 @@ export const useRecentlyPlayed = (videoId: string) => {
         })),
     [history, videoId]
   )
+}
+
+// The library's songs anyone played most recently, latest first, less the one playing
+export const useRecentlyPlayedEverywhere = (videoId: string) => {
+  const { songs: library } = useGallerySongs()
+  const { data: recent } = useRecentListens()
+  return useMemo((): ListSong[] => {
+    const byId = new Map(library.map((song) => [song.videoId, song]))
+    return (recent ?? [])
+      .flatMap((id) => {
+        const song = id === videoId ? undefined : byId.get(id)
+        return song ? [song] : []
+      })
+      .slice(0, SHELF)
+      .map(({ author, thumbnailUrl, title, videoId: id }) => ({
+        author,
+        thumbnailUrl,
+        title,
+        videoId: id,
+      }))
+  }, [library, recent, videoId])
 }

@@ -3,7 +3,11 @@ import { useEffect, useId, useRef, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
 import type { ListSong } from '@/lib/listening/model'
-import { useArtistSongs, useRecentlyPlayed } from '@/lib/listening/shelves'
+import {
+  useArtistSongs,
+  useRecentlyPlayed,
+  useRecentlyPlayedEverywhere,
+} from '@/lib/listening/shelves'
 import { cn } from '@/utils/cn'
 
 import { SongCard } from './song-card'
@@ -101,8 +105,8 @@ const Shelf = ({ title, songs }: { title: string; songs: ListSong[] }) => {
 const SongShelf = ({ title, songs }: { title: string; songs: ListSong[] }) =>
   songs.length === 0 ? null : <Shelf title={title} songs={songs} />
 
-// The rows under the song: songs like it past the ones in Up Next, the artist's other songs, then what this device
-// played lately
+// The rows under the song: songs like it past the ones in Up Next, the artist's other songs, what anyone on Synbox
+// played lately, then what this device did
 export const Shelves = ({
   videoId,
   similar,
@@ -113,15 +117,22 @@ export const Shelves = ({
   className?: string
 }) => {
   const { artist, songs: fromArtist } = useArtistSongs(videoId)
+  const everywhere = useRecentlyPlayedEverywhere(videoId)
   const recent = useRecentlyPlayed(videoId)
-  if (similar.length === 0 && fromArtist.length === 0 && recent.length === 0) {
+  if (
+    similar.length === 0 &&
+    fromArtist.length === 0 &&
+    everywhere.length === 0 &&
+    recent.length === 0
+  ) {
     return null
   }
   return (
     <div className={cn('flex flex-col gap-6', className)}>
       <SongShelf title='More Like This' songs={similar} />
       <SongShelf title={`More From ${artist}`} songs={fromArtist} />
-      <SongShelf title='Recently Played' songs={recent} />
+      <SongShelf title='Recently Played on Synbox' songs={everywhere} />
+      <SongShelf title='Recently Played by You' songs={recent} />
     </div>
   )
 }
