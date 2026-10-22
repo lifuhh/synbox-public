@@ -1,6 +1,7 @@
 import { PencilIcon } from 'lucide-react'
 import { lazy, Suspense, useState } from 'react'
 
+import { AdminCornerMark } from '@/components/shared/admin-mark'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -33,10 +34,12 @@ export const EditRecommendations = () => {
         size='icon-round'
         aria-label='Edit Recommendations'
         title='Edit Recommendations'
+        className='relative'
         onClick={() => {
           setOpen(true)
         }}>
         <PencilIcon className='size-4' />
+        <AdminCornerMark />
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className='max-w-2xl'>
