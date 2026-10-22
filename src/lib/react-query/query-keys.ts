@@ -18,6 +18,7 @@ export enum QUERY_KEYS {
   GET_ADMIN_REPORTS = 'getAdminReports',
   GET_SONG_STATS = 'getSongStats',
   GET_RECENT_LISTENS = 'getRecentListens',
+  GET_LISTEN_COUNTS = 'getListenCounts',
   GET_ADMIN_RECOMMENDATIONS = 'getAdminRecommendations',
   GET_OFFLINE_SONGS = 'getOfflineSongs',
   GET_LYRICS_SONG = 'getLyricsSong',

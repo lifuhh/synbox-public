@@ -128,7 +128,25 @@ export const useRecentListens = () =>
     staleTime: 60_000,
   })
 
+const countsSchema = z.object({ listens: z.record(z.string(), z.number()) })
+
+// The listens of the songs played often enough to show a count on their cards (the Worker leaves out the rest)
+export const useListenCounts = () =>
+  useQuery({
+    queryFn: async () => {
+      const response = await fetch('/api/songs/listens')
+      if (!response.ok) {
+        throw new Error(`Listen counts answered ${response.status}`)
+      }
+      return countsSchema.parse(await response.json()).listens
+    },
+    queryKey: [QUERY_KEYS.GET_LISTEN_COUNTS],
+    // The Worker's answer is cached for five minutes anyway
+    staleTime: 300_000,
+  })
+
 const compact = new Intl.NumberFormat('en', { notation: 'compact' })
+export const compactCount = (count: number) => compact.format(count)
 // "1 listen", "980 listens", "1.2K listens"
 export const listensText = (listens: number) =>
   `${compact.format(listens)} ${listens === 1 ? 'listen' : 'listens'}`

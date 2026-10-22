@@ -7,6 +7,7 @@ import {
   KaraokeLabel,
   KaraokePictureBadge,
 } from '@/components/shared/karaoke-badge'
+import { ListenCount } from '@/components/shared/listen-count'
 import { Skeleton } from '@/components/ui/skeleton'
 import { SongMenu } from '@/components/watch/song-menu'
 import { useMediaQuery } from '@/hooks/use-media-query'
@@ -62,8 +63,9 @@ const SongCard = ({ song }: { song: LibraryListSong }) => (
           {song.title}
         </span>
         {song.karaoke && <KaraokeLabel />}
-        <span className='truncate text-sm leading-5 text-muted-foreground'>
-          {song.author}
+        <span className='flex min-w-0 items-center gap-2.5 text-sm leading-5 text-muted-foreground'>
+          <ListenCount videoId={song.videoId} />
+          <span className='truncate'>{song.author}</span>
         </span>
       </span>
     </Link>
