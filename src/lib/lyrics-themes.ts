@@ -1,17 +1,25 @@
 // Lyrics are white until sung; a theme sets the colour the karaoke wipe paints and the glow behind every line.
 // The accent is the lit, sung part, so it sits near the white's lightness (OKLCH 0.86+) rather than darker than it.
-// Presets are WCAG-checked: accent >= 13:1 on the fixed dark edge (.lyric-text-line), glow >= 3:1 darker than the white
+// Presets are WCAG-checked: accent >= 13:1 on the fixed dark edge (.lyric-text-line), glow >= 3:1 darker than the white.
+// Frost, the default, is a pale blue: across the hue wheel from the app's magenta, and quiet enough to sit beside it
 export const LYRICS_THEME_IDS = [
-  'sunset',
+  'frost',
   'cinema',
   'amethyst',
-  'aqua',
+  'sunset',
   'matcha',
   'lemon',
   'sakura',
   'custom',
 ] as const
 export type LyricsThemeId = (typeof LYRICS_THEME_IDS)[number]
+
+// Retired ids and the preset that took their place. Saved styles, synced settings and shared links made before
+// still name them
+export const RETIRED_LYRICS_THEME_IDS: Readonly<Record<string, LyricsThemeId>> =
+  {
+    aqua: 'frost',
+  }
 
 export const LYRICS_BACKDROP_IDS = ['shadow', 'band', 'box'] as const
 export type LyricsBackdrop = (typeof LYRICS_BACKDROP_IDS)[number]
@@ -26,16 +34,16 @@ export interface LyricsTheme extends LyricsThemeColors {
   name: string
 }
 
-export const DEFAULT_LYRICS_THEME_ID: LyricsThemeId = 'sunset'
+export const DEFAULT_LYRICS_THEME_ID: LyricsThemeId = 'frost'
 export const DEFAULT_LYRICS_BACKDROP: LyricsBackdrop = 'shadow'
 export const DEFAULT_LYRICS_CUSTOM_HUE = 200
 
 export const LYRICS_THEMES: LyricsTheme[] = [
   {
-    accent: '#FEC29F',
-    glow: '#E0521A',
-    id: 'sunset',
-    name: 'Sunset',
+    accent: '#92DFF2',
+    glow: '#0A80B0',
+    id: 'frost',
+    name: 'Frost',
   },
   {
     accent: '#B6D3FE',
@@ -50,10 +58,10 @@ export const LYRICS_THEMES: LyricsTheme[] = [
     name: 'Amethyst',
   },
   {
-    accent: '#71E3FF',
-    glow: '#0A8FB0',
-    id: 'aqua',
-    name: 'Aqua',
+    accent: '#FEC29F',
+    glow: '#E0521A',
+    id: 'sunset',
+    name: 'Sunset',
   },
   {
     accent: '#7FED9E',
