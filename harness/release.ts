@@ -222,6 +222,15 @@ const ensureVerdict = (dir: string) => {
   )
 }
 
+// A page's text, or '' when the request fails: mid-deploy, Netlify can drop a connection, which is a reason to
+// look again, not to give up
+const fetchText = (url: string): string => {
+  const result = spawnSync('curl', ['-s', '--max-time', '20', url], {
+    encoding: 'utf-8',
+  })
+  return result.status === 0 ? result.stdout : ''
+}
+
 const waitForLive = (sha: string) => {
   const appChanged = run(
     'git',
@@ -234,12 +243,9 @@ const waitForLive = (sha: string) => {
   }
   const deadline = Date.now() + LIVE_TIMEOUT_MS
   while (Date.now() < deadline) {
-    const page = run('curl', ['-s', `${SITE}/`], top)
+    const page = fetchText(`${SITE}/`)
     const script = /\/assets\/index-[^"]*\.js/u.exec(page)?.[0]
-    if (
-      script !== undefined &&
-      run('curl', ['-s', `${SITE}${script}`], top).includes(sha)
-    ) {
+    if (script !== undefined && fetchText(`${SITE}${script}`).includes(sha)) {
       say(`live: ${SITE} serves ${sha.slice(0, 8)}`)
       return
     }
