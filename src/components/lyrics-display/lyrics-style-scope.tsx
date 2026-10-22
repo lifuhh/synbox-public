@@ -1,5 +1,5 @@
 import { useAtom, useAtomValue, useSetAtom } from 'jotai'
-import { CheckIcon, MinusIcon, PlusIcon, XIcon } from 'lucide-react'
+import { CheckIcon, XIcon } from 'lucide-react'
 import { useId, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
@@ -7,7 +7,6 @@ import {
   applyLyricsTemplateAtom,
   applySongLyricsStyleToAllAtom,
   deleteLyricsTemplateAtom,
-  lyricsScreenSizesAtom,
   lyricsStyleAtom,
   lyricsStyleScopeAtom,
   lyricsStyleSourceAtom,
@@ -16,12 +15,8 @@ import {
   saveLyricsTemplateAtom,
 } from '@/context/atoms'
 import type { LyricsStyleScope } from '@/context/atoms'
-import { useLyricsSurface } from '@/hooks/use-media-query'
-import type { LyricsSurface } from '@/lib/lyrics-style'
 import {
   MAX_LYRICS_TEMPLATES,
-  SCREEN_SIZE_MAX,
-  SCREEN_SIZE_MIN,
   TEMPLATE_NAME_MAX,
   sameSavedLyricsStyle,
 } from '@/lib/lyrics-style'
@@ -108,66 +103,6 @@ export const LyricsStyleScopeSection = () => {
         </div>
       )}
     </section>
-  )
-}
-
-const SURFACE_NAMES: Record<LyricsSurface, string> = {
-  desktop: 'Desktop',
-  landscape: 'Landscape',
-  portrait: 'Portrait',
-}
-const SCREEN_SIZE_STEP = 0.05
-
-// The size slider sets one size for every screen (each scales it to fit); this nudges the screen in use on
-// its own
-export const ScreenSizeTweak = () => {
-  const surface = useLyricsSurface()
-  const [sizes, setSizes] = useAtom(lyricsScreenSizesAtom)
-  const value = sizes[surface]
-  const name = SURFACE_NAMES[surface]
-  const nudge = (by: number) => {
-    const next = Math.round((value + by) * 100) / 100
-    setSizes({
-      ...sizes,
-      [surface]: Math.min(SCREEN_SIZE_MAX, Math.max(SCREEN_SIZE_MIN, next)),
-    })
-  }
-  const stepper =
-    'flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-hidden disabled:opacity-40 touch:size-11'
-  return (
-    <div className='flex items-center justify-between gap-2'>
-      <p aria-hidden='true' className='text-xs text-muted-foreground'>
-        Only on {name}
-      </p>
-      <fieldset className='flex shrink-0 items-center'>
-        <legend className='sr-only'>Size on {name} Only</legend>
-        <button
-          type='button'
-          aria-label={`Smaller on ${name}`}
-          disabled={value <= SCREEN_SIZE_MIN}
-          onClick={() => {
-            nudge(-SCREEN_SIZE_STEP)
-          }}
-          className={stepper}>
-          <MinusIcon className='size-4 shrink-0' />
-        </button>
-        <output
-          aria-live='polite'
-          className='w-11 text-center text-xs text-foreground tabular-nums'>
-          {Math.round(value * 100)}%
-        </output>
-        <button
-          type='button'
-          aria-label={`Larger on ${name}`}
-          disabled={value >= SCREEN_SIZE_MAX}
-          onClick={() => {
-            nudge(SCREEN_SIZE_STEP)
-          }}
-          className={stepper}>
-          <PlusIcon className='size-4 shrink-0' />
-        </button>
-      </fieldset>
-    </div>
   )
 }
 

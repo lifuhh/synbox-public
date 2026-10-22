@@ -30,7 +30,6 @@ import {
   LyricsStyleScopeSection,
   MyStyles,
   SaveStyle,
-  ScreenSizeTweak,
 } from './lyrics-style-scope'
 import {
   RailButton,
@@ -250,7 +249,6 @@ export const LyricsThemePicker = ({
               A
             </span>
           </div>
-          <ScreenSizeTweak />
         </section>
 
         {/* The karaoke machine's two rows: top row left, next row right, the translation at the top */}
