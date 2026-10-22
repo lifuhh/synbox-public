@@ -28,6 +28,8 @@ export interface LyricsStyle {
   // In portrait the lyrics have their own band under the video, so they keep their own place in it: by
   // default its top, right under the video
   anchorPortrait: number
+  // Two Lines' translation, in its own room at the top of the stage: 0 its top, 1 its bottom
+  translationAnchor: number
   // The karaoke two-row layout, as a karaoke machine shows it: the top row's line starts at the left and the
   // next row's, waiting unfilled, ends at the right, with the sung line's translation alone at the top.
   // Desktop and phone landscape
@@ -55,6 +57,7 @@ export const DEFAULT_LYRICS_STYLE: LyricsStyle = {
   // Desktop starts a size down: at 100% one line spans most of a wide stage
   screenSizes: { desktop: 0.85, landscape: 1, portrait: 1 },
   themeId: DEFAULT_LYRICS_THEME_ID,
+  translationAnchor: 0,
   twoLines: false,
 }
 
@@ -92,6 +95,7 @@ const styleFieldsSchema = z
       .max(TWO_LINES_SIZE_RANGE.max),
     screenSizes: screenSizesSchema,
     themeId: lyricsThemeIdSchema,
+    translationAnchor: unit,
     twoLines: z.boolean(),
   })
   .partial()
@@ -253,8 +257,12 @@ const sharedStyleSchema = z
     })
   )
 
-// What a link passes on: the look and the place, not the receiver's per-screen size tweaks
-export type SharedLyricsStyle = Omit<LyricsStyle, 'screenSizes'>
+// What a link passes on: the look and the place, not the receiver's per-screen size tweaks (nor, as links
+// predate it, where Two Lines' translation sits)
+export type SharedLyricsStyle = Omit<
+  LyricsStyle,
+  'screenSizes' | 'translationAnchor'
+>
 
 export const decodeSharedStyle = (
   raw: string | null

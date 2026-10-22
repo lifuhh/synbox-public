@@ -25,6 +25,7 @@ import {
   romajiVisibilityAtom,
   translationIsEnglishAtom,
   translationVisibilityAtom,
+  lyricsTranslationAnchorAtom,
 } from '@/context/atoms'
 import { useLyricsSurface } from '@/hooks/use-media-query'
 import { balanceWrap } from '@/lib/balance-wrap'
@@ -39,6 +40,7 @@ import {
 import type { TimedLyrics } from '@/lib/lyrics-document'
 import { parseLyricsDocument } from '@/lib/lyrics-document'
 import { getLyricsThemeColors } from '@/lib/lyrics-themes'
+import type { LyricsThemeColors } from '@/lib/lyrics-themes'
 import {
   useGetKaraokeById,
   useGetLyricsBySongId,
@@ -340,30 +342,41 @@ const TwoRows = ({
   </div>
 )
 
-// Two Lines' one translation, for the line being sung, centred at the top of the video. It changes with
-// the line, fading in where motion is welcome
+// Two Lines' one translation, for the line being sung, centred in its own room at the top of the video, where
+// the viewer can drag it (its place saved apart from the rows'). It changes with the line, fading in where motion
+// is welcome; with no translation to show the block stays mounted, so a drag survives a gap
 const StaggerTranslation = ({
   line: { text, translation },
   lineKey,
+  layout,
+  scale,
+  colors,
 }: {
   line: ReturnType<typeof lineAt>
   lineKey: number
-}) =>
-  translation &&
-  text !== undefined &&
-  !sameText(translation, text) && (
-    <div
-      data-lyric-translation
-      className='player-lyrics-overlay lyric-stagger-translation isolate px-3'>
-      <LyricLine
-        key={lineKey}
-        html={translation}
-        kind='translation'
-        size={STAGGER_SIZE.translation}
-        className='italic motion-safe:animate-in motion-safe:fade-in'
-      />
-    </div>
-  )
+  layout: StageLayout
+  scale: number
+  colors: LyricsThemeColors
+}) => (
+  <div data-lyric-translation className='lyric-stagger-translation-area'>
+    <DraggableLyrics
+      layout={layout}
+      scale={scale}
+      colors={colors}
+      anchorAtom={lyricsTranslationAnchorAtom}
+      lifts={false}>
+      {translation && text !== undefined && !sameText(translation, text) ? (
+        <LyricLine
+          key={lineKey}
+          html={translation}
+          kind='translation'
+          size={STAGGER_SIZE.translation}
+          className='italic motion-safe:animate-in motion-safe:fade-in'
+        />
+      ) : undefined}
+    </DraggableLyrics>
+  </div>
+)
 
 const NO_VIEW: TwoLineView = { active: -1, rows: [-1, -1] }
 const sameView = (a: TwoLineView, b: TwoLineView) =>
@@ -556,6 +569,9 @@ export const StageLyrics = ({
         <StaggerTranslation
           line={lineAt(lyrics, karaokeLines, view.active, english, placeholder)}
           lineKey={view.active}
+          layout={layout}
+          scale={scale}
+          colors={colors}
         />
       )}
       {/* Always this box, so the lyrics stay mounted when two lines turn on or off; two lines move only in

@@ -106,6 +106,12 @@ const defaultLyricsStyleAtoms: {
     syncedStorage(),
     initOptions
   ),
+  translationAnchor: atomWithStorage(
+    'lyricsTranslationAnchor',
+    DEFAULT_LYRICS_STYLE.translationAnchor,
+    syncedStorage(),
+    initOptions
+  ),
   twoLines: atomWithStorage(
     'lyricsTwoLines',
     DEFAULT_LYRICS_STYLE.twoLines,
@@ -131,6 +137,7 @@ const readDefaults = (get: Getter): LyricsStyle => {
       ? screenSizes.data
       : DEFAULT_LYRICS_STYLE.screenSizes,
     themeId: themeId.success ? themeId.data : DEFAULT_LYRICS_STYLE.themeId,
+    translationAnchor: get(defaultLyricsStyleAtoms.translationAnchor),
     twoLines: get(defaultLyricsStyleAtoms.twoLines),
   }
 }
@@ -143,6 +150,7 @@ const LYRICS_STYLE_KEYS = [
   'fontSizeTwoLines',
   'screenSizes',
   'themeId',
+  'translationAnchor',
   'twoLines',
 ] as const satisfies readonly (keyof LyricsStyle)[]
 
@@ -290,6 +298,7 @@ export const lyricsThemeIdAtom = lyricsStyleField('themeId')
 export const lyricsCustomHueAtom = lyricsStyleField('customHue')
 export const lyricsAnchorAtom = lyricsStyleField('anchor')
 export const lyricsAnchorPortraitAtom = lyricsStyleField('anchorPortrait')
+export const lyricsTranslationAnchorAtom = lyricsStyleField('translationAnchor')
 export const lyricsTwoLinesAtom = lyricsStyleField('twoLines')
 export const lyricsFontSizeTwoLinesAtom = lyricsStyleField('fontSizeTwoLines')
 export const lyricsScreenSizesAtom = lyricsStyleField('screenSizes')
