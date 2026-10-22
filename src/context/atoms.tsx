@@ -11,6 +11,7 @@ import type {
 } from '@/lib/lyrics-style'
 import {
   DEFAULT_LYRICS_STYLE,
+  lyricsThemeIdSchema,
   MAX_LYRICS_TEMPLATES,
   readLyricsTemplates,
   readSongStyle,
@@ -123,6 +124,9 @@ const readDefaults = (get: Getter): LyricsStyle => {
   const screenSizes = screenSizesSchema.safeParse(
     get(defaultLyricsStyleAtoms.screenSizes)
   )
+  const themeId = lyricsThemeIdSchema.safeParse(
+    get(defaultLyricsStyleAtoms.themeId)
+  )
   return {
     anchor: get(defaultLyricsStyleAtoms.anchor),
     anchorPortrait: get(defaultLyricsStyleAtoms.anchorPortrait),
@@ -133,7 +137,7 @@ const readDefaults = (get: Getter): LyricsStyle => {
       ? screenSizes.data
       : DEFAULT_LYRICS_STYLE.screenSizes,
     stagger: get(defaultLyricsStyleAtoms.stagger),
-    themeId: get(defaultLyricsStyleAtoms.themeId),
+    themeId: themeId.success ? themeId.data : DEFAULT_LYRICS_STYLE.themeId,
     twoLines: get(defaultLyricsStyleAtoms.twoLines),
   }
 }

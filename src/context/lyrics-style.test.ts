@@ -36,7 +36,7 @@ beforeEach(() => {
 
 test('a song keeps its own style; other songs follow the defaults', () => {
   const store = createStore()
-  store.set(lyricsThemeIdAtom, 'aqua')
+  store.set(lyricsThemeIdAtom, 'amethyst')
 
   store.set(lyricsStyleSongAtom, 'songA')
   store.set(lyricsStyleScopeAtom, 'song')
@@ -44,7 +44,7 @@ test('a song keeps its own style; other songs follow the defaults', () => {
   store.set(lyricsAnchorAtom, 0.1)
 
   store.set(lyricsStyleSongAtom, 'songB')
-  expect(store.get(lyricsThemeIdAtom)).toBe('aqua')
+  expect(store.get(lyricsThemeIdAtom)).toBe('amethyst')
   expect(store.get(lyricsAnchorAtom)).toBe(1)
   expect(store.get(lyricsStyleSourceAtom)).toBe('default')
 
@@ -65,7 +65,7 @@ test('a song keeps its own style; other songs follow the defaults', () => {
   expect(reloaded.get(fontSizeMultiplierAtom)).toBe(1.3)
 
   reloaded.set(resetSongLyricsStyleAtom)
-  expect(reloaded.get(lyricsThemeIdAtom)).toBe('aqua')
+  expect(reloaded.get(lyricsThemeIdAtom)).toBe('amethyst')
   expect(localStorage.getItem('lyricsStyle:songA')).toBeNull()
 })
 
@@ -89,7 +89,7 @@ test('a corrupt or out-of-range saved style falls back to the defaults', () => {
   )
   const store = createStore()
   store.set(lyricsStyleSongAtom, 'bad')
-  expect(store.get(lyricsThemeIdAtom)).toBe('sunset')
+  expect(store.get(lyricsThemeIdAtom)).toBe(DEFAULT_LYRICS_STYLE.themeId)
   store.set(lyricsStyleSongAtom, 'range')
   expect(store.get(fontSizeMultiplierAtom)).toBe(1)
 })
@@ -110,13 +110,13 @@ test("a shared link's style shows for the visit without touching the viewer's ow
 
   const store = createStore()
   store.set(lyricsStyleSongAtom, 'songA')
-  store.set(lyricsThemeIdAtom, 'aqua')
+  store.set(lyricsThemeIdAtom, 'amethyst')
 
   store.set(showSharedLyricsStyleAtom, sent)
   expect(store.get(lyricsThemeIdAtom)).toBe('lemon')
   expect(store.get(lyricsStyleSourceAtom)).toBe('shared')
   store.set(dismissSharedLyricsStyleAtom)
-  expect(store.get(lyricsThemeIdAtom)).toBe('aqua')
+  expect(store.get(lyricsThemeIdAtom)).toBe('amethyst')
 
   // Tuning a shared style keeps it, with the change, as the song's own
   store.set(showSharedLyricsStyleAtom, sent)
@@ -257,7 +257,7 @@ test('a saved style shows as in use only while the style on screen matches it', 
     sameSavedLyricsStyle(green.style, store.get(lyricsStyleAtom))
   expect(inUse()).toBe(true)
 
-  store.set(lyricsThemeIdAtom, 'aqua')
+  store.set(lyricsThemeIdAtom, 'amethyst')
   expect(inUse()).toBe(false)
   store.set(applyLyricsTemplateAtom, green?.id ?? '')
   expect(inUse()).toBe(true)
@@ -268,4 +268,25 @@ test('a saved style shows as in use only while the style on screen matches it', 
   // A size on one screen only is part of the saved style
   store.set(lyricsScreenSizesAtom, { desktop: 1.2, landscape: 1, portrait: 1 })
   expect(inUse()).toBe(false)
+})
+
+test('Aqua, retired, reads as Frost in saved song styles and in links shared before', () => {
+  localStorage.setItem(
+    'lyricsStyle:mv',
+    JSON.stringify({
+      style: { backdrop: 'box', themeId: 'aqua' },
+      updatedAt: 1,
+      v: 1,
+    })
+  )
+  const store = createStore()
+  store.set(lyricsStyleSongAtom, 'mv')
+  expect(store.get(lyricsStyleAtom)).toMatchObject({
+    backdrop: 'box',
+    themeId: 'frost',
+  })
+  expect(decodeSharedStyle('1.aqua.box.100.10.50.200')).toMatchObject({
+    backdrop: 'box',
+    themeId: 'frost',
+  })
 })

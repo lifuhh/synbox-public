@@ -7,6 +7,7 @@ import {
   DEFAULT_LYRICS_THEME_ID,
   LYRICS_BACKDROP_IDS,
   LYRICS_THEME_IDS,
+  RETIRED_LYRICS_THEME_IDS,
 } from '@/lib/lyrics-themes'
 import { touchPref } from '@/lib/prefs/storage'
 
@@ -48,7 +49,8 @@ export const DEFAULT_LYRICS_STYLE: LyricsStyle = {
   backdrop: DEFAULT_LYRICS_BACKDROP,
   customHue: DEFAULT_LYRICS_CUSTOM_HUE,
   fontSize: 1,
-  screenSizes: { desktop: 1, landscape: 1, portrait: 1 },
+  // Desktop starts a size down: at 100% one line spans most of a wide stage
+  screenSizes: { desktop: 0.85, landscape: 1, portrait: 1 },
   stagger: false,
   themeId: DEFAULT_LYRICS_THEME_ID,
   twoLines: false,
@@ -56,6 +58,15 @@ export const DEFAULT_LYRICS_STYLE: LyricsStyle = {
 
 // A song keeps only the fields the viewer changed for it; the rest follow the defaults
 export type LyricsStyleOverrides = Partial<LyricsStyle>
+
+// A retired preset's id reads as the preset that replaced it
+export const lyricsThemeIdSchema = z.preprocess(
+  (value) =>
+    typeof value === 'string'
+      ? (RETIRED_LYRICS_THEME_IDS[value] ?? value)
+      : value,
+  z.enum(LYRICS_THEME_IDS)
+)
 
 const unit = z.number().min(0).max(1)
 const screenSize = z.number().min(SCREEN_SIZE_MIN).max(SCREEN_SIZE_MAX)
@@ -75,7 +86,7 @@ const styleFieldsSchema = z
     fontSize: z.number().min(0.4).max(1.6),
     screenSizes: screenSizesSchema,
     stagger: z.boolean(),
-    themeId: z.enum(LYRICS_THEME_IDS),
+    themeId: lyricsThemeIdSchema,
     twoLines: z.boolean(),
   })
   .partial()
@@ -196,7 +207,7 @@ export const encodeSharedStyle = (style: SharedLyricsStyle) => {
 }
 
 const sharedFields = [
-  z.enum(LYRICS_THEME_IDS),
+  lyricsThemeIdSchema,
   z.enum(LYRICS_BACKDROP_IDS),
   z.coerce.number().int().min(40).max(160),
   z.coerce.number().int().min(0).max(100),
