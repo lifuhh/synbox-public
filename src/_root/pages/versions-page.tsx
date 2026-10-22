@@ -5,6 +5,7 @@ import { Link, useParams } from 'react-router'
 
 import { startFromButton } from '@/components/generation/start-generation'
 import { AdminMark } from '@/components/shared/admin-mark'
+import { DocScroll } from '@/components/shared/doc-scroll'
 import Forbidden from '@/components/shared/forbidden'
 import { Button } from '@/components/ui/button'
 import {
@@ -281,8 +282,9 @@ const VersionsAdmin = ({ videoId }: { videoId: string }) => {
   }
 
   return (
-    <div className='mx-auto flex w-full max-w-3xl flex-col gap-6 overflow-y-auto px-4 pt-page-top pb-page-bottom-lg'>
+    <div className='mx-auto flex w-full max-w-3xl flex-col gap-6 overflow-y-auto px-4 pt-page-top pb-page-bottom-lg doc-scroll:overflow-visible'>
       <title>Lyrics Versions · Synbox</title>
+      <DocScroll />
       <Link
         to={`/v/${videoId}`}
         className='-my-2.5 flex w-fit items-center gap-1.5 py-2.5 text-sm text-muted-foreground transition-colors hover:text-foreground'>

@@ -72,7 +72,7 @@ const App = () => {
   }, [])
 
   return (
-    <main className='flex h-(--app-h) watch-wide:h-auto'>
+    <main className='flex h-(--app-h) doc-scroll:h-auto doc-scroll:pr-(--doc-gutter)'>
       <Routes>
         {StageLabPage && (
           <Route

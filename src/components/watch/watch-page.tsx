@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import { useEffect, useRef } from 'react'
 
 import PlayerRail from '@/components/lyrics-display/player-rail'
+import { DocScroll } from '@/components/shared/doc-scroll'
 import { currentVideoAtom } from '@/context/atoms'
 import { useMediaQuery } from '@/hooks/use-media-query'
 import { useNextList } from '@/lib/listening/recommendations'
@@ -213,6 +214,7 @@ export const WatchPage = ({
       className={watch ? 'watch-page' : 'size-full'}>
       <div className={watch ? 'watch-stage' : 'size-full'}>{stage}</div>
       {watch && below}
+      {watch && <DocScroll />}
     </div>
   )
 }

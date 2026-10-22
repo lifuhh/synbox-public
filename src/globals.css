@@ -22,12 +22,13 @@
     }
   }
 }
-/* The watch page from 1000px wide, where the document scrolls as a whole. The shell around the page (main and
-   the root layout) grows with it there, so the body holds the page: a dialog's scroll lock hides the body's
-   overflow, and a page that only overflowed a screen-high body lost its scrollbar and its scroll under one */
-@custom-variant watch-wide {
+/* A page that scrolls the document as a whole from 1000px wide (html[data-doc-scroll]: the watch page and Admin),
+   so its scrollbar is the window's own, on the right edge. The shell around the page (main and the root layout)
+   grows with it there, so the body holds the page: a dialog's scroll lock hides the body's overflow, and a page
+   that only overflowed a screen-high body lost its scrollbar and its scroll under one */
+@custom-variant doc-scroll {
   @media (min-width: 1000px) {
-    &:where(html[data-watch] *) {
+    &:where(html[data-doc-scroll] *) {
       @slot;
     }
   }
@@ -1429,6 +1430,8 @@
     --topbar-cover: 0px;
     /* With only the status bar to cover, the top scrim starts fading a little above the inset's bottom edge */
     --scrim-lead: calc(var(--safe-top) * 0.3);
+    /* The strip on the right a page that scrolls the document leaves empty for its scrollbar (DocScrollbar) */
+    --doc-gutter: 0.75rem;
     --safe-bottom: env(safe-area-inset-bottom, 0px);
     --safe-left: env(safe-area-inset-left, 0px);
     --safe-right: env(safe-area-inset-right, 0px);
@@ -1612,14 +1615,22 @@
     position: relative;
   }
 
-  /* Except the wide watch page, a web page that scrolls as a whole (watch-page); the video's layer is placed in
-     the document, so it scrolls with it */
+  /* Except a wide page that scrolls as a whole (doc-scroll: the watch page, whose video layer is placed in the
+     document and scrolls with it, and Admin) */
   @media (min-width: 1000px) {
-    html[data-watch] {
+    /* DocScrollbar draws the bar, in a gutter main leaves empty (app.tsx; not the body's padding, which a menu's
+       scroll lock resets): the browser's own would show all the time on a mouse, and the lock would take its width
+       away and move the page */
+    html[data-doc-scroll] {
       overflow-y: auto;
+      scrollbar-width: none;
     }
 
-    html[data-watch] body {
+    html[data-doc-scroll]::-webkit-scrollbar {
+      display: none;
+    }
+
+    html[data-doc-scroll] body {
       overflow: visible;
       height: auto;
     }

@@ -13,6 +13,7 @@ import {
   RecommendButton,
   RecommendationsEditor,
 } from '@/components/admin/recommendations-editor'
+import { DocScroll } from '@/components/shared/doc-scroll'
 import Forbidden from '@/components/shared/forbidden'
 import {
   AlertDialog,
@@ -932,8 +933,9 @@ const AdminPage = () => {
     return <Forbidden />
   }
   return (
-    <div className='mx-auto flex w-full max-w-5xl flex-col gap-8 overflow-y-auto px-4 pt-page-top pb-page-bottom-lg'>
+    <div className='mx-auto flex w-full max-w-5xl flex-col gap-8 overflow-y-auto px-4 pt-page-top pb-page-bottom-lg doc-scroll:overflow-visible'>
       <title>Admin · Synbox</title>
+      <DocScroll />
       <h1 className='text-2xl font-bold text-foreground'>Admin</h1>
       <GenerationPanel />
       <section className='flex flex-col gap-3'>
