@@ -87,7 +87,7 @@ const LYRICS_TOP: Record<VideoFit, string> = {
 // What sits outside the stage reads from it: the song's clock (the watch page's lyrics), and whether it is the
 // whole screen now (fullscreen, or iPhone's stand-in), which turns the watch page back into the stage alone
 const usePublishStage = (
-  { getTime, seek, pause, subscribeFrame, phase }: StagePlayer,
+  { getTime, seek, subscribeFrame, phase }: StagePlayer,
   fullscreen: boolean,
   immersive: boolean,
   onEnded: (() => void) | undefined
@@ -105,11 +105,11 @@ const usePublishStage = (
   }, [ended])
   const setClock = useSetAtom(stageClockAtom)
   useEffect(() => {
-    setClock({ getTime, pause, seek, subscribeFrame })
+    setClock({ getTime, seek, subscribeFrame })
     return () => {
       setClock(null)
     }
-  }, [getTime, pause, seek, subscribeFrame, setClock])
+  }, [getTime, seek, subscribeFrame, setClock])
   const setStageFullscreen = useSetAtom(stageFullscreenAtom)
   const full = fullscreen || immersive
   useEffect(() => {

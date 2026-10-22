@@ -22,6 +22,16 @@
     }
   }
 }
+/* The watch page from 1000px wide, where the document scrolls as a whole. The shell around the page (main and
+   the root layout) grows with it there, so the body holds the page: a dialog's scroll lock hides the body's
+   overflow, and a page that only overflowed a screen-high body lost its scrollbar and its scroll under one */
+@custom-variant watch-wide {
+  @media (min-width: 1000px) {
+    &:where(html[data-watch] *) {
+      @slot;
+    }
+  }
+}
 /* While the installed app's tab bar shows (not on the player or a song's reader) */
 @custom-variant tabbar (&:where(html[data-tabbar] *));
 /* Finger-driven screens: bigger hit areas, no hover-only affordances */
