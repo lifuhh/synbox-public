@@ -396,7 +396,7 @@ export const StageControls = ({
           {/* On a touch screen the clock sits at the end of the seek bar, so the buttons' row fits at 320px */}
           <div className='mb-2 flex items-center gap-3 watch-narrow:contents short:contents'>
             <Slider
-              thin
+              look='seek'
               aria-label='Seek'
               min={0}
               max={Math.max(duration, 1)}
@@ -482,6 +482,7 @@ export const StageControls = ({
               <div className='flex h-9 w-0 items-center overflow-hidden transition-width duration-200 ease-out group-focus-within/volume:w-24 group-hover/volume:w-24 touch:hidden'>
                 <div className='w-24 shrink-0 px-2.5'>
                   <Slider
+                    look='volume'
                     aria-label='Volume'
                     min={0}
                     max={1}
