@@ -10,6 +10,7 @@ import {
   MessageSquareTextIcon,
   Share2Icon,
   ShareIcon,
+  ThumbsUpIcon,
 } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useEffect, useRef, useState } from 'react'
@@ -49,6 +50,7 @@ import {
   encodeSharedStyle,
   sameLyricsStyle,
 } from '@/lib/lyrics-style'
+import { useLikeSong, useSongStats } from '@/lib/song-stats'
 import { cn } from '@/utils/cn'
 
 import { LyricsThemePicker } from './lyrics-theme-picker'
@@ -137,6 +139,27 @@ interface SongAction {
   shortLabel?: string
   // Left out of the watch page's row
   stageOnly?: boolean
+  // A toggle's state, for its button's pressed look and aria-pressed
+  pressed?: boolean
+}
+
+// Like: a toggle, one per account (or device, for a guest); the thumb fills while it is on
+const useLikeAction = (videoId: string): SongAction => {
+  const liked = useSongStats(videoId).data?.liked === true
+  const { mutate: like } = useLikeSong(videoId)
+  return {
+    disabled: videoId === '',
+    handleSelect: () => {
+      like(!liked)
+    },
+    icon: (
+      <ThumbsUpIcon
+        className={cn('size-5 shrink-0', liked && 'fill-current')}
+      />
+    ),
+    label: 'Like',
+    pressed: liked,
+  }
 }
 
 const BookmarkGlyph = ({ bookmarked }: { bookmarked: boolean }) =>
@@ -237,6 +260,7 @@ const PlayerRail = ({ inline = false }: { inline?: boolean }) => {
   const currentVideo = useAtomValue(currentVideoAtom)
   const [saving, setSaving] = useState(false)
   const report = useReportIssue(videoId)
+  const likeAction = useLikeAction(videoId)
   const saveButton = useRef<HTMLButtonElement>(null)
   const addFavorite = useSetAtom(addFavoriteAtom)
   const removeFavorite = useSetAtom(removeFavoriteAtom)
@@ -341,6 +365,7 @@ const PlayerRail = ({ inline = false }: { inline?: boolean }) => {
   })()
 
   const actions: SongAction[] = [
+    likeAction,
     {
       disabled: !currentVideo,
       handleSelect: handleBookmark,
@@ -476,6 +501,9 @@ const PlayerRail = ({ inline = false }: { inline?: boolean }) => {
                           : undefined
                       }
                       label={action.label}
+                      // Lit while on; off, an action looks like the others, not like a dimmed lyrics toggle
+                      pressed={action.pressed === true ? true : undefined}
+                      aria-pressed={action.pressed}
                       disabled={action.disabled}
                       onClick={action.handleSelect}
                       className={cn(

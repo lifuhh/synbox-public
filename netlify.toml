@@ -71,6 +71,13 @@ to = "https://api.synbox.io/api/reports"
 status = 200
 force = true
 
+# Each song's listens and likes, kept by the auth Worker
+[[redirects]]
+from = "/api/songs/*"
+to = "https://api.synbox.io/api/songs/:splat"
+status = 200
+force = true
+
 # The home gallery's song list, from the backend's lookup service. Netlify keeps the copy that service allows
 # (its Netlify-CDN-Cache-Control header), so most visits never reach it
 [[redirects]]

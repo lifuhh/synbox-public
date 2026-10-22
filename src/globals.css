@@ -107,6 +107,8 @@
   --color-error-ring-offset: var(--red-8);
   --color-error-strong: var(--red-10);
   --color-error-input: var(--red-9);
+  /* YouTube's own red, only for its play mark beside a link to a video */
+  --color-youtube: #ff0033;
   --color-success: var(--green-11);
   --color-warning: var(--amber-11);
 

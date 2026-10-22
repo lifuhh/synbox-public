@@ -32,6 +32,7 @@ import {
   saveReport,
 } from './reports'
 import type { Reporter } from './reports'
+import { addListen, isVideoId, likerOf, readStats, setLike } from './songs'
 
 type AppEnv = Env & {
   USER_HOURLY_LIMIT: string
@@ -178,6 +179,51 @@ app.post('/api/reports', async (c) => {
     now
   )
   return c.body(null, 201)
+})
+
+// A visit to a song's player page: one more listen
+app.post('/api/songs/:videoId/listen', async (c) => {
+  const videoId = c.req.param('videoId')
+  if (!isVideoId(videoId)) {
+    return c.json({ code: 'bad_request' }, 400)
+  }
+  await addListen(c.env.DB, videoId)
+  return c.body(null, 204)
+})
+
+const userIdOf = async (env: AppEnv, headers: Headers) => {
+  const session = await createAuth(env).api.getSession({ headers })
+  return session?.user.id ?? null
+}
+
+// A song's listens and likes, and whether this account (or, for a guest, ?device=) likes it
+app.get('/api/songs/:videoId/stats', async (c) => {
+  const videoId = c.req.param('videoId')
+  if (!isVideoId(videoId)) {
+    return c.json({ code: 'bad_request' }, 400)
+  }
+  const liker = likerOf(
+    await userIdOf(c.env, c.req.raw.headers),
+    c.req.query('device') ?? null
+  )
+  return c.json(await readStats(c.env.DB, videoId, liker))
+})
+
+// Like or unlike a song: { liked, device? }; answers with the song's stats after
+app.put('/api/songs/:videoId/like', async (c) => {
+  const videoId = c.req.param('videoId')
+  const body = await c.req.json<Record<string, unknown>>().catch(() => null)
+  const device = typeof body?.device === 'string' ? body.device : null
+  const liker = likerOf(await userIdOf(c.env, c.req.raw.headers), device)
+  if (
+    !isVideoId(videoId) ||
+    typeof body?.liked !== 'boolean' ||
+    liker === null
+  ) {
+    return c.json({ code: 'bad_request' }, 400)
+  }
+  await setLike(c.env.DB, videoId, liker, body.liked, Date.now())
+  return c.json(await readStats(c.env.DB, videoId, liker))
 })
 
 // The landing page's Recommendations, in order. Public; browsers keep it a minute, so an admin's edit shows

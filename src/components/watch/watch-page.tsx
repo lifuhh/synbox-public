@@ -11,6 +11,7 @@ import { cn } from '@/utils/cn'
 
 import { LyricsPanel } from './lyrics-panel'
 import { Shelves } from './shelves'
+import { SongFacts } from './song-facts'
 import { UP_NEXT_COUNT, UpNext } from './up-next'
 
 const WIDE = '(min-width: 1000px)'
@@ -26,6 +27,7 @@ const SongInfo = ({
   inset?: boolean
 }) => {
   const video = useAtomValue(currentVideoAtom)
+  const videoId = video?.videoId ?? ''
   if (compact) {
     return (
       <div className='flex min-w-0 flex-col gap-2'>
@@ -46,6 +48,7 @@ const SongInfo = ({
           </p>
         </div>
         <PlayerRail inline />
+        <SongFacts videoId={videoId} />
       </div>
     )
   }
@@ -69,6 +72,7 @@ const SongInfo = ({
         </p>
         <PlayerRail inline />
       </div>
+      <SongFacts videoId={videoId} />
     </div>
   )
 }

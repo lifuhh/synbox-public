@@ -35,6 +35,7 @@ import {
   songPath,
 } from '@/lib/listening/store'
 import { decodeSharedStyle } from '@/lib/lyrics-style'
+import { countListen } from '@/lib/song-stats'
 import { handleVideoRoute } from '@/utils/route-handler.ts'
 
 // The stage alone fills the screen in fullscreen (or iPhone's stand-in), on a phone on its side and under
@@ -105,6 +106,12 @@ const PlayerPage = () => {
   const [stageVideoId, setStageVideoId] = useState<string | null>(null)
 
   useSongVisit(videoId)
+  // Every visit to a song's player page is one more listen
+  useEffect(() => {
+    if (videoId !== '') {
+      countListen(videoId)
+    }
+  }, [videoId])
   const currentVideo = useAtomValue(currentVideoAtom)
   // The installed app's resume bar takes the listener back to this song from the other tabs
   const setResumeSong = useSetAtom(resumeSongAtom)
