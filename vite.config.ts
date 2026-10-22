@@ -210,16 +210,15 @@ export default defineConfig({
         directoryIndex: '',
         // The app shell only. Lyrics, songs and videos always come from the network
         globPatterns: ['**/*.{js,css,html,png,svg,woff2}'],
-        // Pages from the network first, so opening or reloading a tab shows the latest deploy (a precached page
-        // kept the deploy the worker was built with until a hard reload). The shell in the precache answers
-        // when the network fails or takes over 3 s
+        // Pages from the network, so opening or reloading a tab shows the latest deploy (a precached page kept
+        // the deploy the worker was built with until a hard reload). Offline, the shell in the precache answers:
+        // it names the scripts precached beside it. Never a saved copy of an earlier page, which names scripts a
+        // later deploy deleted (the app opened to a blank screen)
         navigateFallback: null,
         runtimeCaching: [
           {
-            handler: 'NetworkFirst',
+            handler: 'NetworkOnly',
             options: {
-              cacheName: 'pages',
-              networkTimeoutSeconds: 3,
               precacheFallback: { fallbackURL: '/index.html' },
             },
             urlPattern: ({ request, url }) =>

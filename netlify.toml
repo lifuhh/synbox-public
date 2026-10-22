@@ -66,6 +66,13 @@ to = "https://synbox-lookup-1045990822048.asia-southeast1.run.app/library/songs"
 status = 200
 force = true
 
+# A script or style from an earlier deploy is gone: say so, instead of index.html under the bundles' one-year
+# immutable header, which a browser would keep as that script
+[[redirects]]
+from = "/assets/*"
+to = "/404.html"
+status = 404
+
 [[redirects]]
 from = "/*"
 to = "/index.html"
