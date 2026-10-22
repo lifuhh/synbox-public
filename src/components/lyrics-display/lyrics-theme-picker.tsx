@@ -145,7 +145,8 @@ const StyleSwitch = ({
   )
 }
 
-// The karaoke two-row layout, and with it the karaoke machine's stagger: top row left, next row right
+// The karaoke two-row layout, and with it the karaoke machine's stagger: top row left, next row right, the
+// translation at the top
 const TwoLinesSwitch = ({ portrait }: { portrait: boolean }) => {
   const [twoLines, setTwoLines] = useAtom(lyricsTwoLinesAtom)
   const [stagger, setStagger] = useAtom(lyricsStaggerAtom)
@@ -166,7 +167,7 @@ const TwoLinesSwitch = ({ portrait }: { portrait: boolean }) => {
           label='Karaoke Stagger'
           checked={stagger}
           onChange={setStagger}
-          hint='The top line sits left and the next line right, as on a karaoke machine.'
+          hint='Lines take turns on the left and the right in smaller type, with the translation at the top, as on a karaoke machine.'
         />
       )}
     </>
