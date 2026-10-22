@@ -2,7 +2,6 @@ import { useAtomValue } from 'jotai'
 import { useEffect, useState } from 'react'
 import { useLocation, useMatch } from 'react-router'
 
-import { setGenerationDock } from '@/components/generation/dock'
 import { playerChromeOpenAtom, playerSurfaceAtom } from '@/context/atoms'
 import { useArmed } from '@/hooks/use-armed'
 import { useMediaQuery } from '@/hooks/use-media-query'
@@ -11,6 +10,7 @@ import { cn } from '@/utils/cn'
 import AppLogo from '../topbar/app-logo'
 import GitHubButton from '../topbar/github-button'
 import LyricsButton from '../topbar/lyrics-button'
+import Notifications from '../topbar/notifications'
 import ProfileButton from '../topbar/profile-button'
 import SavedMenu from '../topbar/saved-menu'
 
@@ -166,14 +166,14 @@ const TopBar = () => {
     !iconsShown && '-translate-y-2 opacity-0'
   )
   // The buttons share one rhythm on a phone: equal cells, 48 px while there is room and down to the
-  // buttons' own 40 px when there is not, so a lyrics generation docked first in the row fits beside them.
-  // It stays while the others hide with the player's floating UI
+  // buttons' own 40 px when there is not. Notifications stays while songs generate, when the others hide with
+  // the player's floating UI, and in the installed app, whose tabs carry the rest
   const buttons = cn(
-    'mr-1 ml-auto grid auto-cols-[minmax(2.5rem,3rem)] grid-flow-col justify-items-center sm:mr-2 sm:flex sm:items-center sm:gap-3 tabbar:hidden',
+    'mr-1 ml-auto grid auto-cols-[minmax(2.5rem,3rem)] grid-flow-col justify-items-center sm:mr-2 sm:flex sm:items-center sm:gap-3',
+    'tabbar:*:not-data-notifications:hidden',
     isVideoPlayer && armed && 'pointer-events-auto',
-    '*:not-data-generation-dock:transition-fade-translate *:not-data-generation-dock:duration-300 *:not-data-generation-dock:ease-out',
-    !iconsShown &&
-      '*:not-data-generation-dock:-translate-y-2 *:not-data-generation-dock:opacity-0'
+    '*:not-data-busy:transition-fade-translate *:not-data-busy:duration-300 *:not-data-busy:ease-out',
+    !iconsShown && '*:not-data-busy:-translate-y-2 *:not-data-busy:opacity-0'
   )
 
   return (
@@ -206,12 +206,7 @@ const TopBar = () => {
           <AppLogo />
         )}
         <div data-player-chrome className={buttons}>
-          {/* A minimized lyrics generation on a phone (generation-host.tsx) */}
-          <div
-            ref={setGenerationDock}
-            data-generation-dock
-            className='contents'
-          />
+          <Notifications />
           <LyricsButton />
           <SavedMenu />
           {!isVideoPlayer && (

@@ -1,27 +1,12 @@
 import { useQueryClient } from '@tanstack/react-query'
-import { useAtomValue } from 'jotai'
-import { AnimatePresence, MotionConfig } from 'motion/react'
-import type { ReactElement } from 'react'
-import { useEffect, useRef, useState } from 'react'
-import { createPortal } from 'react-dom'
-import { useMatch } from 'react-router'
+import { useEffect, useRef } from 'react'
 
-import { playerSurfaceAtom } from '@/context/atoms'
-import { useMediaQuery } from '@/hooks/use-media-query'
 import { markGuestSongUsed, useAccess } from '@/lib/auth'
 import { STEPS } from '@/lib/generation/plan'
 import type { Job } from '@/lib/generation/store'
-import {
-  focusedJob,
-  setGenerationExpanded,
-  useGeneration,
-} from '@/lib/generation/store'
+import { focusedJob, useGeneration } from '@/lib/generation/store'
 import { QUERY_KEYS } from '@/lib/react-query/query-keys'
 
-import { useGenerationDock } from './dock'
-import GenerationFab from './generation-fab'
-import GenerationPanel from './generation-panel'
-import type { PanelExit } from './surface'
 import type { Presentation } from './use-presentation'
 import { usePresentation } from './use-presentation'
 
@@ -40,15 +25,6 @@ const LIST_QUERIES = [
   QUERY_KEYS.GET_GALLERY_SONGS,
 ]
 
-// Renders into the top bar's dock when there is one; AnimatePresence still sees it as its own child
-const Docked = ({
-  into,
-  children,
-}: {
-  into: HTMLElement | null
-  children: ReactElement
-}) => (into ? createPortal(children, into) : children)
-
 const announcementOf = (job: Job | null, view: Presentation | null) => {
   if (!job || !view) {
     return ''
@@ -59,39 +35,14 @@ const announcementOf = (job: Job | null, view: Presentation | null) => {
   return view.revealed ? 'Lyrics ready' : STEPS[view.index].title
 }
 
-// Mounted once in the root layout, so the generations follow the user from page to page
+// Mounted once in the root layout, so every finished song refreshes its data on any page, and screen readers
+// hear the song on show reach each step. What the generations look like is the top bar's (notifications.tsx)
 const GenerationHost = () => {
   const generation = useGeneration()
-  const { jobs, expanded } = generation
+  const { jobs } = generation
   const job = focusedJob(generation)
   const view = usePresentation(job)
   const queryClient = useQueryClient()
-  // Raised over the stage's control bar only while the stage is the whole screen; on the watch page the
-  // video is a box and the bottom of the screen is free
-  const onPlayerRoute = useMatch('/v/:videoId') !== null
-  const surface = useAtomValue(playerSurfaceAtom)
-  const onPlayer = onPlayerRoute && surface === 'stage'
-  // On a phone the corner sits over the player's lyrics and controls and the lists' play buttons, so the
-  // minimized job docks into the top bar instead (top-bar.tsx), one tap from its panel as before
-  const touch = useMediaQuery('(pointer: coarse)')
-  const slot = useGenerationDock()
-  const dock = touch ? slot : null
-  const docked = dock !== null
-
-  // How the panel leaves next time. Set before collapsing, and back to quick each time it opens.
-  const [panelExit, setPanelExit] = useState<PanelExit>('quick')
-  const [wasExpanded, setWasExpanded] = useState(expanded)
-  if (expanded !== wasExpanded) {
-    setWasExpanded(expanded)
-    if (expanded) {
-      setPanelExit('quick')
-    }
-  }
-  const stepAside = () => {
-    setPanelExit('gentle')
-    setGenerationExpanded(false)
-  }
-
   // Every job that finishes refreshes its song, whichever one the panel shows, and today's song count
   const refreshed = useRef(new Set<number>())
   const access = useAccess()
@@ -133,36 +84,9 @@ const GenerationHost = () => {
   const announcement = announcementOf(job, view)
 
   return (
-    <MotionConfig reducedMotion='user'>
-      <AnimatePresence initial={false} custom={panelExit}>
-        {job &&
-          view &&
-          (expanded ? (
-            <GenerationPanel
-              key='panel'
-              job={job}
-              jobs={jobs}
-              view={view}
-              raised={onPlayer}
-              docked={docked}
-              onOutsideActivity={stepAside}
-            />
-          ) : (
-            <Docked key={docked ? 'dock' : 'fab'} into={dock}>
-              <GenerationFab
-                job={job}
-                count={jobs.length}
-                view={view}
-                raised={onPlayer}
-                docked={docked}
-              />
-            </Docked>
-          ))}
-      </AnimatePresence>
-      <p className='sr-only' aria-live='polite'>
-        {announcement}
-      </p>
-    </MotionConfig>
+    <p className='sr-only' aria-live='polite'>
+      {announcement}
+    </p>
   )
 }
 

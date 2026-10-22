@@ -131,7 +131,6 @@
   --color-glow-a: var(--glow-a);
   --color-glow-b: var(--glow-b);
   --color-generation-surface: var(--graphite-3);
-  --color-generation-panel: var(--graphite-2);
 
   --text-badge: 11px;
   --text-caption: 13px;
@@ -147,7 +146,6 @@
   --shadow-rail: 0 8px 24px rgb(0 0 0/0.4);
   --shadow-stage: 0 4px 16px rgb(0 0 0/0.35);
   --drop-shadow-stage: 0 2px 6px rgb(0 0 0/0.8);
-  --drop-shadow-fab: 0 10px 12px rgb(0 0 0/0.6);
 
   --transition-property-dashoffset: stroke-dashoffset;
   --transition-property-clip: clip-path;
@@ -1375,7 +1373,7 @@
     --screen-h: 100dvh;
     --app-h: var(--screen-h);
     /* How much of the player's bottom edge its floating UI covers while it shows: the lyrics lift by this,
-       and notices and the generation button stand on it */
+       and notices stand on it */
     --stage-chrome-h: var(--stage-controls-h, 5rem);
 
     @media (orientation: portrait) {

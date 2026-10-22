@@ -13,6 +13,7 @@ import type { Runs } from './progress'
 import {
   beginStage,
   completePhase,
+  overallValue,
   reportFraction,
   startPhase,
 } from './progress'
@@ -72,13 +73,16 @@ export interface Job extends Required<GenerationRequest> {
   // Since when the connection is lost and being asked again, while the backend's job may still be running;
   // null while the backend is heard
   reconnectingSince: number | null
+  // Its result was on screen in the panel; a finished job not yet seen counts on the top bar's bell
+  seen: boolean
 }
 
 export interface GenerationState {
   // In the order they were started
   jobs: readonly Job[]
-  // The job the panel or the corner button shows
+  // The job the panel shows
   focusedId: number | null
+  // The top bar's panel is open
   expanded: boolean
 }
 
@@ -411,6 +415,7 @@ export const startGeneration = (request: GenerationRequest): boolean => {
     id,
     reconnectingSince: null,
     runs: {},
+    seen: false,
     skipUploaderLyrics: false,
     startedAt: Date.now(),
     status: { kind: 'waiting' },
@@ -495,10 +500,51 @@ export const focusGeneration = (id: number) => {
 }
 
 export const setGenerationExpanded = (expanded: boolean) => {
-  if (state.focusedId !== null) {
+  if (state.expanded !== expanded) {
     set({ ...state, expanded })
   }
 }
+
+const isFinished = (job: Job) => !isActive(job)
+
+// Finished songs the listener has not had the panel open on since they finished
+export const unseenCount = ({ jobs }: GenerationState) =>
+  jobs.filter((job) => isFinished(job) && !job.seen).length
+
+export const markGenerationsSeen = () => {
+  if (state.jobs.some((job) => isFinished(job) && !job.seen)) {
+    set({
+      ...state,
+      jobs: state.jobs.map((job) =>
+        isFinished(job) && !job.seen ? { ...job, seen: true } : job
+      ),
+    })
+  }
+}
+
+// The song the top bar's ring follows while songs generate: of those running, the one that started running
+// first (the head of the line), and of several that started at the same moment the one furthest along. While
+// all of them still wait for a slot, the first in line. Null when nothing is in progress
+export const leadJob = (jobs: readonly Job[], now: number): Job | null => {
+  const running = jobs.filter((job) => job.status.kind === 'running')
+  if (running.length === 0) {
+    return jobs.find((job) => job.status.kind === 'waiting') ?? null
+  }
+  const ahead = (job: Job, than: Job) =>
+    job.startedAt === than.startedAt
+      ? overallValue(job.runs, now, false) > overallValue(than.runs, now, false)
+      : job.startedAt < than.startedAt
+  let [best] = running
+  for (const job of running) {
+    if (ahead(job, best)) {
+      best = job
+    }
+  }
+  return best
+}
+
+export const activeCount = ({ jobs }: GenerationState) =>
+  jobs.filter(isActive).length
 
 const subscribe = (listener: () => void) => {
   listeners.add(listener)

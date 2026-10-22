@@ -210,8 +210,8 @@ const PlayerRail = ({ inline = false }: { inline?: boolean }) => {
   const armed = useArmed(open)
   const peek = usePeek()
 
-  // Published so that in portrait, where the rail sits on the control bar, the notices, the lyrics and
-  // the generation button stay above it
+  // Published so that in portrait, where the rail sits on the control bar, the notices and the lyrics stay
+  // above it
   useEffect(() => {
     const observe = (panel: HTMLElement) => {
       const root = document.documentElement

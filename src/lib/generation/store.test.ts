@@ -1,8 +1,11 @@
 import { beforeEach, expect, test, vi } from 'vite-plus/test'
 
+import { beginStage, reportFraction } from './progress'
+import type { Job } from './store'
 import {
   cancelGeneration,
   getGenerationState,
+  leadJob,
   MAX_RUNNING,
   startGeneration,
 } from './store'
@@ -136,4 +139,53 @@ test('a stream the backend hands over with a resume line is asked again at once,
   expect(JSON.parse(asked[0])).toMatchObject({ resume: true })
   expect(job.status).toMatchObject({ kind: 'running', phase: 'transcribe' })
   expect(job.reconnectingSince).toBeNull()
+})
+
+const jobAt = (
+  id: number,
+  startedAt: number,
+  status: Job['status'],
+  separated = 0
+): Job => ({
+  ahead: 0,
+  id,
+  mode: 'new',
+  reconnectingSince: null,
+  requestId: String(id),
+  runs:
+    separated > 0
+      ? reportFraction(beginStage({}, 'separate', 0), 'separate', separated, 0)
+      : {},
+  seen: false,
+  skipUploaderLyrics: false,
+  startedAt,
+  status,
+  title: '',
+  video: null,
+  videoId: String(id).repeat(11),
+})
+
+const RUNNING = { kind: 'running', phase: 'transcribe' } as const
+
+test('the ring follows the song that started running first, then the one further along', () => {
+  // A later song further along does not take the ring from the head of the line
+  const head = jobAt(2, 100, RUNNING, 0.1)
+  const later = jobAt(3, 200, RUNNING, 0.9)
+  const waiting = jobAt(1, 50, { kind: 'waiting' })
+  expect(leadJob([waiting, head, later], 1000)?.id).toBe(2)
+  // Started at the same moment: the one further along
+  const twin = jobAt(4, 100, RUNNING, 0.6)
+  expect(leadJob([head, twin], 1000)?.id).toBe(4)
+  // Nothing running yet: the first in line; nothing in progress: none
+  expect(leadJob([waiting, jobAt(5, 10, { kind: 'waiting' })], 1000)?.id).toBe(
+    1
+  )
+  const failed = {
+    at: 0,
+    code: undefined,
+    kind: 'failed',
+    message: '',
+    retry: true,
+  } as const
+  expect(leadJob([jobAt(6, 10, failed, 0.5)], 1000)).toBeNull()
 })

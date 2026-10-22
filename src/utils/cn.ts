@@ -26,7 +26,7 @@ const twMerge = extendTailwindMerge({
       ],
     },
     theme: {
-      'drop-shadow': ['stage', 'fab'],
+      'drop-shadow': ['stage'],
       radius: ['panel'],
       shadow: ['panel', 'glow', 'glow-sm', 'rail', 'stage'],
       spacing: [
