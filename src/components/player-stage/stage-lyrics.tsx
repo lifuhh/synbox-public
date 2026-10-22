@@ -156,9 +156,9 @@ const lineAt = (
   const karaokeLine = karaokeLines?.[index]
   const line = lyrics?.lines[index]
   const text = karaokeLine?.text ?? line?.text ?? placeholder
-  const translation = english
-    ? spaceDashes(lyrics?.eng[index] ?? '')
-    : (lyrics?.chi[index] ?? '')
+  const translation = spaceDashes(
+    (english ? lyrics?.eng : lyrics?.chi)?.[index] ?? ''
+  )
   const romaji = lyrics?.romaji[index] ?? ''
   return { karaokeLine, romaji, text, translation }
 }
