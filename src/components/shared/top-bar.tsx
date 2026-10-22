@@ -20,6 +20,20 @@ const JITTER_PX = 4
 // The bar only hides once the page has scrolled past its own height
 const HIDE_AFTER_PX = 96
 
+const scrolls = (el: HTMLElement) => el.scrollHeight > el.clientHeight + 1
+
+// A list that scrolls inside a scrolling page (the charts) moves within the page, not the page itself. A page
+// whose own box doesn't scroll (the lyrics list) leaves its inner list as the page's scroller
+const insideScroller = (box: HTMLElement) => {
+  for (let el = box.parentElement; el !== null; el = el.parentElement) {
+    const { overflowY } = getComputedStyle(el)
+    if ((overflowY === 'auto' || overflowY === 'scroll') && scrolls(el)) {
+      return true
+    }
+  }
+  return false
+}
+
 const TopBar = () => {
   // The versions page under /v/:id is an ordinary page with an opaque bar, and so is the watch page around a
   // player that is not the whole screen
@@ -33,7 +47,7 @@ const TopBar = () => {
 
   // At the top of a page the bar is clear over the page glow, so the two read as one surface. Scrolling down
   // slides it away; scrolling up brings it back over a fade of the page color. Pages scroll in their own boxes,
-  // so any vertical scroller counts, and the path it happened on is kept so a new page starts clear
+  // so the outermost vertical scroller counts, and the path it happened on is kept so a new page starts clear
   const { pathname } = useLocation()
   const [scrollState, setScrollState] = useState<{
     path: string
@@ -49,7 +63,8 @@ const TopBar = () => {
       }
       if (
         !(box instanceof HTMLElement) ||
-        box.scrollHeight <= box.clientHeight + 1
+        !scrolls(box) ||
+        insideScroller(box)
       ) {
         return
       }
