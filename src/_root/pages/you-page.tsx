@@ -12,6 +12,7 @@ import {
 import type { ReactNode } from 'react'
 import { Link } from 'react-router'
 
+import { UserAvatar } from '@/components/shared/user-avatar'
 import { GitHubIcon } from '@/components/svgicons'
 import { REPO_URL } from '@/components/topbar/github-button'
 import { quotaText } from '@/components/topbar/profile-button'
@@ -109,18 +110,16 @@ const YouPage = () => {
         <div className='flex flex-col gap-3 rounded-2xl bg-card p-4'>
           <div className='flex items-center gap-3'>
             <span className='grid size-12 shrink-0 place-items-center overflow-hidden rounded-full bg-muted text-muted-foreground'>
-              {user?.image !== undefined &&
-              user.image !== null &&
-              user.image !== '' ? (
-                <img
-                  src={user.image}
-                  alt=''
-                  referrerPolicy='no-referrer'
-                  className='size-full object-cover'
-                />
-              ) : (
-                <CircleUserRoundIcon className='size-7' aria-hidden />
-              )}
+              <UserAvatar
+                src={
+                  user?.image === undefined || user.image === ''
+                    ? null
+                    : user.image
+                }
+                fallback={
+                  <CircleUserRoundIcon className='size-7' aria-hidden />
+                }
+              />
             </span>
             <div className='min-w-0'>
               <p className='truncate font-medium text-foreground'>

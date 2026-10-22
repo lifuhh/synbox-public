@@ -240,6 +240,19 @@ export default defineConfig({
             },
             urlPattern: ({ url }) => url.origin === 'https://fonts.gstatic.com',
           },
+          {
+            // Account pictures, kept so pages and app launches show them without asking Google again, which
+            // refuses repeated requests, and offline. Only real pictures: the requests are CORS (user-avatar.tsx),
+            // so an error is visible and never stored
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'avatars',
+              cacheableResponse: { statuses: [200] },
+              expiration: { maxAgeSeconds: 60 * 60 * 24 * 30, maxEntries: 4 },
+            },
+            urlPattern: ({ url }) =>
+              url.origin === 'https://lh3.googleusercontent.com',
+          },
         ],
         sourcemap: false,
       },
