@@ -1,4 +1,4 @@
-import { useAtom, useAtomValue } from 'jotai'
+import { useAtom } from 'jotai'
 import {
   ALargeSmallIcon,
   AudioLinesIcon,
@@ -10,19 +10,16 @@ import {
   SunIcon,
   TvMinimalPlayIcon,
 } from 'lucide-react'
-import type { Ref } from 'react'
-import { useEffect, useImperativeHandle, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router'
 
-import type { KaraokeLineHandle } from '@/components/lyrics-display/karaoke-line'
-import { RubyText } from '@/components/lyrics-display/ruby-text'
+import { LyricLineBlock } from '@/components/offline/lyric-line-block'
 import { PlaybackBar } from '@/components/offline/playback-bar'
 import {
   LayersPanel,
   ReaderButton,
   TypeBar,
 } from '@/components/offline/reader-controls'
-import { ReaderKaraokeLine } from '@/components/offline/reader-karaoke-line'
 import { useSyncedLyrics } from '@/components/offline/use-synced-lyrics'
 import { useThemeColor } from '@/hooks/use-theme-color'
 import {
@@ -44,136 +41,6 @@ type Panel = 'none' | 'layers' | 'type'
 const SCROLL_SLACK_PX = 8
 
 const NO_LINES: OfflineLine[] = []
-
-// The Japanese and the romaji of a line: each filled as it is sung when synced and timed, else plain text.
-// Bold Japanese, medium romaji and a regular italic translation set the three lines apart
-const ReaderJapanese = ({
-  line,
-  synced,
-  karaokeRef,
-}: {
-  line: OfflineLine
-  synced: boolean
-  karaokeRef: Ref<KaraokeLineHandle>
-}) => {
-  const { bold } = useAtomValue(readerPrefsAtom)
-  const className = cn(
-    'font-reader text-reader-ja',
-    bold ? 'font-extrabold' : 'font-bold'
-  )
-  return synced && line.karaoke !== null ? (
-    <ReaderKaraokeLine
-      ref={karaokeRef}
-      kind='japanese'
-      line={line.karaoke}
-      className={className}
-    />
-  ) : (
-    <p lang='ja' className={cn(className, 'text-(--reader-accent)')}>
-      <RubyText segments={line.ruby} />
-    </p>
-  )
-}
-
-const ReaderRomaji = ({
-  line,
-  synced,
-  karaokeRef,
-}: {
-  line: OfflineLine
-  synced: boolean
-  karaokeRef: Ref<KaraokeLineHandle>
-}) => {
-  const { bold } = useAtomValue(readerPrefsAtom)
-  const className = cn(
-    'text-reader-romaji',
-    bold ? 'font-semibold' : 'font-medium'
-  )
-  return synced && line.karaoke !== null ? (
-    <ReaderKaraokeLine
-      ref={karaokeRef}
-      kind='romaji'
-      line={line.karaoke}
-      className={className}
-    />
-  ) : (
-    <p className={cn(className, 'text-(--reader-muted)')}>{line.romaji}</p>
-  )
-}
-
-// One sung line as a block: the Japanese, its romaji, then the translation. Synced, a tap seeks to it, the
-// line being sung is the bright one, and its Japanese and romaji fill as they are sung
-const ReaderLine = ({
-  line,
-  first,
-  synced,
-  dimmed,
-  blockRef,
-  karaokeRef,
-  onSeek,
-}: {
-  line: OfflineLine
-  first: boolean
-  synced: boolean
-  dimmed: boolean
-  blockRef: (element: HTMLDivElement | null) => void
-  karaokeRef: Ref<KaraokeLineHandle>
-  onSeek: (time: number) => void
-}) => {
-  const prefs = useAtomValue(readerPrefsAtom)
-  const translation = prefs.language === 'en' ? line.en : line.zh
-  const source = prefs.japanese || (prefs.romaji && line.romaji !== '')
-  // The clock drives one handle per line; it fills the Japanese and the romaji together
-  const japanese = useRef<KaraokeLineHandle>(null)
-  const romaji = useRef<KaraokeLineHandle>(null)
-  useImperativeHandle(karaokeRef, () => ({
-    setTime: (time: number) => {
-      japanese.current?.setTime(time)
-      romaji.current?.setTime(time)
-    },
-  }))
-  return (
-    // oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- a tap seeks; the position bar does the same from the keyboard
-    <div
-      ref={blockRef}
-      onClick={
-        synced
-          ? () => {
-              onSeek(line.start)
-            }
-          : undefined
-      }
-      className={cn(
-        'grid gap-y-0.5 pb-reader-line transition-opacity duration-300',
-        line.stanza && !first && 'pt-reader-stanza',
-        synced && 'cursor-pointer',
-        dimmed && 'opacity-40'
-      )}>
-      {source && (
-        <div>
-          {prefs.japanese && (
-            <ReaderJapanese line={line} synced={synced} karaokeRef={japanese} />
-          )}
-          {prefs.romaji && line.romaji !== '' && (
-            <ReaderRomaji line={line} synced={synced} karaokeRef={romaji} />
-          )}
-        </div>
-      )}
-      {prefs.translation && translation !== '' && (
-        <p
-          lang={prefs.language}
-          className={cn(
-            'font-reader text-reader-translation italic',
-            // A little apart, so the romaji reads as part of the Japanese above it
-            source && 'pt-1',
-            prefs.bold ? 'font-medium' : 'font-normal'
-          )}>
-          {translation}
-        </p>
-      )}
-    </div>
-  )
-}
 
 // The top bar: back, the song, and what a reader changes. In reader mode it slides away while reading down
 const ReaderHeader = ({
@@ -467,7 +334,7 @@ const ReaderPage = () => {
       data-reader
       data-theme={prefs.theme}
       style={readerVars}
-      className='fixed inset-0 z-60 reader-paper flex flex-col bg-(--reader-bg) text-(--reader-fg)'>
+      className='fixed inset-0 z-60 page-ruby flex flex-col bg-(--reader-bg) text-(--reader-fg) reader-paper'>
       <title>{song ? `${song.title} · Lyrics` : 'Lyrics · Synbox'}</title>
       <div
         aria-hidden='true'
@@ -509,10 +376,11 @@ const ReaderPage = () => {
               {online && <WatchVideo videoId={song.videoId} />}
             </header>
             {song.lines.map((line, index) => (
-              <ReaderLine
+              <LyricLineBlock
                 // Lines are positional and never reorder
                 // oxlint-disable-next-line no-array-index-key
                 key={index}
+                show={prefs}
                 line={line}
                 first={index === 0}
                 synced={synced}

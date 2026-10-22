@@ -19,6 +19,15 @@ export const isStandalone = () =>
   // iOS before display-mode support
   ('standalone' in navigator && navigator.standalone === true)
 
+// The app opened from a phone's Home Screen gets its own navigation (tab bar, no website pitch): one flag on
+// <html> that the installed: CSS variant and the tab bar both read. In development a localStorage switch
+// (synboxInstalledPreview = 1) turns it on in a browser tab, since no browser emulates display-mode
+export const isInstalledPhone = () =>
+  (isStandalone() && window.matchMedia('(pointer: coarse)').matches) ||
+  (import.meta.env.DEV &&
+    localStorage.getItem('synboxInstalledPreview') === '1')
+document.documentElement.toggleAttribute('data-installed', isInstalledPhone())
+
 // iPadOS reports itself as a Mac; a touch screen gives it away
 const isIos =
   /iPhone|iPad|iPod/u.test(navigator.userAgent) ||

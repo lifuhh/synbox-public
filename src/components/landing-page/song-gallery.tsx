@@ -3,8 +3,9 @@ import { PlayIcon } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router'
 
-import { KaraokeBadge } from '@/components/shared/karaoke-badge'
+import { KaraokeCorner, KaraokeLabel } from '@/components/shared/karaoke-badge'
 import { Skeleton } from '@/components/ui/skeleton'
+import { SongMenu } from '@/components/watch/song-menu'
 import { useMediaQuery } from '@/hooks/use-media-query'
 import { useGallerySongs } from '@/lib/react-query/queries-and-mutations'
 import type { LibraryListSong } from '@/lib/synbox-flask/discovery'
@@ -26,35 +27,43 @@ const CARD_CHROME_PX = 84
 
 // Picture first, like the recommendations above, with no box around it; the text has fixed heights so a row's
 // height follows from its width alone
+// The card opens the song; its menu (Play Next, Add to Queue, Save to Playlist) sits beside the title, outside
+// the link, at the top of the fixed text block
 const SongCard = ({ song }: { song: LibraryListSong }) => (
-  <Link
-    to={`/v/${song.videoId}`}
-    state={{ videoId: song.videoId }}
-    title={song.title}
-    className='group block rounded-xl focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden'>
-    <span className='relative block aspect-video overflow-hidden rounded-xl bg-thumbnail-placeholder'>
-      <img
-        src={song.thumbnailUrl}
-        alt=''
-        loading='lazy'
-        decoding='async'
-        className='size-full object-cover transition-transform duration-500 group-hover:scale-104 motion-reduce:transition-none'
-      />
-      <span className='absolute right-2.5 bottom-2.5 grid size-10 place-items-center rounded-full bg-black/70 text-white opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100'>
-        <PlayIcon className='size-4 fill-current' aria-hidden />
+  <div className='relative'>
+    <Link
+      to={`/v/${song.videoId}`}
+      state={{ videoId: song.videoId }}
+      title={song.title}
+      className='group block rounded-xl focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden'>
+      <span className='relative block aspect-video overflow-hidden rounded-xl bg-thumbnail-placeholder'>
+        <img
+          src={song.thumbnailUrl}
+          alt=''
+          loading='lazy'
+          decoding='async'
+          className='size-full object-cover transition-transform duration-500 group-hover:scale-104 motion-reduce:transition-none'
+        />
+        <span className='absolute right-2.5 bottom-2.5 grid size-10 place-items-center rounded-full bg-black/70 text-white opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100'>
+          <PlayIcon className='size-4 fill-current' aria-hidden />
+        </span>
+        {song.karaoke && <KaraokeCorner />}
       </span>
-    </span>
-    {/* A fixed-height block, so every row is the same height; the channel sits right under one line or two */}
-    <span className='mt-3 flex h-18 flex-col gap-1'>
-      <span className='line-clamp-2 text-base leading-6 font-semibold text-foreground'>
-        {song.title}
+      {/* A fixed-height block, so every row is the same height; the channel sits right under one line or two */}
+      <span className='mt-3 flex h-18 flex-col gap-1 pe-10'>
+        <span className='line-clamp-2 text-base leading-6 font-semibold text-foreground'>
+          {song.title}
+          {song.karaoke && <KaraokeLabel />}
+        </span>
+        <span className='truncate text-sm leading-5 text-muted-foreground'>
+          {song.author}
+        </span>
       </span>
-      <span className='flex h-5 items-center gap-1.5 text-sm leading-5 text-muted-foreground'>
-        {song.karaoke && <KaraokeBadge />}
-        <span className='truncate'>{song.author}</span>
-      </span>
-    </span>
-  </Link>
+    </Link>
+    <div className='absolute end-0 bottom-8'>
+      <SongMenu song={song} />
+    </div>
+  </div>
 )
 
 const CardSkeleton = () => (

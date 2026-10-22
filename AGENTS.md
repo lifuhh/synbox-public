@@ -32,6 +32,12 @@ Rules for the player (and any full-screen surface):
 
 **Check every UI change on three screens**, by measuring positions, not only by looking: desktop Chromium 1440×900, and Playwright WebKit with `isMobile: true, hasTouch: true` at 390×844 and 844×390. Chrome's device mode is not enough (it flips back to `pointer: fine` mid-page and is not WebKit). Playwright reports no safe areas; inject the iPhone ones (portrait top 47 / bottom 34, landscape left and right 47 / bottom 21) by overriding `--safe-top`, `--safe-bottom`, `--safe-left` and `--safe-right` on `:root` (everything that clears the status bar, `--topbar-h` and `pt-safe-top` included, reads `--safe-top`). Put the before/after screenshots side by side in a `.reports/` page. Real-device feel (touch drag, home indicator, status bar) still needs the user's phone: say what was not checked.
 
+**Measure alignment, every time** (the owner's standing rule). Run the `better-*` skills (`better-interface` covers all of them) over every page a change touches, and measure with the browser, not by eye:
+
+- an icon beside a label or a number (a tab, a pill, a count) is centred on the control's vertical centre and on the text's centre line, within 1px; a lone icon is centred in its button both ways;
+- items in a row share one centre line (or one baseline for text), and a list's rows start at one left edge;
+- report the measured offsets with the screenshots. An off-centre glyph that is optically right (a play triangle) is the only exception, and says so.
+
 ## Shipping a change
 
 Every task goes worktree → branch → PR without asking how. Merging to `main` is the deploy, and every Netlify build (production or preview) spends the account's monthly build minutes, so builds are rationed:

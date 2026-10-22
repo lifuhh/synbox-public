@@ -76,6 +76,12 @@ const defaultLyricsStyleAtoms: {
     undefined,
     initOptions
   ),
+  stagger: atomWithStorage(
+    'lyricsStagger',
+    DEFAULT_LYRICS_STYLE.stagger,
+    undefined,
+    initOptions
+  ),
   themeId: atomWithStorage<LyricsThemeId>(
     'lyricsTheme',
     DEFAULT_LYRICS_STYLE.themeId,
@@ -103,6 +109,7 @@ const readDefaults = (get: Getter): LyricsStyle => {
     screenSizes: screenSizes.success
       ? screenSizes.data
       : DEFAULT_LYRICS_STYLE.screenSizes,
+    stagger: get(defaultLyricsStyleAtoms.stagger),
     themeId: get(defaultLyricsStyleAtoms.themeId),
     twoLines: get(defaultLyricsStyleAtoms.twoLines),
   }
@@ -115,6 +122,7 @@ const LYRICS_STYLE_KEYS = [
   'customHue',
   'fontSize',
   'screenSizes',
+  'stagger',
   'themeId',
   'twoLines',
 ] as const satisfies readonly (keyof LyricsStyle)[]
@@ -265,6 +273,7 @@ export const lyricsBackdropAtom = lyricsStyleField('backdrop')
 export const lyricsAnchorAtom = lyricsStyleField('anchor')
 export const lyricsAnchorPortraitAtom = lyricsStyleField('anchorPortrait')
 export const lyricsTwoLinesAtom = lyricsStyleField('twoLines')
+export const lyricsStaggerAtom = lyricsStyleField('stagger')
 export const lyricsScreenSizesAtom = lyricsStyleField('screenSizes')
 
 // A shared style that matches the viewer's own changes nothing, so it is not shown as shared
@@ -362,6 +371,29 @@ export const playerChromeOpenAtom = atom(true)
 // leaves; 'pinned' was asked for (its button, a click on the lyrics) and stays until dismissed
 export type LyricsStylePanel = 'closed' | 'peek' | 'pinned'
 export const lyricsStylePanelAtom = atom<LyricsStylePanel>('closed')
+
+// How the player sits on the page when it is not the whole screen. 'default' is the watch page: the video top
+// left with the lyrics beside it and the song and Up Next below. 'theater' gives the video the page's full
+// width (wide screens only). Fullscreen is the stage alone, the player as it always was. Kept on this device
+export type WatchLayout = 'default' | 'theater'
+export const watchLayoutAtom = atomWithStorage<WatchLayout>(
+  'playerWatchLayout',
+  'default'
+)
+// How the player page shows right now: the watch page, or the stage alone (fullscreen, a phone on its side,
+// Lock Landscape). PlayerPage sets it; the top bar reads it. null away from the player
+export const playerSurfaceAtom = atom<'stage' | 'watch' | null>(null)
+// Whether the stage is the whole screen right now: browser fullscreen, or iPhone's stand-in for it.
+// PlayerStage owns it
+export const stageFullscreenAtom = atom(false)
+// The playing song's clock for what sits outside the stage (the watch page's lyrics): its time, a seek, and
+// a call on every frame. PlayerStage sets it while it is mounted
+export interface StageClock {
+  getTime: () => number
+  seek: (seconds: number) => void
+  subscribeFrame: (listener: (time: number) => void) => () => void
+}
+export const stageClockAtom = atom<StageClock | null>(null)
 
 export const playerVolumeAtom = atomWithStorage('playerVolume', {
   level: 0.5,

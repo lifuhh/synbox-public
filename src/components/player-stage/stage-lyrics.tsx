@@ -12,6 +12,7 @@ import {
   lyricsCustomHueAtom,
   lyricsScreenSizesAtom,
   lyricsThemeIdAtom,
+  lyricsStaggerAtom,
   lyricsTwoLinesAtom,
   lyricsVisibilityAtom,
   romajiVisibilityAtom,
@@ -82,16 +83,30 @@ const sameText = (a: string, b: string) =>
   a.trim().toLowerCase() === b.trim().toLowerCase()
 
 // Lyrics scale with the stage, but never below a size a phone can read
-const LyricLine = ({ html, primary }: { html: string; primary: boolean }) => {
+// Sizes step down as on the reader: the Japanese, then its romaji (read with it, so close in size), then the
+// translation
+const LINE_SIZE = {
+  japanese: 'text-lyric',
+  romaji: 'text-lyric-romaji',
+  translation: 'text-lyric-secondary',
+} as const
+
+const LyricLine = ({
+  html,
+  kind,
+}: {
+  html: string
+  kind: keyof typeof LINE_SIZE
+}) => {
   const segments = useMemo(() => parseRubyHtml(html), [html])
-  const latin = !primary || isLatinOnly(html)
+  const latin = kind !== 'japanese' || isLatinOnly(html)
   return (
     <p
       key={html}
       ref={balanceWrap}
       className={cn(
         'lyric-text-line mx-auto text-center',
-        primary ? 'text-lyric' : 'text-lyric-secondary',
+        LINE_SIZE[kind],
         // Room above a Japanese line for its furigana when it wraps
         latin
           ? 'font_noto_sans_reg leading-normal'
@@ -126,7 +141,7 @@ interface ShownRows {
   translation: boolean
 }
 
-// One lyric line with the rows the viewer shows with it: its translation above, its romaji below. Each
+// One lyric line with the rows the viewer shows with it: its romaji, then its translation, below it. Each
 // karaoke line hands its fill handle to `track` while mounted
 const LineRows = ({
   line: { karaokeLine, romaji, text, translation },
@@ -140,26 +155,26 @@ const LineRows = ({
   track: (handle: KaraokeLineHandle | null) => () => void
 }) => (
   <>
-    {shown.translation && translation && !sameText(translation, text) && (
-      <LyricLine html={translation} primary={false} />
-    )}
     {shown.lyrics &&
       (karaokeLine ? (
         <div className='text-center text-lyric'>
           <KaraokeLine key={lineKey} ref={track} line={karaokeLine} />
         </div>
       ) : (
-        <LyricLine html={text} primary />
+        <LyricLine html={text} kind='japanese' />
       ))}
     {shown.romaji &&
       (karaokeLine ? (
-        <div className='text-center text-lyric-secondary'>
+        <div className='text-center text-lyric-romaji'>
           <KaraokeRomajiLine key={lineKey} ref={track} line={karaokeLine} />
         </div>
       ) : (
         romaji &&
-        !sameText(romaji, text) && <LyricLine html={romaji} primary={false} />
+        !sameText(romaji, text) && <LyricLine html={romaji} kind='romaji' />
       ))}
+    {shown.translation && translation && !sameText(translation, text) && (
+      <LyricLine html={translation} kind='translation' />
+    )}
   </>
 )
 
@@ -237,6 +252,7 @@ export const StageLyrics = ({
   // Upright, a phone's lines wrap at its narrow width and the band under the video also holds the controls,
   // so two lines (each with its romaji and translation) would crowd it: one line there
   const twoLines = useAtomValue(lyricsTwoLinesAtom) && surface !== 'portrait'
+  const stagger = useAtomValue(lyricsStaggerAtom)
   const colors = useMemo(
     () => getLyricsThemeColors(themeId, hue),
     [themeId, hue]
@@ -359,7 +375,8 @@ export const StageLyrics = ({
               data-lyric-row={index === view.active ? 'sung' : 'next'}
               className={cn(
                 'transition-opacity duration-200',
-                index !== view.active && 'opacity-60'
+                index !== view.active && 'opacity-60',
+                stagger && (row === 0 ? 'lyric-row-start' : 'lyric-row-end')
               )}>
               {index >= 0 && rowsOf(index)}
             </div>

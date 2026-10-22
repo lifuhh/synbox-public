@@ -38,6 +38,9 @@ export const RailButton = ({
 
 // Set while the rail's style panel is open: it covers the space the tooltips open into
 export const RailTooltipsOff = createContext(false)
+// Set when the rail is a row under the video on the watch page: its labels and panels open above or below
+// it instead of to its side
+export const RailInline = createContext(false)
 
 export const RailTooltip = ({
   label,
@@ -51,6 +54,7 @@ export const RailTooltip = ({
   // Labels are for hover; on a touch screen they would only cover the stage
   const touch = useMediaQuery('(pointer: coarse)')
   const off = hidden || touch || use(RailTooltipsOff)
+  const inline = use(RailInline)
   // Controlled, and closed while off, so a tooltip never reopens from state it had before
   const [open, setOpen] = useState(false)
   const [wasOff, setWasOff] = useState(off)
@@ -67,7 +71,7 @@ export const RailTooltip = ({
         }
       }}>
       <TooltipTrigger asChild>{children}</TooltipTrigger>
-      <TooltipContent side='right' sideOffset={10}>
+      <TooltipContent side={inline ? 'top' : 'right'} sideOffset={10}>
         {label}
       </TooltipContent>
     </Tooltip>

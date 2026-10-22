@@ -4,7 +4,10 @@ import { useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Link } from 'react-router'
 
-import { KaraokeMark } from '@/components/shared/karaoke-badge'
+import {
+  KaraokeCornerMark,
+  KaraokeLabelMark,
+} from '@/components/shared/karaoke-badge'
 import OptimizedThumbnail from '@/components/shared/optimized-thumbnail'
 import {
   AlertDialog,
@@ -29,13 +32,15 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
+import { PlaylistCover } from '@/components/watch/playlist-cover'
 import { favoritesAtom, historyAtom, removeFavoriteAtom } from '@/context/atoms'
 import { useOverflow } from '@/hooks/use-overflow'
+import { usePlaylists } from '@/lib/listening/store'
 
-type SavedTab = 'bookmarks' | 'history'
+type SavedTab = 'bookmarks' | 'history' | 'playlists'
 
 const isSavedTab = (value: string): value is SavedTab =>
-  value === 'bookmarks' || value === 'history'
+  value === 'bookmarks' || value === 'history' || value === 'playlists'
 
 interface Song {
   videoId: string
@@ -64,7 +69,9 @@ const SongRow = ({
         to={`/v/${song.videoId}`}
         onClick={onOpen}
         className='flex min-w-0 grow items-center gap-2 rounded-md p-2 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden'>
-        <OptimizedThumbnail src={song.thumbnailUrl} alt='' />
+        <OptimizedThumbnail src={song.thumbnailUrl} alt=''>
+          <KaraokeCornerMark videoId={song.videoId} size='sm' />
+        </OptimizedThumbnail>
         <span className='min-w-0 grow'>
           <span
             ref={containerRef}
@@ -75,9 +82,9 @@ const SongRow = ({
               {song.title}
             </span>
           </span>
-          <span className='flex items-center gap-1.5 text-sm text-song-meta'>
-            <KaraokeMark videoId={song.videoId} />
-            <span className='truncate'>{song.author}</span>
+          <KaraokeLabelMark videoId={song.videoId} />
+          <span className='block truncate text-sm text-song-meta'>
+            {song.author}
           </span>
         </span>
       </Link>
@@ -108,6 +115,7 @@ const SavedMenu = () => {
   const [favorites] = useAtom(favoritesAtom)
   const [history, setHistory] = useAtom(historyAtom)
   const removeFavorite = useSetAtom(removeFavoriteAtom)
+  const playlists = usePlaylists()
 
   const close = () => {
     setOpen(false)
@@ -122,20 +130,18 @@ const SavedMenu = () => {
               <Button variant='toolbar' size='icon'>
                 {/* Filled while the menu is open, as a selected icon is */}
                 <BookmarkIcon className='h-6 w-6 shrink-0 in-aria-expanded:fill-current' />
-                <span className='sr-only'>Bookmarks and History</span>
+                <span className='sr-only'>Saved</span>
               </Button>
             </TooltipTrigger>
           </PopoverTrigger>
-          <TooltipContent variant='accent'>
-            Bookmarks and History
-          </TooltipContent>
+          <TooltipContent variant='accent'>Saved</TooltipContent>
         </Tooltip>
         <PopoverContent
           align='end'
           sideOffset={10}
           collisionPadding={8}
           variant='floating'
-          aria-label='Bookmarks and History'
+          aria-label='Saved'
           className='flex max-h-[min(38rem,calc(var(--radix-popover-content-available-height)-var(--safe-bottom)))] w-[min(25rem,calc(100vw-1rem-var(--safe-left)-var(--safe-right)))] flex-col overflow-hidden'>
           <Tabs
             value={tab}
@@ -146,12 +152,15 @@ const SavedMenu = () => {
             }}
             className='flex min-h-0 flex-col'>
             <div className='p-2 pb-0'>
-              <TabsList className='grid h-10 w-full grid-cols-2 touch:h-13'>
+              <TabsList className='grid h-10 w-full grid-cols-3 touch:h-13'>
                 <TabsTrigger value='bookmarks' className='h-full'>
                   Bookmarks
                 </TabsTrigger>
                 <TabsTrigger value='history' className='h-full'>
                   History
+                </TabsTrigger>
+                <TabsTrigger value='playlists' className='h-full'>
+                  Playlists
                 </TabsTrigger>
               </TabsList>
             </div>
@@ -223,6 +232,44 @@ const SavedMenu = () => {
                     body='Songs you play show up here.'
                   />
                 )}
+              </TabsContent>
+              <TabsContent value='playlists' forceMount className={PANEL}>
+                {playlists.length > 0 ? (
+                  <ul className={LIST}>
+                    {playlists.map((list) => (
+                      <li key={list.id}>
+                        <Link
+                          to={`/playlists/${list.id}`}
+                          onClick={close}
+                          className='flex items-center gap-2 rounded-md p-2 hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden'>
+                          <PlaylistCover playlist={list} className='size-12' />
+                          <span className='flex min-w-0 flex-col'>
+                            <span className='truncate font-bold tracking-wide text-song-title'>
+                              {list.name}
+                            </span>
+                            <span className='text-sm text-song-meta'>
+                              {list.songs.length === 1
+                                ? '1 song'
+                                : `${list.songs.length} songs`}
+                            </span>
+                          </span>
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <EmptyState
+                    title='No playlists yet'
+                    body='Save a song to a playlist from its menu or from the player.'
+                  />
+                )}
+                <div className='flex justify-end border-t border-border p-2'>
+                  <Button asChild variant='ghost-subtle'>
+                    <Link to='/playlists' onClick={close}>
+                      All Playlists
+                    </Link>
+                  </Button>
+                </div>
               </TabsContent>
             </div>
           </Tabs>

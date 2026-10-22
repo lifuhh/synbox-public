@@ -14,6 +14,42 @@ export const KaraokeBadge = ({ className }: { className?: string }) => (
   </span>
 )
 
+// The same mark on a thumbnail: a folded top-right corner in the accent with a mic, like a sticker on cover
+// art, so the title beside or under the picture keeps its full width. 'sm' for list thumbnails (~96px wide),
+// 'md' for cards
+export const KaraokeCorner = ({ size = 'md' }: { size?: 'sm' | 'md' }) => (
+  <span
+    aria-hidden
+    className={cn(
+      'pointer-events-none absolute top-0 right-0 bg-primary text-primary-foreground corner-fold',
+      size === 'sm' ? 'size-5' : 'size-8'
+    )}>
+    <MicVocalIcon
+      aria-hidden
+      className={cn(
+        'absolute',
+        size === 'sm' ? 'top-0.5 right-0.5 size-2.5' : 'top-1 right-1 size-3.5'
+      )}
+    />
+  </span>
+)
+
+// What the corner says, for a screen reader, placed after a song's title so the title is read first
+export const KaraokeLabel = () => (
+  <span className='sr-only'>, Karaoke Lyrics</span>
+)
+
+export const KaraokeLabelMark = ({ videoId }: { videoId: string }) =>
+  useHasKaraoke(videoId) ? <KaraokeLabel /> : null
+
+export const KaraokeCornerMark = ({
+  videoId,
+  size,
+}: {
+  videoId: string
+  size?: 'sm' | 'md'
+}) => (useHasKaraoke(videoId) ? <KaraokeCorner size={size} /> : null)
+
 // The badge for a song known only by its id, from the library list
 export const KaraokeMark = ({
   videoId,
