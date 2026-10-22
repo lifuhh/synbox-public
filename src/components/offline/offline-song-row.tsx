@@ -72,8 +72,8 @@ export const OfflineSongRow = ({
       <div className='flex min-w-0 flex-1 flex-col'>
         <p className='line-clamp-2 text-sm leading-snug font-medium text-foreground'>
           {song.title}
-          {hasKaraoke(song) && <KaraokeLabel />}
         </p>
+        {hasKaraoke(song) && <KaraokeLabel />}
         <p className='truncate text-xs text-muted-foreground'>{song.author}</p>
         {match?.kind === 'lyrics' ? (
           <p className='truncate text-xs text-primary-text italic'>

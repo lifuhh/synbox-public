@@ -54,7 +54,8 @@ export const KaraokeMetaIcon = () => (
   />
 )
 
-// What the marks say, for a screen reader, placed after a song's title so the title is read first
+// What the marks say, for a screen reader, placed after a song's title so the title is read first. Never inside a
+// line-clamped title: WebKit counts its hidden text and clips a title that fits with an ellipsis
 export const KaraokeLabel = () => (
   <span className='sr-only'>, Karaoke Lyrics</span>
 )
