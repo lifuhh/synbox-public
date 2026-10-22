@@ -9,7 +9,7 @@ import {
   SquarePlusIcon,
   UserIcon,
 } from 'lucide-react'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router'
 
 import { UserAvatar } from '@/components/shared/user-avatar'
@@ -28,7 +28,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { signInWithGoogle, signOut, useMe } from '@/lib/auth'
+import { lastAccount, signInWithGoogle, signOut, useMe } from '@/lib/auth'
 import type { Quota } from '@/lib/auth'
 import { forgetMySongs } from '@/lib/offline/sync'
 import { useInstallMethod } from '@/lib/pwa'
@@ -84,6 +84,51 @@ export const quotaText = ({ limit, used }: Quota) => {
   return `${Math.max(limit - used, 0)} of ${limit} new songs left this hour`
 }
 
+// The account button, or Sign In for a guest. Until the session check answers it shows the control this
+// browser had last time (the account button with the picture it had, or Sign In), and fades over only when
+// the answer turns out different
+const ProfileTrigger = ({
+  user,
+  pending,
+}: {
+  user: { image: string | null } | null
+  pending: boolean
+}) => {
+  const remembered = useMemo(() => lastAccount(), [])
+  const account = pending ? remembered : user
+  const slot = account === null ? 'guest' : 'account'
+  const [shownSlot, setShownSlot] = useState(slot)
+  const image = account?.image ?? null
+  return (
+    <span
+      key={slot}
+      // On a phone the top bar is a grid of icon-sized cells; the Sign In pill takes two, centred in the row
+      className={cn(
+        'flex items-center',
+        slot !== shownSlot && 'appear',
+        slot === 'guest' && 'max-sm:col-span-2'
+      )}
+      onAnimationEnd={() => {
+        setShownSlot(slot)
+      }}>
+      <DropdownMenuTrigger asChild>
+        {slot === 'account' ? (
+          <Button variant='toolbar' size='icon'>
+            <UserAvatar
+              className='size-6'
+              src={image === '' ? null : image}
+              fallback={<UserIcon className='size-6 shrink-0 fill-current' />}
+            />
+            <span className='sr-only'>Account</span>
+          </Button>
+        ) : (
+          <Button size='pill'>Sign In</Button>
+        )}
+      </DropdownMenuTrigger>
+    </span>
+  )
+}
+
 const ProfileButtonDropdown = () => {
   const navigate = useNavigate()
   const install = useInstallMethod()
@@ -91,10 +136,6 @@ const ProfileButtonDropdown = () => {
   const queryClient = useQueryClient()
   const { data: me, isPending } = useMe()
   const user = me?.user ?? null
-  const slot = user ? 'account' : 'guest'
-  // The slot fades in when the session check answers or changes. The top bar remounts it on leaving the player,
-  // with the session already known: that shows it at once, not as a reload
-  const [shownSlot, setShownSlot] = useState(isPending ? null : slot)
 
   const handleSignOut = async () => {
     await signOut()
@@ -109,40 +150,7 @@ const ProfileButtonDropdown = () => {
   return (
     <>
       <DropdownMenu>
-        {/* Until the session is known the slot holds an avatar's space, so a signed-in visit never flashes
-            Sign In; a guest gets a labelled button rather than an empty person icon */}
-        {isPending ? (
-          <span aria-hidden className='size-10' />
-        ) : (
-          <span
-            key={slot}
-            // On a phone the top bar is a grid of icon-sized cells; the Sign In pill takes two, centred in the row
-            className={cn(
-              'flex items-center',
-              slot !== shownSlot && 'appear',
-              user === null && 'max-sm:col-span-2'
-            )}
-            onAnimationEnd={() => {
-              setShownSlot(slot)
-            }}>
-            <DropdownMenuTrigger asChild>
-              {user ? (
-                <Button variant='toolbar' size='icon'>
-                  <UserAvatar
-                    className='size-6'
-                    src={user.image === '' ? null : (user.image ?? null)}
-                    fallback={
-                      <UserIcon className='size-6 shrink-0 fill-current' />
-                    }
-                  />
-                  <span className='sr-only'>Account</span>
-                </Button>
-              ) : (
-                <Button size='pill'>Sign In</Button>
-              )}
-            </DropdownMenuTrigger>
-          </span>
-        )}
+        <ProfileTrigger user={user} pending={isPending} />
         <DropdownMenuContent
           align='end'
           sideOffset={10}

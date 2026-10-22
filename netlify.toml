@@ -14,6 +14,12 @@ for = "/manifest.webmanifest"
 Content-Type = "application/manifest+json"
 Cache-Control = "no-cache"
 
+# The logo's name carries its content hash (svgicons › SynboxLogo)
+[[headers]]
+for = "/synbox-logo-*"
+[headers.values]
+Cache-Control = "public, max-age=31536000, immutable"
+
 # Vite's bundles have content hashes in their names; public/assets/ (icons) does not, so only these
 [[headers]]
 for = "/assets/*.js"
