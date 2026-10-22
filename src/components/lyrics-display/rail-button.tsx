@@ -89,3 +89,15 @@ export const RailTooltip = ({
     </Tooltip>
   )
 }
+
+// Where a rail button's panel or menu opens: above the watch page's row (Radix turns it below only when there is no
+// room above), below the phone's rail, beside the stage's rail. One rule, so every panel of the row opens alike
+export const railMenuSide = (
+  inline: boolean,
+  portrait: boolean
+): 'top' | 'bottom' | 'right' => {
+  if (inline) {
+    return 'top'
+  }
+  return portrait ? 'bottom' : 'right'
+}
