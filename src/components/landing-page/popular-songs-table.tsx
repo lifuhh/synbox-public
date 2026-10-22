@@ -139,7 +139,7 @@ const LandingPageCharts: React.FC = () => {
           )}
         </div>
         <p className='mx-2 mt-1 mb-1 truncate text-sm text-song-channel'>
-          YouTube Top 100 Japan
+          From YouTube Top 100 Japan
         </p>
       </div>
     </section>

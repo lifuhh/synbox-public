@@ -135,8 +135,6 @@ interface SongAction {
   icon: ReactNode
   disabled: boolean
   handleSelect: () => void
-  // Shown beside the icon in the watch page's row, so the action can't be missed
-  shortLabel?: string
   // Left out of the watch page's row
   stageOnly?: boolean
   // A toggle's state, for its button's pressed look and aria-pressed
@@ -404,7 +402,6 @@ const PlayerRail = ({ inline = false }: { inline?: boolean }) => {
       handleSelect: report.open,
       icon: <FlagIcon className='size-5 shrink-0' />,
       label: 'Report Issue',
-      shortLabel: 'Report',
     },
   ].filter((action) => !(inline && action.stageOnly === true))
 
@@ -505,18 +502,8 @@ const PlayerRail = ({ inline = false }: { inline?: boolean }) => {
                       pressed={action.pressed === true ? true : undefined}
                       aria-pressed={action.pressed}
                       disabled={action.disabled}
-                      onClick={action.handleSelect}
-                      className={cn(
-                        inline &&
-                          action.shortLabel !== undefined &&
-                          'w-auto grid-flow-col gap-1.5 px-4 watch-narrow:px-0'
-                      )}>
+                      onClick={action.handleSelect}>
                       {action.icon}
-                      {inline && action.shortLabel !== undefined && (
-                        <span className='text-sm font-medium watch-narrow:hidden'>
-                          {action.shortLabel}
-                        </span>
-                      )}
                     </RailButton>
                   </RailTooltip>
                 ))}
