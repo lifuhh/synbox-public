@@ -392,6 +392,7 @@ export const StageControls = ({
           {/* On a touch screen the clock sits at the end of the seek bar, so the buttons' row fits at 320px */}
           <div className='mb-2 flex items-center gap-3 watch-narrow:contents short:contents'>
             <Slider
+              thin
               aria-label='Seek'
               min={0}
               max={Math.max(duration, 1)}
@@ -427,7 +428,7 @@ export const StageControls = ({
             {/* Bottom left, where every player has it, although touch screens also have one mid-stage */}
             <IconButton
               label={isPlaying ? 'Pause' : 'Play'}
-              className={cn('watch-narrow:hidden pills:size-11', PILL)}
+              className={cn('watch-narrow:hidden', PILL)}
               onClick={() => {
                 player.togglePlay()
               }}>
