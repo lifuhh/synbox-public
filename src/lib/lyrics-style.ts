@@ -27,7 +27,8 @@ export interface LyricsStyle {
   // Over the video, on desktop and phone landscape: 0 pins the lyrics block to the top of the stage, 1 to the
   // bottom. Both show the same 16:9 picture, so one fraction clears the same burned-in subtitles on both
   anchor: number
-  // In portrait the lyrics have their own band under the video, so they keep their own place in it
+  // In portrait the lyrics have their own band under the video, so they keep their own place in it: by
+  // default its top, right under the video
   anchorPortrait: number
   // The karaoke two-row layout: the next line waits, unfilled, in the other row. Desktop and phone landscape
   twoLines: boolean
@@ -43,7 +44,7 @@ export const SCREEN_SIZE_MAX = 1.5
 
 export const DEFAULT_LYRICS_STYLE: LyricsStyle = {
   anchor: 1,
-  anchorPortrait: 0.5,
+  anchorPortrait: 0,
   backdrop: DEFAULT_LYRICS_BACKDROP,
   customHue: DEFAULT_LYRICS_CUSTOM_HUE,
   fontSize: 1,

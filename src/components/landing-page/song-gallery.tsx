@@ -188,6 +188,29 @@ const VirtualRows = ({
 // A first screen's worth at every column count
 const SKELETON_CARDS = 8
 
+// Marks the title stuck while the gallery has scrolled up under it. Returns the cleanup
+const watchStuck = (
+  heading: HTMLElement,
+  section: HTMLElement,
+  scroller: HTMLElement | null
+) => {
+  const update = () => {
+    heading.toggleAttribute(
+      'data-stuck',
+      section.getBoundingClientRect().top <
+        heading.getBoundingClientRect().top - 0.5
+    )
+  }
+  update()
+  scroller?.addEventListener('scroll', update, { passive: true })
+  // The top bar showing or hiding moves where the title sticks, without a scroll
+  heading.addEventListener('transitionend', update)
+  return () => {
+    scroller?.removeEventListener('scroll', update)
+    heading.removeEventListener('transitionend', update)
+  }
+}
+
 const SongGallery = () => {
   const { isLoading, isSuccess, songs } = useGallerySongs()
   // State, not refs: the virtualizer needs both once they exist
@@ -195,17 +218,14 @@ const SongGallery = () => {
   const [list, setList] = useState<HTMLDivElement | null>(null)
   const scroller = section?.closest<HTMLElement>('[data-scroll-top]') ?? null
   const title = useRef<HTMLHeadingElement>(null)
-  const [stuck, setStuck] = useState(false)
 
+  // data-stuck is set on the title as the page scrolls, not through React state: a render later, a fast fling
+  // had already carried cards under a see-through title for a frame or two
   useEffect(() => {
-    const onScroll = () => {
-      const top = title.current?.getBoundingClientRect().top ?? 0
-      setStuck((section?.getBoundingClientRect().top ?? 0) < top - 0.5)
-    }
-    scroller?.addEventListener('scroll', onScroll, { passive: true })
-    return () => {
-      scroller?.removeEventListener('scroll', onScroll)
-    }
+    const heading = title.current
+    return heading === null || section === null
+      ? undefined
+      : watchStuck(heading, section, scroller)
   }, [scroller, section])
 
   // Brings the gallery's start up under the title, from above it or from deep in it. Scrolling up brings the
@@ -234,7 +254,6 @@ const SongGallery = () => {
       <h2
         ref={title}
         id='gallery-title'
-        data-stuck={stuck ? true : undefined}
         className='sticky-under-topbar px-4 pb-1.5 text-xl font-semibold tracking-tight text-foreground md:px-0'>
         <button type='button' onClick={toStart} className='py-0.5'>
           Gallery

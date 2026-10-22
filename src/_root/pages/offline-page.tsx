@@ -121,10 +121,10 @@ const OfflinePage = () => {
   const [query, setQuery] = useState('')
   const deferredQuery = useDeferredValue(query)
   const [filter, setFilter] = useState<Filter>('all')
-  // Whether the search row has stuck under the top bar (it is page-coloured then)
+  // Whether the search row has stuck under the top bar (it is page-coloured then): data-stuck, set on the row as
+  // the page scrolls, so a fling never shows it see-through over the list for a render's delay
   const header = useRef<HTMLElement>(null)
   const bar = useRef<HTMLDivElement>(null)
-  const [stuck, setStuck] = useState(false)
 
   useEffect(() => {
     requestSync()
@@ -193,7 +193,7 @@ const OfflinePage = () => {
         // Stuck once the header has scrolled up past where the row holds
         const bottom = header.current?.getBoundingClientRect().bottom ?? 0
         const top = bar.current?.getBoundingClientRect().top ?? 0
-        setStuck(bottom < top - 0.5)
+        bar.current?.toggleAttribute('data-stuck', bottom < top - 0.5)
       }}
       className='flex custom-scrollbar flex-1 flex-col overflow-y-auto overscroll-contain pr-(--safe-right) pb-page-bottom pl-(--safe-left)'>
       <title>Lyrics · Synbox</title>
@@ -204,10 +204,7 @@ const OfflinePage = () => {
         <SyncStatusLine status={status} online={online} saved={shelf.length} />
       </header>
 
-      <div
-        ref={bar}
-        data-stuck={stuck ? true : undefined}
-        className='sticky-under-topbar'>
+      <div ref={bar} className='sticky-under-topbar'>
         <div className='mx-auto flex w-full max-w-xl flex-col gap-2 px-4 py-2'>
           <label className='relative block'>
             <span className='sr-only'>Search Saved Songs</span>

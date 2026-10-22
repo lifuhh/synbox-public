@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 
 import type { KaraokeLineHandle } from '@/components/lyrics-display/karaoke-line'
 import { LINE_HOLD } from '@/lib/karaoke'
 import type { OfflineLine } from '@/lib/offline/song'
 
+import { useLyricsFollow } from './use-lyrics-follow'
 import { useSilentPlayback } from './use-silent-playback'
 
 // How far down the page the line being sung sits while the lyrics follow the clock
@@ -37,62 +38,44 @@ export const useSyncedLyrics = (lines: OfflineLine[], synced: boolean) => {
     karaokeLines.current[active]?.setTime(playedTime)
   }, [active, playedTime])
 
-  // The page follows the line being sung until the reader scrolls it themselves; Current Line, a seek or
-  // a tap on a line picks it back up
-  const [following, setFollowing] = useState(true)
-  const scroller = useRef<HTMLDivElement>(null)
-  const blocks = useRef<(HTMLDivElement | null)[]>([])
-  useEffect(() => {
-    const box = scroller.current
-    const block = blocks.current[reached]
-    if (
-      synced &&
-      following &&
-      box !== null &&
-      block !== undefined &&
-      block !== null
-    ) {
-      box.scrollTo({
-        behavior: 'smooth',
-        top:
-          box.scrollTop +
-          block.getBoundingClientRect().top -
-          box.getBoundingClientRect().top -
-          box.clientHeight * FOLLOW_AT,
-      })
-    }
-  }, [synced, following, reached])
+  // The page follows the line being sung until the reader scrolls it themselves; a pause in their scrolling,
+  // Current Line, a seek or a tap on a line picks it back up
+  const { blocks, content, follow, following, handlers, scroller } =
+    useLyricsFollow<HTMLElement>({
+      enabled: synced,
+      followAt: FOLLOW_AT,
+      isPlaying: () => playback.playing,
+      target: reached,
+    })
 
   const seek = (to: number) => {
     playback.seek(to)
-    setFollowing(true)
+    follow()
   }
   const togglePlay = () => {
     if (playback.playing) {
       playback.pause()
     } else {
       playback.play()
-      setFollowing(true)
-    }
-  }
-  const userScrolled = () => {
-    if (synced) {
-      setFollowing(false)
+      follow()
     }
   }
 
   return {
     active,
     blocks,
+    content,
     duration,
+    follow,
+    followHandlers: handlers,
     following,
     karaokeLines,
+    // The line to light: the one being sung, or through an instrumental gap the last one reached
+    lit: active >= 0 ? active : reached,
     playback,
     playedTime,
     scroller,
     seek,
-    setFollowing,
     togglePlay,
-    userScrolled,
   }
 }

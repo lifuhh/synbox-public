@@ -73,7 +73,9 @@ const NarrowBelow = ({
         videoId={videoId}
         version={version}
         heading={false}
-        className='mx-4 mt-3 watch-lyrics-under shrink-0'
+        // The line being sung right under the video, with a sliver of the line before it
+        followAt={0.08}
+        className='mx-4 mt-2 watch-lyrics-under shrink-0'
       />
       <div className='min-h-0 flex-1 overflow-y-auto overscroll-contain'>
         <div className='flex flex-col gap-4 px-4 pt-4 pb-(--safe-bottom)'>

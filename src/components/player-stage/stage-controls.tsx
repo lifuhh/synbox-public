@@ -263,10 +263,12 @@ const FullScreenChrome = ({
         data-player-chrome
         className={cn(
           'hidden absolute top-(--stage-corner-top) right-[calc(var(--safe-right)+0.625rem)] z-30 flex-col items-center gap-1 rounded-full bg-black/55 p-1 shadow-rail backdrop-blur-md transition-translate-fade duration-300 ease-out sm:right-[calc(var(--safe-right)+1.125rem)] touch:flex',
-          'short:top-[calc(var(--topbar-h)+0.25rem)] short:right-(--safe-right) short:rounded-none short:rounded-l-xl',
+          // On its side, on the control bar's right-hand axis: the bar's 44px buttons sit inside its
+          // max(1rem, safe area) padding, this 40px column 2px further in
+          'short:top-[calc(var(--topbar-h)+0.25rem)] short:right-[calc(var(--spacing-controls-right)+2px)] short:rounded-xl',
           visible
             ? 'translate-x-0'
-            : 'translate-x-[calc(100%+var(--safe-right)+1.125rem)]',
+            : 'translate-x-[calc(100%+var(--spacing-controls-right)+1.125rem)]',
           !armed && 'pointer-events-none'
         )}>
         <IconButton
@@ -385,12 +387,12 @@ export const StageControls = ({
           !armed && 'pointer-events-none'
         )}>
         {/* On a phone on its side the seek bar joins the buttons' row: two rows would cover a third of the
-          screen and push the lyrics to its middle. So it does in the small video of a narrow watch page, where
-          the middle of the video has play and pause and a double tap seeks, as on YouTube */}
+          screen and push the lyrics to its middle. In the small video of a narrow watch page it runs the whole
+          width along the bottom, under the buttons, as on YouTube: beside them it was 115px of a 4-minute song */}
         <div
           ref={contentRef}
           data-player-chrome
-          className='watch-narrow:flex watch-narrow:items-center watch-narrow:gap-0.5 short:flex short:items-center short:gap-1'>
+          className='watch-narrow:flex watch-narrow:flex-wrap watch-narrow:items-center watch-narrow:gap-0.5 short:flex short:items-center short:gap-1'>
           {/* On a touch screen the clock sits at the end of the seek bar, so the buttons' row fits at 320px */}
           <div className='mb-2 flex items-center gap-3 watch-narrow:contents short:contents'>
             <Slider
@@ -418,7 +420,7 @@ export const StageControls = ({
                   setHeld(null)
                 }, SEEK_HOLD_MAX_MS)
               }}
-              className='min-w-0 flex-1 cursor-pointer watch-narrow:order-1 watch-narrow:mx-2 short:order-1 short:mx-2'
+              className='min-w-0 flex-1 cursor-pointer watch-narrow:order-4 watch-narrow:mx-2 watch-narrow:mb-1 watch-narrow:basis-full short:order-1 short:mx-2'
             />
             <Clock
               time={shown}
@@ -505,7 +507,7 @@ export const StageControls = ({
             />
             <div
               className={cn(
-                'ml-auto flex shrink-0 items-center gap-1 watch-narrow:order-3 watch-narrow:ml-1 touch:gap-0.5 pills:gap-0.5 pills:px-1 short:order-3 short:ml-1',
+                'ml-auto flex shrink-0 items-center gap-1 watch-narrow:order-3 touch:gap-0.5 pills:gap-0.5 pills:px-1 short:order-3 short:ml-1',
                 PILL
               )}>
               <AutoplaySwitch />
