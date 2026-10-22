@@ -21,10 +21,9 @@ import { CONTROLS_FADE_MS } from './stage-controls'
 const TAP_SLOP_PX = { mouse: 4, touch: 10 }
 const LIFT_MS = 200
 const CLICK_AFTER_DRAG_MS = 400
-// A drop whose bottom edge lands within this share of the lyrics' area from the bottom docks the block. A
-// share, not pixels: the same few pixels are a finger's width on a phone and nothing on a desktop. Small, so
-// lyrics placed just above the controls stay there when they hide instead of docking and dropping with them
-const DOCK_REACH = 0.04
+// The least room kept above and below the block, so lyrics dragged to an edge never sit on it: a share of the
+// stage, not pixels (the same few pixels are a finger's width on a phone and nothing on a desktop), with a floor
+const EDGE = 'max(0.5rem, 2cqh)'
 
 const swallow = (event: MouseEvent) => {
   event.stopPropagation()
@@ -40,12 +39,23 @@ const swallowNextClick = () => {
 
 const clamp01 = (value: number) => Math.min(1, Math.max(0, value))
 
-// While the floating UI shows the block clears it; with it away, the home indicator
-const liftMinHeight = (lifts: boolean, controlsVisible: boolean) => {
+// The least room under the block. While it is dragged, only the edge: it goes where the pointer puts it, the
+// floor included, the floating UI or not. Dropped, it clears the floating UI while that shows, as though the
+// controls' top were the stage's floor, and returns to its place when they hide (the home indicator still clear)
+const liftMinHeight = (
+  lifts: boolean,
+  dragging: boolean,
+  controlsVisible: boolean
+) => {
   if (!lifts) {
     return '0px'
   }
-  return controlsVisible ? 'var(--stage-chrome-h)' : 'var(--safe-bottom, 0px)'
+  if (dragging) {
+    return EDGE
+  }
+  return controlsVisible
+    ? `max(var(--stage-chrome-h), ${EDGE})`
+    : `max(var(--safe-bottom, 0px), ${EDGE})`
 }
 
 interface DragStart {
@@ -74,11 +84,11 @@ interface DraggableLyricsProps {
 // `anchor` is where the viewer put the lyrics (0 = top, 1 = bottom of their
 // area) and is what persists, once per drop. Flex spacers split the free
 // space above and below the block by the anchor, so a taller or shorter line
-// keeps its place without measuring. While the floating UI shows, the bottom
-// spacer never shrinks below the part of the stage it covers
+// keeps its place without measuring. A drag goes anywhere between the edges,
+// the floor included, whatever shows. Once dropped, while the floating UI
+// shows, the bottom spacer never shrinks below the part of the stage it covers
 // (--stage-chrome-h), which lifts the block just clear of it, and it drops
-// back once the UI has faded out. A drop near the bottom docks the block
-// (anchor 1), so it rides the UI's edge both ways. Only the drawn text is
+// back to its place once the UI has faded out. Only the drawn text is
 // grabbable; a click on it without a drag opens the rail's style panel (a
 // finger's tap goes on to the stage), and a press beside or between its lines
 // goes to the stage
@@ -165,21 +175,8 @@ export const DraggableLyrics = ({
       return
     }
     if (drag.moved) {
-      const block = blockRef.current
-      const layer = block?.parentElement
-      // The floating UI is hidden while dragging, so the spacer under the block (the lift) is down to its
-      // floor, the home indicator's inset: what it has over that is the gap to the lowest the block can go
-      const lift = block?.nextElementSibling
-      const docked =
-        block !== null &&
-        layer !== null &&
-        layer !== undefined &&
-        lift instanceof HTMLElement &&
-        lift.offsetHeight -
-          // oxlint-disable-next-line unicorn/prefer-number-coercion -- the value ends in px, which Number() rejects
-          Number.parseFloat(getComputedStyle(lift).minHeight) <=
-          layer.clientHeight * DOCK_REACH
-      setSavedAnchor(docked ? 1 : anchor)
+      // Where it was dropped is its place
+      setSavedAnchor(anchor)
       setDragAnchor(null)
       layout.onDragChange(false)
       // A drag that ends over the video must not also count as a tap on it
@@ -197,6 +194,7 @@ export const DraggableLyrics = ({
   const settle = dragging ? 'none' : `flex-grow ${LIFT_MS}ms ease-out`
   const anchorVars: CssVars = {
     '--anchor-grow': anchor,
+    '--anchor-min-h': EDGE,
     '--anchor-transition': settle,
   }
   const blockVars: CssVars = {
@@ -207,7 +205,7 @@ export const DraggableLyrics = ({
   const liftVars: CssVars = {
     '--lift-grow': 1 - anchor,
     // With the floating UI away, the lyrics still keep clear of the home indicator
-    '--lift-min-h': liftMinHeight(lifts, layout.controlsVisible),
+    '--lift-min-h': liftMinHeight(lifts, dragging, layout.controlsVisible),
     // Lift at once when the controls appear; drop only after they fade. A
     // docking drop slides down with the spacer above, never delayed
     '--lift-transition': dragging
