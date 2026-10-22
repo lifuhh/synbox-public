@@ -36,6 +36,7 @@ import {
   addListen,
   isVideoId,
   likerOf,
+  listListenCounts,
   listRecentListens,
   readStats,
   setLike,
@@ -202,6 +203,13 @@ app.post('/api/songs/:videoId/listen', async (c) => {
 app.get('/api/songs/recent', async (c) => {
   c.header('Cache-Control', 'public, max-age=60')
   return c.json({ videoIds: await listRecentListens(c.env.DB) })
+})
+
+// The counts on song cards: { videoId: listens } for every song past the cards' threshold. Public; browsers keep
+// it five minutes
+app.get('/api/songs/listens', async (c) => {
+  c.header('Cache-Control', 'public, max-age=300')
+  return c.json({ listens: await listListenCounts(c.env.DB) })
 })
 
 const userIdOf = async (env: AppEnv, headers: Headers) => {

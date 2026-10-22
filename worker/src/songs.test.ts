@@ -3,6 +3,7 @@ import { expect, test } from 'bun:test'
 import {
   addListen,
   likerOf,
+  listListenCounts,
   listRecentListens,
   readStats,
   setLike,
@@ -60,4 +61,21 @@ test('one like per account or device: liking twice counts once, unliking takes i
 test('a guest without a well-formed device id cannot like', () => {
   expect(likerOf(null, null)).toBeNull()
   expect(likerOf(null, 'not-a-uuid')).toBeNull()
+})
+
+test('card counts: only songs played more than ten times', async () => {
+  const { db } = migratedD1()
+  const times = async (videoId: string, count: number) => {
+    await Promise.all(
+      Array.from({ length: count }, async (_, at) => {
+        await addListen(db, videoId, at)
+      })
+    )
+  }
+  await Promise.all([
+    times('aaaaaaaaaaa', 11),
+    times('bbbbbbbbbbb', 10),
+    times('ccccccccccc', 1),
+  ])
+  expect(await listListenCounts(db)).toEqual({ aaaaaaaaaaa: 11 })
 })

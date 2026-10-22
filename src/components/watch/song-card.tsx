@@ -5,6 +5,7 @@ import {
   KaraokePictureBadgeMark,
   KaraokeLabelMark,
 } from '@/components/shared/karaoke-badge'
+import { ListenCount } from '@/components/shared/listen-count'
 import type { ListSong } from '@/lib/listening/model'
 import { songPath } from '@/lib/listening/store'
 import { bracketStart } from '@/utils'
@@ -63,12 +64,11 @@ export const SongCard = ({
           )}>
           {song.title}
         </p>
-        <p
-          className={cn(
-            'truncate text-xs text-muted-foreground',
-            bracketStart(song.author)
-          )}>
-          {song.author}
+        <p className='flex min-w-0 items-center gap-2.5 text-xs text-muted-foreground'>
+          <ListenCount videoId={song.videoId} />
+          <span className={cn('truncate', bracketStart(song.author))}>
+            {song.author}
+          </span>
         </p>
       </Link>
       <div className='-me-2 -mt-2'>

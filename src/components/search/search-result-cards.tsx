@@ -5,6 +5,7 @@ import {
   KaraokeLabelMark,
   KaraokePictureBadgeMark,
 } from '@/components/shared/karaoke-badge'
+import { ListenCount } from '@/components/shared/listen-count'
 import { SongMenu } from '@/components/watch/song-menu'
 import type {
   LibrarySong,
@@ -91,8 +92,9 @@ export const LibrarySongCard = ({
       <KaraokeLabelMark videoId={song.video_id} />
     </Link>
     <div className='flex items-center gap-2'>
-      <p className='min-w-0 flex-1 truncate text-xs text-muted-foreground'>
-        {song.artist}
+      <p className='flex min-w-0 flex-1 items-center gap-2.5 text-xs text-muted-foreground'>
+        <ListenCount videoId={song.video_id} />
+        <span className='truncate'>{song.artist}</span>
       </p>
       <button
         type='button'
