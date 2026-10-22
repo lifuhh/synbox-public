@@ -1,6 +1,7 @@
 import { MicVocalIcon } from 'lucide-react'
 
 import { useHasKaraoke } from '@/lib/react-query/queries-and-mutations'
+import type { CssVars } from '@/types'
 import { cn } from '@/utils/cn'
 
 // Marks a song whose lyrics are timed word by word, so the player fills them as they are sung. Every other
@@ -14,29 +15,33 @@ export const KaraokeBadge = ({ className }: { className?: string }) => (
   </span>
 )
 
-// The same mark on a list row's thumbnail: the picture's edge in the accent and a mic floating on its top-right
-// corner, half outside it, so a karaoke song stands out in a list at a glance. Laid over the thumbnail, which
-// must not clip it: the thumbnail rounds its own picture instead of hiding its overflow. Rounded as list
-// thumbnails are; `small` for the saved menu's 80px ones, which are rounded less
+// The mic's box, the gap between it and each stroke, and each stroke's length
+const EDGE: CssVars = {
+  '--gap': '0.125rem',
+  '--mic': '0.875rem',
+  '--stroke': '0.875rem',
+}
+const SMALL_EDGE: CssVars = {
+  '--gap': '0.125rem',
+  '--mic': '0.75rem',
+  '--stroke': '0.625rem',
+}
+
+// The same mark on a list row's thumbnail: a mic on its top-right corner, centred on the corner, with a short
+// stroke of the accent running into it along the top edge and out of it down the right edge, both on the mic's
+// centre lines, so a karaoke song stands out in a list at a glance without framing the whole picture. Laid over
+// the thumbnail, which must not clip it: the thumbnail rounds its own picture instead of hiding its overflow.
+// `small` for the saved menu's 80px thumbnails
 export const KaraokeEdge = ({ small = false }: { small?: boolean }) => (
-  <>
-    <span
-      aria-hidden
-      className={cn(
-        'pointer-events-none absolute inset-0 border-2 border-primary',
-        small ? 'rounded-xs' : 'rounded-sm'
-      )}
-    />
-    <span
-      aria-hidden
-      data-karaoke-badge
-      className={cn(
-        'pointer-events-none absolute top-0 right-0 grid translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-primary text-primary-foreground shadow-glow-sm',
-        small ? 'size-4.5' : 'size-5 max-[359px]:size-4.5'
-      )}>
-      <MicVocalIcon aria-hidden className='size-3' />
-    </span>
-  </>
+  <span
+    aria-hidden
+    data-karaoke-badge
+    style={small ? SMALL_EDGE : EDGE}
+    className='pointer-events-none absolute inset-0'>
+    <span className='absolute top-0 right-[calc(var(--mic)/2+var(--gap))] h-0.5 w-(--stroke) -translate-y-1/2 rounded-full bg-primary' />
+    <span className='absolute top-[calc(var(--mic)/2+var(--gap))] right-0 h-(--stroke) w-0.5 translate-x-1/2 rounded-full bg-primary' />
+    <MicVocalIcon className='absolute top-0 right-0 size-(--mic) translate-x-1/2 -translate-y-1/2 text-primary-text drop-shadow-sm' />
+  </span>
 )
 
 // The mark before a card's title, centred on its first line: the title and the mic share the box's font and
