@@ -58,8 +58,8 @@ const SongCard = ({ song }: { song: LibraryListSong }) => (
       <span className='mt-3 flex h-18 flex-col gap-1 pe-10'>
         <span className='line-clamp-2 text-base leading-6 font-semibold text-foreground'>
           {song.title}
-          {song.karaoke && <KaraokeLabel />}
         </span>
+        {song.karaoke && <KaraokeLabel />}
         <span className='flex min-w-0 items-center gap-1.5 text-sm leading-5 text-muted-foreground'>
           <span className='truncate'>{song.author}</span>
           {song.karaoke && <KaraokeMetaIcon />}

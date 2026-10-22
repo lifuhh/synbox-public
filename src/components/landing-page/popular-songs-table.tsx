@@ -58,8 +58,8 @@ const SongRow = ({ rank, song }: SongRowProps) => (
       </span>
       <span className='line-clamp-2 min-w-0 flex-1 text-sm leading-5 text-pretty'>
         {song.title}
-        <KaraokeLabelMark videoId={song.vidURL} />
       </span>
+      <KaraokeLabelMark videoId={song.vidURL} />
       {/* A pointer's cue that the row plays; on touch the title gets the room */}
       <PlayIcon
         aria-hidden

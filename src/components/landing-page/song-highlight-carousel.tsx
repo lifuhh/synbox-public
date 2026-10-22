@@ -61,8 +61,8 @@ const SongCard = ({
     <span className='mt-3 flex h-16 flex-col gap-1'>
       <span className='line-clamp-2 text-label leading-5 font-semibold text-foreground transition-colors duration-150 group-data-[active=false]:text-muted-foreground'>
         {item.title}
-        <KaraokeLabelMark videoId={item.videoId} />
       </span>
+      <KaraokeLabelMark videoId={item.videoId} />
       <span className='flex min-w-0 items-center gap-1.5 text-sm leading-5 text-muted-foreground'>
         <span className='truncate'>{item.channel}</span>
         <KaraokeMetaIconMark videoId={item.videoId} />

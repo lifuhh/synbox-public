@@ -55,8 +55,8 @@ export const SongRow = ({
             current ? 'text-primary-text' : 'text-foreground'
           )}>
           {song.title}
-          <KaraokeLabelMark videoId={song.videoId} />
         </span>
+        <KaraokeLabelMark videoId={song.videoId} />
         <span className='truncate text-xs text-muted-foreground'>
           {song.author}
         </span>
