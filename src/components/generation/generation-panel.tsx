@@ -13,6 +13,7 @@ import { overallValue } from '@/lib/generation/progress'
 import type { Job, JobStatus } from '@/lib/generation/store'
 import {
   cancelGeneration,
+  dismissFinishedGenerations,
   dismissGeneration,
   focusGeneration,
   isActive,
@@ -221,6 +222,24 @@ const RowAction = ({ job, title }: { job: Job; title: string }) => {
   return null
 }
 
+// Clears every finished song at once; songs still going stay, and the panel closes when none are left. Shown
+// only once there are two to clear
+const DismissAll = ({ jobs }: { jobs: readonly Job[] }) => {
+  if (jobs.filter((job) => !isActive(job)).length < 2) {
+    return null
+  }
+  return (
+    <div className='-mt-2 -mr-0.5 -mb-3 flex justify-end'>
+      <Button
+        variant='overlay-muted'
+        size='sm'
+        onClick={dismissFinishedGenerations}>
+        Dismiss All
+      </Button>
+    </div>
+  )
+}
+
 // Every song in the queue, shared by all tabs, oldest first; picking one shows it in the panel
 const SongQueue = ({
   jobs,
@@ -323,6 +342,7 @@ const GenerationPanel = ({ job, jobs }: GenerationPanelProps) => {
 
   return (
     <div className='flex flex-col gap-4 p-4'>
+      <DismissAll jobs={jobs} />
       {jobs.length > 1 && <SongQueue jobs={jobs} focusedId={job.id} />}
 
       <SongHeader job={job} />

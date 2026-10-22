@@ -95,7 +95,9 @@ const withJobs = (jobs: readonly Job[]): GenerationState => {
     const active = jobs.filter(isActive)
     next = newest(active.length > 0 ? active : jobs)
   }
-  return { expanded: next !== null && state.expanded, focusedId: next, jobs }
+  // The panel closes when its list empties. Not on a null focus: a page loaded with songs listed has none
+  // until one is picked, and the panel opened on them must stay open as they are marked seen
+  return { expanded: jobs.length > 0 && state.expanded, focusedId: next, jobs }
 }
 
 let saveTimer: ReturnType<typeof setTimeout> | undefined
@@ -604,6 +606,10 @@ export const cancelGeneration = (id: string) => {
 
 export const dismissGeneration = (id: string) => {
   send({ id, type: 'dismiss' })
+}
+
+export const dismissFinishedGenerations = () => {
+  send({ type: 'dismiss-all' })
 }
 
 export const focusGeneration = (id: string) => {
