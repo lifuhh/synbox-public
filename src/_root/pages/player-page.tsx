@@ -26,7 +26,7 @@ import { useSongVisit } from '@/hooks/use-song-visit'
 import { useAccess } from '@/lib/auth'
 import { historyAtom } from '@/lib/library/store'
 import { nextSong } from '@/lib/listening/model'
-import { useRecommendations } from '@/lib/listening/recommendations'
+import { useNextList } from '@/lib/listening/recommendations'
 import {
   autoplayAtom,
   queueAtom,
@@ -66,7 +66,7 @@ const usePlayNext = (videoId: string) => {
   const [source, setSource] = useAtom(queueSourceAtom)
   const autoplay = useAtomValue(autoplayAtom)
   const history = useAtomValue(historyAtom)
-  const { songs } = useRecommendations(videoId)
+  const { songs } = useNextList(videoId)
   return () => {
     const next = nextSong(
       { autoplay, queue, source },

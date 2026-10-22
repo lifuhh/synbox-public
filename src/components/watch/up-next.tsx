@@ -10,12 +10,15 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import type { ListSong } from '@/lib/listening/model'
+import { filterKey, filterLabel } from '@/lib/listening/next-filter'
+import { useNextList } from '@/lib/listening/recommendations'
 import {
   autoplayAtom,
   queueAtom,
   queueSourceAtom,
   useListening,
 } from '@/lib/listening/store'
+import { cn } from '@/utils/cn'
 
 import { MoveItems } from './move-items'
 import { SongMenu } from './song-menu'
@@ -23,11 +26,12 @@ import { SongRow } from './song-row'
 import { SortableList } from './sortable-list'
 import { Switch } from './switch'
 
-// How many recommendations Up Next shows; the rest are More Like This
-export const UP_NEXT_COUNT = 5
+// How many songs the list beside the video shows; More Like This has the rest
+export const UP_NEXT_COUNT = 20
 
-// What plays after this song: the listener's queue first (drag to reorder, × to remove), then, with autoplay
-// on, the recommendations, each with Play Next, Add to Queue and Save to Playlist
+// What plays after this song: the listener's queue first (drag to reorder, × to remove), then the list, which
+// chips narrow to the song's artist, mood or kind of singer, as YouTube's do. Autoplay plays the top of the
+// list as filtered. Each song has Play Next, Add to Queue and Save to Playlist
 // A queued song's menu: move it without dragging, or take it out of the queue
 const QueueRowMenu = ({
   song,
@@ -68,28 +72,29 @@ const QueueRowMenu = ({
 }
 
 export const UpNext = ({
-  recommendations,
+  videoId,
+  autoplaySwitch,
   className,
 }: {
-  recommendations: ListSong[]
+  videoId: string
+  // Phones have no room for it in the video's control bar, so it heads the list there
+  autoplaySwitch: boolean
   className?: string
 }) => {
   const queue = useAtomValue(queueAtom)
   const source = useAtomValue(queueSourceAtom)
   const [autoplay, setAutoplay] = useAtom(autoplayAtom)
   const { clearQueue, moveInQueue } = useListening()
+  const { filter, filters, setFilter, songs } = useNextList(videoId)
   const queued = new Set(queue.map((song) => song.videoId))
-  const suggestions = recommendations
+  const suggestions = songs
     .filter((song) => !queued.has(song.videoId))
     .slice(0, UP_NEXT_COUNT)
 
   return (
-    <section aria-labelledby='up-next-title' className={className}>
-      <div className='flex min-h-11 items-center justify-between gap-2 ps-2'>
-        <h2 id='up-next-title' className='text-base font-semibold'>
-          Up Next
-        </h2>
-        <div className='flex items-center text-sm text-muted-foreground'>
+    <section aria-label='Up Next' className={className}>
+      {autoplaySwitch && (
+        <div className='flex min-h-11 items-center justify-end text-sm text-muted-foreground'>
           <label htmlFor='autoplay-switch' className='cursor-pointer'>
             Autoplay
           </label>
@@ -99,7 +104,7 @@ export const UpNext = ({
             onCheckedChange={setAutoplay}
           />
         </div>
-      </div>
+      )}
 
       {queue.length > 0 && (
         <div className='mt-1 mb-3'>
@@ -135,6 +140,32 @@ export const UpNext = ({
             )}
           />
         </div>
+      )}
+
+      {filters.length > 1 && (
+        <fieldset className='flex min-w-0 flex-wrap gap-2 pb-2'>
+          <legend className='sr-only'>Show Songs</legend>
+          {filters.map((option) => {
+            const on = filterKey(option) === filterKey(filter)
+            return (
+              <button
+                key={filterKey(option)}
+                type='button'
+                aria-pressed={on}
+                onClick={() => {
+                  setFilter(option)
+                }}
+                className={cn(
+                  'h-8 max-w-full truncate rounded-lg px-3 text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden',
+                  on
+                    ? 'bg-foreground text-background'
+                    : 'bg-card text-foreground hover:bg-accent'
+                )}>
+                {filterLabel(option)}
+              </button>
+            )
+          })}
+        </fieldset>
       )}
 
       {suggestions.length > 0 && (

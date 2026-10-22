@@ -28,9 +28,12 @@ export type VideoSearchResponse = z.infer<typeof videoSearchResponseSchema>
 
 const librarySongSchema = z.object({
   artist: z.string(),
+  // The song's strongest mood and kind of singer, from the backend's tags; none for a song not yet tagged
+  mood: z.string().nullable().catch(null),
   thumbnail_url: z.string(),
   title: z.string(),
   video_id: z.string(),
+  vocal: z.string().catch('unknown'),
 })
 export type LibrarySong = z.infer<typeof librarySongSchema>
 

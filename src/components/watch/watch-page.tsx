@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react'
 import PlayerRail from '@/components/lyrics-display/player-rail'
 import { currentVideoAtom } from '@/context/atoms'
 import { useMediaQuery } from '@/hooks/use-media-query'
-import { useRecommendations } from '@/lib/listening/recommendations'
+import { useNextList } from '@/lib/listening/recommendations'
 import { cn } from '@/utils/cn'
 
 import { LyricsPanel } from './lyrics-panel'
@@ -49,6 +49,15 @@ const SongInfo = ({ compact }: { compact: boolean }) => {
   )
 }
 
+// The songs the list beside the video doesn't show, as it is filtered now
+const useMoreLikeThis = (videoId: string) => {
+  const { all, songs } = useNextList(videoId)
+  const listed = new Set(
+    songs.slice(0, UP_NEXT_COUNT).map((song) => song.videoId)
+  )
+  return all.filter((song) => !listed.has(song.videoId))
+}
+
 type Tab = 'lyrics' | 'next'
 const TABS: { id: Tab; label: string }[] = [
   { id: 'lyrics', label: 'Lyrics' },
@@ -67,7 +76,7 @@ const NarrowBelow = ({
   version: number | null
 }) => {
   const [tab, setTab] = useState<Tab>('lyrics')
-  const { songs } = useRecommendations(videoId)
+  const more = useMoreLikeThis(videoId)
   return (
     <div className='watch-below min-h-0 flex-1 overflow-y-auto overscroll-contain'>
       <div className='flex flex-col gap-3 px-4 pt-3 pb-(--safe-bottom)'>
@@ -125,11 +134,8 @@ const NarrowBelow = ({
             />
           ) : (
             <div className='pb-6'>
-              <UpNext recommendations={songs} />
-              <MoreLikeThis
-                songs={songs.slice(UP_NEXT_COUNT)}
-                className='mt-6 px-2'
-              />
+              <UpNext videoId={videoId} autoplaySwitch />
+              <MoreLikeThis songs={more} className='mt-6 px-2' />
               <Shelves videoId={videoId} className='mt-6 px-2' />
             </div>
           )}
@@ -150,7 +156,7 @@ const WideBelow = ({
   version: number | null
   theater: boolean
 }) => {
-  const { songs } = useRecommendations(videoId)
+  const more = useMoreLikeThis(videoId)
   return (
     <>
       {!theater && (
@@ -167,11 +173,11 @@ const WideBelow = ({
         {theater && (
           <LyricsPanel videoId={videoId} version={version} className='h-112' />
         )}
-        <MoreLikeThis songs={songs.slice(UP_NEXT_COUNT)} />
+        <MoreLikeThis songs={more} />
         <Shelves videoId={videoId} />
       </div>
       <div className='watch-next pb-8'>
-        <UpNext recommendations={songs} />
+        <UpNext videoId={videoId} autoplaySwitch={false} />
       </div>
     </>
   )
