@@ -5,7 +5,7 @@ import { Link } from 'react-router'
 
 import {
   KaraokeLabel,
-  KaraokeMetaIcon,
+  KaraokePictureBadge,
 } from '@/components/shared/karaoke-badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { SongMenu } from '@/components/watch/song-menu'
@@ -53,6 +53,7 @@ const SongCard = ({ song }: { song: LibraryListSong }) => (
         <span className='absolute right-2.5 bottom-2.5 grid size-10 place-items-center rounded-full bg-black/70 text-white opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100'>
           <PlayIcon className='size-4 fill-current' aria-hidden />
         </span>
+        {song.karaoke && <KaraokePictureBadge />}
       </span>
       {/* A fixed-height block, so every row is the same height; the channel sits right under one line or two */}
       <span className='mt-3 flex h-18 flex-col gap-1 pe-10'>
@@ -60,9 +61,8 @@ const SongCard = ({ song }: { song: LibraryListSong }) => (
           {song.title}
         </span>
         {song.karaoke && <KaraokeLabel />}
-        <span className='flex min-w-0 items-center gap-1.5 text-sm leading-5 text-muted-foreground'>
-          <span className='truncate'>{song.author}</span>
-          {song.karaoke && <KaraokeMetaIcon />}
+        <span className='truncate text-sm leading-5 text-muted-foreground'>
+          {song.author}
         </span>
       </span>
     </Link>

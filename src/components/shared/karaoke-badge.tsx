@@ -44,14 +44,17 @@ export const KaraokeEdge = ({ small = false }: { small?: boolean }) => (
   </span>
 )
 
-// The mark on a card's channel line, after the name: the title and the channel keep one left edge, which a mark
-// before the title broke. The line is a flex row, so the mic sits on its centre
-export const KaraokeMetaIcon = () => (
-  <MicVocalIcon
+// The mark on a card's picture: a small dark pill in its bottom-left corner, as YouTube marks a video's length or
+// LIVE, saying Karaoke in words so a first-time visitor reads it. Nothing in the text below moves for it. The
+// picture must be positioned (it is, to hold its play button)
+export const KaraokePictureBadge = () => (
+  <span
     aria-hidden
-    data-karaoke-meta-mic
-    className='size-3.5 shrink-0 text-primary-text'
-  />
+    data-karaoke-picture-badge
+    className='pointer-events-none absolute bottom-2 left-2 flex h-6 items-center gap-1 rounded-full bg-black/70 ps-1.5 pe-2 text-xs font-semibold text-white'>
+    <MicVocalIcon aria-hidden className='size-3.5 text-primary-text' />
+    Karaoke
+  </span>
 )
 
 // What the marks say, for a screen reader, placed after a song's title so the title is read first. Never inside a
@@ -71,8 +74,8 @@ export const KaraokeEdgeMark = ({
   small?: boolean
 }) => (useHasKaraoke(videoId) ? <KaraokeEdge small={small} /> : null)
 
-export const KaraokeMetaIconMark = ({ videoId }: { videoId: string }) =>
-  useHasKaraoke(videoId) ? <KaraokeMetaIcon /> : null
+export const KaraokePictureBadgeMark = ({ videoId }: { videoId: string }) =>
+  useHasKaraoke(videoId) ? <KaraokePictureBadge /> : null
 
 // The badge for a song known only by its id, from the library list
 export const KaraokeMark = ({

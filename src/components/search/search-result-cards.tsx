@@ -2,7 +2,7 @@ import { SparklesIcon } from 'lucide-react'
 
 import {
   KaraokeLabelMark,
-  KaraokeMetaIconMark,
+  KaraokePictureBadgeMark,
 } from '@/components/shared/karaoke-badge'
 import { SongMenu } from '@/components/watch/song-menu'
 import type {
@@ -10,7 +10,15 @@ import type {
   VideoSearchResult,
 } from '@/lib/synbox-flask/discovery'
 
-const Thumbnail = ({ src, alt }: { src: string; alt: string }) => (
+const Thumbnail = ({
+  src,
+  alt,
+  videoId,
+}: {
+  src: string
+  alt: string
+  videoId: string
+}) => (
   <div className='relative aspect-video w-full overflow-hidden rounded-lg bg-input'>
     {src !== '' && (
       <img
@@ -20,6 +28,7 @@ const Thumbnail = ({ src, alt }: { src: string; alt: string }) => (
         className='absolute inset-0 h-full w-full object-cover'
       />
     )}
+    <KaraokePictureBadgeMark videoId={videoId} />
   </div>
 )
 
@@ -48,13 +57,14 @@ export const VideoResultCard = ({
       onSelect(result)
     }}
     className={`${CARD} text-left`}>
-    <Thumbnail src={result.thumbnail_url} alt={result.title} />
+    <Thumbnail
+      src={result.thumbnail_url}
+      alt={result.title}
+      videoId={result.video_id}
+    />
     <Title>{result.title}</Title>
     <KaraokeLabelMark videoId={result.video_id} />
-    <p className='flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground'>
-      <span className='truncate'>{result.channel}</span>
-      <KaraokeMetaIconMark videoId={result.video_id} />
-    </p>
+    <p className='truncate text-xs text-muted-foreground'>{result.channel}</p>
   </button>
 )
 
@@ -75,14 +85,17 @@ export const LibrarySongCard = ({
         onPlay(song.video_id)
       }}
       className='flex flex-col gap-2 text-left'>
-      <Thumbnail src={song.thumbnail_url} alt={song.title} />
+      <Thumbnail
+        src={song.thumbnail_url}
+        alt={song.title}
+        videoId={song.video_id}
+      />
       <Title>{song.title}</Title>
       <KaraokeLabelMark videoId={song.video_id} />
     </button>
     <div className='flex items-center gap-2'>
-      <p className='flex min-w-0 flex-1 items-center gap-1.5 text-xs text-muted-foreground'>
-        <span className='truncate'>{song.artist}</span>
-        <KaraokeMetaIconMark videoId={song.video_id} />
+      <p className='min-w-0 flex-1 truncate text-xs text-muted-foreground'>
+        {song.artist}
       </p>
       <button
         type='button'

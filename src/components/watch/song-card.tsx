@@ -2,7 +2,7 @@ import { PlayIcon } from 'lucide-react'
 import { Link } from 'react-router'
 
 import {
-  KaraokeMetaIconMark,
+  KaraokePictureBadgeMark,
   KaraokeLabelMark,
 } from '@/components/shared/karaoke-badge'
 import type { ListSong } from '@/lib/listening/model'
@@ -38,6 +38,7 @@ export const SongCard = ({
         <span className='absolute right-2 bottom-2 grid size-9 place-items-center rounded-full bg-black/70 text-white opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100'>
           <PlayIcon className='size-4 fill-current' aria-hidden />
         </span>
+        <KaraokePictureBadgeMark videoId={song.videoId} />
       </span>
       <span className='sr-only'>
         {song.title}
@@ -49,10 +50,7 @@ export const SongCard = ({
         <p className='line-clamp-2 text-sm leading-5 font-medium text-foreground'>
           {song.title}
         </p>
-        <p className='flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground'>
-          <span className='truncate'>{song.author}</span>
-          <KaraokeMetaIconMark videoId={song.videoId} />
-        </p>
+        <p className='truncate text-xs text-muted-foreground'>{song.author}</p>
       </div>
       <div className='-me-2 -mt-2'>
         <SongMenu song={song} />
