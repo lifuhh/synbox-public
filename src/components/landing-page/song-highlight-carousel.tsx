@@ -59,8 +59,8 @@ const SongCard = ({
     </span>
     {/* Two title lines and the channel's, however long the title, so every card (and the loading one) is
         the same height and the row matches the charts beside it */}
-    <span className='mt-3 flex h-16 flex-col gap-1'>
-      <span className='line-clamp-2 text-label leading-5 font-semibold text-foreground transition-colors duration-150 group-data-[active=false]:text-muted-foreground'>
+    <span className='mt-4 flex h-19 flex-col gap-1.5'>
+      <span className='line-clamp-2 text-base leading-6 font-semibold text-foreground transition-colors duration-150 group-data-[active=false]:text-muted-foreground'>
         {item.title}
       </span>
       <KaraokeLabelMark videoId={item.videoId} />
@@ -75,7 +75,7 @@ const SongCard = ({
 const CardSkeleton = () => (
   <div className='flex min-w-0 flex-col'>
     <Skeleton shape='card' className='aspect-video w-full' />
-    <div className='mt-3 flex h-16 flex-col gap-2 pt-0.5'>
+    <div className='mt-4 flex h-19 flex-col gap-2.5 pt-1'>
       <Skeleton className='h-4 w-4/5' />
       <Skeleton className='h-3.5 w-1/3' />
     </div>
