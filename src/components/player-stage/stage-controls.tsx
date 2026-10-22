@@ -4,7 +4,6 @@ import {
   LockIcon,
   MaximizeIcon,
   MinimizeIcon,
-  RectangleHorizontalIcon,
   PauseIcon,
   PlayIcon,
   RepeatIcon,
@@ -18,6 +17,7 @@ import {
 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 
+import { TheaterIcon } from '@/components/svgicons'
 import { Slider } from '@/components/ui/slider'
 import { playerSurfaceAtom } from '@/context/atoms'
 import { useArmed } from '@/hooks/use-armed'
@@ -205,7 +205,7 @@ const ViewButtons = ({
         label={theater ? 'Default View' : 'Theater Mode'}
         active={theater}
         onClick={onToggleTheater}>
-        <RectangleHorizontalIcon className='size-5' />
+        <TheaterIcon aria-hidden theater={theater} className='size-5' />
       </IconButton>
     )}
     <IconButton
