@@ -50,6 +50,7 @@ export const VideoResultCard = ({
   onSelect: (result: VideoSearchResult) => void
 }) => (
   <button
+    data-bench='search-result'
     type='button'
     onClick={() => {
       onSelect(result)
@@ -73,6 +74,7 @@ export const LibrarySongCard = ({
 }) => (
   <div className={CARD}>
     <button
+      data-bench='search-result'
       type='button'
       onClick={() => {
         onPlay(song.video_id)

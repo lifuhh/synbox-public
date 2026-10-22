@@ -31,6 +31,7 @@ const SongCard = ({
 }) => (
   // A clone stays clickable but out of the tab order and the accessibility tree, so the list is read once
   <Link
+    data-bench='carousel-slide'
     to={`/v/${item.videoId}`}
     state={{ videoId: item.videoId }}
     title={item.title}
@@ -178,6 +179,7 @@ const SongHighlightCarousel = () => {
           ) : (
             <div
               ref={setTrack}
+              data-bench='carousel'
               // oxlint-disable-next-line no-noninteractive-tabindex -- a scrolling region must be focusable so the arrow keys can scroll it
               tabIndex={0}
               className='carousel-track appear rounded-xl focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden'>

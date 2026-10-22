@@ -38,6 +38,7 @@ interface SongRowProps {
 const SongRow = ({ rank, song }: SongRowProps) => (
   <li>
     <Link
+      data-bench='charts-row'
       to={`/v/${song.vidURL}`}
       className='group flex items-center gap-3 rounded-xl p-2 text-foreground transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden'>
       <span className='w-5 shrink-0 text-end text-sm font-medium text-muted-foreground tabular-nums'>
@@ -87,6 +88,7 @@ const LandingPageCharts: React.FC = () => {
   return (
     <section
       aria-labelledby='charts-title'
+      data-bench='charts'
       aria-busy={isLoading}
       className='flex flex-col gap-3 lg:w-100 lg:shrink-0'>
       <h2

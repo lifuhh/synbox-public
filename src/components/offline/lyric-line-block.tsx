@@ -114,6 +114,7 @@ export const LyricLineBlock = ({
     // oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- a tap seeks; the position bar does the same from the keyboard
     <div
       ref={blockRef}
+      data-bench='lyrics-text'
       onClick={
         synced
           ? () => {

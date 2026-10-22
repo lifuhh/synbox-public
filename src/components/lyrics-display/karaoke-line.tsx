@@ -50,6 +50,7 @@ export const KaraokeLine = ({ line, className, ref }: KaraokeLineProps) => {
   return (
     <p
       key={line.text}
+      data-bench='lyrics-line'
       ref={balanceWrap}
       lang={isLatinLine ? undefined : 'ja'}
       className={cn(

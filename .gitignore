@@ -35,3 +35,6 @@ docs/log/
 # Auth Worker local state and dev secrets
 .wrangler/
 .dev.vars*
+
+# Harness state: bench history, baselines, builds, API fixtures, verdicts (local, per machine; see harness/README.md)
+.harness/
