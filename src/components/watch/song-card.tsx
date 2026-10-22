@@ -49,7 +49,13 @@ export const SongCard = ({
       </span>
     </Link>
     <div className='mt-2 flex items-start gap-1'>
-      <div className='min-w-0 flex-1'>
+      {/* The words open the song too; the picture's link is the one a keyboard and a screen reader meet */}
+      <Link
+        to={songPath(song.videoId)}
+        state={{ videoId: song.videoId }}
+        tabIndex={-1}
+        aria-hidden
+        className='min-w-0 flex-1'>
         <p
           className={cn(
             'line-clamp-2 text-sm leading-5 font-medium text-foreground',
@@ -64,7 +70,7 @@ export const SongCard = ({
           )}>
           {song.author}
         </p>
-      </div>
+      </Link>
       <div className='-me-2 -mt-2'>
         <SongMenu song={song} />
       </div>

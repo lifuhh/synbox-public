@@ -10,7 +10,7 @@ import {
   UserIcon,
 } from 'lucide-react'
 import { useMemo, useState } from 'react'
-import { useNavigate } from 'react-router'
+import { Link } from 'react-router'
 
 import { UserAvatar } from '@/components/shared/user-avatar'
 import {
@@ -33,7 +33,7 @@ import type { Quota } from '@/lib/auth'
 import { forgetMySongs } from '@/lib/offline/sync'
 import { useInstallMethod } from '@/lib/pwa'
 import { QUERY_KEYS } from '@/lib/react-query/query-keys'
-import { handleRedirect } from '@/utils'
+import { newTabHandlers } from '@/lib/selectable-links'
 import { cn } from '@/utils/cn'
 
 import { GitHubIcon } from '../svgicons'
@@ -113,7 +113,7 @@ const ProfileTrigger = ({
       }}>
       <DropdownMenuTrigger asChild>
         {slot === 'account' ? (
-          <Button variant='toolbar' size='icon'>
+          <Button variant='toolbar' size='icon' {...newTabHandlers('/you')}>
             <UserAvatar
               className='size-6'
               src={image === '' ? null : image}
@@ -130,7 +130,6 @@ const ProfileTrigger = ({
 }
 
 const ProfileButtonDropdown = () => {
-  const navigate = useNavigate()
   const install = useInstallMethod()
   const [iosHelpOpen, setIosHelpOpen] = useState(false)
   const queryClient = useQueryClient()
@@ -141,10 +140,6 @@ const ProfileButtonDropdown = () => {
     await signOut()
     forgetMySongs()
     await queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.GET_ME] })
-  }
-
-  const handleAboutOnClick = () => {
-    void navigate('/about')
   }
 
   return (
@@ -189,29 +184,25 @@ const ProfileButtonDropdown = () => {
           )}
           <DropdownMenuGroup>
             {/* From sm up the top bar shows GitHub itself */}
-            <DropdownMenuItem
-              className='cursor-pointer sm:hidden'
-              onClick={() => {
-                handleRedirect(REPO_URL)
-              }}>
-              <GitHubIcon className='mr-2 ml-[3px] h-4 w-4 fill-white' />
-              <span>GitHub</span>
+            <DropdownMenuItem asChild className='cursor-pointer sm:hidden'>
+              <a href={REPO_URL} target='_blank' rel='noreferrer'>
+                <GitHubIcon className='mr-2 ml-[3px] h-4 w-4 fill-white' />
+                <span>GitHub</span>
+              </a>
             </DropdownMenuItem>
             {user?.role === 'admin' && (
-              <DropdownMenuItem
-                className='cursor-pointer'
-                onClick={() => {
-                  void navigate('/admin')
-                }}>
-                <ShieldIcon className='mr-2 size-5 shrink-0' />
-                <span>Admin</span>
+              <DropdownMenuItem asChild className='cursor-pointer'>
+                <Link to='/admin'>
+                  <ShieldIcon className='mr-2 size-5 shrink-0' />
+                  <span>Admin</span>
+                </Link>
               </DropdownMenuItem>
             )}
-            <DropdownMenuItem
-              className='cursor-pointer'
-              onClick={handleAboutOnClick}>
-              <CircleQuestionMarkIcon className='mr-2 size-5 shrink-0' />
-              <span>About Synbox</span>
+            <DropdownMenuItem asChild className='cursor-pointer'>
+              <Link to='/about'>
+                <CircleQuestionMarkIcon className='mr-2 size-5 shrink-0' />
+                <span>About Synbox</span>
+              </Link>
             </DropdownMenuItem>
             {(install.kind === 'prompt' || install.kind === 'ios') && (
               <DropdownMenuItem

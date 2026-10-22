@@ -1,4 +1,5 @@
 import { SparklesIcon } from 'lucide-react'
+import { Link } from 'react-router'
 
 import {
   KaraokeLabelMark,
@@ -70,20 +71,16 @@ export const VideoResultCard = ({
 
 export const LibrarySongCard = ({
   song,
-  onPlay,
   onMoreLikeThis,
 }: {
   song: LibrarySong
-  onPlay: (videoId: string) => void
   onMoreLikeThis: (videoId: string) => void
 }) => (
   <div className={CARD}>
-    <button
+    <Link
       data-bench='search-result'
-      type='button'
-      onClick={() => {
-        onPlay(song.video_id)
-      }}
+      to={`/v/${song.video_id}`}
+      state={{ videoId: song.video_id }}
       className='flex flex-col gap-2 text-left'>
       <Thumbnail
         src={song.thumbnail_url}
@@ -92,7 +89,7 @@ export const LibrarySongCard = ({
       />
       <Title>{song.title}</Title>
       <KaraokeLabelMark videoId={song.video_id} />
-    </button>
+    </Link>
     <div className='flex items-center gap-2'>
       <p className='min-w-0 flex-1 truncate text-xs text-muted-foreground'>
         {song.artist}
