@@ -1,5 +1,5 @@
 import { useAtom, useAtomValue, useSetAtom } from 'jotai'
-import { useEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useState } from 'react'
 import type { ComponentProps } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate, useParams, useSearchParams } from 'react-router'
@@ -113,8 +113,9 @@ const PlayerPage = () => {
   const [stageVideoId, setStageVideoId] = useState<string | null>(null)
 
   useSongVisit(videoId)
-  // Every visit to a song's player page is one more listen
-  useEffect(() => {
+  // Every visit to a song's player page is one more listen. A layout effect, so the listen is on its way before
+  // any part of the page asks for the song's stats (those wait for it)
+  useLayoutEffect(() => {
     if (videoId !== '') {
       countListen(videoId)
     }
