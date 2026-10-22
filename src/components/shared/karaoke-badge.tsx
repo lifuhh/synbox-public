@@ -16,8 +16,16 @@ export const KaraokeBadge = ({ className }: { className?: string }) => (
 )
 
 // The mic's box, the gap between it and each stroke, and each stroke's length
-const EDGE: CssVars = { '--gap': '0.125rem', '--mic': '0.875rem', '--stroke': '0.875rem' }
-const SMALL_EDGE: CssVars = { '--gap': '0.125rem', '--mic': '0.75rem', '--stroke': '0.625rem' }
+const EDGE: CssVars = {
+  '--gap': '0.125rem',
+  '--mic': '0.875rem',
+  '--stroke': '0.875rem',
+}
+const SMALL_EDGE: CssVars = {
+  '--gap': '0.125rem',
+  '--mic': '0.75rem',
+  '--stroke': '0.625rem',
+}
 
 // The same mark on a list row's thumbnail: a mic on its top-right corner, centred on the corner, with a short
 // stroke of the accent running into it along the top edge and out of it down the right edge, both on the mic's
@@ -32,7 +40,7 @@ export const KaraokeEdge = ({ small = false }: { small?: boolean }) => (
     className='pointer-events-none absolute inset-0'>
     <span className='absolute top-0 right-[calc(var(--mic)/2+var(--gap))] h-0.5 w-(--stroke) -translate-y-1/2 rounded-full bg-primary' />
     <span className='absolute top-[calc(var(--mic)/2+var(--gap))] right-0 h-(--stroke) w-0.5 translate-x-1/2 rounded-full bg-primary' />
-    <MicVocalIcon className='absolute top-0 right-0 size-(--mic) translate-x-1/2 -translate-y-1/2 text-primary-text drop-shadow-[0_1px_1px_rgb(0_0_0/0.6)]' />
+    <MicVocalIcon className='absolute top-0 right-0 size-(--mic) translate-x-1/2 -translate-y-1/2 text-primary-text drop-shadow-sm' />
   </span>
 )
 
