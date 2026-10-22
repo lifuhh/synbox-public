@@ -5,8 +5,9 @@ import { loadYouTubeIframeApi, YTState } from '@/lib/youtube/iframe-api'
 // One YouTube player for the whole visit. iOS lets a media element make sound only after a tap has
 // reached that element, and YouTube keeps one <video> per player across cueVideoById: so the player
 // outlives every song and page, and one unmute lasts the visit. An iframe reloads whenever it moves in
-// the document, so it never moves: it sits in a fixed layer under the app, laid over whichever stage
-// is showing
+// the document, so it never moves: it sits in one layer at the top of the body, under the app, laid over
+// whichever stage is showing. The layer is placed in the document's coordinates, so where the document
+// itself scrolls (the wide watch page) it scrolls with the page natively, never a frame behind it
 
 export interface EngineListener {
   onReady: (player: YTPlayer) => void
@@ -53,7 +54,7 @@ const ensureLayer = () => {
     background: '#000',
     overflow: 'hidden',
     pointerEvents: 'none',
-    position: 'fixed',
+    position: 'absolute',
     visibility: 'hidden',
   })
   frame = document.createElement('div')
@@ -189,10 +190,12 @@ export const placeEngine = (
   const place = () => {
     const outer = pageRect(stage)
     const inner = pageRect(box)
+    // 0 everywhere but a page that scrolls the document itself
+    const scroller = document.scrollingElement
     Object.assign(parts.layer.style, {
       height: `${outer.height}px`,
-      left: `${outer.left}px`,
-      top: `${outer.top}px`,
+      left: `${outer.left + (scroller?.scrollLeft ?? 0)}px`,
+      top: `${outer.top + (scroller?.scrollTop ?? 0)}px`,
       visibility: 'visible',
       width: `${outer.width}px`,
     })

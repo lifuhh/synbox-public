@@ -37,7 +37,13 @@ const insideScroller = (box: HTMLElement) => {
 
 // The page's own scroller that moved, or null for anything else that scrolled
 const pageScroller = (target: EventTarget | null): HTMLElement | null => {
-  // The watch page's panels scroll inside a page that doesn't, so the bar stays
+  // The wide watch page scrolls the document itself
+  if (target === document) {
+    return document.scrollingElement instanceof HTMLElement
+      ? document.scrollingElement
+      : null
+  }
+  // The narrow watch page's panels scroll under a video that doesn't move, so the bar stays
   if (document.documentElement.dataset.watch !== undefined) {
     return null
   }
