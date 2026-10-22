@@ -234,15 +234,18 @@ export const runTrend = async (
     gated
       .filter((g) => g.m.verdict === v)
       .map((g) => `${g.id}.${g.m.key}${v === 'unchanged' ? '' : pct(g.m)}`)
+  // A gated metric with no samples on a side can't be compared: it is inconclusive, never left out
+  const unsampled = results.flatMap((r) =>
+    r.bench.metrics
+      .filter((spec) => spec.gate && !r.metrics.some((m) => m.key === spec.key))
+      .map((spec) => `${r.bench.id}.${spec.key} (no samples on a side)`)
+  )
   const regressed = named('regressed')
-  const inconclusive = named('inconclusive')
-  const missing = results
-    .filter((r) => r.metrics.length === 0)
-    .map((r) => r.bench.id)
+  const inconclusive = [...named('inconclusive'), ...unsampled]
   let outcome: 'regressed' | 'inconclusive' | 'unchanged' = 'unchanged'
   if (regressed.length > 0) {
     outcome = 'regressed'
-  } else if (inconclusive.length > 0 || missing.length > 0) {
+  } else if (inconclusive.length > 0) {
     outcome = 'inconclusive'
   }
 
@@ -254,6 +257,7 @@ export const runTrend = async (
     '',
   ]
   for (const r of results) {
+    const lost = unsampled.filter((u) => u.startsWith(`${r.bench.id}.`))
     lines.push(
       `## ${r.bench.id}`,
       '',
@@ -265,13 +269,16 @@ export const runTrend = async (
         `| ${m.key}${m.spec.gate ? '' : ' ·'} | ${fmt(m.reference, m.spec.unit)} | ${fmt(m.candidate, m.spec.unit)} | ${fmt(m.delta, m.spec.unit)}${pct(m)} | ${m.verdict} p=${m.p.toFixed(3)} n=${m.nReference}/${m.nCandidate}${m.underpowered ? ' underpowered' : ''} |`
       )
     }
+    for (const u of lost) {
+      lines.push(`- inconclusive: ${u}`)
+    }
     for (const e of r.errors.slice(0, 5)) {
       lines.push(`- error: ${e}`)
     }
     lines.push('')
   }
   lines.push(
-    '`·` = reported, not gated. Mann–Whitney U, Holm-corrected per benchmark; a change must also exceed max(floor, pct × reference) (suite.ts).'
+    '`·` = reported, not gated. Mann–Whitney U, Holm-corrected per benchmark; a change must also exceed max(floor, pct × reference) (suite.ts). `underpowered`: even the most extreme split of these sample counts gives a Holm-adjusted p ≥ 0.05, so no difference could be significant; the verdict is inconclusive.'
   )
   const dir = storeDir(repo, 'bench', 'runs', runId)
   const reportFile = path.join(dir, 'report.md')
@@ -296,7 +303,6 @@ export const runTrend = async (
   const summary = [
     regressed.length > 0 ? `regressed: ${regressed.join(', ')}` : '',
     inconclusive.length > 0 ? `inconclusive: ${inconclusive.join(', ')}` : '',
-    missing.length > 0 ? `no samples: ${missing.join(', ')}` : '',
     `${named('unchanged').length} unchanged`,
   ]
     .filter(Boolean)

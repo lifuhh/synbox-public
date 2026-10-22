@@ -11,6 +11,7 @@ import type { Page } from 'playwright'
 
 import { mark, open } from '../engines/browser'
 import type { Audit } from '../engines/recorder'
+import { isRecord, parseJson } from '../json'
 import type { BenchContext, Sample, Surface } from '../types'
 
 export interface LayoutPage {
@@ -42,6 +43,16 @@ const settled = async (page: Page) => {
       // A region that stays busy is audited as it is
     })
 }
+
+/**
+ * console.error lines that say nothing about the app: an error the app logs (an ErrorBoundary that caught a crash,
+ * a failed fetch it reports) counts, these don't. Keep the list short and say why for each
+ */
+const BENIGN_CONSOLE: RegExp[] = [
+  // The browser's own network log, not app code: the bench server answers only the routes netlify.toml proxies
+  // (the auth Worker's /api/songs/listens is not one), and a failed request the app cares about is its own error
+  /^Failed to load resource:/u,
+]
 
 // The player's passing states; the audit waits until it is out of them
 const PASSING_PHASES = ['loading', 'starting', 'buffering']
@@ -123,23 +134,28 @@ export const LAYOUT_PAGES: LayoutPage[] = [
     },
     route: '/lyrics/:videoId',
   },
-  {
-    name: 'versions',
-    path: `/v/${PLAYER_SONG}/versions`,
-    ready: settled,
-    route: '/v/:videoId/versions',
-  },
 ]
 
-/** Routes in src/app.tsx that get no audit, and why */
-export const LAYOUT_SKIP: Record<string, string> = {
-  '/admin': 'admins only; the lab has no session',
-  '/lab/stage': 'development builds only',
-  '/offline': 'redirects to /lyrics',
-  '/offline/:videoId': 'redirects to /lyrics/:videoId',
-  '/playlists/:playlistId':
-    "a playlist lives in the browser's storage, and a fresh lab context has none",
+interface RouteConfig {
+  samples: Record<string, string>
+  skip: Record<string, string>
 }
+
+const isRouteConfig = (v: unknown): v is RouteConfig =>
+  isRecord(v) &&
+  isRecord(v.samples) &&
+  isRecord(v.skip) &&
+  [...Object.values(v.samples), ...Object.values(v.skip)].every(
+    (x) => typeof x === 'string'
+  )
+
+/** harness/routes.json: sample URLs for routes with parameters, and routes that get no audit */
+export const routeConfig = (): RouteConfig =>
+  parseJson(
+    readFileSync(path.resolve(import.meta.dir, '../../routes.json'), 'utf-8'),
+    isRouteConfig,
+    'harness/routes.json'
+  )
 
 /** The routes src/app.tsx declares: the index route as `/`, every other by its `path` */
 export const appRoutes = (): string[] => {
@@ -162,26 +178,58 @@ export const appRoutes = (): string[] => {
  */
 export const layoutPages = (): LayoutPage[] => {
   const routes = appRoutes()
+  const { samples, skip } = routeConfig()
   const known = new Set(LAYOUT_PAGES.map((p) => p.route))
-  const found = routes.filter(
-    (route) => !known.has(route) && !(route in LAYOUT_SKIP)
-  )
+  const found = routes.filter((route) => !known.has(route) && !(route in skip))
   return [
-    // An entry whose route is gone (or not yet added) audits nothing
+    // Lenient here (an entry whose route is gone audits nothing); `check` fails on it first (routeProblems)
     ...LAYOUT_PAGES.filter((p) => routes.includes(p.route)),
-    ...found.map((route) => ({
-      name: route.slice(1).replaceAll(/[/:]+/gu, '-') || 'index',
-      path: route,
-      ready: route.includes(':')
-        ? () => {
-            throw new Error(
-              `route ${route} has no layout audit: add it to LAYOUT_PAGES in harness/bench/probes/layout.ts with a sample URL, or to LAYOUT_SKIP with the reason`
-            )
-          }
-        : settled,
-      route,
-    })),
+    ...found.map((route) => {
+      const sample = samples[route] ?? (route.includes(':') ? null : route)
+      return {
+        name:
+          route
+            .slice(1)
+            .replaceAll(/:[^/]+/gu, '')
+            .replaceAll(/\/+/gu, '-')
+            .replace(/-$/u, '') || 'index',
+        path: sample ?? route,
+        ready:
+          sample === null
+            ? () => {
+                throw new Error(
+                  `route ${route} has no layout audit: add a sample URL for it to harness/routes.json › samples, or a reason to › skip`
+                )
+              }
+            : settled,
+        route,
+      }
+    }),
   ]
+}
+
+/**
+ * Why the audit list can't be trusted: the router file yielded no routes (its syntax changed), or a route named in
+ * LAYOUT_PAGES or harness/routes.json is not in it. Either way audits would silently go missing.
+ */
+export const routeProblems = (): string[] => {
+  const routes = appRoutes()
+  if (routes.length === 0) {
+    return [
+      'no routes found in src/app.tsx (appRoutes reads `path="…"` and `<Route index`)',
+    ]
+  }
+  const { samples, skip } = routeConfig()
+  return [
+    ...LAYOUT_PAGES.map((p) => p.route),
+    ...Object.keys(samples),
+    ...Object.keys(skip),
+  ]
+    .filter((route) => !routes.includes(route))
+    .map(
+      (route) =>
+        `${route} is listed for the layout audits but is not a route in src/app.tsx`
+    )
 }
 
 export const layoutAudit =
@@ -190,16 +238,47 @@ export const layoutAudit =
     ctx: BenchContext
   ): Promise<{ samples: Sample[]; errors: string[] }> => {
     const { page, close, safe } = await open(surface)
+    // The first app error ends the wait for the page's readiness: a crashed page never fires its marks, and its
+    // error is the finding, so it is audited (and fails on its error count) at once instead of timing out
+    let errored: (() => void) | null = null
+    // oxlint-disable-next-line promise/avoid-new -- settles on the first error event
+    const firstError = new Promise<void>((resolve) => {
+      errored = resolve
+    })
     const thrown: string[] = []
     page.on('pageerror', (error) => {
       // WebKit reports a ResizeObserver callback deferred to the next frame as an error; it is not the app throwing
       if (!error.message.startsWith('ResizeObserver loop')) {
         thrown.push(error.message.split('\n')[0])
+        errored?.()
+      }
+    })
+    const logged: string[] = []
+    page.on('console', (message) => {
+      const [text] = message.text().split('\n')
+      if (
+        message.type() === 'error' &&
+        !BENIGN_CONSOLE.some((b) => b.test(text))
+      ) {
+        logged.push(`${text} (${message.location().url})`)
+        errored?.()
       }
     })
     try {
       await page.goto(`${ctx.origin}${p.path}`, { waitUntil: 'commit' })
-      await p.ready(page)
+      // When an error ends the wait first, the readiness that times out later is moot
+      const ready = (async () => {
+        try {
+          await p.ready(page)
+          return null
+        } catch (error) {
+          return error
+        }
+      })()
+      const outcome = await Promise.race([ready, firstError])
+      if (outcome instanceof Error) {
+        throw outcome
+      }
       const unsettled = await settle(page)
       if (
         surface.kind === 'phone' &&
@@ -239,6 +318,7 @@ export const layoutAudit =
           ? [`page scrolls sideways by ${audit.overflowX}px`]
           : []),
         ...thrown.map((m) => `page error: ${m}`),
+        ...logged.map((m) => `console error: ${m}`),
         ...(unsettled === null ? [] : [`not settled: ${unsettled}`]),
         ...(phase !== undefined && phase !== ''
           ? [`player phase at audit: ${phase}`]
@@ -250,6 +330,7 @@ export const layoutAudit =
           {
             notes,
             values: {
+              consoleErrors: logged.length,
               occludedTargets: audit.occluded.length,
               offscreenTargets: audit.offscreen.length,
               overflowXPx: audit.overflowX,

@@ -14,12 +14,13 @@ bun harness/bench/cli.ts check --only layout-player    # just the audits whose i
 
 It runs, and stops at the first failure:
 
-1. **Evaluator guard.** A branch that edits the scorer (`harness/bench/scorer/`), the metric specs (`harness/bench/suite.ts`) or the probes (`harness/bench/probes/`) together with app code (`src/`, `public/`, `index.html`, `vite.config.ts`, `bun.lock`, `netlify/`) fails: land the evaluator change in its own PR, judged against an unchanged app.
-2. **`typecheck`, `lint`, `test`, `fmt:check`**, beside the production build.
-3. **Size**: brotli KB of first-load JS, first-load CSS and all JS, against `harness/budgets.json`.
-4. **Layout audits**: every route in `src/app.tsx` on desktop Chromium 1440×900, WebKit iPhone 390×844 in Safari and as the installed app, and (home, gallery, player, search) 844×390, all with iPhone safe areas. Each counts press targets under 24px, covered at their centre, cut off by the viewport's sides, or (fixed or sticky, on a phone) inside a safe-area inset; sideways overflow; and uncaught page errors. Every count's budget is 0 unless `harness/budgets.json` says otherwise. Three audits run at a time.
+1. **Evaluator guard.** A branch that edits the evaluator together with app code (`src/`, `public/`, `index.html`, `vite.config.ts`, `bun.lock`, `netlify/`) fails: land the evaluator change in its own PR, judged against an unchanged app. The evaluator is whatever decides what `check` runs and how it judges: everything in `harness/bench/` except `trend.ts`, the scripts in `package.json`, `harness/release.ts` and `harness/gate.json`. Not the evaluator: `harness/budgets.json` and `harness/routes.json`, which change beside the app on purpose.
+2. **Audit list**: `src/app.tsx` yields routes, and every route named in `harness/bench/probes/layout.ts` › `LAYOUT_PAGES` or `harness/routes.json` is one of them. A router refactor can't silently drop audits.
+3. **`typecheck`, `lint`, `test`, `fmt:check`**, beside the production build.
+4. **Size**: brotli KB of first-load JS, first-load CSS and all JS, against `harness/budgets.json`. A pass prints each value over its budget, so the headroom shows.
+5. **Layout audits**: every route in `src/app.tsx` except those `harness/routes.json` › `skip` lists with a reason, on desktop Chromium 1440×900 and WebKit iPhone 390×844 in Safari and as the installed app; home, gallery, player and search also at 844×390. All phone screens have iPhone safe areas. Each audit counts press targets under 24px, covered at their centre, cut off by the viewport's sides, or (fixed or sticky, on a phone) inside a safe-area inset; sideways overflow; uncaught page errors; and `console.error` lines (the app logs a crash its error boundary caught that way; the browser's own network log is ignored, `probes/layout.ts` › `BENIGN_CONSOLE`). Every count's budget is 0 unless `harness/budgets.json` says otherwise. Three audits run at a time.
 
-Each step prints its seconds. A pass stamps `<main checkout>/.harness/verdicts/<tree>.json` (`kind: check`), which the global PR hook (`~/.claude/hooks/harness-gate.py`, configured by `harness/gate.json`) requires before `gh pr create --base staging`. A new commit is a new tree and needs a new run. Uncommitted changes get checked but not stamped.
+A pass needs every one of these steps to have run exactly once; anything less is a failure. Each step prints its seconds. A pass stamps `<main checkout>/.harness/verdicts/<tree>.json` (`kind: check`), which the global PR hook (`~/.claude/hooks/harness-gate.py`, configured by `harness/gate.json`) requires before `gh pr create --base staging`. A new commit is a new tree and needs a new run. Uncommitted changes get checked but not stamped.
 
 When it fails:
 
@@ -31,7 +32,7 @@ When it fails:
 | `no sample: mark "x" never fired` | A `data-bench` hook the audit waits for is gone (see "How the audits keep up with the app"). Put it back on whatever replaced it. |
 | The evaluator guard | Split the branch. |
 
-An audit that fails is run once more before it counts; a pass on the second try says `retried after: …`.
+An audit that produced nothing (a page that never got ready) is run once more; a pass on the second try says `retried after: …`. A count over budget is never re-run: a layout bug that shows one time in three still fails.
 
 ## Shipping: staging, then one release
 
@@ -53,7 +54,7 @@ bun harness/bench/cli.ts trend                                 # origin/main aga
 bun harness/bench/cli.ts trend --only home --ref origin/staging
 ```
 
-It builds both commits, serves both at once, and alternates them sample by sample (reference, candidate, candidate, reference, …), at least 12 samples a side, each side warmed up once. A machine that slows down mid-run slows both sides alike. Per metric: Mann–Whitney U, Holm-corrected across a benchmark's gated metrics, and a change must also exceed `max(floor, pct × reference)` (set per metric in `suite.ts`). A metric whose sample sizes can't reach significance is `inconclusive`, never `unchanged`.
+It builds both commits, serves both at once, and alternates them sample by sample (reference, candidate, candidate, reference, …), at least 12 samples a side, each side warmed up once. A machine that slows down mid-run slows both sides alike. Per metric: Mann–Whitney U, Holm-corrected across a benchmark's gated metrics, and a change must also exceed `max(floor, pct × reference)` (set per metric in `suite.ts`). A metric is `inconclusive`, never `unchanged`, when it has no samples on a side, or when it is underpowered: even the most extreme split of its sample counts would give a Holm-adjusted p of at least 0.05.
 
 The report lands in `.harness/bench/runs/trend-<time>/report.md` and one line per run is appended to `.harness/queue.md` in the main checkout: `regressed`, `inconclusive` or `unchanged`, with the metrics named. Read the queue, then decide what to do about a regression; the release doesn't wait for it. It waits up to 5 minutes for a quiet machine (load under half the cores) and holds the machine lock, so a `check` started meanwhile waits for it (layout audits must not share the machine with timings). Nothing schedules it; run it after a release, or schedule it yourself.
 
@@ -76,8 +77,8 @@ The report lands in `.harness/bench/runs/trend-<time>/report.md` and one line pe
 
 ## How the audits keep up with the app
 
-- **Hooks, not markup.** Probes wait for elements the app marks with `data-bench` (`carousel`, `carousel-slide`, `charts`, `charts-row`, `gallery`, `gallery-tile`, `hero-input`, `lyrics-line` (the stage's current lines), `lyrics-text` (the lyrics panel and reader), `search-result`; `engines/recorder.ts` › `WATCH`). Player controls are found by their accessible names (Play, Pause, Seek). Keep the attribute on whatever replaces an element. Elements marked `data-bench-ignore` are left out of the audit.
-- **Pages from the router.** The audits read the routes in `src/app.tsx`. A new route without parameters is audited once it settles. A route with parameters needs a sample URL in `probes/layout.ts` › `LAYOUT_PAGES`, or a reason in `LAYOUT_SKIP`; until then its audit fails and says so. An entry whose route doesn't exist yet audits nothing, so the entry can land before the route (the guard keeps them in separate PRs).
+- **Hooks, not markup.** Probes wait for elements the app marks with `data-bench` (`carousel`, `carousel-slide`, `charts`, `charts-row`, `gallery`, `gallery-tile`, `hero-input`, `lyrics-line` (the stage's current lines), `lyrics-text` (the lyrics panel and reader), `search-result`; `engines/recorder.ts` › `WATCH`). Player controls are found by their accessible names (Play, Pause, Seek). Keep the attribute on whatever replaces an element.
+- **Pages from the router.** The audits read the routes in `src/app.tsx`. A new route without parameters is audited once it settles. A route with parameters needs a sample URL in `harness/routes.json` › `samples`, or a reason in › `skip`, in the PR that adds it; until then its audit fails and says so. Pages with readiness code of their own are in `probes/layout.ts` › `LAYOUT_PAGES` (the evaluator). Removing such a page's route takes two PRs: drop its entry first (the route then gets the generic audit), then the route.
 - **The installed app.** The `installed` screen is the iPhone portrait screen with `navigator.standalone` set, which the app reads for its tab bar and short top bar. The audit fails if the page didn't switch to the installed layout.
 
 ## A task's worktree: `wt.ts`
@@ -89,6 +90,11 @@ bun harness/wt.ts finish <slug>                        # keep .reports/, remove 
 ```
 
 Nothing in it kills a process or forces a removal. `serve` is stopped by stopping its task. `finish` refuses while the worktree has uncommitted changes, while the branch is not in `staging`, or while its dev server still answers, and says which.
+
+## Known limits
+
+- The hook reads the command text. A command hidden in a wrapper (`bash -c "gh pr merge …"`, a script, `gh api` calls to the pulls endpoints) is not seen. The release script's own `gh` calls rely on this.
+- `trend` is not scheduled; nothing runs it unless someone does.
 
 ## Requirements
 

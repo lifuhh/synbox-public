@@ -34,6 +34,12 @@ const log = (m: string): void => {
   process.stderr.write(`· ${m}\n`)
 }
 const only = flags.only?.split(',') ?? null
+const jobsOf = (raw: string): number => {
+  if (!/^[1-9]\d*$/u.test(raw)) {
+    throw new Error(`--jobs must be a positive whole number, not "${raw}"`)
+  }
+  return Number(raw)
+}
 
 const main = async () => {
   const repo = repoAt(process.cwd())
@@ -43,7 +49,7 @@ const main = async () => {
       const release = await holdMachine(repo, 'check', log)
       try {
         const r = await runCheck(repo, {
-          jobs: Number(flags.jobs),
+          jobs: jobsOf(flags.jobs),
           log,
           only,
         })

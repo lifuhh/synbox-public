@@ -1,9 +1,10 @@
 // `check`: the exact checks a change must pass before it goes into staging, and staging before it ships. Nothing
 // here is timed, so nothing needs a baseline or a quiet machine: typecheck, lint, tests and format, bytes shipped
-// against harness/budgets.json, and a layout audit of every route on every screen against the same budgets. It
-// stops at the first failure, prints each step's seconds, and stamps a verdict for the committed tree.
+// against harness/budgets.json, and a layout audit of the app's routes (harness/routes.json says which are
+// skipped) on desktop and phone screens against the same budgets. It stops at the first failure, prints each
+// step's seconds, and stamps a verdict for the committed tree only when every expected step ran.
 
-import { spawn } from 'node:child_process'
+import { execFileSync, spawn } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 
@@ -11,6 +12,7 @@ import { buildWorkingTree } from './build'
 import { closeBrowsers, replayFonts } from './engines/browser'
 import { evaluatorTouched } from './gate'
 import { isRecord, parseJson } from './json'
+import { routeProblems } from './probes/layout'
 import { serveBuild } from './server'
 import { changedSince, existedAt, storeDir, writeVerdict } from './store'
 import type { Repo } from './store'
@@ -38,6 +40,42 @@ const readBudgets = (repo: Repo): Budgets =>
     isBudgets,
     'harness/budgets.json'
   )
+
+/**
+ * The files a branch changes against staging, as the evaluator guard sees them: package.json counts as
+ * `package.json#scripts` when its scripts changed (they define what `check` runs), and as nothing otherwise
+ * (dependencies show in bun.lock)
+ */
+const changedForGuard = (repo: Repo): string[] => {
+  const scripts = (ref: string): string => {
+    try {
+      const text = execFileSync(
+        'git',
+        ['-C', repo.top, 'show', `${ref}:package.json`],
+        {
+          encoding: 'utf-8',
+        }
+      )
+      const value: unknown = JSON.parse(text)
+      return JSON.stringify(isRecord(value) ? value.scripts : null)
+    } catch {
+      return ''
+    }
+  }
+  return changedSince(repo, STAGING).flatMap((f) => {
+    if (f !== 'package.json') {
+      return [f]
+    }
+    const base = execFileSync(
+      'git',
+      ['-C', repo.top, 'merge-base', 'HEAD', STAGING],
+      {
+        encoding: 'utf-8',
+      }
+    ).trim()
+    return scripts(base) === scripts('HEAD') ? [] : ['package.json#scripts']
+  })
+}
 
 /** Every gated metric over its budget; a metric with no budget has a budget of 0 */
 export const overBudget = (
@@ -98,6 +136,9 @@ export const runCheck = async (
   repo: Repo,
   opts: { only: string[] | null; jobs: number; log: (m: string) => void }
 ): Promise<CheckResult> => {
+  if (!Number.isInteger(opts.jobs) || opts.jobs < 1) {
+    throw new Error(`--jobs must be a positive whole number, not ${opts.jobs}`)
+  }
   const started = Date.now()
   const steps: Step[] = []
   const say = (s: Step) => {
@@ -112,14 +153,27 @@ export const runCheck = async (
   const phases = async (): Promise<void> => {
     if (full) {
       const t = Date.now()
-      const touched = evaluatorTouched(changedSince(repo, STAGING), (f) =>
-        existedAt(repo, STAGING, f)
+      const touched = evaluatorTouched(changedForGuard(repo), (f) =>
+        existedAt(repo, STAGING, f.replace(/#.*$/u, ''))
       )
       say({
         detail: touched ?? '',
         ms: Date.now() - t,
         name: 'evaluator untouched by app changes',
         status: touched === null ? 'pass' : 'fail',
+      })
+      if (failed()) {
+        return
+      }
+    }
+    {
+      const t = Date.now()
+      const problems = routeProblems()
+      say({
+        detail: problems.join('\n'),
+        ms: Date.now() - t,
+        name: 'audit list matches the router',
+        status: problems.length === 0 ? 'pass' : 'fail',
       })
       if (failed()) {
         return
@@ -203,18 +257,28 @@ export const runCheck = async (
             : overBudget(bench, sample, budgets)
         return { problems, sample }
       }
-      // One retry: a single run, and a live YouTube player that never finishes loading (seen once in four runs
-      // of the desktop player) would otherwise fail the check on its own
+      // One retry, only for a run that produced nothing (a live YouTube player that never finished loading was
+      // seen once in four runs). A count over budget is never re-rolled: a flaky layout bug fails
       let result = await once()
       let retried = ''
-      if (result.problems.length > 0) {
+      if (result.sample === undefined) {
         retried = `retried after: ${result.problems.join('; ')}`
         result = await once()
       }
       const ok = result.problems.length === 0
+      // On a pass, bytes show beside their budgets, so the headroom left is visible
+      const headroom =
+        bench.surface === null && result.sample !== undefined
+          ? bench.metrics
+              .map(
+                (m) =>
+                  `${m.key} ${result.sample?.values[m.key]?.toFixed(1)}/${budgets[bench.id]?.[m.key] ?? 0}`
+              )
+              .join(', ')
+          : ''
       say({
         detail: ok
-          ? retried
+          ? [headroom, retried].filter(Boolean).join('; ')
           : [
               ...result.problems,
               ...(result.sample?.notes ?? []),
@@ -250,6 +314,43 @@ export const runCheck = async (
     }
   }
   await phases()
+
+  // A pass must have run everything it claims: every expected step exactly once (a run that skipped the audits,
+  // whatever the reason, is not a pass)
+  if (!failed()) {
+    const expected = [
+      ...(full
+        ? [
+            'evaluator untouched by app changes',
+            'audit list matches the router',
+            ...STATIC,
+          ]
+        : []),
+      'build',
+      ...SUITE.filter(isExact)
+        .filter(
+          (b) => opts.only === null || opts.only.some((o) => b.id.startsWith(o))
+        )
+        .map((b) => b.id),
+    ]
+    const ran = steps.map((s) => s.name)
+    const missing = expected.filter(
+      (n) => ran.filter((r) => r === n).length !== 1
+    )
+    const extra = ran.filter((r) => !expected.includes(r))
+    if (
+      missing.length > 0 ||
+      extra.length > 0 ||
+      ran.length !== expected.length
+    ) {
+      say({
+        detail: `expected ${expected.length} steps, ran ${ran.length}; not run exactly once: ${missing.join(', ') || 'none'}${extra.length > 0 ? `; unexpected: ${extra.join(', ')}` : ''}`,
+        ms: 0,
+        name: 'every check ran',
+        status: 'fail',
+      })
+    }
+  }
 
   const status: Status = failed() ? 'fail' : 'pass'
   const wallMs = Date.now() - started

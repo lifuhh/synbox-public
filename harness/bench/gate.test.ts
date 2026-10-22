@@ -20,6 +20,24 @@ describe('evaluatorTouched', () => {
     ).not.toBeNull()
   })
 
+  test('a check step switched off in package.json beside app code is refused', () => {
+    expect(
+      evaluatorTouched(['package.json#scripts', 'src/app.tsx'], existed)
+    ).not.toBeNull()
+  })
+
+  test('the audit engine edited beside app code is refused, trend.ts is not the evaluator', () => {
+    expect(
+      evaluatorTouched(
+        ['harness/bench/engines/recorder.ts', 'src/app.tsx'],
+        existed
+      )
+    ).not.toBeNull()
+    expect(
+      evaluatorTouched(['harness/bench/trend.ts', 'src/app.tsx'], existed)
+    ).toBeNull()
+  })
+
   test('a budget raised beside the app change that needs it passes', () => {
     expect(
       evaluatorTouched(['harness/budgets.json', 'src/app.tsx'], existed)

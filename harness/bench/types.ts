@@ -90,7 +90,10 @@ export interface MetricResult {
   threshold: number
   nReference: number
   nCandidate: number
-  /** Too few samples for any difference to reach significance after correction; the verdict is then inconclusive */
+  /**
+   * Even the most extreme split of these sample counts (every candidate sample beyond every reference one) gives a
+   * Holm-adjusted p ≥ ALPHA, so no difference could be significant; the verdict is then inconclusive
+   */
   underpowered: boolean
 }
 

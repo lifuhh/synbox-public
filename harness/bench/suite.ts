@@ -141,12 +141,13 @@ const layout = (
     count('offscreenTargets'),
     count('unsafeTargets'),
     count('pageErrors'),
+    count('consoleErrors'),
     count('targets', false),
   ],
   run: layoutAudit(page, surface),
   runs: 1,
   surface,
-  title: `Layout of ${page.name} (${page.path}) on ${name}: target sizes, covered targets, overflow, safe areas, page errors`,
+  title: `Layout of ${page.name} (${page.path}) on ${name}: target sizes, covered targets, overflow, safe areas, page and console errors`,
 })
 
 const cdpFlow = (
