@@ -87,8 +87,12 @@ const NarrowBelow = ({
   const more = useMoreLikeThis(videoId)
   // A new song starts at the top of the list under the video, as on YouTube
   const scroller = useRef<HTMLDivElement>(null)
+  const scrolledFor = useRef(videoId)
   useEffect(() => {
-    scroller.current?.scrollTo({ behavior: 'instant', top: 0 })
+    if (scrolledFor.current !== videoId) {
+      scrolledFor.current = videoId
+      scroller.current?.scrollTo({ behavior: 'instant', top: 0 })
+    }
   }, [videoId])
   return (
     <div className='watch-below flex min-h-0 flex-1 flex-col'>
@@ -171,9 +175,13 @@ export const WatchPage = ({
   const wide = useMediaQuery(WIDE)
   const watch = surface === 'watch'
   // Wide, the page scrolls as a whole: a new song brings it back to the top, video first, as on YouTube
+  const scrolledFor = useRef(videoId)
   useEffect(() => {
-    if (watch && wide) {
-      window.scrollTo({ behavior: 'instant', top: 0 })
+    if (scrolledFor.current !== videoId) {
+      scrolledFor.current = videoId
+      if (watch && wide) {
+        window.scrollTo({ behavior: 'instant', top: 0 })
+      }
     }
   }, [videoId, watch, wide])
   useEffect(() => {
