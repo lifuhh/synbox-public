@@ -24,9 +24,8 @@ const AppLogo: React.FC = () => {
   }
 
   return (
-    <div className='z-20 flex w-24 min-w-24 cursor-pointer justify-start min-[360px]:w-28 min-[360px]:min-w-28 sm:w-44 sm:min-w-44'>
-      {/* The picture is taller than the bar and hangs over its edges; only the bar's own height takes a press,
-          so a row stuck under the bar (the Gallery title) keeps its own */}
+    // Its drawing starts as far in from the left as the buttons end from the right, as YouTube's does
+    <div className='z-20 flex shrink-0 cursor-pointer justify-start sm:ml-2'>
       <Link
         to='/'
         onClick={handleOnClick}
