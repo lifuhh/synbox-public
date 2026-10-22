@@ -135,23 +135,27 @@ const markImmersive = () => {
 // mouse also while the pointer rests on it or keyboard focus is inside it. A touch screen counts menus
 // only: iOS keeps the last tapped element in :hover, and a dragged slider keeps its thumb focused, so
 // either would hold the UI open for good
-const chromeBusy = () => {
+const chromeBusy = ({ hover = true } = {}) => {
   const canHover = matchMedia('(hover: hover)').matches
   return [...document.querySelectorAll('[data-player-chrome]')].some(
     (element) =>
       // aria-expanded rather than data-state, which a tooltip on the same trigger overwrites
       element.querySelector('[aria-expanded=true]') !== null ||
       (canHover &&
-        (element.matches(':hover') ||
+        ((hover && element.matches(':hover')) ||
           element.querySelector(':focus-visible') !== null))
   )
 }
 
 // Idle `ms` after the last pointer or key input, and not while the UI is busy. Any pointer in the window
 // counts while the stage is the whole screen; on the watch page only one over the video does, so scrolling
-// the page under it doesn't bring up its controls
+// the page under it doesn't bring up its controls. A mouse leaving the player (the stage on the watch page,
+// the window when the stage is the whole screen) idles it at once and marks it `outside`, as on YouTube: the
+// controls fade the moment the mouse goes, playing or paused, unless one of their menus or keyboard focus
+// holds them, or the mouse went onto the floating UI that lies outside the stage (the top bar)
 const useIdle = (ms: number, stageRef: RefObject<HTMLElement | null>) => {
   const [idle, setIdle] = useState(false)
+  const [outside, setOutside] = useState(false)
   const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   const wake = useCallback(() => {
@@ -182,21 +186,64 @@ const useIdle = (ms: number, stageRef: RefObject<HTMLElement | null>) => {
           event.target instanceof Node &&
           stage.contains(event.target))
       ) {
+        setOutside(false)
         wake()
+      }
+    }
+    const leave = (event: PointerEvent) => {
+      const onto = event.relatedTarget
+      if (
+        event.pointerType !== 'mouse' ||
+        (onto instanceof Element && onto.closest('[data-player-chrome]'))
+      ) {
+        return
+      }
+      setOutside(true)
+      if (!chromeBusy({ hover: false })) {
+        clearTimeout(timerRef.current)
+        setIdle(true)
+      }
+    }
+    const stage = stageRef.current
+    const leaveStage = (event: PointerEvent) => {
+      if ('watch' in document.documentElement.dataset) {
+        leave(event)
+      }
+    }
+    const leaveWindow = (event: PointerEvent) => {
+      if (!('watch' in document.documentElement.dataset)) {
+        leave(event)
       }
     }
     window.addEventListener('pointermove', wakeFromPointer)
     window.addEventListener('pointerdown', wakeFromPointer)
     window.addEventListener('keydown', wake)
+    stage?.addEventListener('pointerleave', leaveStage)
+    document.documentElement.addEventListener('pointerleave', leaveWindow)
     return () => {
       clearTimeout(timerRef.current)
       window.removeEventListener('pointermove', wakeFromPointer)
       window.removeEventListener('pointerdown', wakeFromPointer)
       window.removeEventListener('keydown', wake)
+      stage?.removeEventListener('pointerleave', leaveStage)
+      document.documentElement.removeEventListener('pointerleave', leaveWindow)
     }
   }, [wake, stageRef])
-  return { idle, sleep }
+  return { idle, outside, sleep, wake }
 }
+
+// The floating UI shows after input until idle, never while locked or dragging. Paused, it stays while the
+// mouse is over the player and goes with it
+const showsControls = (state: {
+  locked: boolean
+  dragging: boolean
+  idle: boolean
+  outside: boolean
+  playing: boolean
+}) =>
+  !state.locked &&
+  !state.dragging &&
+  (!state.idle || (!state.playing && !state.outside))
 
 const SeekFlashBadge = ({ flash }: { flash: SeekFlash }) => (
   <div
@@ -384,7 +431,17 @@ export const PlayerStage = ({
     [autoplayMuted, unlockSound]
   )
 
-  const { idle, sleep } = useIdle(IDLE_MS, stageRef)
+  const { idle, outside, sleep, wake } = useIdle(IDLE_MS, stageRef)
+  // A song that starts playing shows its controls for the idle time, wherever the mouse is, as on YouTube:
+  // the time it took to load doesn't count
+  const lastPhase = useRef(phase.kind)
+  // Before paint, so the controls never blink off as playback starts
+  useLayoutEffect(() => {
+    if (phase.kind === 'playing' && lastPhase.current === 'starting') {
+      wake()
+    }
+    lastPhase.current = phase.kind
+  }, [phase.kind, wake])
   const [dragging, setDragging] = useState(false)
   const [locked, setLocked] = useState(false)
   useWakeLock(phase.kind === 'playing' || phase.kind === 'buffering')
@@ -393,8 +450,14 @@ export const PlayerStage = ({
   // YouTube's own error screens (unavailable, sign-in, age gate) need its UI
   const handsOff = phase.kind === 'error'
   const showCover = !handsOff && coversPhase(phase)
-  const controlsVisible =
-    !locked && !dragging && (!idle || phase.kind !== 'playing')
+  // Paused, the controls stay while the mouse is over the player, and go with it
+  const controlsVisible = showsControls({
+    dragging,
+    idle,
+    locked,
+    outside,
+    playing: phase.kind === 'playing',
+  })
   const blockInput = quirks.blockIframeInput && !handsOff
   const setChromeOpen = useSetAtom(playerChromeOpenAtom)
   useEffect(() => {
