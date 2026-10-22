@@ -25,6 +25,9 @@ export const deviceId = () => {
 // run, a quick back and forth) is the same visit
 const SAME_VISIT_MS = 5000
 let lastListen = { at: 0, videoId: '' }
+// The listen each song's page sent, until the Worker has it: the song's stats wait for it, so the count shown
+// already holds this visit (a first listener reads 1 listen, not 0)
+const sending = new Map<string, Promise<void>>()
 export const countListen = (videoId: string) => {
   const now = Date.now()
   if (lastListen.videoId === videoId && now - lastListen.at < SAME_VISIT_MS) {
@@ -41,7 +44,7 @@ export const countListen = (videoId: string) => {
       // A listen that doesn't arrive is one fewer in the count, nothing more
     }
   }
-  void send()
+  sending.set(videoId, send())
 }
 
 const statsSchema = z.object({
@@ -63,12 +66,14 @@ const readJson = async (response: Response) => {
 export const useSongStats = (videoId: string) =>
   useQuery({
     enabled: videoId !== '',
-    queryFn: async () =>
-      await readJson(
+    queryFn: async () => {
+      await sending.get(videoId)
+      return await readJson(
         await fetch(`/api/songs/${videoId}/stats?device=${deviceId() ?? ''}`, {
           credentials: 'same-origin',
         })
-      ),
+      )
+    },
     queryKey: statsKey(videoId),
   })
 
