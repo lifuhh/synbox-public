@@ -110,68 +110,58 @@ const ThemeSwatch = ({
   )
 }
 
-// A switch row in the panel: on and off, applied at once without closing it. A short hint sits on the
-// label's line after a dot (`inlineHint`); a longer one goes under it
+// A switch row in the panel: on and off, applied at once without closing it. A hint, when the label alone
+// doesn't say it, sits on the label's line after a dot
 const StyleSwitch = ({
   label,
   hint,
-  inlineHint = false,
   checked,
   onChange,
 }: {
   label: string
-  // Only when the label alone doesn't say it
   hint?: string
-  inlineHint?: boolean
   checked: boolean
   onChange: (checked: boolean) => void
 }) => {
   const labelId = useId()
   const hintId = useId()
   return (
-    <section className='flex flex-col gap-1'>
-      <button
-        type='button'
-        // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- a switch: on and off, applied at once
-        role='switch'
-        aria-checked={checked}
-        aria-labelledby={labelId}
-        aria-describedby={hint === undefined ? undefined : hintId}
-        onClick={() => {
-          onChange(!checked)
-        }}
-        className='group -mx-2 flex min-h-10 items-center justify-between gap-3 rounded-md px-2 text-sm font-medium focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-hidden touch:min-h-11'>
-        <span className='flex min-w-0 items-baseline'>
-          <span id={labelId}>{label}</span>
-          {hint !== undefined && inlineHint && (
-            <>
-              <InlineHintDot />
-              <span id={hintId} className={INLINE_HINT}>
-                {hint}
-              </span>
-            </>
-          )}
-        </span>
+    <button
+      type='button'
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- a switch: on and off, applied at once
+      role='switch'
+      aria-checked={checked}
+      aria-labelledby={labelId}
+      aria-describedby={hint === undefined ? undefined : hintId}
+      onClick={() => {
+        onChange(!checked)
+      }}
+      className='group -mx-2 flex min-h-10 items-center justify-between gap-3 rounded-md px-2 text-sm font-medium focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-hidden touch:min-h-11'>
+      <span className='flex min-w-0 items-baseline'>
+        <span id={labelId}>{label}</span>
+        {hint !== undefined && (
+          <>
+            <InlineHintDot />
+            <span id={hintId} className={INLINE_HINT}>
+              {hint}
+            </span>
+          </>
+        )}
+      </span>
+      <span
+        aria-hidden='true'
+        className={cn(
+          'relative h-5 w-9 shrink-0 rounded-full transition-colors',
+          checked ? 'bg-primary' : 'bg-secondary ring-1 ring-border'
+        )}>
         <span
-          aria-hidden='true'
           className={cn(
-            'relative h-5 w-9 shrink-0 rounded-full transition-colors',
-            checked ? 'bg-primary' : 'bg-secondary ring-1 ring-border'
-          )}>
-          <span
-            className={cn(
-              'absolute top-0.5 left-0.5 size-4 rounded-full bg-white shadow transition-transform motion-reduce:transition-none',
-              checked && 'translate-x-4'
-            )}
-          />
-        </span>
-      </button>
-      {hint !== undefined && !inlineHint && (
-        <p id={hintId} className='text-xs text-muted-foreground'>
-          {hint}
-        </p>
-      )}
-    </section>
+            'absolute top-0.5 left-0.5 size-4 rounded-full bg-white shadow transition-transform motion-reduce:transition-none',
+            checked && 'translate-x-4'
+          )}
+        />
+      </span>
+    </button>
   )
 }
 
@@ -187,14 +177,12 @@ const TwoLinesSwitch = ({ portrait }: { portrait: boolean }) => {
         checked={twoLines}
         onChange={setTwoLines}
         hint={portrait ? 'Landscape only' : undefined}
-        inlineHint
       />
       {twoLines && (
         <StyleSwitch
           label='Karaoke Stagger'
           checked={stagger}
           onChange={setStagger}
-          hint='Like a karaoke machine'
         />
       )}
     </>
@@ -231,6 +219,7 @@ export const LyricsThemePicker = ({
   const [backdrop, setBackdrop] = useAtom(lyricsBackdropAtom)
 
   const activeBackdrop = LYRICS_BACKDROPS.find((b) => b.id === backdrop)
+  const backdropLabelId = useId()
   const backdropHintId = useId()
 
   const heading = touch ? (
@@ -313,25 +302,10 @@ export const LyricsThemePicker = ({
         </div>
 
         {themeId === 'custom' && (
-          <div className='mt-1 flex flex-col gap-2'>
-            <div className='flex items-center justify-between'>
-              <label
-                htmlFor='lyrics-custom-hue'
-                className='text-xs text-muted-foreground'>
-                Hue
-              </label>
-              <button
-                type='button'
-                onClick={() => {
-                  close()
-                }}
-                className='rounded-full bg-primary-subtle px-2.5 py-1 text-xs font-semibold text-primary-text transition-colors hover:bg-primary-subtle-hover touch:px-3.5 touch:py-2 touch:text-sm'>
-                Done
-              </button>
-            </div>
+          <div className='mt-1 flex items-center gap-3'>
             <input
-              id='lyrics-custom-hue'
               type='range'
+              aria-label='Hue'
               min={0}
               max={359}
               step={1}
@@ -339,17 +313,23 @@ export const LyricsThemePicker = ({
               onChange={(e) => {
                 setCustomHue(Number(e.target.value))
               }}
-              className='lyrics-hue-slider bg-hue-track'
+              className='lyrics-hue-slider min-w-0 flex-1 bg-hue-track'
             />
+            <button
+              type='button'
+              onClick={() => {
+                close()
+              }}
+              className='shrink-0 rounded-full bg-primary-subtle px-2.5 py-1 text-xs font-semibold text-primary-text transition-colors hover:bg-primary-subtle-hover touch:px-3.5 touch:py-2 touch:text-sm'>
+              Done
+            </button>
           </div>
         )}
       </section>
 
       <section className='flex flex-col gap-2'>
-        <div className='flex min-w-0 items-baseline text-xs'>
-          <h3 className='text-xs font-medium tracking-wide text-muted-foreground uppercase'>
-            Backdrop
-          </h3>
+        <div className='flex min-w-0 items-baseline text-sm font-medium'>
+          <h3 id={backdropLabelId}>Backdrop</h3>
           <InlineHintDot />
           <p id={backdropHintId} className={INLINE_HINT}>
             {activeBackdrop?.hint}
@@ -357,7 +337,7 @@ export const LyricsThemePicker = ({
         </div>
         <div
           role='radiogroup'
-          aria-label='Lyrics backdrop'
+          aria-labelledby={backdropLabelId}
           aria-describedby={backdropHintId}
           className='grid grid-cols-3 gap-1 rounded-lg bg-secondary p-1'>
           {LYRICS_BACKDROPS.map((option) => (

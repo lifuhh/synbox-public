@@ -27,7 +27,14 @@ const SliderRender: React.ForwardRefRenderFunction<
     thin?: boolean
   }
 > = (
-  { className, onPointerDown, onPointerMove, thin = false, ...props },
+  {
+    className,
+    onPointerDown,
+    onPointerMove,
+    thin = false,
+    'aria-label': ariaLabel,
+    ...props
+  },
   ref
 ) => (
   <SliderPrimitive.Root
@@ -65,7 +72,9 @@ const SliderRender: React.ForwardRefRenderFunction<
         )}
       />
     </SliderPrimitive.Track>
+    {/* The thumb is the element with role="slider", so it carries the name; on the root it names nothing */}
     <SliderPrimitive.Thumb
+      aria-label={ariaLabel}
       className={cn(
         'block rounded-full shadow-md ring-offset-accent-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-hidden disabled:pointer-events-none disabled:opacity-50',
         thin
