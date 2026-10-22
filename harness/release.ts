@@ -1,9 +1,9 @@
 // Ship what is in `staging` to production, as one merge to main: one Netlify build for everything finished since
 // the last release, from any session. The only way changes reach main (the PR hook blocks every other).
 //
-//   bun harness/release.ts --dry-run    what would ship, and whether its gate verdict exists; changes nothing
+//   bun harness/release.ts --dry-run    what would ship; changes nothing
 //   bun harness/release.ts --preview    a deploy preview of staging for a phone check; merges nothing
-//   bun harness/release.ts              gate (if staging's tree has no verdict), PR staging → main, merge, wait for live
+//   bun harness/release.ts              check staging's tree, PR staging → main, merge, wait for live
 //
 // One release at a time on this machine: a lock in the main checkout's .harness/ names the process holding it.
 
@@ -147,42 +147,11 @@ const gatePaths = (dir: string): string[] => {
     : []
 }
 
-const isVerdict = (v: unknown): v is { status: string; summary: string } =>
-  isRecord(v) &&
-  v.schema === 'harness/verdict@1' &&
-  typeof v.status === 'string'
-
-// The verdict that covers staging: its own tree's, or that of the newest commit before it (first parent) after
-// which nothing the gate measures changed. So merging harness or docs work on top of a gated tree needs no
-// second gate run; any measured change does
-const coveringVerdict = (dir: string, paths: string[]) => {
-  const inDir = (...args: string[]) => run('git', ['-C', dir, ...args], dir)
-  for (const sha of inDir(
-    'rev-list',
-    '--first-parent',
-    '--max-count=50',
-    'HEAD'
-  ).split('\n')) {
-    const tree = inDir('rev-parse', `${sha}^{tree}`)
-    const file = path.join(storeDir(here, 'verdicts'), `${tree}.json`)
-    if (existsSync(file)) {
-      const measured = inDir('diff', '--name-only', sha, 'HEAD')
-        .split('\n')
-        .filter(Boolean)
-        .filter((f) => paths.some((p) => f === p || f.startsWith(p)))
-      return measured.length === 0
-        ? {
-            from: sha,
-            verdict: parseJson(readFileSync(file, 'utf-8'), isVerdict, file),
-          }
-        : null
-    }
-  }
-  return null
-}
-
-// The gate's verdict for staging, running the gate first when no verdict covers it
-const ensureVerdict = (dir: string) => {
+/**
+ * Runs `check` on staging's tree, every release: the combined tree is what ships, and each PR's own verdict judged
+ * a different tree. Skipped only when nothing it checks differs from main.
+ */
+const checkStaging = (dir: string) => {
   const changed = git('diff', '--name-only', 'origin/main', `origin/${STAGING}`)
     .split('\n')
     .filter(Boolean)
@@ -190,36 +159,26 @@ const ensureVerdict = (dir: string) => {
   if (
     !changed.some((file) => paths.some((p) => file === p || file.startsWith(p)))
   ) {
-    say('gate: staging changes nothing the gate measures')
+    say('check: staging changes nothing it checks')
     return
   }
-  const covering = coveringVerdict(dir, paths)
-  let verdict = covering?.verdict ?? null
-  if (covering !== null) {
-    say(
-      `gate: reusing the verdict for ${covering.from.slice(0, 8)}; nothing it measures changed since`
-    )
+  const repo = repoAt(dir)
+  if (flags['dry-run'] === true) {
+    say(`check: a release runs it on staging's tree ${repo.tree.slice(0, 8)}`)
+    return
   }
-  if (verdict === null) {
-    const repo = repoAt(dir)
-    if (flags['dry-run'] === true) {
-      say(
-        `gate: no verdict covers staging's tree ${repo.tree.slice(0, 8)}; a release runs it (about 8 minutes)`
-      )
-      return
-    }
-    say('gate: running on staging (keep the machine idle)')
-    run('bun', ['harness/bench/cli.ts', 'gate'], dir, true)
-    verdict = readVerdict(repo)
-  }
-  if (verdict === null || verdict.status === 'fail') {
+  say('check: running on staging')
+  const result = spawnSync('bun', ['harness/bench/cli.ts', 'check'], {
+    cwd: dir,
+    stdio: 'inherit',
+  })
+  const verdict = readVerdict(repo)
+  if (result.status !== 0 || verdict === null || verdict.status !== 'pass') {
     throw new Error(
-      `gate: ${verdict?.summary ?? 'no verdict'}. Fix staging (or waive with a reason) before releasing`
+      `check: ${verdict?.summary ?? 'no verdict'}. Fix it in a PR into staging, then release again`
     )
   }
-  say(
-    `gate: ${verdict.status}${verdict.summary === '' ? '' : ` (${verdict.summary})`}`
-  )
+  say(`check: pass in ${Math.round(verdict.wallMs / 1000)}s`)
 }
 
 // A page's text, or '' when the request fails: mid-deploy, Netlify can drop a connection, which is a reason to
@@ -269,7 +228,7 @@ const release = () => {
     say(`  #${pr.number} ${pr.title}`)
   }
   const dir = stagingWorktree()
-  ensureVerdict(dir)
+  checkStaging(dir)
   if (flags['dry-run'] === true) {
     return
   }

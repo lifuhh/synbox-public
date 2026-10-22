@@ -1,6 +1,85 @@
 # Synbox harness
 
-The checks that judge a change before it ships, so an agent's "done" comes with evidence. The first piece is the bench: performance and layout of the key journeys, judged against a rolling baseline, with a verdict the PR gate reads.
+The checks that judge a change before it ships, so an agent's "done" comes with evidence. Two commands:
+
+- **`bun harness/bench/cli.ts check`**: exact checks, about 35 seconds. Every PR into `staging` needs it to pass on its committed tree, and every release runs it again on staging's combined tree.
+- **`bun harness/bench/cli.ts trend`**: timing benchmarks, minutes to an hour, off the release path. It writes what it finds to a queue for a person to read; it never blocks anything.
+
+## Before a PR into staging: `check`
+
+```sh
+bun harness/bench/cli.ts check                         # in your worktree, on committed code
+bun harness/bench/cli.ts check --only layout-player    # just the audits whose id starts with this, while you work (no verdict)
+```
+
+It runs, and stops at the first failure:
+
+1. **Evaluator guard.** A branch that edits the evaluator together with app code (`src/`, `public/`, `index.html`, `vite.config.ts`, `bun.lock`, `netlify/`) fails: land the evaluator change in its own PR, judged against an unchanged app. The evaluator is whatever decides what `check` runs and how it judges: everything in `harness/bench/` except `trend.ts`, the scripts in `package.json`, `harness/release.ts` and `harness/gate.json`. Not the evaluator: `harness/budgets.json` and `harness/routes.json`, which change beside the app on purpose.
+2. **Audit list**: `src/app.tsx` yields routes, and every route named in `harness/bench/probes/layout.ts` › `LAYOUT_PAGES` or `harness/routes.json` is one of them. A router refactor can't silently drop audits.
+3. **`typecheck`, `lint`, `test`, `fmt:check`**, beside the production build.
+4. **Size**: brotli KB of first-load JS, first-load CSS and all JS, against `harness/budgets.json`. A pass prints each value over its budget, so the headroom shows.
+5. **Layout audits**: every route in `src/app.tsx` except those `harness/routes.json` › `skip` lists with a reason, on desktop Chromium 1440×900 and WebKit iPhone 390×844 in Safari and as the installed app; home, gallery, player and search also at 844×390. All phone screens have iPhone safe areas. Each audit counts press targets under 24px, covered at their centre, cut off by the viewport's sides, or (fixed or sticky, on a phone) inside a safe-area inset; sideways overflow; uncaught page errors; and `console.error` lines from the app's own scripts (the app logs a crash its error boundary caught that way; third-party scripts such as the YouTube player's, and the browser's network log, `probes/layout.ts` › `BENIGN_CONSOLE`, are ignored). The first app error ends the wait for the page to get ready, so a crashed page fails in seconds. Every count's budget is 0 unless `harness/budgets.json` says otherwise. Three audits run at a time.
+
+A pass needs every one of these steps to have run exactly once; anything less is a failure. Each step prints its seconds. A pass stamps `<main checkout>/.harness/verdicts/<tree>.json` (`kind: check`), which the global PR hook (`~/.claude/hooks/harness-gate.py`, configured by `harness/gate.json`) requires before `gh pr create --base staging`. A new commit is a new tree and needs a new run. Uncommitted changes get checked but not stamped.
+
+When it fails:
+
+| Failure | Do |
+| --- | --- |
+| A static check | Its output's last lines are printed. Fix it. |
+| `size`: `initialJsKB 355.8 > budget 327` | Find what grew (the failing step lists the first-load files). If the growth is intended, raise that number in `harness/budgets.json` in the same PR, with the reason under `$why` and in the PR description. |
+| `layout-<page>-<screen>`: `smallTargets 1 > budget 0` | The lines below name each offending element and its box, then the path of a screenshot. Fix the layout. A budget raise here needs the same written reason. |
+| `no sample: mark "x" never fired` | A `data-bench` hook the audit waits for is gone (see "How the audits keep up with the app"). Put it back on whatever replaced it. |
+| The evaluator guard | Split the branch. |
+
+An audit that produced nothing (a page that never got ready) is run once more; a pass on the second try says `retried after: …`. A count over budget is never re-run: a layout bug that shows one time in three still fails.
+
+## Shipping: staging, then one release
+
+Finished work is merged into `staging`, never into `main`. `bun harness/release.ts` ships everything in staging as one merge to `main`, which is one Netlify build. The global hook blocks every other way into `main`: a PR into it, a merge into it and a push to it.
+
+```sh
+bun harness/release.ts --dry-run   # what staging would ship
+bun harness/release.ts --preview   # one deploy preview of staging, for a phone check
+bun harness/release.ts             # check staging's tree, PR staging → main, merge, wait until live
+```
+
+The release runs `check` on staging's tree every time (per-PR verdicts judged other trees), unless nothing in `harness/gate.json` › `paths` differs from `main`. It stops on a failure: fix it in a PR into staging and release again. One release runs at a time on a machine (a lock in `.harness/release/`). A release that changes only docs, the harness, scripts or Markdown costs no Netlify build (`scripts/netlify-ignore.sh`).
+
+## Timing: `trend`
+
+```sh
+bun harness/bench/cli.ts trend --reference origin/main         # first run: pin the reference commit (a release you trust)
+bun harness/bench/cli.ts trend                                 # origin/main against the pinned reference
+bun harness/bench/cli.ts trend --only home --ref origin/staging
+```
+
+It builds both commits, serves both at once, and alternates them sample by sample (reference, candidate, candidate, reference, …), at least 12 samples a side, each side warmed up once. A machine that slows down mid-run slows both sides alike. Per metric: Mann–Whitney U, Holm-corrected across a benchmark's gated metrics, and a change must also exceed `max(floor, pct × reference)` (set per metric in `suite.ts`). A metric is `inconclusive`, never `unchanged`, when it has no samples on a side, or when it is underpowered: even the most extreme split of its sample counts would give a Holm-adjusted p of at least 0.05.
+
+The report lands in `.harness/bench/runs/trend-<time>/report.md` and one line per run is appended to `.harness/queue.md` in the main checkout: `regressed`, `inconclusive` or `unchanged`, with the metrics named. Read the queue, then decide what to do about a regression; the release doesn't wait for it. It waits up to 5 minutes for a quiet machine (load under half the cores) and holds the machine lock, so a `check` started meanwhile waits for it (layout audits must not share the machine with timings). Nothing schedules it; run it after a release, or schedule it yourself.
+
+| Benchmark | Surface | Metrics |
+| --- | --- | --- |
+| `home` | desktop Chrome, 4× CPU | FCP, LCP, CLS, hero box visible, first typed character, recommendations / charts / gallery ready, Next press, gallery scroll fps, dropped frames, blank tiles, blocking |
+| `home-load` | cdp-perf mobile lab (4× CPU, slow 4G) | FCP, LCP, CLS, TBT |
+| `player-<id>` (4 songs) | desktop Chrome, 4× CPU | iframe, ready, lyrics data, playback start, pause / resume / seek latency, playback fps, dropped frames |
+| `player-load` | cdp-perf mobile lab | FCP, LCP, CLS, TBT |
+| `hero-type` | cdp-perf flow, 4× CPU | typing latency and blocking |
+
+`bun harness/bench/cli.ts list` prints every benchmark and which command runs it.
+
+## How the checks stay trustworthy
+
+- **Same data every run.** The bench serves a production build the way Netlify does (brotli, cache headers, the `/api` proxies from `netlify.toml`). API responses, the lookup service included, and Google Fonts are recorded once and replayed. Only successful responses are recorded. `Math.random` is seeded. Sentry is blocked. To re-record API data, delete `.harness/bench/fixtures/` in the main checkout.
+- **Settled on signals, not sleeps.** Each audit waits for its page's own readiness (`data-bench` marks; on other routes, the route's lazy chunk rendered into the root layout's outlet and no `aria-busy` region; the player out of loading), then for the layout to rest: fonts loaded, no finite animation running, and every press target's box unchanged over two frames (`engines/recorder.ts` › `settle`, capped at 5 s; an audit that never rests says so in its notes). That is what lets three audits share the machine without false failures.
+- **Budgets, not baselines.** Nothing is compared with an earlier run, so there is nothing to bootstrap, pool or re-measure. Growth is accepted by a visible edit to `harness/budgets.json` in the PR that causes it.
+- **The evaluator is read-only to the app.** See the guard above.
+
+## How the audits keep up with the app
+
+- **Hooks, not markup.** Probes wait for elements the app marks with `data-bench` (`carousel`, `carousel-slide`, `charts`, `charts-row`, `gallery`, `gallery-tile`, `hero-input`, `lyrics-line` (the stage's current lines), `lyrics-text` (the lyrics panel and reader), `search-result`; `engines/recorder.ts` › `WATCH`). Player controls are found by their accessible names (Play, Pause, Seek). Keep the attribute on whatever replaces an element.
+- **Pages from the router.** The audits read the routes in `src/app.tsx`. A new route without parameters is audited once it settles. A route with parameters needs a sample URL in `harness/routes.json` › `samples`, or a reason in › `skip`, in the PR that adds it; until then its audit fails and says so. Pages with readiness code of their own are in `probes/layout.ts` › `LAYOUT_PAGES` (the evaluator). Removing such a page's route takes two PRs: drop its entry first (the route then gets the generic audit), then the route.
+- **The installed app.** The `installed` screen is the iPhone portrait screen with `navigator.standalone` set, which the app reads for its tab bar and short top bar. The audit fails if the page didn't switch to the installed layout.
 
 ## A task's worktree: `wt.ts`
 
@@ -10,88 +89,13 @@ bun harness/wt.ts serve                                # in the worktree, as a b
 bun harness/wt.ts finish <slug>                        # keep .reports/, remove the worktree, delete the merged branch
 ```
 
-Nothing in it kills a process or forces a removal. `serve` is stopped by stopping its task, which takes the server and its port note with it. `finish` refuses while the worktree has uncommitted changes, while the branch is not in `staging`, or while its dev server still answers, and says which.
+Nothing in it kills a process or forces a removal. `serve` is stopped by stopping its task. `finish` refuses while the worktree has uncommitted changes, while the branch is not in `staging`, or while its dev server still answers, and says which.
 
-## Shipping: staging, then one release
+## Known limits
 
-Finished work is merged into `staging`, never into `main`. `bun harness/release.ts` ships everything in staging as one merge to `main`, which is one Netlify build. A global Claude Code hook (`~/.claude/hooks/harness-gate.py`, configured by `harness/gate.json` › `staging` and `release`) blocks every other way into `main`: a PR into it, a merge into it and a push to it.
-
-```sh
-bun harness/release.ts --dry-run   # what staging would ship, and whether its gate verdict exists
-bun harness/release.ts --preview   # one deploy preview of staging, for a phone check
-bun harness/release.ts             # gate staging if needed, PR staging → main, merge, wait until live
-```
-
-The release runs the gate (`bun run bench:gate`, about 8 minutes, longer when the baseline must be measured first) on staging's tree when it has no verdict, and stops on `fail`. One release runs at a time on a machine: it holds a lock in `.harness/release/`. A release that changes only docs, the harness, scripts or Markdown costs no build: `scripts/netlify-ignore.sh` skips it.
-
-| Verdict | Meaning | Do |
-| --- | --- | --- |
-| `pass` | No gated metric regressed | The release goes ahead |
-| `warn` | A gated metric drifted the wrong way without proof, a run errored, or a landmark moved | The release goes ahead; read the report and tell the user about drift that is real |
-| `fail` | A gated metric regressed (confirmed against `origin/main` measured interleaved), a benchmark produced no samples, or the branch edits the scorer and the app together | The release stops. Fix it in a PR into staging. If the regression is intended, run `bun harness/bench/cli.ts waive --reason "<why>"` in the release worktree and tell the user |
-
-The report prints to the terminal and is saved under the main checkout's `.harness/bench/runs/<run id>/report.md`, next to each layout audit's screenshot.
-
-## What it measures
-
-`bun harness/bench/cli.ts list` prints every benchmark. In short:
-
-| Benchmark | Surface | Gated metrics |
-| --- | --- | --- |
-| `size` | build output | first-load JS, CSS, all JS (brotli KB) |
-| `home` | desktop Chrome, 4× CPU | FCP, LCP, CLS, hero box visible, first typed character, recommendations / charts / gallery ready, Next press → scroll end, gallery scroll fps, dropped frames, blank tiles, blocking |
-| `home-load` | cdp-perf mobile lab (4× CPU, slow 4G) | FCP, LCP, CLS, TBT |
-| `player-<id>` | desktop Chrome, 4× CPU | iframe, player ready, lyrics data, playback start, pause / resume / seek latency, playback fps and dropped frames |
-| `layout-<page>-<screen>` | every route in `src/app.tsx` × desktop Chromium 1440×900, WebKit iPhone 390×844 in Safari and as the installed app, all with safe areas; home, gallery, player and search also at 844×390 | sideways overflow, covered, small (< 24px), off-screen and safe-area press targets; landmark moves are reported |
-
-Tiers: `smoke` runs at the gate; `full` (`--tier full`) adds two more songs, the player page load and typing latency. `player-Dta27KjGpJs` is held out: it runs at the gate but never counts in the hill-climb score.
-
-## How it decides
-
-- **Same data every run.** The bench serves a production build the way Netlify does (brotli, cache headers, the `/api` proxies from `netlify.toml`). API responses, the lookup service included, and Google Fonts are recorded once and replayed. Only successful responses are recorded; an error is asked for again next run, so a route that wasn't live yet never stays broken in the fixtures. `Math.random` is seeded. Sentry is blocked.
-
-## How it keeps up with the app
-
-- **Hooks, not markup.** Probes wait for elements the app marks with `data-bench` (`carousel`, `carousel-slide`, `charts`, `charts-row`, `gallery`, `gallery-tile`, `hero-input`, `lyrics-line` (the stage's current lines), `lyrics-text` (the lyrics panel and reader), `search-result`; `engines/recorder.ts` › `WATCH`). Player controls are found by their accessible names (Play, Pause, Seek). A redesign keeps the bench working as long as it keeps the attribute on the element that means the same thing. When one goes missing, the run fails with `mark "<name>" never fired` and lists the marks it did see.
-- **Pages from the router.** The layout audits read the routes in `src/app.tsx`. A new route without parameters is audited on its own once it settles. A route with parameters needs a sample URL in `probes/layout.ts` › `LAYOUT_PAGES`, or a reason in `LAYOUT_SKIP`. Until it has one, its audit fails and says so.
-- **The installed app.** The `installed` screen is the iPhone portrait screen with `navigator.standalone` set, which is what the app reads for its tab bar and short top bar. The audit fails if the page didn't switch to the installed layout.
-- **Who fixes it.** The gate runs on every PR into `main`, so a change that breaks a probe fails its own PR. Its author updates the hook or the probe there, in the same PR.
-- **Rolling baseline.** Samples pooled from the last 3 accepted runs of the merge base's tree on this machine, under the same conditions and benchmark definition. A branch merged on top of `main` produces exactly that tree, so its own passing gate run becomes the baseline for the next branch: the average updates after every successful gate, with no extra measuring. When `main` has moved and its tree has no runs yet, the gate measures it first. An abandoned branch or a reverted climb step never counts.
-- **Statistics.** Mann–Whitney U per metric, Holm-corrected across the gated metrics, and the change must exceed `max(floor, pct × baseline)` (set per metric in `suite.ts`). Byte and layout counts compare exactly.
-- **One run at a time.** A gate, run, baseline or climb eval takes a lock on the machine (`.harness/bench/machine.lock.json`, shared by every worktree) and waits while another live run holds it. Two runs at once would each read the other's load as their own slowness.
-- **A base that can't run a probe costs one try.** When the gate measures the merge base, each benchmark gets one trial run first; one that yields nothing there (a hook it waits for isn't on the base yet) is skipped and gets no baseline, so its metrics read as new rather than regressed. Layout audits don't retry on the base.
-- **No re-rolling.** Re-running an unchanged tree adds samples to the same pool.
-- **Confirm before failing.** A suspected regression is re-measured against the merge base, interleaved in B A A B blocks of 4 runs (each warmed up), so a busy laptop can't fake one or hide one. The confirm samples are kept in the run record.
-- **New definition, new baseline.** Each benchmark's spec hash covers its metrics and the source of its probe files. Change a probe and its old baselines stop matching; the gate then measures the merge base afresh.
-- **The scorer is read-only to app changes.** A branch that changes `harness/bench/scorer/` and app code together fails the gate.
-
-## Other commands
-
-```sh
-bun harness/bench/cli.ts run [--tier full] [--only home,size] [--api live]   # measure and judge, no verdict
-bun harness/bench/cli.ts baseline [--ref origin/main]                         # measure a ref into the baseline
-bun harness/bench/cli.ts history                                              # runs, wall time, noise (CV), errors
-bun harness/bench/cli.ts score                                                # hill-climb objective for this tree
-bun harness/bench/cli.ts climb propose <campaign> "<hypothesis>"              # freeze a hypothesis
-bun harness/bench/cli.ts climb eval <campaign>                                # measure, score, accept or reject
-bun harness/bench/cli.ts climb board <campaign>                               # leaderboard
-```
-
-To re-record API data (after a backend change), delete `.harness/bench/fixtures/` in the main checkout and bump `.harness/bench/fixtures-epoch`. The epoch is part of the run conditions, so old baselines stop matching.
-
-## Hill-climbing
-
-To make something faster, climb the score instead of eyeballing numbers:
-
-1. `climb propose perf-home "Lazy-load the charts table; chartsMs and LCP should drop because …"`, before any measurement.
-2. Make that one change and commit it.
-3. `climb eval perf-home` measures the tree and computes the geometric mean of improvement ratios over the gated metrics (1.0 = baseline), with held-out benchmarks hidden. It accepts only if nothing fails and the score beats the best so far. Keep accepted commits and revert rejected ones.
-4. `climb board perf-home` shows what was tried. Read it before the next proposal.
-
-An unchanged tree can't be evaluated twice.
+- The hook reads the command text. A command hidden in a wrapper (`bash -c "gh pr merge …"`, a script, `gh api` calls to the pulls endpoints) is not seen. The release script's own `gh` calls rely on this.
+- `trend` is not scheduled; nothing runs it unless someone does.
 
 ## Requirements
 
-Bun, Google Chrome, Playwright's WebKit (`bunx playwright install webkit`), and the frontend-perf skill's cdp-perf (`~/.claude/skills/frontend-perf/scripts/cdp-perf`, or set `CDP_PERF`). Builds read the main checkout's env file like `vp build` does; nothing here reads or prints it.
-
-Keep the machine otherwise idle while the gate runs. Measuring during a build or a test suite shows up as noise, and the gate warns when its speed probe sees the machine more than 15% slower than during the baseline.
+Bun, Google Chrome, Playwright's WebKit (`bunx playwright install webkit`), and, for `trend`, the frontend-perf skill's cdp-perf (`~/.claude/skills/frontend-perf/scripts/cdp-perf`, or set `CDP_PERF`). Builds read the main checkout's env file like `vp build` does; nothing here reads or prints it.

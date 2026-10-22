@@ -1,6 +1,6 @@
 // Runs inside the page before any app script (an init script). It seeds Math.random, timestamps when watched
 // elements first become visible, records paint metrics, long tasks, player phases and lyric line changes, and
-// offers a frame recorder and a layout audit. Every time is performance.now(), ms after navigation start.
+// offers a frame recorder, a layout settle and a layout audit. Every time is performance.now(), ms after navigation start.
 
 /* oxlint-disable unicorn/consistent-function-scoping -- recorder() is serialised with toString() and injected into the page, so every helper it uses must be declared inside it */
 
@@ -25,6 +25,9 @@ export const WATCH: Record<string, { selector: string; img?: boolean }> = {
   'lyrics-line': {
     selector: '[data-bench=lyrics-line], [data-bench=lyrics-text]',
   },
+  // The route's own content: the root layout's outlet has rendered something. Routes are lazy behind a Suspense
+  // with no fallback, so until the page's chunk arrives (and React reveals it) the page is empty and looks settled
+  page: { selector: '[data-status-scrim] ~ section > *' },
   // The YouTube player lives in one persistent layer at the top of the body, outside the stage
   'player-iframe': {
     selector: '[data-stage-video] iframe, [data-player-stage] iframe',
@@ -56,7 +59,6 @@ export interface Audit {
   occluded: { label: string; by: string }[]
   offscreen: AuditTarget[]
   unsafe: AuditTarget[]
-  landmarks: Record<string, Rect>
 }
 
 declare global {
@@ -76,6 +78,7 @@ declare global {
         left: number
         right: number
       }) => Audit
+      settle: (limitMs: number) => Promise<string | null>
     }
   }
 }
@@ -113,6 +116,10 @@ const recorder = (watch: typeof WATCH) => {
     longTasks,
     marks: {},
     phases: [],
+    settle: async () => {
+      await Promise.reject(new Error('replaced below'))
+      return null
+    },
   }
   window.__bench = bench
 
@@ -257,6 +264,71 @@ const recorder = (watch: typeof WATCH) => {
     },
   }
 
+  const TARGETS =
+    'a[href],button,input:not([type=hidden]),select,textarea,summary,[role=button],[role=slider],[role=tab],[tabindex]:not([tabindex="-1"])'
+
+  /**
+   * Resolves once the layout has come to rest: fonts loaded, no finite animation or transition running, and every
+   * press target's box and the page's scroll size unchanged over two frames. Null when settled; otherwise why not,
+   * after `limitMs` (the audit then runs on what is there and says so).
+   */
+  bench.settle = async (limitMs) => {
+    const key = () => {
+      const parts: number[] = [
+        document.documentElement.scrollWidth,
+        document.documentElement.scrollHeight,
+      ]
+      for (const el of document.querySelectorAll(TARGETS)) {
+        const r = el.getBoundingClientRect()
+        parts.push(
+          Math.round(r.x),
+          Math.round(r.y),
+          Math.round(r.width),
+          Math.round(r.height)
+        )
+      }
+      return parts.join(',')
+    }
+    const animating = () =>
+      document.getAnimations().some((a) => {
+        const end = a.effect?.getComputedTiming().endTime
+        return (
+          a.playState === 'running' &&
+          typeof end === 'number' &&
+          Number.isFinite(end)
+        )
+      })
+    const frame = async () => {
+      // oxlint-disable-next-line promise/avoid-new -- one animation frame, as a promise
+      await new Promise((resolve) => {
+        requestAnimationFrame(resolve)
+      })
+    }
+    const deadline = performance.now() + limitMs
+    await Promise.race([
+      document.fonts.ready,
+      // oxlint-disable-next-line promise/avoid-new -- the font wait shares the deadline
+      new Promise((resolve) => {
+        setTimeout(resolve, limitMs)
+      }),
+    ])
+    let previous = ''
+    let still = 0
+    while (performance.now() < deadline) {
+      // oxlint-disable-next-line eslint/no-await-in-loop -- one frame at a time is the point
+      await frame()
+      const now = key()
+      still = now === previous && !animating() ? still + 1 : 0
+      previous = now
+      if (still >= 2) {
+        return null
+      }
+    }
+    return animating()
+      ? `still animating after ${limitMs}ms`
+      : `layout still moving after ${limitMs}ms`
+  }
+
   bench.audit = (safe) => {
     const vw = window.innerWidth
     const vh = window.innerHeight
@@ -357,11 +429,7 @@ const recorder = (watch: typeof WATCH) => {
       }
       return null
     }
-    const all = [
-      ...document.querySelectorAll(
-        'a[href],button,input:not([type=hidden]),select,textarea,summary,[role=button],[role=slider],[role=tab],[tabindex]:not([tabindex="-1"])'
-      ),
-    ].filter(
+    const all = [...document.querySelectorAll(TARGETS)].filter(
       (el) =>
         !(el instanceof HTMLElement && el.dataset.benchIgnore !== undefined)
     )
@@ -410,24 +478,7 @@ const recorder = (watch: typeof WATCH) => {
         occluded.push({ by: labelOf(by), label: target.label })
       }
     }
-    const landmarks: Record<string, Rect> = {}
-    for (const [name, sel] of Object.entries({
-      carousel: '[data-bench=carousel]',
-      charts: '[data-bench=charts]',
-      controls: '[data-player-chrome]',
-      'gallery-title': '#gallery-title',
-      'hero-input': '[data-bench=hero-input]',
-      lyrics: '[data-bench=lyrics-line]',
-      stage: '[data-player-stage]',
-      topbar: '[data-topbar]',
-    })) {
-      const el = document.querySelector(sel)
-      if (el && el.getBoundingClientRect().width > 0) {
-        landmarks[name] = rectOf(el)
-      }
-    }
     return {
-      landmarks,
       occluded,
       offscreen,
       overflowX: Math.max(0, document.documentElement.scrollWidth - vw),

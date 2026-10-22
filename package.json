@@ -15,7 +15,7 @@
     "check": "vp check",
     "icons": "bun scripts/pwa-icons.ts",
     "bench": "bun harness/bench/cli.ts",
-    "bench:gate": "bun harness/bench/cli.ts gate"
+    "bench:check": "bun harness/bench/cli.ts check"
   },
   "dependencies": {
     "@radix-ui/react-accordion": "^1.3.1",

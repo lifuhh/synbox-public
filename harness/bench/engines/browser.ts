@@ -248,16 +248,3 @@ export const mark = async (
     })
   return await handle.jsonValue()
 }
-
-/** A fixed JS workload; its time before and after a run shows whether the machine's speed drifted */
-export const speedProbe = (): number => {
-  const start = performance.now()
-  let x = 0
-  for (let i = 0; i < 30_000_000; i += 1) {
-    x = (x + i * 7) % 1_000_003
-  }
-  if (x < 0) {
-    throw new Error('unreachable')
-  }
-  return Math.round(performance.now() - start)
-}

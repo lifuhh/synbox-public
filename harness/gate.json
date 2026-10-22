@@ -1,16 +1,18 @@
 {
-  "$comment": "Read by ~/.claude/hooks/harness-gate.py. `staging`: finished work merges there; nothing but `release` reaches main (no PR, merge or push into main). `paths`: a release whose staging touches them needs a passing gate verdict for staging's tree in <main checkout>/.harness/verdicts/ (harness/release.ts runs the gate when there is none).",
+  "$comment": "Read by ~/.claude/hooks/harness-gate.py. `staging`: finished work merges there; nothing but `release` reaches main (no PR, merge or push into main). `check_prs`: a PR into staging that changes any of `paths` needs a passing `command` verdict for the branch's HEAD tree in <main checkout>/.harness/verdicts/. The release runs `command` again on staging's combined tree.",
   "paths": [
     "src/",
     "public/",
     "index.html",
     "vite.config.ts",
     "package.json",
+    "bun.lock",
     "netlify/",
-    "harness/bench/"
+    "harness/"
   ],
-  "command": "bun harness/bench/cli.ts gate",
-  "cost": "about 8 minutes on a laptop; the first run on a machine also measures origin/main",
+  "command": "bun harness/bench/cli.ts check",
+  "cost": "about 35 seconds",
+  "check_prs": true,
   "staging": "staging",
   "release": "bun harness/release.ts"
 }

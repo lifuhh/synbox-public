@@ -1,0 +1,13 @@
+{
+  "$comment": "Which routes in src/app.tsx the layout audits visit. `samples`: a URL for a route with parameters (routes with their own readiness code are in harness/bench/probes/layout.ts › LAYOUT_PAGES). `skip`: a route that gets no audit, and why. Not part of the evaluator: a new route and its line here land in the same PR. Every key must be a route in src/app.tsx, or `check` fails.",
+  "samples": {
+    "/v/:videoId/versions": "/v/6rG_irmOQsM/versions"
+  },
+  "skip": {
+    "/admin": "admins only; the lab has no session",
+    "/lab/stage": "development builds only",
+    "/offline": "redirects to /lyrics",
+    "/offline/:videoId": "redirects to /lyrics/:videoId",
+    "/playlists/:playlistId": "a playlist lives in the browser's storage, and a fresh lab context has none"
+  }
+}

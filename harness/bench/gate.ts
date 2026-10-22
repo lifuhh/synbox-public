@@ -1,19 +1,28 @@
-// The evaluator is read-only to the work it judges. A branch that changes how scores are computed (the scorer)
-// and the app in one go could pass by moving the goalposts, so the gate refuses it: land scorer changes in their
-// own PR, measured against an unchanged app.
+// The evaluator is read-only to the work it judges. A branch that changes how the app is judged and the app in one
+// go could pass by moving the goalposts, so `check` refuses it: land evaluator changes in their own PR, judged
+// against an unchanged app. The evaluator is everything that decides what `check` runs and how it judges: the
+// bench (all of harness/bench/ except trend.ts, which never gates), package.json's scripts (`check` runs them),
+// the release script and gate.json (they decide whether `check` runs at all). Budgets (harness/budgets.json) and
+// the route list (harness/routes.json) are not: raising a budget or adding a route beside the change that needs it
+// is the intended, visible way to accept it.
 
-const EVALUATOR_DIR = 'harness/bench/scorer/'
+const EVALUATOR =
+  /^(?:harness\/bench\/(?!trend\.ts$)|package\.json#scripts$|harness\/release\.ts$|harness\/gate\.json$)/u
+// What ships. Dependencies count through bun.lock
 const APP =
-  /^(?:src\/|public\/|index\.html$|vite\.config\.ts$|package\.json$|netlify\/)/u
+  /^(?:src\/|public\/|index\.html$|vite\.config\.ts$|bun\.lock$|netlify\/)/u
 
-/** `onBase` says whether a file existed at the merge base: adding the scorer (the harness's own first PR) is not editing it */
+/**
+ * `changed` is the branch's files, with package.json as `package.json#scripts` when its scripts changed (check.ts).
+ * `onBase` says whether a file existed at the base: adding an evaluator file is not editing one.
+ */
 export const evaluatorTouched = (
   changed: string[],
   onBase: (file: string) => boolean
 ): string | null => {
-  const scorer = changed.filter((f) => f.startsWith(EVALUATOR_DIR) && onBase(f))
+  const evaluator = changed.filter((f) => EVALUATOR.test(f) && onBase(f))
   const app = changed.filter((f) => APP.test(f))
-  return scorer.length > 0 && app.length > 0
-    ? `this branch changes the scorer (${scorer.join(', ')}) and the app (${app.length} files) together; split the scorer change into its own PR`
+  return evaluator.length > 0 && app.length > 0
+    ? `this branch changes the evaluator (${evaluator.join(', ')}) and the app (${app.length} files) together; split the evaluator change into its own PR`
     : null
 }
