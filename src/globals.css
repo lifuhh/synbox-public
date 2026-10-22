@@ -404,17 +404,25 @@
   );
 }
 
-/* The top bar once a page has scrolled under it: the page color behind the buttons, fading to clear below them,
-   so scrolled content slides under without a hard edge. The padding is the fade zone, so the fade never starts
-   behind the buttons; solid, like sticky-under-topbar, since at 94% scrolled text showed through beside the logo.
-   No blur: WebKit drops a backdrop filter that is masked */
+/* The top bar once a page has scrolled under it: the page color behind the buttons, solid, like
+   sticky-under-topbar, since at 94% scrolled text showed through beside the logo. No blur: WebKit drops a
+   backdrop filter that is masked */
 @utility topbar-frost {
-  padding-bottom: 1.25rem;
-  background: linear-gradient(
-    to bottom,
-    var(--background) calc(100% - 1.25rem),
-    transparent
-  );
+  background: var(--background);
+}
+
+/* Under the bar while it shows over a scrolled page: the page color fading to clear, so content slides under
+   without a hard edge. Its own layer, not part of the bar: under a row stuck below the bar (z-45, with its own
+   fade), which would otherwise sit under this strip, its text veiled and its press caught by the bar; over the
+   page. Presses pass through it */
+@utility topbar-fade {
+  position: fixed;
+  inset-inline: 0;
+  top: var(--topbar-h);
+  z-index: 44;
+  height: 1.25rem;
+  pointer-events: none;
+  background: linear-gradient(to bottom, var(--background), transparent);
 }
 
 /* A row that sticks under the top bar, and slides up to the screen's top while the bar is scrolled away. See-
@@ -1441,6 +1449,7 @@
 
   /* The offline reader covers the app; what it covers can't be reached by Tab or a screen reader */
   html:has([data-reader]) [data-topbar],
+  html:has([data-reader]) [data-topbar-fade],
   html:has([data-reader]) [data-generation-host] {
     visibility: hidden;
   }
@@ -1461,7 +1470,8 @@
   }
 
   /* The iPhone stand-in for fullscreen: the player without the app's top bar */
-  html[data-immersive] [data-topbar] {
+  html[data-immersive] [data-topbar],
+  html[data-immersive] [data-topbar-fade] {
     display: none;
   }
 
@@ -1500,7 +1510,8 @@
       transform: translateX(100vw) rotate(90deg);
     }
 
-    html[data-landscape-lock] [data-topbar] {
+    html[data-landscape-lock] [data-topbar],
+    html[data-landscape-lock] [data-topbar-fade] {
       display: none;
     }
   }

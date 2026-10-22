@@ -24,9 +24,15 @@ const AppLogo: React.FC = () => {
   }
 
   return (
-    <div className='z-20 flex w-24 min-w-24 cursor-pointer justify-start py-2 align-middle min-[360px]:w-28 min-[360px]:min-w-28 sm:w-44 sm:min-w-44'>
-      <Link to='/' onClick={handleOnClick} aria-label='Synbox home'>
-        <span className='inline-block'>
+    <div className='z-20 flex w-24 min-w-24 cursor-pointer justify-start min-[360px]:w-28 min-[360px]:min-w-28 sm:w-44 sm:min-w-44'>
+      {/* The picture is taller than the bar and hangs over its edges; only the bar's own height takes a press,
+          so a row stuck under the bar (the Gallery title) keeps its own */}
+      <Link
+        to='/'
+        onClick={handleOnClick}
+        aria-label='Synbox home'
+        className='flex h-14 items-center'>
+        <span className='pointer-events-none inline-block'>
           <SynboxLogo />
         </span>
       </Link>
