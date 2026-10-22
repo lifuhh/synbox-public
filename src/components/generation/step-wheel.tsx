@@ -190,14 +190,14 @@ const StepWheel = ({ views, index, failed }: StepWheelProps) => {
               <p className='truncate text-label leading-5 font-semibold tracking-tight text-white'>
                 {step.title}
               </p>
-              <p className='truncate text-xs leading-4 text-muted-foreground'>
+              <p className='truncate text-sm leading-5 text-muted-foreground'>
                 {rowDetail(view, centered && failed)}
               </p>
             </div>
             <div className='flex w-24 flex-col items-end gap-1.5'>
               <span className='text-label leading-none font-semibold text-white tabular-nums'>
                 {percent}
-                <span className='ml-px text-xs text-muted-foreground'>%</span>
+                <span className='text-muted-foreground'>%</span>
               </span>
               <ProgressBar
                 fraction={shownFraction}
