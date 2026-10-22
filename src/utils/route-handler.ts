@@ -40,6 +40,3 @@ export const handleVideoRoute = async ({
     setIsLoading(false)
   }
 }
-
-export const isValidVideoId = (id: string): boolean =>
-  /^[a-zA-Z0-9_-]{11}$/u.test(id)

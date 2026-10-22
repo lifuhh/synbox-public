@@ -9,7 +9,7 @@
     "test": "bun test"
   },
   "dependencies": {
-    "better-auth": "^1.7.12",
+    "better-auth": "1.7.12",
     "hono": "^4.13.13"
   },
   "devDependencies": {

@@ -24,36 +24,6 @@ export interface YoutubeSearchResultInfo {
   statistics?: YoutubeVideoStatistics
 }
 
-interface FullVideoInfo {
-  id: string
-  thumbnail: string
-  duration: number
-  likes: number
-  playable_in_embed: boolean
-  title: string
-  channel_name: string
-}
-
-interface VideoInfoForValidation {
-  title: string
-  channel_name: string
-}
-
-export interface SubtitleInfo {
-  exist: boolean
-  path: string | null
-  ext: string | null
-}
-
-export interface VideoInfo {
-  passed: boolean
-  audio_file_path: string
-  full_vid_info: FullVideoInfo
-  vid_info_for_validation: VideoInfoForValidation
-  subtitle_info: SubtitleInfo
-  error_msg: string | null
-}
-
 export interface CurrentPlayingInfo {
   videoId: string
   title: string

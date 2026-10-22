@@ -34,7 +34,6 @@ const RISE_STEPS = [
 const NO_RISE = ['', '', '']
 
 interface HeroGenerateLyricsDefaultProps {
-  setProcessingStage: (stage: number) => void
   setInputVideoId: (videoId: string) => void
   inputVideoId: string
 }

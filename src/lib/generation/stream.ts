@@ -257,7 +257,7 @@ const generationFields = (videoId: string, options: GenerationOptions) => ({
   skip_uploader_lyrics: options.skipUploaderLyrics,
 })
 
-// Downloads the song when it is new, and checks it is a Japanese song. Named by its request id, the
+// Checks the video can be played and downloads the song when it is new. Named by its request id, the
 // validation goes on to run the whole song on the backend, so it finishes and saves while the page is away;
 // the later calls attach to it (an older backend ignores the extra fields)
 export const validate = async (

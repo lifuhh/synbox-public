@@ -1,15 +1,12 @@
 <p align="center">
   <a href="https://synbox.io" target="_blank" rel="noopener noreferrer">
-    <img src="public/assets/icons/Synbox.svg" alt="Synbox Logo" width="340px" />
+    <img src="docs/readme/Synbox.svg" alt="Synbox Logo" width="340px" />
   </a>
 </p>
 
 <p align="center">
   <a href="./LICENSE" target="_blank" rel="noopener noreferrer">
     <img src="https://img.shields.io/badge/license-PolyForm_Noncommercial-orange" alt="License Badge" />
-  </a>
-  <a href="#">
-    <img src="https://img.shields.io/badge/version-1.0.0-blue?style=flat-square" alt="Version Badge" />
   </a>
 </p>
 
@@ -49,14 +46,14 @@ This frustration inspired me to create Synbox — a tool that helps fans like me
 🔊 **Accurate Transcriptions** - Leverage the latest OpenAI Whisper model to transcribe any Japanese song with precision.
 
 <p align="center">
-  <img src="public/assets/showcase/overlay.gif" alt="Overlay Display" width="90%">
+  <img src="docs/readme/showcase/overlay.gif" alt="Overlay Display" width="90%">
 </p>
 
 <p align="center">-</p>
 
 🎵 **Discover New Music** - Explore a landing page with a carousel, an infinite scroll gallery, and links to top songs played in Japan, curated from YouTube’s popular playlists.
 <p align="center">
-  <img src="public/assets/showcase/landingpage.gif" alt="Landing Page" width="90%">
+  <img src="docs/readme/showcase/landingpage.gif" alt="Landing Page" width="90%">
 </p>
 
 <p align="center">-</p>
@@ -71,7 +68,7 @@ This frustration inspired me to create Synbox — a tool that helps fans like me
 
 <h5 align="center">Transcription</h5>
 <p align="center">
-  <img src="public/assets/showcase/transcription.gif" alt="Transcription Showcase" width="90%">
+  <img src="docs/readme/showcase/transcription.gif" alt="Transcription Showcase" width="90%">
 </p>
 
 🎯 **Intelligent Detection** - Automatically detects and utilises existing YouTube subtitles.
@@ -80,7 +77,7 @@ This frustration inspired me to create Synbox — a tool that helps fans like me
 
 <h5 align="center">Translation & Annotation</h5>
 <p align="center">
-  <img src="public/assets/showcase/annotation.gif" alt="Annotation Showcase" width="90%">
+  <img src="docs/readme/showcase/annotation.gif" alt="Annotation Showcase" width="90%">
 </p>
 
 📝 **Complete Language Support** - Japanese lyrics are annotated with Romaji and Furigana annotations to provide a tailored viewing experience that meets the needs of diverse users.
@@ -90,7 +87,7 @@ This frustration inspired me to create Synbox — a tool that helps fans like me
 ⚙️ **Customizable Lyrics Overlay** - Adjust the size, position, and appearance of the lyrics overlay to match your preferences and the music video’s styling.
 
 <p align="center">
-  <img src="public/assets/showcase/customize.gif" alt="Customizable Overlay" width="90%">
+  <img src="docs/readme/showcase/customize.gif" alt="Customizable Overlay" width="90%">
 </p>
 
 <p align="center">-</p>
@@ -98,19 +95,20 @@ This frustration inspired me to create Synbox — a tool that helps fans like me
 📌 **History and Bookmarks** - Keep track of your favorite songs with history and bookmark features, ensuring easy access to revisit and enjoy.
 
 <p align="center">
-  <img src="public/assets/showcase/bookmark.png" alt="Bookmark Feature" width="90%">
+  <img src="docs/readme/showcase/bookmark.png" alt="Bookmark Feature" width="90%">
 </p>
 
 ## **Infrastructure / Technologies**
 
-| **Category**    | **Technologies**                                |
-| --------------- | ----------------------------------------------- |
-| **Frontend**    | React, TypeScript, TailwindCSS, ShadCN UI, Vite |
-| **Backend**     | Python, Flask                                   |
-| **APIs**        | OpenAI API, Google Cloud APIs                   |
-| **Database**    | Appwrite                                        |
-| **Deployment**  | Netlify (frontend), Google Cloud Run (backend)  |
-| **Other Tools** | ESLint, Prettier, Bun                           |
+| **Category** | **Technologies** |
+| --- | --- |
+| **Frontend** | React, TypeScript, TailwindCSS, ShadCN UI, Vite+ |
+| **Backend** | Python, Flask |
+| **APIs** | ElevenLabs Scribe, OpenAI API, YouTube Data API |
+| **Database** | Appwrite (songs, lyrics), Cloudflare D1 (accounts) |
+| **Auth** | Better Auth on a Cloudflare Worker |
+| **Deployment** | Netlify (frontend), Cloudflare Workers (auth), Cloud Run (backend) |
+| **Other Tools** | Bun, Oxlint, Oxfmt, Ultracite |
 
 ### **System Architecture**
 
@@ -118,16 +116,18 @@ Synbox leverages a cutting edge full-stack architecture, combining a user-friend
 
 **Frontend** - Built with React, TypeScript, and TailwindCSS, the frontend provides a dynamic and responsive interface. Features include a landing page with an infinite scroll gallery, customizable lyrics overlays, viewing history and bookmarks.
 
-**Backend** - Powered by Flask and Python, the backend processes AI requests, including OpenAI Whisper model-based transcription, translation, and annotation.
+**Backend** - Powered by Flask and Python, the backend processes AI requests, including speech recognition, lyric alignment, translation, and annotation.
 
-**Database** - Appwrite serves as the backend's database, handling storage of generated lyrics.
+**Database** - Appwrite stores songs and generated lyrics. Accounts live in Cloudflare D1, behind the auth Worker.
 
 **APIs and Integrations**  
-**OpenAI API** - For transcription, translation, and annotation of Japanese song lyrics.  
+**ElevenLabs Scribe** - Speech recognition with character timestamps.  
+**OpenAI API** - Translation and song metadata.  
 **Google Data API** - Integrates YouTube data to fetch popular Japanese playlists and user-submitted video links.
 
 **Hosting and Deployment**  
 **Frontend** - Hosted on **Netlify**, ensuring fast and reliable delivery.  
+**Auth** - A **Cloudflare Worker** handles sign-in, quotas and admin.  
 **Backend** - Runs on **Google Cloud Run**, offering scalable and efficient serverless deployment.
 
 This architecture ensures Synbox remains fast, responsive, and capable of delivering a rich user experience while handling computationally intensive AI tasks in the backend.

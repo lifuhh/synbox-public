@@ -5,7 +5,6 @@ import { BrowserRouter } from 'react-router'
 
 import App from './app'
 import ErrorBoundary from './components/shared/error-boundary'
-import AppProvider from './context/app-context'
 import { QueryProvider } from './lib/react-query/query-provider'
 
 const rootElement = document.querySelector('#root')
@@ -21,12 +20,10 @@ ReactDOM.createRoot(rootElement, {
   onUncaughtError: reactErrorHandler(),
 }).render(
   <BrowserRouter>
-    <AppProvider>
-      <QueryProvider>
-        <ErrorBoundary>
-          <App />
-        </ErrorBoundary>
-      </QueryProvider>
-    </AppProvider>
+    <QueryProvider>
+      <ErrorBoundary>
+        <App />
+      </ErrorBoundary>
+    </QueryProvider>
   </BrowserRouter>
 )
