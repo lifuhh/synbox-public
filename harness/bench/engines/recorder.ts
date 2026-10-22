@@ -25,6 +25,9 @@ export const WATCH: Record<string, { selector: string; img?: boolean }> = {
   'lyrics-line': {
     selector: '[data-bench=lyrics-line], [data-bench=lyrics-text]',
   },
+  // The route's own content: the root layout's outlet has rendered something. Routes are lazy behind a Suspense
+  // with no fallback, so until the page's chunk arrives (and React reveals it) the page is empty and looks settled
+  page: { selector: '[data-status-scrim] ~ section > *' },
   // The YouTube player lives in one persistent layer at the top of the body, outside the stage
   'player-iframe': {
     selector: '[data-stage-video] iframe, [data-player-stage] iframe',

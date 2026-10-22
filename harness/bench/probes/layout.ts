@@ -28,9 +28,10 @@ const PLAYER_SONG = '6rG_irmOQsM'
 const settle = async (page: Page): Promise<string | null> =>
   await page.evaluate(async () => await window.__bench.settle(5000))
 
-// Whatever the page fetched has arrived: no region still says it is busy
+// The page has rendered and whatever it fetched has arrived: no region still says it is busy
 const settled = async (page: Page) => {
   await mark(page, 'topbar')
+  await mark(page, 'page')
   await page
     .waitForFunction(
       () => document.querySelector('[aria-busy=true]') === null,

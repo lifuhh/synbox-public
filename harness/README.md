@@ -26,7 +26,7 @@ When it fails:
 | Failure | Do |
 | --- | --- |
 | A static check | Its output's last lines are printed. Fix it. |
-| `size`: `initialJsKB 355.8 > budget 327` | Find what grew (the failing step lists the first-load files). If the growth is intended, raise that number in `harness/budgets.json` in the same PR and say why in the PR description. |
+| `size`: `initialJsKB 355.8 > budget 327` | Find what grew (the failing step lists the first-load files). If the growth is intended, raise that number in `harness/budgets.json` in the same PR, with the reason under `$why` and in the PR description. |
 | `layout-<page>-<screen>`: `smallTargets 1 > budget 0` | The lines below name each offending element and its box, then the path of a screenshot. Fix the layout. A budget raise here needs the same written reason. |
 | `no sample: mark "x" never fired` | A `data-bench` hook the audit waits for is gone (see "How the audits keep up with the app"). Put it back on whatever replaced it. |
 | The evaluator guard | Split the branch. |
@@ -70,7 +70,7 @@ The report lands in `.harness/bench/runs/trend-<time>/report.md` and one line pe
 ## How the checks stay trustworthy
 
 - **Same data every run.** The bench serves a production build the way Netlify does (brotli, cache headers, the `/api` proxies from `netlify.toml`). API responses, the lookup service included, and Google Fonts are recorded once and replayed. Only successful responses are recorded. `Math.random` is seeded. Sentry is blocked. To re-record API data, delete `.harness/bench/fixtures/` in the main checkout.
-- **Settled on signals, not sleeps.** Each audit waits for its page's own readiness (`data-bench` marks, no `aria-busy` region, the player out of loading), then for the layout to rest: fonts loaded, no finite animation running, and every press target's box unchanged over two frames (`engines/recorder.ts` › `settle`, capped at 5 s; an audit that never rests says so in its notes). That is what lets three audits share the machine without false failures.
+- **Settled on signals, not sleeps.** Each audit waits for its page's own readiness (`data-bench` marks; on other routes, the route's lazy chunk rendered into the root layout's outlet and no `aria-busy` region; the player out of loading), then for the layout to rest: fonts loaded, no finite animation running, and every press target's box unchanged over two frames (`engines/recorder.ts` › `settle`, capped at 5 s; an audit that never rests says so in its notes). That is what lets three audits share the machine without false failures.
 - **Budgets, not baselines.** Nothing is compared with an earlier run, so there is nothing to bootstrap, pool or re-measure. Growth is accepted by a visible edit to `harness/budgets.json` in the PR that causes it.
 - **The evaluator is read-only to the app.** See the guard above.
 
