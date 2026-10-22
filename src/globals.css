@@ -769,6 +769,15 @@
 }
 
 /* The narrow watch page under the video (NarrowBelow): the lyrics take a share of its height */
+/* A box that takes its parent's corners: a thumbnail's picture, and the karaoke mark tracing its corner */
+@utility rounded-inherit {
+  border-radius: inherit;
+}
+
+@utility rounded-tr-inherit {
+  border-top-right-radius: inherit;
+}
+
 @utility watch-below {
   container-type: size;
 }

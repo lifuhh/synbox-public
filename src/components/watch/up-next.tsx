@@ -74,11 +74,14 @@ const QueueRowMenu = ({
 export const UpNext = ({
   videoId,
   autoplaySwitch,
+  large = false,
   className,
 }: {
   videoId: string
   // Phones have no room for it in the video's control bar, so it heads the list there
   autoplaySwitch: boolean
+  // Big rows, as in YouTube's right-hand column
+  large?: boolean
   className?: string
 }) => {
   const queue = useAtomValue(queueAtom)
@@ -127,6 +130,7 @@ export const UpNext = ({
               <SongRow
                 as='div'
                 song={song}
+                large={large}
                 lead={grip}
                 actions={
                   <QueueRowMenu
@@ -180,6 +184,7 @@ export const UpNext = ({
               <SongRow
                 key={song.videoId}
                 song={song}
+                large={large}
                 // Under a queue, the grip's width keeps every thumbnail on one edge
                 lead={
                   queue.length > 0 ? (
