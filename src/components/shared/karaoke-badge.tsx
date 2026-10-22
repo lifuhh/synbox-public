@@ -44,15 +44,14 @@ export const KaraokeEdge = ({ small = false }: { small?: boolean }) => (
   </span>
 )
 
-// The mark before a card's title, centred on its first line: the title and the mic share the box's font and
-// line height, and the mic's box is one line tall
-export const KaraokeTitleIcon = () => (
-  <span
+// The mark on a card's channel line, after the name: the title and the channel keep one left edge, which a mark
+// before the title broke. The line is a flex row, so the mic sits on its centre
+export const KaraokeMetaIcon = () => (
+  <MicVocalIcon
     aria-hidden
-    data-karaoke-title-mic
-    className='flex h-lh shrink-0 items-center text-primary-text'>
-    <MicVocalIcon aria-hidden className='size-4' />
-  </span>
+    data-karaoke-meta-mic
+    className='size-3.5 shrink-0 text-primary-text'
+  />
 )
 
 // What the marks say, for a screen reader, placed after a song's title so the title is read first
@@ -71,8 +70,8 @@ export const KaraokeEdgeMark = ({
   small?: boolean
 }) => (useHasKaraoke(videoId) ? <KaraokeEdge small={small} /> : null)
 
-export const KaraokeTitleIconMark = ({ videoId }: { videoId: string }) =>
-  useHasKaraoke(videoId) ? <KaraokeTitleIcon /> : null
+export const KaraokeMetaIconMark = ({ videoId }: { videoId: string }) =>
+  useHasKaraoke(videoId) ? <KaraokeMetaIcon /> : null
 
 // The badge for a song known only by its id, from the library list
 export const KaraokeMark = ({

@@ -5,7 +5,7 @@ import { Link } from 'react-router'
 import { EditRecommendations } from '@/components/admin/edit-recommendations'
 import {
   KaraokeLabelMark,
-  KaraokeTitleIconMark,
+  KaraokeMetaIconMark,
 } from '@/components/shared/karaoke-badge'
 import LoadError from '@/components/shared/load-error'
 import { Button } from '@/components/ui/button'
@@ -59,15 +59,13 @@ const SongCard = ({
     {/* Two title lines and the channel's, however long the title, so every card (and the loading one) is
         the same height and the row matches the charts beside it */}
     <span className='mt-3 flex h-16 flex-col gap-1'>
-      <span className='flex gap-1.5 text-label leading-5 font-semibold text-foreground transition-colors duration-150 group-data-[active=false]:text-muted-foreground'>
-        <KaraokeTitleIconMark videoId={item.videoId} />
-        <span className='line-clamp-2'>
-          {item.title}
-          <KaraokeLabelMark videoId={item.videoId} />
-        </span>
+      <span className='line-clamp-2 text-label leading-5 font-semibold text-foreground transition-colors duration-150 group-data-[active=false]:text-muted-foreground'>
+        {item.title}
+        <KaraokeLabelMark videoId={item.videoId} />
       </span>
-      <span className='truncate text-sm leading-5 text-muted-foreground'>
-        {item.channel}
+      <span className='flex min-w-0 items-center gap-1.5 text-sm leading-5 text-muted-foreground'>
+        <span className='truncate'>{item.channel}</span>
+        <KaraokeMetaIconMark videoId={item.videoId} />
       </span>
     </span>
   </Link>

@@ -2,7 +2,7 @@ import { SparklesIcon } from 'lucide-react'
 
 import {
   KaraokeLabelMark,
-  KaraokeTitleIconMark,
+  KaraokeMetaIconMark,
 } from '@/components/shared/karaoke-badge'
 import { SongMenu } from '@/components/watch/song-menu'
 import type {
@@ -27,18 +27,10 @@ const Thumbnail = ({ src, alt }: { src: string; alt: string }) => (
 const CARD =
   'flex flex-col gap-2 rounded-2xl p-2 transition-colors hover:bg-muted/60'
 
-// Two lines tall even when the title fits on one, so every card's next row lines up; a song with karaoke
-// lyrics has the mic before it
-const Title = ({
-  children,
-  videoId,
-}: {
-  children: string
-  videoId: string
-}) => (
-  <p className='flex min-h-[2lh] gap-1.5 text-sm font-semibold text-foreground'>
-    <KaraokeTitleIconMark videoId={videoId} />
-    <span className='line-clamp-2'>{children}</span>
+// Two lines tall even when the title fits on one, so every card's next row lines up
+const Title = ({ children }: { children: string }) => (
+  <p className='line-clamp-2 min-h-[2lh] text-sm font-semibold text-foreground'>
+    {children}
   </p>
 )
 
@@ -57,9 +49,12 @@ export const VideoResultCard = ({
     }}
     className={`${CARD} text-left`}>
     <Thumbnail src={result.thumbnail_url} alt={result.title} />
-    <Title videoId={result.video_id}>{result.title}</Title>
+    <Title>{result.title}</Title>
     <KaraokeLabelMark videoId={result.video_id} />
-    <p className='truncate text-xs text-muted-foreground'>{result.channel}</p>
+    <p className='flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground'>
+      <span className='truncate'>{result.channel}</span>
+      <KaraokeMetaIconMark videoId={result.video_id} />
+    </p>
   </button>
 )
 
@@ -81,12 +76,13 @@ export const LibrarySongCard = ({
       }}
       className='flex flex-col gap-2 text-left'>
       <Thumbnail src={song.thumbnail_url} alt={song.title} />
-      <Title videoId={song.video_id}>{song.title}</Title>
+      <Title>{song.title}</Title>
       <KaraokeLabelMark videoId={song.video_id} />
     </button>
     <div className='flex items-center gap-2'>
-      <p className='min-w-0 flex-1 truncate text-xs text-muted-foreground'>
-        {song.artist}
+      <p className='flex min-w-0 flex-1 items-center gap-1.5 text-xs text-muted-foreground'>
+        <span className='truncate'>{song.artist}</span>
+        <KaraokeMetaIconMark videoId={song.video_id} />
       </p>
       <button
         type='button'
