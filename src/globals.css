@@ -372,10 +372,18 @@
   --furigana-size: 0.5em;
 }
 
-/* Synced lyrics' karaoke fill on the page: sung in the Japanese colour, unsung at half strength. A part
-   reads as sung until the clock writes --p, so only the line being played shows the wipe */
+/* Synced lyrics' karaoke fill on the page: sung in the Japanese colour, unsung at 40% ink. The colour means
+   sung: once the song plays, the lines still to come are wholly unsung, so reaching one changes nothing until
+   its wipe starts, and the lines behind stay wholly sung, whatever --p a seek left on them. Before the song
+   plays (no data-phase) a part reads as sung until the clock writes --p: the song at full strength */
 @utility reader-karaoke-part {
   --karaoke-stop: calc(var(--p, 1) * 100%);
+  [data-phase='upcoming'] & {
+    --karaoke-stop: 0%;
+  }
+  [data-phase='past'] & {
+    --karaoke-stop: 100%;
+  }
   --karaoke-gradient: linear-gradient(
     to right,
     var(--karaoke-sung, var(--reader-accent)) var(--karaoke-stop),

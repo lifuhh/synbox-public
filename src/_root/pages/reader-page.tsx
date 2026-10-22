@@ -13,7 +13,10 @@ import {
 import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router'
 
-import { LyricLineBlock } from '@/components/offline/lyric-line-block'
+import {
+  linePhase,
+  LyricLineBlock,
+} from '@/components/offline/lyric-line-block'
 import { PlaybackBar } from '@/components/offline/playback-bar'
 import {
   LayersPanel,
@@ -388,7 +391,7 @@ const ReaderPage = () => {
                 line={line}
                 first={index === 0}
                 synced={synced}
-                dimmed={started && index !== lit}
+                phase={linePhase(index, lit, started)}
                 blockRef={(element) => {
                   blocks.current[index] = element
                 }}
