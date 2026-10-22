@@ -302,7 +302,7 @@ const TwoLineRow = ({
     data-lyric-row={sung ? 'sung' : 'next'}
     className={cn(
       'transition-opacity duration-200',
-      !sung && 'opacity-60',
+      !sung && 'opacity-75',
       start ? 'lyric-stagger-start' : 'lyric-stagger-end'
     )}>
     <RowFit key={index}>{children}</RowFit>

@@ -15,6 +15,7 @@ import {
   moraCharCounts,
   romajiFillParts,
   tokenFillParts,
+  FINISHED_HOLD,
   twoLineView,
 } from './karaoke'
 
@@ -222,6 +223,27 @@ describe('twoLineView', () => {
     // the passage's last line leaves the other row empty
     expect(twoLineView(lines, 15)).toEqual({ active: 2, rows: [2, -1] })
     expect(twoLineView(lines, 25).rows).toEqual([-1, -1])
+  })
+
+  test('a finished line stays in its row for a moment before the line after next takes it', () => {
+    // Line 1 takes over at 12, when line 0 ends
+    expect(twoLineView(lines, 12 + FINISHED_HOLD - 0.1)).toEqual({
+      active: 1,
+      rows: [0, 1],
+    })
+    expect(twoLineView(lines, 12 + FINISHED_HOLD + 0.1)).toEqual({
+      active: 1,
+      rows: [2, 1],
+    })
+  })
+
+  test('no hold when the line now sung is too short to read the next one in time', () => {
+    const quick = [
+      { end: 12, start: 10 },
+      { end: 12.9, start: 12.1 },
+      { end: 15, start: 13 },
+    ]
+    expect(twoLineView(quick, 12.2)).toEqual({ active: 1, rows: [2, 1] })
   })
 
   test('a passage after an instrumental break starts in the top row', () => {
