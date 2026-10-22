@@ -65,8 +65,9 @@ const LABELS: Record<Exclude<FabState, 'running'>, [string, string]> = {
 }
 
 // The minimized job: one ring along the button's edge that fills with the overall progress, a softly
-// pulsing dot at its tip, and the number at the center. Hovering or focusing it slides out the current
-// step; when the job ends the label stays out, so the result is noticed without opening anything.
+// pulsing dot at its tip, and the number at the center (a check or ! when it ends). Only hovering slides out
+// the current step: the circle alone is the default, and keyboard focus (which returns here from the panel)
+// draws its ring without opening the label; the accessible name carries the step.
 interface GenerationFabProps {
   job: Job
   // Songs in this tab's list, shown on a badge when there is more than one
@@ -202,17 +203,10 @@ const GenerationFab = ({
         <span
           className={cn(
             'absolute inset-y-0 right-0 flex w-max items-center rounded-full bg-generation-surface pr-(--fab-size) transition-clip duration-300 ease-out ring-inset group-focus-visible:ring-2 group-focus-visible:ring-brand-light',
-            state === 'running'
-              ? '[clip-path:inset(0_0_0_calc(100%-var(--fab-size))_round_9999px)] group-hover:[clip-path:inset(0_round_9999px)] group-focus-visible:[clip-path:inset(0_round_9999px)]'
-              : '[clip-path:inset(0_round_9999px)]'
+            '[clip-path:inset(0_0_0_calc(100%-var(--fab-size))_round_9999px)] group-hover:[clip-path:inset(0_round_9999px)]'
           )}>
           <span className='overflow-hidden'>
-            <span
-              className={cn(
-                'block max-w-[min(15rem,calc(100vw-7rem))] pr-1 pl-5 transition-transform duration-300 ease-out',
-                state === 'running' &&
-                  'translate-x-full group-hover:translate-x-0 group-focus-visible:translate-x-0'
-              )}>
+            <span className='block max-w-[min(15rem,calc(100vw-7rem))] translate-x-full pr-1 pl-5 transition-transform duration-300 ease-out group-hover:translate-x-0'>
               <span className='block truncate text-caption leading-4 font-semibold text-white'>
                 {title}
               </span>
