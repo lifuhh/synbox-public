@@ -101,7 +101,7 @@ export const useHoverMenu = (
       const controls = trigger.current?.getAttribute('aria-controls')
       return controls === null || controls === undefined
         ? null
-        : document.getElementById(controls)
+        : document.querySelector(`#${CSS.escape(controls)}`)
     },
   })
 
@@ -212,6 +212,15 @@ export const useHoverMenu = (
           event.preventDefault()
         }
       },
+      // A press on the button lands outside the menu, which would close it
+      onPointerDownOutside: (event: Event) => {
+        if (
+          event.target instanceof Node &&
+          trigger.current?.contains(event.target) === true
+        ) {
+          event.preventDefault()
+        }
+      },
       onPointerEnter: (event: PointerEvent) => {
         if (mouse(event)) {
           clearTimeout(timer.current)
@@ -221,15 +230,6 @@ export const useHoverMenu = (
       onPointerLeave: (event: PointerEvent) => {
         if (mouse(event) && open) {
           closeLater()
-        }
-      },
-      // A press on the button lands outside the menu, which would close it
-      onPointerDownOutside: (event: Event) => {
-        if (
-          event.target instanceof Node &&
-          trigger.current?.contains(event.target) === true
-        ) {
-          event.preventDefault()
         }
       },
     },

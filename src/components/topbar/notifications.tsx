@@ -242,12 +242,12 @@ const Notifications = () => {
             'relative',
             (ring || farewell !== null) && 'pointer-events-auto'
           )}
-          {...menu.triggerAfter({
-            onClick: (event) => {
-              pressed.current = !expanded
-              byKeyboard.current = event.detail === 0
-            },
-          })}>
+          {...menu.trigger}
+          onClick={(event) => {
+            pressed.current = !expanded
+            byKeyboard.current = event.detail === 0
+            menu.trigger.onClick(event)
+          }}>
           {icon()}
         </Button>
       </PopoverTrigger>
