@@ -1,4 +1,4 @@
-import { useAtom } from 'jotai'
+import { useAtom, useAtomValue } from 'jotai'
 import { CheckIcon, PaletteIcon } from 'lucide-react'
 import type { CSSProperties, RefObject } from 'react'
 import { use, useId, useRef } from 'react'
@@ -18,6 +18,7 @@ import {
   lyricsStylePanelAtom,
   lyricsThemeIdAtom,
   lyricsTwoLinesAtom,
+  playerSurfaceAtom,
 } from '@/context/atoms'
 import {
   useLyricsSurface,
@@ -198,9 +199,11 @@ export const LyricsThemePicker = ({
     lyricsFontSizeTwoLinesAtom
   )
   const [twoLines, setTwoLines] = useAtom(lyricsTwoLinesAtom)
-  // The slider sizes the layout on screen: two lines keep their own size; each screen allows its own range,
-  // and an upright phone none
+  // The slider sizes the layout on screen: two lines keep their own size; each screen allows its own range. An
+  // upright phone's watch page has no slider: its lyrics under the video keep one size
   const surface = useLyricsSurface()
+  const playerSurface = useAtomValue(playerSurfaceAtom)
+  const sized = surface !== 'portrait' || playerSurface === 'stage'
   const sizedTwoLines = twoLines && !portrait
   const size = {
     range: sizeRangeOn(surface, sizedTwoLines),
@@ -224,7 +227,7 @@ export const LyricsThemePicker = ({
       {/* The layout switches sit a section's inner gap under the size row, not a full section gap: their 40px
           press targets already pad them */}
       <div className='flex flex-col gap-2'>
-        {surface !== 'portrait' && (
+        {sized && (
           <section className='flex flex-col gap-2'>
             <h3 className='text-xs font-medium tracking-wide text-muted-foreground uppercase'>
               Size

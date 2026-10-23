@@ -709,18 +709,32 @@
   }
 }
 
-/* Where Two Lines' translation hangs: under the top bar, and under Tap to Unmute while that shows */
+/* Where Two Lines' translation hangs: under the top bar, and under Tap to Unmute while that shows
+   (--lyric-stagger-top, which also sets the rows' room, so the rows never resize as the controls come and go).
+   On a phone on its side the bar shows only with the controls (data-chrome), so the translation itself
+   (--lyric-translation-top) rises to just under the status bar while they are hidden, and steps down to clear
+   the bar while it shows, as the lyrics at the bottom lift for the control bar */
 @utility lyric-stagger-layer {
   --lyric-stagger-top: calc(
     var(--topbar-h) + var(--notices-h, 0px) + var(--preview-banner-h, 0px) +
       0.5rem
   );
+  --lyric-translation-top: var(--lyric-stagger-top);
 
   [data-player-stage]:has([data-unmute-pill]) & {
     --lyric-stagger-top: calc(
       var(--topbar-h) + var(--notices-h, 0px) + var(--preview-banner-h, 0px) +
         3.25rem
     );
+  }
+
+  @variant short {
+    [data-player-stage]:not(:has([data-unmute-pill])) &:not([data-chrome]) {
+      --lyric-translation-top: calc(
+        var(--safe-top) + var(--notices-h, 0px) + var(--preview-banner-h, 0px) +
+          0.5rem
+      );
+    }
   }
 }
 
@@ -739,18 +753,38 @@
     )
   );
   position: absolute;
-  top: var(--lyric-stagger-top);
+  top: var(--lyric-translation-top);
   inset-inline: 0;
-  height: calc(var(--stagger-translation-bottom) - var(--lyric-stagger-top));
+  height: calc(
+    var(--stagger-translation-bottom) - var(--lyric-translation-top)
+  );
+  transition:
+    top 200ms ease,
+    height 200ms ease;
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
 
   & [data-lyrics-style-toggle] {
     max-width: 70%;
   }
 }
 
+/* On a phone on its side the lyrics' layer keeps clear of the rail on both sides (one line stays centred), but
+   the rows are a left and a right line, and only the left has the rail beside it: the rows' box runs on to the
+   right safe area plus a gap, and drops the block's own side padding, so both lines get more of the width */
 @utility lyric-stagger-area {
   --stagger-area-top: 50%;
   top: var(--stagger-area-top);
+
+  @variant short {
+    right: calc(var(--safe-right) + 1rem - var(--spacing-controls-rail));
+
+    & .player-lyrics-overlay {
+      padding-inline: 0;
+    }
+  }
 
   &[data-translation] {
     top: max(
