@@ -417,6 +417,7 @@ export const StageControls = ({
             <Slider
               look='seek'
               aria-label='Seek'
+              hoverLabel={formatClock}
               min={0}
               max={Math.max(duration, 1)}
               step={0.1}

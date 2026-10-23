@@ -4,6 +4,7 @@ import * as SliderPrimitive from '@radix-ui/react-slider'
 import * as React from 'react'
 
 import { fractionAcross, pageTurned } from '@/lib/page-turn'
+import type { CssVars } from '@/types'
 import { cn } from '@/utils/cn'
 
 // Radix places the value by the pointer's clientX across the slider's box on screen. On a page turned by
@@ -54,62 +55,95 @@ const SliderRender: React.ForwardRefRenderFunction<
   React.ComponentRef<typeof SliderPrimitive.Root>,
   React.ComponentPropsWithoutRef<typeof SliderPrimitive.Root> & {
     look?: SliderLook
+    // Shown above the pointer while a mouse is over the slider (or drags it), as YouTube's seek time: a finger
+    // covers the spot, so touch shows none
+    hoverLabel?: (value: number) => React.ReactNode
   }
 > = (
   {
     className,
     onPointerDown,
     onPointerMove,
+    onPointerLeave,
     look = 'block',
+    hoverLabel,
+    min = 0,
+    max = 100,
     'aria-label': ariaLabel,
     ...props
   },
   ref
-) => (
-  <SliderPrimitive.Root
-    ref={ref}
-    onPointerDown={(event) => {
-      alongTurnedPage(event)
-      onPointerDown?.(event)
-    }}
-    onPointerMove={(event) => {
-      alongTurnedPage(event)
-      onPointerMove?.(event)
-    }}
-    className={cn(
-      'group/slider relative flex touch-none select-none',
-      "data-[orientation='horizontal']:h-2 data-[orientation='horizontal']:w-full data-[orientation='horizontal']:items-center touch:data-[orientation='horizontal']:h-8",
-      // Later in the list, so it wins over the h-2 above (tailwind-merge)
-      look !== 'block' && "data-[orientation='horizontal']:h-4",
-      "data-[orientation='vertical']:h-full data-[orientation='vertical']:w-2 data-[orientation='vertical']:justify-center",
-      className
-    )}
-    {...props}>
-    <SliderPrimitive.Track
+) => {
+  const [hovered, setHovered] = React.useState<number | null>(null)
+  const hoverVars: CssVars = {
+    // Kept 1.5rem from the slider's ends, so the label never runs past them
+    '--hover-at': `clamp(1.5rem, ${(hovered ?? 0) * 100}%, 100% - 1.5rem)`,
+  }
+  return (
+    <SliderPrimitive.Root
+      ref={ref}
+      min={min}
+      max={max}
+      onPointerDown={(event) => {
+        alongTurnedPage(event)
+        onPointerDown?.(event)
+      }}
+      onPointerMove={(event) => {
+        alongTurnedPage(event)
+        if (hoverLabel && event.pointerType === 'mouse') {
+          setHovered(
+            Math.min(1, Math.max(0, fractionAcross(event, event.currentTarget)))
+          )
+        }
+        onPointerMove?.(event)
+      }}
+      onPointerLeave={(event) => {
+        setHovered(null)
+        onPointerLeave?.(event)
+      }}
       className={cn(
-        'relative grow overflow-hidden rounded-full bg-white/25',
-        LOOKS[look].track,
-        "data-[orientation='vertical']:h-full data-[orientation='vertical']:w-2"
-      )}>
-      <SliderPrimitive.Range
+        'group/slider relative flex touch-none select-none',
+        "data-[orientation='horizontal']:h-2 data-[orientation='horizontal']:w-full data-[orientation='horizontal']:items-center touch:data-[orientation='horizontal']:h-8",
+        // Later in the list, so it wins over the h-2 above (tailwind-merge)
+        look !== 'block' && "data-[orientation='horizontal']:h-4",
+        "data-[orientation='vertical']:h-full data-[orientation='vertical']:w-2 data-[orientation='vertical']:justify-center",
+        className
+      )}
+      {...props}>
+      <SliderPrimitive.Track
         className={cn(
-          'absolute',
-          LOOKS[look].range,
-          "data-[orientation='horizontal']:h-full",
-          "data-[orientation='vertical']:w-full"
+          'relative grow overflow-hidden rounded-full bg-white/25',
+          LOOKS[look].track,
+          "data-[orientation='vertical']:h-full data-[orientation='vertical']:w-2"
+        )}>
+        <SliderPrimitive.Range
+          className={cn(
+            'absolute',
+            LOOKS[look].range,
+            "data-[orientation='horizontal']:h-full",
+            "data-[orientation='vertical']:w-full"
+          )}
+        />
+      </SliderPrimitive.Track>
+      {/* The thumb is the element with role="slider", so it carries the name; on the root it names nothing */}
+      <SliderPrimitive.Thumb
+        aria-label={ariaLabel}
+        className={cn(
+          'block rounded-full shadow-md ring-offset-accent-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-hidden disabled:pointer-events-none disabled:opacity-50',
+          LOOKS[look].thumb
         )}
       />
-    </SliderPrimitive.Track>
-    {/* The thumb is the element with role="slider", so it carries the name; on the root it names nothing */}
-    <SliderPrimitive.Thumb
-      aria-label={ariaLabel}
-      className={cn(
-        'block rounded-full shadow-md ring-offset-accent-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-hidden disabled:pointer-events-none disabled:opacity-50',
-        LOOKS[look].thumb
+      {hoverLabel && hovered !== null && (
+        <span
+          aria-hidden
+          style={hoverVars}
+          className='pointer-events-none absolute bottom-full left-(--hover-at) mb-1.5 -translate-x-1/2 rounded-md bg-black/75 px-1.5 py-0.5 text-xs whitespace-nowrap text-white tabular-nums'>
+          {hoverLabel(min + hovered * (max - min))}
+        </span>
       )}
-    />
-  </SliderPrimitive.Root>
-)
+    </SliderPrimitive.Root>
+  )
+}
 const Slider = React.forwardRef(SliderRender)
 Slider.displayName = SliderPrimitive.Root.displayName
 
