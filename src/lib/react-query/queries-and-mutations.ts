@@ -31,6 +31,8 @@ export const useGetLandingPagePlaylist = () =>
     queryKey: [QUERY_KEYS.GET_LANDING_PAGE_PLAYLIST],
     // One retry, so a rejected API key shows the error and its Retry button in seconds, not ~7s
     retry: 1,
+    // Once a visit, like the gallery: each fetch reshuffles, so a refetch on focus would reorder the carousel
+    staleTime: Infinity,
   })
 
 export const useGetChartsPlaylist = () =>

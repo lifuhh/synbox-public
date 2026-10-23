@@ -1,3 +1,4 @@
+import { focusManager } from '@tanstack/react-query'
 import { useSetAtom } from 'jotai'
 import { useCallback, useEffect } from 'react'
 import { z } from 'zod'
@@ -110,20 +111,19 @@ const keepInStep = (userId: string, sync: () => Promise<void>) => {
       void sync()
     }, SEND_DELAY_MS)
   })
-  const onVisible = () => {
-    if (document.visibilityState === 'visible') {
+  const stopFocus = focusManager.subscribe((focused) => {
+    if (focused) {
       void sync()
     }
-  }
+  })
   const onOnline = () => {
     void sync()
   }
-  document.addEventListener('visibilitychange', onVisible)
   window.addEventListener('online', onOnline)
   return () => {
     clearTimeout(timer)
     stopListening()
-    document.removeEventListener('visibilitychange', onVisible)
+    stopFocus()
     window.removeEventListener('online', onOnline)
   }
 }

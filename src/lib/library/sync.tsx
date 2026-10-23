@@ -1,3 +1,4 @@
+import { focusManager } from '@tanstack/react-query'
 import { useAtomValue, useStore } from 'jotai'
 import { useCallback, useEffect } from 'react'
 import { z } from 'zod'
@@ -160,20 +161,20 @@ export const LibrarySync = () => {
     }
   }, [outbox, sync])
 
-  // Changes made on another device show up when the app comes back to the front or back online
+  // Changes made on another device show up when the app comes back to the front (React Query's focus signal,
+  // src/lib/react-query/query-provider.tsx) or back online
   useEffect(() => {
-    const onVisible = () => {
-      if (document.visibilityState === 'visible') {
+    const stopFocus = focusManager.subscribe((focused) => {
+      if (focused) {
         void sync()
       }
-    }
+    })
     const onOnline = () => {
       void sync()
     }
-    document.addEventListener('visibilitychange', onVisible)
     window.addEventListener('online', onOnline)
     return () => {
-      document.removeEventListener('visibilitychange', onVisible)
+      stopFocus()
       window.removeEventListener('online', onOnline)
     }
   }, [sync])
