@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { call } from '@/lib/admin'
 import { authClient } from '@/lib/auth'
 import { QUERY_KEYS } from '@/lib/react-query/query-keys'
+import { listLyricsVersions } from '@/lib/synbox-flask/lyrics-versions'
 
 // What only the admin page reads and changes: accounts, the generation ledger, reports and settings. Apart from
 // lib/admin (recommendations, which the watch page's Save to Playlist uses too), so it loads with /admin only
@@ -130,10 +131,17 @@ const reportSchema = z.object({
   id: z.string(),
   message: z.string(),
   name: z.string().nullable(),
+  // Null while open, absent from a Worker before migration 0015
+  resolution: z.string().nullable().optional(),
+  resolvedAt: z.number().nullable().optional(),
+  resolvedVersion: z.number().nullable().optional(),
   version: z.number().nullable(),
   videoId: z.string(),
 })
 export type AdminReport = z.infer<typeof reportSchema>
+
+export const isResolved = (report: AdminReport) =>
+  report.resolvedAt !== null && report.resolvedAt !== undefined
 
 export const useAdminReports = () =>
   useQuery({
@@ -142,6 +150,49 @@ export const useAdminReports = () =>
         .reports,
     queryKey: [QUERY_KEYS.GET_ADMIN_REPORTS],
   })
+
+const LIVE_VERSION_WAIT_MS = 4000
+
+// The song's live lyrics version, recorded as the one that fixed a report: an admin resolves once the fix is
+// live. Null when the lyrics server can't say in a few seconds, so resolving never waits on it
+const liveVersion = async (videoId: string) => {
+  try {
+    const { active } = await listLyricsVersions(
+      videoId,
+      AbortSignal.timeout(LIVE_VERSION_WAIT_MS)
+    )
+    return active
+  } catch {
+    return null
+  }
+}
+
+export const useSetReportResolved = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({
+      report,
+      resolved,
+    }: {
+      report: AdminReport
+      resolved: boolean
+    }) =>
+      await call(
+        `/reports/${encodeURIComponent(report.id)}/${resolved ? 'resolve' : 'reopen'}`,
+        {
+          body: JSON.stringify(
+            resolved ? { version: await liveVersion(report.videoId) } : {}
+          ),
+          method: 'POST',
+        }
+      ),
+    onSettled: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.GET_ADMIN_REPORTS],
+      })
+    },
+  })
+}
 
 // Leads on someone working around the song limit, from the last 7 days (worker/src/signals.ts)
 const flagSchema = z.enum([

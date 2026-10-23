@@ -74,10 +74,14 @@ const request = async <T>(
   return parsed.data
 }
 
-export const listLyricsVersions = async (videoId: string) =>
+export const listLyricsVersions = async (
+  videoId: string,
+  signal?: AbortSignal
+) =>
   await request(
     `/lyrics/${encodeURIComponent(videoId)}/versions`,
-    lyricsVersionsResponseSchema
+    lyricsVersionsResponseSchema,
+    { signal }
   )
 
 // Same shape as getSongLyricsById, so the player can show a version unchanged.

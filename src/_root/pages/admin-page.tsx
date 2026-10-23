@@ -4,6 +4,7 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   EllipsisIcon,
+  Undo2Icon,
 } from 'lucide-react'
 import { useState } from 'react'
 import type { ReactNode } from 'react'
@@ -39,6 +40,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useToast } from '@/components/ui/use-toast'
 import {
   GUESTS,
+  isResolved,
   useAdminGenerations,
   useAdminReports,
   useAdminSettings,
@@ -47,6 +49,7 @@ import {
   useSetBlocked,
   useSetGenerationEnabled,
   useSetDailyLimit,
+  useSetReportResolved,
 } from '@/lib/admin-console'
 import type {
   AdminGeneration,
@@ -926,6 +929,55 @@ const clientLabel = (client: string | null) => {
   return [match(DEVICES), match(BROWSERS)].filter(Boolean).join(' ') || null
 }
 
+// Resolving is one press and undone by Reopen, so neither asks first
+const ReportAction = ({ report }: { report: AdminReport }) => {
+  const { toast } = useToast()
+  const { isPending, mutate } = useSetReportResolved()
+  const resolved = isResolved(report)
+  const status = [
+    'Resolved',
+    typeof report.resolvedVersion === 'number'
+      ? `v${report.resolvedVersion}`
+      : null,
+    report.resolution,
+  ]
+    .filter(Boolean)
+    .join(' · ')
+  return (
+    <div className='flex min-w-0 shrink-0 items-center gap-2'>
+      {resolved && (
+        <span className='max-w-48 truncate text-xs text-success'>{status}</span>
+      )}
+      <Button
+        size='row'
+        variant='outline'
+        disabled={isPending}
+        className='relative shrink-0 touch:after:absolute touch:after:inset-x-0 touch:after:-inset-y-2'
+        onClick={() => {
+          mutate(
+            { report, resolved: !resolved },
+            {
+              onError: (error) => {
+                toast({
+                  description: error.message,
+                  title: resolved ? 'Could Not Reopen' : 'Could Not Resolve',
+                  variant: 'destructive',
+                })
+              },
+            }
+          )
+        }}>
+        {resolved ? (
+          <Undo2Icon className='size-3.5' />
+        ) : (
+          <CheckIcon className='size-3.5' />
+        )}
+        {resolved ? 'Reopen' : 'Resolve'}
+      </Button>
+    </div>
+  )
+}
+
 const ReportItem = ({ report }: { report: AdminReport }) => {
   const { data: songInfo } = useGetSongInfoBySongId(report.videoId)
   const by = isGuest(report) ? 'Guest' : (report.name ?? 'Deleted Account')
@@ -947,20 +999,29 @@ const ReportItem = ({ report }: { report: AdminReport }) => {
           {where}
         </span>
       </div>
-      <p className='text-pretty whitespace-pre-wrap text-foreground'>
+      <p
+        className={cn(
+          'text-pretty whitespace-pre-wrap',
+          isResolved(report) ? 'text-muted-foreground' : 'text-foreground'
+        )}>
         {report.message}
       </p>
-      <p className='truncate text-xs text-muted-foreground'>
-        {[by, clientLabel(report.client)].filter(Boolean).join(' · ')} ·{' '}
-        <When value={report.createdAt} />
-      </p>
+      <div className='flex items-center justify-between gap-3'>
+        <p className='min-w-0 truncate text-xs text-muted-foreground'>
+          {[by, clientLabel(report.client)].filter(Boolean).join(' · ')} ·{' '}
+          <When value={report.createdAt} />
+        </p>
+        <ReportAction report={report} />
+      </div>
     </li>
   )
 }
 
-// What listeners reported, newest first: the song, where in it, and what was wrong
+// What listeners reported, newest first: the song, where in it, and what was wrong. Resolved ones are hidden
+// until asked for
 const ReportsList = () => {
   const { data: reports, error } = useAdminReports()
+  const [showResolved, setShowResolved] = useState(false)
   if (error !== null) {
     return <p className='text-sm text-error'>{error.message}</p>
   }
@@ -974,12 +1035,36 @@ const ReportsList = () => {
       </p>
     )
   }
+  const resolvedCount = reports.filter(isResolved).length
+  const shown = showResolved
+    ? reports
+    : reports.filter((report) => !isResolved(report))
   return (
-    <ul className='text-sm'>
-      {reports.map((report) => (
-        <ReportItem key={report.id} report={report} />
-      ))}
-    </ul>
+    <div className='flex flex-col gap-3'>
+      {resolvedCount > 0 && (
+        <Button
+          size='sm'
+          variant='toggle'
+          aria-pressed={showResolved}
+          className='self-start'
+          onClick={() => {
+            setShowResolved(!showResolved)
+          }}>
+          Show Resolved · {resolvedCount}
+        </Button>
+      )}
+      {shown.length === 0 ? (
+        <p className='py-6 text-center text-sm text-muted-foreground'>
+          No open reports.
+        </p>
+      ) : (
+        <ul className='text-sm'>
+          {shown.map((report) => (
+            <ReportItem key={report.id} report={report} />
+          ))}
+        </ul>
+      )}
+    </div>
   )
 }
 
