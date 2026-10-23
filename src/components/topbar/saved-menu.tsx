@@ -27,13 +27,8 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip'
 import { PlaylistCover } from '@/components/watch/playlist-cover'
+import { useHoverMenu } from '@/hooks/use-hover-menu'
 import {
   clearHistoryAtom,
   favoritesAtom,
@@ -105,6 +100,7 @@ const LIST = 'min-h-0 overflow-y-auto overscroll-contain p-2'
 // The top bar's one entry for songs to come back to: Bookmarks, and the History of songs played here
 const SavedMenu = () => {
   const [open, setOpen] = useState(false)
+  const menu = useHoverMenu(open, setOpen)
   // Kept while the app is open, so the menu reopens where it was left; a new visit starts on Bookmarks
   const [tab, setTab] = useState<SavedTab>('bookmarks')
   const [confirmingClear, setConfirmingClear] = useState(false)
@@ -119,26 +115,25 @@ const SavedMenu = () => {
   }
 
   return (
-    <TooltipProvider>
-      <Popover open={open} onOpenChange={setOpen} modal>
-        <Tooltip>
-          <PopoverTrigger asChild>
-            <TooltipTrigger asChild>
-              <Button variant='toolbar' size='icon' {...newTabHandlers('/you')}>
-                {/* Filled while the menu is open, as a selected icon is */}
-                <BookmarkIcon className='h-6 w-6 shrink-0 in-aria-expanded:fill-current' />
-                <span className='sr-only'>Saved</span>
-              </Button>
-            </TooltipTrigger>
-          </PopoverTrigger>
-          <TooltipContent variant='accent'>Saved</TooltipContent>
-        </Tooltip>
+    <>
+      <Popover open={open} onOpenChange={setOpen} modal={!menu.byMouse}>
+        <PopoverTrigger asChild>
+          <Button
+            variant='toolbar'
+            size='icon'
+            {...menu.triggerAfter(newTabHandlers('/you'))}>
+            {/* Filled while the menu is open, as a selected icon is */}
+            <BookmarkIcon className='h-6 w-6 shrink-0 in-aria-expanded:fill-current' />
+            <span className='sr-only'>Saved</span>
+          </Button>
+        </PopoverTrigger>
         <PopoverContent
           align='end'
           sideOffset={10}
           collisionPadding={8}
           variant='floating'
           aria-label='Saved'
+          {...menu.content}
           className='flex max-h-[min(38rem,calc(var(--radix-popover-content-available-height)-var(--safe-bottom)))] w-[min(25rem,calc(100vw-1rem-var(--safe-left)-var(--safe-right)))] flex-col overflow-hidden'>
           <Tabs
             value={tab}
@@ -300,7 +295,7 @@ const SavedMenu = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </TooltipProvider>
+    </>
   )
 }
 

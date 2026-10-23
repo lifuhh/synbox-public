@@ -28,6 +28,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { useHoverMenu } from '@/hooks/use-hover-menu'
 import { lastAccount, signInWithGoogle, signOut, useMe } from '@/lib/auth'
 import type { Quota } from '@/lib/auth'
 import { forgetMySongs } from '@/lib/offline/sync'
@@ -88,9 +89,11 @@ export const quotaText = ({ limit, used }: Quota) => {
 const ProfileTrigger = ({
   user,
   pending,
+  menu,
 }: {
   user: { image: string | null } | null
   pending: boolean
+  menu: ReturnType<typeof useHoverMenu>
 }) => {
   const remembered = useMemo(() => lastAccount(), [])
   const account = pending ? remembered : user
@@ -111,7 +114,10 @@ const ProfileTrigger = ({
       }}>
       <DropdownMenuTrigger asChild>
         {slot === 'account' ? (
-          <Button variant='toolbar' size='icon' {...newTabHandlers('/you')}>
+          <Button
+            variant='toolbar'
+            size='icon'
+            {...menu.triggerAfter(newTabHandlers('/you'))}>
             <UserAvatar
               className='size-6'
               src={image === '' ? null : image}
@@ -120,7 +126,7 @@ const ProfileTrigger = ({
             <span className='sr-only'>Account</span>
           </Button>
         ) : (
-          <Button size='pill' gap='md'>
+          <Button size='pill' gap='md' {...menu.trigger}>
             {/* As far from the pill's left edge as from its top and bottom */}
             <GoogleMark className='-ml-1 sm:-ml-2' />
             Sign In
@@ -134,6 +140,8 @@ const ProfileTrigger = ({
 const ProfileButtonDropdown = () => {
   const install = useInstallMethod()
   const [iosHelpOpen, setIosHelpOpen] = useState(false)
+  const [open, setOpen] = useState(false)
+  const menu = useHoverMenu(open, setOpen)
   const queryClient = useQueryClient()
   const { data: me, isPending } = useMe()
   const user = me?.user ?? null
@@ -146,9 +154,10 @@ const ProfileButtonDropdown = () => {
 
   return (
     <>
-      <DropdownMenu>
-        <ProfileTrigger user={user} pending={isPending} />
+      <DropdownMenu open={open} onOpenChange={setOpen} modal={!menu.byMouse}>
+        <ProfileTrigger user={user} pending={isPending} menu={menu} />
         <DropdownMenuContent
+          {...menu.content}
           align='end'
           sideOffset={10}
           className='w-64 overflow-auto'>

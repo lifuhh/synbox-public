@@ -36,12 +36,7 @@ import {
   MyStyles,
   SaveStyle,
 } from './lyrics-style-scope'
-import {
-  RailButton,
-  RailInline,
-  RailTooltip,
-  railMenuSide,
-} from './rail-button'
+import { RailButton, RailInline, railMenuSide } from './rail-button'
 
 const HALF_FILLED: CSSProperties & Record<'--p', number> = { '--p': 0.5 }
 
@@ -379,31 +374,29 @@ export const LyricsThemePicker = ({
         }
       }}>
       <PopoverAnchor virtualRef={anchorRef} />
-      <RailTooltip label='Lyrics Style'>
-        <PopoverTrigger asChild>
-          <RailButton
-            label='Lyrics Style'
-            className={cn(panel !== 'closed' && 'bg-white/10')}
-            onPointerEnter={(event) => {
-              if (event.pointerType === 'mouse') {
-                peek.enter(true)
-              }
-            }}
-            onPointerLeave={(event) => {
-              if (event.pointerType === 'mouse') {
-                peek.leave(true)
-              }
-            }}
-            onClick={(event) => {
-              // A click pins a panel the hover only peeked open
-              event.preventDefault()
-              fromKeyboardRef.current = event.detail === 0
-              setPanel(panel === 'pinned' ? 'closed' : 'pinned')
-            }}>
-            <PaletteIcon className='size-5 shrink-0' />
-          </RailButton>
-        </PopoverTrigger>
-      </RailTooltip>
+      <PopoverTrigger asChild>
+        <RailButton
+          label='Lyrics Style'
+          className={cn(panel !== 'closed' && 'bg-white/10')}
+          onPointerEnter={(event) => {
+            if (event.pointerType === 'mouse') {
+              peek.enter(true)
+            }
+          }}
+          onPointerLeave={(event) => {
+            if (event.pointerType === 'mouse') {
+              peek.leave(true)
+            }
+          }}
+          onClick={(event) => {
+            // A click pins a panel the hover only peeked open
+            event.preventDefault()
+            fromKeyboardRef.current = event.detail === 0
+            setPanel(panel === 'pinned' ? 'closed' : 'pinned')
+          }}>
+          <PaletteIcon className='size-5 shrink-0' />
+        </RailButton>
+      </PopoverTrigger>
 
       <PopoverContent
         data-player-chrome

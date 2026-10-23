@@ -15,12 +15,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip'
+import { useHoverMenu } from '@/hooks/use-hover-menu'
 import type { Job } from '@/lib/generation/store'
 import {
   activeCount,
@@ -138,6 +133,7 @@ const Notifications = () => {
 
   const trigger = useRef<HTMLButtonElement>(null)
   const panel = useRef<HTMLDivElement>(null)
+  const menu = useHoverMenu(expanded, setGenerationExpanded)
   // A song started while the bar is hidden doesn't open a panel nobody can see or close from its button
   useLayoutEffect(() => {
     if (expanded && !isShown(trigger.current)) {
@@ -232,102 +228,95 @@ const Notifications = () => {
   }
 
   return (
-    <TooltipProvider>
-      <Popover
-        open={expanded}
-        onOpenChange={setGenerationExpanded}
-        modal={false}>
-        <Tooltip>
-          <PopoverTrigger asChild>
-            <TooltipTrigger asChild>
-              <Button
-                ref={trigger}
-                variant='toolbar'
-                size='icon'
-                aria-label={name}
-                // The top bar keeps it in view while the player's other controls fade, while songs generate
-                data-notifications
-                data-busy={ring || farewell !== null || undefined}
-                className={cn(
-                  'relative',
-                  (ring || farewell !== null) && 'pointer-events-auto'
-                )}
-                onClick={(event) => {
-                  pressed.current = !expanded
-                  byKeyboard.current = event.detail === 0
-                }}>
-                {icon()}
-              </Button>
-            </TooltipTrigger>
-          </PopoverTrigger>
-          <TooltipContent variant='accent'>Notifications</TooltipContent>
-        </Tooltip>
-        <PopoverContent
-          ref={panel}
-          align='end'
-          sideOffset={10}
-          collisionPadding={8}
-          variant='floating-tucked'
-          aria-label='Notifications'
-          // Held on screen while open or closing: the top bar stays in (globals.css) so the button it closes into is there
-          data-generation-panel
-          // Radix starts the open animation once the panel is placed
-          onAnimationStart={(event) => {
-            if (event.target === event.currentTarget) {
-              aimAtButton(panel.current, trigger.current)
-            }
-          }}
-          onOpenAutoFocus={(event) => {
-            // Onto the panel itself rather than its first button, which would show a focus ring after a
-            // press; Tab goes on from there
-            event.preventDefault()
-            if (pressed.current) {
-              panel.current?.focus({ preventScroll: true })
-            } else {
-              byKeyboard.current = false
-            }
-            pressed.current = false
-          }}
-          // Like the old panel, only a press outside closes it: focus moving elsewhere (a menu handing focus
-          // back to its button as the song starts) leaves it open
-          onFocusOutside={(event) => {
-            event.preventDefault()
-          }}
-          onFocus={() => {
-            focusInside.current = true
-          }}
-          onKeyDown={() => {
-            byKeyboard.current = true
-          }}
-          onPointerDown={() => {
-            byKeyboard.current = false
-          }}
-          onBlur={(event) => {
-            if (!event.currentTarget.contains(event.relatedTarget)) {
-              focusInside.current = false
-            }
-          }}
-          onCloseAutoFocus={(event) => {
-            event.preventDefault()
-            if (focusInside.current) {
-              trigger.current?.focus({
-                focusVisible: byKeyboard.current,
-                preventScroll: true,
-              })
-            }
-            focusInside.current = false
-          }}
-          className='max-h-[min(38rem,calc(var(--radix-popover-content-available-height)-var(--safe-bottom)))] w-[min(25rem,calc(100vw-1rem-var(--safe-left)-var(--safe-right)))] overflow-x-hidden overflow-y-auto overscroll-contain'>
-          {body === null ? (
-            <p className='px-6 py-8 text-center text-sm text-muted-foreground'>
-              No Notifications
-            </p>
-          ) : (
-            <GenerationPanel job={body} jobs={jobs} />
+    <Popover open={expanded} onOpenChange={setGenerationExpanded} modal={false}>
+      <PopoverTrigger asChild>
+        <Button
+          ref={trigger}
+          variant='toolbar'
+          size='icon'
+          aria-label={name}
+          // The top bar keeps it in view while the player's other controls fade, while songs generate
+          data-notifications
+          data-busy={ring || farewell !== null || undefined}
+          className={cn(
+            'relative',
+            (ring || farewell !== null) && 'pointer-events-auto'
           )}
-        </PopoverContent>
-      </Popover>
-    </TooltipProvider>
+          {...menu.trigger}
+          onClick={(event) => {
+            pressed.current = !expanded
+            byKeyboard.current = event.detail === 0
+            menu.trigger.onClick(event)
+          }}>
+          {icon()}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent
+        {...menu.content}
+        ref={panel}
+        align='end'
+        sideOffset={10}
+        collisionPadding={8}
+        variant='floating-tucked'
+        aria-label='Notifications'
+        // Held on screen while open or closing: the top bar stays in (globals.css) so the button it closes into is there
+        data-generation-panel
+        // Radix starts the open animation once the panel is placed
+        onAnimationStart={(event) => {
+          if (event.target === event.currentTarget) {
+            aimAtButton(panel.current, trigger.current)
+          }
+        }}
+        onOpenAutoFocus={(event) => {
+          // Onto the panel itself rather than its first button, which would show a focus ring after a
+          // press; Tab goes on from there
+          event.preventDefault()
+          if (pressed.current) {
+            panel.current?.focus({ preventScroll: true })
+          } else {
+            byKeyboard.current = false
+          }
+          pressed.current = false
+        }}
+        // Like the old panel, only a press outside closes it: focus moving elsewhere (a menu handing focus
+        // back to its button as the song starts) leaves it open
+        onFocusOutside={(event) => {
+          event.preventDefault()
+        }}
+        onFocus={() => {
+          focusInside.current = true
+        }}
+        onKeyDown={() => {
+          byKeyboard.current = true
+        }}
+        onPointerDown={() => {
+          byKeyboard.current = false
+        }}
+        onBlur={(event) => {
+          if (!event.currentTarget.contains(event.relatedTarget)) {
+            focusInside.current = false
+          }
+        }}
+        onCloseAutoFocus={(event) => {
+          event.preventDefault()
+          if (focusInside.current) {
+            trigger.current?.focus({
+              focusVisible: byKeyboard.current,
+              preventScroll: true,
+            })
+          }
+          focusInside.current = false
+        }}
+        className='max-h-[min(38rem,calc(var(--radix-popover-content-available-height)-var(--safe-bottom)))] w-[min(25rem,calc(100vw-1rem-var(--safe-left)-var(--safe-right)))] overflow-x-hidden overflow-y-auto overscroll-contain'>
+        {body === null ? (
+          <p className='px-6 py-8 text-center text-sm text-muted-foreground'>
+            No Notifications
+          </p>
+        ) : (
+          <GenerationPanel job={body} jobs={jobs} />
+        )}
+      </PopoverContent>
+    </Popover>
   )
 }
 
