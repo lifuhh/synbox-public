@@ -47,13 +47,29 @@ const DialogContentRender: React.ForwardRefRenderFunction<
   React.ComponentRef<typeof DialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> &
     VariantProps<typeof dialogContentVariants>
-> = ({ className, children, variant, ...props }, ref) => (
+> = ({ className, children, variant, onOpenAutoFocus, ...props }, ref) => (
   <DialogPortal>
     <DialogOverlay />
+    {/* Opens in place: it grows a little from its own centre and never starts off the screen (shadcn's slide-ins
+        add to the centring translate in Tailwind 4, starting it half a dialog to the left and above). On a
+        touch screen the dialog takes focus itself, not its first field: a keyboard rising as it opens pans the
+        page under it */}
     <DialogPrimitive.Content
       ref={ref}
+      onOpenAutoFocus={(event) => {
+        onOpenAutoFocus?.(event)
+        if (
+          !event.defaultPrevented &&
+          matchMedia('(pointer: coarse)').matches
+        ) {
+          event.preventDefault()
+          if (event.currentTarget instanceof HTMLElement) {
+            event.currentTarget.focus({ preventScroll: true })
+          }
+        }
+      }}
       className={cn(
-        'fixed top-[50%] left-[50%] z-50 grid max-h-[calc(var(--app-h)-2rem)] w-[calc(100%-2rem)] max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 overflow-y-auto rounded-2xl bg-popover p-6 shadow-panel duration-200 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%]',
+        'fixed top-[50%] left-[50%] z-50 grid max-h-[calc(var(--app-h)-2rem)] w-[calc(100%-2rem)] max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 overflow-y-auto rounded-2xl bg-popover p-6 shadow-panel duration-200 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95',
         dialogContentVariants({ variant }),
         className
       )}

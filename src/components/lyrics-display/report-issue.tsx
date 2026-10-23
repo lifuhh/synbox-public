@@ -95,7 +95,6 @@ export const ReportIssue = ({
             value={message}
             maxLength={REPORT_MESSAGE_MAX}
             rows={4}
-            autoFocus
             placeholder='What’s wrong?'
             onChange={(event) => {
               setMessage(event.target.value)
