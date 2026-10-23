@@ -1,5 +1,5 @@
 import type { Database } from 'bun:sqlite'
-import { beforeEach, expect, test } from 'bun:test'
+import { beforeEach, describe, expect, test } from 'bun:test'
 
 import type { Owner } from './quota'
 import {
@@ -13,7 +13,7 @@ import { migratedD1 } from './test-d1'
 let db: D1Database
 let sqlite: Database
 const now = new Date('2026-10-21T10:00:00Z')
-const LIMITS = { guest: 1, guestTotal: 2, user: 2 }
+const LIMITS = { guest: 1, guestTotal: 2, network: 100, user: 2 }
 const reserve = async (id: string, userId = 'u1', videoId = 'v') =>
   await reserveGeneration(
     db,
@@ -236,4 +236,104 @@ test('a generation nobody reports on for 15 minutes stops counting; one that rep
       status: 'reserved',
     },
   ])
+})
+
+const user = (id: string): Owner => ({ id, kind: 'user' })
+
+describe('alternate accounts on one network', () => {
+  const NETWORK_LIMITS = { ...LIMITS, network: 3 }
+  const reserveFrom = async (
+    id: string,
+    owner: Owner,
+    network: string,
+    client = 'Mozilla/5.0'
+  ) =>
+    await reserveGeneration(
+      db,
+      { client, id, kind: 'new', network, owner, videoId: 'v' },
+      NETWORK_LIMITS,
+      now
+    )
+
+  beforeEach(() => {
+    const insert = sqlite.prepare(
+      `insert into "user" ("id", "name", "email", "emailVerified", "createdAt", "updatedAt", "role", "banned") values (?, 'n', ?, 1, 0, 0, 'user', 0)`
+    )
+    insert.run('u2', 'u2@x')
+    insert.run('u3', 'u3@x')
+    insert.run('vip', 'vip@x')
+    sqlite.run(
+      `insert into "quotaOverride" values ('vip', null, null, 'admin', 0)`
+    )
+  })
+
+  test('share the network cap, whichever account or guest asks', async () => {
+    expect(await reserveFrom('a1', user('u1'), 'net-a')).toEqual({
+      outcome: 'reserved',
+    })
+    expect(await reserveFrom('a2', user('u1'), 'net-a')).toEqual({
+      outcome: 'reserved',
+    })
+    expect(await reserveFrom('b1', user('u2'), 'net-a')).toEqual({
+      outcome: 'reserved',
+    })
+    // A fresh account on the same network finds the network full
+    expect(await reserveFrom('c1', user('u3'), 'net-a')).toEqual({
+      outcome: 'network_limit',
+    })
+    expect(
+      await reserveFrom('g1', { key: 'net-a', kind: 'guest' }, 'net-a')
+    ).toEqual({ outcome: 'network_limit' })
+    // The same account elsewhere is not held back by net-a
+    expect(await reserveFrom('c2', user('u3'), 'net-b')).toEqual({
+      outcome: 'reserved',
+    })
+  })
+
+  test('admins and No Limit accounts neither count nor get capped, and a failed song frees the slot', async () => {
+    await reserveFrom('a1', user('u1'), 'net-a')
+    await reserveFrom('a2', user('u1'), 'net-a')
+    expect(await reserveFrom('v1', user('vip'), 'net-a')).toEqual({
+      outcome: 'reserved',
+    })
+    expect(await reserveFrom('x1', user('admin'), 'net-a')).toEqual({
+      outcome: 'reserved',
+    })
+    expect(await reserveFrom('b1', user('u2'), 'net-a')).toEqual({
+      outcome: 'reserved',
+    })
+    expect(await reserveFrom('b2', user('u2'), 'net-a')).toEqual({
+      outcome: 'network_limit',
+    })
+    await finishGeneration(db, 'a2', { status: 'failed' }, now)
+    expect(await reserveFrom('b2', user('u2'), 'net-a')).toEqual({
+      outcome: 'reserved',
+    })
+  })
+
+  test('the check answers the network cap too, and a reserve refusal is recorded for the admin page', async () => {
+    await reserveFrom('a1', user('u1'), 'net-a')
+    await reserveFrom('a2', user('u1'), 'net-a')
+    await reserveFrom('b1', user('u2'), 'net-a')
+    expect(
+      await checkGeneration(
+        db,
+        { kind: 'new', network: 'net-a', owner: user('u3'), videoId: 'v' },
+        NETWORK_LIMITS,
+        now
+      )
+    ).toEqual({ outcome: 'network_limit' })
+    await reserveFrom('c1', user('u3'), 'net-a')
+    await reserveFrom('a3', user('u1'), 'net-a')
+    expect(
+      sqlite
+        .query(
+          `select "code", "userId", "networkKey" from "refusal" order by "code"`
+        )
+        .all()
+    ).toEqual([
+      { code: 'network_limit', networkKey: 'net-a', userId: 'u3' },
+      { code: 'quota_exceeded', networkKey: 'net-a', userId: 'u1' },
+    ])
+  })
 })

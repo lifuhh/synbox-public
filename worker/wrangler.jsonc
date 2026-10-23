@@ -23,6 +23,7 @@
     "USER_DAILY_LIMIT": "10",
     "GUEST_DAILY_LIMIT": "1",
     "GUEST_DAILY_TOTAL": "20",
+    "NETWORK_DAILY_LIMIT": "30",
     "TRUSTED_ORIGINS": "https://synbox.io,https://www.synbox.io,https://synbox.netlify.app",
   },
   "env": {
@@ -41,6 +42,7 @@
         "USER_DAILY_LIMIT": "10",
         "GUEST_DAILY_LIMIT": "1",
         "GUEST_DAILY_TOTAL": "20",
+        "NETWORK_DAILY_LIMIT": "30",
         "TRUSTED_ORIGINS": "http://localhost:5173",
       },
     },
