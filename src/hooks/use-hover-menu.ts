@@ -1,15 +1,12 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import type { MouseEvent, PointerEvent } from 'react'
 
-// A menu opens once the pointer has rested on its button this long: NN/g and Baymard put the intent pause for
-// hover menus at 300-500 ms, and anything shorter opens menus the pointer only crosses
-export const HOVER_OPEN_MS = 300
+// A menu opens once the pointer has rested on its button this long, plus the panel's 200 ms fade. Long enough that
+// a quick pass over a button opens nothing; a slow drift over one does. NN/g's 300-500 ms felt far too slow
+export const HOVER_OPEN_MS = 100
 // and closes once the pointer has been off both the button and the menu this long (NN/g: 0.5 s), so a pointer
 // that slips past the menu's edge or crosses the gap to it doesn't lose it
 export const HOVER_CLOSE_MS = 500
-// Moving from one open menu's button to the next opens the next at once, as a menu bar does, within this long of
-// the last one closing (Radix's skipDelayDuration)
-const SWITCH_MS = 300
 
 interface Point {
   x: number
@@ -26,9 +23,27 @@ interface Shown {
   leftAt: Point | null
 }
 let shown: Shown | null = null
-let closedAt = Number.NEGATIVE_INFINITY
 
 const mouse = (event: PointerEvent) => event.pointerType === 'mouse'
+
+// How long until every menu that is closing has finished its exit animation (a fade, the bell's shrink), so the
+// next menu opens after it and two panels are never on screen. An exit can't be cut short: Radix's Presence would
+// wait for an `animationend` that never comes
+const exitLeft = () => {
+  let left = 0
+  for (const panel of document.querySelectorAll(
+    '[data-radix-popper-content-wrapper] > [data-state="closed"]'
+  )) {
+    for (const animation of panel.getAnimations({ subtree: true })) {
+      const end = animation.effect?.getComputedTiming().endTime
+      const now = animation.currentTime
+      if (typeof end === 'number' && typeof now === 'number') {
+        left = Math.max(left, end - now)
+      }
+    }
+  }
+  return left
+}
 
 const cross = (a: Point, b: Point, c: Point) =>
   (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x)
@@ -118,7 +133,6 @@ export const useHoverMenu = (
   useEffect(() => {
     if (!open && shown?.id === id) {
       shown = null
-      closedAt = performance.now()
     }
   }, [open, id])
   useEffect(
@@ -184,16 +198,20 @@ export const useHoverMenu = (
         return
       }
       const at = { x: event.clientX, y: event.clientY }
-      const switching =
-        (shown !== null && shown.id !== id && !aiming(shown, at)) ||
-        (shown === null && performance.now() - closedAt < SWITCH_MS)
-      if (switching) {
+      // Moving from one open menu's button to the next swaps them at once, as a menu bar does
+      if (shown !== null && shown.id !== id && !aiming(shown, at)) {
         openNow(true)
         return
       }
-      timer.current = setTimeout(() => {
+      const openAfterExits = () => {
+        const left = exitLeft()
+        if (left > 0) {
+          timer.current = setTimeout(openAfterExits, left)
+          return
+        }
         openNow(false)
-      }, HOVER_OPEN_MS)
+      }
+      timer.current = setTimeout(openAfterExits, HOVER_OPEN_MS)
     },
     onPointerLeave: (event: PointerEvent) => {
       if (!mouse(event)) {
