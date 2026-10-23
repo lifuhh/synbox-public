@@ -13,6 +13,7 @@ import {
   previousSong,
   reshuffle,
 } from './model'
+import type { ListeningState } from './model'
 import { cryptoRandom } from './shuffle'
 
 const song = (videoId: string) => ({
@@ -136,6 +137,29 @@ const playing = (context: ReturnType<typeof playPlaylist>, queue = []) => ({
   queue,
 })
 
+// The songs played from `current` on, pressing Next each time and following each song as the player does: a song
+// from the queue leaves the playlist waiting
+const playAll = (
+  state: ListeningState,
+  current: string,
+  songs: string[] = []
+): string[] => {
+  const next = nextSong(state, current, [], [], true)
+  if (next === null || songs.length >= 20) {
+    return songs
+  }
+  const queued = next.context === state.context
+  return playAll(
+    {
+      autoplay: state.autoplay,
+      context: followSong(next.context, next.song.videoId, queued),
+      queue: next.queue,
+    },
+    next.song.videoId,
+    [...songs, next.song.videoId]
+  )
+}
+
 describe('playing a playlist', () => {
   const list = newPlaylist(
     'Mix',
@@ -207,7 +231,7 @@ describe('playing a playlist', () => {
       cryptoRandom
     )
     expect(followSong(context, 'c', false)?.at).toBe(2)
-    expect(followSong(context, 'x', true)).toBe(context)
+    expect(followSong(context, 'x', true)).toEqual({ ...context, current: 'x' })
     expect(followSong(context, 'x', false)).toBeNull()
   })
 
@@ -221,19 +245,66 @@ describe('playing a playlist', () => {
     expect(ids(context.order).toSorted()).toEqual(['a', 'b', 'c', 'd'])
   })
 
-  it('keeps what was played when shuffle turns on, and the playlist order after the song when it turns off', () => {
+  it('plays a queued song of the playlist once, without skipping the songs before it', () => {
+    const context = playPlaylist(
+      list,
+      { from: 0, shuffled: false },
+      cryptoRandom
+    )
+    expect(playAll({ ...playing(context), queue: [song('d')] }, 'a')).toEqual([
+      'd',
+      'b',
+      'c',
+    ])
+  })
+
+  it('shuffles every song not yet played, those before the one it started from too', () => {
+    const context = playPlaylist(
+      list,
+      { from: 3, shuffled: false },
+      cryptoRandom
+    )
+    const on = reshuffle(context, list.songs, true, cryptoRandom)
+    expect(playAll(playing(on), 'd').toSorted()).toEqual(['a', 'b', 'c'])
+  })
+
+  it('goes on in the playlist order after its song when shuffle turns off', () => {
     const context = playPlaylist(
       list,
       { from: 1, shuffled: false },
       cryptoRandom
     )
-    const on = reshuffle(context, list, true, cryptoRandom)
-    expect(ids(on.order.slice(0, 2))).toEqual(['a', 'b'])
-    expect(ids(on.order).toSorted()).toEqual(['a', 'b', 'c', 'd'])
-    const off = reshuffle({ ...on, at: 3 }, list, false, cryptoRandom)
-    expect(off.order).toBe(list.songs)
-    expect(off.at).toBe(
-      list.songs.findIndex((s) => s.videoId === on.order[3].videoId)
+    const on = reshuffle(context, list.songs, true, cryptoRandom)
+    const off = reshuffle(on, list.songs, false, cryptoRandom)
+    expect(playAll(playing(off), 'b')).toEqual(['c', 'd'])
+  })
+
+  it('steps back by place inside the playlist, and plays the song it left again', () => {
+    const context = playPlaylist(
+      list,
+      { from: 0, shuffled: false },
+      cryptoRandom
     )
+    const atC = followSong(followSong(context, 'b', false), 'c', false)
+    const back = previousSong(
+      [song('a'), song('b')],
+      { context: atC, queue: [] },
+      song('c')
+    )
+    expect(back?.song.videoId).toBe('b')
+    const there = followSong(back?.context ?? null, 'b', true)
+    expect(
+      playAll({ ...playing(there ?? context), queue: back?.queue ?? [] }, 'b')
+    ).toEqual(['c', 'd'])
+  })
+
+  it('changes nothing when its own song opens again (the resume bar, a reload)', () => {
+    const context = playPlaylist(
+      list,
+      { from: 0, shuffled: false },
+      cryptoRandom
+    )
+    const queued = followSong(context, 'x', true)
+    expect(followSong(queued, 'x', false)).toBe(queued)
   })
 })

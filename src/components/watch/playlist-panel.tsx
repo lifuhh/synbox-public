@@ -4,15 +4,16 @@ import { useLayoutEffect, useRef, useState } from 'react'
 import { Link } from 'react-router'
 
 import { Button } from '@/components/ui/button'
+import { contextNext } from '@/lib/listening/model'
 import { contextAtom, useListening } from '@/lib/listening/store'
 import { cn } from '@/utils/cn'
 
 import { SongRow } from './song-row'
 
-// The playlist being played, over Up Next, as YouTube shows one: its name and where in it the song is, Shuffle,
-// and every song in the order they play, the one playing marked and those played dimmed; a row plays that song
-// and the playlist goes on from it. × stops playing the playlist (the song plays on). On a phone it folds to its
-// header and the next song, to keep Up Next in reach
+// The playlist being played, over Up Next, as YouTube shows one: its name and where in it the song is (or, while
+// a queued song plays, what it goes on with), Shuffle, and every song in the order they play, the one playing
+// marked and those played dimmed; a row plays that song and the playlist goes on from it. × stops playing the
+// playlist (the song plays on). On a phone it folds to its header and the next song, to keep Up Next in reach
 export const PlaylistPanel = ({
   videoId,
   foldable,
@@ -28,22 +29,23 @@ export const PlaylistPanel = ({
   const { leavePlaylist, setShuffled } = useListening()
   const [open, setOpen] = useState(!foldable)
   const list = useRef<HTMLUListElement>(null)
-  const playing = context?.order.findIndex((song) => song.videoId === videoId)
-  const at = playing === undefined || playing < 0 ? (context?.at ?? 0) : playing
-  // The song playing at the top of the list's view, with the one before it showing: on a new song, a new order
-  // (Shuffle) and when the list unfolds
+  const playing =
+    context?.order.findIndex((song) => song.videoId === videoId) ?? -1
+  // The list's place: the song playing, or while a queued one plays the playlist's own last song
+  const place = playing === -1 ? (context?.at ?? 0) : playing
+  // That place at the top of the list's view, with the song before it showing: on a new song, a new order
+  // (Shuffle) and when the list unfolds. The list is the rows' offset parent
   const order = context?.order
   useLayoutEffect(() => {
-    const box = list.current
-    const row = box?.children[Math.max(at - 1, 0)]
-    if (open && order !== undefined && box && row instanceof HTMLElement) {
-      box.scrollTo({ top: row.offsetTop - box.offsetTop })
+    const row = list.current?.children[Math.max(place - 1, 0)]
+    if (open && order !== undefined && row instanceof HTMLElement) {
+      list.current?.scrollTo({ top: row.offsetTop })
     }
-  }, [at, open, order])
+  }, [place, open, order])
   if (context === null) {
     return null
   }
-  const next = context.order[at + 1]
+  const next = context.order[contextNext(context, videoId)]
   return (
     <section
       aria-label={`Playlist ${context.name}`}
@@ -56,8 +58,11 @@ export const PlaylistPanel = ({
             {context.name}
           </Link>
           <p className='truncate text-xs text-muted-foreground tabular-nums'>
-            Playlist · {at + 1}/{context.order.length}
-            {!open && next !== undefined && ` · Next: ${next.title}`}
+            Playlist
+            {playing !== -1 && ` · ${playing + 1}/${context.order.length}`}
+            {(!open || playing === -1) &&
+              next !== undefined &&
+              ` · Next: ${next.title}`}
           </p>
         </div>
         <Button
@@ -104,8 +109,12 @@ export const PlaylistPanel = ({
               key={song.videoId}
               song={song}
               large={large}
-              current={index === at}
-              className={cn(index < at && 'opacity-60')}
+              current={index === playing}
+              className={cn(
+                index !== playing &&
+                  context.played.includes(song.videoId) &&
+                  'opacity-60'
+              )}
               lead={
                 <span
                   aria-hidden
@@ -113,7 +122,7 @@ export const PlaylistPanel = ({
                     'w-6 shrink-0 text-center text-xs text-muted-foreground tabular-nums',
                     large && 'self-center'
                   )}>
-                  {index === at ? '▶' : index + 1}
+                  {index === playing ? '▶' : index + 1}
                 </span>
               }
             />

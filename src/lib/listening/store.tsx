@@ -20,16 +20,29 @@ import {
 } from './model'
 import { cryptoRandom } from './shuffle'
 
-// The queue and autoplay live on this device; playlists follow the account (lib/library)
-export const queueAtom = atomWithStorage<ListSong[]>('listeningQueue', [])
-// The playlist being played through, after the queue (model › PlayContext). Read on the first render: the
-// player follows the song with it at once, and would otherwise save an empty value over the stored one
-export const contextAtom = atomWithStorage<PlayContext | null>(
-  'listeningContext',
-  null,
+// The queue and autoplay live on this device; playlists follow the account (lib/library). Both lists are read
+// on the first render: a change made before anything showed them (Add to Queue from the home page, the player
+// following its song) would otherwise start from an empty list and save it over the stored one
+export const queueAtom = atomWithStorage<ListSong[]>(
+  'listeningQueue',
+  [],
   undefined,
   { getOnInit: true }
 )
+// The playlist being played through, after the queue (model › PlayContext). Each tab plays its own: another
+// tab opening a song must not end or move this one's
+export const contextAtom = atomWithStorage<PlayContext | null>(
+  'listeningContext',
+  null,
+  createJSONStorage(() => sessionStorage),
+  { getOnInit: true }
+)
+// Where a playlist's songs once went into the queue, before the playlist being played had its own place
+try {
+  localStorage.removeItem('listeningSource')
+} catch {
+  // Storage blocked: nothing to tidy
+}
 export const autoplayAtom = atomWithStorage(
   'listeningAutoplay',
   true,
@@ -224,8 +237,11 @@ export const useListening = () => {
     const list = store
       .get(playlistsAtom)
       .find((saved) => saved.id === context?.id)
-    if (context !== null && list !== undefined) {
-      setContext(reshuffle(context, list, shuffled, cryptoRandom))
+    if (context !== null) {
+      // A playlist deleted while it plays still shuffles what it had
+      setContext(
+        reshuffle(context, list?.songs ?? context.order, shuffled, cryptoRandom)
+      )
     }
   }
   // Stops playing the playlist: the song plays on, then the queue and recommendations

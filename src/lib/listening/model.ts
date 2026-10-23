@@ -24,9 +24,28 @@ export interface PlayContext {
   // time it is played
   order: ListSong[]
   shuffled: boolean
-  // The song of `order` playing now, or the last one played before a queued song; -1 before the first
+  // Where in `order` the playlist is: the song of it playing now, or the last one played before a queued song.
+  // It goes on from the next song after this one that it hasn't played
   at: number
+  // The playlist's songs played while it plays, wherever they were played from (the queue too), so none plays
+  // twice
+  played: string[]
+  // The song the playlist last followed (followSong): opening it again (the resume bar, a reload) changes nothing
+  current: string
 }
+
+const placeOf = (context: PlayContext, videoId: string) =>
+  context.order.findIndex((song) => song.videoId === videoId)
+
+// The playlist's song to play after `current`: the first after its place that it hasn't played; -1 when it has
+// none left
+export const contextNext = (context: PlayContext, current: string) =>
+  context.order.findIndex(
+    (song, index) =>
+      index > context.at &&
+      song.videoId !== current &&
+      !context.played.includes(song.videoId)
+  )
 
 export interface ListeningState {
   // Songs the listener lined up, played before anything else, first one next
@@ -96,9 +115,7 @@ export const nextSong = (
   }
   const { context } = state
   if (context !== null) {
-    const at = context.order.findIndex(
-      (song, index) => index > context.at && song.videoId !== current
-    )
+    const at = contextNext(context, current)
     if (at !== -1) {
       return { context: { ...context, at }, queue, song: context.order[at] }
     }
@@ -120,9 +137,10 @@ export const leftSong = (played: ListSong[], song: ListSong) =>
     ? played
     : [...played, song].slice(-PLAYED_KEEP)
 
-// Previous: the song played before `current`, taken off the trail; null when nothing was played before it. Next
-// then comes back to `current`: a playlist's song by stepping the playlist back before it, any other song by
-// putting it first in the queue
+// Previous: the song played before `current`, taken off the trail; null when nothing was played before it.
+// Between two of the playlist's songs it steps the playlist back by place: the playlist goes on from the song it
+// went back to, and `current` can play again. Otherwise `current` goes first in the queue, so Next comes back to
+// it
 export const previousSong = (
   played: ListSong[],
   state: Pick<ListeningState, 'queue' | 'context'>,
@@ -134,12 +152,15 @@ export const previousSong = (
     return null
   }
   const { context, queue } = state
-  const at =
-    context?.order.findIndex((listed) => listed.videoId === current.videoId) ??
-    -1
-  return context !== null && at >= 0
+  const from = context === null ? -1 : placeOf(context, current.videoId)
+  const to = context === null ? -1 : placeOf(context, song.videoId)
+  return context !== null && from !== -1 && to !== -1
     ? {
-        context: { ...context, at: at - 1 },
+        context: {
+          ...context,
+          at: to,
+          played: context.played.filter((id) => id !== current.videoId),
+        },
         played: trail.slice(0, -1),
         queue,
         song,
@@ -152,21 +173,29 @@ export const previousSong = (
       }
 }
 
-// The playlist after a song opens: a song of the playlist becomes its place; a song from the queue, or one
-// Previous went back to (`kept`), leaves it waiting; any other song the listener picked ends it
+// The playlist after a song opens. One it followed last stays as it is. One opened from the queue or by
+// Previous (`kept`) leaves its place alone; if it is one of its songs it counts as played. Any other of its
+// songs (Next, a row in its panel) becomes its place. Any other song the listener picked ends it
 export const followSong = (
   context: PlayContext | null,
   videoId: string,
   kept: boolean
 ): PlayContext | null => {
-  if (context === null) {
-    return null
+  if (context === null || videoId === context.current) {
+    return context
   }
-  const at = context.order.findIndex((song) => song.videoId === videoId)
+  const at = placeOf(context, videoId)
   if (at === -1) {
-    return kept ? context : null
+    return kept ? { ...context, current: videoId } : null
   }
-  return at === context.at ? context : { ...context, at }
+  return {
+    ...context,
+    at: kept ? context.at : at,
+    current: videoId,
+    played: context.played.includes(videoId)
+      ? context.played
+      : [...context.played, videoId],
+  }
 }
 
 const artistOf = (song: ListSong) => song.author
@@ -183,8 +212,19 @@ export const playPlaylist = (
     kind: 'playlist',
     name: playlist.name,
   } as const
+  const begin = (order: ListSong[], at: number) => {
+    const song = order[at]
+    return {
+      ...base,
+      at,
+      current: song.videoId,
+      order,
+      played: [song.videoId],
+      shuffled,
+    }
+  }
   if (!shuffled) {
-    return { ...base, at: from ?? 0, order: playlist.songs, shuffled }
+    return begin(playlist.songs, from ?? 0)
   }
   const start = from === undefined ? undefined : playlist.songs[from]
   const rest = spreadShuffle(
@@ -194,37 +234,34 @@ export const playPlaylist = (
     artistOf,
     random
   )
-  return {
-    ...base,
-    at: 0,
-    order: start === undefined ? rest : [start, ...rest],
-    shuffled,
-  }
+  return begin(start === undefined ? rest : [start, ...rest], 0)
 }
 
-// Shuffle turned on or off while a playlist plays: the songs already played keep their places and a new shuffle
-// of the rest follows; off, the playlist's own order goes on after the song playing
+// Shuffle turned on or off while a playlist plays. On: the songs played lead, and a new shuffle of every song not
+// yet played follows, those listed before the one it started from too. Off: the playlist's own order, going on
+// after its song played last
 export const reshuffle = (
   context: PlayContext,
-  playlist: Playlist,
+  songs: ListSong[],
   shuffled: boolean,
   random: Random
 ): PlayContext => {
+  const done = new Set(context.played)
   if (shuffled) {
-    const played = context.order.slice(0, context.at + 1)
-    const done = new Set(played.map((song) => song.videoId))
-    const rest = playlist.songs.filter((song) => !done.has(song.videoId))
+    const played = context.order.filter((song) => done.has(song.videoId))
+    const rest = songs.filter((song) => !done.has(song.videoId))
     return {
       ...context,
+      at: played.length - 1,
       order: [...played, ...spreadShuffle(rest, artistOf, random)],
       shuffled,
     }
   }
-  const current = context.order[context.at]
+  const last = context.order[context.at]?.videoId
   return {
     ...context,
-    at: playlist.songs.findIndex((song) => song.videoId === current?.videoId),
-    order: playlist.songs,
+    at: songs.findIndex((song) => song.videoId === last),
+    order: songs,
     shuffled,
   }
 }
