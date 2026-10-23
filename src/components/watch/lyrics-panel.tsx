@@ -1,4 +1,4 @@
-import { useAtomValue } from 'jotai'
+import { useAtomValue, useSetAtom } from 'jotai'
 import { LocateFixedIcon } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 
@@ -14,6 +14,7 @@ import { parseLyricsText } from '@/components/player-stage/stage-lyrics'
 import { Button } from '@/components/ui/button'
 import {
   lyricsCustomHueAtom,
+  lyricsStylePanelAtom,
   lyricsThemeIdAtom,
   lyricsVisibilityAtom,
   romajiVisibilityAtom,
@@ -40,6 +41,8 @@ const LEAD_SEC = 0.15
 const SEEK_JUMP_SEC = 1.5
 // A clock that hasn't moved for this long is paused
 const PAUSED_AFTER_MS = 500
+// A press held longer than this is the start of a look around the song, not a tap
+const TAP_MAX_MS = 500
 const NO_LINES: OfflineLine[] = []
 
 // The song's lines as the reader draws them, with karaoke timing where it was made for exactly these lines
@@ -65,14 +68,45 @@ const useSongLines = (videoId: string, version: number | null) => {
   return { lines, loading: version === null && isPending }
 }
 
+// A tap on the band opens Lyrics Style; a press held longer is the start of a look around the song
+const useStyleTap = () => {
+  const setStylePanel = useSetAtom(lyricsStylePanelAtom)
+  const pressedAt = useRef(0)
+  return {
+    onClick: () => {
+      if (performance.now() - pressedAt.current < TAP_MAX_MS) {
+        setStylePanel('pinned')
+      }
+    },
+    onPointerDown: () => {
+      pressedAt.current = performance.now()
+    },
+  }
+}
+
+// The line before the sung one fades out at the top edge instead of being cut through; the fade's height is
+// padding too, so the first line (its furigana included) starts below it. Under the last line, only room to
+// clear Current Line (12px off the foot, 36px tall) and a gap. Scrolling on past either end moves the page, so
+// the wheel never goes dead over the panel. The band fades at both edges (watch-lyrics-band-scroller)
+const scrollerLook = (band: boolean, empty: boolean) => {
+  if (!band) {
+    return '[mask-image:linear-gradient(to_bottom,transparent,#000_1.25rem)] pt-5 pb-16'
+  }
+  return empty ? 'grid place-items-center' : 'watch-lyrics-band-scroller'
+}
+
 // The whole song beside or under the video: the line being sung lights up and fills as it is sung, the panel
 // follows it until the viewer scrolls, and a tap on a line plays from there. The same toggles as the
-// player's rail choose the rows
+// player's rail choose the rows.
+// As a band (under the video on a phone held upright) it is a karaoke window instead: the sung line centred at
+// the Lyrics Style size, the lines either side fading out at its edges, and a tap opens Lyrics Style, never a
+// seek. Holding and scrolling reads elsewhere until Current Line or a seek, while the song plays on
 export const LyricsPanel = ({
   videoId,
   version,
   heading = true,
   followAt = 0.3,
+  band = false,
   className,
 }: {
   videoId: string
@@ -81,6 +115,7 @@ export const LyricsPanel = ({
   followAt?: number
   // Under a Lyrics tab the panel needs no title of its own
   heading?: boolean
+  band?: boolean
   className?: string
 }) => {
   const { lines, loading } = useSongLines(videoId, version)
@@ -91,6 +126,7 @@ export const LyricsPanel = ({
     useAtomValue(lyricsCustomHueAtom)
   )
   const sheetVars: CssVars = { '--reader-accent': accent }
+  const styleTap = useStyleTap()
   const show: LineShow = {
     bold: false,
     japanese: useAtomValue(lyricsVisibilityAtom),
@@ -100,23 +136,24 @@ export const LyricsPanel = ({
   }
 
   const [active, setActive] = useState(-1)
-  // The last line reached, which stays lit and followed through an instrumental gap
-  const [reached, setReached] = useState(0)
-  const [started, setStarted] = useState(false)
+  // The last line reached, which stays lit and followed through an instrumental gap; -1 before the first
+  const [reached, setReached] = useState(-1)
   const handles = useRef<(KaraokeLineHandle | null)[]>([])
   const activeRef = useRef(-1)
-  const reachedRef = useRef(0)
-  const startedRef = useRef(false)
+  const reachedRef = useRef(-1)
   // The clock's last time and when it last moved on: a jump is a seek, and a clock that stands still is paused
   const lastTime = useRef(0)
   const lastAdvance = useRef(0)
   const { blocks, content, follow, following, handlers, scroller } =
     useLyricsFollow({
+      centred: band,
       enabled: lines.length > 0,
       followAt,
       isPlaying: () =>
         performance.now() - lastAdvance.current < PAUSED_AFTER_MS,
-      target: reached,
+      resumes: !band,
+      // Before the first line, the first line waits in its place
+      target: Math.max(reached, 0),
     })
   useEffect(
     () =>
@@ -139,10 +176,6 @@ export const LyricsPanel = ({
         if (last !== reachedRef.current) {
           reachedRef.current = last
           setReached(last)
-        }
-        if (playerTime > 0 && !startedRef.current) {
-          startedRef.current = true
-          setStarted(true)
         }
         handles.current[index]?.setTime(time)
       }),
@@ -167,7 +200,7 @@ export const LyricsPanel = ({
       style={sheetVars}
       className={cn(
         'relative page-ruby flex min-h-0 flex-col overflow-hidden rounded-2xl bg-card text-(--reader-fg) lyrics-sheet',
-        !heading && 'pt-3',
+        band ? 'watch-lyrics-band text-center' : !heading && 'pt-3',
         className
       )}>
       {heading && (
@@ -188,14 +221,15 @@ export const LyricsPanel = ({
           </span>
         </div>
       )}
+      {/* oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- a tap is a shortcut to Lyrics Style, whose own button takes the keyboard */}
       <div
         ref={scroller}
         {...handlers}
-        // The line before the sung one fades out at the top edge instead of being cut through; the fade's height
-        // is padding too, so the first line (its furigana included) starts below it. Under the last
-        // line, only room to clear Current Line (12px off the foot, 36px tall) and a gap. Scrolling on past
-        // either end moves the page, so the wheel never goes dead over the panel
-        className='min-h-0 flex-1 overflow-y-auto [mask-image:linear-gradient(to_bottom,transparent,#000_1.25rem)] px-4 pt-5 pb-16 font-reader [overflow-anchor:none]'>
+        {...(band ? styleTap : {})}
+        className={cn(
+          'min-h-0 flex-1 overflow-y-auto px-4 font-reader [overflow-anchor:none]',
+          scrollerLook(band, empty !== null)
+        )}>
         <div ref={content}>
           {empty === null ? (
             lines.map((line, index) => (
@@ -207,14 +241,16 @@ export const LyricsPanel = ({
                 line={line}
                 first={index === 0}
                 synced
-                phase={linePhase(index, lit, started)}
+                // Under a video the lines are always karaoke: nothing reads as sung until it is sung, even
+                // before the song starts
+                phase={linePhase(index, lit, true)}
                 blockRef={(element) => {
                   blocks.current[index] = element
                 }}
                 karaokeRef={(handle) => {
                   handles.current[index] = handle
                 }}
-                onSeek={seek}
+                onSeek={band ? undefined : seek}
               />
             ))
           ) : (

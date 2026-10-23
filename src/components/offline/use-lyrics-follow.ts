@@ -55,6 +55,10 @@ interface LyricsFollowOptions {
   enabled: boolean
   // How far down the box the followed line sits, as a share of its height
   followAt: number
+  // Instead of followAt: the line's middle in the box's middle, or its top at the box's top when it is taller
+  centred?: boolean
+  // Whether a playing song takes the box back by itself after a while; without, only Current Line or a seek does
+  resumes?: boolean
   isPlaying: () => boolean
 }
 
@@ -66,6 +70,8 @@ export const useLyricsFollow = <Content extends HTMLElement = HTMLDivElement>({
   target,
   enabled,
   followAt,
+  centred = false,
+  resumes = true,
   isPlaying,
 }: LyricsFollowOptions) => {
   const [following, setFollowing] = useState(true)
@@ -83,6 +89,9 @@ export const useLyricsFollow = <Content extends HTMLElement = HTMLDivElement>({
       if (box === null || block === undefined || block === null) {
         return
       }
+      const offset = centred
+        ? Math.max(0, (box.clientHeight - block.offsetHeight) / 2)
+        : box.clientHeight * followAt
       box.scrollTo({
         behavior:
           behavior === 'smooth' &&
@@ -93,10 +102,10 @@ export const useLyricsFollow = <Content extends HTMLElement = HTMLDivElement>({
           box.scrollTop +
           block.getBoundingClientRect().top -
           box.getBoundingClientRect().top -
-          box.clientHeight * followAt,
+          offset,
       })
     },
-    [target, followAt]
+    [target, followAt, centred]
   )
 
   useEffect(() => {
@@ -151,6 +160,9 @@ export const useLyricsFollow = <Content extends HTMLElement = HTMLDivElement>({
   })
   const armResume = useCallback(() => {
     clearTimeout(resumeTimer.current)
+    if (!resumes) {
+      return
+    }
     resumeTimer.current = setTimeout(function resume() {
       // A finger still on the lyrics, or a paused song: try again later
       if (touchY.current !== null || !isPlayingRef.current()) {
@@ -159,7 +171,7 @@ export const useLyricsFollow = <Content extends HTMLElement = HTMLDivElement>({
       }
       setFollowing(true)
     }, RESUME_AFTER_MS)
-  }, [])
+  }, [resumes])
   useEffect(
     () => () => {
       clearTimeout(resumeTimer.current)

@@ -39,6 +39,7 @@ import {
 } from '@/lib/karaoke'
 import type { TimedLyrics } from '@/lib/lyrics-document'
 import { parseLyricsDocument } from '@/lib/lyrics-document'
+import { lyricsScaleOn } from '@/lib/lyrics-style'
 import { getLyricsThemeColors } from '@/lib/lyrics-themes'
 import type { LyricsThemeColors } from '@/lib/lyrics-themes'
 import {
@@ -450,8 +451,13 @@ export const StageLyrics = ({
   // Upright, a phone's lines wrap at its narrow width and the band under the video also holds the controls,
   // so two lines (each with its romaji and translation) would crowd it: one line there
   const twoLines = useAtomValue(lyricsTwoLinesAtom) && surface !== 'portrait'
-  // Each layout's own size for every screen, times this screen's own optional tweak
-  const scale = (twoLines ? twoLinesSize : oneLineSize) * screenSize
+  // Each layout's own size for every screen, times this screen's own optional tweak, within the screen's range
+  const scale = lyricsScaleOn(
+    surface,
+    twoLines,
+    twoLines ? twoLinesSize : oneLineSize,
+    screenSize
+  )
   const colors = useMemo(
     () => getLyricsThemeColors(themeId, hue),
     [themeId, hue]

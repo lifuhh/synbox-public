@@ -4,7 +4,6 @@ import { useEffect, useRef } from 'react'
 
 import PlayerRail from '@/components/lyrics-display/player-rail'
 import { DocScroll } from '@/components/shared/doc-scroll'
-import { KaraokeBand, usePhoneUpright } from '@/components/watch/karaoke-band'
 import { currentVideoAtom } from '@/context/atoms'
 import { useMediaQuery } from '@/hooks/use-media-query'
 import { useNextList } from '@/lib/listening/recommendations'
@@ -111,21 +110,19 @@ const NarrowBelow = ({
       scroller.current?.scrollTo({ behavior: 'instant', top: 0 })
     }
   }, [videoId])
-  const upright = usePhoneUpright()
+  // A phone held upright gets the lyrics as a karaoke window; a narrow window the panel, read from the top
+  const upright = useMediaQuery('(pointer: coarse) and (orientation: portrait)')
   return (
     <div className='watch-below flex min-h-0 flex-1 flex-col'>
-      {upright ? (
-        <KaraokeBand />
-      ) : (
-        <LyricsPanel
-          videoId={videoId}
-          version={version}
-          heading={false}
-          // The line being sung right under the video, with a sliver of the line before it
-          followAt={0.08}
-          className='mx-4 mt-2 watch-lyrics-under shrink-0'
-        />
-      )}
+      <LyricsPanel
+        videoId={videoId}
+        version={version}
+        heading={false}
+        band={upright}
+        // The line being sung right under the video, with a sliver of the line before it
+        followAt={0.08}
+        className={cn('mx-4 mt-2 shrink-0', !upright && 'watch-lyrics-under')}
+      />
       <div
         ref={scroller}
         className='min-h-0 flex-1 overflow-y-auto overscroll-contain'>

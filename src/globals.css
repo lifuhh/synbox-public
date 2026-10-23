@@ -881,42 +881,29 @@
   height: clamp(11rem, 62cqh, 34rem);
 }
 
-/* The karaoke band under the video on a phone held upright: the stage's lyrics (StageLyrics, portalled in), with
-   room for the sung line's Japanese over two lines, its romaji and its translation.
-   - Its own type: a share of the band's width, times the viewer's size, never taller than a share of the band,
-     so the largest size still fits a line that wraps (the player floors its type for a whole screen instead)
-   - Centred, whatever the saved portrait position: that is the full-screen player's, and a drag here would move
-     it, so the lines take no presses here
-   - Nothing of the stage's floating UI or the home indicator to clear */
-@utility watch-karaoke-band {
+/* The lyrics under the video on a phone held upright (LyricsPanel as a band): a karaoke window over the song,
+   the sung line in the middle and a part of the lines either side fading out at its edges (a sung line with
+   its romaji and translation wrapping takes ~220px at 390px wide, so it is about that tall on an iPhone). Half
+   its height of room above the first line and under the last lets each of them reach the middle. Holding a line
+   to look around the song selects nothing. The type is the reader's a size up, fixed: Lyrics Style offers no
+   size on an upright phone */
+@utility watch-lyrics-band {
   container-type: size;
-  height: clamp(9rem, 34cqh, 13rem);
-  --stage-chrome-h: 0px;
-  --safe-bottom: 0px;
+  height: clamp(11rem, 46cqh, 17rem);
+}
 
-  /* The player's sizes are inlined into these utilities (@theme inline), so the band sets the sizes, not the
-     tokens */
-  & .text-lyric {
-    font-size: min(calc(max(5cqw, 1.0625rem) * var(--lyric-scale)), 13cqh);
-  }
-
-  & .text-lyric-romaji {
-    font-size: min(calc(max(4cqw, 0.875rem) * var(--lyric-scale)), 10.4cqh);
-  }
-
-  & .text-lyric-secondary {
-    font-size: min(calc(max(3.5cqw, 0.75rem) * var(--lyric-scale)), 9.1cqh);
-  }
-
-  & .anchor-spacer,
-  & .lyrics-lift {
-    flex-grow: 1;
-    min-height: 0;
-  }
-
-  & [data-lyrics-style-toggle] {
-    pointer-events: none;
-  }
+@utility watch-lyrics-band-scroller {
+  --reader-scale: 1.1;
+  padding-block: 50cqh;
+  mask-image: linear-gradient(
+    to bottom,
+    transparent,
+    #000 2rem,
+    #000 calc(100% - 2rem),
+    transparent
+  );
+  user-select: none;
+  -webkit-touch-callout: none;
 }
 
 /* A page's side gutters plus the screen's side safe areas, as the top bar has them: on a phone on its side the

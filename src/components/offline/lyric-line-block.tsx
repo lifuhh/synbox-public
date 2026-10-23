@@ -72,7 +72,7 @@ const LineRomaji = ({
 }
 
 // One sung line as a block: the Japanese, its romaji, then the translation. Synced, a tap on its text seeks to
-// it, the line being sung is the bright one, and its Japanese and romaji fill as they are sung
+// it (where the surface seeks on a tap), the line being sung is the bright one, and its Japanese and romaji fill as they are sung
 export interface LineShow {
   japanese: boolean
   romaji: boolean
@@ -116,8 +116,9 @@ export const LyricLineBlock = ({
   phase: LinePhase | null
   blockRef: (element: HTMLDivElement | null) => void
   karaokeRef: Ref<KaraokeLineHandle>
-  onSeek: (time: number) => void
+  onSeek?: (time: number) => void
 }) => {
+  const seeks = synced && onSeek !== undefined
   const translation = spaceDashes(prefs.language === 'en' ? line.en : line.zh)
   const source = prefs.japanese || (prefs.romaji && line.romaji !== '')
   // The clock drives one handle per line; it fills the Japanese and the romaji together
@@ -136,7 +137,7 @@ export const LyricLineBlock = ({
       data-bench='lyrics-text'
       data-phase={phase ?? undefined}
       onClick={
-        synced
+        seeks
           ? () => {
               onSeek(line.start)
             }
@@ -147,7 +148,7 @@ export const LyricLineBlock = ({
         line.stanza && !first && 'pt-reader-stanza',
         // Only the drawn text seeks: a thumb landing beside or between lines while scrolling must not jump
         // the song
-        synced &&
+        seeks &&
           'pointer-events-none justify-items-start *:pointer-events-auto *:cursor-pointer',
         phase === 'past' && 'opacity-40',
         // A line to come dims piece by piece: its karaoke text already draws unsung at the strength the rest

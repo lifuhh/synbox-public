@@ -48,6 +48,53 @@ export const SCREEN_SIZE_MAX = 1.5
 export const FONT_SIZE_RANGE = { max: 1.6, min: 0.4 } as const
 export const TWO_LINES_SIZE_RANGE = { max: 1.1, min: 0.6 } as const
 
+interface SizeRange {
+  min: number
+  max: number
+}
+
+// How far each screen lets the size go. A desktop takes the whole range. A phone on its side only a narrow
+// one: its stage is short, so a big size covers the picture and a small one can't be read. An upright phone
+// none: one size fits its narrow column, and the Size slider is not offered there
+const SCREEN_SIZE_RANGE: Record<
+  LyricsSurface,
+  { oneLine: SizeRange; twoLines: SizeRange } | null
+> = {
+  desktop: null,
+  landscape: {
+    oneLine: { max: 1.25, min: 0.8 },
+    twoLines: { max: 1, min: 0.75 },
+  },
+  portrait: { oneLine: { max: 1, min: 1 }, twoLines: { max: 1, min: 1 } },
+}
+
+// The slider's ends on a screen, for one line or two
+export const sizeRangeOn = (
+  surface: LyricsSurface,
+  twoLines: boolean
+): SizeRange => {
+  const range = SCREEN_SIZE_RANGE[surface]
+  if (range === null) {
+    return twoLines ? TWO_LINES_SIZE_RANGE : FONT_SIZE_RANGE
+  }
+  return twoLines ? range.twoLines : range.oneLine
+}
+
+// The lyrics' scale on a screen: the saved size times that screen's own tweak, held to what the screen allows
+export const lyricsScaleOn = (
+  surface: LyricsSurface,
+  twoLines: boolean,
+  size: number,
+  screenSize: number
+) => {
+  const scale = size * screenSize
+  if (SCREEN_SIZE_RANGE[surface] === null) {
+    return scale
+  }
+  const { min, max } = sizeRangeOn(surface, twoLines)
+  return Math.min(max, Math.max(min, scale))
+}
+
 export const DEFAULT_LYRICS_STYLE: LyricsStyle = {
   anchor: 1,
   anchorPortrait: 0,
