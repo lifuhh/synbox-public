@@ -1,4 +1,6 @@
 @import 'tailwindcss';
+/* The change log names classes in prose; scanning it would ship CSS for classes the app never uses */
+@source not '../docs/log';
 
 @import 'tw-animate-css';
 

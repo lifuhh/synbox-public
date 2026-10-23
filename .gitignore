@@ -29,8 +29,6 @@ dist-ssr
 # Local reports and visual write-ups (not committed); see AGENTS.md
 .reports/
 
-# Private change log (local working history, never published)
-docs/log/
 
 # Auth Worker local state and dev secrets
 .wrangler/
@@ -38,3 +36,6 @@ docs/log/
 
 # Harness state: builds, API fixtures, run artifacts, verdicts, the trend queue (local, per machine; see harness/README.md)
 .harness/
+
+# Private, never committed: operator notes and the unscrubbed change-log originals of 2026-10-23
+docs/private/
