@@ -57,25 +57,50 @@ export const move = <T>(items: T[], from: number, to: number): T[] => {
   return next
 }
 
-// What plays when `current` ends: the queue's first song (taken off the queue), else, with autoplay on, the
-// first recommendation that is neither playing nor among `recent`; null when there is nothing to play
+// What plays when `current` ends, or when Next is pressed: the queue's first song (taken off the queue), else
+// the first recommendation that is neither playing nor among `recent`; null when there is nothing to play. A
+// song that ends goes on to a recommendation only with autoplay on; a press always does
 export const nextSong = (
   state: ListeningState,
   current: string,
   recommendations: ListSong[],
-  recent: string[]
+  recent: string[],
+  pressed = false
 ): { song: ListSong; queue: ListSong[] } | null => {
   const queue = without(state.queue, current)
   if (queue.length > 0) {
     const [song, ...rest] = queue
     return { queue: rest, song }
   }
-  if (!state.autoplay) {
+  if (!state.autoplay && !pressed) {
     return null
   }
   const skip = new Set([current, ...recent])
   const song = recommendations.find((candidate) => !skip.has(candidate.videoId))
   return song === undefined ? null : { queue, song }
+}
+
+// The songs played before the current one in this visit, the latest last: Previous walks back through them
+const PLAYED_KEEP = 50
+
+// A song left for another one goes on top of the trail
+export const leftSong = (played: ListSong[], song: ListSong) =>
+  played.at(-1)?.videoId === song.videoId
+    ? played
+    : [...played, song].slice(-PLAYED_KEEP)
+
+// Previous: the song played before `current`, taken off the trail, with `current` put first in the queue so
+// Next comes back to it; null when nothing was played before it
+export const previousSong = (
+  played: ListSong[],
+  queue: ListSong[],
+  current: ListSong
+): { song: ListSong; played: ListSong[]; queue: ListSong[] } | null => {
+  const trail = played.filter((song) => song.videoId !== current.videoId)
+  const song = trail.at(-1)
+  return song === undefined
+    ? null
+    : { played: trail.slice(0, -1), queue: playNext(queue, current), song }
 }
 
 export const newPlaylist = (

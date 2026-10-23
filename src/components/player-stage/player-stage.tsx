@@ -367,7 +367,14 @@ interface PlayerStageProps {
   onToggleTheater?: () => void
   // The song played to its end
   onEnded?: () => void
+  // The song before this one, and the one after; undefined where there is none
+  onPrevious?: () => void
+  onNext?: () => void
 }
+
+// Previous restarts a song past its first seconds, as every player does; only near its start does it go back a
+// song (or, with none to go back to, restart it)
+const RESTART_AFTER_SEC = 3
 
 export const PlayerStage = ({
   videoId,
@@ -379,6 +386,8 @@ export const PlayerStage = ({
   theater = false,
   onToggleTheater,
   onEnded,
+  onPrevious,
+  onNext,
 }: PlayerStageProps) => {
   const [storedVolume, setStoredVolume] = useAtom(playerVolumeAtom)
   // Browsers block unmuted autoplay until the viewer has interacted with the
@@ -488,6 +497,13 @@ export const PlayerStage = ({
 
   const seekBy = (seconds: number) => {
     player.seek(player.getTime() + seconds)
+  }
+  const previous = () => {
+    if (onPrevious === undefined || player.getTime() > RESTART_AFTER_SEC) {
+      player.seek(0)
+    } else {
+      onPrevious()
+    }
   }
   const taps = useStageTaps({
     controlsVisible,
@@ -663,6 +679,8 @@ export const PlayerStage = ({
           onToggle={() => {
             player.togglePlay()
           }}
+          onPrevious={previous}
+          onNext={onNext}
         />
       )}
 
@@ -718,6 +736,8 @@ export const PlayerStage = ({
         zoomed={fit === 'zoom'}
         onToggleZoom={toggleFit}
         onSeekBy={seekBy}
+        onPrevious={previous}
+        onNext={onNext}
         volume={volume}
         onVolumeChange={setVolume}
         locked={locked}
