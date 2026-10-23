@@ -12,8 +12,10 @@ import {
 } from '@/components/ui/dialog'
 import { toast } from '@/components/ui/use-toast'
 import { currentVideoAtom, stageClockAtom } from '@/context/atoms'
-import { useAccess } from '@/lib/auth'
-import { REPORT_MESSAGE_MAX, sendReport } from '@/lib/reports'
+import { signInWithGoogle, useAccess } from '@/lib/auth'
+import { useGetLyricsBySongId } from '@/lib/react-query/queries-and-mutations'
+import { REPORT_MESSAGE_MAX, liveVersionOf, sendReport } from '@/lib/reports'
+import type { ReportResult } from '@/lib/reports'
 import { formatClock } from '@/utils'
 
 import { parsePreviewVersion } from './version-preview-banner'
@@ -26,6 +28,13 @@ export interface ReportTarget {
   version: number | null
 }
 
+// The form's line under the message, for a refusal the listener can fix there
+const PROBLEMS: Partial<Record<ReportResult, string>> = {
+  failed: 'Couldn’t send. Try again.',
+  signedOut: 'Signed out. Sign in again.',
+  uninformative: 'Say what’s wrong',
+}
+
 // Report Issue: the listener says what is wrong; the song, its time and its lyrics version go with it
 export const ReportIssue = ({
   target,
@@ -36,11 +45,11 @@ export const ReportIssue = ({
 }) => {
   const [message, setMessage] = useState('')
   const [sending, setSending] = useState(false)
-  const [failed, setFailed] = useState(false)
+  const [problem, setProblem] = useState<string | null>(null)
   const fieldId = useId()
   const close = () => {
     setMessage('')
-    setFailed(false)
+    setProblem(null)
     onClose()
   }
   const send = async () => {
@@ -50,8 +59,9 @@ export const ReportIssue = ({
     setSending(true)
     const result = await sendReport({ ...target, message })
     setSending(false)
-    if (result === 'failed') {
-      setFailed(true)
+    const shown = PROBLEMS[result]
+    if (shown !== undefined) {
+      setProblem(shown)
       return
     }
     close()
@@ -98,7 +108,7 @@ export const ReportIssue = ({
             placeholder='What’s wrong?'
             onChange={(event) => {
               setMessage(event.target.value)
-              setFailed(false)
+              setProblem(null)
             }}
             onKeyDown={(event) => {
               // Cmd/Ctrl+Enter sends; Enter alone is a new line
@@ -110,9 +120,7 @@ export const ReportIssue = ({
             className='min-h-28 w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-base placeholder:text-muted-foreground focus-visible:border-foreground/80 focus-visible:outline-hidden sm:text-sm touch:text-base'
           />
           <div className='flex items-center justify-between gap-3'>
-            <output className='text-sm text-error'>
-              {failed && 'Couldn’t send. Try again.'}
-            </output>
+            <output className='text-sm text-error'>{problem}</output>
             <Button type='submit' disabled={message.trim() === '' || sending}>
               {sending ? 'Sending…' : 'Send'}
             </Button>
@@ -124,19 +132,29 @@ export const ReportIssue = ({
 }
 
 // Opens Report Issue for the song on screen: what it is about, and the moment, are fixed at the press; the song
-// plays on while the listener writes
+// plays on while the listener writes. Reporting is for accounts: a guest's press signs in instead
 export const useReportIssue = (videoId: string) => {
   const [target, setTarget] = useState<ReportTarget | null>(null)
   const clock = useAtomValue(stageClockAtom)
   const video = useAtomValue(currentVideoAtom)
-  const { admin } = useAccess()
+  const access = useAccess()
   const [searchParams] = useSearchParams()
+  // The row the lyrics on screen came from (the stage and the watch page read the same cached query)
+  const { data: lyricsRow } = useGetLyricsBySongId(videoId)
+  const guest = access.kind === 'guest'
   const open = () => {
+    if (guest) {
+      void signInWithGoogle()
+      return
+    }
+    // Only admins see another version than the song's current lyrics (player-page.tsx)
+    const preview = access.admin
+      ? parsePreviewVersion(searchParams.get('version'))
+      : null
     setTarget({
       atSeconds: clock?.getTime() ?? null,
       title: video?.title ?? '',
-      // Only admins see another version than the song's current lyrics (player-page.tsx)
-      version: admin ? parsePreviewVersion(searchParams.get('version')) : null,
+      version: preview ?? liveVersionOf(lyricsRow),
       videoId,
     })
   }
@@ -148,5 +166,9 @@ export const useReportIssue = (videoId: string) => {
       }}
     />
   )
-  return { dialog, open }
+  return {
+    dialog: guest ? null : dialog,
+    label: guest ? 'Sign In to Report' : 'Report Issue',
+    open,
+  }
 }

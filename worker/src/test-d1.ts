@@ -16,7 +16,15 @@ export const migratedD1 = () => {
     const statement = {
       // oxlint-disable-next-line eslint/require-await -- D1's methods are async; bun:sqlite's are not
       async all() {
-        return { results: sqlite.query(sql).all(...params) }
+        const results = sqlite.query(sql).all(...params)
+        // Better Auth's D1 dialect reads meta from every statement
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- bun:sqlite returns rows untyped
+        const meta = sqlite
+          .query(
+            'select changes() as "changes", last_insert_rowid() as "last_row_id"'
+          )
+          .get() as { changes: number; last_row_id: number }
+        return { meta, results }
       },
       bind(...values: SQLQueryBindings[]) {
         params = values
@@ -56,6 +64,12 @@ export const migratedD1 = () => {
         sqlite.run('rollback')
         throw error
       }
+    },
+    // Better Auth tells D1 from other databases by this method
+    // oxlint-disable-next-line eslint/require-await -- as above
+    async exec(sql: string) {
+      sqlite.run(sql)
+      return { count: 0, duration: 0 }
     },
     prepare,
   }
