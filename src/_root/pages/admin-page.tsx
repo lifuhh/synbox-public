@@ -7,7 +7,7 @@ import {
 } from 'lucide-react'
 import { useState } from 'react'
 import type { ReactNode } from 'react'
-import { Link } from 'react-router'
+import { Link, useSearchParams } from 'react-router'
 
 import {
   RecommendButton,
@@ -35,8 +35,10 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useToast } from '@/components/ui/use-toast'
 import {
+  GUESTS,
   useAdminGenerations,
   useAdminReports,
   useAdminSettings,
@@ -44,13 +46,14 @@ import {
   useSetBlocked,
   useSetGenerationEnabled,
   useSetDailyLimit,
-} from '@/lib/admin'
+} from '@/lib/admin-console'
 import type {
   AdminGeneration,
   AdminReport,
   AdminUser,
   DailyLimit,
-} from '@/lib/admin'
+  SongsBy,
+} from '@/lib/admin-console'
 import { useAccess, useMe } from '@/lib/auth'
 import { isStageId, overallAt, stepOf } from '@/lib/generation/plan'
 import { useGetSongInfoBySongId } from '@/lib/react-query/queries-and-mutations'
@@ -684,6 +687,20 @@ const isGuest = (generation: Pick<AdminGeneration, 'guest'>) =>
 const requester = (generation: AdminGeneration) =>
   isGuest(generation) ? 'Guest' : (generation.name ?? 'Deleted Account')
 
+// Narrows the Songs list to whoever asked for this song
+const ByLink = ({ generation }: { generation: AdminGeneration }) => {
+  const by = isGuest(generation) ? GUESTS : generation.email
+  return by === null ? (
+    requester(generation)
+  ) : (
+    <Link
+      to={`?tab=songs&user=${encodeURIComponent(by)}`}
+      className='hover:underline'>
+      {requester(generation)}
+    </Link>
+  )
+}
+
 const SongTitle = ({ generation }: { generation: AdminGeneration }) => {
   const { data: songInfo } = useGetSongInfoBySongId(generation.videoId)
   const path = `/v/${generation.videoId}`
@@ -708,7 +725,9 @@ const SongRow = ({ generation }: { generation: AdminGeneration }) => (
       <SongTitle generation={generation} />
     </th>
     <td className='px-4'>
-      <span className='block truncate'>{requester(generation)}</span>
+      <span className='block truncate'>
+        <ByLink generation={generation} />
+      </span>
       {!isGuest(generation) && generation.email !== null && (
         <span className='block truncate text-xs text-muted-foreground'>
           {generation.email}
@@ -747,7 +766,7 @@ const SongCard = ({ generation }: { generation: AdminGeneration }) => (
       </span>
     </div>
     <p className='truncate text-xs text-muted-foreground'>
-      {KIND_LABELS[generation.kind]} by {requester(generation)} ·{' '}
+      {KIND_LABELS[generation.kind]} by <ByLink generation={generation} /> ·{' '}
       <When value={generation.createdAt} />
     </p>
   </li>
@@ -755,9 +774,47 @@ const SongCard = ({ generation }: { generation: AdminGeneration }) => (
 
 const SONGS_PER_PAGE = 20
 
-// Every song generated since accounts arrived (the latest 200), newest first, a page at a time
-const SongsTable = () => {
-  const { data: generations, error } = useAdminGenerations()
+// Everyone, guests, then each account, most songs first. An email no account has (a deleted one, a hand-typed
+// link) still shows as itself, so the field never claims Everyone while the list is narrowed
+const SongsFilter = ({
+  by,
+  onChange,
+}: {
+  by: SongsBy
+  onChange: (by: SongsBy) => void
+}) => {
+  const { data: users = [] } = useAdminUsers()
+  const accounts = users.toSorted(
+    (a, b) => b.songsTotal - a.songsTotal || a.name.localeCompare(b.name)
+  )
+  const unknown =
+    by !== null && by !== GUESTS && !accounts.some(({ email }) => email === by)
+  return (
+    <label className='flex items-center gap-2 self-start text-sm text-muted-foreground'>
+      By
+      <select
+        value={by ?? ''}
+        onChange={(event) => {
+          onChange(event.target.value === '' ? null : event.target.value)
+        }}
+        className='h-9 max-w-[min(20rem,calc(100vw-5rem))] truncate rounded-full border border-border bg-card px-3 text-foreground'>
+        <option value=''>Everyone</option>
+        <option value={GUESTS}>Guests</option>
+        {unknown && <option value={by}>{by}</option>}
+        {accounts.map((user) => (
+          <option key={user.id} value={user.email}>
+            {user.name} · {user.email}
+          </option>
+        ))}
+      </select>
+    </label>
+  )
+}
+
+// The latest 200 songs generated since accounts arrived, everyone's or one requester's, newest first, a page at
+// a time
+const SongsTable = ({ by }: { by: SongsBy }) => {
+  const { data: generations, error } = useAdminGenerations(by)
   const [page, setPage] = useState(0)
   if (error !== null) {
     return <p className='text-sm text-error'>{error.message}</p>
@@ -768,7 +825,7 @@ const SongsTable = () => {
   if (generations.length === 0) {
     return (
       <p className='py-6 text-center text-sm text-muted-foreground'>
-        No songs generated yet.
+        {by === null ? 'No songs generated yet.' : 'No songs.'}
       </p>
     )
   }
@@ -924,6 +981,84 @@ const ReportsList = () => {
   )
 }
 
+const TABS = ['songs', 'reports', 'recommendations', 'accounts'] as const
+type Tab = (typeof TABS)[number]
+const isTab = (value: string | null): value is Tab =>
+  TABS.some((tab) => tab === value)
+
+// One list at a time, each of which can run long. The tab and the Songs filter live in the address, so a
+// reload, a shared link or a requester's name (ByLink) lands on the same view
+const AdminTabs = () => {
+  const [params, setParams] = useSearchParams()
+  const tabParam = params.get('tab')
+  const tab = isTab(tabParam) ? tabParam : 'songs'
+  const by = params.get('user')
+  const show = (next: Tab, user: SongsBy = null) => {
+    setParams(user === null ? { tab: next } : { tab: next, user }, {
+      replace: true,
+    })
+  }
+  return (
+    <Tabs
+      value={tab}
+      onValueChange={(value) => {
+        if (isTab(value)) {
+          show(value)
+        }
+      }}>
+      {/* Scrolls sideways on a phone too narrow for all four */}
+      <div className='-mx-1 no-scrollbar overflow-x-auto px-1'>
+        <TabsList className='justify-start touch:h-13'>
+          <TabsTrigger value='songs' className='h-full'>
+            Songs
+          </TabsTrigger>
+          <TabsTrigger value='reports' className='h-full'>
+            Reports
+          </TabsTrigger>
+          <TabsTrigger value='recommendations' className='h-full'>
+            Recommendations
+          </TabsTrigger>
+          <TabsTrigger value='accounts' className='h-full'>
+            Accounts
+          </TabsTrigger>
+        </TabsList>
+      </div>
+      <TabsContent value='songs' className='mt-4'>
+        <div className='flex flex-col gap-3'>
+          <SongsFilter
+            by={by}
+            onChange={(user) => {
+              show('songs', user)
+            }}
+          />
+          {/* Keyed by the filter, so a new filter starts on its first page */}
+          <SongsTable key={by ?? ''} by={by} />
+        </div>
+      </TabsContent>
+      <TabsContent value='reports' className='mt-4'>
+        <ReportsList />
+      </TabsContent>
+      <TabsContent value='recommendations' className='mt-4'>
+        <div className='flex flex-col gap-3'>
+          <p className='text-sm text-muted-foreground'>
+            The landing page&apos;s carousel, shuffled for each visitor. The mic
+            marks songs that have karaoke lyrics.
+          </p>
+          <RecommendationsEditor />
+        </div>
+      </TabsContent>
+      <TabsContent value='accounts' className='mt-4'>
+        <div className='flex flex-col gap-3'>
+          <p className='text-sm text-muted-foreground'>
+            Everyone who has signed in, most recently seen first.
+          </p>
+          <UsersTable />
+        </div>
+      </TabsContent>
+    </Tabs>
+  )
+}
+
 // Admins only: anyone else gets a 403, once the sign-in check has answered
 const AdminPage = () => {
   const { admin, ready } = useAccess()
@@ -939,35 +1074,7 @@ const AdminPage = () => {
       <DocScroll />
       <h1 className='text-2xl font-bold text-foreground'>Admin</h1>
       <GenerationPanel />
-      <section className='flex flex-col gap-3'>
-        <h2 className='text-lg font-semibold text-foreground'>Reports</h2>
-        <ReportsList />
-      </section>
-      <section className='flex flex-col gap-3'>
-        <div className='flex flex-col gap-1'>
-          <h2 className='text-lg font-semibold text-foreground'>Accounts</h2>
-          <p className='text-sm text-muted-foreground'>
-            Everyone who has signed in, most recently seen first.
-          </p>
-        </div>
-        <UsersTable />
-      </section>
-      <section className='flex flex-col gap-3'>
-        <div className='flex flex-col gap-1'>
-          <h2 className='text-lg font-semibold text-foreground'>
-            Recommendations
-          </h2>
-          <p className='text-sm text-muted-foreground'>
-            The landing page&apos;s carousel, shuffled for each visitor. The mic
-            marks songs that have karaoke lyrics.
-          </p>
-        </div>
-        <RecommendationsEditor />
-      </section>
-      <section className='flex flex-col gap-3'>
-        <h2 className='text-lg font-semibold text-foreground'>Songs</h2>
-        <SongsTable />
-      </section>
+      <AdminTabs />
     </div>
   )
 }
