@@ -124,7 +124,7 @@ const SignInButton = () => {
             {pending ? (
               <LoaderCircleIcon
                 aria-hidden
-                className='-ml-1 size-[18px] shrink-0 animate-spin sm:-ml-2'
+                className='-ml-1 size-[18px] shrink-0 animate-spin motion-reduce:animate-none sm:-ml-2'
               />
             ) : (
               <GoogleMark className='-ml-1 sm:-ml-2' />

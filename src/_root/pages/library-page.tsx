@@ -17,11 +17,14 @@ const LibraryPage = () => {
     <section
       ref={setBox}
       data-scroll-top
-      onScroll={() => {
+      onScroll={(event) => {
         const bottom = header.current?.getBoundingClientRect().bottom ?? 0
-        const top = bar.current?.getBoundingClientRect().top ?? 0
-        if (bar.current !== null) {
-          markStuck(bar.current, bottom < top - 0.5)
+        const controls = bar.current?.getBoundingClientRect()
+        if (bar.current !== null && controls !== undefined) {
+          markStuck(bar.current, bottom < controls.top - 0.5)
+          // A row Tab moves to scrolls clear of the stuck controls, not under them
+          const section = event.currentTarget
+          section.style.scrollPaddingTop = `${controls.bottom - section.getBoundingClientRect().top}px`
         }
       }}
       className='flex custom-scrollbar flex-1 flex-col overflow-y-auto overscroll-contain pr-(--safe-right) pb-page-bottom pl-(--safe-left)'>
