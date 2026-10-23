@@ -80,7 +80,7 @@ export const quotaText = ({ limit, used }: Quota) => {
   if (limit === 0) {
     return 'Generating songs is invite-only for now'
   }
-  return `${Math.max(limit - used, 0)} of ${limit} new songs left this hour`
+  return `${Math.max(limit - used, 0)} of ${limit} new songs left today`
 }
 
 // The account button, or Sign In for a guest. Until the session check answers it shows the control this

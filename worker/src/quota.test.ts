@@ -49,7 +49,7 @@ test('the daily limit holds and a reconnect is free', async () => {
   expect(await reserve('r3')).toEqual({
     limit: 2,
     outcome: 'quota_exceeded',
-    resetsAt: '2026-10-21T11:00:00.000Z',
+    resetsAt: '2026-10-22T10:00:00.000Z',
   })
   expect(await getQuota(db, 'u1', LIMITS, now)).toMatchObject({
     limit: 2,
@@ -135,11 +135,11 @@ test('a guest gets one song a day, and all guests together stop at the shared ca
   expect(await reserve('g1')).toEqual({ outcome: 'forbidden' })
 })
 
-test("a user's limit is per rolling hour", async () => {
+test("a user's limit is per rolling 24 hours", async () => {
   await reserve('r1')
   await reserve('r2')
   expect(await reserve('r3')).toMatchObject({ outcome: 'quota_exceeded' })
-  const later = new Date(now.getTime() + 3_600_001)
+  const later = new Date(now.getTime() + 86_400_001)
   expect(
     await reserveGeneration(
       db,

@@ -14,23 +14,20 @@ import type { Recommendation } from '@/lib/recommendations'
 // D1 hands back Better Auth's dates as text or epoch milliseconds
 const when = z.union([z.string(), z.number()])
 
-// 'default' follows the Worker's USER_HOURLY_LIMIT; a number or 'unlimited' is an admin's override
-const hourlyLimitSchema = z.union([
-  z.number(),
-  z.enum(['default', 'unlimited']),
-])
+// 'default' follows the Worker's USER_DAILY_LIMIT; a number or 'unlimited' is an admin's override
+const dailyLimitSchema = z.union([z.number(), z.enum(['default', 'unlimited'])])
 
 const adminUserSchema = z.object({
   banned: z.union([z.number(), z.boolean()]).nullable(),
   createdAt: when,
+  dailyLimit: dailyLimitSchema,
   email: z.string(),
-  hourlyLimit: hourlyLimitSchema,
   id: z.string(),
   image: z.string().nullable(),
   lastSeenAt: when.nullable(),
   name: z.string(),
   role: z.string().nullable(),
-  songsLastHour: z.number(),
+  songsLastDay: z.number(),
   songsTotal: z.number(),
 })
 
@@ -61,7 +58,7 @@ const generationSchema = z.object({
   videoId: z.string(),
 })
 
-export type HourlyLimit = z.infer<typeof hourlyLimitSchema>
+export type DailyLimit = z.infer<typeof dailyLimitSchema>
 export type AdminUser = z.infer<typeof adminUserSchema>
 export type AdminGeneration = z.infer<typeof generationSchema>
 
@@ -150,17 +147,17 @@ const useRefreshing = <T>(run: (input: T) => Promise<unknown>) => {
   })
 }
 
-export const useSetHourlyLimit = () =>
+export const useSetDailyLimit = () =>
   useRefreshing(
     async ({
-      hourlyLimit,
+      dailyLimit,
       userId,
     }: {
       userId: string
-      hourlyLimit: HourlyLimit
+      dailyLimit: DailyLimit
     }) =>
       await call(`/users/${encodeURIComponent(userId)}/limit`, {
-        body: JSON.stringify({ hourlyLimit }),
+        body: JSON.stringify({ dailyLimit }),
         method: 'PUT',
       })
   )

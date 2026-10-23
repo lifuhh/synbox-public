@@ -110,6 +110,27 @@ export const extractVideoId = (input: string): string | null => {
   return null
 }
 
+const OWN_HOSTS = new Set(['synbox.io', 'www.synbox.io', 'synbox.netlify.app'])
+const OWN_SONG_PATH =
+  /^\/(?:v\/[\w-]{11}(?:\/versions)?|lyrics\/[\w-]{11})\/?$/u
+
+// A pasted link to one of our own song pages, as the in-app path to open (its query, like ?style=, kept)
+export const ownSongPath = (input: string): string | null => {
+  const trimmed = input.trim()
+  try {
+    const url = new URL(
+      /^https?:\/\//u.test(trimmed) ? trimmed : `https://${trimmed}`
+    )
+    const own =
+      OWN_HOSTS.has(url.hostname) || url.host === globalThis.location?.host
+    return own && OWN_SONG_PATH.test(url.pathname)
+      ? `${url.pathname}${url.search}`
+      : null
+  } catch {
+    return null
+  }
+}
+
 // Appwrite ids may hold '-' and '_' but not start with one, so only a leading '-' or '_' is encoded.
 // Same as the backend's AppwriteService.create_appwrite_id, and reversible.
 // The inverse of createAppwriteIdFromYoutubeId. Encoded ids are 14 characters, so an 11-character video

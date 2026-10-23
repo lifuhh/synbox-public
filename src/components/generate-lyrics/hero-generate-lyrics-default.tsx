@@ -21,7 +21,7 @@ import {
 import { noSongReason, signInWithGoogle, useAccess } from '@/lib/auth'
 import { useGetLyricsBySongId } from '@/lib/react-query/queries-and-mutations'
 import { YouTubeUrlOrIdValidation } from '@/lib/validation'
-import { extractVideoId } from '@/utils'
+import { extractVideoId, ownSongPath } from '@/utils'
 import { cn } from '@/utils/cn'
 
 interface HeroGenerateLyricsDefaultProps {
@@ -40,6 +40,12 @@ const looksLikeYoutubeLink = (value: string) => {
     (/[\d_-]/u.test(text) || (/[a-z]/u.test(text) && /[A-Z]/u.test(text)))
   )
 }
+
+// Text that is neither one of our own song links nor a YouTube link is a search
+const isSearchText = (value: string) =>
+  value.trim().length > 0 &&
+  ownSongPath(value) === null &&
+  !looksLikeYoutubeLink(value)
 
 // Search is a mode, not an error, so it gets its own colour; red is kept for a link that fails to parse.
 type InputMode = 'empty' | 'search' | 'valid' | 'invalid'
@@ -69,9 +75,14 @@ const HeroGenerateLyricsDefault = ({
   // A tooltip only opens on hover or keyboard focus, so a tap toggles it too
   const [infoOpen, setInfoOpen] = useState(false)
   const navigate = useNavigate()
-  const isSearch =
-    inputValue.trim().length > 0 && !looksLikeYoutubeLink(inputValue)
-  const inputMode = getInputMode(inputValue, isSearch, validationSuccess)
+  // A Synbox link opens its own page: no lyrics lookup, no generation
+  const ownPath = ownSongPath(inputValue)
+  const isSearch = isSearchText(inputValue)
+  const inputMode = getInputMode(
+    inputValue,
+    isSearch,
+    validationSuccess || ownPath !== null
+  )
 
   const extractedVideoId = useMemo(() => {
     if (!inputValue) {
@@ -94,7 +105,7 @@ const HeroGenerateLyricsDefault = ({
     const { value } = e.target
     setInputValue(value)
 
-    if (!value || !looksLikeYoutubeLink(value)) {
+    if (!value || ownSongPath(value) !== null || !looksLikeYoutubeLink(value)) {
       setErrorMessage('')
       setValidationSuccess(false)
       return
@@ -129,6 +140,10 @@ const HeroGenerateLyricsDefault = ({
     !access.newSong
 
   const handleOpenLandingPageDialog = () => {
+    if (ownPath !== null) {
+      void navigate(ownPath)
+      return
+    }
     if (isSearch) {
       void navigate(`/search?q=${encodeURIComponent(inputValue.trim())}`)
       return
@@ -174,6 +189,9 @@ const HeroGenerateLyricsDefault = ({
   }
 
   const buttonLabel = () => {
+    if (ownPath !== null) {
+      return ownPath.startsWith('/lyrics/') ? 'Open Lyrics' : 'Watch Now'
+    }
     if (isSearch) {
       return 'Search'
     }
@@ -190,6 +208,9 @@ const HeroGenerateLyricsDefault = ({
   }
 
   const buttonIcon = () => {
+    if (ownPath !== null) {
+      return <PlayIcon className='size-5 shrink-0 fill-current' />
+    }
     if (isSearch) {
       return <SearchIcon className='size-5 shrink-0' />
     }
