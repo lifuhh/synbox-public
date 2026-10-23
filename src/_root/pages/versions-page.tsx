@@ -35,6 +35,7 @@ import { cn } from '@/utils/cn'
 
 // The backend's version sources (synbox-transcribe-whisper › services/lyrics_versions.py, lyrics/persist.py)
 const SOURCE_LABELS: Record<string, string> = {
+  'audit-fix': 'Auto-Fixed',
   'before versions': 'Original',
   'edited row': 'Edited by Hand',
   'lyrics-v2': 'Regenerated',
