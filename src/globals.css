@@ -867,9 +867,11 @@
 
 /* The player's watch page (src/components/watch/watch-page.tsx). Narrow, as in a phone app: the video stays on
    top and the song, then Lyrics and Up Next as tabs, scroll under it. From 1000px wide (YouTube's two-column
-   point) it is a web page that scrolls as a whole, the video with it (playing on out of view): the video top
-   left, as large as leaves 12rem below it, the lyrics beside it in a 320-402px column, the song and More Like
-   This under the video and Up Next under the lyrics; Theater gives the video both columns */
+   point) it is a web page that scrolls as a whole, the video with it (playing on out of view): the video as large
+   as leaves 12rem below it, the lyrics beside it in a 320-402px column, the song and More Like This under the
+   video and Up Next under the lyrics; Theater gives the video both columns. The video's column is no wider than
+   the video, and the two columns stand centred: on a window wider than the video's height allows (a 2K monitor
+   under a browser's bars) the room left over goes to the page's sides, not into a gap between video and lyrics */
 @utility watch-page {
   display: flex;
   flex-direction: column;
@@ -881,14 +883,18 @@
     display: grid;
     height: auto;
     min-height: 100%;
-    grid-template-columns: minmax(0, 1fr) minmax(20rem, 25.125rem);
+    grid-template-columns:
+      minmax(0, calc((var(--app-h) - var(--topbar-h) - 12rem) * 16 / 9))
+      minmax(20rem, 25.125rem);
     grid-template-rows: auto auto;
     grid-template-areas: 'stage side' 'main next';
     align-content: start;
+    justify-content: center;
     gap: 1rem 1.5rem;
-    padding: calc(var(--topbar-h) + 0.25rem) 1.5rem 3rem;
+    padding: calc(var(--topbar-h) + 0.25rem) var(--page-gutter-wide) 3rem;
 
     &[data-theater] {
+      grid-template-columns: minmax(0, 1fr) minmax(20rem, 25.125rem);
       grid-template-areas: 'stage stage' 'main next';
     }
   }
@@ -907,8 +913,6 @@
 
   @media (min-width: 1000px) {
     grid-area: stage;
-    justify-self: start;
-    width: min(100%, calc((var(--app-h) - var(--topbar-h) - 12rem) * 16 / 9));
     max-height: none;
     border-radius: 0.75rem;
 
@@ -977,15 +981,15 @@
 
 /* A page's side gutters plus the screen's side safe areas, as the top bar has them: on a phone on its side the
    notch and the home indicator take 47-62px of each side, and a plain px-4 put cards and buttons under them.
-   page-x: 1rem, 2.5rem from md. page-x-md: none under md (the page's sections pad themselves), 2.5rem from md.
-   page-x-tight: 1rem at every width */
+   page-x: 1rem, --page-gutter-wide (40-64px) from md. page-x-md: none under md (the page's sections pad
+   themselves), --page-gutter-wide from md. page-x-tight: 1rem at every width */
 @utility page-x {
   --page-gutter: 1rem;
   padding-left: calc(var(--page-gutter) + var(--safe-left));
   padding-right: calc(var(--page-gutter) + var(--safe-right));
 
   @media (width >= 48rem) {
-    --page-gutter: 2.5rem;
+    --page-gutter: var(--page-gutter-wide);
   }
 }
 
@@ -995,7 +999,7 @@
   padding-right: calc(var(--page-gutter) + var(--safe-right));
 
   @media (width >= 48rem) {
-    --page-gutter: 2.5rem;
+    --page-gutter: var(--page-gutter-wide);
   }
 }
 
@@ -1691,6 +1695,9 @@
     @media (pointer: fine) {
       --page-end: 1rem;
     }
+    /* A wide page's side gutters: 40px up to a 1600px window, then 2.5% of it, to 64px at 2560px, so a big
+       monitor's content doesn't run to its edges. Read by page-x, the wide watch page and the top bar */
+    --page-gutter-wide: clamp(2.5rem, 2.5vw, 4rem);
     /* The screen's height; full-screen layers use it instead of dvh (see the standalone rule below) */
     --screen-h: 100dvh;
     --app-h: var(--screen-h);

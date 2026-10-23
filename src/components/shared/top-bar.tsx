@@ -199,7 +199,7 @@ const TopBar = () => {
           ? 'pointer-events-none'
           : 'transition-transform duration-300 ease-out motion-reduce:transition-none'
       )}>
-      <nav className='flex-between h-14 w-full pr-2 pl-4 transition-opacity duration-300 ease-out sm:px-4'>
+      <nav className='flex-between h-14 w-full pr-2 pl-4 transition-opacity duration-300 ease-out sm:px-4 lg:px-[calc(var(--page-gutter-wide)-0.5rem)]'>
         {/* The logo is the way home on every page, the player included */}
         {isVideoPlayer ? (
           <div data-player-chrome className={cluster}>
