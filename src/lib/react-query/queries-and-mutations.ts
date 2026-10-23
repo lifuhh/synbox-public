@@ -25,14 +25,17 @@ import {
 import { getChartsPlaylist, getYoutubeVideoInfo } from '../youtube/api'
 import { QUERY_KEYS } from './query-keys'
 
+const DAY_MS = 1000 * 60 * 60 * 24
+
 export const useGetLandingPagePlaylist = () =>
   useQuery({
     queryFn: async () => await getLandingPagePlaylist(),
     queryKey: [QUERY_KEYS.GET_LANDING_PAGE_PLAYLIST],
     // One retry, so a rejected API key shows the error and its Retry button in seconds, not ~7s
     retry: 1,
-    // Once a visit, like the gallery: each fetch reshuffles, so a refetch on focus would reorder the carousel
-    staleTime: Infinity,
+    // A day, like the gallery and charts: each fetch reshuffles, so refetching on every return would reorder the
+    // carousel under the user; a tab left open picks up the admin's changes the next day
+    staleTime: DAY_MS,
   })
 
 export const useGetChartsPlaylist = () =>
@@ -41,17 +44,18 @@ export const useGetChartsPlaylist = () =>
     queryFn: async () => await getChartsPlaylist(),
     queryKey: [QUERY_KEYS.GET_CHARTS_PLAYLIST],
     retry: 1,
-    staleTime: 1000 * 60 * 60 * 24,
+    staleTime: DAY_MS,
   })
 
-// Once a visit, so the shuffled order holds while the user browses
+// A day, so the shuffled order holds while the user browses and a tab left open still gets other people's new
+// songs (this tab's own new songs go in at once: setLibrarySong)
 const librarySongs = queryOptions({
   queryFn: getLibrarySongs,
   queryKey: [QUERY_KEYS.GET_GALLERY_SONGS],
   // A cold lookup service answers 503 while it loads the library, which takes seconds
   retry: 5,
   retryDelay: 3000,
-  staleTime: Infinity,
+  staleTime: DAY_MS,
 })
 
 export const useGallerySongs = () => {
