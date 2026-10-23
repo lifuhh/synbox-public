@@ -268,8 +268,8 @@ const FIT_STEPS = 6
 // One size for both rows, for the whole song: each row gets half the room under the translation, and when the
 // song's tallest line (`lines`, every line laid out unseen at a row's width) wraps taller than that,
 // both rows shrink by as much. So the two lines on screen are always the same size, the rows never climb over the
-// translation, and no row changes size while its line is sung. The room is the layer's, less what the controls
-// cover
+// translation, and no row changes size while its line is sung. The room is the layer's, less the room kept
+// under the block
 const fitSong = (grid: HTMLElement, lines: HTMLElement) => {
   const block = grid.closest<HTMLElement>('.player-lyrics-overlay')
   const layer = block?.parentElement
@@ -643,10 +643,7 @@ export const StageLyrics = ({
     '--lyric-scale': scale,
   }
   return (
-    <div
-      data-chrome={layout.controlsVisible || undefined}
-      className='absolute inset-0 lyric-stagger-layer'
-      style={layerVars}>
+    <div className='absolute inset-0 lyric-stagger-layer' style={layerVars}>
       {twoLines && showTranslation && (
         <StaggerTranslation
           line={lineAt(lyrics, karaokeLines, view.active, english, placeholder)}

@@ -25,7 +25,7 @@ The installed app (PWA) and the website are the same build: there is no phone co
 
 Rules for the player (and any full-screen surface):
 
-- **One measure for what the floating UI covers.** `--stage-chrome-h` is the bottom edge the controls (plus, in portrait, the rail) cover while they show. Anything that must clear them reads it, only while they show. Never offset a layer permanently by an element that hides.
+- **The floating UI draws over the lyrics and never moves them.** The controls (plus, in portrait, the rail, and on a phone on its side the top bar) sit above the lyrics and may cover them; nothing in the lyrics' layout reads whether they show (the owner's rule, 2026-10-23). `--stage-chrome-h` is the bottom edge they cover while they show: a notice that must clear them reads it, only while they show. Never offset a layer permanently by an element that hides.
 - **Presses outside a control go to the stage.** The stage's own taps (show/hide controls, double-tap seek) sit under everything. Don't widen a press target over it: the lyrics take presses only on their drawn text (`lyrics-hit-text`).
 - **Input on the floating UI counts as activity.** Don't stop `pointerdown` on it, or the controls hide under a finger that is still tapping them.
 - **Keep a dragged thing mounted, and save it on the drop**, not on every move: a remount mid-drag kills the drag, and a storage write per move is jank on a phone.

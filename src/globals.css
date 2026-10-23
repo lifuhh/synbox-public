@@ -649,7 +649,7 @@
 }
 
 /* The spacers above and below the player's lyrics split the free space by the anchor; the lower one also
-   lifts the lyrics clear of the controls */
+   keeps them clear of the home indicator */
 @utility anchor-spacer {
   flex-basis: 0;
   flex-grow: var(--anchor-grow);
@@ -713,9 +713,8 @@
 
 /* Where Two Lines' translation hangs: under the top bar, and under Tap to Unmute while that shows
    (--lyric-stagger-top, which also sets the rows' room, so the rows never resize as the controls come and go).
-   On a phone on its side the bar shows only with the controls (data-chrome), so the translation itself
-   (--lyric-translation-top) rises to just under the status bar while they are hidden, and steps down to clear
-   the bar while it shows, as the lyrics at the bottom lift for the control bar */
+   On a phone on its side the bar shows only with the controls and draws over the lyrics, so the translation
+   itself (--lyric-translation-top) sits just under the status bar whether the bar shows or not */
 @utility lyric-stagger-layer {
   --lyric-stagger-top: calc(
     var(--topbar-h) + var(--notices-h, 0px) + var(--preview-banner-h, 0px) +
@@ -731,7 +730,7 @@
   }
 
   @variant short {
-    [data-player-stage]:not(:has([data-unmute-pill])) &:not([data-chrome]) {
+    [data-player-stage]:not(:has([data-unmute-pill])) & {
       --lyric-translation-top: calc(
         var(--safe-top) + var(--notices-h, 0px) + var(--preview-banner-h, 0px) +
           0.5rem
@@ -1676,8 +1675,8 @@
     /* The screen's height; full-screen layers use it instead of dvh (see the standalone rule below) */
     --screen-h: 100dvh;
     --app-h: var(--screen-h);
-    /* How much of the player's bottom edge its floating UI covers while it shows: the lyrics lift by this,
-       and notices stand on it */
+    /* How much of the player's bottom edge its floating UI covers while it shows: notices stand on it. The
+       lyrics never move for it; the floating UI draws over them */
     --stage-chrome-h: var(--stage-controls-h, 5rem);
 
     @media (orientation: portrait) {

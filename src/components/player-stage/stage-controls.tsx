@@ -342,7 +342,7 @@ export const StageControls = ({
 
   useEffect(() => {
     const observe = (bar: HTMLDivElement, content: HTMLDivElement) => {
-      // Published for what floats above the controls: the lyrics, the rail in portrait and notices
+      // Published for what floats above the controls: the rail in portrait and notices
       // (see --stage-chrome-h)
       const root = document.documentElement
       const observer = new ResizeObserver(() => {
