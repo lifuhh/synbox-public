@@ -360,7 +360,9 @@ const useSyncRequests = () =>
     () => requests
   )
 
-export const useOfflineSync = () => {
+// Mounted as its own leaf in the app, never called from App: every sync request (the Lyrics menu asks on
+// each open), bookmark or recent song re-renders whoever runs it, and from App that was every page
+export const OfflineSync = () => {
   const requested = useSyncRequests()
   const lastRequest = useRef(requested)
   const favourites = useAtomValue(favoritesAtom)
@@ -415,4 +417,5 @@ export const useOfflineSync = () => {
       clearTimeout(timer)
     }
   }, [online, isPending, account, favourites, history, queryClient, requested])
+  return null
 }

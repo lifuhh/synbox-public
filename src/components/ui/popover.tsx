@@ -47,13 +47,14 @@ const PopoverContent = ({
 }: React.ComponentProps<typeof PopoverPrimitive.Content> &
   VariantProps<typeof popoverContentVariants>) => (
   <PopoverPrimitive.Portal>
-    {/* Opens in 150ms, slowing as it lands; closes in 100ms, speeding away: an exit only has to get out of the way */}
+    {/* Opens in 200ms, fading in and settling 4px (only fading with reduced motion); fades out in 150ms. No zoom:
+        scaling a large card moves its far edge tens of pixels */}
     <PopoverPrimitive.Content
       data-slot='popover-content'
       align={align}
       sideOffset={sideOffset}
       className={cn(
-        'z-50 w-72 origin-(--radix-popover-content-transform-origin) rounded-xl bg-popover p-4 text-popover-foreground shadow-md outline-hidden data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-[state=closed]:animate-out data-[state=closed]:duration-100 data-[state=closed]:ease-in data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:duration-150 data-[state=open]:ease-out data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95',
+        'z-50 w-72 origin-(--radix-popover-content-transform-origin) rounded-xl bg-popover p-4 text-popover-foreground shadow-md outline-hidden data-[state=closed]:animate-out data-[state=closed]:duration-150 data-[state=closed]:ease-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:duration-200 data-[state=open]:ease-[cubic-bezier(0.2,0,0,1)] data-[state=open]:fade-in-0 motion-safe:data-[side=bottom]:slide-in-from-top-1 motion-safe:data-[side=left]:slide-in-from-right-1 motion-safe:data-[side=right]:slide-in-from-left-1 motion-safe:data-[side=top]:slide-in-from-bottom-1',
         popoverContentVariants({ variant }),
         className
       )}
