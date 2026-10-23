@@ -2,6 +2,7 @@ import { PlayIcon, PlusIcon } from 'lucide-react'
 import { useState } from 'react'
 import { Link } from 'react-router'
 
+import { BoxScrollbar } from '@/components/shared/doc-scroll'
 import { Button } from '@/components/ui/button'
 import { Input, InputField } from '@/components/ui/input'
 import { PlaylistCover } from '@/components/watch/playlist-cover'
@@ -11,12 +12,14 @@ const songCount = (count: number) => (count === 1 ? '1 song' : `${count} songs`)
 
 // The listener's playlists on this device: make one, open one, or play one straight away
 const PlaylistsPage = () => {
+  const [box, setBox] = useState<HTMLElement | null>(null)
   const playlists = usePlaylists()
   const { createPlaylist, playPlaylist } = useListening()
   const [name, setName] = useState('')
 
   return (
     <section
+      ref={setBox}
       data-scroll-top
       className='flex flex-1 flex-col overflow-y-auto pt-(--topbar-h) page-x pb-page-bottom'>
       <title>Playlists | Synbox</title>
@@ -92,6 +95,7 @@ const PlaylistsPage = () => {
           </ul>
         )}
       </div>
+      <BoxScrollbar box={box} />
     </section>
   )
 }

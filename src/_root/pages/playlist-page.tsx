@@ -12,6 +12,7 @@ import {
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 
+import { BoxScrollbar } from '@/components/shared/doc-scroll'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -138,6 +139,7 @@ const songCount = (count: number) => (count === 1 ? '1 song' : `${count} songs`)
 
 // One playlist: play it from the top or from any song, drag songs into order, rename or delete it
 const PlaylistPage = () => {
+  const [box, setBox] = useState<HTMLElement | null>(null)
   const { playlistId = '' } = useParams<{ playlistId: string }>()
   const navigate = useNavigate()
   const playlist = usePlaylists().find((list) => list.id === playlistId)
@@ -147,6 +149,7 @@ const PlaylistPage = () => {
 
   return (
     <section
+      ref={setBox}
       data-scroll-top
       className='flex flex-1 flex-col overflow-y-auto pt-(--topbar-h) page-x pb-page-bottom'>
       <title>{`${playlist?.name ?? 'Playlist'} | Synbox`}</title>
@@ -282,6 +285,7 @@ const PlaylistPage = () => {
           </>
         )}
       </div>
+      <BoxScrollbar box={box} />
     </section>
   )
 }

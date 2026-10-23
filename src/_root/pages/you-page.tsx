@@ -8,9 +8,11 @@ import {
   LogOutIcon,
   ShieldIcon,
 } from 'lucide-react'
+import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { Link } from 'react-router'
 
+import { BoxScrollbar } from '@/components/shared/doc-scroll'
 import { GoogleMark } from '@/components/shared/google-mark'
 import { UserAvatar } from '@/components/shared/user-avatar'
 import { quotaText } from '@/components/topbar/profile-button'
@@ -83,6 +85,7 @@ const LinkRow = ({
 
 // The installed app's You tab: the account, playlists, bookmarks and history, and the app's own pages
 const YouPage = () => {
+  const [box, setBox] = useState<HTMLElement | null>(null)
   const queryClient = useQueryClient()
   const { data: me } = useMe()
   const user = me?.user ?? null
@@ -97,6 +100,7 @@ const YouPage = () => {
 
   return (
     <section
+      ref={setBox}
       data-scroll-top
       className='flex flex-1 flex-col overflow-y-auto px-4 pt-(--topbar-h) pb-page-bottom'>
       <title>You | Synbox</title>
@@ -201,6 +205,7 @@ const YouPage = () => {
           Version {__BUILD_ID__}
         </p>
       </div>
+      <BoxScrollbar box={box} />
     </section>
   )
 }

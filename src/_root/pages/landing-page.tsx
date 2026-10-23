@@ -1,15 +1,17 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
 import HeroGenerateLyricsSection from '@/components/generate-lyrics/hero-generate-lyrics-section'
 import LandingPageCharts from '@/components/landing-page/popular-songs-table'
 import SongGallery from '@/components/landing-page/song-gallery'
 import SongHighlightCarousel from '@/components/landing-page/song-highlight-carousel'
+import { BoxScrollbar } from '@/components/shared/doc-scroll'
 
 // The page rises in once per page load, top to bottom: each block marked `in-data-rise:rise-in` takes its turn
 // by its own rise-delay, skeletons included. Coming back home later shows it at once
 let pageShown = false
 
 const LandingPage = () => {
+  const [box, setBox] = useState<HTMLElement | null>(null)
   const rise = useMemo(() => !pageShown, [])
   useEffect(() => {
     pageShown = true
@@ -17,6 +19,7 @@ const LandingPage = () => {
 
   return (
     <section
+      ref={setBox}
       data-scroll-top
       data-rise={rise || undefined}
       className='flex custom-scrollbar flex-1 flex-col overflow-x-hidden overflow-y-scroll page-x-md'>
@@ -28,6 +31,7 @@ const LandingPage = () => {
         <LandingPageCharts />
       </section>
       <SongGallery />
+      <BoxScrollbar box={box} />
     </section>
   )
 }
