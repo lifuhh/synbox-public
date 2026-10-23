@@ -6,6 +6,8 @@
 //   bun harness/views.ts <path> --port N                        whatever already serves http://localhost:N (`wt serve`)
 //   bun harness/views.ts <path-or-url> --compare <base>         before/after rows; <base> is a URL or origin
 //                                                               (https://synbox.io) or a git ref (origin/staging)
+//   bun harness/views.ts <path-or-url> --state <name>           with one of the route's opened states open
+//                                                               (probes/layout.ts › OPENED_STATES), in its views
 //
 // Exits 3 when a view has a finding or failed to open, so a script can gate on it.
 
@@ -15,9 +17,15 @@ import path from 'node:path'
 import { parseArgs } from 'node:util'
 
 import { buildRef, buildWorkingTree } from './bench/build'
-import { ALL_VIEWS, closeBrowsers, replayFonts } from './bench/engines/browser'
+import {
+  ALL_VIEWS,
+  closeBrowsers,
+  replayFonts,
+  VIEWPORTS,
+} from './bench/engines/browser'
 import type { View } from './bench/engines/browser'
 import { auditPage, LAYOUT_FINDINGS, pageAt } from './bench/probes/layout'
+import type { OpenedState } from './bench/probes/layout'
 import { serveBuild } from './bench/server'
 import type { BenchServer } from './bench/server'
 import { repoAt, storeDir } from './bench/store'
@@ -29,6 +37,7 @@ const { values: flags, positionals } = parseArgs({
   options: {
     compare: { type: 'string' },
     port: { type: 'string' },
+    state: { type: 'string' },
   },
 })
 
@@ -96,14 +105,16 @@ const shoot = async (
   url: URL,
   view: View,
   dir: string,
-  prefix: string
+  prefix: string,
+  state?: OpenedState
 ): Promise<Shot> => {
-  const file = `${prefix}-${view.name}.png`
+  const file = `${prefix}-${view.name}${state ? `+${state.name}` : ''}.png`
   const { samples, errors } = await auditPage(
     pageAt(url),
     view.surface,
     url.href,
-    path.join(dir, file)
+    path.join(dir, file),
+    state
   )
   const [sample]: (Sample | undefined)[] = samples
   if (sample === undefined) {
@@ -147,7 +158,6 @@ const html = (title: string, rows: string) => `<!doctype html>
   body { margin: 0; padding: 16px; background: #111; color: #ddd; font: 14px/1.4 system-ui, sans-serif; }
   h1 { font-size: 16px; font-weight: 600; margin: 0 0 16px; }
   .row { display: grid; gap: 16px; align-items: start; margin-bottom: 24px; }
-  .all { grid-template-columns: 1440fr 390fr 844fr; }
   .pair { grid-template-columns: 1fr 1fr; }
   figure { margin: 0; min-width: 0; }
   img { display: block; width: 100%; height: auto; border: 1px solid #333; }
@@ -175,10 +185,24 @@ const main = async () => {
   const [target] = positionals
   if (target === undefined) {
     throw new Error(
-      'usage: bun harness/views.ts <path-or-url> [--port N] [--compare <base-url|git-ref>]'
+      'usage: bun harness/views.ts <path-or-url> [--port N] [--compare <base-url|git-ref>] [--state <name>]'
     )
   }
   const repo = repoAt(process.cwd())
+  const page = pageAt(new URL(target, 'http://localhost'))
+  const state =
+    flags.state === undefined
+      ? undefined
+      : page.states?.find((st) => st.name === flags.state)
+  if (flags.state !== undefined && state === undefined) {
+    throw new Error(
+      `no opened state "${flags.state}" for ${target}; its states: ${page.states?.map((st) => st.name).join(', ') ?? 'none'}`
+    )
+  }
+  // A state is opened only in the views it names
+  const views = ALL_VIEWS.filter(
+    (v) => state?.views === undefined || state.views.includes(v.name)
+  )
   replayFonts(storeDir(repo, 'bench', 'fixtures', 'fonts'))
   const after = await afterUrl(repo, target)
   const before =
@@ -192,33 +216,46 @@ const main = async () => {
       .replaceAll(/^-|-$/gu, '')
       .slice(0, 40) || 'home'
   const day = new Date().toLocaleDateString('en-CA')
-  const dir = path.join(repo.top, '.reports', `${day}-views-${slug}`)
+  const dir = path.join(
+    repo.top,
+    '.reports',
+    `${day}-views-${slug}${state ? `-${state.name}` : ''}`
+  )
   mkdirSync(dir, { recursive: true })
 
   const sides = before === null ? [after] : [before, after]
   // Every view of every side at once, like `check`'s parallel audits: each in its own browser context
   const shots = await Promise.all(
     sides.flatMap((url, i) =>
-      ALL_VIEWS.map(
+      views.map(
         async (view) =>
           await shoot(
             url,
             view,
             dir,
-            before === null ? 'view' : ['before', 'after'][i]
+            before === null ? 'view' : ['before', 'after'][i],
+            state
           )
       )
     )
   )
-  const n = ALL_VIEWS.length
+  const n = views.length
   let rows: string
   if (before === null) {
     for (const s of shots) {
       report(s, '')
     }
-    rows = `<div class="row all">${shots.map((s) => figure(s, '')).join('')}</div>`
+    // Each screenshot as wide as its screen, side by side
+    const columns = views
+      .map(({ surface }) =>
+        surface.kind === 'phone'
+          ? `${VIEWPORTS[surface.orientation].width}fr`
+          : `${VIEWPORTS.desktop.width}fr`
+      )
+      .join(' ')
+    rows = `<div class="row" style="grid-template-columns: ${columns}">${shots.map((s) => figure(s, '')).join('')}</div>`
   } else {
-    const pairs = ALL_VIEWS.map((_, i) => [shots[i], shots[n + i]] as const)
+    const pairs = views.map((_, i) => [shots[i], shots[n + i]] as const)
     for (const [b, a] of pairs) {
       report(b, 'before ')
       report(a, 'after  ')
@@ -230,10 +267,11 @@ const main = async () => {
       )
       .join('')
   }
+  const opened = state ? ` with ${state.name} open` : ''
   const title =
     before === null
-      ? `All views: ${after.href}`
-      : `All views: ${before.href} → ${after.href}`
+      ? `All views: ${after.href}${opened}`
+      : `All views: ${before.href} → ${after.href}${opened}`
   const index = path.join(dir, 'index.html')
   writeFileSync(index, html(title, rows))
   process.stdout.write(`\n${index}\n`)

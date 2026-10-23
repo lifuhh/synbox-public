@@ -12,7 +12,7 @@ import type { View } from './engines/browser'
 import { cdpPerf } from './engines/cdp'
 import { homeVisit } from './probes/home'
 import { LAYOUT_FINDINGS, layoutAudit, layoutPages } from './probes/layout'
-import type { LayoutPage } from './probes/layout'
+import type { LayoutPage, OpenedState } from './probes/layout'
 import { playerSession } from './probes/player'
 import { buildSize } from './probes/size'
 import type { Benchmark, MetricSpec } from './types'
@@ -126,18 +126,28 @@ const player = (videoId: string): Benchmark => ({
 
 const layout = (
   page: LayoutPage,
-  { label, name, surface }: View
+  { label, name, surface }: View,
+  state?: OpenedState
 ): Benchmark => ({
-  id: `layout-${page.name}-${name}`,
+  id: `layout-${page.name}-${name}${state ? `+${state.name}` : ''}`,
   metrics: [
     ...LAYOUT_FINDINGS.map((key) => count(key)),
     count('targets', false),
   ],
-  run: layoutAudit(page, surface),
+  run: layoutAudit(page, surface, state),
   runs: 1,
   surface,
-  title: `Layout of ${page.name} (${page.path}) in ${name} (${label}): target sizes, covered targets, overflow, safe areas, page and console errors`,
+  title: `Layout of ${page.name} (${page.path})${state ? ` with ${state.name} open` : ''} in ${name} (${label}): target sizes, covered targets, overflow, safe areas, painted insets, pan, zooming fields, clipped text, page and console errors`,
 })
+
+/** A page's audits in its views: at rest, then each state it opens in that view */
+const layouts = (page: LayoutPage, views: View[]): Benchmark[] =>
+  views.flatMap((v) => [
+    layout(page, v),
+    ...(page.states ?? [])
+      .filter((s) => s.views === undefined || s.views.includes(v.name))
+      .map((s) => layout(page, v, s)),
+  ])
 
 const cdpFlow = (
   flow: { name: string; path: string; steps: object[] },
@@ -232,11 +242,13 @@ export const SUITE: Benchmark[] = [
   player('6rG_irmOQsM'),
   // Every route in src/app.tsx in all views, so a new page is audited without anyone adding it; iPhone Safari
   // too (its own top bar, no tab bar), on its side where the layout is busiest
-  ...layoutPages().flatMap((page) => [
-    ...ALL_VIEWS.map((v) => layout(page, v)),
-    layout(page, SAFARI_PORTRAIT),
-    ...(BUSY_PAGES.has(page.name) ? [layout(page, SAFARI_LANDSCAPE)] : []),
-  ]),
+  ...layoutPages().flatMap((page) =>
+    layouts(page, [
+      ...ALL_VIEWS,
+      SAFARI_PORTRAIT,
+      ...(BUSY_PAGES.has(page.name) ? [SAFARI_LANDSCAPE] : []),
+    ])
+  ),
   player('x1FV6IrjZCY'),
   player('ZRtdQ81jPUQ'),
   {

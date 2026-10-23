@@ -59,6 +59,34 @@ export interface Audit {
   occluded: { label: string; by: string }[]
   offscreen: AuditTarget[]
   unsafe: AuditTarget[]
+  /** Anything painted by a fixed or sticky layer inside a safe-area inset, outside the designed backdrops */
+  insetSurfaces: AuditTarget[]
+  /** How far the page itself is panned sideways (scrollX, the visual viewport's offset), and why */
+  pan: { px: number; detail: string }
+  /** Text fields, on a phone, set under 16px: iOS zooms the page into them on focus */
+  zoomInputs: AuditTarget[]
+  /** Placeholders and single-line labels wider than their box, with no title or aria-label holding the full text */
+  clipped: AuditTarget[]
+}
+
+/**
+ * What a phone's safe-area insets may show (insetSurfaces): these designed backdrops, by selector, and any
+ * background-only box running the screen's full width or height (a bar's background padding the status bar, a
+ * full-screen sheet). Their own box is allowed; what they hold is still checked. Anything else a fixed or sticky
+ * layer paints inside an inset is a finding
+ */
+export const INSET_BACKDROPS: Record<string, string> = {
+  '.status-scrim':
+    "the reader's strip behind the status bar (globals.css › status-scrim)",
+  '[data-status-scrim]':
+    "the root layout's top scrim: the page's own glow behind the status bar and the bar (globals.css › top-scrim)",
+}
+
+interface Insets {
+  top: number
+  bottom: number
+  left: number
+  right: number
 }
 
 declare global {
@@ -72,18 +100,15 @@ declare global {
       cls: number
       fcp: number
       frames: { start: () => void; stop: () => FrameStats }
-      audit: (safe: {
-        top: number
-        bottom: number
-        left: number
-        right: number
-      }) => Audit
+      audit: (safe: Insets) => Audit
       settle: (limitMs: number) => Promise<string | null>
+      /** Remembers the page at rest, before an opened state's steps: what they open may cover what was there */
+      rest: () => void
     }
   }
 }
 
-const recorder = (watch: typeof WATCH) => {
+const recorder = (watch: typeof WATCH, backdrops: typeof INSET_BACKDROPS) => {
   // Seeded PRNG (mulberry32): the gallery's shuffle and anything else random repeats run to run
   let seed = 0x5e_ed
   /* oxlint-disable eslint/no-bitwise -- mulberry32 is defined by its bit operations */
@@ -116,6 +141,9 @@ const recorder = (watch: typeof WATCH) => {
     longTasks,
     marks: {},
     phases: [],
+    rest: () => {
+      // replaced below
+    },
     settle: async () => {
       await Promise.reject(new Error('replaced below'))
       return null
@@ -298,10 +326,12 @@ const recorder = (watch: typeof WATCH) => {
           Number.isFinite(end)
         )
       })
+    // One frame, or 100ms when WebKit holds frames back (a page it treats as hidden): the deadline must come
     const frame = async () => {
       // oxlint-disable-next-line promise/avoid-new -- one animation frame, as a promise
       await new Promise((resolve) => {
         requestAnimationFrame(resolve)
+        setTimeout(resolve, 100)
       })
     }
     const deadline = performance.now() + limitMs
@@ -329,26 +359,428 @@ const recorder = (watch: typeof WATCH) => {
       : `layout still moving after ${limitMs}ms`
   }
 
+  const rectOf = (el: Element): Rect => {
+    const r = el.getBoundingClientRect()
+    return {
+      h: Math.round(r.height),
+      w: Math.round(r.width),
+      x: Math.round(r.x),
+      y: Math.round(r.y),
+    }
+  }
+  const labelOf = (el: Element) => {
+    const name =
+      el.getAttribute('aria-label') ??
+      el.getAttribute('title') ??
+      el.getAttribute('placeholder') ??
+      (el.textContent ?? '').trim().slice(0, 40)
+    return `${el.tagName.toLowerCase()}${name ? ` "${name}"` : ''}`
+  }
+  /** The part of an element left visible by every clipping ancestor (scroll boxes, overflow: hidden) */
+  const clipped = (el: Element): DOMRect | null => {
+    const r = el.getBoundingClientRect()
+    let { left, top, right, bottom } = r
+    for (
+      let p = el.parentElement;
+      p && p !== document.documentElement;
+      p = p.parentElement
+    ) {
+      const s = getComputedStyle(p)
+      if (s.overflowX !== 'visible' || s.overflowY !== 'visible') {
+        const c = p.getBoundingClientRect()
+        if (s.overflowX !== 'visible') {
+          left = Math.max(left, c.left)
+          right = Math.min(right, c.right)
+        }
+        if (s.overflowY !== 'visible') {
+          top = Math.max(top, c.top)
+          bottom = Math.min(bottom, c.bottom)
+        }
+      }
+      if (s.position === 'fixed') {
+        break
+      }
+    }
+    return right - left < 1 || bottom - top < 1
+      ? null
+      : new DOMRect(left, top, right - left, bottom - top)
+  }
+
+  // What a person sees of an element: laid out, on screen, not hidden, and not faded out with any ancestor (the
+  // player's floating UI and the top bar's buttons hide by fading their wrappers)
+  const seen = (el: Element) => {
+    const r = el.getBoundingClientRect()
+    if (
+      r.width < 2 ||
+      r.height < 2 ||
+      r.bottom <= 0 ||
+      r.right <= 0 ||
+      r.top >= innerHeight ||
+      r.left >= innerWidth ||
+      getComputedStyle(el).visibility === 'hidden'
+    ) {
+      return false
+    }
+    let opacity = 1
+    for (let p: Element | null = el; p; p = p.parentElement) {
+      opacity *= Number(getComputedStyle(p).opacity)
+    }
+    return opacity > 0.05
+  }
+
+  /** A CSS length in px ('14px' → 14; 'normal' → 0) */
+  const px = (value: string) => Number(value.replace(/px$/u, '')) || 0
+
+  const rectFrom = (r: DOMRect): Rect => ({
+    h: Math.round(r.height),
+    w: Math.round(r.width),
+    x: Math.round(r.x),
+    y: Math.round(r.y),
+  })
+
+  /** The nearest ancestor that says where an element is: a data-* hook or a role */
+  const hookOf = (e: Element): string | null => {
+    const data = [...e.attributes].find(
+      (a) => a.name.startsWith('data-') && !a.name.startsWith('data-state')
+    )
+    if (data) {
+      const value =
+        data.value !== '' && data.value.length < 24 ? `=${data.value}` : ''
+      return `${e.tagName.toLowerCase()}[${data.name}${value}]`
+    }
+    const role = e.getAttribute('role')
+    return role === null ? null : `${e.tagName.toLowerCase()}[role=${role}]`
+  }
+
+  const ownText = (el: Element) =>
+    [...el.childNodes]
+      .filter((n) => n.nodeType === Node.TEXT_NODE)
+      .map((n) => n.textContent ?? '')
+      .join('')
+      .trim()
+
+  /**
+   * An element as `tag.first.classes "its own name or text"`, plus the nearest ancestor that says where it is:
+   * enough to find it in the code
+   */
+  const describe = (el: Element) => {
+    const name =
+      el.getAttribute('aria-label') ??
+      el.getAttribute('title') ??
+      el.getAttribute('placeholder') ??
+      ownText(el).slice(0, 40)
+    const classes = [...el.classList].slice(0, 4).join('.')
+    const self = `${hookOf(el) ?? el.tagName.toLowerCase()}${classes === '' ? '' : `.${classes}`}${name === '' ? '' : ` "${name}"`}`
+    for (
+      let p = el.parentElement;
+      p && p !== document.body;
+      p = p.parentElement
+    ) {
+      const h = hookOf(p)
+      if (h !== null) {
+        return `${self} in ${h}`
+      }
+    }
+    return self
+  }
+
+  const alpha = (color: string) => {
+    if (color === 'transparent' || color === '') {
+      return 0
+    }
+    const slash = /\/\s*(?<a>[\d.]+)(?<pct>%?)\s*\)$/u.exec(color)
+    if (slash?.groups) {
+      return Number(slash.groups.a) / (slash.groups.pct === '' ? 1 : 100)
+    }
+    const rgba = /^rgba\([^,]+,[^,]+,[^,]+,\s*(?<a>[\d.]+)\s*\)$/u.exec(color)
+    return rgba?.groups ? Number(rgba.groups.a) : 1
+  }
+
+  const REPLACED = new Set([
+    'IMG',
+    'svg',
+    'VIDEO',
+    'CANVAS',
+    'IFRAME',
+    'INPUT',
+    'TEXTAREA',
+    'SELECT',
+  ])
+
+  /** Paints a box of its own: a background, border, shadow or backdrop filter, or replaced content (an image, a field) */
+  const paintsBox = (el: Element) => {
+    const s = getComputedStyle(el)
+    return (
+      REPLACED.has(el.tagName) ||
+      alpha(s.backgroundColor) > 0 ||
+      s.backgroundImage !== 'none' ||
+      s.boxShadow !== 'none' ||
+      (s.backdropFilter !== '' && s.backdropFilter !== 'none') ||
+      ['top', 'right', 'bottom', 'left'].some(
+        (side) =>
+          px(s.getPropertyValue(`border-${side}-width`)) > 0 &&
+          alpha(s.getPropertyValue(`border-${side}-color`)) > 0
+      )
+    )
+  }
+
+  /** The box of an element's own text nodes, inside what clips it */
+  const textBox = (el: Element): DOMRect | null => {
+    const range = document.createRange()
+    let left = Infinity
+    let top = Infinity
+    let right = -Infinity
+    let bottom = -Infinity
+    for (const node of el.childNodes) {
+      if (
+        node.nodeType === Node.TEXT_NODE &&
+        (node.textContent ?? '').trim() !== ''
+      ) {
+        range.selectNodeContents(node)
+        const r = range.getBoundingClientRect()
+        left = Math.min(left, r.left)
+        top = Math.min(top, r.top)
+        right = Math.max(right, r.right)
+        bottom = Math.max(bottom, r.bottom)
+      }
+    }
+    const c = clipped(el)
+    if (c === null || right <= left) {
+      return null
+    }
+    const l = Math.max(left, c.left)
+    const t = Math.max(top, c.top)
+    const w = Math.min(right, c.right) - l
+    const h = Math.min(bottom, c.bottom) - t
+    return w < 1 || h < 1 ? null : new DOMRect(l, t, w, h)
+  }
+
+  /**
+   * The box an element paints into, or null when it paints nothing of its own (an empty wrapper) or only a
+   * full-bleed background (a bar's background padding an inset, a full-screen sheet: backdrops, as the scrims)
+   */
+  const paintBox = (el: Element): DOMRect | null => {
+    if (!paintsBox(el)) {
+      return textBox(el)
+    }
+    const box = clipped(el)
+    const bleeds =
+      box !== null &&
+      !REPLACED.has(el.tagName) &&
+      ownText(el) === '' &&
+      (box.width >= innerWidth - 1 || box.height >= innerHeight - 1)
+    return bleeds ? null : box
+  }
+
+  const scrollsInside = (el: Element) => {
+    const s = getComputedStyle(el)
+    return (
+      (/auto|scroll/u.test(s.overflowY) &&
+        el.scrollHeight > el.clientHeight + 1) ||
+      (/auto|scroll/u.test(s.overflowX) && el.scrollWidth > el.clientWidth + 1)
+    )
+  }
+
+  /**
+   * Safe-area intrusion by any surface, not only a press target's centre: everything a fixed or sticky layer paints
+   * must clear the status bar, home indicator and side notches by more than 1px, except the designed backdrops
+   * (INSET_BACKDROPS and full-bleed backgrounds). An element found counts once, its painted descendants with it.
+   * What scrolls inside a layer (a list under its bars) passes under the insets on its way, as content scrolled
+   * under the top bar does; only the layer's own chrome counts
+   */
+  const insetSurfacesOf = (safe: Insets): AuditTarget[] => {
+    const vw = innerWidth
+    const vh = innerHeight
+    const intrudes = (r: DOMRect) =>
+      (safe.top > 0 && r.top < safe.top - 1 && r.bottom > 0) ||
+      (safe.bottom > 0 && r.bottom > vh - safe.bottom + 1 && r.top < vh) ||
+      (safe.left > 0 && r.left < safe.left - 1 && r.right > 0) ||
+      (safe.right > 0 && r.right > vw - safe.right + 1 && r.left < vw)
+    const backdrop = Object.keys(backdrops).join(',')
+    const found: AuditTarget[] = []
+    const walk = (el: Element) => {
+      if (!el.matches(backdrop) && seen(el)) {
+        const box = paintBox(el)
+        if (box && intrudes(box)) {
+          found.push({ label: describe(el), rect: rectFrom(box) })
+          return
+        }
+      }
+      // An svg's shapes paint as the svg
+      if (el.tagName !== 'svg' && !scrollsInside(el)) {
+        for (const child of el.children) {
+          walk(child)
+        }
+      }
+    }
+    const layers = [...document.body.querySelectorAll('*')].filter((el) =>
+      ['fixed', 'sticky'].includes(getComputedStyle(el).position)
+    )
+    // A layer inside another is walked with it
+    for (const layer of layers.filter(
+      (l) => !layers.some((o) => o !== l && o.contains(l))
+    )) {
+      walk(layer)
+    }
+    return found
+  }
+
+  /**
+   * The page panned sideways: what iOS does when a focused field (or anything) sits past the layout viewport's
+   * side. The lab reports the scroll offsets; the real keyboard and iOS's zoom into a small field are not
+   * emulated (zoomInputs predicts the zoom)
+   */
+  const panOf = () => {
+    const pans: Record<string, number> = {
+      'body.scrollLeft': document.body.scrollLeft,
+      'documentElement.scrollLeft': document.documentElement.scrollLeft,
+      scrollX: window.scrollX,
+      'visualViewport.offsetLeft': window.visualViewport?.offsetLeft ?? 0,
+      'visualViewport.pageLeft': window.visualViewport?.pageLeft ?? 0,
+    }
+    return {
+      detail: Object.entries(pans)
+        .filter(([, v]) => Math.round(v) !== 0)
+        .map(([k, v]) => `${k} ${Math.round(v)}`)
+        .join(', '),
+      px: Math.round(Math.max(0, ...Object.values(pans))),
+    }
+  }
+
+  const TEXT_TYPES = new Set([
+    '',
+    'text',
+    'search',
+    'email',
+    'url',
+    'tel',
+    'password',
+    'number',
+  ])
+  const textFields = () =>
+    [
+      ...document.querySelectorAll(
+        'input, textarea, select, [contenteditable=""], [contenteditable=true]'
+      ),
+    ].filter(
+      (el) =>
+        !(el instanceof HTMLInputElement) ||
+        TEXT_TYPES.has((el.getAttribute('type') ?? '').toLowerCase())
+    )
+
+  /**
+   * Text fields under 16px, on a phone: iOS zooms the page into one when it takes focus, and the page then pans
+   * sideways while the keyboard is up. Every field on screen counts, focused or not: any of them is a tap away
+   */
+  const zoomInputsOf = (): AuditTarget[] =>
+    textFields()
+      .filter(
+        (el) =>
+          px(getComputedStyle(el).fontSize) < 16 &&
+          seen(el) &&
+          !(el instanceof HTMLInputElement && el.disabled)
+      )
+      .map((el) => ({
+        label: `${labelOf(el)} ${getComputedStyle(el).fontSize}${el === document.activeElement ? ', focused' : ''}`,
+        rect: rectOf(el),
+      }))
+
+  const measure = document.createElement('canvas').getContext('2d')
+  /** The width of a line of text in an element's font */
+  const textWidth = (text: string, s: CSSStyleDeclaration) => {
+    if (!measure) {
+      return 0
+    }
+    measure.font = `${s.fontStyle} ${s.fontWeight} ${s.fontSize} ${s.fontFamily}`
+    return (
+      measure.measureText(text).width +
+      px(s.letterSpacing) * [...new Intl.Segmenter().segment(text)].length
+    )
+  }
+
+  /** A placeholder wider than its field, in the field's font, whether or not it shows now: it does whenever the field is empty */
+  const clippedPlaceholders = (): AuditTarget[] =>
+    textFields().flatMap((el) => {
+      const holder = el.getAttribute('placeholder') ?? ''
+      if (!(el instanceof HTMLInputElement) || holder === '' || !seen(el)) {
+        return []
+      }
+      const s = getComputedStyle(el)
+      const room = el.clientWidth - px(s.paddingLeft) - px(s.paddingRight)
+      const need = textWidth(holder, s)
+      return need > room + 1
+        ? [
+            {
+              label: `placeholder of input "${el.getAttribute('aria-label') ?? ''}" "${holder.slice(0, 40)}": ${Math.round(need)}px of text in ${Math.round(room)}px`,
+              rect: rectOf(el),
+            },
+          ]
+        : []
+    })
+
+  /** A title or aria-label on the element or above it that carries the full text */
+  const fullTextOn = (el: Element, text: string) => {
+    for (
+      let p: Element | null = el;
+      p && p !== document.body;
+      p = p.parentElement
+    ) {
+      for (const attr of ['title', 'aria-label']) {
+        const v = (p.getAttribute(attr) ?? '').replaceAll(/\s+/gu, ' ').trim()
+        if (v !== '' && v.includes(text)) {
+          return true
+        }
+      }
+    }
+    return false
+  }
+
+  // Labels of controls, and headings; content in lists (song titles in rows and options) is cut to one line by design
+  const LABELLED =
+    'button,[role=button],[role=tab],[role=menuitem],[role=menuitemradio],[role=menuitemcheckbox],[role=switch],[role=radio],label,summary,legend,h1,h2,h3,h4,h5,h6'
+
+  /** A single-line label cut off by its box (with an ellipsis or not), with no title or aria-label holding its text */
+  const truncatedLabels = (): AuditTarget[] =>
+    [...document.body.querySelectorAll('*')].flatMap((el) => {
+      if (
+        el.closest(LABELLED) === null ||
+        el instanceof HTMLInputElement ||
+        el instanceof HTMLTextAreaElement
+      ) {
+        return []
+      }
+      const s = getComputedStyle(el)
+      const single =
+        ['nowrap', 'pre'].includes(s.whiteSpace) ||
+        s.textOverflow === 'ellipsis'
+      if (
+        !single ||
+        !['hidden', 'clip'].includes(s.overflowX) ||
+        el.scrollWidth <= el.clientWidth + 1
+      ) {
+        return []
+      }
+      const text = (el.textContent ?? '').replaceAll(/\s+/gu, ' ').trim()
+      // seen() leaves out screen-reader-only text, clipped to a pixel on purpose
+      return text === '' || !seen(el) || fullTextOn(el, text)
+        ? []
+        : [
+            {
+              label: `"${text.slice(0, 48)}" ${el.scrollWidth}px of text in ${el.clientWidth}px, no title: ${describe(el)}`,
+              rect: rectOf(el),
+            },
+          ]
+    })
+
+  let atRest: WeakSet<Element> | null = null
+  bench.rest = () => {
+    // What a person could see: a closed dialog's field, already in the page, is not at rest on screen
+    atRest = new WeakSet([...document.querySelectorAll('*')].filter(seen))
+  }
+
   bench.audit = (safe) => {
     const vw = window.innerWidth
     const vh = window.innerHeight
-    const rectOf = (el: Element): Rect => {
-      const r = el.getBoundingClientRect()
-      return {
-        h: Math.round(r.height),
-        w: Math.round(r.width),
-        x: Math.round(r.x),
-        y: Math.round(r.y),
-      }
-    }
-    const labelOf = (el: Element) => {
-      const name =
-        el.getAttribute('aria-label') ??
-        el.getAttribute('title') ??
-        el.getAttribute('placeholder') ??
-        (el.textContent ?? '').trim().slice(0, 40)
-      return `${el.tagName.toLowerCase()}${name ? ` "${name}"` : ''}`
-    }
     const shown = (el: Element) => {
       const s = getComputedStyle(el)
       const r = el.getBoundingClientRect()
@@ -360,35 +792,6 @@ const recorder = (watch: typeof WATCH) => {
         s.pointerEvents !== 'none' &&
         !el.closest('[inert],[aria-hidden=true]')
       )
-    }
-    /** The part of an element left visible by every clipping ancestor (scroll boxes, overflow: hidden) */
-    const clipped = (el: Element): DOMRect | null => {
-      const r = el.getBoundingClientRect()
-      let { left, top, right, bottom } = r
-      for (
-        let p = el.parentElement;
-        p && p !== document.documentElement;
-        p = p.parentElement
-      ) {
-        const s = getComputedStyle(p)
-        if (s.overflowX !== 'visible' || s.overflowY !== 'visible') {
-          const c = p.getBoundingClientRect()
-          if (s.overflowX !== 'visible') {
-            left = Math.max(left, c.left)
-            right = Math.min(right, c.right)
-          }
-          if (s.overflowY !== 'visible') {
-            top = Math.max(top, c.top)
-            bottom = Math.min(bottom, c.bottom)
-          }
-        }
-        if (s.position === 'fixed') {
-          break
-        }
-      }
-      return right - left < 1 || bottom - top < 1
-        ? null
-        : new DOMRect(left, top, right - left, bottom - top)
     }
     const pinned = (el: Element) => {
       for (let p: Element | null = el; p; p = p.parentElement) {
@@ -429,9 +832,12 @@ const recorder = (watch: typeof WATCH) => {
       }
       return null
     }
+    // An open modal dialog makes the rest of the page inert: only what it holds can be pressed
+    const modal = document.querySelector('dialog:modal')
     const all = [...document.querySelectorAll(TARGETS)].filter(
       (el) =>
-        !(el instanceof HTMLElement && el.dataset.benchIgnore !== undefined)
+        !(el instanceof HTMLElement && el.dataset.benchIgnore !== undefined) &&
+        (modal === null || modal.contains(el))
     )
     // Nested targets (a button inside a link) count once, as the outer one
     const targets = all
@@ -474,20 +880,28 @@ const recorder = (watch: typeof WATCH) => {
       // Content scrolled under a fixed or sticky bar is expected and not counted; a pinned control covered by
       // anything, or content covered by other content, is.
       const by = coveredBy(el, isPinned, mx, my)
-      if (by) {
+      // An opened menu or field covers what was under it: that is what opening it does. What the state opened is
+      // still checked against everything
+      const openedOver =
+        by !== null && atRest !== null && atRest.has(el) && !atRest.has(by)
+      if (by && !openedOver) {
         occluded.push({ by: labelOf(by), label: target.label })
       }
     }
     return {
+      clipped: [...clippedPlaceholders(), ...truncatedLabels()],
+      insetSurfaces: phone ? insetSurfacesOf(safe) : [],
       occluded,
       offscreen,
       overflowX: Math.max(0, document.documentElement.scrollWidth - vw),
+      pan: panOf(),
       small,
       targets: count,
       unsafe,
       viewport: { h: vh, w: vw },
+      zoomInputs: phone ? zoomInputsOf() : [],
     }
   }
 }
 
-export const RECORDER = `(${recorder.toString()})(${JSON.stringify(WATCH)})`
+export const RECORDER = `(${recorder.toString()})(${JSON.stringify(WATCH)}, ${JSON.stringify(INSET_BACKDROPS)})`
