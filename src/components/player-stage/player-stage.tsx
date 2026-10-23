@@ -27,7 +27,7 @@ import { transitionLayout } from '@/lib/view-transition'
 import type { CssVars } from '@/types'
 import { cn } from '@/utils/cn'
 
-import { CenterPlayButton } from './center-play-button'
+import { CenterPlayButton, useYouTubeCenterShowing } from './center-play-button'
 import { clampSeek, HOLD_JUMP_MS, holdStep } from './seek-steps'
 import { StageControls } from './stage-controls'
 import type { SeekFlash } from './use-stage-taps'
@@ -234,17 +234,21 @@ const useIdle = (ms: number, stageRef: RefObject<HTMLElement | null>) => {
 }
 
 // The floating UI shows after input until idle, never while locked or dragging. Paused, it stays while the
-// mouse is over the player and goes with it
+// mouse is over the player and goes with it. It also stays while YouTube's own centre button shows under ours,
+// so the centre button never outlives the rest of the UI and YouTube's never shows alone
 const showsControls = (state: {
   locked: boolean
   dragging: boolean
   idle: boolean
   outside: boolean
   playing: boolean
+  youTubeCenterShowing: boolean
 }) =>
   !state.locked &&
   !state.dragging &&
-  (!state.idle || (!state.playing && !state.outside))
+  (!state.idle ||
+    state.youTubeCenterShowing ||
+    (!state.playing && !state.outside))
 
 const SeekFlashBadge = ({ flash }: { flash: SeekFlash }) => (
   <div
@@ -459,12 +463,16 @@ export const PlayerStage = ({
   const handsOff = phase.kind === 'error'
   const showCover = !handsOff && coversPhase(phase)
   // Paused, the controls stay while the mouse is over the player, and go with it
+  // YouTube's centre button is hidden under the cover, and its error screens are left alone
+  const youTubeCenterShowing =
+    useYouTubeCenterShowing(phase) && !showCover && !handsOff
   const controlsVisible = showsControls({
     dragging,
     idle,
     locked,
     outside,
     playing: phase.kind === 'playing',
+    youTubeCenterShowing,
   })
   const blockInput = quirks.blockIframeInput && !handsOff
   const setChromeOpen = useSetAtom(playerChromeOpenAtom)
@@ -667,12 +675,13 @@ export const PlayerStage = ({
         {showCover && <StageCover videoId={videoId} phase={phase} />}
       </div>
 
-      {/* The play/pause control shows and hides with the rest of the floating UI, and on a phone stays as long
-          as YouTube's own button under it. It sits outside the video box so it draws above the lyrics */}
+      {/* The play/pause control shows and hides with the rest of the floating UI, which stays as long as
+          YouTube's own button under it. It sits outside the video box so it draws above the lyrics */}
       {!showCover && !handsOff && (
         <CenterPlayButton
           phase={phase}
           controlsVisible={controlsVisible}
+          youTubeCenterShowing={youTubeCenterShowing}
           onToggle={() => {
             player.togglePlay()
           }}
