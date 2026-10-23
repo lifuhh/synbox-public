@@ -301,22 +301,33 @@ test('Aqua, retired, reads as Frost in saved song styles and in links shared bef
   })
 })
 
-test('Karaoke Style follows Theater until the viewer picks it', () => {
+// A fresh store over the same storage, as a reload would make, showing the given layout
+const reloadIn = (theater: boolean) => {
   const store = createStore()
   store.sub(lyricsTwoLinesAtom, () => {})
-  expect(store.get(lyricsTwoLinesAtom)).toBe(false)
-  store.set(theaterShownAtom, true)
-  expect(store.get(lyricsTwoLinesAtom)).toBe(true)
+  store.set(theaterShownAtom, theater)
+  return store
+}
 
-  // Picked off in Theater: stays off there, after a reload too
-  store.set(lyricsTwoLinesAtom, false)
-  const reloaded = createStore()
-  reloaded.sub(lyricsTwoLinesAtom, () => {})
-  reloaded.set(theaterShownAtom, true)
-  expect(reloaded.get(lyricsTwoLinesAtom)).toBe(false)
+test('Karaoke Style: on in Theater, off beside the video, until picked', () => {
+  expect(reloadIn(false).get(lyricsTwoLinesAtom)).toBe(false)
+  expect(reloadIn(true).get(lyricsTwoLinesAtom)).toBe(true)
+})
 
-  // Picked on: on outside Theater as well
-  reloaded.set(lyricsTwoLinesAtom, true)
-  reloaded.set(theaterShownAtom, false)
-  expect(reloaded.get(lyricsTwoLinesAtom)).toBe(true)
+test("Karaoke Style: a pick in one layout is that layout's own", () => {
+  reloadIn(true).set(lyricsTwoLinesAtom, false)
+  expect(reloadIn(true).get(lyricsTwoLinesAtom)).toBe(false)
+  expect(reloadIn(false).get(lyricsTwoLinesAtom)).toBe(false)
+
+  reloadIn(false).set(lyricsTwoLinesAtom, true)
+  expect(reloadIn(false).get(lyricsTwoLinesAtom)).toBe(true)
+  expect(reloadIn(true).get(lyricsTwoLinesAtom)).toBe(false)
+})
+
+test("Karaoke Style: the old single pick becomes the default view's", () => {
+  localStorage.setItem('lyricsTwoLines', 'true')
+  expect(reloadIn(false).get(lyricsTwoLinesAtom)).toBe(true)
+  localStorage.setItem('lyricsTwoLines', 'false')
+  expect(reloadIn(false).get(lyricsTwoLinesAtom)).toBe(false)
+  expect(reloadIn(true).get(lyricsTwoLinesAtom)).toBe(true)
 })
