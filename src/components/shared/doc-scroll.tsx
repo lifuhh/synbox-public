@@ -145,7 +145,8 @@ const OverlayScrollbar = ({ box }: { box: HTMLElement }) => {
     '--thumb-y': `${thumb.top}px`,
   }
   const shown = moving || held || near
-  // The strip never takes presses; only the thumb does, and only while it shows
+  // The strip never takes presses; only the thumb does, and only while it shows. Width and colour are the app's own
+  // scrollbar's (`custom-scrollbar`): 6px, flush right, the theme colour at 35%, 65% under the pointer
   return (
     <div
       ref={strip}
@@ -161,9 +162,9 @@ const OverlayScrollbar = ({ box }: { box: HTMLElement }) => {
         onWheel={onWheel}
         style={thumbVars}
         className={cn(
-          'absolute top-0 right-0.5 h-(--thumb-h) w-2 translate-y-(--thumb-y) touch-none rounded-full bg-foreground/35 opacity-0 transition duration-200 motion-reduce:transition-none',
+          'absolute top-0 right-0 h-(--thumb-h) w-1.5 translate-y-(--thumb-y) touch-none rounded-full bg-primary/35 opacity-0 transition duration-200 motion-reduce:transition-none',
           shown && 'pointer-events-auto opacity-100',
-          (near || held) && 'bg-foreground/55'
+          (near || held) && 'bg-primary/65'
         )}
       />
     </div>
