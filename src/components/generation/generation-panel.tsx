@@ -7,6 +7,7 @@ import {
   useReducedMotion,
 } from 'motion/react'
 import { useRef } from 'react'
+import type { ReactNode } from 'react'
 import { Link } from 'react-router'
 
 import { startFromButton } from '@/components/generation/start-generation'
@@ -27,6 +28,8 @@ import {
   isActive,
   retryGeneration,
 } from '@/lib/generation/store'
+import { useGetSongInfoBySongId } from '@/lib/react-query/queries-and-mutations'
+import type { Fix } from '@/lib/report-fixes'
 import { cn } from '@/utils/cn'
 
 import StepWheel from './step-wheel'
@@ -39,6 +42,7 @@ import {
   titleOf,
 } from './surface'
 import { isReconnecting, usePresentation } from './use-presentation'
+import type { Presentation } from './use-presentation'
 
 // What a song shows until the backend sends its details, when nothing named it before
 const PENDING_TITLE = 'Fetching Song Details…'
@@ -234,10 +238,18 @@ const RowAction = ({ job, title }: { job: Job; title: string }) => {
   return null
 }
 
-// Clears every finished song at once; songs still going stay, and the panel closes when none are left. Shown
-// only once there are two to clear
-const DismissAll = ({ jobs }: { jobs: readonly Job[] }) => {
-  if (jobs.filter((job) => !isActive(job)).length < 2) {
+// Clears every finished song and every fix at once; songs still going stay, and the panel closes when none are
+// left. Shown only once there are two to clear
+const DismissAll = ({
+  jobs,
+  fixes,
+  onDismissFixes,
+}: {
+  jobs: readonly Job[]
+  fixes: readonly Fix[]
+  onDismissFixes: (fixes: readonly Fix[]) => void
+}) => {
+  if (jobs.filter((job) => !isActive(job)).length + fixes.length < 2) {
     return null
   }
   return (
@@ -245,7 +257,10 @@ const DismissAll = ({ jobs }: { jobs: readonly Job[] }) => {
       <Button
         variant='overlay-muted'
         size='sm'
-        onClick={dismissFinishedGenerations}>
+        onClick={() => {
+          onDismissFixes(fixes)
+          dismissFinishedGenerations()
+        }}>
         Dismiss All
       </Button>
     </div>
@@ -256,22 +271,34 @@ const DismissAll = ({ jobs }: { jobs: readonly Job[] }) => {
 const SWIPE_SHARE = 0.35
 const FLICK_SPEED = 500
 
-// One song in the queue. A finished one is dismissed by a swipe left on touch, or by the X a mouse finds on hover
-// (and the keyboard on focus); the rows below close the gap
-const SongRow = ({ job, picked }: { job: Job; picked: boolean }) => {
-  const title = titleOf(job)
-  const status = rowStatus(job)
-  const name = title === '' ? 'this song' : title
-  const finished = !isActive(job)
+// A row of the panel's list. A finished one is dismissed by a swipe left on touch, or by the X a mouse finds on
+// hover (and the keyboard on focus); the rows below close the gap
+const SwipeRow = ({
+  name,
+  finished,
+  hoverDismiss,
+  onDismiss: dismiss,
+  picked = false,
+  main,
+  action,
+}: {
+  name: string
+  // Swipes away on touch
+  finished: boolean
+  // A failed song has its X in view already
+  hoverDismiss: boolean
+  onDismiss: () => void
+  picked?: boolean
+  // The row's own press: a button or a link filling the row
+  main: ReactNode
+  action: ReactNode
+}) => {
   const reduced = useReducedMotion() ?? false
   const drag = useDragControls()
   const slide = useAnimationControls()
   const row = useRef<HTMLDivElement>(null)
   // A swipe ends with the finger lifted over a button: that press isn't a tap
   const swiped = useRef(false)
-  const dismiss = () => {
-    dismissGeneration(job.id)
-  }
   // Past the line, or flicked, the row slides out and goes; short of it, it springs back
   const settle = async (offset: number, velocity: number) => {
     const width = row.current?.offsetWidth ?? 0
@@ -337,50 +364,9 @@ const SongRow = ({ job, picked }: { job: Job; picked: boolean }) => {
           picked && 'bg-accent'
         )}>
         <div className='relative flex min-w-0 flex-1 self-stretch'>
-          <button
-            type='button'
-            aria-current={picked}
-            onClick={() => {
-              focusGeneration(job.id)
-            }}
-            className='flex min-w-0 flex-1 items-center gap-2 rounded-lg px-1.5 py-1 text-left outline-none focus-visible:ring-2 focus-visible:ring-brand-light touch:py-2'>
-            <span className='h-8 w-[57px] shrink-0 overflow-hidden rounded bg-thumbnail-placeholder'>
-              <img
-                src={thumbnailOf(job)}
-                alt=''
-                onError={hideBrokenImage}
-                onLoad={hidePlaceholderImage}
-                className='size-full object-cover'
-              />
-            </span>
-            <MarqueeText
-              className={cn(
-                'min-w-0 flex-1 text-sm',
-                title === '' ? 'text-faint' : 'text-foreground'
-              )}>
-              {title === '' ? PENDING_TITLE : title}
-            </MarqueeText>
-            {job.status.kind === 'complete' &&
-              (madeKaraoke(job.status) ? (
-                <KaraokeBadge />
-              ) : (
-                <KaraokeMark videoId={job.videoId} />
-              ))}
-            {status !== null && (
-              <span
-                className={cn(
-                  'shrink-0 text-sm tabular-nums',
-                  job.status.kind === 'failed'
-                    ? 'text-error'
-                    : 'text-muted-foreground'
-                )}>
-                {status}
-              </span>
-            )}
-          </button>
-          {/* Over the end of the title, not in the row's flow: it comes in from the right without moving anything.
-              A failed row has its X in view already */}
-          {job.status.kind === 'complete' && (
+          {main}
+          {/* Over the end of the title, not in the row's flow: it comes in from the right without moving anything */}
+          {hoverDismiss && (
             <button
               type='button'
               aria-label={`Dismiss ${name}`}
@@ -390,11 +376,159 @@ const SongRow = ({ job, picked }: { job: Job; picked: boolean }) => {
             </button>
           )}
         </div>
-        <RowAction job={job} title={title} />
+        {action}
       </motion.div>
     </motion.li>
   )
 }
+
+const ROW_MAIN =
+  'flex min-w-0 flex-1 items-center gap-2 rounded-lg px-1.5 py-1 text-left outline-none focus-visible:ring-2 focus-visible:ring-brand-light touch:py-2'
+
+const RowThumbnail = ({ src }: { src: string }) => (
+  <span className='h-8 w-[57px] shrink-0 overflow-hidden rounded bg-thumbnail-placeholder'>
+    <img
+      src={src}
+      alt=''
+      onError={hideBrokenImage}
+      onLoad={hidePlaceholderImage}
+      className='size-full object-cover'
+    />
+  </span>
+)
+
+// One song in the queue
+const SongRow = ({ job, picked }: { job: Job; picked: boolean }) => {
+  const title = titleOf(job)
+  const status = rowStatus(job)
+  const name = title === '' ? 'this song' : title
+  return (
+    <SwipeRow
+      name={name}
+      finished={!isActive(job)}
+      hoverDismiss={job.status.kind === 'complete'}
+      onDismiss={() => {
+        dismissGeneration(job.id)
+      }}
+      picked={picked}
+      action={<RowAction job={job} title={title} />}
+      main={
+        <button
+          type='button'
+          aria-current={picked}
+          onClick={() => {
+            focusGeneration(job.id)
+          }}
+          className={ROW_MAIN}>
+          <RowThumbnail src={thumbnailOf(job)} />
+          <MarqueeText
+            className={cn(
+              'min-w-0 flex-1 text-sm',
+              title === '' ? 'text-faint' : 'text-foreground'
+            )}>
+            {title === '' ? PENDING_TITLE : title}
+          </MarqueeText>
+          {job.status.kind === 'complete' &&
+            (madeKaraoke(job.status) ? (
+              <KaraokeBadge />
+            ) : (
+              <KaraokeMark videoId={job.videoId} />
+            ))}
+          {status !== null && (
+            <span
+              className={cn(
+                'shrink-0 text-sm tabular-nums',
+                job.status.kind === 'failed'
+                  ? 'text-error'
+                  : 'text-muted-foreground'
+              )}>
+              {status}
+            </span>
+          )}
+        </button>
+      }
+    />
+  )
+}
+
+// A song the listener reported whose lyrics were fixed since. Opening it, from the row or its Play, counts as done
+// with it, as Play does for a finished song: it leaves the list on every device
+const FixRow = ({
+  fix,
+  onDismiss,
+}: {
+  fix: Fix
+  onDismiss: (fixes: readonly Fix[]) => void
+}) => {
+  const { data: song, isError } = useGetSongInfoBySongId(fix.videoId)
+  const title = song?.title ?? ''
+  const name = title === '' ? 'this song' : title
+  const to = `/v/${fix.videoId}`
+  const dismiss = () => {
+    onDismiss([fix])
+  }
+  let shownTitle = title
+  if (title === '') {
+    shownTitle = isError ? 'Song Details Unavailable' : PENDING_TITLE
+  }
+  return (
+    <SwipeRow
+      name={name}
+      finished
+      hoverDismiss
+      onDismiss={dismiss}
+      main={
+        <Link to={to} onClick={dismiss} className={ROW_MAIN}>
+          <RowThumbnail
+            src={`https://i.ytimg.com/vi/${fix.videoId}/mqdefault.jpg`}
+          />
+          <MarqueeText
+            className={cn(
+              'min-w-0 flex-1 text-sm',
+              title === '' ? 'text-faint' : 'text-foreground'
+            )}>
+            {shownTitle}
+          </MarqueeText>
+        </Link>
+      }
+      action={
+        <Button
+          asChild
+          size='row'
+          className='relative shrink-0 touch:after:absolute touch:after:inset-x-0 touch:after:-inset-y-2'>
+          <Link to={to} aria-label={`Play ${name}`} onClick={dismiss}>
+            <Play className='size-3 fill-current' aria-hidden />
+            Play
+          </Link>
+        </Button>
+      }
+    />
+  )
+}
+
+// Under everything else, so a fix that arrives while the panel is open moves nothing the listener is looking at
+const FixList = ({
+  fixes,
+  onDismiss,
+}: {
+  fixes: readonly Fix[]
+  onDismiss: (fixes: readonly Fix[]) => void
+}) => (
+  <section aria-labelledby='fixes-heading' className='flex flex-col gap-1'>
+    <h3
+      id='fixes-heading'
+      className='text-xs font-medium tracking-wide text-muted-foreground uppercase'>
+      Lyrics Fixed
+    </h3>
+    <ul aria-label='Lyrics Fixed' className='-mx-1.5 flex flex-col gap-0.5'>
+      <AnimatePresence initial={false}>
+        {fixes.map((fix) => (
+          <FixRow key={fix.videoId} fix={fix} onDismiss={onDismiss} />
+        ))}
+      </AnimatePresence>
+    </ul>
+  </section>
+)
 
 // Every song in the queue, shared by all tabs, oldest first; picking one shows it in the panel
 const SongQueue = ({
@@ -413,18 +547,8 @@ const SongQueue = ({
   </ul>
 )
 
-interface GenerationPanelProps {
-  // The song whose steps show under the list
-  job: Job
-  jobs: readonly Job[]
-}
-
-// The top bar panel's body: every song in the queue, and the steps of the one picked
-const GenerationPanel = ({ job, jobs }: GenerationPanelProps) => {
-  const view = usePresentation(job)
-  if (!view) {
-    return null
-  }
+// The picked song's header and steps, under the list
+const SongDetail = ({ job, view }: { job: Job; view: Presentation }) => {
   const { status } = job
   const active = isActive(job)
   const percent = Math.floor(view.overall * 100)
@@ -446,10 +570,7 @@ const GenerationPanel = ({ job, jobs }: GenerationPanelProps) => {
   }
 
   return (
-    <div className='flex flex-col gap-4 p-4'>
-      <DismissAll jobs={jobs} />
-      {jobs.length > 1 && <SongQueue jobs={jobs} focusedId={job.id} />}
-
+    <>
       <SongHeader job={job} />
 
       <AnimatePresence mode='wait' initial={false}>
@@ -544,6 +665,34 @@ const GenerationPanel = ({ job, jobs }: GenerationPanelProps) => {
           </motion.div>
         )}
       </AnimatePresence>
+    </>
+  )
+}
+
+interface GenerationPanelProps {
+  // The song whose steps show under the list; null when only fixes are listed
+  job: Job | null
+  jobs: readonly Job[]
+  fixes: readonly Fix[]
+  onDismissFixes: (fixes: readonly Fix[]) => void
+}
+
+// The top bar panel's body: every song in the queue, the steps of the one picked, then the reported songs fixed
+const GenerationPanel = ({
+  job,
+  jobs,
+  fixes,
+  onDismissFixes,
+}: GenerationPanelProps) => {
+  const view = usePresentation(job)
+  return (
+    <div className='flex flex-col gap-4 p-4'>
+      <DismissAll jobs={jobs} fixes={fixes} onDismissFixes={onDismissFixes} />
+      {job !== null && jobs.length > 1 && (
+        <SongQueue jobs={jobs} focusedId={job.id} />
+      )}
+      {job !== null && view !== null && <SongDetail job={job} view={view} />}
+      {fixes.length > 0 && <FixList fixes={fixes} onDismiss={onDismissFixes} />}
     </div>
   )
 }

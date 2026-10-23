@@ -30,9 +30,10 @@ const isTime = (value: unknown): value is number | null =>
   value === null ||
   (typeof value === 'number' && value >= 0 && value < DAY_MS / 1000)
 
+// A song's first lyrics are version 0
 const isVersion = (value: unknown): value is number | null =>
   value === null ||
-  (typeof value === 'number' && Number.isInteger(value) && value > 0)
+  (typeof value === 'number' && Number.isInteger(value) && value >= 0)
 
 const isBuild = (value: unknown): value is string | null =>
   value === null || (typeof value === 'string' && BUILD.test(value))
@@ -180,6 +181,9 @@ export const RESOLUTION_MAX = 300
 export interface Resolution {
   // The lyrics version that fixed it
   version: number | null
+  // For a report sent without a version (a listener sees the song's current lyrics): the version that was live
+  // when it was sent, so a resolve with the same lyrics tells the reporter nothing
+  reportedVersion: number | null
   note: string | null
 }
 
@@ -189,29 +193,39 @@ export const parseResolution = (body: unknown): Resolution | null => {
     return null
   }
   const version = field(body, 'version') ?? null
+  const reportedVersion = field(body, 'reportedVersion') ?? null
   const note = field(body, 'note') ?? null
-  if (!isVersion(version) || (note !== null && typeof note !== 'string')) {
+  if (
+    !isVersion(version) ||
+    !isVersion(reportedVersion) ||
+    (note !== null && typeof note !== 'string')
+  ) {
     return null
   }
   const text = note?.trim() ?? ''
   if (text.length > RESOLUTION_MAX) {
     return null
   }
-  return { note: text === '' ? null : text, version }
+  return { note: text === '' ? null : text, reportedVersion, version }
 }
 
-// False when no report has the id
+// False when no report has the id. A report sent without a version takes the one live when it was sent. Resolving
+// again with another fixing version tells the reporter again
 export const resolveReport = async (
   db: D1Database,
   id: string,
-  { version, note }: Resolution,
+  { version, reportedVersion, note }: Resolution,
   now: number
 ) => {
   const { meta } = await db
     .prepare(
-      `update "report" set "resolvedAt" = ?2, "resolvedVersion" = ?3, "resolution" = ?4 where "id" = ?1`
+      `update "report" set "resolvedAt" = ?2, "resolvedVersion" = ?3, "resolution" = ?4,
+         "version" = coalesce("version", ?5),
+         "seenAt" = case when "resolvedVersion" is ?3 then "seenAt" end,
+         "dismissedAt" = case when "resolvedVersion" is ?3 then "dismissedAt" end
+       where "id" = ?1`
     )
-    .bind(id, now, version, note)
+    .bind(id, now, version, note, reportedVersion)
     .run()
   return meta.changes > 0
 }
@@ -220,9 +234,89 @@ export const resolveReport = async (
 export const reopenReport = async (db: D1Database, id: string) => {
   const { meta } = await db
     .prepare(
-      `update "report" set "resolvedAt" = null, "resolvedVersion" = null, "resolution" = null where "id" = ?1`
+      `update "report" set "resolvedAt" = null, "resolvedVersion" = null, "resolution" = null, "seenAt" = null,
+         "dismissedAt" = null where "id" = ?1`
     )
     .bind(id)
     .run()
   return meta.changes > 0
+}
+
+// A fix stays in the reporter's notifications this long after it was resolved, read or not
+export const FIX_DAYS = 30
+const FIX_MAX = 50
+
+// A signed-in reporter's report that was resolved with other lyrics than the ones they reported. Guests get none:
+// their key is a network's, shared by a home and changed by a phone's mobile network
+const FIXED = `"userId" = ?1 and "resolvedAt" > ?2 and "resolvedVersion" is not null
+  and ("version" is null or "resolvedVersion" <> "version")`
+
+// The caller's fixed songs not dismissed, newest fix first: several reports of one song are one notification,
+// seen once all of them are
+export const listFixes = async (
+  db: D1Database,
+  userId: string,
+  now: number
+) => {
+  const { results } = await db
+    .prepare(
+      `select "videoId", max("resolvedAt") as "fixedAt", min("seenAt" is not null) as "seen" from "report"
+       where ${FIXED} and "dismissedAt" is null
+       group by "videoId" order by "fixedAt" desc limit ${FIX_MAX}`
+    )
+    .bind(userId, now - FIX_DAYS * DAY_MS)
+    .all<{ videoId: string; fixedAt: number; seen: number }>()
+  return results.map(({ videoId, fixedAt, seen }) => ({
+    fixedAt,
+    seen: seen === 1,
+    videoId,
+  }))
+}
+
+export interface FixMarks {
+  videoIds: string[]
+  // The newest fixedAt the caller was shown: a fix resolved after it is left alone
+  upTo: number
+}
+
+// The body of POST /api/me/fixes/seen and /dismiss, or null when any field is off
+export const parseFixMarks = (body: unknown): FixMarks | null => {
+  if (typeof body !== 'object' || body === null) {
+    return null
+  }
+  const videoIds = field(body, 'videoIds')
+  const upTo = field(body, 'upTo')
+  if (
+    !Array.isArray(videoIds) ||
+    videoIds.length === 0 ||
+    videoIds.length > FIX_MAX ||
+    !videoIds.every(
+      (videoId): videoId is string =>
+        typeof videoId === 'string' && VIDEO_ID.test(videoId)
+    ) ||
+    typeof upTo !== 'number' ||
+    !Number.isInteger(upTo)
+  ) {
+    return null
+  }
+  return { upTo, videoIds }
+}
+
+// Only the caller's own fixes change; another account's reports of the same songs are left alone
+export const markFixes = async (
+  db: D1Database,
+  userId: string,
+  { videoIds, upTo }: FixMarks,
+  mark: 'seen' | 'dismissed',
+  now: number
+) => {
+  const dismissedAt = mark === 'dismissed' ? '?3' : '"dismissedAt"'
+  await db
+    .prepare(
+      `update "report" set "seenAt" = coalesce("seenAt", ?3), "dismissedAt" = ${dismissedAt}
+       where ${FIXED} and "resolvedAt" <= ?4 and "dismissedAt" is null
+         and "videoId" in (select "value" from json_each(?5))`
+    )
+    .bind(userId, now - FIX_DAYS * DAY_MS, now, upTo, JSON.stringify(videoIds))
+    .run()
 }

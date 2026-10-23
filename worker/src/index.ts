@@ -26,7 +26,10 @@ import {
 } from './recommendations'
 import {
   guestKeyOf,
+  listFixes,
   listReports,
+  markFixes,
+  parseFixMarks,
   parseReport,
   parseResolution,
   reopenReport,
@@ -67,6 +70,11 @@ const limitsOf = (env: AppEnv): Limits => ({
   network: count(env.NETWORK_DAILY_LIMIT),
   user: count(env.USER_DAILY_LIMIT),
 })
+
+const userIdOf = async (env: AppEnv, headers: Headers) => {
+  const session = await createAuth(env).api.getSession({ headers })
+  return session?.user.id ?? null
+}
 
 app.on(
   ['GET', 'POST'],
@@ -195,6 +203,35 @@ app.post('/api/reports', async (c) => {
   return c.body(null, 201)
 })
 
+// Songs the signed-in user reported that got new lyrics since, for their notifications; a guest has none
+app.get('/api/me/fixes', async (c) => {
+  const userId = await userIdOf(c.env, c.req.raw.headers)
+  return c.json({
+    fixes: userId === null ? [] : await listFixes(c.env.DB, userId, Date.now()),
+  })
+})
+
+// Fixes the user's notifications showed ({ videoIds, upTo }): seen counts them out of the bell's number on
+// every device, dismissed takes them off the list
+app.post('/api/me/fixes/:mark{seen|dismiss}', async (c) => {
+  const userId = await userIdOf(c.env, c.req.raw.headers)
+  if (userId === null) {
+    return c.json({ code: 'unauthorized' }, 401)
+  }
+  const marks = parseFixMarks(await c.req.json<unknown>().catch(() => null))
+  if (marks === null) {
+    return c.json({ code: 'bad_request' }, 400)
+  }
+  await markFixes(
+    c.env.DB,
+    userId,
+    marks,
+    c.req.param('mark') === 'seen' ? 'seen' : 'dismissed',
+    Date.now()
+  )
+  return c.body(null, 204)
+})
+
 // A visit to a song's player page: one more listen
 app.post('/api/songs/:videoId/listen', async (c) => {
   const videoId = c.req.param('videoId')
@@ -217,11 +254,6 @@ app.get('/api/songs/listens', async (c) => {
   c.header('Cache-Control', 'public, max-age=300')
   return c.json({ listens: await listListenCounts(c.env.DB) })
 })
-
-const userIdOf = async (env: AppEnv, headers: Headers) => {
-  const session = await createAuth(env).api.getSession({ headers })
-  return session?.user.id ?? null
-}
 
 // A song's listens and likes, and whether this account (or, for a guest, ?device=) likes it
 app.get('/api/songs/:videoId/stats', async (c) => {

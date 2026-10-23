@@ -23,4 +23,5 @@ export enum QUERY_KEYS {
   GET_ADMIN_RECOMMENDATIONS = 'getAdminRecommendations',
   GET_OFFLINE_SONGS = 'getOfflineSongs',
   GET_LYRICS_SONG = 'getLyricsSong',
+  GET_REPORT_FIXES = 'getReportFixes',
 }
