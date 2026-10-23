@@ -37,6 +37,11 @@ import {
   lyricsStylePanelAtom,
 } from '@/context/atoms'
 import { useArmed } from '@/hooks/use-armed'
+import {
+  HOVER_CLOSE_MS,
+  HOVER_OPEN_MS,
+  useHoverMenu,
+} from '@/hooks/use-hover-menu'
 import { useMediaQuery, usePortrait } from '@/hooks/use-media-query'
 import { useAccess } from '@/lib/auth'
 import {
@@ -63,12 +68,7 @@ import {
 } from './rail-button'
 import { useReportIssue } from './report-issue'
 
-// The pointer has to rest on the style button this long before the panel peeks open, so crossing it does not
-const PEEK_DELAY_MS = 150
-// Grace after the pointer leaves the button and the panel, so the gap between them can be crossed
-const PEEK_LEAVE_MS = 300
-
-// Hovering the style button peeks its panel open; the rail's other buttons only show their tooltips. A
+// Hovering the style button peeks its panel open, on the same delays as every hover menu (useHoverMenu). A
 // panel closed while the pointer is on the button or panel (a pick, a click elsewhere) stays closed until
 // the pointer has left the button once
 const usePeek = () => {
@@ -96,7 +96,7 @@ const usePeek = () => {
     if (fromButton && armedRef.current && panel === 'closed') {
       timerRef.current = setTimeout(() => {
         setPanel((current) => (current === 'closed' ? 'peek' : current))
-      }, PEEK_DELAY_MS)
+      }, HOVER_OPEN_MS)
     }
   }
   const leave = (fromButton: boolean) => {
@@ -107,7 +107,7 @@ const usePeek = () => {
     clearTimeout(timerRef.current)
     timerRef.current = setTimeout(() => {
       setPanel((current) => (current === 'peek' ? 'closed' : current))
-    }, PEEK_LEAVE_MS)
+    }, HOVER_CLOSE_MS)
   }
   return { enter, leave, panelOpen: panel !== 'closed' }
 }
@@ -171,23 +171,24 @@ const BookmarkGlyph = ({ bookmarked }: { bookmarked: boolean }) =>
 // ~400px wide: the lyrics' buttons fill either, so the song's own actions wait behind More
 const SongActionsMenu = ({ actions }: { actions: SongAction[] }) => {
   const [open, setOpen] = useState(false)
+  const menu = useHoverMenu(open, setOpen)
   // Upright the rail lies along the bottom, so the menu opens up from it
   const portrait = usePortrait()
   return (
     <DropdownMenu modal={false} open={open} onOpenChange={setOpen}>
-      <RailTooltip label='More Actions' hidden={open}>
-        <DropdownMenuTrigger asChild>
-          <RailButton
-            label='More Actions'
-            className={cn(
-              'hidden portrait:grid short:grid',
-              open && 'bg-white/10'
-            )}>
-            <EllipsisIcon className='size-5 shrink-0' />
-          </RailButton>
-        </DropdownMenuTrigger>
-      </RailTooltip>
+      <DropdownMenuTrigger asChild>
+        <RailButton
+          label='More Actions'
+          {...menu.trigger}
+          className={cn(
+            'hidden portrait:grid short:grid',
+            open && 'bg-white/10'
+          )}>
+          <EllipsisIcon className='size-5 shrink-0' />
+        </RailButton>
+      </DropdownMenuTrigger>
       <DropdownMenuContent
+        {...menu.content}
         side={portrait ? 'top' : 'right'}
         align='end'
         sideOffset={8}
