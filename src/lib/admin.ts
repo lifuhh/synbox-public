@@ -1,7 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { z } from 'zod'
 
-import { authClient } from '@/lib/auth'
 import { QUERY_KEYS } from '@/lib/react-query/query-keys'
 import {
   fetchRecommendations,
@@ -11,71 +9,10 @@ import type { Recommendation } from '@/lib/recommendations'
 
 // The auth Worker's /api/admin routes (worker/src/index.ts); each checks the admin role on the server
 
-// D1 hands back Better Auth's dates as text or epoch milliseconds
-const when = z.union([z.string(), z.number()])
-
-// 'default' follows the Worker's USER_DAILY_LIMIT; a number or 'unlimited' is an admin's override
-const dailyLimitSchema = z.union([z.number(), z.enum(['default', 'unlimited'])])
-
-// A Worker from before migration 0013 still sends the hourly names; read them as the daily ones
-const adminUserSchema = z.preprocess(
-  (row) =>
-    typeof row === 'object' && row !== null
-      ? {
-          dailyLimit: 'hourlyLimit' in row ? row.hourlyLimit : undefined,
-          songsLastDay: 'songsLastHour' in row ? row.songsLastHour : undefined,
-          ...row,
-        }
-      : row,
-  z.object({
-    banned: z.union([z.number(), z.boolean()]).nullable(),
-    createdAt: when,
-    dailyLimit: dailyLimitSchema,
-    email: z.string(),
-    id: z.string(),
-    image: z.string().nullable(),
-    lastSeenAt: when.nullable(),
-    name: z.string(),
-    role: z.string().nullable(),
-    songsLastDay: z.number(),
-    songsTotal: z.number(),
-  })
-)
-
-const settingsSchema = z.object({
-  generationEnabled: z.boolean(),
-  guestSongsToday: z.number(),
-  limits: z.object({
-    guest: z.number(),
-    guestTotal: z.number(),
-    user: z.number(),
-  }),
-})
-
-const generationSchema = z.object({
-  createdAt: z.number(),
-  email: z.string().nullable(),
-  errorCode: z.string().nullable(),
-  // How far a running generation is, as the backend last reported: the stage's id and its fraction (0..1)
-  fraction: z.number().nullable().optional(),
-  // SQLite's boolean
-  guest: z.union([z.number(), z.boolean()]),
-  id: z.string(),
-  kind: z.enum(['new', 'regenerate', 'retime']),
-  name: z.string().nullable(),
-  resultVersion: z.number().nullable(),
-  stage: z.string().nullable().optional(),
-  status: z.enum(['reserved', 'running', 'succeeded', 'failed']),
-  videoId: z.string(),
-})
-
-export type DailyLimit = z.infer<typeof dailyLimitSchema>
-export type AdminUser = z.infer<typeof adminUserSchema>
-export type AdminGeneration = z.infer<typeof generationSchema>
-
-const RUNNING_REFRESH_MS = 5000
-
-const call = async (path: string, init: RequestInit = {}): Promise<unknown> => {
+export const call = async (
+  path: string,
+  init: RequestInit = {}
+): Promise<unknown> => {
   const response = await fetch(`/api/admin${path}`, {
     ...init,
     credentials: 'same-origin',
@@ -86,139 +23,6 @@ const call = async (path: string, init: RequestInit = {}): Promise<unknown> => {
   }
   return response.status === 204 ? null : await response.json()
 }
-
-export const useAdminUsers = () =>
-  useQuery({
-    queryFn: async () =>
-      z.object({ users: z.array(adminUserSchema) }).parse(await call('/users'))
-        .users,
-    queryKey: [QUERY_KEYS.GET_ADMIN_USERS],
-  })
-
-// Whose songs the Songs list shows: everyone (null), guests, or one account by email
-export const GUESTS = 'guest'
-export type SongsBy = string | null
-
-const isBy = (generation: AdminGeneration, by: SongsBy) => {
-  if (by === null) {
-    return true
-  }
-  const guest = generation.guest === 1 || generation.guest === true
-  return by === GUESTS ? guest : !guest && generation.email === by
-}
-
-// The Worker filters the whole ledger by `user`; the filter here keeps the list right against a Worker that
-// predates it and answers with everyone's latest
-export const useAdminGenerations = (by: SongsBy) =>
-  useQuery({
-    queryFn: async () =>
-      z
-        .object({ generations: z.array(generationSchema) })
-        .parse(
-          await call(
-            by === null
-              ? '/generations'
-              : `/generations?user=${encodeURIComponent(by)}`
-          )
-        )
-        .generations.filter((generation) => isBy(generation, by)),
-    queryKey: [QUERY_KEYS.GET_ADMIN_GENERATIONS, by],
-    // Follows songs still running
-    refetchInterval: (query) =>
-      query.state.data?.some(
-        (generation) =>
-          generation.status === 'reserved' || generation.status === 'running'
-      ) === true
-        ? RUNNING_REFRESH_MS
-        : false,
-  })
-
-// A listener's report of a song's lyrics (worker/src/reports.ts)
-const reportSchema = z.object({
-  atSeconds: z.number().nullable(),
-  build: z.string().nullable(),
-  client: z.string().nullable(),
-  createdAt: z.number(),
-  email: z.string().nullable(),
-  // SQLite's boolean
-  guest: z.union([z.number(), z.boolean()]),
-  id: z.string(),
-  message: z.string(),
-  name: z.string().nullable(),
-  version: z.number().nullable(),
-  videoId: z.string(),
-})
-export type AdminReport = z.infer<typeof reportSchema>
-
-export const useAdminReports = () =>
-  useQuery({
-    queryFn: async () =>
-      z.object({ reports: z.array(reportSchema) }).parse(await call('/reports'))
-        .reports,
-    queryKey: [QUERY_KEYS.GET_ADMIN_REPORTS],
-  })
-
-export const useAdminSettings = () =>
-  useQuery({
-    queryFn: async () => settingsSchema.parse(await call('/settings')),
-    queryKey: [QUERY_KEYS.GET_ADMIN_SETTINGS],
-  })
-
-const useRefreshing = <T>(run: (input: T) => Promise<unknown>) => {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: run,
-    onSettled: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.GET_ADMIN_USERS],
-      })
-      await queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.GET_ADMIN_SETTINGS],
-      })
-    },
-  })
-}
-
-export const useSetDailyLimit = () =>
-  useRefreshing(
-    async ({
-      dailyLimit,
-      userId,
-    }: {
-      userId: string
-      dailyLimit: DailyLimit
-    }) =>
-      await call(`/users/${encodeURIComponent(userId)}/limit`, {
-        // hourlyLimit: the same value for a Worker from before migration 0013
-        body: JSON.stringify({ dailyLimit, hourlyLimit: dailyLimit }),
-        method: 'PUT',
-      })
-  )
-
-// Better Auth's admin plugin: a block also signs the person out everywhere
-export const useSetBlocked = () =>
-  useRefreshing(
-    async ({ blocked, userId }: { userId: string; blocked: boolean }) => {
-      const { error } = blocked
-        ? await authClient.admin.banUser({
-            banReason: 'Blocked from the admin page',
-            userId,
-          })
-        : await authClient.admin.unbanUser({ userId })
-      if (error !== null) {
-        throw new Error(error.message ?? 'Could not change the block')
-      }
-    }
-  )
-
-export const useSetGenerationEnabled = () =>
-  useRefreshing(
-    async (generationEnabled: boolean) =>
-      await call('/settings', {
-        body: JSON.stringify({ generationEnabled }),
-        method: 'PUT',
-      })
-  )
 
 // The list as saved, in its order (the landing page shuffles it)
 export const useAdminRecommendations = () =>

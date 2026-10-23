@@ -46,14 +46,14 @@ import {
   useSetBlocked,
   useSetGenerationEnabled,
   useSetDailyLimit,
-} from '@/lib/admin'
+} from '@/lib/admin-console'
 import type {
   AdminGeneration,
   AdminReport,
   AdminUser,
   DailyLimit,
   SongsBy,
-} from '@/lib/admin'
+} from '@/lib/admin-console'
 import { useAccess, useMe } from '@/lib/auth'
 import { isStageId, overallAt, stepOf } from '@/lib/generation/plan'
 import { useGetSongInfoBySongId } from '@/lib/react-query/queries-and-mutations'
