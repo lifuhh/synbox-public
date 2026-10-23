@@ -2,7 +2,6 @@ import { useQueryClient } from '@tanstack/react-query'
 import {
   CircleQuestionMarkIcon,
   ShieldIcon,
-  LogInIcon,
   LogOutIcon,
   MonitorDownIcon,
   ShareIcon,
@@ -12,6 +11,7 @@ import {
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router'
 
+import { GoogleMark } from '@/components/shared/google-mark'
 import { UserAvatar } from '@/components/shared/user-avatar'
 import {
   Dialog,
@@ -120,7 +120,11 @@ const ProfileTrigger = ({
             <span className='sr-only'>Account</span>
           </Button>
         ) : (
-          <Button size='pill'>Sign In</Button>
+          <Button size='pill' gap='md'>
+            {/* As far from the pill's left edge as from its top and bottom */}
+            <GoogleMark className='-ml-1 sm:-ml-2' />
+            Sign In
+          </Button>
         )}
       </DropdownMenuTrigger>
     </span>
@@ -173,7 +177,7 @@ const ProfileButtonDropdown = () => {
                   onClick={() => {
                     void signInWithGoogle()
                   }}>
-                  <LogInIcon className='mr-2 size-5 shrink-0' />
+                  <GoogleMark className='mr-2' />
                   <span>Continue With Google</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem

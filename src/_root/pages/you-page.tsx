@@ -5,13 +5,13 @@ import {
   CircleQuestionMarkIcon,
   UserIcon,
   ListMusicIcon,
-  LogInIcon,
   LogOutIcon,
   ShieldIcon,
 } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { Link } from 'react-router'
 
+import { GoogleMark } from '@/components/shared/google-mark'
 import { UserAvatar } from '@/components/shared/user-avatar'
 import { quotaText } from '@/components/topbar/profile-button'
 import { Button } from '@/components/ui/button'
@@ -150,7 +150,7 @@ const YouPage = () => {
               onClick={() => {
                 void signInWithGoogle()
               }}>
-              <LogInIcon className='size-5' aria-hidden />
+              <GoogleMark />
               Continue With Google
             </Button>
           )}

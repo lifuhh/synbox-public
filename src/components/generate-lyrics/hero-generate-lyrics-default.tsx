@@ -2,7 +2,6 @@ import {
   ArrowRightIcon,
   Info,
   LoaderCircleIcon,
-  LogInIcon,
   PlayIcon,
   SearchIcon,
 } from 'lucide-react'
@@ -10,6 +9,7 @@ import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router'
 
 import { startFromButton } from '@/components/generation/start-generation'
+import { GoogleMark } from '@/components/shared/google-mark'
 import { Button } from '@/components/ui/button'
 import { Input, InputField } from '@/components/ui/input'
 import {
@@ -197,7 +197,7 @@ const HeroGenerateLyricsDefault = ({
       return null
     }
     if (blocked) {
-      return <LogInIcon className='size-5 shrink-0' />
+      return <GoogleMark />
     }
     return existingLyrics ? (
       <PlayIcon className='size-5 shrink-0 fill-current' />
@@ -302,8 +302,10 @@ const HeroGenerateLyricsDefault = ({
                   size='inset'
                   gap='sm'
                   className='hidden shrink-0 sm:inline-flex'>
+                  {/* Google's mark leads its label, as its sign-in branding asks; the other icons trail */}
+                  {blocked ? buttonIcon() : null}
                   <span className='text-label'>{buttonLabel()}</span>
-                  {buttonIcon()}
+                  {blocked ? null : buttonIcon()}
                 </Button>
               </>
             )}
