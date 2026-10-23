@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-import type { YoutubeSearchResultInfo } from '@/types'
+import type { ChartSong, YoutubeSearchResultInfo } from '@/types'
 import { formatYoutubeChartsResponse } from '@/utils'
 
 // YouTube Data API reads go through our own /api/youtube proxy, which holds the key
@@ -29,6 +29,11 @@ const playlistSchema = z.object({
     })
   ),
   nextPageToken: z.string().optional(),
+  // Added by our proxy for the chart (netlify/youtube-proxy.ts › withStatistics), by video id; absent when that
+  // read failed
+  statistics: z
+    .record(z.string(), z.object({ viewCount: z.string().optional() }))
+    .default({}),
 })
 export type YoutubePlaylist = z.infer<typeof playlistSchema>
 
@@ -101,11 +106,10 @@ const getHighestResThumbnail = (
 
 // The chart is 100 songs, two pages of the API's maximum
 const CHART_PAGES = 2
+const CHART_PAGE_SIZE = 50
 
-export const getChartsPlaylist = async (): Promise<
-  { title: string; id: string }[]
-> => {
-  const songs: { title: string; id: string }[] = []
+export const getChartsPlaylist = async (): Promise<ChartSong[]> => {
+  const songs: ChartSong[] = []
   let pageToken: string | undefined
   for (let page = 0; page < CHART_PAGES; page += 1) {
     // oxlint-disable-next-line eslint/no-await-in-loop -- each page needs the previous page's token
@@ -114,7 +118,7 @@ export const getChartsPlaylist = async (): Promise<
       `/api/youtube/playlist/${CHARTS_PLAYLIST}`,
       { pageToken }
     )
-    songs.push(...formatYoutubeChartsResponse(playlist))
+    songs.push(...formatYoutubeChartsResponse(playlist, page * CHART_PAGE_SIZE))
     pageToken = playlist.nextPageToken
     if (pageToken === undefined) {
       break
