@@ -11,6 +11,7 @@ import { bracketStart } from '@/utils'
 import { cn } from '@/utils/cn'
 
 import { LyricsPanel } from './lyrics-panel'
+import { PlaylistPanel } from './playlist-panel'
 import { Shelves } from './shelves'
 import { SongFacts } from './song-facts'
 import { UP_NEXT_COUNT, UpNext } from './up-next'
@@ -129,6 +130,7 @@ const NarrowBelow = ({
         <div className='flex flex-col gap-4 px-4 pt-4 pb-(--safe-bottom)'>
           <SongInfo compact />
           <div className='pb-6'>
+            <PlaylistPanel videoId={videoId} foldable className='mb-4' />
             <UpNext videoId={videoId} autoplaySwitch />
             {/* The rows run to the screen's edges: this box's px-2 plus the page's px-4 */}
             <Shelves
@@ -174,6 +176,7 @@ const WideBelow = ({
         <Shelves videoId={videoId} similar={more} />
       </div>
       <div className='watch-next pb-8'>
+        <PlaylistPanel videoId={videoId} foldable={false} className='mb-4' />
         <UpNext videoId={videoId} autoplaySwitch={false} large />
       </div>
     </>

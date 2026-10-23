@@ -31,16 +31,24 @@ import { useSongVisit } from '@/hooks/use-song-visit'
 import { useAccess } from '@/lib/auth'
 import { historyAtom } from '@/lib/library/store'
 import type { ListSong } from '@/lib/listening/model'
-import { leftSong, nextSong, previousSong } from '@/lib/listening/model'
+import {
+  followSong,
+  leftSong,
+  nextSong,
+  previousSong,
+} from '@/lib/listening/model'
 import { useNextList } from '@/lib/listening/recommendations'
 import {
   autoplayAtom,
+  contextAtom,
+  openedBy,
   playedAtom,
   queueAtom,
-  queueSourceAtom,
   resumeSongAtom,
   songPath,
+  songState,
 } from '@/lib/listening/store'
+import type { OpenedBy } from '@/lib/listening/store'
 import { decodeSharedStyle } from '@/lib/lyrics-style'
 import { countListen } from '@/lib/song-stats'
 import { handleVideoRoute } from '@/utils/route-handler.ts'
@@ -67,34 +75,27 @@ const usePlayerSurface = () => {
   return surface
 }
 
-// A song opened by Previous: the one it left is already first in the queue, not on the trail
-const cameBack = (state: unknown) =>
-  typeof state === 'object' &&
-  state !== null &&
-  'back' in state &&
-  state.back === true
-
 // The songs either side of this one (model › nextSong, previousSong): what plays when it ends (the queue's next
-// song, else with autoplay on a recommendation not played lately), what Next plays (the same, autoplay or not)
-// and what Previous goes back to. Undefined where there is none
+// song, else the playlist's, else with autoplay on a recommendation not played lately), what Next plays (the
+// same, autoplay or not) and what Previous goes back to. Undefined where there is none
 const useSongSteps = (videoId: string) => {
   const navigate = useNavigate()
   const [queue, setQueue] = useAtom(queueAtom)
-  const [source, setSource] = useAtom(queueSourceAtom)
+  const [context, setContext] = useAtom(contextAtom)
   const [played, setPlayed] = useAtom(playedAtom)
   const autoplay = useAtomValue(autoplayAtom)
   const history = useAtomValue(historyAtom)
   const current = useAtomValue(currentVideoAtom)
   const { songs } = useNextList(videoId)
   const recent = history.slice(0, 20).map((item) => item.videoId)
-  const open = (song: ListSong, back = false) => {
+  const open = (song: ListSong, by?: OpenedBy) => {
     void navigate(songPath(song.videoId), {
-      state: { back, videoId: song.videoId },
+      state: songState(song.videoId, by),
     })
   }
   const forward = (pressed: boolean) => {
     const next = nextSong(
-      { autoplay, queue, source },
+      { autoplay, context, queue },
       videoId,
       songs,
       recent,
@@ -104,17 +105,15 @@ const useSongSteps = (videoId: string) => {
       ? undefined
       : () => {
           setQueue(next.queue)
-          if (
-            next.queue.length === 0 &&
-            !queue.some((song) => song.videoId === next.song.videoId)
-          ) {
-            setSource(null)
-          }
-          open(next.song)
+          setContext(next.context)
+          // A song from the queue leaves the playlist waiting; the playlist's own is in it
+          open(next.song, next.context === context ? 'queued' : undefined)
         }
   }
   const back =
-    current?.videoId === videoId ? previousSong(played, queue, current) : null
+    current?.videoId === videoId
+      ? previousSong(played, { context, queue }, current)
+      : null
   return {
     handleEnded: forward(false),
     handleNext: forward(true),
@@ -124,7 +123,8 @@ const useSongSteps = (videoId: string) => {
         : () => {
             setPlayed(back.played)
             setQueue(back.queue)
-            open(back.song, true)
+            setContext(back.context)
+            open(back.song, 'back')
           },
   }
 }
@@ -156,19 +156,27 @@ const PlayerPage = () => {
   // until now is the one just left: it goes on Previous's trail, unless Previous is what left it
   const [resumeSong, setResumeSong] = useAtom(resumeSongAtom)
   const setPlayed = useSetAtom(playedAtom)
-  const arrival: unknown = useLocation().state
+  const by = openedBy(useLocation().state)
   useEffect(() => {
     if (currentVideo !== null && currentVideo.videoId === videoId) {
       if (
         resumeSong !== null &&
         resumeSong.videoId !== videoId &&
-        !cameBack(arrival)
+        by !== 'back'
       ) {
         setPlayed((played) => leftSong(played, resumeSong))
       }
       setResumeSong(currentVideo)
     }
-  }, [currentVideo, videoId, resumeSong, arrival, setResumeSong, setPlayed])
+  }, [currentVideo, videoId, resumeSong, by, setResumeSong, setPlayed])
+  // The playlist being played follows the song: one of its songs becomes its place, and a song picked from
+  // anywhere else ends it (model › followSong)
+  const setContext = useSetAtom(contextAtom)
+  useEffect(() => {
+    if (videoId !== '') {
+      setContext((context) => followSong(context, videoId, by !== undefined))
+    }
+  }, [videoId, by, setContext])
   // Autoplay waits for the lyrics so a song that starts singing at once never
   // plays ahead of them; useLyricsReady gives up after LYRICS_WAIT_MS
   const lyricsReady = useLyricsReady(videoId)

@@ -5,6 +5,7 @@ import {
   ListStartIcon,
   PencilIcon,
   PlayIcon,
+  ShuffleIcon,
   Trash2Icon,
   XIcon,
 } from 'lucide-react'
@@ -140,7 +141,7 @@ const PlaylistPage = () => {
   const { playlistId = '' } = useParams<{ playlistId: string }>()
   const navigate = useNavigate()
   const playlist = usePlaylists().find((list) => list.id === playlistId)
-  const { deletePlaylist, moveInPlaylist, playPlaylist, queuePlaylistFrom } =
+  const { deletePlaylist, moveInPlaylist, playPlaylist, startPlaylistAt } =
     useListening()
   const [renaming, setRenaming] = useState(false)
 
@@ -193,6 +194,17 @@ const PlaylistPage = () => {
                     <PlayIcon className='size-5 fill-current' aria-hidden />
                     <span className='text-label'>Play</span>
                   </Button>
+                  <Button
+                    variant='outline'
+                    size='inset'
+                    gap='sm'
+                    disabled={playlist.songs.length === 0}
+                    onClick={() => {
+                      playPlaylist(playlist.id, true)
+                    }}>
+                    <ShuffleIcon className='size-5' aria-hidden />
+                    <span className='text-label'>Shuffle</span>
+                  </Button>
                   <DropdownMenu modal={false}>
                     <DropdownMenuTrigger asChild>
                       <Button
@@ -243,7 +255,10 @@ const PlaylistPage = () => {
                     song={song}
                     lead={grip}
                     onOpen={() => {
-                      queuePlaylistFrom(playlist.id, index)
+                      startPlaylistAt(playlist.id, {
+                        from: index,
+                        shuffled: false,
+                      })
                     }}
                     actions={
                       <PlaylistSongMenu

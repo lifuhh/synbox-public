@@ -7,7 +7,8 @@ import {
 } from '@/components/shared/karaoke-badge'
 import { ListenCount } from '@/components/shared/listen-count'
 import type { ListSong } from '@/lib/listening/model'
-import { songPath } from '@/lib/listening/store'
+import type { OpenedBy } from '@/lib/listening/store'
+import { songPath, songState } from '@/lib/listening/store'
 import { bracketStart } from '@/utils'
 import { cn } from '@/utils/cn'
 
@@ -21,6 +22,7 @@ export const SongRow = ({
   actions,
   current = false,
   onOpen,
+  openedBy,
   className,
   as: Root = 'li',
   large = false,
@@ -31,6 +33,8 @@ export const SongRow = ({
   // The song playing now: marked, and not a link to itself
   current?: boolean
   onOpen?: () => void
+  // A queued song's row: opening it keeps the playlist being played waiting
+  openedBy?: OpenedBy
   className?: string
   // A row inside another list item (a sortable row) is a div
   as?: 'li' | 'div'
@@ -108,7 +112,7 @@ export const SongRow = ({
       ) : (
         <Link
           to={songPath(song.videoId)}
-          state={{ videoId: song.videoId }}
+          state={songState(song.videoId, openedBy)}
           onClick={onOpen}
           className={cn(
             'flex min-w-0 flex-1 items-center gap-3 rounded-xl p-2 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden',
