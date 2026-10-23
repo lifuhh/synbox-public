@@ -43,13 +43,13 @@ import {
   useAdminUsers,
   useSetBlocked,
   useSetGenerationEnabled,
-  useSetHourlyLimit,
+  useSetDailyLimit,
 } from '@/lib/admin'
 import type {
   AdminGeneration,
   AdminReport,
   AdminUser,
-  HourlyLimit,
+  DailyLimit,
 } from '@/lib/admin'
 import { useAccess, useMe } from '@/lib/auth'
 import { isStageId, overallAt, stepOf } from '@/lib/generation/plan'
@@ -171,7 +171,7 @@ const GenerationPanel = () => {
           {generationEnabled ? 'On' : 'Paused for Everyone'}
         </span>
       </Stat>
-      <Stat label='Default User Limit'>{limits.user} an hour</Stat>
+      <Stat label='Default User Limit'>{limits.user} a day</Stat>
       <Stat label='Guest Limit'>{limits.guest} a day per network</Stat>
       <Stat label='Guest Songs Today'>
         {guestSongsToday} of {limits.guestTotal}
@@ -215,13 +215,13 @@ const GenerationPanel = () => {
 
 // The limit actually in force: admins and lifted limits have none
 const effectiveLimit = (user: AdminUser, defaultLimit: number) => {
-  if (user.role === 'admin' || user.hourlyLimit === 'unlimited') {
+  if (user.role === 'admin' || user.dailyLimit === 'unlimited') {
     return null
   }
-  return user.hourlyLimit === 'default' ? defaultLimit : user.hourlyLimit
+  return user.dailyLimit === 'default' ? defaultLimit : user.dailyLimit
 }
 
-// Songs in the last hour against the limit, as a count and a thin bar
+// Songs in the last 24 hours against the limit, as a count and a thin bar
 const Usage = ({ used, limit }: { used: number; limit: number | null }) => {
   if (limit === null) {
     return <span className='tabular-nums'>{used}</span>
@@ -251,14 +251,14 @@ const Usage = ({ used, limit }: { used: number; limit: number | null }) => {
   )
 }
 
-const limitLabel = (limit: HourlyLimit, defaultLimit: number) => {
+const limitLabel = (limit: DailyLimit, defaultLimit: number) => {
   if (limit === 'default') {
     return `Default (${defaultLimit})`
   }
   if (limit === 'unlimited') {
     return 'No Limit'
   }
-  return limit === 0 ? 'None Allowed' : `${limit} an Hour`
+  return limit === 0 ? 'None Allowed' : `${limit} a Day`
 }
 
 // One control for the three kinds of limit: the default, none, or a number typed in place
@@ -270,21 +270,21 @@ const LimitControl = ({
   defaultLimit: number
 }) => {
   const { toast } = useToast()
-  const { isPending, mutate, variables } = useSetHourlyLimit()
+  const { isPending, mutate, variables } = useSetDailyLimit()
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState('')
   // Show the choice at once; the list refetches when the save settles
   const shown =
     isPending && variables !== undefined
-      ? variables.hourlyLimit
-      : user.hourlyLimit
-  const save = (hourlyLimit: HourlyLimit) => {
+      ? variables.dailyLimit
+      : user.dailyLimit
+  const save = (dailyLimit: DailyLimit) => {
     setEditing(false)
-    if (hourlyLimit === user.hourlyLimit) {
+    if (dailyLimit === user.dailyLimit) {
       return
     }
     mutate(
-      { hourlyLimit, userId: user.id },
+      { dailyLimit, userId: user.id },
       {
         onError: () => {
           toast({
@@ -309,9 +309,9 @@ const LimitControl = ({
       <Input
         // oxlint-disable-next-line jsx-a11y/no-autofocus -- it replaces the menu item the admin just chose
         autoFocus
-        aria-label={`Songs an Hour for ${user.name}`}
+        aria-label={`Songs a Day for ${user.name}`}
         inputMode='numeric'
-        placeholder='Songs an hour'
+        placeholder='Songs a day'
         value={draft}
         className='h-9 w-full'
         onChange={(event) => {
@@ -328,7 +328,7 @@ const LimitControl = ({
       />
     )
   }
-  const options: HourlyLimit[] = ['default', 'unlimited']
+  const options: DailyLimit[] = ['default', 'unlimited']
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -336,7 +336,7 @@ const LimitControl = ({
           size='sm'
           variant='outline'
           gap='sm'
-          aria-label={`Hourly Limit for ${user.name}: ${limitLabel(shown, defaultLimit)}`}
+          aria-label={`Daily Limit for ${user.name}: ${limitLabel(shown, defaultLimit)}`}
           className='w-full justify-between'>
           <span
             className={cn(
@@ -491,7 +491,7 @@ const Account = ({ user, isSelf }: AccountProps) => (
 // A blocked person can't generate at all, so their usage is shown without a limit to measure against
 const AccountUsage = ({ user, defaultLimit }: AccountProps) => (
   <Usage
-    used={user.songsLastHour}
+    used={user.songsLastDay}
     limit={isBlocked(user) ? null : effectiveLimit(user, defaultLimit)}
   />
 )
@@ -543,11 +543,11 @@ const UserCard = (props: AccountProps) => (
     </p>
     <div className='grid grid-cols-2 items-start gap-4'>
       <div className='flex flex-col gap-1'>
-        <span className='text-xs text-muted-foreground'>Last Hour</span>
+        <span className='text-xs text-muted-foreground'>Last 24 Hours</span>
         <AccountUsage {...props} />
       </div>
       <div className='flex flex-col gap-1'>
-        <span className='text-xs text-muted-foreground'>Hourly Limit</span>
+        <span className='text-xs text-muted-foreground'>Daily Limit</span>
         <AccountLimit {...props} />
       </div>
     </div>
@@ -597,11 +597,11 @@ const UsersTable = () => {
           <tr>
             <th className='pr-4 pb-2 font-medium'>Account</th>
             <th className='px-4 pb-2 font-medium'>Last Seen</th>
-            <th className='px-4 pb-2 font-medium'>Last Hour</th>
+            <th className='px-4 pb-2 font-medium'>Last 24 Hours</th>
             <th className='px-4 pb-2 text-right font-medium whitespace-nowrap'>
               Total Songs
             </th>
-            <th className='px-4 pb-2 font-medium'>Hourly Limit</th>
+            <th className='px-4 pb-2 font-medium'>Daily Limit</th>
             <th className='pb-2 pl-2 font-medium'>
               <span className='sr-only'>Actions</span>
             </th>

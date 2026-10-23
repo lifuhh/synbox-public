@@ -7,7 +7,7 @@ export type Owner =
   | { kind: 'guest'; key: string }
 
 export interface Limits {
-  // Per signed-in user in any rolling hour, unless an admin set an override (a number, or none); admins have none
+  // Per signed-in user in any rolling 24 hours, unless an admin set an override (a number, or none); admins have none
   user: number
   // Per guest per day, and for all guests together
   guest: number
@@ -36,9 +36,9 @@ export type Reservation =
 interface UserRow {
   role: string | null
   banned: number | null
-  // SQLite's boolean: an admin set this user's limit; then a null hourlyLimit means none
+  // SQLite's boolean: an admin set this user's limit; then a null dailyLimit means none
   overridden: number
-  hourlyLimit: number | null
+  dailyLimit: number | null
 }
 
 interface GenerationRow {
@@ -50,7 +50,7 @@ interface GenerationRow {
 
 const utcDay = (now: Date) => now.toISOString().slice(0, 10)
 
-const HOUR_MS = 3_600_000
+const DAY_MS = 86_400_000
 // A generation the backend hasn't reported on for this long has stopped: the app gave up, was put away, or the
 // instance running it died. The backend reports every stage and every tenth of one, so a live one never gets here
 const STALL_MS = 15 * 60_000
@@ -69,7 +69,7 @@ export const expireStalled = async (db: D1Database, now = new Date()) => {
 const readUser = async (db: D1Database, userId: string) =>
   await db
     .prepare(
-      `select u."role", u."banned", q."userId" is not null as "overridden", q."hourlyLimit" from "user" u
+      `select u."role", u."banned", q."userId" is not null as "overridden", q."dailyLimit" from "user" u
        left join "quotaOverride" q on q."userId" = u."id" where u."id" = ?1`
     )
     .bind(userId)
@@ -79,11 +79,11 @@ const limitFor = (user: UserRow, defaultLimit: number) => {
   if (user.role === 'admin') {
     return null
   }
-  return user.overridden === 1 ? user.hourlyLimit : defaultLimit
+  return user.overridden === 1 ? user.dailyLimit : defaultLimit
 }
 
-// What a generation is owned by, and which of its songs count: a user's in the last hour, a guest's today.
-// The SQL is one of two literals, never input. ?2 owner, ?5 today, ?9 an hour ago
+// What a generation is owned by, and which of its songs count: a user's in the last 24 hours, a guest's today.
+// The SQL is one of two literals, never input. ?2 owner, ?5 today, ?9 a day ago
 const ownerOf = (owner: Owner) =>
   owner.kind === 'user'
     ? {
@@ -106,16 +106,16 @@ const slotFree = (
   and (?8 is null or (select count(*) from "generation"
     where "guestKey" is not null and "utcDay" = ?5 and "status" <> 'failed') < ?8)`
 
-// When the oldest song counted in the user's last hour drops out of it
+// When the oldest song counted in the user's last 24 hours drops out of it
 const userResetsAt = async (db: D1Database, userId: string, now: Date) => {
   const oldest = await db
     .prepare(
       `select min("createdAt") as "oldest" from "generation"
        where "userId" = ?1 and "createdAt" > ?2 and "status" <> 'failed'`
     )
-    .bind(userId, now.getTime() - HOUR_MS)
+    .bind(userId, now.getTime() - DAY_MS)
     .first<number | null>('oldest')
-  return new Date((oldest ?? now.getTime()) + HOUR_MS).toISOString()
+  return new Date((oldest ?? now.getTime()) + DAY_MS).toISOString()
 }
 
 export const getQuota = async (
@@ -130,7 +130,7 @@ export const getQuota = async (
     .prepare(
       `select count(*) from "generation" where "userId" = ?1 and "createdAt" > ?2 and "status" <> 'failed'`
     )
-    .bind(userId, now.getTime() - HOUR_MS)
+    .bind(userId, now.getTime() - DAY_MS)
     .first<number>('count(*)')
   return {
     limit: user ? limitFor(user, limits.user) : 0,
@@ -227,8 +227,8 @@ const admit = async (
     now.getTime(),
     own.limit,
     own.cap,
-    // ?9, an hour ago: only a user's count reads it, and SQLite refuses a value no placeholder takes
-    ...(request.owner.kind === 'user' ? [now.getTime() - HOUR_MS] : []),
+    // ?9, a day ago: only a user's count reads it, and SQLite refuses a value no placeholder takes
+    ...(request.owner.kind === 'user' ? [now.getTime() - DAY_MS] : []),
   ]
   return { bindings, day, own }
 }

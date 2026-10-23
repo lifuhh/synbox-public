@@ -43,7 +43,7 @@ import {
 } from './songs'
 
 type AppEnv = Env & {
-  USER_HOURLY_LIMIT: string
+  USER_DAILY_LIMIT: string
   GUEST_DAILY_LIMIT: string
   GUEST_DAILY_TOTAL: string
 }
@@ -59,7 +59,7 @@ const count = (value: string | undefined) => {
 const limitsOf = (env: AppEnv): Limits => ({
   guest: count(env.GUEST_DAILY_LIMIT),
   guestTotal: count(env.GUEST_DAILY_TOTAL),
-  user: count(env.USER_HOURLY_LIMIT),
+  user: count(env.USER_DAILY_LIMIT),
 })
 
 app.on(
@@ -388,17 +388,17 @@ admin.use(async (c, next) => {
   return c.res
 })
 
-// Everyone who has signed in, most recently seen first, with their songs in the last hour and overall
+// Everyone who has signed in, most recently seen first, with their songs in the last 24 hours and overall
 admin.get('/users', async (c) => {
   await expireStalled(c.env.DB)
-  const since = Date.now() - 3_600_000
+  const since = Date.now() - 86_400_000
   const { results } = await c.env.DB.prepare(
     `select u."id", u."email", u."name", u."image", u."role", u."banned", u."banReason", u."createdAt",
        (select max(s."updatedAt") from "session" s where s."userId" = u."id") as "lastSeenAt",
-       case when q."userId" is null then 'default' when q."hourlyLimit" is null then 'unlimited'
-         else q."hourlyLimit" end as "hourlyLimit",
+       case when q."userId" is null then 'default' when q."dailyLimit" is null then 'unlimited'
+         else q."dailyLimit" end as "dailyLimit",
        (select count(*) from "generation" g where g."userId" = u."id" and g."createdAt" > ?1
-          and g."status" <> 'failed') as "songsLastHour",
+          and g."status" <> 'failed') as "songsLastDay",
        (select count(*) from "generation" g where g."userId" = u."id" and g."status" = 'succeeded')
           as "songsTotal"
      from "user" u left join "quotaOverride" q on q."userId" = u."id"
@@ -421,31 +421,31 @@ admin.get('/generations', async (c) => {
   return c.json({ generations: results })
 })
 
-// A per-person hourly limit: a number, 'unlimited', or 'default' to go back to USER_HOURLY_LIMIT
+// A per-person daily limit: a number, 'unlimited', or 'default' to go back to USER_DAILY_LIMIT
 admin.put('/users/:id/limit', async (c) => {
-  const { hourlyLimit } = await c.req.json<Record<string, unknown>>()
+  const { dailyLimit } = await c.req.json<Record<string, unknown>>()
   const id = c.req.param('id')
-  if (hourlyLimit === 'default') {
+  if (dailyLimit === 'default') {
     await c.env.DB.prepare(`delete from "quotaOverride" where "userId" = ?1`)
       .bind(id)
       .run()
     return c.body(null, 204)
   }
   if (
-    hourlyLimit !== 'unlimited' &&
-    (typeof hourlyLimit !== 'number' ||
-      !Number.isInteger(hourlyLimit) ||
-      hourlyLimit < 0)
+    dailyLimit !== 'unlimited' &&
+    (typeof dailyLimit !== 'number' ||
+      !Number.isInteger(dailyLimit) ||
+      dailyLimit < 0)
   ) {
     return c.json({ code: 'bad_request' }, 400)
   }
   await c.env.DB.prepare(
-    `insert into "quotaOverride" ("userId", "hourlyLimit", "setBy", "setAt") values (?1, ?2, ?3, ?4)
-     on conflict ("userId") do update set "hourlyLimit" = ?2, "setBy" = ?3, "setAt" = ?4`
+    `insert into "quotaOverride" ("userId", "dailyLimit", "setBy", "setAt") values (?1, ?2, ?3, ?4)
+     on conflict ("userId") do update set "dailyLimit" = ?2, "setBy" = ?3, "setAt" = ?4`
   )
     .bind(
       id,
-      hourlyLimit === 'unlimited' ? null : hourlyLimit,
+      dailyLimit === 'unlimited' ? null : dailyLimit,
       c.get('adminId'),
       Date.now()
     )
