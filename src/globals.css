@@ -479,6 +479,12 @@
   /* The same curve as the bar's slide (Tailwind's ease-out), or the two drift apart mid-way */
   transition: top 300ms var(--ease-out);
 
+  /* Here, not as a separate `.sticky-under-topbar` rule: a variant (not-pointer-fine:) renames the class, and a
+     rule keyed to the bare name left the Gallery title under an empty bar's height on phones */
+  html[data-topbar-state='hidden']:not(:has([data-generation-panel])) & {
+    --topbar-shown-h: var(--safe-top);
+  }
+
   @media (prefers-reduced-motion: reduce) {
     transition: none;
   }
@@ -1740,11 +1746,6 @@
     )
     .top-scrim {
     --topbar-cover: calc(var(--topbar-h) - var(--safe-top));
-  }
-
-  html[data-topbar-state='hidden']:not(:has([data-generation-panel]))
-    .sticky-under-topbar {
-    --topbar-shown-h: var(--safe-top);
   }
 
   /* The bar's row slides up under the status bar and fades as it goes (with reduced motion it only fades).
