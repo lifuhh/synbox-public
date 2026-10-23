@@ -133,10 +133,10 @@ const AboutPage = () => (
         href='https://www.linkedin.com/in/lifuhh/'
         target='_blank'
         rel='noreferrer'
-        className='hover:text-foreground'>
+        className='py-0.5 hover:text-foreground'>
         LinkedIn
       </a>
-      <Link to='/privacy' className='hover:text-foreground'>
+      <Link to='/privacy' className='py-0.5 hover:text-foreground'>
         Privacy
       </Link>
     </nav>
