@@ -1,9 +1,12 @@
 # Synbox harness
 
-The checks that judge a change before it ships, so an agent's "done" comes with evidence. Two commands:
+The checks that judge a change before it ships, so an agent's "done" comes with evidence. Three commands:
 
 - **`bun harness/bench/cli.ts check`**: exact checks, about 35 seconds. Every PR into `staging` needs it to pass on its committed tree, and every release runs it again on staging's combined tree.
+- **`bun harness/views.ts <path-or-url>`**: one page in all views, audited and shot side by side, for looking at a UI change.
 - **`bun harness/bench/cli.ts trend`**: timing benchmarks, minutes to an hour, off the release path. It writes what it finds to a queue for a person to read; it never blocks anything.
+
+**All views** are web (desktop Chromium 1440×900), PWA portrait (WebKit iPhone 390×844, installed) and PWA landscape (WebKit 844×390, installed), every phone view with the iPhone's safe areas. They are defined once, in `bench/engines/browser.ts` › `ALL_VIEWS`, and both `check` and `views.ts` read them from there.
 
 ## Before a PR into staging: `check`
 
@@ -18,7 +21,7 @@ It runs, and stops at the first failure:
 2. **Audit list**: `src/app.tsx` yields routes, and every route named in `harness/bench/probes/layout.ts` › `LAYOUT_PAGES` or `harness/routes.json` is one of them. A router refactor can't silently drop audits.
 3. **`typecheck`, `lint`, `test`, `fmt:check`**, beside the production build.
 4. **Size**: brotli KB of first-load JS, first-load CSS and all JS, against `harness/budgets.json`. A pass prints each value over its budget, so the headroom shows.
-5. **Layout audits**: every route in `src/app.tsx` except those `harness/routes.json` › `skip` lists with a reason, on desktop Chromium 1440×900 and WebKit iPhone 390×844 in Safari and as the installed app; home, gallery, player and search also at 844×390. All phone screens have iPhone safe areas. Each audit counts press targets under 24px, covered at their centre, cut off by the viewport's sides, or (fixed or sticky, on a phone) inside a safe-area inset; sideways overflow; uncaught page errors; and `console.error` lines from the app's own scripts (the app logs a crash its error boundary caught that way; third-party scripts such as the YouTube player's, and the browser's network log, `probes/layout.ts` › `BENIGN_CONSOLE`, are ignored). The first app error ends the wait for the page to get ready, so a crashed page fails in seconds. Every count's budget is 0 unless `harness/budgets.json` says otherwise. Three audits run at a time.
+5. **Layout audits**: every route in `src/app.tsx` except those `harness/routes.json` › `skip` lists with a reason, in all views (`layout-<page>-web`, `-pwa-portrait`, `-pwa-landscape`), and in iPhone Safari (`-safari-portrait`; `-safari-landscape` for home, gallery, player and search only, where the layout is busiest). Each audit counts press targets under 24px, covered at their centre, cut off by the viewport's sides, or (fixed or sticky, on a phone) inside a safe-area inset; sideways overflow; uncaught page errors; and `console.error` lines from the app's own scripts (the app logs a crash its error boundary caught that way; third-party scripts such as the YouTube player's, and the browser's network log, `probes/layout.ts` › `BENIGN_CONSOLE`, are ignored). The first app error ends the wait for the page to get ready, so a crashed page fails in seconds. Every count's budget is 0 unless `harness/budgets.json` says otherwise. Three audits run at a time.
 
 A pass needs every one of these steps to have run exactly once; anything less is a failure. Each step prints its seconds. A pass stamps `<main checkout>/.harness/verdicts/<tree>.json` (`kind: check`), which the global PR hook (`~/.claude/hooks/harness-gate.py`, configured by `harness/gate.json`) requires before `gh pr create --base staging`. A new commit is a new tree and needs a new run. Uncommitted changes get checked but not stamped.
 
@@ -28,11 +31,22 @@ When it fails:
 | --- | --- |
 | A static check | Its output's last lines are printed. Fix it. |
 | `size`: `initialJsKB 355.8 > budget 327` | Find what grew (the failing step lists the first-load files). If the growth is intended, raise that number in `harness/budgets.json` in the same PR, with the reason under `$why` and in the PR description. |
-| `layout-<page>-<screen>`: `smallTargets 1 > budget 0` | The lines below name each offending element and its box, then the path of a screenshot. Fix the layout. A budget raise here needs the same written reason. |
+| `layout-<page>-<view>`: `smallTargets 1 > budget 0` | The lines below name each offending element and its box, then the path of a screenshot. Fix the layout. A budget raise here needs the same written reason. |
 | `no sample: mark "x" never fired` | A `data-bench` hook the audit waits for is gone (see "How the audits keep up with the app"). Put it back on whatever replaced it. |
 | The evaluator guard | Split the branch. |
 
 An audit that produced nothing (a page that never got ready) is run once more; a pass on the second try says `retried after: …`. A count over budget is never re-run: a layout bug that shows one time in three still fails.
+
+## Looking at one page: `views.ts`
+
+```sh
+bun harness/views.ts /v/6rG_irmOQsM                            # this working tree's production build, in all views
+bun harness/views.ts /v/6rG_irmOQsM --compare origin/staging   # before/after, one row per view; a git ref is built
+bun harness/views.ts /about --compare https://synbox.io        # before from a URL or origin (the page's path is added)
+bun harness/views.ts / --port 5174                             # a server already running (`wt serve`)
+```
+
+Each view gets the same audit `check` runs (`probes/layout.ts` › `auditPage`, `pageAt`: it waits for the page as its route's audit does, `/` as home, and uses the same safe areas and installed emulation), and one line per view: `ok`, or the counts over 0 and the offending elements. It writes `.reports/YYYY-MM-DD-views-<slug>/index.html`, the screenshots side by side on a dark page (one row per view with `--compare`), prints its path, and exits 3 when a view has a finding. Without `--port`, the build is served the way `check` serves it, with the same replayed API data.
 
 ## Shipping: staging, then one release
 
@@ -79,7 +93,7 @@ The report lands in `.harness/bench/runs/trend-<time>/report.md` and one line pe
 
 - **Hooks, not markup.** Probes wait for elements the app marks with `data-bench` (`carousel`, `carousel-slide`, `charts`, `charts-row`, `gallery`, `gallery-tile`, `hero-input`, `lyrics-line` (the stage's current lines), `lyrics-text` (the lyrics panel and reader), `search-result`; `engines/recorder.ts` › `WATCH`). Player controls are found by their accessible names (Play, Pause, Seek). Keep the attribute on whatever replaces an element.
 - **Pages from the router.** The audits read the routes in `src/app.tsx`. A new route without parameters is audited once it settles. A route with parameters needs a sample URL in `harness/routes.json` › `samples`, or a reason in › `skip`, in the PR that adds it; until then its audit fails and says so. Pages with readiness code of their own are in `probes/layout.ts` › `LAYOUT_PAGES` (the evaluator). Removing such a page's route takes two PRs: drop its entry first (the route then gets the generic audit), then the route.
-- **The installed app.** The `installed` screen is the iPhone portrait screen with `navigator.standalone` set, which the app reads for its tab bar and short top bar. The audit fails if the page didn't switch to the installed layout.
+- **The installed app.** The `pwa-portrait` and `pwa-landscape` views are the iPhone screens with `navigator.standalone` set, which the app reads for its tab bar and short top bar. Their audits fail if the page didn't switch to the installed layout.
 
 ## A task's worktree: `wt.ts`
 

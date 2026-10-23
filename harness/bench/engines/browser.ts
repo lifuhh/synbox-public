@@ -81,6 +81,50 @@ export const VIEWPORTS = {
   portrait: { height: 844, width: 390 },
 }
 
+/** A named screen pages are opened on: by the layout audits in `check`, and by `harness/views.ts` */
+export interface View {
+  name: string
+  label: string
+  surface: Surface
+}
+
+const view = (name: string, surface: Surface): View => {
+  const { width, height } =
+    surface.kind === 'phone'
+      ? VIEWPORTS[surface.orientation]
+      : VIEWPORTS.desktop
+  const where =
+    surface.kind === 'desktop'
+      ? 'Chromium'
+      : `WebKit, ${surface.installed === true ? 'installed app' : 'Safari'}`
+  return { label: `${where}, ${width}×${height}`, name, surface }
+}
+
+const PORTRAIT = {
+  engine: 'webkit',
+  kind: 'phone',
+  orientation: 'portrait',
+} as const
+const LANDSCAPE = { ...PORTRAIT, orientation: 'landscape' } as const
+
+export const WEB = view('web', { engine: 'chromium', kind: 'desktop' })
+export const PWA_PORTRAIT = view('pwa-portrait', {
+  ...PORTRAIT,
+  installed: true,
+})
+export const PWA_LANDSCAPE = view('pwa-landscape', {
+  ...LANDSCAPE,
+  installed: true,
+})
+export const SAFARI_PORTRAIT = view('safari-portrait', PORTRAIT)
+export const SAFARI_LANDSCAPE = view('safari-landscape', LANDSCAPE)
+
+/**
+ * "All views" (AGENTS.md): every UI change is checked in these three. The website on a monitor, and the app installed
+ * on an iPhone (navigator.standalone) upright and on its side, each phone with the iPhone's safe areas
+ */
+export const ALL_VIEWS: View[] = [WEB, PWA_PORTRAIT, PWA_LANDSCAPE]
+
 const browsers = new Map<string, Promise<Browser>>()
 
 const launch = async (engine: Surface['engine']): Promise<Browser> => {
