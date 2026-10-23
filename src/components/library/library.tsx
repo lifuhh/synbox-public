@@ -121,15 +121,16 @@ const entryOf = (
   index: Map<string, SearchIndexEntry>
 ): SearchIndexEntry<ListSong> => {
   const saved = index.get(song.videoId)
-  return saved === undefined
-    ? {
-        artist: [fold(song.author), fold(toRomaji(song.author))],
-        lines: [],
-        song,
-        title: [fold(song.title)],
-      }
-    : // The list's own title too, in case it differs from the saved lyrics'
-      { ...saved, song, title: [...saved.title, fold(song.title)] }
+  if (saved === undefined) {
+    return {
+      artist: [fold(song.author), fold(toRomaji(song.author))],
+      lines: [],
+      song,
+      title: [fold(song.title)],
+    }
+  }
+  // The list's own title too, in case it differs from the saved lyrics'
+  return { ...saved, song, title: [...saved.title, fold(song.title)] }
 }
 
 const playlistMatches = (playlist: Playlist, query: string) => {
@@ -438,15 +439,18 @@ export const LibraryView = ({
           )}>
           {menu && <SyncStatusLine library={library} className='pb-1' />}
           <SearchField library={library} />
-          <TabsList
-            aria-label='Library'
-            className='no-scrollbar grid h-10 w-full auto-cols-[minmax(max-content,1fr)] grid-flow-col justify-start overflow-x-auto touch:h-12'>
-            {library.tabs.map(({ id, label }) => (
-              <TabsTrigger key={id} value={id} className='h-full'>
-                {label}
-              </TabsTrigger>
-            ))}
-          </TabsList>
+          {/* On the narrowest phones the four tabs scroll sideways rather than clip */}
+          <div className='no-scrollbar overflow-x-auto rounded-full'>
+            <TabsList
+              aria-label='Library'
+              className='grid h-10 w-full min-w-max auto-cols-[minmax(max-content,1fr)] grid-flow-col touch:h-12'>
+              {library.tabs.map(({ id, label }) => (
+                <TabsTrigger key={id} value={id} className='h-full'>
+                  {label}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </div>
         </div>
       </div>
       <div
