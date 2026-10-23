@@ -109,6 +109,12 @@ export const UpNext = ({
   const suggestions = songs
     .filter((song) => !queued.has(song.videoId))
     .slice(0, UP_NEXT_COUNT)
+  // Rows reach out by their own padding (SongRow: 6px big, 8px small), so their thumbnails stand on the column's
+  // edge with the chips, the labels and the playlist card, and a row's hover fills past it, as on YouTube. Their
+  // menus come back in to the line of the playlist card's buttons, 12px inside the edge
+  const bleed = large
+    ? { list: '-mx-1.5', row: 'pe-2' }
+    : { list: '-mx-2', row: 'pe-2.5' }
 
   return (
     <section aria-label='Up Next' className={className}>
@@ -127,7 +133,7 @@ export const UpNext = ({
 
       {queue.length > 0 && (
         <div className='mt-1 mb-3'>
-          <div className='flex min-h-9 items-center justify-between gap-2 ps-2'>
+          <div className='flex min-h-9 items-center justify-between gap-2'>
             <p className='min-w-0 truncate text-sm text-muted-foreground'>
               Next in Queue
             </p>
@@ -136,6 +142,7 @@ export const UpNext = ({
             </Button>
           </div>
           <SortableList
+            className={bleed.list}
             items={queue}
             keyOf={(song) => song.videoId}
             labelOf={(song) => song.title}
@@ -145,6 +152,7 @@ export const UpNext = ({
                 as='div'
                 song={song}
                 large={large}
+                className={bleed.row}
                 lead={grip}
                 openedBy='queued'
                 actions={
@@ -194,16 +202,17 @@ export const UpNext = ({
       {suggestions.length > 0 && (
         <>
           {queue.length > 0 && (
-            <p className='flex min-h-9 items-center ps-2 text-sm text-muted-foreground'>
+            <p className='flex min-h-9 items-center text-sm text-muted-foreground'>
               {autoplay ? 'Then' : 'Suggested'}
             </p>
           )}
-          <ul className='flex flex-col'>
+          <ul className={cn('flex flex-col', bleed.list)}>
             {suggestions.map((song) => (
               <SongRow
                 key={song.videoId}
                 song={song}
                 large={large}
+                className={bleed.row}
                 // Under a queue, the grip's width keeps every thumbnail on one edge
                 lead={
                   queue.length > 0 ? (
