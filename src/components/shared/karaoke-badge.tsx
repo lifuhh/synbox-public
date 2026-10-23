@@ -14,9 +14,11 @@ export const KaraokeBadge = ({ className }: { className?: string }) => (
   </span>
 )
 
-// The same mark on a list row's thumbnail: the bare mic in the picture's bottom-left corner, a few pixels in, with a
-// dark halo so it reads on any picture; a tighter, lighter one on a phone, where the halo would swamp so small a
-// mark. `small` for the saved menu's 80px thumbnails. The thumbnail must be positioned
+// The same mark on a list row's thumbnail: the bare mic tucked into the picture's bottom-left corner, with a dark
+// halo so it reads on any picture; a tighter, lighter one on a phone, where the halo would swamp so small a mark.
+// The glyph's box is a tenth of its size emptier on the left than at the bottom, so the left offset is smaller and
+// the drawn mic sits the same distance from both edges. `small` for the saved menu's 80px thumbnails. The thumbnail
+// must be positioned
 export const KaraokeThumbBadge = ({ small = false }: { small?: boolean }) => (
   <MicVocalIcon
     aria-hidden
@@ -24,7 +26,7 @@ export const KaraokeThumbBadge = ({ small = false }: { small?: boolean }) => (
     strokeWidth={2.5}
     className={cn(
       'pointer-events-none absolute text-primary-text drop-shadow-sm drop-shadow-black/90 touch:drop-shadow-xs touch:drop-shadow-black/60',
-      small ? 'bottom-1 left-1 size-3' : 'bottom-1.5 left-1.5 size-4'
+      small ? 'bottom-0.75 left-0.5 size-3' : 'bottom-1 left-0.5 size-4'
     )}
   />
 )
