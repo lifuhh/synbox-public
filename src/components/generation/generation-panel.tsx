@@ -1,5 +1,12 @@
 import { Check, LogIn, Play, RotateCcw, X } from 'lucide-react'
-import { AnimatePresence, motion } from 'motion/react'
+import {
+  AnimatePresence,
+  motion,
+  useAnimationControls,
+  useDragControls,
+  useReducedMotion,
+} from 'motion/react'
+import { useRef } from 'react'
 import { Link } from 'react-router'
 
 import { startFromButton } from '@/components/generation/start-generation'
@@ -186,20 +193,24 @@ const madeKaraoke = (status: Extract<JobStatus, { kind: 'complete' }>) =>
   (status.outcome.kind === 'created' ||
     (status.outcome.kind === 'version' && status.outcome.active))
 
-// A song's own action at the end of its row: Play once it is ready, Dismiss once it failed
+// A song's own action at the end of its row: Play once it is ready, Dismiss once it failed. Play is a slim pill in
+// the row's height; on touch its press target reaches 44 px tall, still inside the row
 const RowAction = ({ job, title }: { job: Job; title: string }) => {
   const outcome = outcomeOf(job)
   const name = title === '' ? 'this song' : title
   if (outcome) {
     return (
-      <Button asChild size='sm' gap='sm' className='h-8 shrink-0 touch:h-11'>
+      <Button
+        asChild
+        size='row'
+        className='relative shrink-0 touch:after:absolute touch:after:inset-x-0 touch:after:-inset-y-2'>
         <Link
           to={outcome.play.to}
           aria-label={`Play ${name}`}
           onClick={() => {
             dismissGeneration(job.id)
           }}>
-          <Play className='size-3.5 fill-current' aria-hidden />
+          <Play className='size-3 fill-current' aria-hidden />
           Play
         </Link>
       </Button>
@@ -240,33 +251,98 @@ const DismissAll = ({ jobs }: { jobs: readonly Job[] }) => {
   )
 }
 
-// Every song in the queue, shared by all tabs, oldest first; picking one shows it in the panel
-const SongQueue = ({
-  jobs,
-  focusedId,
-}: {
-  jobs: readonly Job[]
-  focusedId: string
-}) => (
-  <ul aria-label='Songs' className='-mx-1.5 flex flex-col gap-0.5'>
-    {jobs.map((job) => {
-      const title = titleOf(job)
-      const status = rowStatus(job)
-      return (
-        <li
-          key={job.id}
-          data-marquee-host
-          className={cn(
-            'flex items-center gap-1 rounded-lg pr-1 hover:bg-accent',
-            job.id === focusedId && 'bg-accent'
-          )}>
+// A finished row swiped left past this share of its width, or flicked left this fast (px/s), is dismissed
+const SWIPE_SHARE = 0.35
+const FLICK_SPEED = 500
+
+// One song in the queue. A finished one is dismissed by a swipe left on touch, or by the X a mouse finds on hover
+// (and the keyboard on focus); the rows below close the gap
+const SongRow = ({ job, picked }: { job: Job; picked: boolean }) => {
+  const title = titleOf(job)
+  const status = rowStatus(job)
+  const name = title === '' ? 'this song' : title
+  const finished = !isActive(job)
+  const reduced = useReducedMotion() ?? false
+  const drag = useDragControls()
+  const slide = useAnimationControls()
+  const row = useRef<HTMLDivElement>(null)
+  // A swipe ends with the finger lifted over a button: that press isn't a tap
+  const swiped = useRef(false)
+  const dismiss = () => {
+    dismissGeneration(job.id)
+  }
+  // Past the line, or flicked, the row slides out and goes; short of it, it springs back
+  const settle = async (offset: number, velocity: number) => {
+    const width = row.current?.offsetWidth ?? 0
+    if (offset < -width * SWIPE_SHARE || velocity < -FLICK_SPEED) {
+      await slide.start({
+        transition: { duration: 0.15, ease: 'easeOut' },
+        x: -width,
+      })
+      dismiss()
+      return
+    }
+    await slide.start({
+      transition: { bounce: 0, duration: 0.25, type: 'spring' },
+      x: 0,
+    })
+  }
+  return (
+    <motion.li
+      data-marquee-host
+      exit={reduced ? { opacity: 0 } : { height: 0, opacity: 0 }}
+      transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+      className='relative overflow-hidden rounded-lg'>
+      {/* Under the row, which covers it until it moves aside */}
+      {finished && (
+        <span
+          aria-hidden
+          className='absolute inset-y-0 right-0 flex items-center pr-4 text-muted-foreground'>
+          <X className='size-4' />
+        </span>
+      )}
+      <motion.div
+        ref={row}
+        drag={finished ? 'x' : false}
+        dragListener={false}
+        dragControls={drag}
+        dragDirectionLock
+        dragMomentum={false}
+        dragConstraints={{ right: 0 }}
+        dragElastic={0.2}
+        animate={slide}
+        onPointerDown={(event) => {
+          swiped.current = false
+          if (finished && event.pointerType !== 'mouse') {
+            drag.start(event)
+          }
+        }}
+        onDragStart={() => {
+          swiped.current = true
+        }}
+        onDragEnd={(_, info) => {
+          void settle(info.offset.x, info.velocity.x)
+        }}
+        onClickCapture={(event) => {
+          if (swiped.current) {
+            event.preventDefault()
+            event.stopPropagation()
+            swiped.current = false
+          }
+        }}
+        className={cn(
+          'group relative flex items-center gap-1 rounded-lg bg-popover pr-1 hover:bg-accent',
+          finished && 'touch-pan-y',
+          picked && 'bg-accent'
+        )}>
+        <div className='relative flex min-w-0 flex-1 self-stretch'>
           <button
             type='button'
-            aria-current={job.id === focusedId}
+            aria-current={picked}
             onClick={() => {
               focusGeneration(job.id)
             }}
-            className='flex min-w-0 flex-1 items-center gap-2 self-stretch rounded-lg px-1.5 py-1 text-left outline-none focus-visible:ring-2 focus-visible:ring-brand-light touch:py-2'>
+            className='flex min-w-0 flex-1 items-center gap-2 rounded-lg px-1.5 py-1 text-left outline-none focus-visible:ring-2 focus-visible:ring-brand-light touch:py-2'>
             <span className='h-8 w-[57px] shrink-0 overflow-hidden rounded bg-thumbnail-placeholder'>
               <img
                 src={thumbnailOf(job)}
@@ -301,10 +377,38 @@ const SongQueue = ({
               </span>
             )}
           </button>
-          <RowAction job={job} title={title} />
-        </li>
-      )
-    })}
+          {/* Over the end of the title, not in the row's flow: it comes in from the right without moving anything.
+              A failed row has its X in view already */}
+          {job.status.kind === 'complete' && (
+            <button
+              type='button'
+              aria-label={`Dismiss ${name}`}
+              onClick={dismiss}
+              className='pointer-events-none absolute top-1/2 right-1 flex size-7 translate-x-2 -translate-y-1/2 items-center justify-center rounded-full bg-secondary text-white/80 opacity-0 transition-fade-translate duration-150 ease-out outline-none group-hover:pointer-events-auto group-hover:translate-x-0 group-hover:opacity-100 group-has-[:focus-visible]:pointer-events-auto group-has-[:focus-visible]:translate-x-0 group-has-[:focus-visible]:opacity-100 hover:text-white focus-visible:ring-2 focus-visible:ring-brand-light motion-reduce:translate-x-0'>
+              <X className='size-4' aria-hidden />
+            </button>
+          )}
+        </div>
+        <RowAction job={job} title={title} />
+      </motion.div>
+    </motion.li>
+  )
+}
+
+// Every song in the queue, shared by all tabs, oldest first; picking one shows it in the panel
+const SongQueue = ({
+  jobs,
+  focusedId,
+}: {
+  jobs: readonly Job[]
+  focusedId: string
+}) => (
+  <ul aria-label='Songs' className='-mx-1.5 flex flex-col gap-0.5'>
+    <AnimatePresence initial={false}>
+      {jobs.map((job) => (
+        <SongRow key={job.id} job={job} picked={job.id === focusedId} />
+      ))}
+    </AnimatePresence>
   </ul>
 )
 

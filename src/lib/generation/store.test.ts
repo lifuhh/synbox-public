@@ -7,6 +7,7 @@ import {
   getGenerationState,
   leadJob,
   MAX_RUNNING,
+  opensPanel,
   startGeneration,
 } from './store'
 
@@ -188,4 +189,23 @@ test('the ring follows the song that started running first, then the one further
     retry: true,
   } as const
   expect(leadJob([jobAt(6, 10, failed, 0.5)], 1000)).toBeNull()
+})
+
+test('a start opens the panel only for the first song in progress, or a press on one already going', () => {
+  const running = jobAt(1, 10, RUNNING, 0.2)
+  const done = {
+    at: 0,
+    code: undefined,
+    kind: 'failed',
+    message: '',
+    retry: true,
+  } as const
+  expect(opensPanel([], 'a', true)).toBe(true)
+  expect(opensPanel([jobAt(2, 10, done)], 'a', true)).toBe(true)
+  // Another song is going: the ring counts the new one instead
+  expect(opensPanel([running], 'a', true)).toBe(false)
+  expect(opensPanel([running], running.videoId, true)).toBe(true)
+  // The listener moved on while the backend answered
+  expect(opensPanel([], 'a', false)).toBe(false)
+  expect(opensPanel([running], running.videoId, false)).toBe(false)
 })

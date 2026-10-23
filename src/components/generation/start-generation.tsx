@@ -9,6 +9,29 @@ import { requestGeneration } from '@/lib/generation/store'
 // A check answered this fast needs no notice; one that waits on a backend starting up (up to 20 s) does
 const STARTING_NOTICE_DELAY_MS = 400
 
+// Input that means the listener carried on: a press, a scroll, a key. The press that started the song came before
+const MOVING_ON = ['pointerdown', 'wheel', 'touchmove', 'keydown'] as const
+
+// Watches from now on whether the listener is still where they pressed: same page, no input since
+const watchStay = () => {
+  const path = location.pathname
+  let moved = false
+  const mark = () => {
+    moved = true
+  }
+  for (const type of MOVING_ON) {
+    document.addEventListener(type, mark, { capture: true, passive: true })
+  }
+  return {
+    stayed: () => !moved && location.pathname === path,
+    stop: () => {
+      for (const type of MOVING_ON) {
+        document.removeEventListener(type, mark, { capture: true })
+      }
+    },
+  }
+}
+
 // Starts a generation from a button, or says at once why it can't start. Until the backend answers, a notice
 // says the press was taken, unless the button shows that itself (`announce: false`)
 export const startFromButton = async (
@@ -32,7 +55,10 @@ export const startFromButton = async (
         })
       }, STARTING_NOTICE_DELAY_MS)
     : undefined
-  const refusal = await requestGeneration(request)
+  const watch = watchStay()
+  const refusal = await requestGeneration(request, watch.stayed).finally(
+    watch.stop
+  )
   clearTimeout(timer)
   if (refusal === null) {
     notice?.dismiss()

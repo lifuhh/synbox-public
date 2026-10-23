@@ -29,6 +29,9 @@ const buttonVariants = cva(
         lg: 'h-11 rounded-md px-8',
         // A short labelled pill that sits among the top bar's icon buttons
         pill: 'h-9 rounded-full px-3 sm:px-4',
+        // A slim labelled action at the end of a list row, as the notifications panel's Play. A leading icon's
+        // drawing starts inside its box, so that side's padding is 2px less
+        row: 'h-7 gap-1 rounded-md pr-2.5 pl-2',
         sm: 'h-9 rounded-md px-3',
         // The hero's call to action: padding, not height, sets how tall it is
         tall: 'h-10 px-4 py-6',
