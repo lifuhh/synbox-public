@@ -34,7 +34,7 @@ const Notice = ({ children }: { children: React.ReactNode }) => (
 const ResultGrid = ({ children }: { children: React.ReactNode }) => (
   // Each card pads its hover surface, so the grid reaches out by that padding and the pictures line up
   // with the search field
-  <div className='-mx-2 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5'>
+  <div className='-mx-2 grid grid-cols-2 gap-3 empty:hidden sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5'>
     {children}
   </div>
 )
@@ -74,16 +74,18 @@ const youtubeSearchUrl = (query: string) =>
     : `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`
 
 // Search finds only songs we already have lyrics for; anything else is one tap away on YouTube
-const LookUpOnYoutube = ({ query }: { query: string }) => (
+const LookUpOnYoutube = ({ query, none }: { query: string; none: boolean }) => (
   <div className='flex flex-wrap items-center gap-x-3 gap-y-2'>
-    <p className='text-sm text-muted-foreground'>Can’t find your song?</p>
+    <output className='text-sm text-muted-foreground'>
+      {none ? 'No results' : 'Can’t find your song?'}
+    </output>
     <Button asChild variant='outline' gap='sm' className='touch:h-11'>
       <a
         href={youtubeSearchUrl(query)}
         target='_blank'
         rel='noopener noreferrer'>
         Look Up on YouTube
-        <span className='sr-only'>(opens in a new tab)</span>
+        <span className='sr-only'> (opens in a new tab)</span>
         <ArrowUpRightIcon
           aria-hidden
           className='size-4 shrink-0 text-muted-foreground'
@@ -93,15 +95,13 @@ const LookUpOnYoutube = ({ query }: { query: string }) => (
   </div>
 )
 
-// What the library search says besides its songs: none found, an error, or that it is not at its best
+// What the library search says besides its songs: an error, or that it is not at its best
 const LibraryStatus = ({
   library,
   searching,
-  found,
 }: {
   library: UseQueryResult<LibrarySearchResponse>
   searching: boolean
-  found: number
 }) => {
   const notReady = library.data?.ready === false
   if (searching) {
@@ -124,11 +124,8 @@ const LibraryStatus = ({
       </div>
     )
   }
-  if (library.data?.mode === 'title_match') {
-    return <Notice>Smart search is down. Matching titles only.</Notice>
-  }
-  return found === 0 ? (
-    <p className='text-sm text-muted-foreground'>No results found</p>
+  return library.data?.mode === 'title_match' ? (
+    <Notice>Smart search is down. Matching titles only.</Notice>
   ) : null
 }
 
@@ -164,12 +161,12 @@ const SearchResults = ({
   return (
     <div style={heightVars} className='smooth-height'>
       <div ref={inner} className='flex flex-col gap-6'>
-        <div className='flex flex-col gap-3'>
-          <LibraryStatus
-            library={library}
-            searching={searching}
-            found={libraryResults.length + extra.length}
-          />
+        <div className='flex flex-col gap-3 empty:hidden'>
+          <LibraryStatus library={library} searching={searching} />
+          {/* A pasted link's video comes only from the YouTube search */}
+          {linkId !== null && videos.error && (
+            <Notice>{videos.error.message}</Notice>
+          )}
           <ResultGrid>
             {libraryResults.map((song) => (
               <LibrarySongCard
@@ -195,7 +192,14 @@ const SearchResults = ({
               ))}
           </ResultGrid>
         </div>
-        <LookUpOnYoutube query={query} />
+        <LookUpOnYoutube
+          query={query}
+          none={
+            !searching &&
+            library.error === null &&
+            libraryResults.length + extra.length === 0
+          }
+        />
       </div>
     </div>
   )
