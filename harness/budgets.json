@@ -1,11 +1,12 @@
 {
   "$comment": "Ceilings for `bun harness/bench/cli.ts check`, by benchmark id (`bench list`) and metric. A gated metric with no entry here has a budget of 0. Raising one is how an intended growth is accepted: do it in the PR that needs it, add the reason to $why, and say it in the PR description. Sizes are brotli KB, set at about 1% over what staging shipped on 2026-10-23.",
   "$why": {
+    "size.allJsKB": "391 -> 396 on 2026-10-23 (feat/queue-playlists): the playlist panel, the shuffle and the play-context model add about 0.8 KB brotli across all chunks; about 1% over the measured 391.8.",
     "size.cssKB": "20.1 -> 20.3 on 2026-10-23 (feat/queue-playlists): the playlist panel over Up Next and the Button toggle variant (Shuffle's pressed state) add about 0.1 KB brotli; about 1% over the measured 20.2. Before: 19.7 -> 20.1 on 2026-10-23 (fix/generation-panel): the notifications panel's close-into-the-button keyframes, the top bar staying in while the panel shows, and the finished rows' hover/focus dismiss X and Play touch target add about 0.2 KB brotli of first-load CSS. About 1% over the measured 19.9."
   },
   "size": {
     "initialJsKB": 327,
     "cssKB": 20.3,
-    "allJsKB": 391
+    "allJsKB": 396
   }
 }
