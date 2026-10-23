@@ -15,7 +15,6 @@ import type { CssVars } from '@/types'
 import { cn } from '@/utils/cn'
 
 import type { StageLayout } from './player-stage'
-import { CONTROLS_FADE_MS } from './stage-controls'
 
 // How far a press must travel to count as a drag: a fingertip rolls further than a mouse wobbles
 const TAP_SLOP_PX = { mouse: 4, touch: 10 }
@@ -40,22 +39,13 @@ const swallowNextClick = () => {
 const clamp01 = (value: number) => Math.min(1, Math.max(0, value))
 
 // The least room under the block. While it is dragged, only the edge: it goes where the pointer puts it, the
-// floor included, the floating UI or not. Dropped, it clears the floating UI while that shows, as though the
-// controls' top were the stage's floor, and returns to its place when they hide (the home indicator still clear)
-const liftMinHeight = (
-  lifts: boolean,
-  dragging: boolean,
-  controlsVisible: boolean
-) => {
+// floor included. Dropped, it keeps clear of the home indicator. The floating UI never moves it: the controls
+// and the rail draw over the lyrics while they show
+const liftMinHeight = (lifts: boolean, dragging: boolean) => {
   if (!lifts) {
     return '0px'
   }
-  if (dragging) {
-    return EDGE
-  }
-  return controlsVisible
-    ? `max(var(--stage-chrome-h), ${EDGE})`
-    : `max(var(--safe-bottom, 0px), ${EDGE})`
+  return dragging ? EDGE : `max(var(--safe-bottom, 0px), ${EDGE})`
 }
 
 interface DragStart {
@@ -76,8 +66,7 @@ interface DraggableLyricsProps {
   wide?: boolean
   // Where the block's place is saved, when not the lyrics' own (Two Lines' translation keeps its own)
   anchorAtom?: WritableAtom<number, [number], void>
-  // Whether the block rises over the floating UI while it shows; a block at the top of the stage has nothing
-  // to clear
+  // Whether the block keeps clear of the home indicator; a block at the top of the stage has nothing to clear
   lifts?: boolean
 }
 
@@ -85,10 +74,8 @@ interface DraggableLyricsProps {
 // area) and is what persists, once per drop. Flex spacers split the free
 // space above and below the block by the anchor, so a taller or shorter line
 // keeps its place without measuring. A drag goes anywhere between the edges,
-// the floor included, whatever shows. Once dropped, while the floating UI
-// shows, the bottom spacer never shrinks below the part of the stage it covers
-// (--stage-chrome-h), which lifts the block just clear of it, and it drops
-// back to its place once the UI has faded out. Only the drawn text is
+// the floor included. The controls showing or hiding never moves the block:
+// they draw over it. Only the drawn text is
 // grabbable; a click on it without a drag opens the rail's style panel (a
 // finger's tap goes on to the stage), and a press beside or between its lines
 // goes to the stage
@@ -139,8 +126,8 @@ export const DraggableLyrics = ({
     if (event.pointerType !== 'mouse' && stage !== null) {
       layout.pressStage(event.pointerType, fractionAcross(event, stage))
     }
-    // Start from where the block is drawn, which is above the saved anchor
-    // while the controls lift it
+    // Start from where the block is drawn, which the spacers' minimum
+    // heights can keep off the saved anchor
     const room = layer.clientHeight - block.offsetHeight
     dragRef.current = {
       anchor: room > 0 ? clamp01(block.offsetTop / room) : anchor,
@@ -204,16 +191,14 @@ export const DraggableLyrics = ({
   }
   const liftVars: CssVars = {
     '--lift-grow': 1 - anchor,
-    // With the floating UI away, the lyrics still keep clear of the home indicator
-    '--lift-min-h': liftMinHeight(lifts, dragging, layout.controlsVisible),
-    // Lift at once when the controls appear; drop only after they fade. A
-    // docking drop slides down with the spacer above, never delayed
+    '--lift-min-h': liftMinHeight(lifts, dragging),
+    // A drop settles from the drag's edge onto the home indicator's
     '--lift-transition': dragging
       ? 'none'
-      : `min-height ${LIFT_MS}ms ease-out ${layout.controlsVisible ? 0 : CONTROLS_FADE_MS}ms, ${settle}`,
+      : `min-height ${LIFT_MS}ms ease-out, ${settle}`,
   }
   return (
-    // A block taller than the room overflows upward, over the video, never down under the controls
+    // A block taller than the room overflows upward, over the video, never down off the stage
     <div className='pointer-events-none absolute inset-0 flex flex-col justify-end'>
       <div className='anchor-spacer' style={anchorVars} />
       <div

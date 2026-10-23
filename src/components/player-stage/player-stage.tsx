@@ -343,8 +343,6 @@ const StageCover = ({
 }
 
 export interface StageLayout {
-  // While true the floating UI covers --stage-chrome-h of the stage's bottom edge
-  controlsVisible: boolean
   // Controls stay hidden while dragging, so the drop position is the real one
   onDragChange: (dragging: boolean) => void
   // A finger's tap on the lyrics, passed on to the stage as if it had landed on the video: pressStage as it
@@ -514,7 +512,6 @@ export const PlayerStage = ({
     togglePlay: player.togglePlay,
   })
   const layout: StageLayout = {
-    controlsVisible,
     onDragChange: (next) => {
       setDragging(next)
       // After a drop, keep the controls away until the pointer moves again
@@ -714,7 +711,7 @@ export const PlayerStage = ({
       {renderLyrics && (
         // In portrait the lyrics get the space under a whole video, and lie over one that fills the stage; on a
         // phone on its side they keep clear of the rail's column and the notch. The floating UI at the bottom
-        // is cleared by DraggableLyrics' lift
+        // draws over them and never moves them
         <div
           className={cn(
             'pointer-events-none absolute inset-0 z-25 short:inset-x-controls-rail',

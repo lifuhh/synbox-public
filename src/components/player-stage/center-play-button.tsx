@@ -91,7 +91,7 @@ export const CenterPlayButton = ({
   const youTubeCenterShowing = useYouTubeCenterShowing(phase)
   const visible = controlsVisible || youTubeCenterShowing
   // On a phone on its side, or a page turned by Lock Landscape (the `short:` variant covers both), the
-  // lyrics lifted over the control bar reach the middle of the screen: there the bar's own play button is
+  // lyrics reach the middle of the screen: there the bar's own play button is
   // enough, and this one shows only while it covers YouTube's
   const onlyForControls = !youTubeCenterShowing
   const armed = useArmed(visible)
