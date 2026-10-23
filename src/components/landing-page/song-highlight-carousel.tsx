@@ -1,5 +1,5 @@
 import { ChevronLeftIcon, ChevronRightIcon, PlayIcon } from 'lucide-react'
-import { useState } from 'react'
+import { memo, useState } from 'react'
 import { Link } from 'react-router'
 
 import { EditRecommendations } from '@/components/admin/edit-recommendations'
@@ -10,6 +10,7 @@ import {
 import LoadError from '@/components/shared/load-error'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { useAutoAdvance } from '@/hooks/use-auto-advance'
 import { useLoopingCarousel } from '@/hooks/use-looping-carousel'
 import { loopCopies } from '@/lib/carousel-motion'
 import { useGetLandingPagePlaylist } from '@/lib/react-query/queries-and-mutations'
@@ -19,7 +20,7 @@ const SKELETON_CARDS = 5
 // Slides on each side of the list's middle copy, more than one flick can travel past
 const LOOP_BUFFER = 16
 
-const SongCard = ({
+const Card = ({
   item,
   active,
   clone,
@@ -39,9 +40,10 @@ const SongCard = ({
     aria-hidden={clone || undefined}
     tabIndex={clone ? -1 : undefined}
     data-active={active}
-    className='group flex min-w-0 snap-center flex-col rounded-xl focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden motion-safe:transition-transform motion-safe:duration-150 data-[active=false]:motion-safe:scale-94'>
+    className='group flex min-w-0 snap-center flex-col rounded-xl focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden motion-safe:scale-100 motion-safe:transition-transform motion-safe:duration-150 data-[active=false]:motion-safe:scale-94'>
     {/* Off-centre slides shrink, fade their picture and mute their title, so the centred one stands out
-        whatever the pictures look like. Text is muted, not faded: faded text would fall below 4.5:1 */}
+        whatever the pictures look like. Text is muted, not faded: faded text would fall below 4.5:1. The
+        centred slide keeps a scale (100%), so a slide changing place restyles without laying out the row */}
     <span className='relative aspect-video overflow-hidden rounded-xl bg-thumbnail-placeholder transition-opacity duration-150 group-data-[active=false]:opacity-40'>
       <img
         src={item.thumbnailUrl}
@@ -71,6 +73,9 @@ const SongCard = ({
   </Link>
 )
 
+// Memoised: when the centred song changes, only the cards whose `active` flips render again
+const SongCard = memo(Card)
+
 // A card's exact box: the picture, then the same fixed text block
 const CardSkeleton = () => (
   <div className='flex min-w-0 flex-col'>
@@ -95,11 +100,17 @@ const SongHighlightCarousel = () => {
   } = useGetLandingPagePlaylist()
   // State, not a ref: the row only exists once the playlist has loaded, and the hook needs it
   const [track, setTrack] = useState<HTMLDivElement | null>(null)
+  const [area, setArea] = useState<HTMLElement | null>(null)
   const songs = playlistData ?? []
   const count = songs.length
   const copies = loopCopies(count, LOOP_BUFFER)
   const home = ((copies - 1) / 2) * count
-  const { active, settled, step } = useLoopingCarousel(track, count, copies)
+  const { active, advance, settled, step } = useLoopingCarousel(
+    track,
+    count,
+    copies
+  )
+  useAutoAdvance(copies > 1 ? area : null, advance)
   const slides = Array.from({ length: count * copies }, (_, index) => ({
     index,
     item: songs[index % count],
@@ -111,6 +122,7 @@ const SongHighlightCarousel = () => {
 
   return (
     <section
+      ref={setArea}
       aria-label='Recommendations'
       aria-roledescription='carousel'
       className='@container flex min-w-0 flex-1 flex-col gap-3 in-data-rise:rise-in in-data-rise:rise-delay-300'>
