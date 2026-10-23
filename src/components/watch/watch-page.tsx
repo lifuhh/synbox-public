@@ -130,7 +130,12 @@ const NarrowBelow = ({
           <SongInfo compact />
           <div className='pb-6'>
             <UpNext videoId={videoId} autoplaySwitch />
-            <Shelves videoId={videoId} similar={more} className='mt-6 px-2' />
+            {/* The rows run to the screen's edges: this box's px-2 plus the page's px-4 */}
+            <Shelves
+              videoId={videoId}
+              similar={more}
+              className='mt-6 px-2 [--shelf-bleed:1.5rem]'
+            />
           </div>
         </div>
       </div>
