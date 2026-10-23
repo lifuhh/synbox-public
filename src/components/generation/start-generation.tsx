@@ -1,5 +1,6 @@
 import { LoaderCircleIcon } from 'lucide-react'
 
+import { GoogleMark } from '@/components/shared/google-mark'
 import { ToastAction } from '@/components/ui/toast'
 import { toast } from '@/components/ui/use-toast'
 import { signInWithGoogle, SIGN_IN_CODES } from '@/lib/auth'
@@ -71,6 +72,7 @@ export const startFromButton = async (
         onClick={() => {
           void signInWithGoogle()
         }}>
+        <GoogleMark className='mr-2 -ml-1' />
         Sign In
       </ToastAction>
     ) : undefined,

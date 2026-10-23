@@ -1,5 +1,5 @@
 import type { UseQueryResult } from '@tanstack/react-query'
-import { LogInIcon, SearchIcon } from 'lucide-react'
+import { SearchIcon } from 'lucide-react'
 import { useLayoutEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
 
@@ -9,6 +9,7 @@ import {
   VideoResultCard,
 } from '@/components/search/search-result-cards'
 import DotsLoader from '@/components/shared/dots-loader'
+import { GoogleMark } from '@/components/shared/google-mark'
 import { Button } from '@/components/ui/button'
 import { Input, InputField } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -195,7 +196,7 @@ const NoNewSongs = () => {
             onClick={() => {
               void signInWithGoogle()
             }}>
-            <LogInIcon className='size-4' />
+            <GoogleMark />
             Sign In
           </Button>
         )}

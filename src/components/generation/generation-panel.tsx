@@ -1,4 +1,4 @@
-import { Check, LogIn, Play, RotateCcw, X } from 'lucide-react'
+import { Check, Play, RotateCcw, X } from 'lucide-react'
 import {
   AnimatePresence,
   motion,
@@ -11,6 +11,7 @@ import { Link } from 'react-router'
 
 import { startFromButton } from '@/components/generation/start-generation'
 import { AdminMark } from '@/components/shared/admin-mark'
+import { GoogleMark } from '@/components/shared/google-mark'
 import { KaraokeBadge, KaraokeMark } from '@/components/shared/karaoke-badge'
 import { MarqueeText } from '@/components/shared/marquee-text'
 import { Button } from '@/components/ui/button'
@@ -497,7 +498,7 @@ const GenerationPanel = ({ job, jobs }: GenerationPanelProps) => {
                       onClick={() => {
                         void signInWithGoogle()
                       }}>
-                      <LogIn className='size-4' />
+                      <GoogleMark />
                       Sign In
                     </Button>
                   ) : null}
