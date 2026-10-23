@@ -7,23 +7,42 @@ import { useToast } from '@/components/ui/use-toast'
 import { playlistsAtom, recordLibraryAtom } from '@/lib/library/store'
 import { syncedStorage } from '@/lib/prefs/storage'
 
-import type { ListSong, Playlist, QueueSource } from './model'
+import type { ListSong, PlayContext, Playlist } from './model'
 import {
   addToPlaylist as addSongToPlaylist,
   addToQueue as addSongToQueue,
   move,
   newPlaylist,
-  playFrom,
   playNext as playSongNext,
+  playPlaylist as startPlaylist,
   removeSong,
+  reshuffle,
 } from './model'
+import { cryptoRandom } from './shuffle'
 
-// The queue and autoplay live on this device; playlists follow the account (lib/library)
-export const queueAtom = atomWithStorage<ListSong[]>('listeningQueue', [])
-export const queueSourceAtom = atomWithStorage<QueueSource>(
-  'listeningSource',
-  null
+// The queue and autoplay live on this device; playlists follow the account (lib/library). Both lists are read
+// on the first render: a change made before anything showed them (Add to Queue from the home page, the player
+// following its song) would otherwise start from an empty list and save it over the stored one
+export const queueAtom = atomWithStorage<ListSong[]>(
+  'listeningQueue',
+  [],
+  undefined,
+  { getOnInit: true }
 )
+// The playlist being played through, after the queue (model › PlayContext). Each tab plays its own: another
+// tab opening a song must not end or move this one's
+export const contextAtom = atomWithStorage<PlayContext | null>(
+  'listeningContext',
+  null,
+  createJSONStorage(() => sessionStorage),
+  { getOnInit: true }
+)
+// Where a playlist's songs once went into the queue, before the playlist being played had its own place
+try {
+  localStorage.removeItem('listeningSource')
+} catch {
+  // Storage blocked: nothing to tidy
+}
 export const autoplayAtom = atomWithStorage(
   'listeningAutoplay',
   true,
@@ -43,11 +62,24 @@ export const playedAtom = atomWithStorage<ListSong[]>(
 
 export const songPath = (videoId: string) => `/v/${videoId}`
 
+// How a song was opened, carried in the navigation's state for the player page. By Previous (`back`): the song
+// it left is not put on Previous's trail. By Previous or from the queue (`queued`): the playlist being played
+// waits (model › followSong). Any other way of opening a song that isn't in the playlist ends it
+export type OpenedBy = 'back' | 'queued'
+export const songState = (videoId: string, by?: OpenedBy) => ({ by, videoId })
+export const openedBy = (state: unknown): OpenedBy | undefined =>
+  typeof state === 'object' &&
+  state !== null &&
+  'by' in state &&
+  (state.by === 'back' || state.by === 'queued')
+    ? state.by
+    : undefined
+
 // Every way the app changes the queue or the playlists, each with the same short confirmation
 export const useListening = () => {
   const store = useStore()
   const setQueue = useSetAtom(queueAtom)
-  const setSource = useSetAtom(queueSourceAtom)
+  const setContext = useSetAtom(contextAtom)
   const record = useSetAtom(recordLibraryAtom)
   const navigate = useNavigate()
   const { toast } = useToast()
@@ -89,15 +121,12 @@ export const useListening = () => {
   }
   const clearQueue = () => {
     const before = store.get(queueAtom)
-    const source = store.get(queueSourceAtom)
     setQueue([])
-    setSource(null)
     undoable(
       'Queue Cleared',
       before.length === 1 ? '1 song' : `${before.length} songs`,
       () => {
         setQueue(before)
-        setSource(source)
       }
     )
   }
@@ -180,26 +209,44 @@ export const useListening = () => {
     })
   }
 
-  // Lines a playlist up from one of its songs: the songs after it become the queue. For a link that opens
-  // that song itself
-  const queuePlaylistFrom = (id: string, index: number) => {
+  // Starts playing a playlist, in order from one of its songs or shuffled, and returns the song to open; for a
+  // link that opens that song itself. The queue stays as it is and plays first
+  const startPlaylistAt = (
+    id: string,
+    play: { from?: number; shuffled: boolean }
+  ) => {
     const list = store.get(playlistsAtom).find((saved) => saved.id === id)
-    if (list === undefined || index >= list.songs.length) {
+    if (list === undefined || list.songs.length === 0) {
       return null
     }
-    const play = playFrom(list, index)
-    setQueue(play.queue)
-    setSource(play.source)
-    return play.song
+    const context = startPlaylist(list, play, cryptoRandom)
+    setContext(context)
+    return context.order[context.at] ?? null
   }
-  // Plays a playlist from one of its songs
-  const playPlaylist = (id: string, index = 0) => {
-    const song = queuePlaylistFrom(id, index)
+  const playPlaylist = (id: string, shuffled = false) => {
+    const song = startPlaylistAt(id, { shuffled })
     if (song !== null) {
       void navigate(songPath(song.videoId), {
-        state: { videoId: song.videoId },
+        state: songState(song.videoId),
       })
     }
+  }
+  // Shuffle on or off for the playlist playing: its songs already played stay, the rest are reordered
+  const setShuffled = (shuffled: boolean) => {
+    const context = store.get(contextAtom)
+    const list = store
+      .get(playlistsAtom)
+      .find((saved) => saved.id === context?.id)
+    if (context !== null) {
+      // A playlist deleted while it plays still shuffles what it had
+      setContext(
+        reshuffle(context, list?.songs ?? context.order, shuffled, cryptoRandom)
+      )
+    }
+  }
+  // Stops playing the playlist: the song plays on, then the queue and recommendations
+  const leavePlaylist = () => {
+    setContext(null)
   }
 
   return {
@@ -208,14 +255,16 @@ export const useListening = () => {
     clearQueue,
     createPlaylist,
     deletePlaylist,
+    leavePlaylist,
     moveInPlaylist,
     moveInQueue,
     playNext,
     playPlaylist,
-    queuePlaylistFrom,
     removeFromPlaylist,
     removeFromQueue,
     renamePlaylist,
+    setShuffled,
+    startPlaylistAt,
   }
 }
 

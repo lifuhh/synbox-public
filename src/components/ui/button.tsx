@@ -65,6 +65,9 @@ const buttonVariants = cva(
         secondary:
           'bg-secondary text-secondary-foreground hover:bg-secondary/80',
         // The top bar's icon buttons
+        // A button that stays on (aria-pressed), as a playlist's Shuffle: on, it takes the brand colour
+        toggle:
+          'rounded-full hover:bg-accent hover:text-accent-foreground aria-pressed:bg-primary-subtle aria-pressed:text-primary-text aria-pressed:hover:bg-primary-subtle-hover',
         toolbar: 'rounded-full hover:bg-accent hover:text-accent-foreground',
       },
     },

@@ -1,5 +1,6 @@
 import { useAtom, useAtomValue } from 'jotai'
-import { EllipsisIcon, XIcon } from 'lucide-react'
+import { EllipsisIcon, ListPlusIcon, XIcon } from 'lucide-react'
+import { useRef, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
 import {
@@ -12,15 +13,11 @@ import {
 import type { ListSong } from '@/lib/listening/model'
 import { filterKey, filterLabel } from '@/lib/listening/next-filter'
 import { useNextList } from '@/lib/listening/recommendations'
-import {
-  autoplayAtom,
-  queueAtom,
-  queueSourceAtom,
-  useListening,
-} from '@/lib/listening/store'
+import { autoplayAtom, queueAtom, useListening } from '@/lib/listening/store'
 import { cn } from '@/utils/cn'
 
 import { MoveItems } from './move-items'
+import { SaveToPlaylist } from './save-to-playlist'
 import { SongMenu } from './song-menu'
 import { SongRow } from './song-row'
 import { SortableList } from './sortable-list'
@@ -32,7 +29,7 @@ export const UP_NEXT_COUNT = 20
 // What plays after this song: the listener's queue first (drag to reorder, × to remove), then the list, which
 // chips narrow to the song's artist, mood or kind of singer, as YouTube's do. Autoplay plays the top of the
 // list as filtered. Each song has Play Next, Add to Queue and Save to Playlist
-// A queued song's menu: move it without dragging, or take it out of the queue
+// A queued song's menu: move it without dragging, save it, or take it out of the queue
 const QueueRowMenu = ({
   song,
   index,
@@ -45,29 +42,47 @@ const QueueRowMenu = ({
   moveTo: (to: number) => void
 }) => {
   const { removeFromQueue } = useListening()
+  const [saving, setSaving] = useState(false)
+  const trigger = useRef<HTMLButtonElement>(null)
   return (
-    <DropdownMenu modal={false}>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant='row-icon'
-          size='icon'
-          aria-label={`More Actions for ${song.title}`}>
-          <EllipsisIcon className='size-5' />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align='end' className='w-52'>
-        <MoveItems index={index} count={count} moveTo={moveTo} />
-        <DropdownMenuSeparator />
-        <DropdownMenuItem
-          variant='destructive'
-          onSelect={() => {
-            removeFromQueue(song.videoId)
-          }}>
-          <XIcon className='mr-2 size-5 shrink-0' />
-          Remove from Queue
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <>
+      <DropdownMenu modal={false}>
+        <DropdownMenuTrigger asChild>
+          <Button
+            ref={trigger}
+            variant='row-icon'
+            size='icon'
+            aria-label={`More Actions for ${song.title}`}>
+            <EllipsisIcon className='size-5' />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align='end' className='w-52'>
+          <MoveItems index={index} count={count} moveTo={moveTo} />
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            onSelect={() => {
+              setSaving(true)
+            }}>
+            <ListPlusIcon className='mr-2 size-5 shrink-0' />
+            Save to Playlist
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            variant='destructive'
+            onSelect={() => {
+              removeFromQueue(song.videoId)
+            }}>
+            <XIcon className='mr-2 size-5 shrink-0' />
+            Remove from Queue
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <SaveToPlaylist
+        song={song}
+        open={saving}
+        onOpenChange={setSaving}
+        returnFocusRef={trigger}
+      />
+    </>
   )
 }
 
@@ -85,7 +100,6 @@ export const UpNext = ({
   className?: string
 }) => {
   const queue = useAtomValue(queueAtom)
-  const source = useAtomValue(queueSourceAtom)
   const [autoplay, setAutoplay] = useAtom(autoplayAtom)
   const { clearQueue, moveInQueue } = useListening()
   const { filter, filters, setFilter, songs } = useNextList(videoId)
@@ -113,9 +127,7 @@ export const UpNext = ({
         <div className='mt-1 mb-3'>
           <div className='flex min-h-9 items-center justify-between gap-2 ps-2'>
             <p className='min-w-0 truncate text-sm text-muted-foreground'>
-              {source === null
-                ? 'Next in Queue'
-                : `Playing From ${source.name}`}
+              Next in Queue
             </p>
             <Button variant='ghost-subtle' size='sm' onClick={clearQueue}>
               Clear Queue
@@ -132,6 +144,7 @@ export const UpNext = ({
                 song={song}
                 large={large}
                 lead={grip}
+                openedBy='queued'
                 actions={
                   <QueueRowMenu
                     song={song}
