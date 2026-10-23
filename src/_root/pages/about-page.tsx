@@ -1,5 +1,7 @@
+import { useState } from 'react'
 import { Link } from 'react-router'
 
+import { BoxScrollbar } from '@/components/shared/doc-scroll'
 import {
   Accordion,
   AccordionContent,
@@ -66,81 +68,89 @@ const BUILT_WITH = [
 ]
 
 // One screen on a desktop: what Synbox does, how, the questions people ask, and the fine print
-const AboutPage = () => (
-  <section className='relative mt-(--topbar-h) flex custom-scrollbar max-h-[calc(var(--app-h)-var(--topbar-h))] flex-1 flex-col overflow-y-auto page-x pb-page-bottom-sm'>
-    <title>About | Synbox</title>
+// A window-high box that scrolls under the top bar, as home and the lists do, so it gets their scrollbar
+const AboutPage = () => {
+  const [box, setBox] = useState<HTMLElement | null>(null)
+  return (
+    <section
+      ref={setBox}
+      data-scroll-top
+      className='relative flex custom-scrollbar flex-1 flex-col overflow-y-auto pt-(--topbar-h) page-x pb-page-bottom-sm'>
+      <title>About | Synbox</title>
 
-    <div className='mx-auto flex w-full max-w-3xl flex-col gap-8 pt-8'>
-      <header className='flex flex-col gap-3 text-center'>
-        <h1 className='text-3xl font-bold'>About</h1>
-        <p className='text-lg text-pretty text-muted-foreground'>
-          Synbox turns a Japanese song on YouTube into karaoke: timed lyrics
-          with furigana, romaji and translations over the original video.
-        </p>
-      </header>
+      <div className='mx-auto flex w-full max-w-3xl flex-col gap-8 pt-8'>
+        <header className='flex flex-col gap-3 text-center'>
+          <h1 className='text-3xl font-bold'>About</h1>
+          <p className='text-lg text-pretty text-muted-foreground'>
+            Synbox turns a Japanese song on YouTube into karaoke: timed lyrics
+            with furigana, romaji and translations over the original video.
+          </p>
+        </header>
 
-      <ol className='grid gap-3 sm:grid-cols-3'>
-        {STEPS.map((step, index) => (
-          <li
-            key={step.title}
-            className='flex flex-col gap-1 rounded-xl bg-card p-4'>
-            <span className='text-sm font-semibold text-primary-text tabular-nums'>
-              {index + 1}
-            </span>
-            <h2 className='font-semibold'>{step.title}</h2>
-            <p className='text-sm text-pretty text-muted-foreground'>
-              {step.text}
-            </p>
-          </li>
-        ))}
-      </ol>
-
-      <Accordion type='multiple' className='w-full'>
-        {FAQS.map((faq) => (
-          <AccordionItem key={faq.question} value={faq.question}>
-            <AccordionTrigger>{faq.question}</AccordionTrigger>
-            <AccordionContent>{faq.answer}</AccordionContent>
-          </AccordionItem>
-        ))}
-      </Accordion>
-
-      <section aria-labelledby='built-with' className='flex flex-col gap-3'>
-        <h2 id='built-with' className='text-sm font-semibold'>
-          Built With
-        </h2>
-        <ul className='flex flex-wrap gap-1.5'>
-          {BUILT_WITH.map((name) => (
+        <ol className='grid gap-3 sm:grid-cols-3'>
+          {STEPS.map((step, index) => (
             <li
-              key={name}
-              className='rounded-full bg-card px-2.5 py-1 text-xs text-muted-foreground'>
-              {name}
+              key={step.title}
+              className='flex flex-col gap-1 rounded-xl bg-card p-4'>
+              <span className='text-sm font-semibold text-primary-text tabular-nums'>
+                {index + 1}
+              </span>
+              <h2 className='font-semibold'>{step.title}</h2>
+              <p className='text-sm text-pretty text-muted-foreground'>
+                {step.text}
+              </p>
             </li>
           ))}
-        </ul>
-      </section>
+        </ol>
 
-      <p className='text-xs text-pretty text-muted-foreground'>
-        A non-commercial personal project with no ads. Songs, videos and lyrics
-        belong to their owners and are shown for learning and singing along;
-        rights holders can ask for removal through the link below.
-      </p>
-    </div>
+        <Accordion type='multiple' className='w-full'>
+          {FAQS.map((faq) => (
+            <AccordionItem key={faq.question} value={faq.question}>
+              <AccordionTrigger>{faq.question}</AccordionTrigger>
+              <AccordionContent>{faq.answer}</AccordionContent>
+            </AccordionItem>
+          ))}
+        </Accordion>
 
-    <nav
-      aria-label='Links'
-      className='mx-auto flex gap-6 pt-4 text-sm text-muted-foreground'>
-      <a
-        href='https://www.linkedin.com/in/lifuhh/'
-        target='_blank'
-        rel='noreferrer'
-        className='py-0.5 hover:text-foreground'>
-        LinkedIn
-      </a>
-      <Link to='/privacy' className='py-0.5 hover:text-foreground'>
-        Privacy
-      </Link>
-    </nav>
-  </section>
-)
+        <section aria-labelledby='built-with' className='flex flex-col gap-3'>
+          <h2 id='built-with' className='text-sm font-semibold'>
+            Built With
+          </h2>
+          <ul className='flex flex-wrap gap-1.5'>
+            {BUILT_WITH.map((name) => (
+              <li
+                key={name}
+                className='rounded-full bg-card px-2.5 py-1 text-xs text-muted-foreground'>
+                {name}
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        <p className='text-xs text-pretty text-muted-foreground'>
+          A non-commercial personal project with no ads. Songs, videos and
+          lyrics belong to their owners and are shown for learning and singing
+          along; rights holders can ask for removal through the link below.
+        </p>
+      </div>
+
+      <nav
+        aria-label='Links'
+        className='mx-auto flex gap-6 pt-4 text-sm text-muted-foreground'>
+        <a
+          href='https://www.linkedin.com/in/lifuhh/'
+          target='_blank'
+          rel='noreferrer'
+          className='py-0.5 hover:text-foreground'>
+          LinkedIn
+        </a>
+        <Link to='/privacy' className='py-0.5 hover:text-foreground'>
+          Privacy
+        </Link>
+      </nav>
+      <BoxScrollbar box={box} />
+    </section>
+  )
+}
 
 export default AboutPage

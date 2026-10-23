@@ -40,9 +40,32 @@ const OverlayScrollbar = ({ box }: { box: HTMLElement }) => {
   const [thumb, setThumb] = useState<Thumb | null>(null)
   const [moving, setMoving] = useState(false)
   const [held, setHeld] = useState(false)
+  const [near, setNear] = useState(false)
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined)
   const drag = useRef<{ y: number; scrollTop: number } | null>(null)
+  const strip = useRef<HTMLDivElement>(null)
   const doc = box === document.documentElement
+
+  // The pointer within the strip's width of the window's right edge shows the bar. Read from the window, not from
+  // a hit area: an invisible strip that took presses blocked the content's right edge in a narrow window
+  useEffect(() => {
+    const onMove = (event: PointerEvent) => {
+      const width = strip.current?.offsetWidth ?? 0
+      setNear(
+        event.pointerType === 'mouse' &&
+          event.clientX >= window.innerWidth - width
+      )
+    }
+    const onLeave = () => {
+      setNear(false)
+    }
+    window.addEventListener('pointermove', onMove, { passive: true })
+    document.documentElement.addEventListener('pointerleave', onLeave)
+    return () => {
+      window.removeEventListener('pointermove', onMove)
+      document.documentElement.removeEventListener('pointerleave', onLeave)
+    }
+  }, [])
 
   useEffect(() => {
     const update = () => {
@@ -107,7 +130,7 @@ const OverlayScrollbar = ({ box }: { box: HTMLElement }) => {
     drag.current = null
     setHeld(false)
   }
-  // The wheel over the strip: it sits outside a page's box, so the box would not get it. The document does
+  // The wheel over the thumb: it sits outside a page's box, so the box would not get it. The document does
   const onWheel = (event: ReactWheelEvent<HTMLDivElement>) => {
     if (!doc) {
       box.scrollBy({ behavior: 'instant', top: event.deltaY })
@@ -121,23 +144,26 @@ const OverlayScrollbar = ({ box }: { box: HTMLElement }) => {
     '--thumb-h': `${thumb.height}px`,
     '--thumb-y': `${thumb.top}px`,
   }
+  const shown = moving || held || near
+  // The strip never takes presses; only the thumb does, and only while it shows
   return (
     <div
+      ref={strip}
       aria-hidden
       data-scrollbar
-      onWheel={onWheel}
-      className='group fixed top-0 right-0 bottom-0 z-60 w-(--doc-gutter)'>
+      className='pointer-events-none fixed top-0 right-0 bottom-0 z-60 w-(--doc-gutter)'>
       <div
         data-scrollbar-thumb
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerUp}
+        onWheel={onWheel}
         style={thumbVars}
         className={cn(
-          'absolute top-0 right-0.5 h-(--thumb-h) w-2 translate-y-(--thumb-y) touch-none rounded-full bg-foreground/35 opacity-0 transition duration-200 group-hover:bg-foreground/55 group-hover:opacity-100 motion-reduce:transition-none',
-          (moving || held) && 'opacity-100',
-          held && 'bg-foreground/55'
+          'absolute top-0 right-0.5 h-(--thumb-h) w-2 translate-y-(--thumb-y) touch-none rounded-full bg-foreground/35 opacity-0 transition duration-200 motion-reduce:transition-none',
+          shown && 'pointer-events-auto opacity-100',
+          (near || held) && 'bg-foreground/55'
         )}
       />
     </div>
