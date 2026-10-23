@@ -201,6 +201,9 @@
   --animate-shimmer: shimmer 1.6s linear infinite;
   --animate-progress-stripes: progress-stripes 0.9s linear infinite;
   --animate-breathe: breathe 2.4s ease-in-out infinite;
+  /* A popover shrinking into the trigger it hangs from (popover.tsx floating-tucked aims its transform-origin) */
+  --animate-into-trigger: into-trigger 300ms cubic-bezier(0.4, 0, 0.2, 1)
+    forwards;
 
   @keyframes accordion-down {
     from {
@@ -245,6 +248,19 @@
       opacity: 0.5;
     }
   }
+  /* Stays solid most of the way, so the eye follows it to the button, and fades as it lands */
+  @keyframes into-trigger {
+    from {
+      transform: none;
+    }
+    55% {
+      opacity: 1;
+    }
+    to {
+      opacity: 0;
+      transform: scale(0.05);
+    }
+  }
   @keyframes shimmer {
     from {
       background-position: 100% 0;
@@ -252,6 +268,18 @@
     to {
       background-position: 0 0;
     }
+  }
+}
+
+/* With reduced motion a tucked popover only fades as it closes */
+@keyframes fade-away {
+  to {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --animate-into-trigger: fade-away 150ms ease-out forwards;
   }
 }
 
@@ -1631,18 +1659,23 @@
   /* The top bar's state, set by top-bar.tsx: top (clear over the page glow), shown (over a scrolled page) or
      hidden (scrolled away, touch only). The bar, a row stuck under it and the top scrim all follow it in the same
      frame, over the same 300ms, by the same distance (the bar's row: the status bar part stays), so they move
-     as one */
-  html[data-topbar-state='shown'] {
+     as one. While the generation panel is open or closing, hidden counts as shown: the panel hangs from the bar's
+     notifications button and closes into it */
+  html:is(
+    [data-topbar-state='shown'],
+    [data-topbar-state='hidden']:has([data-generation-panel])
+  ) {
     --topbar-cover: calc(var(--topbar-h) - var(--safe-top));
   }
 
-  html[data-topbar-state='hidden'] {
+  html[data-topbar-state='hidden']:not(:has([data-generation-panel])) {
     --topbar-shown-h: var(--safe-top);
   }
 
   /* The bar's row slides up under the status bar and fades as it goes (with reduced motion it only fades).
      Keyboard focus inside brings it back */
-  html[data-topbar-state='hidden'] [data-topbar]:not(:focus-within) {
+  html[data-topbar-state='hidden']:not(:has([data-generation-panel]))
+    [data-topbar]:not(:focus-within) {
     translate: 0 calc(var(--safe-top) - var(--topbar-h));
     pointer-events: none;
 
@@ -1656,7 +1689,11 @@
     --stuck-cover: var(--stuck-row-h, 0px);
   }
 
-  html:is([data-topbar-state='shown'], :has([data-stuck])) {
+  html:is(
+    [data-topbar-state='shown'],
+    [data-topbar-state='hidden']:has([data-generation-panel]),
+    :has([data-stuck])
+  ) {
     --scrim-lead: 0px;
   }
 

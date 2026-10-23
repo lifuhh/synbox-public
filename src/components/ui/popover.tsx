@@ -30,6 +30,10 @@ const popoverContentVariants = cva('', {
       default: '',
       // A floating card that lays out its own padding
       floating: 'rounded-[10px] p-0 shadow-[0_12px_32px_rgb(0_0_0/0.5)]',
+      // A floating card that grows out of its trigger and shrinks back into it. The owner aims it by setting
+      // --trigger-origin (the trigger's centre in the card's box); unset, it uses Radix's corner
+      'floating-tucked':
+        'origin-(--trigger-origin,var(--radix-popover-content-transform-origin)) rounded-[10px] p-0 shadow-[0_12px_32px_rgb(0_0_0/0.5)] data-[state=closed]:animate-into-trigger',
     },
   },
 })

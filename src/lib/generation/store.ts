@@ -532,13 +532,31 @@ const send = (command: Command) => {
   shared.send(command)
 }
 
-// Adds a generation and opens its panel. A song already generating is opened instead, and this returns false.
-export const startGeneration = (request: GenerationRequest): boolean => {
+// Whether a start opens the panel by itself: only while the listener is still where they pressed, and only for the
+// first song in progress or a press on a song already going. A song added while others run shows on the ring's
+// count instead, so picking several songs in a row doesn't cover the list with the panel after each one
+export const opensPanel = (
+  jobs: readonly Job[],
+  videoId: string,
+  stayed: boolean
+) =>
+  stayed &&
+  (!jobs.some(isActive) ||
+    jobs.some((job) => isActive(job) && job.videoId === videoId))
+
+// Adds a generation, and opens the panel on it when `opensPanel` says so. A song already generating is picked
+// instead, and this returns false. `stayed`: no input elsewhere since the press that started it
+export const startGeneration = (
+  request: GenerationRequest,
+  { stayed = true }: { stayed?: boolean } = {}
+): boolean => {
+  const expanded =
+    state.expanded || opensPanel(state.jobs, request.videoId, stayed)
   const same = state.jobs.find(
     (job) => isActive(job) && job.videoId === request.videoId
   )
   if (same) {
-    set({ ...state, expanded: true, focusedId: same.id })
+    set({ ...state, expanded, focusedId: same.id })
     return false
   }
   const job: Job = {
@@ -555,15 +573,17 @@ export const startGeneration = (request: GenerationRequest): boolean => {
     ...request,
     requestId: request.requestId ?? crypto.randomUUID(),
   }
-  set({ ...state, expanded: true, focusedId: job.id })
+  set({ ...state, expanded, focusedId: job.id })
   send({ job, replaces: null, type: 'add' })
   return true
 }
 
 // What a button calls: asks the backend first, so a refused song never opens the panel. Resolves to the
-// refusal, or null once the generation started (or its running job was opened)
+// refusal, or null once the generation started (or its running job was picked). `stayed` is read once the
+// backend answered, which can take seconds while it starts up
 export const requestGeneration = async (
-  request: GenerationRequest
+  request: GenerationRequest,
+  stayed: () => boolean = () => true
 ): Promise<Refusal | null> => {
   const running = state.jobs.some(
     (job) => isActive(job) && job.videoId === request.videoId
@@ -574,7 +594,7 @@ export const requestGeneration = async (
       return refusal
     }
   }
-  startGeneration(request)
+  startGeneration(request, { stayed: stayed() })
   return null
 }
 

@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useLocation } from 'react-router'
 
 import GenerationPanel from '@/components/generation/generation-panel'
 import {
@@ -70,10 +71,32 @@ const useFarewell = (
 
 // The button can be hidden with the whole top bar: the reader covers it, and the phone's full-screen player
 // and Lock Landscape take the bar away
-const isShown = (element: HTMLElement | null) =>
+const isShown = (element: HTMLElement | null): element is HTMLElement =>
   element !== null &&
   (element.checkVisibility?.({ visibilityProperty: true }) ??
     element.getClientRects().length > 0)
+
+// Input that scrolls the page. A drag or wheel that starts outside the panel means the listener carried on with the
+// page: the panel steps aside into its button rather than stay over the page as the top bar slides away. Not
+// `scroll` events, which the app also causes on its own (the player's lyrics follow the song)
+const SCROLL_INPUT = ['wheel', 'touchmove'] as const
+
+// Where the button's centre sits in the panel's own box, as a transform origin: the panel opens from it and
+// shrinks back into it. Unset (the corner Radix picks) while the button isn't on screen
+const aimAtButton = (panel: HTMLElement | null, ring: HTMLElement | null) => {
+  if (panel === null) {
+    return
+  }
+  if (!isShown(ring)) {
+    panel.style.removeProperty('--trigger-origin')
+    return
+  }
+  const box = panel.getBoundingClientRect()
+  const target = ring.getBoundingClientRect()
+  const x = target.left + target.width / 2 - box.left
+  const y = target.top + target.height / 2 - box.top
+  panel.style.setProperty('--trigger-origin', `${x}px ${y}px`)
+}
 
 const nameOf = (
   going: number,
@@ -114,10 +137,50 @@ const Notifications = () => {
   const ring = going > 0 && view !== null
 
   const trigger = useRef<HTMLButtonElement>(null)
+  const panel = useRef<HTMLDivElement>(null)
   // A song started while the bar is hidden doesn't open a panel nobody can see or close from its button
   useLayoutEffect(() => {
     if (expanded && !isShown(trigger.current)) {
       setGenerationExpanded(false)
+    }
+  }, [expanded])
+  // A new page closes the panel: a Play in it, a tab, the back button
+  const { pathname } = useLocation()
+  const shownOn = useRef(pathname)
+  useEffect(() => {
+    if (shownOn.current !== pathname) {
+      shownOn.current = pathname
+      setGenerationExpanded(false)
+    }
+  }, [pathname])
+  useEffect(() => {
+    const away = (event: Event) => {
+      const { target } = event
+      if (
+        target instanceof Node &&
+        (panel.current?.contains(target) === true ||
+          trigger.current?.contains(target) === true)
+      ) {
+        return
+      }
+      setGenerationExpanded(false)
+    }
+    const listen = () => {
+      for (const type of SCROLL_INPUT) {
+        document.addEventListener(type, away, { capture: true, passive: true })
+      }
+      return () => {
+        for (const type of SCROLL_INPUT) {
+          document.removeEventListener(type, away, { capture: true })
+        }
+      }
+    }
+    return expanded ? listen() : undefined
+  }, [expanded])
+  // Measured as it starts closing, before the first frame of the exit, wherever the panel and button are then
+  useLayoutEffect(() => {
+    if (!expanded) {
+      aimAtButton(panel.current, trigger.current)
     }
   }, [expanded])
   // Whatever finished is seen once the panel is open on it, including songs that finish while it is open
@@ -132,7 +195,6 @@ const Notifications = () => {
   // the keyboard ring only after a key press: iPhone WebKit draws it after a tap otherwise
   const pressed = useRef(false)
   const byKeyboard = useRef(false)
-  const panel = useRef<HTMLDivElement>(null)
   const focusInside = useRef(false)
 
   // The panel keeps showing its last song while it closes after that song left the list
@@ -205,8 +267,16 @@ const Notifications = () => {
           align='end'
           sideOffset={10}
           collisionPadding={8}
-          variant='floating'
+          variant='floating-tucked'
           aria-label='Notifications'
+          // Held on screen while open or closing: the top bar stays in (globals.css) so the button it closes into is there
+          data-generation-panel
+          // Radix starts the open animation once the panel is placed
+          onAnimationStart={(event) => {
+            if (event.target === event.currentTarget) {
+              aimAtButton(panel.current, trigger.current)
+            }
+          }}
           onOpenAutoFocus={(event) => {
             // Onto the panel itself rather than its first button, which would show a focus ring after a
             // press; Tab goes on from there
