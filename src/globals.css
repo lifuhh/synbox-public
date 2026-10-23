@@ -1188,6 +1188,25 @@
 @utility appear {
   animation: appear 0.2s ease-out both;
 }
+/* A panel that opens floating over the page (the phone's search): it drops a little from above and settles at
+   full size, so it reads as lifted off the page rather than printed on it. Reduced motion keeps only the fade */
+@keyframes float-in {
+  from {
+    opacity: 0;
+    translate: 0 -8px;
+    scale: 0.98;
+  }
+}
+@utility float-in {
+  transform-origin: top;
+  animation: float-in 0.2s ease-out;
+  @media (prefers-reduced-motion: reduce) {
+    animation-name: appear;
+  }
+  &::backdrop {
+    animation: appear 0.2s ease-out;
+  }
+}
 
 /* A loading placeholder: a lighter band sweeps across it, so it reads as loading on a dark card, where a
    pulse between two near-blacks looked like an empty box */
