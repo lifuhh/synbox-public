@@ -289,6 +289,8 @@
 @theme inline {
   --spacing-safe-top: var(--safe-top);
   --spacing-page-top: calc(var(--topbar-h) + 1.5rem);
+  /* The top bar's side padding on a wide screen: the page gutter, less the 8px inside the logo and the buttons */
+  --spacing-topbar-x: calc(var(--page-gutter-wide) - 0.5rem);
   --spacing-page-bottom-sm: calc(1rem + var(--safe-bottom) + var(--tabbar-h));
   --spacing-page-bottom: calc(
     var(--page-end) + var(--safe-bottom) + var(--tabbar-h)
