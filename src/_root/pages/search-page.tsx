@@ -8,6 +8,7 @@ import {
   LibrarySongCard,
   VideoResultCard,
 } from '@/components/search/search-result-cards'
+import { BoxScrollbar } from '@/components/shared/doc-scroll'
 import DotsLoader from '@/components/shared/dots-loader'
 import { GoogleMark } from '@/components/shared/google-mark'
 import { Button } from '@/components/ui/button'
@@ -357,6 +358,7 @@ const SearchBody = ({
 }
 
 const SearchPage = () => {
+  const [box, setBox] = useState<HTMLElement | null>(null)
   const [params, setParams] = useSearchParams()
   const navigate = useNavigate()
   const query = (params.get('q') ?? '').trim()
@@ -384,6 +386,7 @@ const SearchPage = () => {
 
   return (
     <section
+      ref={setBox}
       data-scroll-top
       className='flex custom-scrollbar flex-1 flex-col gap-4 overflow-y-scroll pt-page-top page-x pb-page-bottom'>
       <title>Search · Synbox</title>
@@ -439,6 +442,7 @@ const SearchPage = () => {
           onMoreLikeThis={handleMoreLikeThis}
         />
       </div>
+      <BoxScrollbar box={box} />
     </section>
   )
 }

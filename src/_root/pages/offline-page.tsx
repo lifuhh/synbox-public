@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 
 import {
   ShelfControls,
@@ -6,10 +6,12 @@ import {
   SyncStatusLine,
   useLyricsShelf,
 } from '@/components/offline/lyrics-shelf'
+import { BoxScrollbar } from '@/components/shared/doc-scroll'
 import { markStuck } from '@/lib/stuck-row'
 
 // The installed app's Lyrics tab; the top bar's Lyrics button opens the same list as a menu
 const OfflinePage = () => {
+  const [box, setBox] = useState<HTMLElement | null>(null)
   const shelf = useLyricsShelf()
   // Whether the search row has stuck under the top bar (the top scrim covers it then): data-stuck, set on the row as
   // the page scrolls, so a fling never shows it see-through over the list for a render's delay
@@ -18,6 +20,7 @@ const OfflinePage = () => {
 
   return (
     <section
+      ref={setBox}
       data-scroll-top
       onScroll={() => {
         // Stuck once the header has scrolled up past where the row holds
@@ -48,6 +51,7 @@ const OfflinePage = () => {
       <div className='mx-auto w-full max-w-xl px-2'>
         <ShelfResults shelf={shelf} />
       </div>
+      <BoxScrollbar box={box} />
     </section>
   )
 }
