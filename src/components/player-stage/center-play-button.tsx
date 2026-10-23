@@ -8,33 +8,40 @@ import type { ReactNode } from 'react'
 import { useEffect, useState } from 'react'
 
 import { useArmed } from '@/hooks/use-armed'
-import { useMediaQuery } from '@/hooks/use-media-query'
 import { cn } from '@/utils/cn'
 
 import type { StagePhase } from './use-you-tube-player'
 
-// YouTube's phone player draws its own play/pause button (a 56px see-through disc) in the middle of the video
-// for about 4s each time playback starts or resumes after a seek, controls=0 or not. Ours covers it that long
+// YouTube's player draws its own play/pause button (a 56px see-through disc) in the middle of the video for
+// about 4s each time playback starts, resumes or seeks, controls=0 or not. Phones got it first; since
+// 2026-10-24 desktop Chrome does too. A pause inside those 4s keeps it up for the whole pause
 const YOUTUBE_CENTER_MS = 4500
 
-// True from each time the player reports playing until YOUTUBE_CENTER_MS after it. A new phase object
-// comes with every PLAYING report, so a seek that resumes starts the time again
-const useYouTubeCenterShowing = (phase: StagePhase) => {
-  const phone = useMediaQuery('(pointer: coarse)')
+// True from each PLAYING report until YOUTUBE_CENTER_MS after it, and through a pause that began before then.
+// A new phase object comes with every PLAYING report, so a seek that resumes starts the time again
+export const useYouTubeCenterShowing = (phase: StagePhase) => {
   const [playingSince, setPlayingSince] = useState<StagePhase | null>(null)
   if (phase.kind === 'playing' && playingSince !== phase) {
     setPlayingSince(phase)
   }
   const [expired, setExpired] = useState<StagePhase | null>(null)
+  const paused = phase.kind === 'paused'
+  // Paused, no timer runs, so the window stays open until the next PLAYING report opens a new one
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setExpired(playingSince)
-    }, YOUTUBE_CENTER_MS)
+    const timer = paused
+      ? undefined
+      : setTimeout(() => {
+          setExpired(playingSince)
+        }, YOUTUBE_CENTER_MS)
     return () => {
       clearTimeout(timer)
     }
-  }, [playingSince])
-  return phone && phase.kind === 'playing' && expired !== playingSince
+  }, [playingSince, paused])
+  return (
+    playingSince !== null &&
+    expired !== playingSince &&
+    (phase.kind === 'playing' || phase.kind === 'buffering' || paused)
+  )
 }
 
 // Previous or Next beside the middle play button, a size down, with the floating UI. Only where a finger plays
@@ -74,21 +81,23 @@ const StepButton = ({
 }
 
 // The play/pause control in the middle of the video, between Previous and Next. Its disc is dark enough to hide
-// YouTube's own button under it, which sits on the same spot and is 56px wide
+// YouTube's own button under it, which sits on the same spot and is 56px wide. The floating UI stays up while
+// YouTube's button shows (PlayerStage), so this goes with it; only a lock or a drag hides the rest without it
 export const CenterPlayButton = ({
   phase,
   controlsVisible,
+  youTubeCenterShowing,
   onToggle,
   onPrevious,
   onNext,
 }: {
   phase: StagePhase
   controlsVisible: boolean
+  youTubeCenterShowing: boolean
   onToggle: () => void
   onPrevious: () => void
   onNext: (() => void) | undefined
 }) => {
-  const youTubeCenterShowing = useYouTubeCenterShowing(phase)
   const visible = controlsVisible || youTubeCenterShowing
   // On a phone on its side, or a page turned by Lock Landscape (the `short:` variant covers both), the
   // lyrics reach the middle of the screen: there the bar's own play button is
