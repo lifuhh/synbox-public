@@ -61,6 +61,19 @@ export const translationIsEnglishAtom = atomWithStorage(
 
 // My Default. The keys predate per-song styles, so a returning viewer's old settings became their defaults
 const initOptions = { getOnInit: true }
+
+// Whether the player shows as Theater right now (the watch page, wide, Theater on). PlayerPage sets it
+export const theaterShownAtom = atom(false)
+// Karaoke Style until the viewer picks it: on in Theater, where the video spans the page as on a karaoke
+// screen, off elsewhere. null: never picked, so it follows the layout
+const twoLinesPickedAtom = atomWithStorage<boolean | null>(
+  'lyricsTwoLines',
+  null,
+  syncedStorage(),
+  initOptions
+)
+const layoutTwoLines = (get: Getter) => get(theaterShownAtom)
+
 const defaultLyricsStyleAtoms: {
   [K in keyof LyricsStyle]: WritableAtom<LyricsStyle[K], [LyricsStyle[K]], void>
 } = {
@@ -112,11 +125,11 @@ const defaultLyricsStyleAtoms: {
     syncedStorage(),
     initOptions
   ),
-  twoLines: atomWithStorage(
-    'lyricsTwoLines',
-    DEFAULT_LYRICS_STYLE.twoLines,
-    syncedStorage(),
-    initOptions
+  twoLines: atom(
+    (get) => get(twoLinesPickedAtom) ?? layoutTwoLines(get),
+    (_get, set, picked: boolean) => {
+      set(twoLinesPickedAtom, picked)
+    }
   ),
 }
 
