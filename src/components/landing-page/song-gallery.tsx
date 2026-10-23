@@ -254,10 +254,12 @@ const SongGallery = () => {
       aria-labelledby='gallery-title'
       data-bench='gallery'
       className='relative mt-12 pb-page-bottom in-data-rise:rise-in in-data-rise:rise-delay-500'>
+      {/* Sticks only where the top bar hides on scroll (no mouse: top-bar.tsx), as the way back to the start. With a
+          mouse the bar stays, so the page shows the bar alone */}
       <h2
         ref={title}
         id='gallery-title'
-        className='sticky-under-topbar px-4 pb-1.5 text-xl font-semibold tracking-tight text-foreground md:px-0'>
+        className='px-4 pb-1.5 text-xl font-semibold tracking-tight text-foreground not-pointer-fine:sticky-under-topbar md:px-0'>
         <button type='button' onClick={toStart} className='py-0.5'>
           Gallery
         </button>
