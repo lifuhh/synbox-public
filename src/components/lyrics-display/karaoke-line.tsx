@@ -16,9 +16,16 @@ interface KaraokeLineProps {
   line: KaraokeDocLine
   className?: string
   ref?: Ref<KaraokeLineHandle>
+  // False for a copy laid out only to be measured, which keeps a plain wrap (see LyricLine's `shown`)
+  balanced?: boolean
 }
 
-export const KaraokeLine = ({ line, className, ref }: KaraokeLineProps) => {
+export const KaraokeLine = ({
+  line,
+  className,
+  ref,
+  balanced = true,
+}: KaraokeLineProps) => {
   const tokenParts = useMemo(() => tokenFillParts(line), [line])
   const parts = useMemo(() => tokenParts.flat(), [tokenParts])
   // Index of each token's first part in `parts`, for the element refs
@@ -51,7 +58,7 @@ export const KaraokeLine = ({ line, className, ref }: KaraokeLineProps) => {
     <p
       key={line.text}
       data-bench='lyrics-line'
-      ref={balanceWrap}
+      ref={balanced ? balanceWrap : undefined}
       lang={isLatinLine ? undefined : 'ja'}
       className={cn(
         'lyric-text-line mx-auto align-middle',
