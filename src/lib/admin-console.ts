@@ -91,13 +91,13 @@ const RUNNING_REFRESH_MS = 5000
 
 export const useAdminUsers = () =>
   useQuery({
-    queryFn: async () =>
-      (
-        await fetchParsed(
-          z.object({ users: z.array(adminUserSchema) }),
-          '/users'
-        )
-      ).users,
+    queryFn: async () => {
+      const { users } = await fetchParsed(
+        z.object({ users: z.array(adminUserSchema) }),
+        '/users'
+      )
+      return users
+    },
     queryKey: [QUERY_KEYS.GET_ADMIN_USERS],
   })
 
@@ -117,15 +117,15 @@ const isBy = (generation: AdminGeneration, by: SongsBy) => {
 // predates it and answers with everyone's latest
 export const useAdminGenerations = (by: SongsBy) =>
   useQuery({
-    queryFn: async () =>
-      (
-        await fetchParsed(
-          z.object({ generations: z.array(generationSchema) }),
-          by === null
-            ? '/generations'
-            : `/generations?user=${encodeURIComponent(by)}`
-        )
-      ).generations.filter((generation) => isBy(generation, by)),
+    queryFn: async () => {
+      const { generations } = await fetchParsed(
+        z.object({ generations: z.array(generationSchema) }),
+        by === null
+          ? '/generations'
+          : `/generations?user=${encodeURIComponent(by)}`
+      )
+      return generations.filter((generation) => isBy(generation, by))
+    },
     queryKey: [QUERY_KEYS.GET_ADMIN_GENERATIONS, by],
     // Follows songs still running
     refetchInterval: (query) =>
@@ -199,13 +199,13 @@ export const dropReasonLabel = (reason: string | null | undefined) =>
 
 export const useAdminReports = () =>
   useQuery({
-    queryFn: async () =>
-      (
-        await fetchParsed(
-          z.object({ reports: z.array(reportSchema) }),
-          '/reports'
-        )
-      ).reports,
+    queryFn: async () => {
+      const { reports } = await fetchParsed(
+        z.object({ reports: z.array(reportSchema) }),
+        '/reports'
+      )
+      return reports
+    },
     queryKey: [QUERY_KEYS.GET_ADMIN_REPORTS],
   })
 

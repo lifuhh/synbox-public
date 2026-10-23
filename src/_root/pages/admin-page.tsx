@@ -67,8 +67,8 @@ import type {
   SongsBy,
 } from '@/lib/admin-console'
 import { useAccess, useMe } from '@/lib/auth'
-import { applyWaitingUpdate } from '@/lib/pwa'
 import { isStageId, overallAt, stepOf } from '@/lib/generation/plan'
+import { applyWaitingUpdate } from '@/lib/pwa'
 import { useGetSongInfoBySongId } from '@/lib/react-query/queries-and-mutations'
 import type { CssVars } from '@/types'
 import { formatClock } from '@/utils'
@@ -581,8 +581,7 @@ const LoadError = ({ error }: { error: Error }) =>
           }
         }}
         size='sm'
-        variant='outline'
-      >
+        variant='outline'>
         Reload
       </Button>
     </p>
@@ -1180,12 +1179,10 @@ const songsLink = (email: string) =>
 const SignalsPanel = () => {
   const { data, error } = useAdminSignals()
   if (error !== null) {
-    return (
-      error.message.includes('404') ? (
-        <p className='text-sm text-error'>Needs the Worker update.</p>
-      ) : (
-        <LoadError error={error} />
-      )
+    return error.message.includes('404') ? (
+      <p className='text-sm text-error'>Needs the Worker update.</p>
+    ) : (
+      <LoadError error={error} />
     )
   }
   if (data === undefined) {
