@@ -135,7 +135,7 @@ export const Shelves = ({
       <SongShelf title='More Like This' songs={similar} />
       <SongShelf title={`More From ${artist}`} songs={fromArtist} />
       <SongShelf title='Recently Played on Synbox' songs={everywhere} />
-      <SongShelf title='Recently Played by You' songs={recent} />
+      <SongShelf title='Your History' songs={recent} />
     </div>
   )
 }

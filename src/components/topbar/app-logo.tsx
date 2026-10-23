@@ -1,6 +1,8 @@
 import React from 'react'
 import { Link, useLocation } from 'react-router'
 
+import { topTap } from '@/lib/top-tap'
+
 import { SynboxLogo } from '../svgicons'
 
 const AppLogo: React.FC = () => {
@@ -17,10 +19,9 @@ const AppLogo: React.FC = () => {
       return
     }
 
+    // Home already: back to its top, or a fresh page once there, as a tap on the bar does
     event.preventDefault()
-    document
-      .querySelector<HTMLElement>('[data-scroll-top]')
-      ?.scrollTo({ behavior: 'smooth', top: 0 })
+    topTap()
   }
 
   return (

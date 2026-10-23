@@ -1785,7 +1785,7 @@
 
   /* The installed app on a phone: the tab bar floats 0.5rem over the home indicator, 4rem tall, with 1rem
      clear above it; the resume bar adds its own height. The top bar keeps only the logo (tabbar: below), as
-     the tabs carry Lyrics, Saved and the account */
+     the tabs carry the Library and the account */
   html[data-tabbar] {
     --tabbar-h: 5.5rem;
   }
@@ -2076,10 +2076,4 @@ html[data-transition='flip']::view-transition-new(root) {
   from {
     transform: rotate(-180deg);
   }
-}
-
-/* A menu taking over from a sibling (use-hover-menu.ts) appears and goes without animating. Unlayered, so it wins
-   over the popover and dropdown utilities' enter, exit and into-trigger animations */
-[data-menu-instant] {
-  animation: none;
 }

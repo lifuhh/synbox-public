@@ -1,8 +1,8 @@
 import { useAtom } from 'jotai'
 import {
-  BookOpenTextIcon,
   CircleUserRoundIcon,
   HouseIcon,
+  LibraryBigIcon,
   PlayIcon,
   SearchIcon,
   XIcon,
@@ -10,34 +10,35 @@ import {
 import type { LucideIcon } from 'lucide-react'
 import { useEffect, useRef } from 'react'
 import type { MouseEvent } from 'react'
-import { Link, NavLink, useLocation } from 'react-router'
+import { Link, useLocation } from 'react-router'
 
 import { resumeSongAtom, songPath } from '@/lib/listening/store'
 import { applyWaitingUpdate, isInstalledPhone } from '@/lib/pwa'
 import { tabTap } from '@/lib/tab-tap'
 import { cn } from '@/utils/cn'
 
-// `also`: other pages the tab is the home of (playlists open from You)
+// `also`: other pages the tab is the home of (playlists open from the Library)
+// A tab is current on its own page, and on the pages it is the home of; NavLink's own aria-current would leave
+// those out
 const TABS: {
   to: string
   label: string
   icon: LucideIcon
-  end?: boolean
   also?: RegExp
 }[] = [
-  { end: true, icon: HouseIcon, label: 'Home', to: '/' },
+  { icon: HouseIcon, label: 'Home', to: '/' },
   { icon: SearchIcon, label: 'Search', to: '/search' },
-  { end: true, icon: BookOpenTextIcon, label: 'Lyrics', to: '/lyrics' },
   {
     also: /^\/playlists/u,
-    icon: CircleUserRoundIcon,
-    label: 'You',
-    to: '/you',
+    icon: LibraryBigIcon,
+    label: 'Library',
+    to: '/library',
   },
+  { icon: CircleUserRoundIcon, label: 'You', to: '/you' },
 ]
 
 // The player, a song's reader and the admin pages own the whole screen; every other page gets the tabs
-const TAB_PAGES = /^\/(?:search|lyrics|you|playlists(?:\/[^/]+)?|about)?$/u
+const TAB_PAGES = /^\/(?:search|library|you|playlists(?:\/[^/]+)?|about)?$/u
 
 // The page's scroller: its box marked data-scroll-top, else the document
 const pageScroller = () =>
@@ -142,27 +143,27 @@ const TabBar = () => {
       <nav
         aria-label='App'
         className='grid h-16 grid-cols-4 gap-1 rounded-full bg-popover/85 p-1 shadow-lg ring-1 ring-white/10 backdrop-blur-xl'>
-        {TABS.map(({ to, label, icon: Icon, end, also }) => (
-          <NavLink
-            key={to}
-            to={to}
-            end={end}
-            onClick={(event) => {
-              onTabClick(event, to)
-            }}
-            aria-current={also?.test(pathname) === true ? 'page' : undefined}
-            className={({ isActive }) =>
-              cn(
+        {TABS.map(({ to, label, icon: Icon, also }) => {
+          const active = pathname === to || also?.test(pathname) === true
+          return (
+            <Link
+              key={to}
+              to={to}
+              onClick={(event) => {
+                onTabClick(event, to)
+              }}
+              aria-current={active ? 'page' : undefined}
+              className={cn(
                 'flex flex-col items-center justify-center gap-0.5 rounded-full text-xs font-medium transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden',
-                isActive || also?.test(pathname) === true
+                active
                   ? 'bg-primary-subtle text-primary-text'
                   : 'text-muted-foreground'
-              )
-            }>
-            <Icon className='size-6' aria-hidden />
-            {label}
-          </NavLink>
-        ))}
+              )}>
+              <Icon className='size-6' aria-hidden />
+              {label}
+            </Link>
+          )
+        })}
       </nav>
     </div>
   )

@@ -10,7 +10,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { useHoverMenu } from '@/hooks/use-hover-menu'
 import { usePortrait } from '@/hooks/use-media-query'
 import { useGetLyricsVersions } from '@/lib/react-query/queries-and-mutations'
 import { cn } from '@/utils/cn'
@@ -21,7 +20,6 @@ import { RailButton, RailInline, railMenuSide } from './rail-button'
 // and becomes the default; the versions page rolls back
 export const LyricsVersionsMenu = ({ videoId }: { videoId: string }) => {
   const [open, setOpen] = useState(false)
-  const menu = useHoverMenu(open, setOpen)
   const portrait = usePortrait()
   const inline = use(RailInline)
   // In a row (the watch page, or a phone's rail) the menu centres on its button
@@ -34,14 +32,12 @@ export const LyricsVersionsMenu = ({ videoId }: { videoId: string }) => {
       <DropdownMenuTrigger asChild>
         <RailButton
           label='Lyrics Versions'
-          {...menu.trigger}
           className={cn('relative', open && 'bg-white/10')}>
           <WandSparklesIcon className='size-5 shrink-0' />
           <AdminCornerMark />
         </RailButton>
       </DropdownMenuTrigger>
       <DropdownMenuContent
-        {...menu.content}
         side={railMenuSide(inline, portrait)}
         align={inRow ? 'center' : 'start'}
         sideOffset={8}

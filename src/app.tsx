@@ -24,7 +24,7 @@ const StageLabPage = import.meta.env.DEV
 // Only the landing page ships in the first bundle; the rest load on first visit, or once the opening is over
 const pageImports = {
   about: async () => await import('./_root/pages/about-page'),
-  offline: async () => await import('./_root/pages/offline-page'),
+  library: async () => await import('./_root/pages/library-page'),
   player: async () => await import('./_root/pages/player-page'),
   playlist: async () => await import('./_root/pages/playlist-page'),
   playlists: async () => await import('./_root/pages/playlists-page'),
@@ -35,7 +35,7 @@ const pageImports = {
   you: async () => await import('./_root/pages/you-page'),
 }
 const AboutPage = lazy(pageImports.about)
-const OfflinePage = lazy(pageImports.offline)
+const LibraryPage = lazy(pageImports.library)
 const PlayerPage = lazy(pageImports.player)
 const PrivacyPage = lazy(pageImports.privacy)
 const PlaylistPage = lazy(pageImports.playlist)
@@ -126,13 +126,15 @@ const App = () => {
               </Suspense>
             }
           />
-          <Route path='/offline' element={<Navigate to='/lyrics' replace />} />
+          <Route path='/offline' element={<Navigate to='/library' replace />} />
           <Route path='/offline/:videoId' element={<OldReaderLink />} />
+          {/* The saved lyrics' list was its own page until it became the Library */}
+          <Route path='/lyrics' element={<Navigate to='/library' replace />} />
           <Route
-            path='/lyrics'
+            path='/library'
             element={
               <Suspense>
-                <OfflinePage />
+                <LibraryPage />
               </Suspense>
             }
           />

@@ -15,7 +15,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover'
-import { useHoverMenu } from '@/hooks/use-hover-menu'
 import type { Job } from '@/lib/generation/store'
 import {
   activeCount,
@@ -144,7 +143,6 @@ const Notifications = () => {
 
   const trigger = useRef<HTMLButtonElement>(null)
   const panel = useRef<HTMLDivElement>(null)
-  const menu = useHoverMenu(expanded, setGenerationExpanded)
   // A song started while the bar is hidden doesn't open a panel nobody can see or close from its button
   useLayoutEffect(() => {
     if (expanded && !isShown(trigger.current)) {
@@ -267,17 +265,14 @@ const Notifications = () => {
             'relative',
             (ring || farewell !== null) && 'pointer-events-auto'
           )}
-          {...menu.trigger}
           onClick={(event) => {
             pressed.current = !expanded
             byKeyboard.current = event.detail === 0
-            menu.trigger.onClick(event)
           }}>
           {icon()}
         </Button>
       </PopoverTrigger>
       <PopoverContent
-        {...menu.content}
         ref={panel}
         align='end'
         sideOffset={10}

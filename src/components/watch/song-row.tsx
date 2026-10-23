@@ -26,6 +26,9 @@ export const SongRow = ({
   className,
   as: Root = 'li',
   large = false,
+  to,
+  picture,
+  note,
 }: {
   song: ListSong
   lead?: ReactNode
@@ -41,6 +44,11 @@ export const SongRow = ({
   // The watch page's right-hand column, as on YouTube: a picture almost half the row wide, the text beside
   // its top
   large?: boolean
+  // Somewhere other than the song's player (its reader, offline), with the picture saved for it there
+  to?: string
+  picture?: string | null
+  // A line under the channel: the lyric a search matched
+  note?: string
 }) => {
   const body = (
     <>
@@ -53,15 +61,19 @@ export const SongRow = ({
         )}>
         {/* YouTube's 320x180 picture: the song's own thumbnail URL is often the 1280x720 one, and decoding a
           list of those for a 96px box stalls a phone's scrolling */}
-        <img
-          src={`https://i.ytimg.com/vi/${song.videoId}/mqdefault.jpg`}
-          alt=''
-          width='320'
-          height='180'
-          loading='lazy'
-          decoding='async'
-          className='size-full rounded-inherit object-cover'
-        />
+        {picture !== null && (
+          <img
+            src={
+              picture ?? `https://i.ytimg.com/vi/${song.videoId}/mqdefault.jpg`
+            }
+            alt=''
+            width='320'
+            height='180'
+            loading='lazy'
+            decoding='async'
+            className='size-full rounded-inherit object-cover'
+          />
+        )}
         <KaraokeThumbBadgeMark videoId={song.videoId} />
       </span>
       <span
@@ -87,6 +99,11 @@ export const SongRow = ({
             {song.author}
           </span>
         </span>
+        {note !== undefined && (
+          <span className='truncate text-xs text-primary-text italic'>
+            “{note}”
+          </span>
+        )}
       </span>
     </>
   )
@@ -111,8 +128,10 @@ export const SongRow = ({
         </div>
       ) : (
         <Link
-          to={songPath(song.videoId)}
-          state={songState(song.videoId, openedBy)}
+          to={to ?? songPath(song.videoId)}
+          state={
+            to === undefined ? songState(song.videoId, openedBy) : undefined
+          }
           onClick={onOpen}
           className={cn(
             'flex min-w-0 flex-1 items-center gap-3 rounded-xl p-2 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden',

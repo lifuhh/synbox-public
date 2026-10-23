@@ -157,7 +157,7 @@ if ('caches' in window) {
 // change, which then loads the new page from the server as one ordinary page load. Never by reloading a page
 // that is already showing on its own: that redraws it in front of the viewer and can cut off what they just did
 // (a play press, a click). A tab that stays on one page keeps its version until it changes page, is reopened, or
-// the viewer taps Home at the top (applyWaitingUpdate)
+// the viewer taps Home or the top bar at the top (applyWaitingUpdate, reloadPage)
 const UPDATE_CHECK_MS = 60 * 60 * 1000
 // The new version normally activates in well under a second; past this the page loads anyway
 const ACTIVATE_TIMEOUT_MS = 3000
@@ -199,7 +199,7 @@ const loadOnNewVersion = async (href: string) => {
 
 // Someone moving around the lyrics pages is reading, maybe with no connection: a reload there would cut into
 // that. The new version waits until they leave them, and until the phone is online
-const LYRICS_PATH = /^\/lyrics(?:\/|$)/u
+const LYRICS_PATH = /^\/(?:lyrics|library)(?:\/|$)/u
 const readingLyrics = (target: URL) =>
   LYRICS_PATH.test(window.location.pathname) ||
   LYRICS_PATH.test(target.pathname)
@@ -233,7 +233,7 @@ window.history.pushState = (
   pushState(data, unused, url)
 }
 
-// The one reload of a page on screen: asked for by the viewer (Home tapped at the top or twice). Loads the same
+// A reload of a page on screen, asked for by the viewer (Home tapped at the top or twice). Loads the same
 // address on the waiting version, under the same guards as a page change. False when nothing is waiting
 export const applyWaitingUpdate = () => {
   if (
@@ -246,6 +246,19 @@ export const applyWaitingUpdate = () => {
     return false
   }
   void loadOnNewVersion(window.location.href)
+  return true
+}
+
+// The top bar tapped at the top of a page: a fresh page, on the waiting version when there is one. Never while
+// a song generates or offline, which a reload would cut off or strand. False when nothing loads
+export const reloadPage = () => {
+  if (applyWaitingUpdate()) {
+    return true
+  }
+  if (swapping || isGenerating() || !navigator.onLine) {
+    return false
+  }
+  window.location.reload()
   return true
 }
 

@@ -151,10 +151,10 @@ const NotFound = () => {
           : 'This song isn’t saved on this device. Saved songs can be read offline.'}
       </p>
       <Link
-        to='/lyrics'
+        to='/library'
         replace
         className='rounded-full border border-(--reader-line-strong) px-4 py-2 text-sm font-medium'>
-        All Lyrics
+        Library
       </Link>
     </div>
   )
@@ -274,7 +274,7 @@ const useGoBack = () => {
   return () => {
     // Opened from a link or a reload, there is no page of ours to go back to
     if (location.key === 'default') {
-      void navigate('/lyrics', { replace: true })
+      void navigate('/library', { replace: true })
     } else {
       void navigate(-1)
     }
