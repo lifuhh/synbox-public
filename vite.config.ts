@@ -91,7 +91,12 @@ export default defineConfig({
   fmt: {
     ...ultraciteFmt,
     bracketSameLine: true,
-    ignorePatterns: [...(ultraciteFmt.ignorePatterns ?? []), '.upgrade-log/**'],
+    // The change log is hand-written prose that agents grep and append to; reflowing it would churn every entry
+    ignorePatterns: [
+      ...(ultraciteFmt.ignorePatterns ?? []),
+      '.upgrade-log/**',
+      'docs/log/**',
+    ],
     jsxSingleQuote: true,
     semi: false,
     singleQuote: true,
