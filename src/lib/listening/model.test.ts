@@ -5,9 +5,11 @@ import {
   addToQueue,
   move,
   newPlaylist,
+  leftSong,
   nextSong,
   playFrom,
   playNext,
+  previousSong,
 } from './model'
 
 const song = (videoId: string) => ({
@@ -69,6 +71,40 @@ describe('nextSong', () => {
     expect(
       nextSong({ autoplay: false, queue: [], source: null }, 'now', recs, [])
     ).toBeNull()
+  })
+  it('goes on to a recommendation on a press even with autoplay off', () => {
+    const next = nextSong(
+      { autoplay: false, queue: [], source: null },
+      'now',
+      recs,
+      [],
+      true
+    )
+    expect(next?.song.videoId).toBe('r1')
+  })
+})
+
+describe('previousSong', () => {
+  it('walks back the trail, and Next then returns to where Previous left', () => {
+    const played = leftSong(leftSong([], song('a')), song('b'))
+    const back = previousSong(played, [song('q')], song('c'))
+    expect(back?.song.videoId).toBe('b')
+    expect(ids(back?.queue ?? [])).toEqual(['c', 'q'])
+    const again = previousSong(back?.played ?? [], back?.queue ?? [], song('b'))
+    expect(again?.song.videoId).toBe('a')
+    const forward = nextSong(
+      { autoplay: false, queue: again?.queue ?? [], source: null },
+      'a',
+      [],
+      [],
+      true
+    )
+    expect(forward?.song.videoId).toBe('b')
+  })
+
+  it('has nothing to go back to at the start of a visit', () => {
+    expect(previousSong([], [], song('a'))).toBeNull()
+    expect(previousSong([song('a')], [], song('a'))).toBeNull()
   })
 })
 

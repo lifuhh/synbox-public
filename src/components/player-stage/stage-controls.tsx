@@ -11,6 +11,8 @@ import {
   RotateCcwIcon,
   RotateCwIcon,
   ShrinkIcon,
+  SkipBackIcon,
+  SkipForwardIcon,
   SmartphoneIcon,
   Volume1Icon,
   Volume2Icon,
@@ -73,8 +75,9 @@ const SeekGlyph = ({ direction }: { direction: 'back' | 'forward' }) => (
 
 interface IconButtonProps {
   label: string
-  onClick: () => void
+  onClick?: () => void
   active?: boolean
+  disabled?: boolean
   className?: string
   children: React.ReactNode
 }
@@ -83,6 +86,7 @@ const IconButton = ({
   label,
   onClick,
   active,
+  disabled,
   className,
   children,
 }: IconButtonProps) => (
@@ -91,9 +95,10 @@ const IconButton = ({
     aria-label={label}
     title={label}
     aria-pressed={active}
+    disabled={disabled}
     onClick={onClick}
     className={cn(
-      'grid size-9 shrink-0 place-items-center rounded-md text-white/85 transition-colors hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none touch:size-11 touch:watch-narrow:size-10 pills:size-10 pills:rounded-full',
+      'grid size-9 shrink-0 place-items-center rounded-md text-white/85 transition-colors hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:cursor-default disabled:text-white/35 disabled:hover:bg-transparent touch:size-11 touch:watch-narrow:size-10 pills:size-10 pills:rounded-full',
       active === true && 'text-primary-text hover:text-primary-text',
       className
     )}>
@@ -114,6 +119,9 @@ interface StageControlsProps {
   zoomed: boolean
   onToggleZoom: () => void
   onSeekBy: (seconds: number) => void
+  onPrevious: () => void
+  // Undefined while there is no song to go on to
+  onNext?: () => void
   volume: PlayerVolume
   onVolumeChange: (volume: PlayerVolume) => void
   // Touch lock: the stage ignores every tap and swipe until unlocked
@@ -321,6 +329,8 @@ export const StageControls = ({
   zoomed,
   onToggleZoom,
   onSeekBy,
+  onPrevious,
+  onNext,
   volume,
   onVolumeChange: setVolume,
   locked,
@@ -438,19 +448,35 @@ export const StageControls = ({
             />
           </div>
           <div className='flex items-center gap-1 watch-narrow:contents touch:gap-0.5 pills:gap-2 short:contents'>
-            {/* Bottom left, where every player has it, although touch screens also have one mid-stage */}
-            <IconButton
-              label={isPlaying ? 'Pause' : 'Play'}
-              className={cn('watch-narrow:hidden', PILL_GLASS)}
-              onClick={() => {
-                player.togglePlay()
-              }}>
-              {isPlaying ? (
-                <PauseIcon className='size-5' />
-              ) : (
-                <PlayIcon className='size-5' />
-              )}
-            </IconButton>
+            {/* Bottom left, where every player has it, between Previous and Next; the small video of a narrow watch
+              page has them mid-stage instead (CenterPlayButton) */}
+            <div className={cn('contents watch-narrow:hidden', PILL)}>
+              <IconButton
+                label='Previous'
+                className='watch-narrow:hidden'
+                onClick={onPrevious}>
+                <SkipBackIcon className='size-5 fill-current' />
+              </IconButton>
+              <IconButton
+                label={isPlaying ? 'Pause' : 'Play'}
+                className='watch-narrow:hidden'
+                onClick={() => {
+                  player.togglePlay()
+                }}>
+                {isPlaying ? (
+                  <PauseIcon className='size-5' />
+                ) : (
+                  <PlayIcon className='size-5' />
+                )}
+              </IconButton>
+              <IconButton
+                label='Next'
+                className='watch-narrow:hidden'
+                disabled={onNext === undefined}
+                onClick={onNext}>
+                <SkipForwardIcon className='size-5 fill-current' />
+              </IconButton>
+            </div>
             <div className={cn('contents', PILL)}>
               <IconButton
                 label={`Back ${TAP_SEEK_SEC} Seconds`}

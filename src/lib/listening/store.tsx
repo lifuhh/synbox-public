@@ -1,5 +1,5 @@
 import { atom, useAtomValue, useSetAtom, useStore } from 'jotai'
-import { atomWithStorage } from 'jotai/utils'
+import { atomWithStorage, createJSONStorage } from 'jotai/utils'
 import { useNavigate } from 'react-router'
 
 import { ToastAction } from '@/components/ui/toast'
@@ -32,6 +32,14 @@ export const autoplayAtom = atomWithStorage(
 )
 // The song opened last in this visit, for the installed app's bar that takes you back to it
 export const resumeSongAtom = atom<ListSong | null>(null)
+// The songs played before it in this visit, the latest last, for Previous (model › leftSong). Kept for the tab's
+// life, so an update's reload doesn't lose the way back
+export const playedAtom = atomWithStorage<ListSong[]>(
+  'listeningPlayed',
+  [],
+  createJSONStorage(() => sessionStorage),
+  { getOnInit: true }
+)
 
 export const songPath = (videoId: string) => `/v/${videoId}`
 

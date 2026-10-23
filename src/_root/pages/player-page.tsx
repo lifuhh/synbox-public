@@ -1,6 +1,11 @@
 import { useAtom, useAtomValue, useSetAtom } from 'jotai'
 import { useEffect, useLayoutEffect, useState } from 'react'
-import { useNavigate, useParams, useSearchParams } from 'react-router'
+import {
+  useLocation,
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from 'react-router'
 
 import PlayerRail from '@/components/lyrics-display/player-rail'
 import SharedStyleBanner from '@/components/lyrics-display/shared-style-banner'
@@ -25,10 +30,12 @@ import { useMediaQuery } from '@/hooks/use-media-query'
 import { useSongVisit } from '@/hooks/use-song-visit'
 import { useAccess } from '@/lib/auth'
 import { historyAtom } from '@/lib/library/store'
-import { nextSong } from '@/lib/listening/model'
+import type { ListSong } from '@/lib/listening/model'
+import { leftSong, nextSong, previousSong } from '@/lib/listening/model'
 import { useNextList } from '@/lib/listening/recommendations'
 import {
   autoplayAtom,
+  playedAtom,
   queueAtom,
   queueSourceAtom,
   resumeSongAtom,
@@ -60,34 +67,65 @@ const usePlayerSurface = () => {
   return surface
 }
 
-// When a song ends: the queue's next song, else (autoplay on) a recommendation not played lately
-const usePlayNext = (videoId: string) => {
+// A song opened by Previous: the one it left is already first in the queue, not on the trail
+const cameBack = (state: unknown) =>
+  typeof state === 'object' &&
+  state !== null &&
+  'back' in state &&
+  state.back === true
+
+// The songs either side of this one (model › nextSong, previousSong): what plays when it ends (the queue's next
+// song, else with autoplay on a recommendation not played lately), what Next plays (the same, autoplay or not)
+// and what Previous goes back to. Undefined where there is none
+const useSongSteps = (videoId: string) => {
   const navigate = useNavigate()
   const [queue, setQueue] = useAtom(queueAtom)
   const [source, setSource] = useAtom(queueSourceAtom)
+  const [played, setPlayed] = useAtom(playedAtom)
   const autoplay = useAtomValue(autoplayAtom)
   const history = useAtomValue(historyAtom)
+  const current = useAtomValue(currentVideoAtom)
   const { songs } = useNextList(videoId)
-  return () => {
+  const recent = history.slice(0, 20).map((item) => item.videoId)
+  const open = (song: ListSong, back = false) => {
+    void navigate(songPath(song.videoId), {
+      state: { back, videoId: song.videoId },
+    })
+  }
+  const forward = (pressed: boolean) => {
     const next = nextSong(
       { autoplay, queue, source },
       videoId,
       songs,
-      history.slice(0, 20).map((item) => item.videoId)
+      recent,
+      pressed
     )
-    if (next === null) {
-      return
-    }
-    setQueue(next.queue)
-    if (
-      next.queue.length === 0 &&
-      !queue.some((song) => song.videoId === next.song.videoId)
-    ) {
-      setSource(null)
-    }
-    void navigate(songPath(next.song.videoId), {
-      state: { videoId: next.song.videoId },
-    })
+    return next === null
+      ? undefined
+      : () => {
+          setQueue(next.queue)
+          if (
+            next.queue.length === 0 &&
+            !queue.some((song) => song.videoId === next.song.videoId)
+          ) {
+            setSource(null)
+          }
+          open(next.song)
+        }
+  }
+  const back =
+    current?.videoId === videoId ? previousSong(played, queue, current) : null
+  return {
+    handleEnded: forward(false),
+    handleNext: forward(true),
+    handlePrevious:
+      back === null
+        ? undefined
+        : () => {
+            setPlayed(back.played)
+            setQueue(back.queue)
+            open(back.song, true)
+          },
   }
 }
 
@@ -114,13 +152,23 @@ const PlayerPage = () => {
     }
   }, [videoId])
   const currentVideo = useAtomValue(currentVideoAtom)
-  // The installed app's resume bar takes the listener back to this song from the other tabs
-  const setResumeSong = useSetAtom(resumeSongAtom)
+  // The installed app's resume bar takes the listener back to this song from the other tabs. The song it held
+  // until now is the one just left: it goes on Previous's trail, unless Previous is what left it
+  const [resumeSong, setResumeSong] = useAtom(resumeSongAtom)
+  const setPlayed = useSetAtom(playedAtom)
+  const arrival: unknown = useLocation().state
   useEffect(() => {
     if (currentVideo !== null && currentVideo.videoId === videoId) {
+      if (
+        resumeSong !== null &&
+        resumeSong.videoId !== videoId &&
+        !cameBack(arrival)
+      ) {
+        setPlayed((played) => leftSong(played, resumeSong))
+      }
       setResumeSong(currentVideo)
     }
-  }, [currentVideo, videoId, setResumeSong])
+  }, [currentVideo, videoId, resumeSong, arrival, setResumeSong, setPlayed])
   // Autoplay waits for the lyrics so a song that starts singing at once never
   // plays ahead of them; useLyricsReady gives up after LYRICS_WAIT_MS
   const lyricsReady = useLyricsReady(videoId)
@@ -189,7 +237,7 @@ const PlayerPage = () => {
           setLayout(layout === 'theater' ? 'default' : 'theater')
         }
       : undefined
-  const playNext = usePlayNext(videoId)
+  const steps = useSongSteps(videoId)
 
   if (error !== null && error !== '') {
     return (
@@ -237,7 +285,9 @@ const PlayerPage = () => {
             autoplay={lyricsReady}
             theater={layout === 'theater'}
             onToggleTheater={toggleTheater}
-            onEnded={playNext}
+            onEnded={steps.handleEnded}
+            onPrevious={steps.handlePrevious}
+            onNext={steps.handleNext}
             // On a narrow watch page the lyrics panel under the video carries the lyrics; the small video stays
             // clear
             renderLyrics={
