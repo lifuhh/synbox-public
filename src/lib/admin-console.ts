@@ -143,6 +143,48 @@ export const useAdminReports = () =>
     queryKey: [QUERY_KEYS.GET_ADMIN_REPORTS],
   })
 
+// Leads on someone working around the song limit, from the last 7 days (worker/src/signals.ts)
+const flagSchema = z.enum([
+  'automated',
+  'shared_network',
+  'new_at_limit',
+  'refused',
+])
+const signalsSchema = z.object({
+  accounts: z.array(
+    z.object({
+      client: z.string().nullable(),
+      createdAt: z.number(),
+      email: z.string(),
+      flags: z.array(flagSchema),
+      id: z.string(),
+      name: z.string(),
+      refusals: z.number(),
+      songs: z.number(),
+    })
+  ),
+  networks: z.array(
+    z.object({
+      accounts: z.array(
+        z.object({ email: z.string(), id: z.string(), name: z.string() })
+      ),
+      automated: z.boolean(),
+      guestSongs: z.number(),
+      key: z.string(),
+      refusals: z.number(),
+      songs: z.number(),
+    })
+  ),
+})
+export type SignalFlag = z.infer<typeof flagSchema>
+export type AdminSignals = z.infer<typeof signalsSchema>
+
+export const useAdminSignals = () =>
+  useQuery({
+    queryFn: async () => signalsSchema.parse(await call('/signals')),
+    queryKey: [QUERY_KEYS.GET_ADMIN_SIGNALS],
+  })
+
 export const useAdminSettings = () =>
   useQuery({
     queryFn: async () => settingsSchema.parse(await call('/settings')),

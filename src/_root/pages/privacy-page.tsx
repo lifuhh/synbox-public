@@ -5,7 +5,7 @@ const SECTIONS = [
     items: [
       'Your Google name, email, profile picture and account id, from Google sign-in.',
       'Your signed-in sessions, with the browser and IP address they came from.',
-      'Songs you generated and when, for the limits.',
+      'Songs you generated and when, with a one-way code made from your network and your browser name, for the limits.',
       'Your history, saved songs, playlists and settings, so they follow you to other devices.',
       'Lyrics reports you send.',
       'Without an account: a one-way code made from your network counts your free song, and a random id in your browser counts your likes.',

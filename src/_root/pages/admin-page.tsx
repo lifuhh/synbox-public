@@ -42,6 +42,7 @@ import {
   useAdminGenerations,
   useAdminReports,
   useAdminSettings,
+  useAdminSignals,
   useAdminUsers,
   useSetBlocked,
   useSetGenerationEnabled,
@@ -52,6 +53,7 @@ import type {
   AdminReport,
   AdminUser,
   DailyLimit,
+  SignalFlag,
   SongsBy,
 } from '@/lib/admin-console'
 import { useAccess, useMe } from '@/lib/auth'
@@ -981,7 +983,124 @@ const ReportsList = () => {
   )
 }
 
-const TABS = ['songs', 'reports', 'recommendations', 'accounts'] as const
+const FLAG_LABELS: Record<SignalFlag, string> = {
+  automated: 'Automated',
+  new_at_limit: 'New at Limit',
+  refused: 'Hit a Limit',
+  shared_network: 'Shared Network',
+}
+
+const songsLink = (email: string) =>
+  `?tab=songs&user=${encodeURIComponent(email)}`
+
+// Leads, not verdicts: a family shares a network and a fan can hit the limit on day one. Block from Accounts
+const SignalsPanel = () => {
+  const { data, error } = useAdminSignals()
+  if (error !== null) {
+    return (
+      <p className='text-sm text-error'>
+        {error.message.includes('404')
+          ? 'Needs the Worker update.'
+          : error.message}
+      </p>
+    )
+  }
+  if (data === undefined) {
+    return <Skeleton className='h-40 w-full' />
+  }
+  if (data.accounts.length === 0 && data.networks.length === 0) {
+    return (
+      <p className='py-6 text-center text-sm text-muted-foreground'>
+        Nothing in the last 7 days.
+      </p>
+    )
+  }
+  return (
+    <div className='flex flex-col gap-8 text-sm'>
+      {data.accounts.length > 0 && (
+        <section className='flex flex-col gap-2'>
+          <h2 className='text-base font-semibold text-foreground'>Accounts</h2>
+          <ul>
+            {data.accounts.map((account) => (
+              <li
+                key={account.id}
+                className='flex flex-col gap-1.5 border-t border-border py-3'>
+                <div className='flex flex-wrap items-center gap-x-2 gap-y-1'>
+                  <Link
+                    to={songsLink(account.email)}
+                    className='font-medium text-foreground hover:underline'>
+                    {account.name}
+                  </Link>
+                  <span className='min-w-0 truncate text-muted-foreground'>
+                    {account.email}
+                  </span>
+                  {account.flags.map((flag) => (
+                    <Badge
+                      key={flag}
+                      tone={flag === 'automated' ? 'error' : 'neutral'}>
+                      {FLAG_LABELS[flag]}
+                    </Badge>
+                  ))}
+                </div>
+                <p className='truncate text-xs text-muted-foreground'>
+                  {account.songs} songs · {account.refusals} refused · joined{' '}
+                  <When value={account.createdAt} />
+                  {account.client !== null &&
+                    ` · ${account.client === '' ? 'No browser name' : account.client}`}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+      {data.networks.length > 0 && (
+        <section className='flex flex-col gap-2'>
+          <h2 className='text-base font-semibold text-foreground'>Networks</h2>
+          <ul>
+            {data.networks.map((network) => (
+              <li
+                key={network.key}
+                className='flex flex-col gap-1.5 border-t border-border py-3'>
+                <div className='flex flex-wrap items-center gap-x-2 gap-y-1'>
+                  <span className='font-medium text-foreground tabular-nums'>
+                    Network {network.key}
+                  </span>
+                  {network.automated && <Badge tone='error'>Automated</Badge>}
+                </div>
+                <p className='text-muted-foreground'>
+                  {network.accounts.length === 0
+                    ? 'Guests only'
+                    : network.accounts.map((account, index) => (
+                        <span key={account.id}>
+                          {index > 0 && ', '}
+                          <Link
+                            to={songsLink(account.email)}
+                            className='text-foreground hover:underline'>
+                            {account.name}
+                          </Link>
+                        </span>
+                      ))}
+                </p>
+                <p className='text-xs text-muted-foreground'>
+                  {network.songs} songs · {network.guestSongs} as guests ·{' '}
+                  {network.refusals} refused
+                </p>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+    </div>
+  )
+}
+
+const TABS = [
+  'songs',
+  'reports',
+  'recommendations',
+  'accounts',
+  'signals',
+] as const
 type Tab = (typeof TABS)[number]
 const isTab = (value: string | null): value is Tab =>
   TABS.some((tab) => tab === value)
@@ -1006,7 +1125,7 @@ const AdminTabs = () => {
           show(value)
         }
       }}>
-      {/* Scrolls sideways on a phone too narrow for all four */}
+      {/* Scrolls sideways on a phone too narrow for every tab */}
       <div className='-mx-1 no-scrollbar overflow-x-auto px-1'>
         <TabsList className='justify-start touch:h-13'>
           <TabsTrigger value='songs' className='h-full'>
@@ -1020,6 +1139,9 @@ const AdminTabs = () => {
           </TabsTrigger>
           <TabsTrigger value='accounts' className='h-full'>
             Accounts
+          </TabsTrigger>
+          <TabsTrigger value='signals' className='h-full'>
+            Signals
           </TabsTrigger>
         </TabsList>
       </div>
@@ -1054,6 +1176,9 @@ const AdminTabs = () => {
           </p>
           <UsersTable />
         </div>
+      </TabsContent>
+      <TabsContent value='signals' className='mt-4'>
+        <SignalsPanel />
       </TabsContent>
     </Tabs>
   )

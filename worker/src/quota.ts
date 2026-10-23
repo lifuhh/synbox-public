@@ -12,6 +12,9 @@ export interface Limits {
   // Per guest per day, and for all guests together
   guest: number
   guestTotal: number
+  // Per network in any rolling 24 hours, for its guests and its accounts under the default limit together, so a
+  // second account on the same network doesn't bring a fresh allowance
+  network: number
 }
 
 export interface Quota {
@@ -31,6 +34,7 @@ export type Reservation =
         | 'already_finished'
         | 'guest_limit'
         | 'guests_full'
+        | 'network_limit'
     }
 
 interface UserRow {
@@ -97,14 +101,20 @@ const ownerOf = (owner: Owner) =>
         value: owner.key,
       }
 
+// The network's songs in the last 24 hours that count toward its cap. ?9 a day ago, ?10 the network
+const NETWORK_COUNT = `(select count(*) from "generation"
+    where "networkKey" = ?10 and "capped" = 1 and "createdAt" > ?9 and "status" <> 'failed')`
+
 // Failed generations never count. ?7 the owner's limit (null: none), ?8 the cap on all guests together
-// (null: not a guest)
+// (null: not a guest), ?10 the caller's network (null: unknown), ?11 the network's limit, ?13 whether this owner
+// is held to it (1: a guest or an account under the default limit)
 const slotFree = (
   counted: string
 ) => `(?7 is null or (select count(*) from "generation"
     where ${counted} and "status" <> 'failed') < ?7)
   and (?8 is null or (select count(*) from "generation"
-    where "guestKey" is not null and "utcDay" = ?5 and "status" <> 'failed') < ?8)`
+    where "guestKey" is not null and "utcDay" = ?5 and "status" <> 'failed') < ?8)
+  and (?13 = 0 or ?10 is null or ${NETWORK_COUNT} < ?11)`
 
 // When the oldest song counted in the user's last 24 hours drops out of it
 const userResetsAt = async (db: D1Database, userId: string, now: Date) => {
@@ -139,46 +149,132 @@ export const getQuota = async (
   }
 }
 
+interface OwnLimits {
+  limit: number | null
+  cap: number | null
+  // Counts toward, and is held to, its network's cap
+  capped: boolean
+}
+
 const ownLimits = async (
   db: D1Database,
   owner: Owner,
   limits: Limits
-): Promise<{ limit: number | null; cap: number | null } | null> => {
+): Promise<OwnLimits | null> => {
   if (owner.kind === 'guest') {
-    return { cap: limits.guestTotal, limit: limits.guest }
+    return { cap: limits.guestTotal, capped: true, limit: limits.guest }
   }
   const user = await readUser(db, owner.id)
   if (user === null || user.banned === 1) {
     return null
   }
-  return { cap: null, limit: limitFor(user, limits.user) }
+  return {
+    cap: null,
+    capped: user.role !== 'admin' && user.overridden !== 1,
+    limit: limitFor(user, limits.user),
+  }
 }
 
-// Why the owner was turned away when no slot was free
+const count = async (
+  db: D1Database,
+  sql: string,
+  ...values: (string | number)[]
+) =>
+  (await db
+    .prepare(
+      `select count(*) from "generation" where ${sql} and "status" <> 'failed'`
+    )
+    .bind(...values)
+    .first<number>('count(*)')) ?? 0
+
+const networkFull = async (
+  db: D1Database,
+  network: string | null,
+  limits: Limits,
+  now: Date
+) =>
+  network !== null &&
+  (await count(
+    db,
+    `"networkKey" = ?1 and "capped" = 1 and "createdAt" > ?2`,
+    network,
+    now.getTime() - DAY_MS
+  )) >= limits.network
+
+// Why the owner was turned away when no slot was free: its own limit first, then the shared ones
 const refusal = async (
   db: D1Database,
-  owner: Owner,
-  limit: number | null,
+  request: Pick<GenerationRequest, 'owner' | 'network'>,
+  own: OwnLimits,
   limits: Limits,
   day: string,
   now: Date
 ): Promise<Reservation> => {
+  const { owner } = request
+  const network = request.network ?? null
   if (owner.kind === 'user') {
+    const used = await count(
+      db,
+      `"userId" = ?1 and "createdAt" > ?2`,
+      owner.id,
+      now.getTime() - DAY_MS
+    )
+    if (
+      (own.limit === null || used < own.limit) &&
+      (await networkFull(db, network, limits, now))
+    ) {
+      return { outcome: 'network_limit' }
+    }
     return {
-      limit: limit ?? 0,
+      limit: own.limit ?? 0,
       outcome: 'quota_exceeded',
       resetsAt: await userResetsAt(db, owner.id, now),
     }
   }
-  const mine = await db
-    .prepare(
-      `select count(*) from "generation" where "guestKey" = ?1 and "utcDay" = ?2 and "status" <> 'failed'`
-    )
-    .bind(owner.key, day)
-    .first<number>('count(*)')
-  return (mine ?? 0) >= limits.guest
-    ? { outcome: 'guest_limit' }
-    : { outcome: 'guests_full' }
+  if (
+    (await count(db, `"guestKey" = ?1 and "utcDay" = ?2`, owner.key, day)) >=
+    limits.guest
+  ) {
+    return { outcome: 'guest_limit' }
+  }
+  return (await count(db, `"guestKey" is not null and "utcDay" = ?1`, day)) >=
+    limits.guestTotal
+    ? { outcome: 'guests_full' }
+    : { outcome: 'network_limit' }
+}
+
+// A reservation turned away at a limit, kept for the admin page's signals (a check, which takes nothing, is not)
+const LIMIT_REFUSALS = new Set<Reservation['outcome']>([
+  'quota_exceeded',
+  'guest_limit',
+  'guests_full',
+  'network_limit',
+])
+
+const recorded = async (
+  db: D1Database,
+  request: GenerationRequest,
+  reservation: Reservation,
+  now: Date
+) => {
+  if (LIMIT_REFUSALS.has(reservation.outcome)) {
+    const { owner } = request
+    await db
+      .prepare(
+        `insert into "refusal" ("code", "userId", "guestKey", "networkKey", "client", "createdAt")
+         values (?1, ?2, ?3, ?4, ?5, ?6)`
+      )
+      .bind(
+        reservation.outcome,
+        owner.kind === 'user' ? owner.id : null,
+        owner.kind === 'guest' ? owner.key : null,
+        request.network ?? null,
+        request.client ?? null,
+        now.getTime()
+      )
+      .run()
+  }
+  return reservation
 }
 
 interface GenerationRequest {
@@ -186,6 +282,9 @@ interface GenerationRequest {
   owner: Owner
   videoId: string
   kind: GenerationKind
+  // The backend's keyed hash of the caller's network, and the caller's user agent; null when not sent
+  network?: string | null
+  client?: string | null
 }
 
 // The refusals that need no free slot, then the owner's limits and the statement bindings for the slot check
@@ -194,7 +293,7 @@ type Admitted =
   | {
       bindings: (string | number | null)[]
       day: string
-      own: { limit: number | null; cap: number | null }
+      own: OwnLimits
     }
 
 const admit = async (
@@ -227,8 +326,11 @@ const admit = async (
     now.getTime(),
     own.limit,
     own.cap,
-    // ?9, a day ago: only a user's count reads it, and SQLite refuses a value no placeholder takes
-    ...(request.owner.kind === 'user' ? [now.getTime() - DAY_MS] : []),
+    now.getTime() - DAY_MS,
+    request.network ?? null,
+    limits.network,
+    request.client ?? null,
+    own.capped ? 1 : 0,
   ]
   return { bindings, day, own }
 }
@@ -252,7 +354,7 @@ export const checkGeneration = async (
     .first<number>('free')
   return free === 1
     ? { outcome: 'allowed' }
-    : await refusal(db, request.owner, own.limit, limits, day, now)
+    : await refusal(db, request, own, limits, day, now)
 }
 
 export const reserveGeneration = async (
@@ -270,8 +372,9 @@ export const reserveGeneration = async (
   // One statement, so two concurrent requests can't both take the last slot (D1 runs writes one at a time)
   const { meta } = await db
     .prepare(
-      `insert into "generation" ("id", ${column}, "videoId", "kind", "status", "utcDay", "createdAt", "updatedAt")
-       select ?1, ?2, ?3, ?4, 'reserved', ?5, ?6, ?6 where ${slotFree(counted)}
+      `insert into "generation" ("id", ${column}, "videoId", "kind", "status", "utcDay", "createdAt", "updatedAt",
+         "networkKey", "client", "capped")
+       select ?1, ?2, ?3, ?4, 'reserved', ?5, ?6, ?6, ?10, ?12, ?13 where ${slotFree(counted)}
        on conflict ("id") do nothing`
     )
     .bind(...bindings)
@@ -286,7 +389,12 @@ export const reserveGeneration = async (
     .bind(request.id)
     .first<GenerationRow>()
   if (existing === null) {
-    return await refusal(db, request.owner, own.limit, limits, day, now)
+    return await recorded(
+      db,
+      request,
+      await refusal(db, request, own, limits, day, now),
+      now
+    )
   }
   // A request id is one song for one owner: never a key to another video, or to a second run once it worked
   const existingOwner =
@@ -311,7 +419,12 @@ export const reserveGeneration = async (
     .run()
   return retried.meta.changes > 0
     ? { outcome: 'reserved' }
-    : await refusal(db, request.owner, own.limit, limits, day, now)
+    : await recorded(
+        db,
+        request,
+        await refusal(db, request, own, limits, day, now),
+        now
+      )
 }
 
 // A finished generation, or a running one's progress (`running` with its stage and fraction)

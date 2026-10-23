@@ -50,6 +50,11 @@ const handedOff = () =>
     handoff: true,
   })
 
+// A browser driven by WebDriver or a test runner says so; the backend marks the request, and the admin page's
+// Signals tab shows it. A scripted client can hide it, so it is a lead, never a block
+const withOrigin = (body: object) =>
+  navigator.webdriver ? { ...body, webdriver: true } : body
+
 const stale = () =>
   new GenerationError('Reconnecting to the lyrics server', { resumed: true })
 
@@ -93,7 +98,7 @@ const readStream = async (
     let response: Response
     try {
       response = await fetch(`${BE_ADDRESS}${path}`, {
-        body: JSON.stringify(body),
+        body: JSON.stringify(withOrigin(body)),
         headers: {
           Accept: 'application/x-ndjson',
           'Content-Type': 'application/json',
@@ -305,7 +310,7 @@ export const checkGeneration = async (
   try {
     const token = await backendToken()
     const response = await fetch(`${BE_ADDRESS}/generation-check`, {
-      body: JSON.stringify({ id: videoId, kind }),
+      body: JSON.stringify(withOrigin({ id: videoId, kind })),
       headers: {
         'Content-Type': 'application/json',
         ...(token === null ? {} : { Authorization: `Bearer ${token}` }),

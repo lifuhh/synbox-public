@@ -32,6 +32,7 @@ import {
   saveReport,
 } from './reports'
 import type { Reporter } from './reports'
+import { readSignals } from './signals'
 import {
   addListen,
   isVideoId,
@@ -46,6 +47,7 @@ type AppEnv = Env & {
   USER_DAILY_LIMIT: string
   GUEST_DAILY_LIMIT: string
   GUEST_DAILY_TOTAL: string
+  NETWORK_DAILY_LIMIT: string
 }
 
 const app = new Hono<{ Bindings: AppEnv }>()
@@ -59,6 +61,7 @@ const count = (value: string | undefined) => {
 const limitsOf = (env: AppEnv): Limits => ({
   guest: count(env.GUEST_DAILY_LIMIT),
   guestTotal: count(env.GUEST_DAILY_TOTAL),
+  network: count(env.NETWORK_DAILY_LIMIT),
   user: count(env.USER_DAILY_LIMIT),
 })
 
@@ -291,6 +294,7 @@ const RESERVATION_STATUS = {
   generation_paused: 503,
   guest_limit: 429,
   guests_full: 429,
+  network_limit: 429,
   quota_exceeded: 429,
   replay: 200,
   reserved: 201,
@@ -309,6 +313,12 @@ const ownerOf = ({
   }
   return null
 }
+
+// Where the request came from, as the backend saw it; either may be missing (an older backend)
+const originOf = ({ networkKey, client }: Record<string, unknown>) => ({
+  client: typeof client === 'string' ? client.slice(0, 256) : null,
+  network: isText(networkKey) ? networkKey : null,
+})
 
 const answer = (c: Context, reservation: Reservation) => {
   const status = RESERVATION_STATUS[reservation.outcome]
@@ -330,7 +340,7 @@ internal.post('/generations', async (c) => {
     c,
     await reserveGeneration(
       c.env.DB,
-      { id, kind, owner, videoId },
+      { id, kind, owner, videoId, ...originOf(body) },
       limitsOf(c.env)
     )
   )
@@ -346,7 +356,11 @@ internal.post('/generations/check', async (c) => {
   }
   return answer(
     c,
-    await checkGeneration(c.env.DB, { kind, owner, videoId }, limitsOf(c.env))
+    await checkGeneration(
+      c.env.DB,
+      { kind, owner, videoId, ...originOf(body) },
+      limitsOf(c.env)
+    )
   )
 })
 
@@ -510,6 +524,11 @@ admin.put('/recommendations', async (c) => {
 // The latest listener reports, for fixing the lyrics they point at
 admin.get('/reports', async (c) =>
   c.json({ reports: await listReports(c.env.DB) })
+)
+
+// Leads on someone working around the song limit (worker/src/signals.ts)
+admin.get('/signals', async (c) =>
+  c.json(await readSignals(c.env.DB, limitsOf(c.env).user))
 )
 
 app.route('/api/admin', admin)
