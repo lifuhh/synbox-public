@@ -22,6 +22,7 @@ import {
   playerSurfaceAtom,
   showSharedLyricsStyleAtom,
   stageFullscreenAtom,
+  theaterShownAtom,
   watchLayoutAtom,
 } from '@/context/atoms'
 import { usePageTurned } from '@/hooks/use-landscape-lock'
@@ -245,6 +246,18 @@ const PlayerPage = () => {
           setLayout(layout === 'theater' ? 'default' : 'theater')
         }
       : undefined
+  const theaterShown = surface === 'watch' && wide && layout === 'theater'
+  const setTheaterShown = useSetAtom(theaterShownAtom)
+  // Before paint, so Theater's lyrics open in their layout instead of switching to it a frame later
+  useLayoutEffect(() => {
+    setTheaterShown(theaterShown)
+  }, [theaterShown, setTheaterShown])
+  useEffect(
+    () => () => {
+      setTheaterShown(false)
+    },
+    [setTheaterShown]
+  )
   const steps = useSongSteps(videoId)
 
   if (error !== null && error !== '') {

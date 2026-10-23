@@ -28,6 +28,7 @@ import {
   resetSongLyricsStyleAtom,
   saveLyricsTemplateAtom,
   showSharedLyricsStyleAtom,
+  theaterShownAtom,
 } from './atoms'
 
 beforeEach(() => {
@@ -298,4 +299,24 @@ test('Aqua, retired, reads as Frost in saved song styles and in links shared bef
   expect(decodeSharedStyle('1.aqua.box.100.10.50.200')).toMatchObject({
     themeId: 'frost',
   })
+})
+
+test('Karaoke Style follows Theater until the viewer picks it', () => {
+  const store = createStore()
+  store.sub(lyricsTwoLinesAtom, () => {})
+  expect(store.get(lyricsTwoLinesAtom)).toBe(false)
+  store.set(theaterShownAtom, true)
+  expect(store.get(lyricsTwoLinesAtom)).toBe(true)
+
+  // Picked off in Theater: stays off there, after a reload too
+  store.set(lyricsTwoLinesAtom, false)
+  const reloaded = createStore()
+  reloaded.sub(lyricsTwoLinesAtom, () => {})
+  reloaded.set(theaterShownAtom, true)
+  expect(reloaded.get(lyricsTwoLinesAtom)).toBe(false)
+
+  // Picked on: on outside Theater as well
+  reloaded.set(lyricsTwoLinesAtom, true)
+  reloaded.set(theaterShownAtom, false)
+  expect(reloaded.get(lyricsTwoLinesAtom)).toBe(true)
 })
