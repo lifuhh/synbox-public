@@ -1,4 +1,5 @@
 import {
+  BanIcon,
   CheckIcon,
   ChevronDownIcon,
   ChevronLeftIcon,
@@ -40,7 +41,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useToast } from '@/components/ui/use-toast'
 import {
   GUESTS,
-  isResolved,
+  MANUAL_DROP_REASONS,
+  DROP_REASONS,
+  dropReasonLabel,
+  reportState,
   useAdminGenerations,
   useAdminReports,
   useAdminSettings,
@@ -49,11 +53,13 @@ import {
   useSetBlocked,
   useSetGenerationEnabled,
   useSetDailyLimit,
-  useSetReportResolved,
+  useChangeReport,
 } from '@/lib/admin-console'
 import type {
   AdminGeneration,
   AdminReport,
+  ReportChange,
+  ReportState,
   AdminUser,
   DailyLimit,
   SignalFlag,
@@ -929,50 +935,97 @@ const clientLabel = (client: string | null) => {
   return [match(DEVICES), match(BROWSERS)].filter(Boolean).join(' ') || null
 }
 
-// Resolving is one press and undone by Reopen, so neither asks first
+// Every report action is one press and undone by Reopen, so none asks first
+const ROW_BUTTON =
+  'relative shrink-0 touch:after:absolute touch:after:inset-x-0 touch:after:-inset-y-2'
+
 const ReportAction = ({ report }: { report: AdminReport }) => {
   const { toast } = useToast()
-  const { isPending, mutate } = useSetReportResolved()
-  const resolved = isResolved(report)
-  const status = [
-    'Resolved',
-    typeof report.resolvedVersion === 'number'
-      ? `v${report.resolvedVersion}`
-      : null,
-    report.resolution,
-  ]
-    .filter(Boolean)
-    .join(' · ')
+  const { isPending, mutate } = useChangeReport()
+  const state = reportState(report)
+  const change = (next: ReportChange, failure: string) => {
+    mutate(
+      { change: next, report },
+      {
+        onError: (error) => {
+          toast({
+            description: error.message,
+            title: failure,
+            variant: 'destructive',
+          })
+        },
+      }
+    )
+  }
+  if (state !== 'open') {
+    const status = [
+      state === 'resolved' ? 'Resolved' : 'Dropped',
+      state === 'resolved' && typeof report.resolvedVersion === 'number'
+        ? `v${report.resolvedVersion}`
+        : null,
+      state === 'dropped' ? dropReasonLabel(report.dropReason) : null,
+      report.resolution,
+    ]
+      .filter(Boolean)
+      .join(' · ')
+    return (
+      <div className='flex min-w-0 shrink-0 items-center gap-2'>
+        <span
+          className={cn(
+            'max-w-48 truncate text-xs',
+            state === 'resolved' ? 'text-success' : 'text-muted-foreground'
+          )}>
+          {status}
+        </span>
+        <Button
+          size='row'
+          variant='outline'
+          disabled={isPending}
+          className={ROW_BUTTON}
+          onClick={() => {
+            change('reopen', 'Could Not Reopen')
+          }}>
+          <Undo2Icon className='size-3.5' />
+          Reopen
+        </Button>
+      </div>
+    )
+  }
   return (
-    <div className='flex min-w-0 shrink-0 items-center gap-2'>
-      {resolved && (
-        <span className='max-w-48 truncate text-xs text-success'>{status}</span>
-      )}
+    <div className='flex shrink-0 items-center gap-2'>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            size='row'
+            variant='outline'
+            disabled={isPending}
+            className={ROW_BUTTON}>
+            <BanIcon className='size-3.5' />
+            Drop
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align='end' className='w-44'>
+          {MANUAL_DROP_REASONS.map((reason) => (
+            <DropdownMenuItem
+              key={reason}
+              onSelect={() => {
+                change({ drop: reason }, 'Could Not Drop')
+              }}>
+              {DROP_REASONS[reason]}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
       <Button
         size='row'
         variant='outline'
         disabled={isPending}
-        className='relative shrink-0 touch:after:absolute touch:after:inset-x-0 touch:after:-inset-y-2'
+        className={ROW_BUTTON}
         onClick={() => {
-          mutate(
-            { report, resolved: !resolved },
-            {
-              onError: (error) => {
-                toast({
-                  description: error.message,
-                  title: resolved ? 'Could Not Reopen' : 'Could Not Resolve',
-                  variant: 'destructive',
-                })
-              },
-            }
-          )
+          change('resolve', 'Could Not Resolve')
         }}>
-        {resolved ? (
-          <Undo2Icon className='size-3.5' />
-        ) : (
-          <CheckIcon className='size-3.5' />
-        )}
-        {resolved ? 'Reopen' : 'Resolve'}
+        <CheckIcon className='size-3.5' />
+        Resolve
       </Button>
     </div>
   )
@@ -1002,7 +1055,9 @@ const ReportItem = ({ report }: { report: AdminReport }) => {
       <p
         className={cn(
           'text-pretty whitespace-pre-wrap',
-          isResolved(report) ? 'text-muted-foreground' : 'text-foreground'
+          reportState(report) === 'open'
+            ? 'text-foreground'
+            : 'text-muted-foreground'
         )}>
         {report.message}
       </p>
@@ -1017,11 +1072,17 @@ const ReportItem = ({ report }: { report: AdminReport }) => {
   )
 }
 
-// What listeners reported, newest first: the song, where in it, and what was wrong. Resolved ones are hidden
-// until asked for
+const REPORT_STATES: { id: ReportState; name: string; empty: string }[] = [
+  { empty: 'No open reports.', id: 'open', name: 'Open' },
+  { empty: 'No resolved reports.', id: 'resolved', name: 'Resolved' },
+  { empty: 'No dropped reports.', id: 'dropped', name: 'Dropped' },
+]
+
+// What listeners reported, newest first: the song, where in it, and what was wrong. One state at a time, open
+// first; dropped ones (by an admin, the backend's fixer, or after 3 days open) show why
 const ReportsList = () => {
   const { data: reports, error } = useAdminReports()
-  const [showResolved, setShowResolved] = useState(false)
+  const [shownState, setShownState] = useState<ReportState>('open')
   if (error !== null) {
     return <p className='text-sm text-error'>{error.message}</p>
   }
@@ -1035,27 +1096,42 @@ const ReportsList = () => {
       </p>
     )
   }
-  const resolvedCount = reports.filter(isResolved).length
-  const shown = showResolved
-    ? reports
-    : reports.filter((report) => !isResolved(report))
+  const shown = reports.filter((report) => reportState(report) === shownState)
   return (
     <div className='flex flex-col gap-3'>
-      {resolvedCount > 0 && (
-        <Button
-          size='sm'
-          variant='toggle'
-          aria-pressed={showResolved}
-          className='self-start'
-          onClick={() => {
-            setShowResolved(!showResolved)
-          }}>
-          Show Resolved · {resolvedCount}
-        </Button>
-      )}
+      <div
+        role='radiogroup'
+        aria-label='Report State'
+        className='inline-flex gap-1 self-start rounded-lg bg-secondary p-1'>
+        {REPORT_STATES.map((option) => (
+          <button
+            key={option.id}
+            type='button'
+            // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- segmented buttons in an ARIA radio group, like the lyrics style scope
+            role='radio'
+            aria-checked={shownState === option.id}
+            onClick={() => {
+              setShownState(option.id)
+            }}
+            className={cn(
+              'h-7 rounded-md px-3 text-sm font-medium transition-colors focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-hidden touch:h-9',
+              shownState === option.id
+                ? 'bg-background text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
+            )}>
+            {option.name}
+            <span className='ml-1.5 text-muted-foreground tabular-nums'>
+              {
+                reports.filter((report) => reportState(report) === option.id)
+                  .length
+              }
+            </span>
+          </button>
+        ))}
+      </div>
       {shown.length === 0 ? (
         <p className='py-6 text-center text-sm text-muted-foreground'>
-          No open reports.
+          {REPORT_STATES.find((option) => option.id === shownState)?.empty}
         </p>
       ) : (
         <ul className='text-sm'>

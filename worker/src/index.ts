@@ -3,6 +3,7 @@ import type { Context } from 'hono'
 
 import { createAuth } from './auth'
 import type { Env } from './auth'
+import { fixer } from './fixer'
 import { applyOps, parseOps, readLibrary } from './library'
 import { applyPrefOps, parsePrefOps, readPrefs } from './prefs'
 import {
@@ -25,10 +26,12 @@ import {
   replaceRecommendations,
 } from './recommendations'
 import {
-  guestKeyOf,
+  dropReport,
+  expireReports,
   listFixes,
   listReports,
   markFixes,
+  parseDrop,
   parseFixMarks,
   parseReport,
   parseResolution,
@@ -37,7 +40,6 @@ import {
   resolveReport,
   saveReport,
 } from './reports'
-import type { Reporter } from './reports'
 import { readSignals } from './signals'
 import {
   addListen,
@@ -54,6 +56,7 @@ type AppEnv = Env & {
   GUEST_DAILY_LIMIT: string
   GUEST_DAILY_TOTAL: string
   NETWORK_DAILY_LIMIT: string
+  REPORTS_FIXER_TOKEN?: string
 }
 
 const app = new Hono<{ Bindings: AppEnv }>()
@@ -174,29 +177,25 @@ app.post('/api/me/prefs', async (c) => {
   return c.body(null, 204)
 })
 
-// A listener's report of something wrong with a song's lyrics. Anyone may send one, a few a day (reports.ts)
+// A signed-in listener's report of something wrong with a song's lyrics, a few a day (reports.ts). A message
+// that says nothing is refused as uninformative
 app.post('/api/reports', async (c) => {
-  const report = parseReport(await c.req.json<unknown>().catch(() => null))
-  if (report === null) {
-    return c.json({ code: 'bad_request' }, 400)
+  const userId = await userIdOf(c.env, c.req.raw.headers)
+  if (userId === null) {
+    return c.json({ code: 'unauthorized' }, 401)
   }
-  const session = await createAuth(c.env).api.getSession({
-    headers: c.req.raw.headers,
-  })
-  const reporter: Reporter = session
-    ? { id: session.user.id, kind: 'user' }
-    : {
-        key: await guestKeyOf(c.req.raw.headers, c.env.BETTER_AUTH_SECRET),
-        kind: 'guest',
-      }
+  const parsed = parseReport(await c.req.json<unknown>().catch(() => null))
+  if (!parsed.ok) {
+    return c.json({ code: parsed.code }, 400)
+  }
   const now = Date.now()
-  if (!(await reportAllowed(c.env.DB, reporter, now))) {
+  if (!(await reportAllowed(c.env.DB, userId, now))) {
     return c.json({ code: 'too_many_reports' }, 429)
   }
   await saveReport(
     c.env.DB,
-    reporter,
-    report,
+    userId,
+    parsed.report,
     c.req.header('user-agent') ?? '',
     now
   )
@@ -421,6 +420,8 @@ internal.patch('/generations/:id', async (c) => {
 
 app.route('/internal', internal)
 
+app.route('/api/fixer', fixer)
+
 // The admin pane (src/_root/pages/admin-page.tsx). Every route checks the session's role on the server
 const admin = new Hono<{ Bindings: AppEnv; Variables: { adminId: string } }>()
 
@@ -578,6 +579,16 @@ admin.post('/reports/:id/resolve', async (c) => {
   return found ? c.body(null, 204) : c.json({ code: 'not_found' }, 404)
 })
 
+// Closes a report without a fix ({ reason, note? }); its reporter is never told. Reopen undoes it
+admin.post('/reports/:id/drop', async (c) => {
+  const drop = parseDrop(await c.req.json<unknown>().catch(() => null))
+  if (drop === null) {
+    return c.json({ code: 'bad_request' }, 400)
+  }
+  const found = await dropReport(c.env.DB, c.req.param('id'), drop, Date.now())
+  return found ? c.body(null, 204) : c.json({ code: 'not_found' }, 404)
+})
+
 admin.post('/reports/:id/reopen', async (c) =>
   (await reopenReport(c.env.DB, c.req.param('id')))
     ? c.body(null, 204)
@@ -591,4 +602,10 @@ admin.get('/signals', async (c) =>
 
 app.route('/api/admin', admin)
 
-export default app
+export default {
+  fetch: app.fetch,
+  // The daily cron (wrangler.jsonc): reports the fixer left open past EXPIRE_DAYS are dropped as expired
+  scheduled: (_controller, env, ctx) => {
+    ctx.waitUntil(expireReports(env.DB, Date.now()))
+  },
+} satisfies ExportedHandler<AppEnv>

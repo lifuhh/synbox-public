@@ -1,25 +1,21 @@
-// What listeners report about a song's lyrics, for whoever fixes the lyrics pipeline: the song, where in it,
-// which lyrics version was on screen, and what was wrong. Anyone may send one, a few a day
+// What signed-in listeners report about a song's lyrics, for whoever fixes the lyrics pipeline: the song, where in
+// it, which lyrics version was on screen, and what was wrong. A few a day per account
 
 export const REPORT_MESSAGE_MAX = 1000
-// Per person per day. A guest's key comes from an address a caller can forge, so guests also share a daily total
-export const REPORT_LIMITS = { guest: 5, guestTotal: 200, user: 20 }
+// Per account per day
+export const REPORTS_PER_DAY = 20
 const DAY_MS = 86_400_000
 
 export interface Report {
   videoId: string
   // Where the song was when the report was opened; null when the player had no time yet
   atSeconds: number | null
-  // The lyrics version on screen; null for the song's current lyrics
+  // The lyrics version on screen; null when the player could not tell (a song whose lyrics predate versions)
   version: number | null
   message: string
   // The app build that sent it
   build: string | null
 }
-
-export type Reporter =
-  | { kind: 'user'; id: string }
-  | { kind: 'guest'; key: string }
 
 const VIDEO_ID = /^[\w-]{11}$/u
 const BUILD = /^[\w.-]{1,40}$/u
@@ -38,10 +34,51 @@ const isVersion = (value: unknown): value is number | null =>
 const isBuild = (value: unknown): value is string | null =>
   value === null || (typeof value === 'string' && BUILD.test(value))
 
-// The body of POST /api/reports, or null when any field is off
-export const parseReport = (body: unknown): Report | null => {
+// Letters, kana and kanji; digits, punctuation, symbols and emoji are not words
+const LETTER = /\p{L}/gu
+const URL = /(?:https?:\/\/|www\.)\S*/giu
+// Whole messages that say nothing: a test, or a run along one keyboard row (asdf, qwer, zxcv...), maybe repeated
+const MASH = new Set(['test', 'testing', 'tst', 'テスト', 'てすと'])
+const KEY_ROWS = ['qwertyuiop', 'asdfghjkl', 'zxcvbnm']
+
+const repeats = (text: string, unit: string) =>
+  unit !== '' &&
+  text.length % unit.length === 0 &&
+  unit.repeat(text.length / unit.length) === text
+
+// The letters are one unit over and over, and that unit is a single letter, a test word or a keyboard-row run
+const isMash = (letters: string) => {
+  for (let size = 1; size <= letters.length; size += 1) {
+    const unit = letters.slice(0, size)
+    if (
+      repeats(letters, unit) &&
+      (size === 1 ||
+        MASH.has(unit) ||
+        (size >= 3 && KEY_ROWS.some((row) => row.includes(unit))))
+    ) {
+      return true
+    }
+  }
+  return false
+}
+
+// A message nobody could act on: under 2 letters once links are taken out, one letter repeated (aaaa), or keyboard
+// mash and test words. Kept narrow on purpose: "wrong", "out of sync" and "歌詞ずれ" are real reports
+export const isUninformative = (message: string) => {
+  const letters = (message.replace(URL, ' ').match(LETTER) ?? [])
+    .join('')
+    .toLowerCase()
+  return letters.length < 2 || isMash(letters)
+}
+
+export type ParsedReport =
+  | { ok: true; report: Report }
+  | { ok: false; code: 'bad_request' | 'uninformative' }
+
+// The body of POST /api/reports: bad_request when any field is off, uninformative when the message says nothing
+export const parseReport = (body: unknown): ParsedReport => {
   if (typeof body !== 'object' || body === null) {
-    return null
+    return { code: 'bad_request', ok: false }
   }
   const videoId = field(body, 'videoId')
   const atSeconds = field(body, 'atSeconds') ?? null
@@ -58,93 +95,49 @@ export const parseReport = (body: unknown): Report | null => {
     !isVersion(version) ||
     !isBuild(build)
   ) {
-    return null
+    return { code: 'bad_request', ok: false }
+  }
+  if (isUninformative(text)) {
+    return { code: 'uninformative', ok: false }
   }
   return {
-    atSeconds: atSeconds === null ? null : Math.round(atSeconds * 10) / 10,
-    build,
-    message: text,
-    version,
-    videoId,
+    ok: true,
+    report: {
+      atSeconds: atSeconds === null ? null : Math.round(atSeconds * 10) / 10,
+      build,
+      message: text,
+      version,
+      videoId,
+    },
   }
 }
-
-// The caller's address as Netlify passed it on, grouped per IPv6 /64 (one home's devices share it), hashed with
-// a secret so the database never holds an address
-export const guestKeyOf = async (headers: Headers, secret: string) => {
-  const address =
-    headers.get('x-nf-client-connection-ip') ??
-    headers.get('cf-connecting-ip') ??
-    ''
-  const group = address.includes(':')
-    ? address.split(':').slice(0, 4).join(':')
-    : address
-  const key = await crypto.subtle.importKey(
-    'raw',
-    new TextEncoder().encode(secret),
-    { hash: 'SHA-256', name: 'HMAC' },
-    false,
-    ['sign']
-  )
-  const mac = await crypto.subtle.sign(
-    'HMAC',
-    key,
-    new TextEncoder().encode(`report:${group}`)
-  )
-  return [...new Uint8Array(mac).slice(0, 16)]
-    .map((byte) => byte.toString(16).padStart(2, '0'))
-    .join('')
-}
-
-const countSince = async (db: D1Database, sql: string, ...params: unknown[]) =>
-  Number(
-    (await db
-      .prepare(sql)
-      .bind(...params)
-      .first('n')) ?? 0
-  )
 
 export const reportAllowed = async (
   db: D1Database,
-  reporter: Reporter,
+  userId: string,
   now: number
-) => {
-  const since = now - DAY_MS
-  if (reporter.kind === 'user') {
-    return (
-      (await countSince(
-        db,
-        `select count(*) as "n" from "report" where "userId" = ?1 and "createdAt" > ?2`,
-        reporter.id,
-        since
-      )) < REPORT_LIMITS.user
-    )
-  }
-  const mine = await countSince(
-    db,
-    `select count(*) as "n" from "report" where "guestKey" = ?1 and "createdAt" > ?2`,
-    reporter.key,
-    since
-  )
-  const guests = await countSince(
-    db,
-    `select count(*) as "n" from "report" where "guestKey" is not null and "createdAt" > ?1`,
-    since
-  )
-  return mine < REPORT_LIMITS.guest && guests < REPORT_LIMITS.guestTotal
-}
+) =>
+  Number(
+    (await db
+      .prepare(
+        `select count(*) as "n" from "report" where "userId" = ?1 and "createdAt" > ?2`
+      )
+      .bind(userId, now - DAY_MS)
+      .first('n')) ?? 0
+  ) < REPORTS_PER_DAY
 
+// Old rows may carry a guestKey (reporting was open to guests until 2026-10-23); new ones never do
 export const saveReport = async (
   db: D1Database,
-  reporter: Reporter,
+  userId: string,
   report: Report,
   client: string,
   now: number
 ) => {
   await db
     .prepare(
-      `insert into "report" ("id", "videoId", "atSeconds", "version", "message", "userId", "guestKey", "client",
-         "build", "createdAt") values (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)`
+      `insert into "report" ("id", "videoId", "atSeconds", "version", "message", "userId", "client", "build",
+         "createdAt") values (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)`
     )
     .bind(
       crypto.randomUUID(),
@@ -152,8 +145,7 @@ export const saveReport = async (
       report.atSeconds,
       report.version,
       report.message,
-      reporter.kind === 'user' ? reporter.id : null,
-      reporter.kind === 'guest' ? reporter.key : null,
+      userId,
       client.slice(0, 300),
       report.build,
       now
@@ -161,16 +153,30 @@ export const saveReport = async (
     .run()
 }
 
-// The latest reports with who sent them (an account, or a guest): open ones first, so resolved ones never push
-// an open one out of the 200, then newest first
+// Neither resolved nor dropped
+const OPEN = `"resolvedAt" is null and "droppedAt" is null`
+
+// The latest reports with who sent them (an account, or a guest before 2026-10-23): open ones first, so closed ones
+// never push an open one out of the 200, then newest first
 export const listReports = async (db: D1Database) => {
   const { results } = await db
     .prepare(
       `select r."id", r."videoId", r."atSeconds", r."version", r."message", r."client", r."build", r."createdAt",
-         r."resolvedAt", r."resolvedVersion", r."resolution",
+         r."resolvedAt", r."resolvedVersion", r."resolution", r."droppedAt", r."dropReason",
          u."email", u."name", r."guestKey" is not null as "guest"
        from "report" r left join "user" u on u."id" = r."userId"
-       order by r."resolvedAt" is not null, r."createdAt" desc limit 200`
+       order by not (${OPEN}), r."createdAt" desc limit 200`
+    )
+    .all()
+  return results
+}
+
+// What the backend's fixer works through: open reports, oldest first. None stays open past EXPIRE_DAYS
+export const listOpenReports = async (db: D1Database) => {
+  const { results } = await db
+    .prepare(
+      `select "id", "videoId", "atSeconds", "version", "message", "createdAt" from "report" where ${OPEN}
+       order by "createdAt" limit 500`
     )
     .all()
   return results
@@ -210,7 +216,7 @@ export const parseResolution = (body: unknown): Resolution | null => {
 }
 
 // False when no report has the id. A report sent without a version takes the one live when it was sent. Resolving
-// again with another fixing version tells the reporter again
+// again with another fixing version tells the reporter again. A dropped report stops being dropped
 export const resolveReport = async (
   db: D1Database,
   id: string,
@@ -222,7 +228,8 @@ export const resolveReport = async (
       `update "report" set "resolvedAt" = ?2, "resolvedVersion" = ?3, "resolution" = ?4,
          "version" = coalesce("version", ?5),
          "seenAt" = case when "resolvedVersion" is ?3 then "seenAt" end,
-         "dismissedAt" = case when "resolvedVersion" is ?3 then "dismissedAt" end
+         "dismissedAt" = case when "resolvedVersion" is ?3 then "dismissedAt" end,
+         "droppedAt" = null, "dropReason" = null
        where "id" = ?1`
     )
     .bind(id, now, version, note, reportedVersion)
@@ -235,21 +242,90 @@ export const reopenReport = async (db: D1Database, id: string) => {
   const { meta } = await db
     .prepare(
       `update "report" set "resolvedAt" = null, "resolvedVersion" = null, "resolution" = null, "seenAt" = null,
-         "dismissedAt" = null where "id" = ?1`
+         "dismissedAt" = null, "droppedAt" = null, "dropReason" = null where "id" = ?1`
     )
     .bind(id)
     .run()
   return meta.changes > 0
 }
 
+// Why a report was closed without a fix. The reporter is never told
+export const DROP_REASONS = [
+  'uninformative',
+  'no_lyrics',
+  'duplicate',
+  'nothing_found',
+  'expired',
+] as const
+export type DropReason = (typeof DROP_REASONS)[number]
+
+export interface Drop {
+  reason: DropReason
+  note: string | null
+}
+
+const isDropReason = (value: unknown): value is DropReason =>
+  DROP_REASONS.some((reason) => reason === value)
+
+// The body of POST /api/admin/reports/:id/drop and /api/fixer/reports/:id/drop ({ reason, note? }), or null when
+// either is off
+export const parseDrop = (body: unknown): Drop | null => {
+  if (typeof body !== 'object' || body === null) {
+    return null
+  }
+  const reason = field(body, 'reason')
+  const note = field(body, 'note') ?? null
+  if (!isDropReason(reason) || (note !== null && typeof note !== 'string')) {
+    return null
+  }
+  const text = note?.trim() ?? ''
+  if (text.length > RESOLUTION_MAX) {
+    return null
+  }
+  return { note: text === '' ? null : text, reason }
+}
+
+// False when no report has the id. Dropping closes it without a fix: any resolve, and the reporter's notification
+// of it, goes. The note is kept in "resolution", the closing note of either kind
+export const dropReport = async (
+  db: D1Database,
+  id: string,
+  { reason, note }: Drop,
+  now: number
+) => {
+  const { meta } = await db
+    .prepare(
+      `update "report" set "droppedAt" = ?2, "dropReason" = ?3, "resolution" = ?4, "resolvedAt" = null,
+         "resolvedVersion" = null, "seenAt" = null, "dismissedAt" = null
+       where "id" = ?1`
+    )
+    .bind(id, now, reason, note)
+    .run()
+  return meta.changes > 0
+}
+
+// The safety net under the 12-hourly fixer: a report still open after this long is dropped as expired
+export const EXPIRE_DAYS = 3
+
+// Drops every report open for EXPIRE_DAYS or more; answers how many. Running it again changes nothing
+export const expireReports = async (db: D1Database, now: number) => {
+  const { meta } = await db
+    .prepare(
+      `update "report" set "droppedAt" = ?1, "dropReason" = 'expired' where ${OPEN} and "createdAt" <= ?2`
+    )
+    .bind(now, now - EXPIRE_DAYS * DAY_MS)
+    .run()
+  return meta.changes
+}
+
 // A fix stays in the reporter's notifications this long after it was resolved, read or not
 export const FIX_DAYS = 30
 const FIX_MAX = 50
 
-// A signed-in reporter's report that was resolved with other lyrics than the ones they reported. Guests get none:
-// their key is a network's, shared by a home and changed by a phone's mobile network
+// A signed-in reporter's report that was resolved with other lyrics than the ones they reported. Guests' old reports
+// get none (their key was a network's), and a dropped report never tells anyone
 const FIXED = `"userId" = ?1 and "resolvedAt" > ?2 and "resolvedVersion" is not null
-  and ("version" is null or "resolvedVersion" <> "version")`
+  and ("version" is null or "resolvedVersion" <> "version") and "droppedAt" is null`
 
 // The caller's fixed songs not dismissed, newest fix first: several reports of one song are one notification,
 // seen once all of them are

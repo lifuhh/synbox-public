@@ -126,13 +126,16 @@ const reportSchema = z.object({
   build: z.string().nullable(),
   client: z.string().nullable(),
   createdAt: z.number(),
+  // Null unless dropped, absent from a Worker before migration 0017
+  dropReason: z.string().nullable().optional(),
+  droppedAt: z.number().nullable().optional(),
   email: z.string().nullable(),
   // SQLite's boolean
   guest: z.union([z.number(), z.boolean()]),
   id: z.string(),
   message: z.string(),
   name: z.string().nullable(),
-  // Null while open, absent from a Worker before migration 0015
+  // Null while open, absent from a Worker before migration 0015. The closing note of a resolve or a drop
   resolution: z.string().nullable().optional(),
   resolvedAt: z.number().nullable().optional(),
   resolvedVersion: z.number().nullable().optional(),
@@ -143,6 +146,39 @@ export type AdminReport = z.infer<typeof reportSchema>
 
 export const isResolved = (report: AdminReport) =>
   report.resolvedAt !== null && report.resolvedAt !== undefined
+
+export type ReportState = 'open' | 'resolved' | 'dropped'
+
+export const reportState = (report: AdminReport): ReportState => {
+  if (isResolved(report)) {
+    return 'resolved'
+  }
+  return report.droppedAt === null || report.droppedAt === undefined
+    ? 'open'
+    : 'dropped'
+}
+
+// Why a report was closed without a fix (worker/src/reports.ts › DROP_REASONS). Expired is the daily cron's alone
+export const DROP_REASONS = {
+  duplicate: 'Duplicate',
+  expired: 'Expired',
+  no_lyrics: 'No Lyrics',
+  nothing_found: 'Nothing Found',
+  uninformative: 'Uninformative',
+} as const
+export type DropReason = keyof typeof DROP_REASONS
+export const MANUAL_DROP_REASONS: DropReason[] = [
+  'uninformative',
+  'no_lyrics',
+  'duplicate',
+  'nothing_found',
+]
+
+const isDropReason = (reason: unknown): reason is DropReason =>
+  typeof reason === 'string' && Object.hasOwn(DROP_REASONS, reason)
+
+export const dropReasonLabel = (reason: string | null | undefined) =>
+  isDropReason(reason) ? DROP_REASONS[reason] : null
 
 export const useAdminReports = () =>
   useQuery({
@@ -190,20 +226,30 @@ const resolutionOf = async (report: AdminReport) => {
   }
 }
 
-export const useSetReportResolved = () => {
+// Resolve, reopen (a resolved or dropped report), or drop with a reason
+export type ReportChange = 'resolve' | 'reopen' | { drop: DropReason }
+
+const bodyOf = async (report: AdminReport, change: ReportChange) => {
+  if (change === 'resolve') {
+    return await resolutionOf(report)
+  }
+  return change === 'reopen' ? {} : { reason: change.drop }
+}
+
+export const useChangeReport = () => {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async ({
       report,
-      resolved,
+      change,
     }: {
       report: AdminReport
-      resolved: boolean
+      change: ReportChange
     }) =>
       await call(
-        `/reports/${encodeURIComponent(report.id)}/${resolved ? 'resolve' : 'reopen'}`,
+        `/reports/${encodeURIComponent(report.id)}/${typeof change === 'string' ? change : 'drop'}`,
         {
-          body: JSON.stringify(resolved ? await resolutionOf(report) : {}),
+          body: JSON.stringify(await bodyOf(report, change)),
           method: 'POST',
         }
       ),

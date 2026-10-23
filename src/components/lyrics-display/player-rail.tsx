@@ -412,7 +412,7 @@ const PlayerRail = ({ inline = false }: { inline?: boolean }) => {
       disabled: videoId === '',
       handleSelect: report.open,
       icon: <FlagIcon className='size-5 shrink-0' />,
-      label: 'Report Issue',
+      label: report.label,
     },
   ].filter((action) => !(inline && action.stageOnly === true))
 
