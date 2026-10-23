@@ -73,13 +73,6 @@ const PrivacyPage = () => (
         className='hover:text-foreground'>
         LinkedIn
       </a>
-      <a
-        href='https://github.com/lifuhh/synbox'
-        target='_blank'
-        rel='noreferrer'
-        className='hover:text-foreground'>
-        GitHub
-      </a>
     </nav>
   </section>
 )
