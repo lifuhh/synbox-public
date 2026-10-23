@@ -40,8 +40,13 @@ export const fetchRecommendations = async ({ fresh = false } = {}) => {
   if (!response.ok) {
     throw new Error(`/api/recommendations answered ${response.status}`)
   }
-  const body: unknown = await response.json()
-  return z.object({ songs: z.array(recommendationSchema) }).parse(body).songs
+  const result = z
+    .object({ songs: z.array(recommendationSchema) })
+    .safeParse(await response.json())
+  if (!result.success) {
+    throw new Error('Page out of date. Reload')
+  }
+  return result.data.songs
 }
 
 // In a new order on every visit
