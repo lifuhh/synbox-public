@@ -28,7 +28,10 @@ import {
   guestKeyOf,
   listReports,
   parseReport,
+  parseResolution,
+  reopenReport,
   reportAllowed,
+  resolveReport,
   saveReport,
 } from './reports'
 import type { Reporter } from './reports'
@@ -524,6 +527,29 @@ admin.put('/recommendations', async (c) => {
 // The latest listener reports, for fixing the lyrics they point at
 admin.get('/reports', async (c) =>
   c.json({ reports: await listReports(c.env.DB) })
+)
+
+// Marks a report dealt with; the body ({ version?, note? }) may be empty. Resolving again replaces the details
+admin.post('/reports/:id/resolve', async (c) => {
+  const resolution = parseResolution(
+    await c.req.json<unknown>().catch(() => ({}))
+  )
+  if (resolution === null) {
+    return c.json({ code: 'bad_request' }, 400)
+  }
+  const found = await resolveReport(
+    c.env.DB,
+    c.req.param('id'),
+    resolution,
+    Date.now()
+  )
+  return found ? c.body(null, 204) : c.json({ code: 'not_found' }, 404)
+})
+
+admin.post('/reports/:id/reopen', async (c) =>
+  (await reopenReport(c.env.DB, c.req.param('id')))
+    ? c.body(null, 204)
+    : c.json({ code: 'not_found' }, 404)
 )
 
 // Leads on someone working around the song limit (worker/src/signals.ts)

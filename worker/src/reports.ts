@@ -160,15 +160,69 @@ export const saveReport = async (
     .run()
 }
 
-// The latest reports, newest first, with who sent them (an account, or a guest)
+// The latest reports with who sent them (an account, or a guest): open ones first, so resolved ones never push
+// an open one out of the 200, then newest first
 export const listReports = async (db: D1Database) => {
   const { results } = await db
     .prepare(
       `select r."id", r."videoId", r."atSeconds", r."version", r."message", r."client", r."build", r."createdAt",
+         r."resolvedAt", r."resolvedVersion", r."resolution",
          u."email", u."name", r."guestKey" is not null as "guest"
        from "report" r left join "user" u on u."id" = r."userId"
-       order by r."createdAt" desc limit 200`
+       order by r."resolvedAt" is not null, r."createdAt" desc limit 200`
     )
     .all()
   return results
+}
+
+export const RESOLUTION_MAX = 300
+
+export interface Resolution {
+  // The lyrics version that fixed it
+  version: number | null
+  note: string | null
+}
+
+// The body of POST /api/admin/reports/:id/resolve: both fields optional, or null when either is off
+export const parseResolution = (body: unknown): Resolution | null => {
+  if (typeof body !== 'object' || body === null) {
+    return null
+  }
+  const version = field(body, 'version') ?? null
+  const note = field(body, 'note') ?? null
+  if (!isVersion(version) || (note !== null && typeof note !== 'string')) {
+    return null
+  }
+  const text = note?.trim() ?? ''
+  if (text.length > RESOLUTION_MAX) {
+    return null
+  }
+  return { note: text === '' ? null : text, version }
+}
+
+// False when no report has the id
+export const resolveReport = async (
+  db: D1Database,
+  id: string,
+  { version, note }: Resolution,
+  now: number
+) => {
+  const { meta } = await db
+    .prepare(
+      `update "report" set "resolvedAt" = ?2, "resolvedVersion" = ?3, "resolution" = ?4 where "id" = ?1`
+    )
+    .bind(id, now, version, note)
+    .run()
+  return meta.changes > 0
+}
+
+// False when no report has the id
+export const reopenReport = async (db: D1Database, id: string) => {
+  const { meta } = await db
+    .prepare(
+      `update "report" set "resolvedAt" = null, "resolvedVersion" = null, "resolution" = null where "id" = ?1`
+    )
+    .bind(id)
+    .run()
+  return meta.changes > 0
 }
