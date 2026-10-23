@@ -111,7 +111,8 @@ export const extractVideoId = (input: string): string | null => {
 }
 
 const OWN_HOSTS = new Set(['synbox.io', 'www.synbox.io', 'synbox.netlify.app'])
-const OWN_SONG_PATH = /^\/(?:v\/[\w-]{11}(?:\/versions)?|lyrics\/[\w-]{11})\/?$/u
+const OWN_SONG_PATH =
+  /^\/(?:v\/[\w-]{11}(?:\/versions)?|lyrics\/[\w-]{11})\/?$/u
 
 // A pasted link to one of our own song pages, as the in-app path to open (its query, like ?style=, kept)
 export const ownSongPath = (input: string): string | null => {

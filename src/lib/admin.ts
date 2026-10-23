@@ -15,16 +15,13 @@ import type { Recommendation } from '@/lib/recommendations'
 const when = z.union([z.string(), z.number()])
 
 // 'default' follows the Worker's USER_DAILY_LIMIT; a number or 'unlimited' is an admin's override
-const dailyLimitSchema = z.union([
-  z.number(),
-  z.enum(['default', 'unlimited']),
-])
+const dailyLimitSchema = z.union([z.number(), z.enum(['default', 'unlimited'])])
 
 const adminUserSchema = z.object({
   banned: z.union([z.number(), z.boolean()]).nullable(),
   createdAt: when,
-  email: z.string(),
   dailyLimit: dailyLimitSchema,
+  email: z.string(),
   id: z.string(),
   image: z.string().nullable(),
   lastSeenAt: when.nullable(),

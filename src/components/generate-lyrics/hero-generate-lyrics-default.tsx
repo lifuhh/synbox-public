@@ -41,6 +41,12 @@ const looksLikeYoutubeLink = (value: string) => {
   )
 }
 
+// Text that is neither one of our own song links nor a YouTube link is a search
+const isSearchText = (value: string) =>
+  value.trim().length > 0 &&
+  ownSongPath(value) === null &&
+  !looksLikeYoutubeLink(value)
+
 // Search is a mode, not an error, so it gets its own colour; red is kept for a link that fails to parse.
 type InputMode = 'empty' | 'search' | 'valid' | 'invalid'
 
@@ -71,10 +77,7 @@ const HeroGenerateLyricsDefault = ({
   const navigate = useNavigate()
   // A Synbox link opens its own page: no lyrics lookup, no generation
   const ownPath = ownSongPath(inputValue)
-  const isSearch =
-    inputValue.trim().length > 0 &&
-    ownPath === null &&
-    !looksLikeYoutubeLink(inputValue)
+  const isSearch = isSearchText(inputValue)
   const inputMode = getInputMode(
     inputValue,
     isSearch,
@@ -333,7 +336,7 @@ const HeroGenerateLyricsDefault = ({
           {inputMode === 'search' && (
             <p className='text-search'>Search by title, artist or mood</p>
           )}
-          {inputValue.length > 0 && !isSearch && ownPath === null && (
+          {inputValue.length > 0 && !isSearch && (
             <p
               className={cn(
                 'text-success',
