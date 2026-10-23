@@ -1191,7 +1191,7 @@
 /* The phone's search (topbar-search.tsx): a panel floating 8px under the status bar and inside the side insets, as
    tall as the screen above the keyboard allows (--vv-top and --vv-h follow the visual viewport while it is open). It
    drops a little from above and settles at full size, so it reads as lifted off the page; reduced motion keeps
-   only the fade. Its result rows are inset so their thumbnails start under the field's search icon */
+   only the fade */
 @keyframes float-in {
   from {
     opacity: 0;
@@ -1216,11 +1216,6 @@
   &::backdrop {
     background: rgb(0 0 0 / 0.6);
     animation: appear 0.2s ease-out;
-  }
-  & [role='option'] {
-    margin-inline: 0.5rem;
-    border-radius: 0.75rem;
-    padding-inline: 0.875rem;
   }
 }
 

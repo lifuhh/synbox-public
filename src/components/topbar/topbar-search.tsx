@@ -21,6 +21,7 @@ const Results = ({
   optionId,
   onPick,
   className,
+  inset,
 }: {
   query: string
   active: number
@@ -28,6 +29,8 @@ const Results = ({
   optionId: (index: number) => string
   onPick: (target: string) => void
   className: string
+  // Rows inset on the panel, their thumbnails under the field's search icon
+  inset: boolean
 }) => {
   const { songs } = useGallerySongs()
   const matches = matchTitles(songs, query, MAX_SONGS)
@@ -57,6 +60,7 @@ const Results = ({
           }}
           className={cn(
             'flex h-11 cursor-pointer items-center gap-3 px-3 text-sm text-foreground touch:h-12',
+            inset && 'mx-2 rounded-xl px-3.5',
             index === active ? 'bg-accent' : 'hover:bg-accent'
           )}>
           {row.song ? (
@@ -164,6 +168,7 @@ export const TopbarSearch = ({ variant }: { variant: 'inline' | 'button' }) => {
         optionId={optionId}
         onPick={pick}
         className={className}
+        inset={panel}
       />
     )
 
