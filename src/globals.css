@@ -1162,8 +1162,7 @@
    in place (the top bar's account slot). Reduced motion keeps only the fade. Named apart from tw-animate's
    `enter` keyframes and `fade-in` utility, which other components use.
    Opacity and translate only, so the compositor runs it: a blur can't be (Chromium: "filter may move pixels"),
-   which put the whole entrance on the main thread, where a cold load's renders and font layouts froze it for
-   up to 220ms */
+   which put the whole entrance on the main thread, where a cold load's renders and font layouts froze it */
 @keyframes rise-in {
   from {
     opacity: 0;
