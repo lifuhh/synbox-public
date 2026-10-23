@@ -10,6 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { useScrollEdges } from '@/hooks/use-scroll-edges'
 import type { ListSong } from '@/lib/listening/model'
 import { filterKey, filterLabel } from '@/lib/listening/next-filter'
 import { useNextList } from '@/lib/listening/recommendations'
@@ -103,6 +104,7 @@ export const UpNext = ({
   const [autoplay, setAutoplay] = useAtom(autoplayAtom)
   const { clearQueue, moveInQueue } = useListening()
   const { filter, filters, setFilter, songs } = useNextList(videoId)
+  const chipsRef = useScrollEdges()
   const queued = new Set(queue.map((song) => song.videoId))
   const suggestions = songs
     .filter((song) => !queued.has(song.videoId))
@@ -160,28 +162,32 @@ export const UpNext = ({
       )}
 
       {filters.length > 1 && (
-        <fieldset className='flex min-w-0 flex-wrap gap-2 pb-2'>
+        <fieldset className='min-w-0 pb-1'>
           <legend className='sr-only'>Show Songs</legend>
-          {filters.map((option) => {
-            const on = filterKey(option) === filterKey(filter)
-            return (
-              <button
-                key={filterKey(option)}
-                type='button'
-                aria-pressed={on}
-                onClick={() => {
-                  setFilter(option)
-                }}
-                className={cn(
-                  'h-8 max-w-full truncate rounded-lg px-3 text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden',
-                  on
-                    ? 'bg-foreground text-background'
-                    : 'bg-card text-foreground hover:bg-accent'
-                )}>
-                {filterLabel(option)}
-              </button>
-            )
-          })}
+          <div
+            ref={chipsRef}
+            className='-mx-1 no-scrollbar flex gap-2 overflow-x-auto overscroll-x-contain mask-fade-x px-1 py-1'>
+            {filters.map((option) => {
+              const on = filterKey(option) === filterKey(filter)
+              return (
+                <button
+                  key={filterKey(option)}
+                  type='button'
+                  aria-pressed={on}
+                  onClick={() => {
+                    setFilter(option)
+                  }}
+                  className={cn(
+                    'h-8 shrink-0 rounded-lg px-3 text-sm font-medium whitespace-nowrap transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden',
+                    on
+                      ? 'bg-foreground text-background'
+                      : 'bg-card text-foreground hover:bg-accent'
+                  )}>
+                  {filterLabel(option)}
+                </button>
+              )
+            })}
+          </div>
         </fieldset>
       )}
 
