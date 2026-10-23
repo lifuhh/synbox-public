@@ -18,6 +18,7 @@ const OfflinePage = () => {
 
   return (
     <section
+      data-scroll-top
       onScroll={() => {
         // Stuck once the header has scrolled up past where the row holds
         const bottom = header.current?.getBoundingClientRect().bottom ?? 0
