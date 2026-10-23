@@ -40,6 +40,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useToast } from '@/components/ui/use-toast'
 import {
+  AdminOutdatedError,
   GUESTS,
   MANUAL_DROP_REASONS,
   DROP_REASONS,
@@ -66,6 +67,7 @@ import type {
   SongsBy,
 } from '@/lib/admin-console'
 import { useAccess, useMe } from '@/lib/auth'
+import { applyWaitingUpdate } from '@/lib/pwa'
 import { isStageId, overallAt, stepOf } from '@/lib/generation/plan'
 import { useGetSongInfoBySongId } from '@/lib/react-query/queries-and-mutations'
 import type { CssVars } from '@/types'
@@ -568,12 +570,32 @@ const UserCard = (props: AccountProps) => (
   </li>
 )
 
+const LoadError = ({ error }: { error: Error }) =>
+  error instanceof AdminOutdatedError ? (
+    <p className='flex items-center gap-3 text-sm text-error'>
+      Page Out of Date
+      <Button
+        onClick={() => {
+          if (!applyWaitingUpdate()) {
+            window.location.reload()
+          }
+        }}
+        size='sm'
+        variant='outline'
+      >
+        Reload
+      </Button>
+    </p>
+  ) : (
+    <p className='text-sm text-error'>{error.message}</p>
+  )
+
 const UsersTable = () => {
   const { data: users, error } = useAdminUsers()
   const { data: settings } = useAdminSettings()
   const { data: me } = useMe()
   if (error !== null) {
-    return <p className='text-sm text-error'>{error.message}</p>
+    return <LoadError error={error} />
   }
   if (users === undefined || settings === undefined) {
     return <Skeleton className='h-40 w-full' />
@@ -828,7 +850,7 @@ const SongsTable = ({ by }: { by: SongsBy }) => {
   const { data: generations, error } = useAdminGenerations(by)
   const [page, setPage] = useState(0)
   if (error !== null) {
-    return <p className='text-sm text-error'>{error.message}</p>
+    return <LoadError error={error} />
   }
   if (generations === undefined) {
     return <Skeleton className='h-40 w-full' />
@@ -1084,7 +1106,7 @@ const ReportsList = () => {
   const { data: reports, error } = useAdminReports()
   const [shownState, setShownState] = useState<ReportState>('open')
   if (error !== null) {
-    return <p className='text-sm text-error'>{error.message}</p>
+    return <LoadError error={error} />
   }
   if (reports === undefined) {
     return <Skeleton className='h-40 w-full' />
@@ -1159,11 +1181,11 @@ const SignalsPanel = () => {
   const { data, error } = useAdminSignals()
   if (error !== null) {
     return (
-      <p className='text-sm text-error'>
-        {error.message.includes('404')
-          ? 'Needs the Worker update.'
-          : error.message}
-      </p>
+      error.message.includes('404') ? (
+        <p className='text-sm text-error'>Needs the Worker update.</p>
+      ) : (
+        <LoadError error={error} />
+      )
     )
   }
   if (data === undefined) {

@@ -68,6 +68,21 @@ const generationSchema = z.object({
   videoId: z.string(),
 })
 
+// The Worker answered in a shape this page doesn't know: the page is from another deploy than the Worker (an
+// installed app keeps its version until a page change), so reloading fixes it
+export class AdminOutdatedError extends Error {
+  override name = 'AdminOutdatedError'
+}
+
+const fetchParsed = async <T>(schema: z.ZodType<T>, path: string) => {
+  const result = schema.safeParse(await call(path))
+  if (!result.success) {
+    console.error(`/api/admin${path}`, result.error.issues)
+    throw new AdminOutdatedError('Page out of date')
+  }
+  return result.data
+}
+
 export type DailyLimit = z.infer<typeof dailyLimitSchema>
 export type AdminUser = z.infer<typeof adminUserSchema>
 export type AdminGeneration = z.infer<typeof generationSchema>
@@ -77,8 +92,12 @@ const RUNNING_REFRESH_MS = 5000
 export const useAdminUsers = () =>
   useQuery({
     queryFn: async () =>
-      z.object({ users: z.array(adminUserSchema) }).parse(await call('/users'))
-        .users,
+      (
+        await fetchParsed(
+          z.object({ users: z.array(adminUserSchema) }),
+          '/users'
+        )
+      ).users,
     queryKey: [QUERY_KEYS.GET_ADMIN_USERS],
   })
 
@@ -99,16 +118,14 @@ const isBy = (generation: AdminGeneration, by: SongsBy) => {
 export const useAdminGenerations = (by: SongsBy) =>
   useQuery({
     queryFn: async () =>
-      z
-        .object({ generations: z.array(generationSchema) })
-        .parse(
-          await call(
-            by === null
-              ? '/generations'
-              : `/generations?user=${encodeURIComponent(by)}`
-          )
+      (
+        await fetchParsed(
+          z.object({ generations: z.array(generationSchema) }),
+          by === null
+            ? '/generations'
+            : `/generations?user=${encodeURIComponent(by)}`
         )
-        .generations.filter((generation) => isBy(generation, by)),
+      ).generations.filter((generation) => isBy(generation, by)),
     queryKey: [QUERY_KEYS.GET_ADMIN_GENERATIONS, by],
     // Follows songs still running
     refetchInterval: (query) =>
@@ -183,8 +200,12 @@ export const dropReasonLabel = (reason: string | null | undefined) =>
 export const useAdminReports = () =>
   useQuery({
     queryFn: async () =>
-      z.object({ reports: z.array(reportSchema) }).parse(await call('/reports'))
-        .reports,
+      (
+        await fetchParsed(
+          z.object({ reports: z.array(reportSchema) }),
+          '/reports'
+        )
+      ).reports,
     queryKey: [QUERY_KEYS.GET_ADMIN_REPORTS],
   })
 
@@ -299,13 +320,13 @@ export type AdminSignals = z.infer<typeof signalsSchema>
 
 export const useAdminSignals = () =>
   useQuery({
-    queryFn: async () => signalsSchema.parse(await call('/signals')),
+    queryFn: async () => await fetchParsed(signalsSchema, '/signals'),
     queryKey: [QUERY_KEYS.GET_ADMIN_SIGNALS],
   })
 
 export const useAdminSettings = () =>
   useQuery({
-    queryFn: async () => settingsSchema.parse(await call('/settings')),
+    queryFn: async () => await fetchParsed(settingsSchema, '/settings'),
     queryKey: [QUERY_KEYS.GET_ADMIN_SETTINGS],
   })
 
