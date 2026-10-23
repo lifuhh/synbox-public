@@ -186,7 +186,7 @@ export const DocScroll = () => {
 
 // The scrollbar of a page that scrolls its own window-high box (home, search, the lists), with a mouse or
 // trackpad: hides the box's own bar (`data-overlay-scrollbar` in globals.css) and draws OverlayScrollbar instead.
-// Rendered in the box, drawn in the body: a box that animates a filter (home's rise-in) would hold a fixed bar in
+// Rendered in the box, drawn in the body: a box that animates translate (home's rise-in) would hold a fixed bar in
 // itself, and the bar's strip stays out of the box's own content
 export const BoxScrollbar = ({ box }: { box: HTMLElement | null }) => {
   const fine = useMediaQuery(FINE)
