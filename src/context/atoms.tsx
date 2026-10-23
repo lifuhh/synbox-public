@@ -1,6 +1,7 @@
 import type { Getter, Setter, WritableAtom } from 'jotai'
 import { atom } from 'jotai'
 import { atomWithStorage } from 'jotai/utils'
+import { z } from 'zod'
 
 import type {
   LyricsStyle,
@@ -64,15 +65,33 @@ const initOptions = { getOnInit: true }
 
 // Whether the player shows as Theater right now (the watch page, wide, Theater on). PlayerPage sets it
 export const theaterShownAtom = atom(false)
-// Karaoke Style until the viewer picks it: on in Theater, where the video spans the page as on a karaoke
-// screen, off elsewhere. null: never picked, so it follows the layout
-const twoLinesPickedAtom = atomWithStorage<boolean | null>(
+// Karaoke Style in My Default, one per watch layout: on in Theater, where the video spans the page as on a
+// karaoke screen, off in the default view, whose lyrics sit beside a smaller video. A pick in one layout is that
+// layout's own, so turning it off beside the video leaves Theater's on. Fullscreen and phones follow the default
+// view
+const TWO_LINES_BY_LAYOUT: Record<WatchLayout, boolean> = {
+  default: false,
+  theater: true,
+}
+type TwoLinesPicks = Partial<Record<WatchLayout, boolean>>
+// The key once held one pick for every layout; such a pick was made beside the video, so it becomes the default
+// view's. Anything else unreadable is no pick
+const twoLinesPicksSchema = z.union([
+  z.boolean().transform((picked): TwoLinesPicks => ({ default: picked })),
+  z.object({ default: z.boolean(), theater: z.boolean() }).partial(),
+])
+const twoLinesPicksAtom = atomWithStorage<unknown>(
   'lyricsTwoLines',
   null,
   syncedStorage(),
   initOptions
 )
-const layoutTwoLines = (get: Getter) => get(theaterShownAtom)
+const readTwoLinesPicks = (get: Getter): TwoLinesPicks => {
+  const parsed = twoLinesPicksSchema.safeParse(get(twoLinesPicksAtom))
+  return parsed.success ? parsed.data : {}
+}
+const shownLayout = (get: Getter): WatchLayout =>
+  get(theaterShownAtom) ? 'theater' : 'default'
 
 const defaultLyricsStyleAtoms: {
   [K in keyof LyricsStyle]: WritableAtom<LyricsStyle[K], [LyricsStyle[K]], void>
@@ -126,9 +145,15 @@ const defaultLyricsStyleAtoms: {
     initOptions
   ),
   twoLines: atom(
-    (get) => get(twoLinesPickedAtom) ?? layoutTwoLines(get),
-    (_get, set, picked: boolean) => {
-      set(twoLinesPickedAtom, picked)
+    (get) => {
+      const layout = shownLayout(get)
+      return readTwoLinesPicks(get)[layout] ?? TWO_LINES_BY_LAYOUT[layout]
+    },
+    (get, set, picked: boolean) => {
+      set(twoLinesPicksAtom, {
+        ...readTwoLinesPicks(get),
+        [shownLayout(get)]: picked,
+      })
     }
   ),
 }
