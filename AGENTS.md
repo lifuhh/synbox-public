@@ -1,6 +1,6 @@
 # Agent Notes
 
-- **Never commit anything sensitive.** This repo is open source: every commit, commit message, branch, PR description and PR comment is public as soon as it is pushed, and stays in history after it is deleted. Sensitive means:
+- **Never commit anything sensitive.** The repo is private (checked 2026-10-23). It was public earlier, so everything committed while it was public is already out, and anyone given access later sees every commit, commit message, branch, PR description and PR comment, which stay in history after they are deleted. Sensitive means:
   - secrets, API keys, tokens, cookies, `.env` contents, service-account files;
   - personal data: emails, real names of private people, account ids;
   - lyrics text and song audio (copyrighted; song titles and video ids are fine);
