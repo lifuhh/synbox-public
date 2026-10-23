@@ -1718,15 +1718,20 @@
      hidden (scrolled away, touch only). The bar, a row stuck under it and the top scrim all follow it in the same
      frame, over the same 300ms, by the same distance (the bar's row: the status bar part stays), so they move
      as one. While the generation panel is open or closing, hidden counts as shown: the panel hangs from the bar's
-     notifications button and closes into it */
+     notifications button and closes into it.
+     The values that follow the state are set on the elements that read them, never on <html>: a custom property
+     changed on the root is inherited by every element, so each scroll that showed or hid the bar restyled the
+     whole page (about 30ms at 4x CPU on the home page) */
   html:is(
-    [data-topbar-state='shown'],
-    [data-topbar-state='hidden']:has([data-generation-panel])
-  ) {
+      [data-topbar-state='shown'],
+      [data-topbar-state='hidden']:has([data-generation-panel])
+    )
+    .top-scrim {
     --topbar-cover: calc(var(--topbar-h) - var(--safe-top));
   }
 
-  html[data-topbar-state='hidden']:not(:has([data-generation-panel])) {
+  html[data-topbar-state='hidden']:not(:has([data-generation-panel]))
+    .sticky-under-topbar {
     --topbar-shown-h: var(--safe-top);
   }
 
@@ -1743,15 +1748,16 @@
   }
 
   /* A row stuck under the bar is see-through; the top scrim covers it, solid down to its bottom edge */
-  html:has([data-stuck]) {
+  html:has([data-stuck]) .top-scrim {
     --stuck-cover: var(--stuck-row-h, 0px);
   }
 
   html:is(
-    [data-topbar-state='shown'],
-    [data-topbar-state='hidden']:has([data-generation-panel]),
-    :has([data-stuck])
-  ) {
+      [data-topbar-state='shown'],
+      [data-topbar-state='hidden']:has([data-generation-panel]),
+      :has([data-stuck])
+    )
+    .top-scrim {
     --scrim-lead: 0px;
   }
 

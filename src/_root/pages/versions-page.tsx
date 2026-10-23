@@ -138,7 +138,7 @@ const VersionCard = ({
   const note = describeNote(version.note)
   return (
     <li className='flex flex-col gap-3 rounded-xl bg-card p-4 sm:flex-row sm:items-center sm:gap-6'>
-      <div className='min-w-0 flex-1 space-y-1.5'>
+      <div className='flex min-w-0 flex-1 flex-col gap-1.5'>
         <div className='flex flex-wrap items-center gap-x-2 gap-y-1'>
           <h2 className='font-semibold text-foreground'>
             Version {version.version}
@@ -293,7 +293,7 @@ const VersionsAdmin = ({ videoId }: { videoId: string }) => {
       </Link>
 
       <header className='flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between'>
-        <div className='min-w-0 space-y-1'>
+        <div className='flex min-w-0 flex-col gap-1'>
           <h1 className='flex items-center gap-2 text-2xl font-bold text-foreground'>
             Lyrics Versions
             <AdminMark className='size-4' />
