@@ -2,6 +2,8 @@
 // the proxy can never be used to spend the key's quota on anything else.
 // Shared by the Netlify function (deployed) and the Vite dev server (local).
 
+import { z } from 'zod'
+
 const API = 'https://www.googleapis.com/youtube/v3'
 
 // The YouTube Top 100 Songs Japan chart
@@ -31,7 +33,11 @@ const upstreamUrl = (path: string, search: URLSearchParams) => {
     if (pageToken !== null && PAGE_TOKEN.test(pageToken)) {
       params.set('pageToken', pageToken)
     }
-    return { cdnSeconds: 60 * 60, url: `${API}/playlistItems?${params}` }
+    return {
+      cdnSeconds: 60 * 60,
+      statistics: true,
+      url: `${API}/playlistItems?${params}`,
+    }
   }
   const video = /^\/api\/youtube\/video\/(?<id>[\w-]+)$/u.exec(path)?.groups?.id
   if (video !== undefined && VIDEO_ID.test(video)) {
@@ -42,6 +48,52 @@ const upstreamUrl = (path: string, search: URLSearchParams) => {
     return { cdnSeconds: 60 * 60 * 24, url: `${API}/videos?${params}` }
   }
   return null
+}
+
+const playlistIds = z.object({
+  items: z.array(
+    z.object({
+      snippet: z.object({ resourceId: z.object({ videoId: z.string() }) }),
+    })
+  ),
+})
+const videoCounts = z.object({
+  items: z.array(
+    z.object({
+      id: z.string(),
+      statistics: z.object({ viewCount: z.string().optional() }).default({}),
+    })
+  ),
+})
+
+// The chart's rows show views, which playlist items don't carry: one videos read per page (1 quota
+// unit, its 50 ids), cached with the page. Without it the page still answers, with no counts
+const withStatistics = async (body: unknown, key: string, headers: Headers) => {
+  const page = playlistIds.safeParse(body)
+  const ids = (page.data?.items ?? [])
+    .map((item) => item.snippet.resourceId.videoId)
+    .filter((id) => VIDEO_ID.test(id))
+  if (ids.length === 0 || typeof body !== 'object' || body === null) {
+    return body
+  }
+  const params = new URLSearchParams({ id: ids.join(','), part: 'statistics' })
+  const videos = await fetch(
+    `${API}/videos?${params}&key=${encodeURIComponent(key)}`,
+    { headers }
+  ).catch(() => null)
+  const counts = videoCounts.safeParse(
+    videos?.ok === true ? await videos.json().catch(() => null) : null
+  )
+  if (!counts.success) {
+    return body
+  }
+  const statistics = Object.fromEntries(
+    counts.data.items.map((video) => [
+      video.id,
+      { viewCount: video.statistics.viewCount },
+    ])
+  )
+  return { ...body, statistics }
 }
 
 export const handleYoutube = async (
@@ -70,7 +122,10 @@ export const handleYoutube = async (
   })
   const body: unknown = await upstream.json()
   // Errors pass through with their status but are never cached
-  return upstream.ok
-    ? json(200, body, cacheHeaders(target.cdnSeconds))
-    : json(upstream.status, body, { 'Cache-Control': 'no-store' })
+  if (!upstream.ok) {
+    return json(upstream.status, body, { 'Cache-Control': 'no-store' })
+  }
+  const answer =
+    'statistics' in target ? await withStatistics(body, key, headers) : body
+  return json(200, answer, cacheHeaders(target.cdnSeconds))
 }

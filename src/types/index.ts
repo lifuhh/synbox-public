@@ -11,6 +11,14 @@ interface YoutubeVideoStatistics {
   commentCount: string
 }
 
+// A song on the YouTube chart. Its views are missing when the read for them failed
+export interface ChartSong {
+  id: string
+  rank: number
+  title: string
+  views: number | undefined
+}
+
 export interface YoutubeSearchResultInfo {
   id: string | { videoId: string; kind: string }
   title: string

@@ -42,19 +42,21 @@ afterEach(() => {
 })
 
 describe('getChartsPlaylist', () => {
-  test('follows the page token and skips private videos', async () => {
+  test('follows the page token, skips private videos and keeps chart places', async () => {
     const urls = stubFetch(
       {
         body: {
-          items: [song('a', 'Idol'), privateVideo],
+          items: [privateVideo, song('a', 'Idol')],
           nextPageToken: 'page2',
+          statistics: { a: { viewCount: '14200000' } },
         },
       },
+      // A page whose counts read failed carries none
       { body: { items: [song('b', 'Comet')] } }
     )
     expect(await getChartsPlaylist()).toEqual([
-      { id: 'a', title: 'Idol' },
-      { id: 'b', title: 'Comet' },
+      { id: 'a', rank: 2, title: 'Idol', views: 14_200_000 },
+      { id: 'b', rank: 51, title: 'Comet', views: undefined },
     ])
     expect(urls[0]).not.toContain('pageToken')
     expect(urls[1]).toContain('pageToken=page2')

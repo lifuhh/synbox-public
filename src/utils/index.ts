@@ -1,4 +1,5 @@
 import type { YoutubePlaylist } from '@/lib/youtube/api'
+import type { ChartSong } from '@/types'
 
 export const shuffleArray = <T>(array: T[]): T[] => {
   for (let i = array.length - 1; i > 0; i -= 1) {
@@ -38,12 +39,19 @@ export const handleRedirect = (url: string) => {
   window.open(url, '_blank', 'noopener,noreferrer')
 }
 
-// A private or deleted video stays in its playlist with no thumbnails
+// A private or deleted video stays in its playlist with no thumbnails, and keeps its place in it
 const playableItems = (data: YoutubePlaylist) =>
-  data.items.flatMap((item) => {
+  data.items.flatMap((item, index) => {
     const thumbnailUrl = item.snippet.thumbnails.high?.url
-    return thumbnailUrl === undefined ? [] : [{ item, thumbnailUrl }]
+    return thumbnailUrl === undefined ? [] : [{ index, item, thumbnailUrl }]
   })
+
+// The API's counts are decimal strings
+const count = (value: string | undefined) => {
+  const parsed =
+    value === undefined || value === '' ? Number.NaN : Number(value)
+  return Number.isFinite(parsed) ? parsed : undefined
+}
 
 // The Japan charts carry K-pop. Hangul in the title or channel catches most of it; the channels below post
 // in English or romanized Korean
@@ -59,14 +67,29 @@ const KOREAN_CHANNELS = new Set([
   'Stone Music Entertainment',
 ])
 
+// The rank is the song's place in the chart (offset: the songs on earlier pages), so a skipped song leaves its
+// number out rather than renumbering the rest under the chart's name
 export const formatYoutubeChartsResponse = (
-  data: YoutubePlaylist
-): { title: string; id: string }[] =>
-  playableItems(data).flatMap(({ item }) => {
+  data: YoutubePlaylist,
+  offset = 0
+): ChartSong[] =>
+  playableItems(data).flatMap(({ index, item }) => {
     const { title, videoOwnerChannelTitle: channel, resourceId } = item.snippet
     const korean =
       KOREAN.test(title) || KOREAN.test(channel) || KOREAN_CHANNELS.has(channel)
-    return korean ? [] : [{ id: resourceId.videoId, title }]
+    if (korean) {
+      return []
+    }
+    const id = resourceId.videoId
+    const counts = data.statistics[id]
+    return [
+      {
+        id,
+        rank: offset + index + 1,
+        title,
+        views: count(counts?.viewCount),
+      },
+    ]
   })
 
 export const extractVideoId = (input: string): string | null => {
