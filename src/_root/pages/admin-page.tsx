@@ -687,17 +687,18 @@ const requester = (generation: AdminGeneration) =>
 const SongTitle = ({ generation }: { generation: AdminGeneration }) => {
   const { data: songInfo } = useGetSongInfoBySongId(generation.videoId)
   const path = `/v/${generation.videoId}`
+  // The title and its address are one link, so a tap anywhere on either opens the song
   return (
-    <>
-      <Link
-        to={path}
-        className='block truncate font-medium text-foreground hover:underline'>
+    <Link
+      to={path}
+      className='group block min-w-0 rounded-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden'>
+      <span className='block truncate font-medium text-foreground group-hover:underline'>
         {songInfo?.title ?? generation.videoId}
-      </Link>
-      <span className='block truncate text-xs text-muted-foreground'>
+      </span>
+      <span className='block truncate text-xs text-muted-foreground group-hover:underline'>
         synbox.io{path}
       </span>
-    </>
+    </Link>
   )
 }
 
