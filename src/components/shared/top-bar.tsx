@@ -1,17 +1,17 @@
 import { useAtomValue } from 'jotai'
-import { useEffect, useLayoutEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useLocation, useMatch } from 'react-router'
 
 import { playerChromeOpenAtom, playerSurfaceAtom } from '@/context/atoms'
 import { useArmed } from '@/hooks/use-armed'
 import { useMediaQuery } from '@/hooks/use-media-query'
+import { onEmptyBar, topTap } from '@/lib/top-tap'
 import { cn } from '@/utils/cn'
 
 import AppLogo from '../topbar/app-logo'
-import LyricsButton from '../topbar/lyrics-button'
+import LibraryMenu from '../topbar/library-menu'
 import Notifications from '../topbar/notifications'
 import ProfileButton from '../topbar/profile-button'
-import SavedMenu from '../topbar/saved-menu'
 import { TopbarSearch } from '../topbar/topbar-search'
 
 // Within this many pixels of the top a page counts as unscrolled
@@ -173,6 +173,26 @@ const TopBar = () => {
       root.dataset.topbarState = state
     }
   }, [state])
+  // The bar's empty space takes a tap back to the page's top, or reloads a page already there: a pointer
+  // shortcut, as on iOS (the keyboard has Home and the browser's reload). Listened to on the bar itself, so
+  // presses in its menus, which sit outside it, never count
+  const header = useRef<HTMLElement>(null)
+  useEffect(() => {
+    const listen = (box: HTMLElement) => {
+      const onClick = (event: MouseEvent) => {
+        if (event.button === 0 && onEmptyBar(box, event.target)) {
+          topTap()
+        }
+      }
+      box.addEventListener('click', onClick)
+      return () => {
+        box.removeEventListener('click', onClick)
+      }
+    }
+    return header.current === null || isVideoPlayer
+      ? undefined
+      : listen(header.current)
+  }, [isVideoPlayer])
   const cluster = cn(
     'flex items-center gap-2 transition-fade-translate duration-300 ease-out sm:gap-3',
     isVideoPlayer && armed && 'pointer-events-auto',
@@ -191,6 +211,7 @@ const TopBar = () => {
 
   return (
     <header
+      ref={header}
       data-topbar
       className={cn(
         'fixed top-0 right-0 left-0 z-50 pt-safe-top pr-(--safe-right) pl-(--safe-left)',
@@ -223,8 +244,7 @@ const TopBar = () => {
             </span>
           )}
           <Notifications />
-          <LyricsButton />
-          <SavedMenu />
+          <LibraryMenu />
           {/* The owner's portfolio link goes here, with its own icon, once that site is up (the GitHub button
               sat here until the project went closed source) */}
           {!isVideoPlayer && <ProfileButton />}

@@ -31,13 +31,9 @@ const dropdownMenuItemVariants = cva('', {
   },
 })
 
-// Radix's menu content takes `onOpenAutoFocus` like a popover's (it passes it to its focus scope) but leaves it out
-// of its types; a menu a hover opened uses it to leave focus where it was
 const DropdownMenuContentRender: React.ForwardRefRenderFunction<
   React.ComponentRef<typeof DropdownMenuPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Content> & {
-    onOpenAutoFocus?: (event: Event) => void
-  }
+  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Content>
 > = ({ className, sideOffset = 4, ...props }, ref) => (
   <DropdownMenuPrimitive.Portal>
     {/* Timed as a popover: 200ms in, settling 4px; 150ms fading out */}

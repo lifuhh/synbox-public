@@ -1,6 +1,9 @@
 import { useQueryClient } from '@tanstack/react-query'
 import {
   CircleQuestionMarkIcon,
+  EllipsisVerticalIcon,
+  LoaderCircleIcon,
+  LockIcon,
   ShieldIcon,
   LogOutIcon,
   MonitorDownIcon,
@@ -28,7 +31,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { useHoverMenu } from '@/hooks/use-hover-menu'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 import { lastAccount, signInWithGoogle, signOut, useMe } from '@/lib/auth'
 import type { Quota } from '@/lib/auth'
 import { forgetMySongs } from '@/lib/offline/sync'
@@ -83,17 +91,64 @@ export const quotaText = ({ limit, used }: Quota) => {
   return `${Math.max(limit - used, 0)} of ${limit} new songs left today`
 }
 
-// The account button, or Sign In for a guest. Until the session check answers it shows the control this
-// browser had last time (the account button with the picture it had, or Sign In), and fades over only when
-// the answer turns out different
+// Google is the only way in, so Sign In goes straight to it: no panel to wait for. It shows it is on its way at
+// once (the round trip to the auth server comes before Google's page)
+const SignInButton = () => {
+  const [pending, setPending] = useState(false)
+  // On its way to Google the page leaves; anything else lets the pill be pressed again
+  const signIn = async () => {
+    try {
+      const { error } = await signInWithGoogle()
+      if (error !== null) {
+        setPending(false)
+      }
+    } catch {
+      setPending(false)
+    }
+  }
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            size='pill'
+            gap='md'
+            aria-busy={pending || undefined}
+            onClick={() => {
+              if (!pending) {
+                setPending(true)
+                void signIn()
+              }
+            }}>
+            {/* As far from the pill's left edge as from its top and bottom */}
+            {pending ? (
+              <LoaderCircleIcon
+                aria-hidden
+                className='-ml-1 size-[18px] shrink-0 animate-spin sm:-ml-2'
+              />
+            ) : (
+              <GoogleMark className='-ml-1 sm:-ml-2' />
+            )}
+            Sign In
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side='bottom' align='end' sideOffset={10}>
+          Signing in accepts our Privacy Policy
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  )
+}
+
+// The account button, or for a guest the More button beside Sign In. Until the session check answers it shows
+// what this browser had last time (the account button with the picture it had, or Sign In), and fades over only
+// when the answer turns out different
 const ProfileTrigger = ({
   user,
   pending,
-  menu,
 }: {
   user: { image: string | null } | null
   pending: boolean
-  menu: ReturnType<typeof useHoverMenu>
 }) => {
   const remembered = useMemo(() => lastAccount(), [])
   const account = pending ? remembered : user
@@ -103,21 +158,18 @@ const ProfileTrigger = ({
   return (
     <span
       key={slot}
-      // On a phone the top bar is a grid of icon-sized cells; the Sign In pill takes two, centred in the row
+      // On a phone the top bar is a grid of icon-sized cells; More and the Sign In pill take three
       className={cn(
         'flex items-center',
         slot !== shownSlot && 'appear',
-        slot === 'guest' && 'max-sm:col-span-2'
+        slot === 'guest' && 'gap-1 max-sm:col-span-3 sm:gap-3'
       )}
       onAnimationEnd={() => {
         setShownSlot(slot)
       }}>
-      <DropdownMenuTrigger asChild>
-        {slot === 'account' ? (
-          <Button
-            variant='toolbar'
-            size='icon'
-            {...menu.triggerAfter(newTabHandlers('/you'))}>
+      {slot === 'account' ? (
+        <DropdownMenuTrigger asChild>
+          <Button variant='toolbar' size='icon' {...newTabHandlers('/you')}>
             <UserAvatar
               className='size-6'
               src={image === '' ? null : image}
@@ -125,14 +177,18 @@ const ProfileTrigger = ({
             />
             <span className='sr-only'>Account</span>
           </Button>
-        ) : (
-          <Button size='pill' gap='md' {...menu.trigger}>
-            {/* As far from the pill's left edge as from its top and bottom */}
-            <GoogleMark className='-ml-1 sm:-ml-2' />
-            Sign In
-          </Button>
-        )}
-      </DropdownMenuTrigger>
+        </DropdownMenuTrigger>
+      ) : (
+        <>
+          <DropdownMenuTrigger asChild>
+            <Button variant='toolbar' size='icon'>
+              <EllipsisVerticalIcon className='h-6 w-6 shrink-0' />
+              <span className='sr-only'>More</span>
+            </Button>
+          </DropdownMenuTrigger>
+          <SignInButton />
+        </>
+      )}
     </span>
   )
 }
@@ -140,8 +196,6 @@ const ProfileTrigger = ({
 const ProfileButtonDropdown = () => {
   const install = useInstallMethod()
   const [iosHelpOpen, setIosHelpOpen] = useState(false)
-  const [open, setOpen] = useState(false)
-  const menu = useHoverMenu(open, setOpen)
   const queryClient = useQueryClient()
   const { data: me, isPending } = useMe()
   const user = me?.user ?? null
@@ -154,10 +208,9 @@ const ProfileButtonDropdown = () => {
 
   return (
     <>
-      <DropdownMenu open={open} onOpenChange={setOpen} modal={!menu.byMouse}>
-        <ProfileTrigger user={user} pending={isPending} menu={menu} />
+      <DropdownMenu>
+        <ProfileTrigger user={user} pending={isPending} />
         <DropdownMenuContent
-          {...menu.content}
           align='end'
           sideOffset={10}
           className='w-64 overflow-auto'>
@@ -174,38 +227,6 @@ const ProfileButtonDropdown = () => {
               )}
             </div>
           ) : null}
-          {user ? null : (
-            <>
-              <div className='flex flex-col gap-2 px-2 pt-1.5 pb-2'>
-                <p className='text-sm text-pretty text-muted-foreground'>
-                  Sign in to generate more songs and find them on every device.
-                </p>
-                <DropdownMenuItem
-                  variant='primary'
-                  className='cursor-pointer'
-                  onClick={() => {
-                    void signInWithGoogle()
-                  }}>
-                  <GoogleMark className='mr-2' />
-                  <span>Continue With Google</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  asChild
-                  variant='note'
-                  className='cursor-pointer'>
-                  <Link to='/privacy'>
-                    <span>
-                      By signing in, you accept our{' '}
-                      <span className='underline underline-offset-2'>
-                        Privacy Policy
-                      </span>
-                    </span>
-                  </Link>
-                </DropdownMenuItem>
-              </div>
-              <DropdownMenuSeparator />
-            </>
-          )}
           <DropdownMenuGroup>
             {user?.role === 'admin' && (
               <DropdownMenuItem asChild className='cursor-pointer'>
@@ -219,6 +240,12 @@ const ProfileButtonDropdown = () => {
               <Link to='/about'>
                 <CircleQuestionMarkIcon className='mr-2 size-5 shrink-0' />
                 <span>About Synbox</span>
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild className='cursor-pointer'>
+              <Link to='/privacy'>
+                <LockIcon className='mr-2 size-5 shrink-0' />
+                <span>Privacy Policy</span>
               </Link>
             </DropdownMenuItem>
             {(install.kind === 'prompt' || install.kind === 'ios') && (

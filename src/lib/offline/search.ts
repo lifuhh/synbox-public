@@ -30,8 +30,8 @@ export type SearchMatch =
 
 const RANK = { artist: 1, lyrics: 2, title: 0 } as const
 
-export interface SearchIndexEntry {
-  song: OfflineSong
+export interface SearchIndexEntry<Song = OfflineSong> {
+  song: Song
   title: string[]
   artist: string[]
   lines: { shown: string; keys: string[] }[]
@@ -52,8 +52,8 @@ export const indexSong = (song: OfflineSong): SearchIndexEntry => ({
   title: [fold(song.title), fold(song.titleRomaji)],
 })
 
-const matchTerm = (
-  entry: SearchIndexEntry,
+const matchTerm = <Song>(
+  entry: SearchIndexEntry<Song>,
   term: string
 ): SearchMatch | null => {
   if (entry.title.some((key) => key.includes(term))) {
@@ -70,20 +70,20 @@ const matchTerm = (
 
 // Every word of the query must match somewhere. Title matches come first, then artist, then lyrics; within
 // each, the entries keep the order they were given in
-export interface SearchResult {
-  song: OfflineSong
+export interface SearchResult<Song = OfflineSong> {
+  song: Song
   match: SearchMatch | null
 }
 
-export const searchSongs = (
-  entries: SearchIndexEntry[],
+export const searchSongs = <Song>(
+  entries: SearchIndexEntry<Song>[],
   query: string
-): SearchResult[] => {
+): SearchResult<Song>[] => {
   const terms = query.split(/\s+/u).map(fold).filter(Boolean)
   if (terms.length === 0) {
     return entries.map((entry) => ({ match: null, song: entry.song }))
   }
-  const found: { song: OfflineSong; match: SearchMatch; rank: number }[] = []
+  const found: { song: Song; match: SearchMatch; rank: number }[] = []
   for (const entry of entries) {
     let weakest: SearchMatch | null = null
     for (const term of terms) {

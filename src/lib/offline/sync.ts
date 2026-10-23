@@ -18,10 +18,9 @@ import type { KaraokeDocLine } from '@/types'
 import type { OfflineSong } from './song'
 import { OFFLINE_SONG_VERSION, offlineLines, romanizeTitle } from './song'
 
-// Which lists a saved song is on. Recent is the last RECENT_LIMIT songs opened, so songs generated before
-// sign-in existed are there too
-export type OfflineSource = 'mine' | 'bookmark' | 'recent'
-export const RECENT_LIMIT = 30
+// Saved for reading offline: the account's songs, bookmarks, and the last this many songs played, so songs
+// generated before sign-in existed are there too
+const RECENT_LIMIT = 30
 
 interface MySong {
   videoId: string

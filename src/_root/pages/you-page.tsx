@@ -1,10 +1,8 @@
 import { useQueryClient } from '@tanstack/react-query'
-import { useAtomValue } from 'jotai'
 import {
   ChevronRightIcon,
   CircleQuestionMarkIcon,
   UserIcon,
-  ListMusicIcon,
   LogOutIcon,
   ShieldIcon,
 } from 'lucide-react'
@@ -17,81 +15,40 @@ import { GoogleMark } from '@/components/shared/google-mark'
 import { UserAvatar } from '@/components/shared/user-avatar'
 import { quotaText } from '@/components/topbar/profile-button'
 import { Button } from '@/components/ui/button'
-import { SongRow } from '@/components/watch/song-row'
 import { signInWithGoogle, signOut, useMe } from '@/lib/auth'
-import { favoritesAtom, historyAtom } from '@/lib/library/store'
-import { usePlaylists } from '@/lib/listening/store'
 import { forgetMySongs } from '@/lib/offline/sync'
 import { QUERY_KEYS } from '@/lib/react-query/query-keys'
-
-const HISTORY_SHOWN = 10
-
-const Section = ({
-  title,
-  children,
-}: {
-  title: string
-  children: ReactNode
-}) => (
-  <section className='flex flex-col gap-1'>
-    <h2 className='px-2 text-lg font-semibold text-foreground'>{title}</h2>
-    {children}
-  </section>
-)
 
 // A row that opens a page: its icon, its label, a chevron
 const LinkRow = ({
   to,
   icon,
   label,
-  detail,
-  external = false,
 }: {
   to: string
   icon: ReactNode
   label: string
-  detail?: string
-  external?: boolean
-}) => {
-  const className =
-    'flex min-h-12 items-center gap-3 rounded-xl px-3 transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden'
-  const body = (
-    <>
-      <span className='grid size-6 shrink-0 place-items-center text-muted-foreground'>
-        {icon}
-      </span>
-      <span className='min-w-0 flex-1 truncate text-foreground'>{label}</span>
-      {detail !== undefined && (
-        <span className='text-sm text-muted-foreground tabular-nums'>
-          {detail}
-        </span>
-      )}
-      <ChevronRightIcon
-        className='size-5 shrink-0 text-muted-foreground'
-        aria-hidden
-      />
-    </>
-  )
-  return external ? (
-    <a href={to} target='_blank' rel='noreferrer' className={className}>
-      {body}
-    </a>
-  ) : (
-    <Link to={to} className={className}>
-      {body}
-    </Link>
-  )
-}
+}) => (
+  <Link
+    to={to}
+    className='flex min-h-12 items-center gap-3 rounded-xl px-3 transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden'>
+    <span className='grid size-6 shrink-0 place-items-center text-muted-foreground'>
+      {icon}
+    </span>
+    <span className='min-w-0 flex-1 truncate text-foreground'>{label}</span>
+    <ChevronRightIcon
+      className='size-5 shrink-0 text-muted-foreground'
+      aria-hidden
+    />
+  </Link>
+)
 
-// The installed app's You tab: the account, playlists, bookmarks and history, and the app's own pages
+// The installed app's You tab: the account and the app's own pages. The songs are in the Library tab
 const YouPage = () => {
   const [box, setBox] = useState<HTMLElement | null>(null)
   const queryClient = useQueryClient()
   const { data: me } = useMe()
   const user = me?.user ?? null
-  const playlists = usePlaylists()
-  const favorites = useAtomValue(favoritesAtom)
-  const history = useAtomValue(historyAtom)
   let accountLine =
     'Sign in to generate more songs and find them on every device.'
   if (user !== null) {
@@ -159,33 +116,6 @@ const YouPage = () => {
             </Button>
           )}
         </div>
-
-        <LinkRow
-          to='/playlists'
-          icon={<ListMusicIcon className='size-5' />}
-          label='Playlists'
-          detail={String(playlists.length)}
-        />
-
-        {favorites.length > 0 && (
-          <Section title='Bookmarks'>
-            <ul className='flex flex-col'>
-              {favorites.toReversed().map((song) => (
-                <SongRow key={song.videoId} song={song} />
-              ))}
-            </ul>
-          </Section>
-        )}
-
-        {history.length > 0 && (
-          <Section title='History'>
-            <ul className='flex flex-col'>
-              {history.slice(0, HISTORY_SHOWN).map((song) => (
-                <SongRow key={song.videoId} song={song} />
-              ))}
-            </ul>
-          </Section>
-        )}
 
         <div className='flex flex-col'>
           {user?.role === 'admin' && (
