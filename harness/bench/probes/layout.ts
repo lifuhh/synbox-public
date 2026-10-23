@@ -232,129 +232,163 @@ export const routeProblems = (): string[] => {
     )
 }
 
+/** The counts an audit gates on (budget 0 unless harness/budgets.json says otherwise); `targets` is only reported */
+export const LAYOUT_FINDINGS = [
+  'overflowXPx',
+  'occludedTargets',
+  'smallTargets',
+  'offscreenTargets',
+  'unsafeTargets',
+  'pageErrors',
+  'consoleErrors',
+] as const
+
+const routeMatches = (route: string, pathname: string): boolean =>
+  new RegExp(`^${route.replaceAll(/:[^/]+/gu, '[^/]+')}/?$`, 'u').test(pathname)
+
+/** The audit for any URL of the app: its route's own readiness when it has one (`/` is home), else settled */
+export const pageAt = (url: URL): LayoutPage => {
+  const own = LAYOUT_PAGES.find((p) => routeMatches(p.route, url.pathname))
+  return {
+    name: own?.name ?? 'page',
+    path: `${url.pathname}${url.search}`,
+    ready: own?.ready ?? settled,
+    route: own?.route ?? url.pathname,
+  }
+}
+
+/** One page at one URL on one screen, its screenshot saved to `shot` */
+export const auditPage = async (
+  p: LayoutPage,
+  surface: Surface,
+  url: string,
+  shot: string
+): Promise<{ samples: Sample[]; errors: string[] }> => {
+  const { origin } = new URL(url)
+  const { page, close, safe } = await open(surface)
+  // The first app error ends the wait for the page's readiness: a crashed page never fires its marks, and its
+  // error is the finding, so it is audited (and fails on its error count) at once instead of timing out
+  let errored: (() => void) | null = null
+  // oxlint-disable-next-line promise/avoid-new -- settles on the first error event
+  const firstError = new Promise<void>((resolve) => {
+    errored = resolve
+  })
+  const thrown: string[] = []
+  page.on('pageerror', (error) => {
+    // WebKit reports a ResizeObserver callback deferred to the next frame as an error; it is not the app throwing
+    if (!error.message.startsWith('ResizeObserver loop')) {
+      thrown.push(error.message.split('\n')[0])
+      errored?.()
+    }
+  })
+  const logged: string[] = []
+  page.on('console', (message) => {
+    const [text] = message.text().split('\n')
+    const from = message.location().url
+    // The app's own scripts only: the YouTube player's scripts log their own complaints (seen: "Unable to post
+    // message to https://www.youtube-nocookie.com", once in three runs)
+    if (
+      message.type() === 'error' &&
+      from.startsWith(origin) &&
+      !BENIGN_CONSOLE.some((b) => b.test(text))
+    ) {
+      logged.push(`${text} (${from})`)
+      errored?.()
+    }
+  })
+  try {
+    await page.goto(url, { waitUntil: 'commit' })
+    // When an error ends the wait first, the readiness that times out later is moot
+    const ready = (async () => {
+      try {
+        await p.ready(page)
+        return null
+      } catch (error) {
+        return error
+      }
+    })()
+    const outcome = await Promise.race([ready, firstError])
+    if (outcome instanceof Error) {
+      throw outcome
+    }
+    const unsettled = await settle(page)
+    if (
+      surface.kind === 'phone' &&
+      surface.installed === true &&
+      !(await page.evaluate(() =>
+        Object.hasOwn(document.documentElement.dataset, 'installed')
+      ))
+    ) {
+      throw new Error(
+        'installed-app emulation failed: the page did not set data-installed'
+      )
+    }
+    const audit: Audit = await page.evaluate(
+      (s) => window.__bench.audit(s),
+      safe
+    )
+    await page.screenshot({ path: shot })
+    const phase = await page.evaluate(
+      () =>
+        document.querySelector<HTMLElement>('[data-player-stage]')?.dataset
+          .phase
+    )
+    const notes = [
+      ...audit.small.map(
+        (t) =>
+          `small ${t.rect.w}×${t.rect.h} at ${t.rect.x},${t.rect.y}: ${t.label}`
+      ),
+      ...audit.occluded.map((o) => `covered: ${o.label} under ${o.by}`),
+      ...audit.offscreen.map((t) => `off-screen at x=${t.rect.x}: ${t.label}`),
+      ...audit.unsafe.map(
+        (t) =>
+          `in a safe-area inset at ${t.rect.x},${t.rect.y} ${t.rect.w}×${t.rect.h}: ${t.label}`
+      ),
+      ...(audit.overflowX
+        ? [`page scrolls sideways by ${audit.overflowX}px`]
+        : []),
+      ...thrown.map((m) => `page error: ${m}`),
+      ...logged.map((m) => `console error: ${m}`),
+      ...(unsettled === null ? [] : [`not settled: ${unsettled}`]),
+      ...(phase !== undefined && phase !== ''
+        ? [`player phase at audit: ${phase}`]
+        : []),
+    ]
+    return {
+      errors: [],
+      samples: [
+        {
+          notes,
+          values: {
+            consoleErrors: logged.length,
+            occludedTargets: audit.occluded.length,
+            offscreenTargets: audit.offscreen.length,
+            overflowXPx: audit.overflowX,
+            pageErrors: thrown.length,
+            smallTargets: audit.small.length,
+            targets: audit.targets,
+            unsafeTargets: audit.unsafe.length,
+          },
+        },
+      ],
+    }
+  } catch (error) {
+    await page.screenshot({ path: shot }).catch(() => {
+      // The run already failed; a missing screenshot of it changes nothing
+    })
+    const message = error instanceof Error ? error.message : String(error)
+    return { errors: [message.split('\n')[0]], samples: [] }
+  } finally {
+    await close()
+  }
+}
+
 export const layoutAudit =
   (p: LayoutPage, surface: Surface) =>
-  async (
-    ctx: BenchContext
-  ): Promise<{ samples: Sample[]; errors: string[] }> => {
-    const { page, close, safe } = await open(surface)
-    // The first app error ends the wait for the page's readiness: a crashed page never fires its marks, and its
-    // error is the finding, so it is audited (and fails on its error count) at once instead of timing out
-    let errored: (() => void) | null = null
-    // oxlint-disable-next-line promise/avoid-new -- settles on the first error event
-    const firstError = new Promise<void>((resolve) => {
-      errored = resolve
-    })
-    const thrown: string[] = []
-    page.on('pageerror', (error) => {
-      // WebKit reports a ResizeObserver callback deferred to the next frame as an error; it is not the app throwing
-      if (!error.message.startsWith('ResizeObserver loop')) {
-        thrown.push(error.message.split('\n')[0])
-        errored?.()
-      }
-    })
-    const logged: string[] = []
-    page.on('console', (message) => {
-      const [text] = message.text().split('\n')
-      const from = message.location().url
-      // The app's own scripts only: the YouTube player's scripts log their own complaints (seen: "Unable to post
-      // message to https://www.youtube-nocookie.com", once in three runs)
-      if (
-        message.type() === 'error' &&
-        from.startsWith(ctx.origin) &&
-        !BENIGN_CONSOLE.some((b) => b.test(text))
-      ) {
-        logged.push(`${text} (${from})`)
-        errored?.()
-      }
-    })
-    try {
-      await page.goto(`${ctx.origin}${p.path}`, { waitUntil: 'commit' })
-      // When an error ends the wait first, the readiness that times out later is moot
-      const ready = (async () => {
-        try {
-          await p.ready(page)
-          return null
-        } catch (error) {
-          return error
-        }
-      })()
-      const outcome = await Promise.race([ready, firstError])
-      if (outcome instanceof Error) {
-        throw outcome
-      }
-      const unsettled = await settle(page)
-      if (
-        surface.kind === 'phone' &&
-        surface.installed === true &&
-        !(await page.evaluate(() =>
-          Object.hasOwn(document.documentElement.dataset, 'installed')
-        ))
-      ) {
-        throw new Error(
-          'installed-app emulation failed: the page did not set data-installed'
-        )
-      }
-      const audit: Audit = await page.evaluate(
-        (s) => window.__bench.audit(s),
-        safe
-      )
-      await page.screenshot({ path: path.join(ctx.artifactDir, 'screen.png') })
-      const phase = await page.evaluate(
-        () =>
-          document.querySelector<HTMLElement>('[data-player-stage]')?.dataset
-            .phase
-      )
-      const notes = [
-        ...audit.small.map(
-          (t) =>
-            `small ${t.rect.w}×${t.rect.h} at ${t.rect.x},${t.rect.y}: ${t.label}`
-        ),
-        ...audit.occluded.map((o) => `covered: ${o.label} under ${o.by}`),
-        ...audit.offscreen.map(
-          (t) => `off-screen at x=${t.rect.x}: ${t.label}`
-        ),
-        ...audit.unsafe.map(
-          (t) =>
-            `in a safe-area inset at ${t.rect.x},${t.rect.y} ${t.rect.w}×${t.rect.h}: ${t.label}`
-        ),
-        ...(audit.overflowX
-          ? [`page scrolls sideways by ${audit.overflowX}px`]
-          : []),
-        ...thrown.map((m) => `page error: ${m}`),
-        ...logged.map((m) => `console error: ${m}`),
-        ...(unsettled === null ? [] : [`not settled: ${unsettled}`]),
-        ...(phase !== undefined && phase !== ''
-          ? [`player phase at audit: ${phase}`]
-          : []),
-      ]
-      return {
-        errors: [],
-        samples: [
-          {
-            notes,
-            values: {
-              consoleErrors: logged.length,
-              occludedTargets: audit.occluded.length,
-              offscreenTargets: audit.offscreen.length,
-              overflowXPx: audit.overflowX,
-              pageErrors: thrown.length,
-              smallTargets: audit.small.length,
-              targets: audit.targets,
-              unsafeTargets: audit.unsafe.length,
-            },
-          },
-        ],
-      }
-    } catch (error) {
-      await page
-        .screenshot({ path: path.join(ctx.artifactDir, 'screen.png') })
-        .catch(() => {
-          // The run already failed; a missing screenshot of it changes nothing
-        })
-      const message = error instanceof Error ? error.message : String(error)
-      return { errors: [message.split('\n')[0]], samples: [] }
-    } finally {
-      await close()
-    }
-  }
+  async (ctx: BenchContext): Promise<{ samples: Sample[]; errors: string[] }> =>
+    await auditPage(
+      p,
+      surface,
+      `${ctx.origin}${p.path}`,
+      path.join(ctx.artifactDir, 'screen.png')
+    )

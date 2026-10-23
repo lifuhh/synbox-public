@@ -2,13 +2,20 @@
 // benchmarks run in `trend`, where each metric says whether it gates and how big a change matters. Specs are the
 // evaluator's: changing them in the same branch as app code fails `check` (gate.ts).
 
+import {
+  ALL_VIEWS,
+  SAFARI_LANDSCAPE,
+  SAFARI_PORTRAIT,
+  WEB,
+} from './engines/browser'
+import type { View } from './engines/browser'
 import { cdpPerf } from './engines/cdp'
 import { homeVisit } from './probes/home'
-import { layoutAudit, layoutPages } from './probes/layout'
+import { LAYOUT_FINDINGS, layoutAudit, layoutPages } from './probes/layout'
 import type { LayoutPage } from './probes/layout'
 import { playerSession } from './probes/player'
 import { buildSize } from './probes/size'
-import type { Benchmark, MetricSpec, Surface } from './types'
+import type { Benchmark, MetricSpec } from './types'
 
 const ms = (key: string, gate = true, floor = 30, pct = 0.1): MetricSpec => ({
   better: 'lower',
@@ -62,18 +69,7 @@ const count = (key: string, gate = true): MetricSpec => ({
   unit: 'count',
 })
 
-const DESKTOP: Surface = { engine: 'chromium', kind: 'desktop' }
-const PORTRAIT: Surface = {
-  engine: 'webkit',
-  kind: 'phone',
-  orientation: 'portrait',
-}
-const LANDSCAPE: Surface = {
-  engine: 'webkit',
-  kind: 'phone',
-  orientation: 'landscape',
-}
-const INSTALLED: Surface = { ...PORTRAIT, installed: true }
+const DESKTOP = WEB.surface
 const BUSY_PAGES = new Set(['home', 'gallery', 'player', 'search'])
 
 /**
@@ -130,24 +126,17 @@ const player = (videoId: string): Benchmark => ({
 
 const layout = (
   page: LayoutPage,
-  surface: Surface,
-  name: string
+  { label, name, surface }: View
 ): Benchmark => ({
   id: `layout-${page.name}-${name}`,
   metrics: [
-    count('overflowXPx'),
-    count('occludedTargets'),
-    count('smallTargets'),
-    count('offscreenTargets'),
-    count('unsafeTargets'),
-    count('pageErrors'),
-    count('consoleErrors'),
+    ...LAYOUT_FINDINGS.map((key) => count(key)),
     count('targets', false),
   ],
   run: layoutAudit(page, surface),
   runs: 1,
   surface,
-  title: `Layout of ${page.name} (${page.path}) on ${name}: target sizes, covered targets, overflow, safe areas, page and console errors`,
+  title: `Layout of ${page.name} (${page.path}) in ${name} (${label}): target sizes, covered targets, overflow, safe areas, page and console errors`,
 })
 
 const cdpFlow = (
@@ -241,15 +230,12 @@ export const SUITE: Benchmark[] = [
       'Home page load, mobile lab (cdp-perf: 4× CPU, slow 4G, 412px phone)',
   },
   player('6rG_irmOQsM'),
-  // Every route in src/app.tsx, so a new page is audited without anyone adding it. Phones on their side matter
-  // most where the layout is busiest
+  // Every route in src/app.tsx in all views, so a new page is audited without anyone adding it; iPhone Safari
+  // too (its own top bar, no tab bar), on its side where the layout is busiest
   ...layoutPages().flatMap((page) => [
-    layout(page, DESKTOP, 'desktop'),
-    layout(page, PORTRAIT, 'phone'),
-    layout(page, INSTALLED, 'installed'),
-    ...(BUSY_PAGES.has(page.name)
-      ? [layout(page, LANDSCAPE, 'phone-landscape')]
-      : []),
+    ...ALL_VIEWS.map((v) => layout(page, v)),
+    layout(page, SAFARI_PORTRAIT),
+    ...(BUSY_PAGES.has(page.name) ? [layout(page, SAFARI_LANDSCAPE)] : []),
   ]),
   player('x1FV6IrjZCY'),
   player('ZRtdQ81jPUQ'),
