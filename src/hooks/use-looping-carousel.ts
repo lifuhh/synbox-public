@@ -179,6 +179,17 @@ const driveCarousel = (
     glideTo(nearest() + direction, STEP_MS)
   }
 
+  // On by one, unless someone is moving the row. The browser's own smooth scroll, not a glide: it runs off the
+  // main thread at the screen's full rate (120Hz on ProMotion), and keeps moving while a render blocks the page.
+  // It ends like a trackpad scroll, settled by onScroll
+  const advance = () => {
+    if (drag || glide) {
+      return
+    }
+    recentre()
+    track.scrollTo({ behavior: 'smooth', left: xOf(nearest() + 1) })
+  }
+
   const onScroll = () => {
     centred = Math.round(position())
     onActive(item(centred))
@@ -333,7 +344,7 @@ const driveCarousel = (
     track.removeEventListener('keydown', onKeyDown)
     track.removeEventListener('dragstart', onDragStart)
   }
-  return { step, stop }
+  return { advance, step, stop }
 }
 
 export const useLoopingCarousel = (
@@ -346,13 +357,16 @@ export const useLoopingCarousel = (
   // The slide the row last came to rest on; null until it first moves, so nothing is announced on load
   const [settled, setSettled] = useState<number | null>(null)
   const stepRef = useRef<((direction: 1 | -1) => void) | null>(null)
+  const advanceRef = useRef<(() => void) | null>(null)
 
   useLayoutEffect(() => {
     const run = (row: HTMLElement) => {
       const carousel = driveCarousel(row, count, copies, setActive, setSettled)
       stepRef.current = carousel.step
+      advanceRef.current = carousel.advance
       return () => {
         stepRef.current = null
+        advanceRef.current = null
         carousel.stop()
       }
     }
@@ -363,5 +377,9 @@ export const useLoopingCarousel = (
     stepRef.current?.(direction)
   }, [])
 
-  return { active, settled, step }
+  const advance = useCallback(() => {
+    advanceRef.current?.()
+  }, [])
+
+  return { active, advance, settled, step }
 }
