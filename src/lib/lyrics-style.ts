@@ -53,19 +53,23 @@ interface SizeRange {
   max: number
 }
 
-// How far each screen lets the size go. A desktop takes the whole range. A phone on its side only a narrow
-// one: its stage is short, so a big size covers the picture and a small one can't be read. An upright phone
-// none: one size fits its narrow column, and the Size slider is not offered there
+// How far each screen lets the size go. A desktop takes the whole range. A phone on its side a narrower one: its
+// stage is short, so the largest sizes cover the picture and the smallest can't be read. An upright phone's
+// full-screen player a little either way of its base, which already fills its narrow column (the lyrics under the
+// video on the watch page keep one fixed size, and Lyrics Style offers no Size there)
 const SCREEN_SIZE_RANGE: Record<
   LyricsSurface,
   { oneLine: SizeRange; twoLines: SizeRange } | null
 > = {
   desktop: null,
   landscape: {
-    oneLine: { max: 1.25, min: 0.8 },
-    twoLines: { max: 1, min: 0.75 },
+    oneLine: { max: 1.4, min: 0.6 },
+    twoLines: { max: 1.05, min: 0.6 },
   },
-  portrait: { oneLine: { max: 1, min: 1 }, twoLines: { max: 1, min: 1 } },
+  portrait: {
+    oneLine: { max: 1.2, min: 0.85 },
+    twoLines: { max: 1.2, min: 0.85 },
+  },
 }
 
 // The slider's ends on a screen, for one line or two

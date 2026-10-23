@@ -115,6 +115,7 @@ const LyricLine = ({
   size = LINE_SIZE[kind],
   className,
   row,
+  shown = true,
 }: {
   html: string
   kind: keyof typeof LINE_SIZE
@@ -122,13 +123,15 @@ const LyricLine = ({
   className?: string
   // Which of a line's rows this is, for the one-line spacing (lyric-line-rows)
   row?: keyof typeof LINE_SIZE
+  // False for a copy laid out only to be measured: the bench's first-lyric hook is for drawn lines
+  shown?: boolean
 }) => {
   const segments = useMemo(() => parseRubyHtml(html), [html])
   const latin = kind !== 'japanese' || isLatinOnly(html)
   return (
     <p
       key={html}
-      data-bench='lyrics-line'
+      data-bench={shown ? 'lyrics-line' : undefined}
       data-row={row}
       ref={balanceWrap}
       className={cn(
@@ -179,12 +182,15 @@ const LineRows = ({
   shown,
   sizes,
   track,
+  measured = false,
 }: {
   line: ReturnType<typeof lineAt> & { text: string }
   lineKey: number
   shown: ShownRows
   sizes: LineSizes
-  track: (handle: KaraokeLineHandle | null) => () => void
+  // None for a measured copy, whose karaoke lines are never filled
+  track?: (handle: KaraokeLineHandle | null) => () => void
+  measured?: boolean
 }) => {
   // One line tags its rows for its own spacing (lyric-line-rows); two lines space theirs as they are
   const rowOf = (row: keyof typeof LINE_SIZE) =>
@@ -204,6 +210,7 @@ const LineRows = ({
             kind='japanese'
             size={sizes.japanese}
             row={rowOf('japanese')}
+            shown={!measured}
           />
         ))}
       {shown.romaji &&
@@ -221,6 +228,7 @@ const LineRows = ({
               kind='romaji'
               size={sizes.romaji}
               row={rowOf('romaji')}
+              shown={!measured}
             />
           )
         ))}
@@ -230,6 +238,7 @@ const LineRows = ({
           kind='translation'
           size={sizes.translation}
           row={rowOf('translation')}
+          shown={!measured}
         />
       )}
     </>
@@ -242,19 +251,31 @@ const ROW_FIT_FLOOR = 0.6
 // oxlint-disable-next-line unicorn/prefer-number-coercion -- the value ends in px, which Number() rejects
 const pixels = (value: string) => Number.parseFloat(value) || 0
 
-// Each of the two rows gets half the room under the translation. A line that wraps taller than that shrinks
-// until it fits, so the rows never climb over the translation; each new line starts again at full size, so
-// a row never changes size while its line is sung. The room is the layer's, less what the controls cover
-const fitRow = (content: HTMLElement) => {
-  const row = content.parentElement
-  const grid = row?.parentElement
-  const block = row?.closest<HTMLElement>('.player-lyrics-overlay')
+// The song's tallest line, as laid out now
+const tallestOf = (lines: HTMLElement) => {
+  let tallest = 0
+  for (const line of lines.children) {
+    if (line instanceof HTMLElement) {
+      tallest = Math.max(tallest, line.offsetHeight)
+    }
+  }
+  return tallest
+}
+
+// Halvings of the gap between the floor and full size: within 1% of the largest size that fits
+const FIT_STEPS = 6
+
+// One size for both rows, for the whole song: each row gets half the room under the translation, and when the
+// song's tallest line (`lines`, every line laid out unseen at a row's width) wraps taller than that,
+// both rows shrink by as much. So the two lines on screen are always the same size, the rows never climb over the
+// translation, and no row changes size while its line is sung. The room is the layer's, less what the controls
+// cover
+const fitSong = (grid: HTMLElement, lines: HTMLElement) => {
+  const block = grid.closest<HTMLElement>('.player-lyrics-overlay')
   const layer = block?.parentElement
   const lift = block?.nextElementSibling
-  let fit = 1
-  row?.style.setProperty('--row-fit', '1')
-  const shrink = () => {
-    if (!(row && grid && block && layer && lift instanceof HTMLElement)) {
+  const fit = () => {
+    if (!(block && layer && lift instanceof HTMLElement)) {
       return
     }
     const pad = getComputedStyle(block)
@@ -265,15 +286,31 @@ const fitRow = (content: HTMLElement) => {
         pixels(pad.paddingBottom) -
         pixels(getComputedStyle(grid).rowGap)) /
       2
-    const height = content.offsetHeight
-    if (height > room + 1 && fit > ROW_FIT_FLOOR) {
-      fit = Math.max(ROW_FIT_FLOOR, fit * (room / height) * 0.98)
-      row.style.setProperty('--row-fit', String(fit))
+    // The largest size at which the tallest line fits. Smaller type also wraps less, so the height doesn't
+    // scale with the size: try sizes on the unseen copy, halving the gap each time
+    const fits = (scale: number) => {
+      lines.style.setProperty('--row-fit', String(scale))
+      return tallestOf(lines) <= room + 1
     }
+    let scale = 1
+    if (!fits(1)) {
+      let [low, high] = [ROW_FIT_FLOOR, 1]
+      for (let step = 0; step < FIT_STEPS; step += 1) {
+        const mid = (low + high) / 2
+        if (fits(mid)) {
+          low = mid
+        } else {
+          high = mid
+        }
+      }
+      scale = low
+    }
+    lines.style.setProperty('--row-fit', '1')
+    grid.style.setProperty('--row-fit', String(scale))
   }
-  // Wrapping settles after the type changes (balanceWrap), so the height is checked each time it moves
-  const observer = new ResizeObserver(shrink)
-  observer.observe(content)
+  // Wrapping settles after the type changes (balanceWrap), and the room moves with the stage
+  const observer = new ResizeObserver(fit)
+  observer.observe(lines)
   if (layer) {
     observer.observe(layer)
   }
@@ -282,23 +319,11 @@ const fitRow = (content: HTMLElement) => {
   }
 }
 
-// Keyed by its line, so each new line is fitted afresh
-const RowFit = ({ children }: { children: ReactNode }) => {
-  const contentRef = useRef<HTMLDivElement>(null)
-  useLayoutEffect(
-    () => (contentRef.current ? fitRow(contentRef.current) : undefined),
-    []
-  )
-  return <div ref={contentRef}>{children}</div>
-}
-
 const TwoLineRow = ({
-  index,
   sung,
   start,
   children,
 }: {
-  index: number
   sung: boolean
   start: boolean
   children: ReactNode
@@ -310,7 +335,7 @@ const TwoLineRow = ({
       !sung && 'opacity-75',
       start ? 'lyric-stagger-start' : 'lyric-stagger-end'
     )}>
-    <RowFit key={index}>{children}</RowFit>
+    {children}
   </div>
 )
 
@@ -320,28 +345,48 @@ const TwoLineRow = ({
 const TwoRows = ({
   view,
   rowsOf,
+  songLines,
 }: {
   view: TwoLineView
   rowsOf: (index: number) => ReactNode
-}) => (
-  <div
-    className={cn(
-      'grid auto-rows-fr lyric-rows-gap lyric-stagger-rows',
-      STAGGER_SIZE.japanese
-    )}>
-    {view.rows.map((index, row) => (
-      <TwoLineRow
-        // The rows are fixed places; only the lines in them change
-        // oxlint-disable-next-line no-array-index-key
-        key={row}
-        index={index}
-        sung={index === view.active}
-        start={row === 0}>
-        {index >= 0 && rowsOf(index)}
-      </TwoLineRow>
-    ))}
-  </div>
-)
+  // Every line of the song, each at a row's width, for fitSong
+  songLines: ReactNode
+}) => {
+  const gridRef = useRef<HTMLDivElement>(null)
+  const linesRef = useRef<HTMLDivElement>(null)
+  useLayoutEffect(
+    () =>
+      gridRef.current && linesRef.current
+        ? fitSong(gridRef.current, linesRef.current)
+        : undefined,
+    []
+  )
+  return (
+    <div
+      ref={gridRef}
+      className={cn(
+        'relative grid auto-rows-fr lyric-rows-gap lyric-stagger-rows',
+        STAGGER_SIZE.japanese
+      )}>
+      {view.rows.map((index, row) => (
+        <TwoLineRow
+          // The rows are fixed places; only the lines in them change
+          // oxlint-disable-next-line no-array-index-key
+          key={row}
+          sung={index === view.active}
+          start={row === 0}>
+          {index >= 0 && rowsOf(index)}
+        </TwoLineRow>
+      ))}
+      {/* Laid out at the rows' width, never seen and taking no room; fitSong tries its sizes on it */}
+      <div
+        aria-hidden
+        className='pointer-events-none invisible absolute inset-x-0 top-0 h-0 overflow-hidden lyric-stagger-rows [--row-fit:1]'>
+        <div ref={linesRef}>{songLines}</div>
+      </div>
+    </div>
+  )
+}
 
 // Two Lines' one translation, for the line being sung, centred in its own room at the top of the video, where
 // the viewer can drag it (its place saved apart from the rows'). It changes with the line, fading in where motion
@@ -565,12 +610,43 @@ export const StageLyrics = ({
       />
     )
   }
+  // Two lines size both rows to the song's tallest line: every line, laid out once per song and look
+  const lineCount = karaokeLines?.length ?? lyrics?.lines.length ?? 0
+  const songLines = useMemo(
+    () =>
+      Array.from({ length: twoLines ? lineCount : 0 }, (_, index) => {
+        const line = lineAt(lyrics, karaokeLines, index, english, undefined)
+        return (
+          // Lines are positional and never reorder
+          // oxlint-disable-next-line no-array-index-key
+          <div key={index} className='lyric-stagger-start'>
+            {line.text !== undefined && (
+              <LineRows
+                line={{ ...line, text: line.text }}
+                lineKey={index}
+                shown={{
+                  lyrics: showLyrics,
+                  romaji: showRomaji,
+                  translation: false,
+                }}
+                sizes={STAGGER_SIZE}
+                measured
+              />
+            )}
+          </div>
+        )
+      }),
+    [twoLines, lineCount, lyrics, karaokeLines, english, showLyrics, showRomaji]
+  )
   const layerVars: CssVars = {
     '--lyric-glow': colors.glow,
     '--lyric-scale': scale,
   }
   return (
-    <div className='absolute inset-0 lyric-stagger-layer' style={layerVars}>
+    <div
+      data-chrome={layout.controlsVisible || undefined}
+      className='absolute inset-0 lyric-stagger-layer'
+      style={layerVars}>
       {twoLines && showTranslation && (
         <StaggerTranslation
           line={lineAt(lyrics, karaokeLines, view.active, english, placeholder)}
@@ -594,7 +670,7 @@ export const StageLyrics = ({
           colors={colors}
           wide={twoLines}>
           {twoLines && view.active >= 0 ? (
-            <TwoRows view={view} rowsOf={rowsOf} />
+            <TwoRows view={view} rowsOf={rowsOf} songLines={songLines} />
           ) : (
             rowsOf(view.active)
           )}
