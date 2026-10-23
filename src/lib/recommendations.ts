@@ -44,7 +44,6 @@ export const fetchRecommendations = async ({ fresh = false } = {}) => {
     .object({ songs: z.array(recommendationSchema) })
     .safeParse(await response.json())
   if (!result.success) {
-    console.error('/api/recommendations', result.error.issues)
     throw new Error('Page out of date. Reload')
   }
   return result.data.songs
