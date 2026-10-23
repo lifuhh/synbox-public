@@ -1048,7 +1048,8 @@
   }
 }
 
-/* A list that scrolls inside a box fades out over its last 2rem, so the cut-off row reads as more to scroll to */
+/* A list that scrolls inside a box fades out over its last 2rem, so the cut-off row reads as more to scroll to.
+   Give the list 2rem (pb-8) under its last row so the end row clears the fade */
 @utility mask-fade-end {
   mask-image: linear-gradient(to bottom, black calc(100% - 2rem), transparent);
 }
