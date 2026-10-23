@@ -169,7 +169,7 @@ const StageLabPage = () => {
 
         <section className='flex flex-col gap-1'>
           <h2 className='font-semibold text-white'>Checks</h2>
-          <ol className='list-decimal space-y-1 pl-5 text-lab-muted'>
+          <ol className='flex list-decimal flex-col gap-1 pl-5 text-lab-muted'>
             {CHECKS.map((check) => (
               <li key={check}>{check}</li>
             ))}

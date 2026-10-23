@@ -5,11 +5,13 @@ export const markStuck = (row: HTMLElement, stuck: boolean) => {
   if (stuck === Object.hasOwn(row.dataset, 'stuck')) {
     return
   }
+  // Written on <html> only when the height changes: every element inherits it, so each write restyles the page
   if (stuck) {
-    document.documentElement.style.setProperty(
-      '--stuck-row-h',
-      `${row.offsetHeight}px`
-    )
+    const height = `${row.offsetHeight}px`
+    const root = document.documentElement.style
+    if (root.getPropertyValue('--stuck-row-h') !== height) {
+      root.setProperty('--stuck-row-h', height)
+    }
   }
   row.toggleAttribute('data-stuck', stuck)
 }
