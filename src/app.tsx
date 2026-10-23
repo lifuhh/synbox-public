@@ -5,7 +5,7 @@ import AppNotices from '@/components/shared/app-notices'
 import { Toaster } from '@/components/ui/toaster'
 import useKeyboardNavigation from '@/hooks/use-keyboard-navigation'
 import { LibrarySync } from '@/lib/library/sync'
-import { useOfflineSync } from '@/lib/offline/sync'
+import { OfflineSync } from '@/lib/offline/sync'
 import { PrefsSync } from '@/lib/prefs/sync'
 
 import LandingPage from './_root/pages/landing-page'
@@ -63,8 +63,6 @@ const prefetchPages = () => {
 
 const App = () => {
   useKeyboardNavigation()
-  // Keeps this device's offline lyrics in step with the user's songs, bookmarks and recent songs
-  useOfflineSync()
   // After the first screen has loaded, so the prefetch never competes with it
   useEffect(() => {
     const id = setTimeout(prefetchPages, PREFETCH_DELAY_MS)
@@ -184,6 +182,8 @@ const App = () => {
       <AppNotices />
       <LibrarySync />
       <PrefsSync />
+      {/* Keeps this device's offline lyrics in step with the user's songs, bookmarks and recent songs */}
+      <OfflineSync />
       <Toaster />
     </main>
   )

@@ -2027,3 +2027,9 @@ html[data-transition='flip']::view-transition-new(root) {
     transform: rotate(-180deg);
   }
 }
+
+/* A menu taking over from a sibling (use-hover-menu.ts) appears and goes without animating. Unlayered, so it wins
+   over the popover and dropdown utilities' enter, exit and into-trigger animations */
+[data-menu-instant] {
+  animation: none;
+}

@@ -19,7 +19,8 @@ interface Point {
 // The one menu open from a hover, shared by every button, so only one is ever open and the next can take over
 interface Shown {
   id: string
-  close: () => void
+  // `instant`: another menu is taking over, so this one goes without its exit animation
+  close: (instant: boolean) => void
   panel: () => Element | null
   // Where the pointer left the button, while it is on its way to the menu
   leftAt: Point | null
@@ -75,6 +76,9 @@ export const useHoverMenu = (
 ) => {
   const id = useId()
   const [mouseOpened, setMouseOpened] = useState(false)
+  // Switched to or from a sibling menu: it appears and goes at once, as a menu bar's menus do, so two panels
+  // never animate over each other
+  const [instant, setInstant] = useState(false)
   const [wasOpen, setWasOpen] = useState(open)
   if (open !== wasOpen) {
     setWasOpen(open)
@@ -92,7 +96,8 @@ export const useHoverMenu = (
     change.current = onOpenChange
   })
   const self = useRef<Shown>({
-    close: () => {
+    close: (closeInstantly) => {
+      setInstant(closeInstantly)
       change.current(false)
     },
     id,
@@ -115,6 +120,10 @@ export const useHoverMenu = (
       shown = null
       closedAt = performance.now()
     }
+    // Once closed, the next open (a touch, a key) animates unless a switch says otherwise
+    if (!open) {
+      setInstant(false)
+    }
   }, [open, id])
   useEffect(
     () => () => {
@@ -126,11 +135,12 @@ export const useHoverMenu = (
     [id]
   )
 
-  const openNow = () => {
+  const openNow = (switching: boolean) => {
     clearTimeout(timer.current)
     if (shown !== null && shown.id !== id) {
-      shown.close()
+      shown.close(true)
     }
+    setInstant(switching)
     shown = self.current
     self.current.leftAt = null
     closingFromMouse.current = true
@@ -141,6 +151,7 @@ export const useHoverMenu = (
     clearTimeout(timer.current)
     timer.current = setTimeout(() => {
       if (!typingIn(self.current.panel())) {
+        setInstant(false)
         onOpenChange(false)
       }
     }, HOVER_CLOSE_MS)
@@ -161,7 +172,7 @@ export const useHoverMenu = (
         event.preventDefault()
         trigger.current = event.currentTarget
         if (!open) {
-          openNow()
+          openNow(false)
         }
         clearTimeout(timer.current)
       }
@@ -181,10 +192,12 @@ export const useHoverMenu = (
         (shown !== null && shown.id !== id && !aiming(shown, at)) ||
         (shown === null && performance.now() - closedAt < SWITCH_MS)
       if (switching) {
-        openNow()
+        openNow(true)
         return
       }
-      timer.current = setTimeout(openNow, HOVER_OPEN_MS)
+      timer.current = setTimeout(() => {
+        openNow(false)
+      }, HOVER_OPEN_MS)
     },
     onPointerLeave: (event: PointerEvent) => {
       if (!mouse(event)) {
@@ -202,6 +215,7 @@ export const useHoverMenu = (
     // Opened by a mouse: not modal, and focus stays where it was
     byMouse: open && mouseOpened,
     content: {
+      'data-menu-instant': instant || undefined,
       onCloseAutoFocus: (event: Event) => {
         if (closingFromMouse.current) {
           event.preventDefault()
