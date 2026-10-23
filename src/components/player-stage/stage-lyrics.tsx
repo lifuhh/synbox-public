@@ -39,7 +39,12 @@ import {
 } from '@/lib/karaoke'
 import type { TimedLyrics } from '@/lib/lyrics-document'
 import { parseLyricsDocument } from '@/lib/lyrics-document'
-import { lyricsScaleOn } from '@/lib/lyrics-style'
+import {
+  lyricsScaleOn,
+  SCREEN_SIZE_MAX,
+  SCREEN_SIZE_MIN,
+  TWO_LINES_SIZE_RANGE,
+} from '@/lib/lyrics-style'
 import { getLyricsThemeColors } from '@/lib/lyrics-themes'
 import type { LyricsThemeColors } from '@/lib/lyrics-themes'
 import {
@@ -123,7 +128,9 @@ const LyricLine = ({
   className?: string
   // Which of a line's rows this is, for the one-line spacing (lyric-line-rows)
   row?: keyof typeof LINE_SIZE
-  // False for a copy laid out only to be measured: the bench's first-lyric hook is for drawn lines
+  // False for a copy laid out only to be measured: the bench's first-lyric hook is for drawn lines, and the copy
+  // keeps a plain wrap. Balancing never changes a line's count of rows, which is all fitSong reads, and
+  // re-balancing every line of the song on each size change is hundreds of layouts a frame
   shown?: boolean
 }) => {
   const segments = useMemo(() => parseRubyHtml(html), [html])
@@ -133,7 +140,7 @@ const LyricLine = ({
       key={html}
       data-bench={shown ? 'lyrics-line' : undefined}
       data-row={row}
-      ref={balanceWrap}
+      ref={shown ? balanceWrap : undefined}
       className={cn(
         'lyric-text-line mx-auto text-center',
         size,
@@ -202,7 +209,12 @@ const LineRows = ({
           <div
             data-row={rowOf('japanese')}
             className={cn('text-center', sizes.japanese)}>
-            <KaraokeLine key={lineKey} ref={track} line={karaokeLine} />
+            <KaraokeLine
+              key={lineKey}
+              ref={track}
+              line={karaokeLine}
+              balanced={!measured}
+            />
           </div>
         ) : (
           <LyricLine
@@ -262,60 +274,148 @@ const tallestOf = (lines: HTMLElement) => {
   return tallest
 }
 
-// Halvings of the gap between the floor and full size: within 1% of the largest size that fits
-const FIT_STEPS = 6
+// The sizes fitSong tries, as the lyrics' scale times the row fit: every Two Lines size times every screen's tweak,
+// down to the floor
+const FIT_RANGE = {
+  max: TWO_LINES_SIZE_RANGE.max * SCREEN_SIZE_MAX,
+  min: TWO_LINES_SIZE_RANGE.min * SCREEN_SIZE_MIN * ROW_FIT_FLOOR,
+}
+// Halvings of the gap between a size that fits and one that doesn't: from the widest gap, the whole range, to
+// within half a percent of the largest size that fits
+const FIT_STEPS = 9
+// Between two tries on the copy while nothing waits for the answer: each lays out every line of the song
+const FIT_IDLE_MS = 50
 
 // One size for both rows, for the whole song: each row gets half the room under the translation, and when the
 // song's tallest line (`lines`, every line laid out unseen at a row's width) wraps taller than that,
 // both rows shrink by as much. So the two lines on screen are always the same size, the rows never climb over the
 // translation, and no row changes size while its line is sung. The room is the layer's, less the room kept
-// under the block
+// under the block and the gap between the rows.
+// The copy lays out at its own size (its --lyric-scale held at 1), so a size change, a slider drag's every step,
+// sets the rows by arithmetic on the largest size that fits; trying a size on the copy lays out every line of the
+// song. `measure` runs when the stage, the song's lines or the fonts change. The rows need only one try when the
+// current size fits; the rest of the search runs one try at a time while nothing waits, or at once for a larger
+// size that needs it
 const fitSong = (grid: HTMLElement, lines: HTMLElement) => {
   const block = grid.closest<HTMLElement>('.player-lyrics-overlay')
   const layer = block?.parentElement
   const lift = block?.nextElementSibling
-  const fit = () => {
+  let scale = 1
+  // The largest size known to fit and the smallest known not to; `steps` halvings of the gap remain
+  let fitting = Number.POSITIVE_INFINITY
+  let failing = Number.POSITIVE_INFINITY
+  let steps = 0
+  let height = 0
+  let measuredFor = ''
+  let idle: ReturnType<typeof setTimeout> | undefined
+  const apply = () => {
+    grid.style.setProperty(
+      '--row-fit',
+      String(Math.min(1, Math.max(ROW_FIT_FLOOR, fitting / scale)))
+    )
+  }
+  // Smaller type also wraps less, so the height doesn't scale with the size: try sizes on the copy, halving the
+  // gap each time. The gap between the rows is in em, so it is read at each size too
+  const fits = (size: number) => {
+    lines.style.setProperty('--row-fit', String(size))
+    return (
+      tallestOf(lines) <=
+      (height - pixels(getComputedStyle(lines).rowGap)) / 2 + 1
+    )
+  }
+  const step = () => {
+    if (steps <= 0) {
+      return
+    }
+    steps -= 1
+    if (failing === Number.POSITIVE_INFINITY) {
+      if (fits(FIT_RANGE.max)) {
+        fitting = Number.POSITIVE_INFINITY
+        steps = 0
+      } else {
+        failing = FIT_RANGE.max
+      }
+      return
+    }
+    const mid = (fitting + failing) / 2
+    if (fits(mid)) {
+      fitting = mid
+    } else {
+      failing = mid
+    }
+  }
+  const settle = () => {
+    clearTimeout(idle)
+    const left = steps
+    for (let index = 0; index < left; index += 1) {
+      step()
+    }
+  }
+  const refineLater = () => {
+    idle = setTimeout(() => {
+      step()
+      apply()
+      if (steps > 0) {
+        refineLater()
+      }
+    }, FIT_IDLE_MS)
+  }
+  const measure = () => {
     if (!(block && layer && lift instanceof HTMLElement)) {
       return
     }
+    clearTimeout(idle)
+    measuredFor = `${layer.clientWidth}x${layer.clientHeight}`
     const pad = getComputedStyle(block)
-    const room =
-      (layer.clientHeight -
-        pixels(getComputedStyle(lift).minHeight) -
-        pixels(pad.paddingTop) -
-        pixels(pad.paddingBottom) -
-        pixels(getComputedStyle(grid).rowGap)) /
-      2
-    // The largest size at which the tallest line fits. Smaller type also wraps less, so the height doesn't
-    // scale with the size: try sizes on the unseen copy, halving the gap each time
-    const fits = (scale: number) => {
-      lines.style.setProperty('--row-fit', String(scale))
-      return tallestOf(lines) <= room + 1
+    height =
+      layer.clientHeight -
+      pixels(getComputedStyle(lift).minHeight) -
+      pixels(pad.paddingTop) -
+      pixels(pad.paddingBottom)
+    if (fits(scale)) {
+      fitting = scale
+      failing = Number.POSITIVE_INFINITY
+      // The top of the range first, then the halvings
+      steps = FIT_STEPS + 1
+      refineLater()
+    } else {
+      fitting = FIT_RANGE.min
+      failing = scale
+      steps = FIT_STEPS
+      settle()
     }
-    let scale = 1
-    if (!fits(1)) {
-      let [low, high] = [ROW_FIT_FLOOR, 1]
-      for (let step = 0; step < FIT_STEPS; step += 1) {
-        const mid = (low + high) / 2
-        if (fits(mid)) {
-          low = mid
-        } else {
-          high = mid
-        }
-      }
-      scale = low
-    }
-    lines.style.setProperty('--row-fit', '1')
-    grid.style.setProperty('--row-fit', String(scale))
+    apply()
   }
-  // Wrapping settles after the type changes (balanceWrap), and the room moves with the stage
-  const observer = new ResizeObserver(fit)
-  observer.observe(lines)
+  // The room moves with the stage, and the copy's wraps with the song's lines (romaji, a new version)
+  const lineChanges = new MutationObserver(measure)
+  lineChanges.observe(lines, {
+    characterData: true,
+    childList: true,
+    subtree: true,
+  })
+  const observer = new ResizeObserver(() => {
+    if (layer && `${layer.clientWidth}x${layer.clientHeight}` !== measuredFor) {
+      measure()
+    }
+  })
   if (layer) {
     observer.observe(layer)
   }
-  return () => {
-    observer.disconnect()
+  document.fonts.addEventListener('loadingdone', measure)
+  return {
+    setScale: (next: number) => {
+      scale = next
+      if (next > fitting && steps > 0) {
+        settle()
+      }
+      apply()
+    },
+    stop: () => {
+      clearTimeout(idle)
+      observer.disconnect()
+      lineChanges.disconnect()
+      document.fonts.removeEventListener('loadingdone', measure)
+    },
   }
 }
 
@@ -346,21 +446,31 @@ const TwoRows = ({
   view,
   rowsOf,
   songLines,
+  scale,
 }: {
   view: TwoLineView
   rowsOf: (index: number) => ReactNode
   // Every line of the song, each at a row's width, for fitSong
   songLines: ReactNode
+  scale: number
 }) => {
   const gridRef = useRef<HTMLDivElement>(null)
   const linesRef = useRef<HTMLDivElement>(null)
-  useLayoutEffect(
-    () =>
+  const fitRef = useRef<ReturnType<typeof fitSong> | null>(null)
+  useLayoutEffect(() => {
+    const fit =
       gridRef.current && linesRef.current
         ? fitSong(gridRef.current, linesRef.current)
-        : undefined,
-    []
-  )
+        : null
+    fitRef.current = fit
+    return () => {
+      fit?.stop()
+      fitRef.current = null
+    }
+  }, [])
+  useLayoutEffect(() => {
+    fitRef.current?.setScale(scale)
+  }, [scale])
   return (
     <div
       ref={gridRef}
@@ -378,11 +488,16 @@ const TwoRows = ({
           {index >= 0 && rowsOf(index)}
         </TwoLineRow>
       ))}
-      {/* Laid out at the rows' width, never seen and taking no room; fitSong tries its sizes on it */}
+      {/* Laid out at the rows' width, never seen and taking no room; fitSong tries its sizes on it, at its own
+          scale. The rows' size and gap, so the gap reads at the size tried */}
       <div
         aria-hidden
-        className='pointer-events-none invisible absolute inset-x-0 top-0 h-0 overflow-hidden lyric-stagger-rows [--row-fit:1]'>
-        <div ref={linesRef}>{songLines}</div>
+        className='pointer-events-none invisible absolute inset-x-0 top-0 h-0 overflow-hidden lyric-stagger-rows [--lyric-scale:1] [--row-fit:1]'>
+        <div
+          ref={linesRef}
+          className={cn('lyric-rows-gap', STAGGER_SIZE.japanese)}>
+          {songLines}
+        </div>
       </div>
     </div>
   )
@@ -667,7 +782,12 @@ export const StageLyrics = ({
           colors={colors}
           wide={twoLines}>
           {twoLines && view.active >= 0 ? (
-            <TwoRows view={view} rowsOf={rowsOf} songLines={songLines} />
+            <TwoRows
+              view={view}
+              rowsOf={rowsOf}
+              songLines={songLines}
+              scale={scale}
+            />
           ) : (
             rowsOf(view.active)
           )}
