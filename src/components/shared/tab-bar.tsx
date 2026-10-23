@@ -8,11 +8,13 @@ import {
   XIcon,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
+import type { MouseEvent } from 'react'
 import { Link, NavLink, useLocation } from 'react-router'
 
 import { resumeSongAtom, songPath } from '@/lib/listening/store'
-import { isInstalledPhone } from '@/lib/pwa'
+import { applyWaitingUpdate, isInstalledPhone } from '@/lib/pwa'
+import { tabTap } from '@/lib/tab-tap'
 import { cn } from '@/utils/cn'
 
 // `also`: other pages the tab is the home of (playlists open from You)
@@ -36,6 +38,14 @@ const TABS: {
 
 // The player, a song's reader and the admin pages own the whole screen; every other page gets the tabs
 const TAB_PAGES = /^\/(?:search|lyrics|you|playlists(?:\/[^/]+)?|about)?$/u
+
+// The page's scroller: its box marked data-scroll-top, else the document
+const pageScroller = () =>
+  document.querySelector<HTMLElement>('[data-scroll-top]') ??
+  document.scrollingElement
+
+// Within this many pixels of the top counts as at the top (iOS reports a pull past the top as negative)
+const TOP_SLACK_PX = 2
 
 // Back to the song opened last: its picture and title, a tap away from any tab
 const ResumeBar = () => {
@@ -86,6 +96,8 @@ const TabBar = () => {
   const [song] = useAtom(resumeSongAtom)
   const shown = isInstalledPhone() && TAB_PAGES.test(pathname)
   const resume = shown && song !== null
+  // The last tap on a tab whose page showed, for double taps
+  const lastTap = useRef<{ to: string; at: number } | null>(null)
 
   useEffect(() => {
     const root = document.documentElement
@@ -100,6 +112,30 @@ const TabBar = () => {
   if (!shown) {
     return null
   }
+
+  const onTabClick = (event: MouseEvent<HTMLAnchorElement>, to: string) => {
+    const now = event.timeStamp
+    const previous = lastTap.current
+    const current = pathname === to
+    lastTap.current = current ? { at: now, to } : null
+    const scroller = pageScroller()
+    const action = tabTap({
+      atTop: (scroller?.scrollTop ?? 0) <= TOP_SLACK_PX,
+      current,
+      home: to === '/',
+      sinceLastTapMs:
+        previous?.to === to ? now - previous.at : Number.POSITIVE_INFINITY,
+    })
+    if (action === 'navigate') {
+      return
+    }
+    event.preventDefault()
+    if (action === 'update' && applyWaitingUpdate()) {
+      return
+    }
+    scroller?.scrollTo({ behavior: 'smooth', top: 0 })
+  }
+
   return (
     <div className='fixed inset-x-0 bottom-[calc(var(--safe-bottom)+0.5rem)] z-40 mx-auto flex w-[min(28rem,calc(100%-2rem))] flex-col gap-2'>
       <ResumeBar />
@@ -111,6 +147,9 @@ const TabBar = () => {
             key={to}
             to={to}
             end={end}
+            onClick={(event) => {
+              onTabClick(event, to)
+            }}
             aria-current={also?.test(pathname) === true ? 'page' : undefined}
             className={({ isActive }) =>
               cn(

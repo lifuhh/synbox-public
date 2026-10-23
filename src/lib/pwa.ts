@@ -155,8 +155,9 @@ if ('caches' in window) {
 
 // A new deploy is downloaded in the background and waits. It is swapped in only by the next in-app page
 // change, which then loads the new page from the server as one ordinary page load. Never by reloading a page
-// that is already showing: that redraws it in front of the viewer and can cut off what they just did (a play
-// press, a click). A tab that stays on one page keeps its version until it changes page or is reopened
+// that is already showing on its own: that redraws it in front of the viewer and can cut off what they just did
+// (a play press, a click). A tab that stays on one page keeps its version until it changes page, is reopened, or
+// the viewer taps Home at the top (applyWaitingUpdate)
 const UPDATE_CHECK_MS = 60 * 60 * 1000
 // The new version normally activates in well under a second; past this the page loads anyway
 const ACTIVATE_TIMEOUT_MS = 3000
@@ -230,6 +231,22 @@ window.history.pushState = (
     }
   }
   pushState(data, unused, url)
+}
+
+// The one reload of a page on screen: asked for by the viewer (Home tapped at the top or twice). Loads the same
+// address on the waiting version, under the same guards as a page change. False when nothing is waiting
+export const applyWaitingUpdate = () => {
+  if (
+    !updateReady ||
+    swapping ||
+    isGenerating() ||
+    !navigator.onLine ||
+    readingLyrics(new URL(window.location.href))
+  ) {
+    return false
+  }
+  void loadOnNewVersion(window.location.href)
+  return true
 }
 
 registerSW({
