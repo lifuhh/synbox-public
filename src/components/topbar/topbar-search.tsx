@@ -319,10 +319,8 @@ export const TopbarSearch = ({ variant }: { variant: 'inline' | 'button' }) => {
             }
           }}
           className={cn(
-            'fixed top-[calc(var(--vv-top,0px)+var(--safe-top)+0.5rem)] right-[max(0.75rem,calc(var(--safe-right)+0.5rem))] left-[max(0.75rem,calc(var(--safe-left)+0.5rem))] m-0 w-auto max-w-none',
-            'max-h-[calc(var(--vv-h,var(--app-h))-var(--safe-top)-1rem)] flex-col open:flex',
-            'rounded-panel border border-transparent bg-popover p-2 text-foreground shadow-panel ring-1 ring-white/10',
-            'float-in backdrop:bg-black/60'
+            'search-panel flex-col open:flex',
+            'rounded-panel border border-transparent bg-popover p-2 text-foreground shadow-panel ring-1 ring-white/10'
           )}>
           <div className='flex items-center gap-1'>
             {field}
@@ -333,9 +331,7 @@ export const TopbarSearch = ({ variant }: { variant: 'inline' | 'button' }) => {
               Cancel
             </button>
           </div>
-          {results(
-            '-mx-2 mt-2 min-h-0 flex-1 border-t border-border pt-2 [&>li]:mx-2 [&>li]:rounded-xl [&>li]:px-3.5'
-          )}
+          {results('-mx-2 mt-2 min-h-0 flex-1 border-t border-border pt-2')}
         </dialog>,
         document.body
       )}

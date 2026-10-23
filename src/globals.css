@@ -1188,8 +1188,10 @@
 @utility appear {
   animation: appear 0.2s ease-out both;
 }
-/* A panel that opens floating over the page (the phone's search): it drops a little from above and settles at
-   full size, so it reads as lifted off the page rather than printed on it. Reduced motion keeps only the fade */
+/* The phone's search (topbar-search.tsx): a panel floating 8px under the status bar and inside the side insets, as
+   tall as the screen above the keyboard allows (--vv-top and --vv-h follow the visual viewport while it is open). It
+   drops a little from above and settles at full size, so it reads as lifted off the page; reduced motion keeps
+   only the fade. Its result rows are inset so their thumbnails start under the field's search icon */
 @keyframes float-in {
   from {
     opacity: 0;
@@ -1197,14 +1199,28 @@
     scale: 0.98;
   }
 }
-@utility float-in {
+@utility search-panel {
+  position: fixed;
+  top: calc(var(--vv-top, 0px) + var(--safe-top) + 0.5rem);
+  left: max(0.75rem, calc(var(--safe-left) + 0.5rem));
+  right: max(0.75rem, calc(var(--safe-right) + 0.5rem));
+  width: auto;
+  max-width: none;
+  max-height: calc(var(--vv-h, var(--app-h)) - var(--safe-top) - 1rem);
+  margin: 0;
   transform-origin: top;
   animation: float-in 0.2s ease-out;
   @media (prefers-reduced-motion: reduce) {
     animation-name: appear;
   }
   &::backdrop {
+    background: rgb(0 0 0 / 0.6);
     animation: appear 0.2s ease-out;
+  }
+  & [role='option'] {
+    margin-inline: 0.5rem;
+    border-radius: 0.75rem;
+    padding-inline: 0.875rem;
   }
 }
 
