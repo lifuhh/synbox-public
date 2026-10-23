@@ -409,14 +409,26 @@ admin.get('/users', async (c) => {
   return c.json({ users: results })
 })
 
-// The latest generations, newest first, with who asked for them (an account, or a guest)
+// The latest generations, newest first, with who asked for them (an account, or a guest). `user` narrows them
+// to one account (its email) or to guests ('guest'). The where clause is one of three literals, never input
 admin.get('/generations', async (c) => {
   await expireStalled(c.env.DB)
-  const { results } = await c.env.DB.prepare(
+  const user = c.req.query('user') ?? ''
+  let where = ''
+  if (user === 'guest') {
+    where = 'where g."guestKey" is not null'
+  } else if (user !== '') {
+    where = 'where u."email" = ?1'
+  }
+  const statement = c.env.DB.prepare(
     `select g."id", g."videoId", g."kind", g."status", g."createdAt", g."errorCode", g."resultVersion",
        g."stage", g."fraction", u."email", u."name", g."guestKey" is not null as "guest"
      from "generation" g left join "user" u on u."id" = g."userId"
+     ${where}
      order by g."createdAt" desc limit 200`
+  )
+  const { results } = await (
+    where.includes('?1') ? statement.bind(user) : statement
   ).all()
   return c.json({ generations: results })
 })

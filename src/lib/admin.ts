@@ -17,19 +17,30 @@ const when = z.union([z.string(), z.number()])
 // 'default' follows the Worker's USER_DAILY_LIMIT; a number or 'unlimited' is an admin's override
 const dailyLimitSchema = z.union([z.number(), z.enum(['default', 'unlimited'])])
 
-const adminUserSchema = z.object({
-  banned: z.union([z.number(), z.boolean()]).nullable(),
-  createdAt: when,
-  dailyLimit: dailyLimitSchema,
-  email: z.string(),
-  id: z.string(),
-  image: z.string().nullable(),
-  lastSeenAt: when.nullable(),
-  name: z.string(),
-  role: z.string().nullable(),
-  songsLastDay: z.number(),
-  songsTotal: z.number(),
-})
+// A Worker from before migration 0013 still sends the hourly names; read them as the daily ones
+const adminUserSchema = z.preprocess(
+  (row) =>
+    typeof row === 'object' && row !== null
+      ? {
+          dailyLimit: 'hourlyLimit' in row ? row.hourlyLimit : undefined,
+          songsLastDay: 'songsLastHour' in row ? row.songsLastHour : undefined,
+          ...row,
+        }
+      : row,
+  z.object({
+    banned: z.union([z.number(), z.boolean()]).nullable(),
+    createdAt: when,
+    dailyLimit: dailyLimitSchema,
+    email: z.string(),
+    id: z.string(),
+    image: z.string().nullable(),
+    lastSeenAt: when.nullable(),
+    name: z.string(),
+    role: z.string().nullable(),
+    songsLastDay: z.number(),
+    songsTotal: z.number(),
+  })
+)
 
 const settingsSchema = z.object({
   generationEnabled: z.boolean(),
@@ -84,13 +95,34 @@ export const useAdminUsers = () =>
     queryKey: [QUERY_KEYS.GET_ADMIN_USERS],
   })
 
-export const useAdminGenerations = () =>
+// Whose songs the Songs list shows: everyone (null), guests, or one account by email
+export const GUESTS = 'guest'
+export type SongsBy = string | null
+
+const isBy = (generation: AdminGeneration, by: SongsBy) => {
+  if (by === null) {
+    return true
+  }
+  const guest = generation.guest === 1 || generation.guest === true
+  return by === GUESTS ? guest : !guest && generation.email === by
+}
+
+// The Worker filters the whole ledger by `user`; the filter here keeps the list right against a Worker that
+// predates it and answers with everyone's latest
+export const useAdminGenerations = (by: SongsBy) =>
   useQuery({
     queryFn: async () =>
       z
         .object({ generations: z.array(generationSchema) })
-        .parse(await call('/generations')).generations,
-    queryKey: [QUERY_KEYS.GET_ADMIN_GENERATIONS],
+        .parse(
+          await call(
+            by === null
+              ? '/generations'
+              : `/generations?user=${encodeURIComponent(by)}`
+          )
+        )
+        .generations.filter((generation) => isBy(generation, by)),
+    queryKey: [QUERY_KEYS.GET_ADMIN_GENERATIONS, by],
     // Follows songs still running
     refetchInterval: (query) =>
       query.state.data?.some(
@@ -157,7 +189,8 @@ export const useSetDailyLimit = () =>
       dailyLimit: DailyLimit
     }) =>
       await call(`/users/${encodeURIComponent(userId)}/limit`, {
-        body: JSON.stringify({ dailyLimit }),
+        // hourlyLimit: the same value for a Worker from before migration 0013
+        body: JSON.stringify({ dailyLimit, hourlyLimit: dailyLimit }),
         method: 'PUT',
       })
   )
