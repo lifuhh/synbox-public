@@ -76,9 +76,9 @@ export const useHoverMenu = (
 ) => {
   const id = useId()
   const [mouseOpened, setMouseOpened] = useState(false)
-  // Switched to or from a sibling menu: it appears and goes at once, as a menu bar's menus do, so two panels
-  // never animate over each other
-  const [instant, setInstant] = useState(false)
+  // Switched to or from a sibling menu: it appears (true) or goes (false) at once, as a menu bar's menus do, so
+  // two panels never animate over each other. Only that one transition: a later open or close animates
+  const [instantTo, setInstantTo] = useState<boolean | null>(null)
   const [wasOpen, setWasOpen] = useState(open)
   if (open !== wasOpen) {
     setWasOpen(open)
@@ -97,7 +97,7 @@ export const useHoverMenu = (
   })
   const self = useRef<Shown>({
     close: (closeInstantly) => {
-      setInstant(closeInstantly)
+      setInstantTo(closeInstantly ? false : null)
       change.current(false)
     },
     id,
@@ -120,10 +120,6 @@ export const useHoverMenu = (
       shown = null
       closedAt = performance.now()
     }
-    // Once closed, the next open (a touch, a key) animates unless a switch says otherwise
-    if (!open) {
-      setInstant(false)
-    }
   }, [open, id])
   useEffect(
     () => () => {
@@ -140,7 +136,7 @@ export const useHoverMenu = (
     if (shown !== null && shown.id !== id) {
       shown.close(true)
     }
-    setInstant(switching)
+    setInstantTo(switching ? true : null)
     shown = self.current
     self.current.leftAt = null
     closingFromMouse.current = true
@@ -151,7 +147,7 @@ export const useHoverMenu = (
     clearTimeout(timer.current)
     timer.current = setTimeout(() => {
       if (!typingIn(self.current.panel())) {
-        setInstant(false)
+        setInstantTo(null)
         onOpenChange(false)
       }
     }, HOVER_CLOSE_MS)
@@ -215,7 +211,7 @@ export const useHoverMenu = (
     // Opened by a mouse: not modal, and focus stays where it was
     byMouse: open && mouseOpened,
     content: {
-      'data-menu-instant': instant || undefined,
+      'data-menu-instant': instantTo === open || undefined,
       onCloseAutoFocus: (event: Event) => {
         if (closingFromMouse.current) {
           event.preventDefault()
