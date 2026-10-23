@@ -44,7 +44,10 @@ const useEnds = () => {
   return { ends, ref }
 }
 
-// One sideways row of song cards under a heading. Fingers swipe it; a mouse gets arrows beside the heading
+// One sideways row of song cards under a heading. Fingers swipe it; a mouse gets arrows beside the heading.
+// The row reaches past the page's side padding by --shelf-bleed (the page sets it to its gutter to run the row to
+// the screen's edges, so cards cut off at both ends say it scrolls) and pads back in, so the first card still
+// starts under the heading and snaps there
 const Shelf = ({ title, songs }: { title: string; songs: ListSong[] }) => {
   const id = useId()
   const { ends, ref } = useEnds()
@@ -89,7 +92,7 @@ const Shelf = ({ title, songs }: { title: string; songs: ListSong[] }) => {
       </div>
       <ul
         ref={ref}
-        className='-mx-1 no-scrollbar flex snap-x snap-mandatory scroll-px-1 gap-4 overflow-x-auto overscroll-x-contain px-1 py-1'>
+        className='-mx-(--shelf-bleed,0.25rem) no-scrollbar flex snap-x snap-mandatory scroll-px-(--shelf-bleed,0.25rem) gap-4 overflow-x-auto overscroll-x-contain px-(--shelf-bleed,0.25rem) py-1'>
         {songs.map((song) => (
           <SongCard
             key={song.videoId}
