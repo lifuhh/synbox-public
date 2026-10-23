@@ -1,7 +1,5 @@
 import { useAtom, useAtomValue, useSetAtom } from 'jotai'
 import { useEffect, useLayoutEffect, useState } from 'react'
-import type { ComponentProps } from 'react'
-import { createPortal } from 'react-dom'
 import { useNavigate, useParams, useSearchParams } from 'react-router'
 
 import PlayerRail from '@/components/lyrics-display/player-rail'
@@ -12,7 +10,6 @@ import VersionPreviewBanner, {
 import { PlayerStage } from '@/components/player-stage/player-stage'
 import { StageLyrics } from '@/components/player-stage/stage-lyrics'
 import { DEFAULT_YOUTUBE_QUIRKS } from '@/components/player-stage/youtube-quirks'
-import { useKaraokeBand } from '@/components/watch/karaoke-band'
 import { WatchPage } from '@/components/watch/watch-page'
 import {
   currentVideoAtom,
@@ -40,10 +37,6 @@ import {
 import { decodeSharedStyle } from '@/lib/lyrics-style'
 import { countListen } from '@/lib/song-stats'
 import { handleVideoRoute } from '@/utils/route-handler.ts'
-
-type RenderLyrics = NonNullable<
-  ComponentProps<typeof PlayerStage>['renderLyrics']
->
 
 // The stage alone fills the screen in fullscreen (or iPhone's stand-in), on a phone on its side and under
 // Lock Landscape; otherwise the page is the watch page around it
@@ -189,7 +182,6 @@ const PlayerPage = () => {
 
   const surface = usePlayerSurface()
   const wide = useMediaQuery('(min-width: 1000px)')
-  const band = useKaraokeBand()
   const [layout, setLayout] = useAtom(watchLayoutAtom)
   const toggleTheater =
     surface === 'watch' && wide
@@ -224,25 +216,6 @@ const PlayerPage = () => {
     )
   }
 
-  const stageLyrics: RenderLyrics = (player, stageLayout) => (
-    <StageLyrics
-      videoId={stageVideoId}
-      player={player}
-      layout={stageLayout}
-      version={previewVersion}
-    />
-  )
-  // On a narrow watch page the small video stays clear: the lyrics are under it, a phone's in the karaoke band
-  // (drawn there by the stage), a narrow window's in the lyrics panel
-  let renderLyrics: RenderLyrics | undefined = stageLyrics
-  if (surface === 'watch' && !wide) {
-    renderLyrics =
-      band === null
-        ? undefined
-        : (player, stageLayout) =>
-            createPortal(stageLyrics(player, stageLayout), band)
-  }
-
   return (
     <>
       <title>{`${currentVideo?.title ?? 'Player Page'} | Synbox`}</title>
@@ -265,7 +238,20 @@ const PlayerPage = () => {
             theater={layout === 'theater'}
             onToggleTheater={toggleTheater}
             onEnded={playNext}
-            renderLyrics={renderLyrics}
+            // On a narrow watch page the lyrics panel under the video carries the lyrics; the small video stays
+            // clear
+            renderLyrics={
+              surface === 'watch' && !wide
+                ? undefined
+                : (player, stageLayout) => (
+                    <StageLyrics
+                      videoId={stageVideoId}
+                      player={player}
+                      layout={stageLayout}
+                      version={previewVersion}
+                    />
+                  )
+            }
           />
         }
       />

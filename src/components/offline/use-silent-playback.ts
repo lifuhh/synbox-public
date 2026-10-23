@@ -24,12 +24,13 @@ const readClock = (clock: Clock) =>
     ? clock.time + (performance.now() - clock.at) / 1000
     : clock.time
 
-// The last line whose lead-in has begun: where the page stays scrolled through an instrumental gap
+// The last line whose lead-in has begun: where the page stays scrolled through an instrumental gap. -1 before
+// the first one: nothing is sung yet, so no line may light as sung
 export const lineReached = (
   lines: readonly { start: number }[],
   time: number
 ) => {
-  let reached = 0
+  let reached = -1
   for (const [index, line] of lines.entries()) {
     if (line.start - 0.5 <= time) {
       reached = index
@@ -50,7 +51,7 @@ export const useSilentPlayback = (
   const [playing, setPlaying] = useState(false)
   const [time, setTime] = useState(0)
   const [active, setActive] = useState(-1)
-  const [reached, setReached] = useState(0)
+  const [reached, setReached] = useState(-1)
   const frame = useRef(onFrame)
   useLayoutEffect(() => {
     frame.current = onFrame

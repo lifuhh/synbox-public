@@ -45,7 +45,8 @@ export const useSyncedLyrics = (lines: OfflineLine[], synced: boolean) => {
       enabled: synced,
       followAt: FOLLOW_AT,
       isPlaying: () => playback.playing,
-      target: reached,
+      // Before the first line, the first line waits in its place
+      target: Math.max(reached, 0),
     })
 
   const seek = (to: number) => {

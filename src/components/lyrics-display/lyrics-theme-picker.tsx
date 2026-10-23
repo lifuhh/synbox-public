@@ -19,8 +19,12 @@ import {
   lyricsThemeIdAtom,
   lyricsTwoLinesAtom,
 } from '@/context/atoms'
-import { useMediaQuery, usePortrait } from '@/hooks/use-media-query'
-import { FONT_SIZE_RANGE, TWO_LINES_SIZE_RANGE } from '@/lib/lyrics-style'
+import {
+  useLyricsSurface,
+  useMediaQuery,
+  usePortrait,
+} from '@/hooks/use-media-query'
+import { sizeRangeOn } from '@/lib/lyrics-style'
 import type { LyricsThemeColors } from '@/lib/lyrics-themes'
 import { LYRICS_THEMES, getCustomThemeColors } from '@/lib/lyrics-themes'
 import type { CssVars } from '@/types'
@@ -194,15 +198,15 @@ export const LyricsThemePicker = ({
     lyricsFontSizeTwoLinesAtom
   )
   const [twoLines, setTwoLines] = useAtom(lyricsTwoLinesAtom)
-  // The slider sizes the layout on screen: two lines keep their own size, on their own range
-  const size =
-    twoLines && !portrait
-      ? {
-          range: TWO_LINES_SIZE_RANGE,
-          set: setFontSizeTwoLines,
-          value: fontSizeTwoLines,
-        }
-      : { range: FONT_SIZE_RANGE, set: setFontSize, value: fontSize }
+  // The slider sizes the layout on screen: two lines keep their own size; each screen allows its own range,
+  // and an upright phone none
+  const surface = useLyricsSurface()
+  const sizedTwoLines = twoLines && !portrait
+  const size = {
+    range: sizeRangeOn(surface, sizedTwoLines),
+    set: sizedTwoLines ? setFontSizeTwoLines : setFontSize,
+    value: sizedTwoLines ? fontSizeTwoLines : fontSize,
+  }
   const [themeId, setThemeId] = useAtom(lyricsThemeIdAtom)
   const [customHue, setCustomHue] = useAtom(lyricsCustomHueAtom)
 
@@ -220,36 +224,44 @@ export const LyricsThemePicker = ({
       {/* The layout switches sit a section's inner gap under the size row, not a full section gap: their 40px
           press targets already pad them */}
       <div className='flex flex-col gap-2'>
-        <section className='flex flex-col gap-2'>
-          <h3 className='text-xs font-medium tracking-wide text-muted-foreground uppercase'>
-            Size
-          </h3>
-          <div className='flex items-center gap-3'>
-            <span
-              aria-hidden='true'
-              className='text-xs font-semibold text-muted-foreground'>
-              A
-            </span>
-            <Slider
-              aria-label='Lyrics Size'
-              min={size.range.min}
-              max={size.range.max}
-              step={0.01}
-              value={[size.value]}
-              onValueChange={([value]) => {
-                if (value !== undefined) {
-                  size.set(value)
-                }
-              }}
-              className='flex-1 cursor-pointer'
-            />
-            <span
-              aria-hidden='true'
-              className='text-lg font-semibold text-muted-foreground'>
-              A
-            </span>
-          </div>
-        </section>
+        {surface !== 'portrait' && (
+          <section className='flex flex-col gap-2'>
+            <h3 className='text-xs font-medium tracking-wide text-muted-foreground uppercase'>
+              Size
+            </h3>
+            <div className='flex items-center gap-3'>
+              <span
+                aria-hidden='true'
+                className='text-xs font-semibold text-muted-foreground'>
+                A
+              </span>
+              <Slider
+                aria-label='Lyrics Size'
+                min={size.range.min}
+                max={size.range.max}
+                step={0.01}
+                // A size saved on a screen with more room shows at this screen's end
+                value={[
+                  Math.min(
+                    size.range.max,
+                    Math.max(size.range.min, size.value)
+                  ),
+                ]}
+                onValueChange={([value]) => {
+                  if (value !== undefined) {
+                    size.set(value)
+                  }
+                }}
+                className='flex-1 cursor-pointer'
+              />
+              <span
+                aria-hidden='true'
+                className='text-lg font-semibold text-muted-foreground'>
+                A
+              </span>
+            </div>
+          </section>
+        )}
 
         {/* The karaoke machine's two rows: top row left, next row right, the translation at the top */}
         <StyleSwitch
