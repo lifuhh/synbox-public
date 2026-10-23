@@ -127,7 +127,7 @@ const LandingPageCharts: React.FC = () => {
             </ul>
           )}
           {!isError && !isLoading && (
-            <ul className='flex appear flex-col gap-0.5 pt-0.5'>
+            <ul className='flex appear flex-col gap-0.5 pt-0.5 pb-8'>
               {chartsData?.map((song, index) => (
                 <SongRow
                   key={`${song.title}-${index}`}
