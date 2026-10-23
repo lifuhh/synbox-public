@@ -23,9 +23,12 @@ import {
   leadJob,
   markGenerationsSeen,
   setGenerationExpanded,
+  setOtherNotifications,
   unseenCount,
   useGeneration,
 } from '@/lib/generation/store'
+import type { Fix } from '@/lib/report-fixes'
+import { unseenFixCount, useReportFixes } from '@/lib/report-fixes'
 import { cn } from '@/utils/cn'
 
 // The ring turning into the bell after the last song in progress ends
@@ -121,7 +124,15 @@ const Notifications = () => {
   const followed = lead ?? jobs.find((job) => job.id === followedId) ?? null
   const view = usePresentation(followed)
   const going = activeCount(generation)
-  const unseen = unseenCount(generation)
+  const { fixes, markFixesSeen, dismissFixes } = useReportFixes()
+  const unseenSongs = unseenCount(generation)
+  const unseenFixes = unseenFixCount(fixes)
+  // Fixes count on the bell, never on the ring: a fix arriving mid-generation changes nothing until the ring
+  // turns back into the bell, which then counts it
+  const unseen = unseenSongs + unseenFixes
+  useEffect(() => {
+    setOtherNotifications(fixes.length)
+  }, [fixes.length])
 
   const [farewell, setFarewell] = useFarewell(
     going,
@@ -179,12 +190,26 @@ const Notifications = () => {
       aimAtButton(panel.current, trigger.current)
     }
   }, [expanded])
-  // Whatever finished is seen once the panel is open on it, including songs that finish while it is open
+  // Whatever finished is seen once the panel is open on it, including songs that finish and fixes that arrive
+  // while it is open
   useEffect(() => {
-    if (expanded && unseen > 0 && isShown(trigger.current)) {
+    if (!expanded || !isShown(trigger.current)) {
+      return
+    }
+    if (unseenSongs > 0) {
       markGenerationsSeen()
     }
-  }, [expanded, unseen])
+    if (unseenFixes > 0) {
+      void markFixesSeen()
+    }
+  }, [expanded, unseenSongs, unseenFixes, markFixesSeen])
+  // The panel closes when the last thing in it goes, as when its last song is dismissed
+  const onDismissFixes = (dismissed: readonly Fix[]) => {
+    void dismissFixes(dismissed)
+    if (jobs.length === 0 && dismissed.length === fixes.length) {
+      setGenerationExpanded(false)
+    }
+  }
 
   // A song started elsewhere opens the panel without taking focus from where the listener is; a press on
   // this button moves focus in, as any menu does. Focus comes back here only from inside the panel, with
@@ -308,12 +333,17 @@ const Notifications = () => {
           focusInside.current = false
         }}
         className='max-h-[min(38rem,calc(var(--radix-popover-content-available-height)-var(--safe-bottom)))] w-[min(25rem,calc(100vw-1rem-var(--safe-left)-var(--safe-right)))] overflow-x-hidden overflow-y-auto overscroll-contain'>
-        {body === null ? (
+        {body === null && fixes.length === 0 ? (
           <p className='px-6 py-8 text-center text-sm text-muted-foreground'>
             No Notifications
           </p>
         ) : (
-          <GenerationPanel job={body} jobs={jobs} />
+          <GenerationPanel
+            job={body}
+            jobs={jobs}
+            fixes={fixes}
+            onDismissFixes={onDismissFixes}
+          />
         )}
       </PopoverContent>
     </Popover>

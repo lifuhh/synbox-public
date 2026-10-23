@@ -87,6 +87,13 @@ let waitingForScreen = 0
 
 const newest = (jobs: readonly Job[]) => jobs.at(-1)?.id ?? null
 
+// Other notifications the panel lists under the songs (src/lib/report-fixes.ts): while there are some, the panel
+// stays open when its last song leaves
+let otherNotifications = 0
+export const setOtherNotifications = (count: number) => {
+  otherNotifications = count
+}
+
 // The panel keeps its song while it is listed; otherwise it moves on to the newest song still going, else the
 // newest left
 const withJobs = (jobs: readonly Job[]): GenerationState => {
@@ -97,7 +104,11 @@ const withJobs = (jobs: readonly Job[]): GenerationState => {
   }
   // The panel closes when its list empties. Not on a null focus: a page loaded with songs listed has none
   // until one is picked, and the panel opened on them must stay open as they are marked seen
-  return { expanded: jobs.length > 0 && state.expanded, focusedId: next, jobs }
+  return {
+    expanded: (jobs.length > 0 || otherNotifications > 0) && state.expanded,
+    focusedId: next,
+    jobs,
+  }
 }
 
 let saveTimer: ReturnType<typeof setTimeout> | undefined

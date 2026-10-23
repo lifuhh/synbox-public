@@ -5,6 +5,7 @@ import { call } from '@/lib/admin'
 import { authClient } from '@/lib/auth'
 import { QUERY_KEYS } from '@/lib/react-query/query-keys'
 import { listLyricsVersions } from '@/lib/synbox-flask/lyrics-versions'
+import type { LyricsVersionSummary } from '@/lib/synbox-flask/lyrics-versions'
 
 // What only the admin page reads and changes: accounts, the generation ledger, reports and settings. Apart from
 // lib/admin (recommendations, which the watch page's Save to Playlist uses too), so it loads with /admin only
@@ -153,17 +154,39 @@ export const useAdminReports = () =>
 
 const LIVE_VERSION_WAIT_MS = 4000
 
+// The version a listener saw when they reported: the newest saved by then, since a new version goes live at once.
+// Null when none was saved by then. A rollback before the report makes this a guess; nothing records which
+// version was live at a moment
+export const versionLiveAt = (
+  versions: readonly Pick<LyricsVersionSummary, 'version' | 'created_at'>[],
+  at: number
+) => {
+  let live: number | null = null
+  for (const { version, created_at } of versions) {
+    if (Date.parse(created_at) <= at && (live === null || version > live)) {
+      live = version
+    }
+  }
+  return live
+}
+
 // The song's live lyrics version, recorded as the one that fixed a report: an admin resolves once the fix is
-// live. Null when the lyrics server can't say in a few seconds, so resolving never waits on it
-const liveVersion = async (videoId: string) => {
+// live. A listener's report carries no version, so it also gets the one live when it was sent: the reporter hears
+// of the fix only when the two differ (worker/src/reports.ts › listFixes). Both null when the lyrics server can't
+// say in a few seconds, so resolving never waits on it
+const resolutionOf = async (report: AdminReport) => {
   try {
-    const { active } = await listLyricsVersions(
-      videoId,
+    const { active, versions } = await listLyricsVersions(
+      report.videoId,
       AbortSignal.timeout(LIVE_VERSION_WAIT_MS)
     )
-    return active
+    return {
+      reportedVersion:
+        report.version ?? versionLiveAt(versions, report.createdAt),
+      version: active,
+    }
   } catch {
-    return null
+    return { reportedVersion: null, version: null }
   }
 }
 
@@ -180,9 +203,7 @@ export const useSetReportResolved = () => {
       await call(
         `/reports/${encodeURIComponent(report.id)}/${resolved ? 'resolve' : 'reopen'}`,
         {
-          body: JSON.stringify(
-            resolved ? { version: await liveVersion(report.videoId) } : {}
-          ),
+          body: JSON.stringify(resolved ? await resolutionOf(report) : {}),
           method: 'POST',
         }
       ),

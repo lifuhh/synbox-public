@@ -1,11 +1,15 @@
 import { expect, test } from 'bun:test'
 
 import {
+  FIX_DAYS,
   REPORT_LIMITS,
   REPORT_MESSAGE_MAX,
   RESOLUTION_MAX,
   guestKeyOf,
+  listFixes,
   listReports,
+  markFixes,
+  parseFixMarks,
   parseReport,
   parseResolution,
   reopenReport,
@@ -105,7 +109,12 @@ test('resolving records when, the fixing version and the note; reopening clears 
   const [newer, older] = await listReports(db)
   const id = String(newer?.id)
   expect(
-    await resolveReport(db, id, { note: 'Fixed in align', version: 4 }, 3)
+    await resolveReport(
+      db,
+      id,
+      { note: 'Fixed in align', reportedVersion: null, version: 4 },
+      3
+    )
   ).toBe(true)
   // The open report comes first, though the resolved one is newer
   const listed = await listReports(db)
@@ -124,18 +133,139 @@ test('resolving records when, the fixing version and the note; reopening clears 
     resolvedVersion: null,
   })
   expect(
-    await resolveReport(db, 'no-such-id', { note: null, version: null }, 4)
+    await resolveReport(
+      db,
+      'no-such-id',
+      { note: null, reportedVersion: null, version: null },
+      4
+    )
   ).toBe(false)
   expect(await reopenReport(db, 'no-such-id')).toBe(false)
 })
 
 test('a resolution may be empty; a fractional version or an overlong note is refused', () => {
-  expect(parseResolution({})).toEqual({ note: null, version: null })
-  expect(parseResolution({ note: '  ', version: 2 })).toEqual({
+  expect(parseResolution({})).toEqual({
     note: null,
-    version: 2,
+    reportedVersion: null,
+    version: null,
   })
+  // Most songs never got new lyrics: their live version is the first, 0
+  expect(
+    parseResolution({ note: '  ', reportedVersion: 0, version: 0 })
+  ).toEqual({ note: null, reportedVersion: 0, version: 0 })
   expect(parseResolution({ version: 1.5 })).toBeNull()
   expect(parseResolution({ note: 'x'.repeat(RESOLUTION_MAX + 1) })).toBeNull()
   expect(parseResolution({ note: 7 })).toBeNull()
+})
+
+const DAY = 86_400_000
+const NOW = 100 * DAY
+
+const fixture = async () => {
+  const { db } = migratedD1()
+  await db
+    .prepare(
+      `insert into "user" ("id", "name", "email", "emailVerified", "createdAt", "updatedAt")
+       values ('me', 'Me', 'me@x', 1, 0, 0), ('other', 'Other', 'other@x', 1, 0, 0)`
+    )
+    .run()
+  const me = { id: 'me', kind: 'user' } as const
+  // Sends a report on `videoId` and resolves it; answers its id
+  const reportAndResolve = async (
+    videoId: string,
+    {
+      reportedVersion = 2,
+      version = 3,
+      at = NOW - DAY,
+    }: { reportedVersion?: number; version?: number | null; at?: number } = {}
+  ) => {
+    await saveReport(db, me, { ...REPORT, videoId }, '', at - 1)
+    const reports = await listReports(db)
+    const row = reports.find(
+      (listed) => listed.videoId === videoId && listed.resolvedAt === null
+    )
+    const id = String(row?.id)
+    await resolveReport(db, id, { note: null, reportedVersion, version }, at)
+    return id
+  }
+  return { db, reportAndResolve }
+}
+
+test('a report resolved with new lyrics is one notification for its reporter, however often they reported the song', async () => {
+  const { db, reportAndResolve } = await fixture()
+  await reportAndResolve('6rG_irmOQsM')
+  await reportAndResolve('6rG_irmOQsM', { at: NOW - 2 * DAY })
+  expect(await listFixes(db, 'me', NOW)).toEqual([
+    { fixedAt: NOW - DAY, seen: false, videoId: '6rG_irmOQsM' },
+  ])
+})
+
+test('a resolve that kept the reported lyrics, or recorded no version, tells nobody', async () => {
+  const { db, reportAndResolve } = await fixture()
+  await reportAndResolve('6rG_irmOQsM', { reportedVersion: 3, version: 3 })
+  await reportAndResolve('Dta27KjGpJs', { reportedVersion: 0, version: 0 })
+  await reportAndResolve('aaaaaaaaaaa', { version: null })
+  expect(await listFixes(db, 'me', NOW)).toEqual([])
+})
+
+test('seen stays listed and counts as read; dismissed is gone, and leaves a later report of the song alone', async () => {
+  const { db, reportAndResolve } = await fixture()
+  await reportAndResolve('6rG_irmOQsM')
+  const marks = { upTo: NOW - DAY, videoIds: ['6rG_irmOQsM'] }
+  await markFixes(db, 'me', marks, 'seen', NOW)
+  expect(await listFixes(db, 'me', NOW)).toEqual([
+    { fixedAt: NOW - DAY, seen: true, videoId: '6rG_irmOQsM' },
+  ])
+  // Reported again, still open, when the first fix is dismissed
+  await saveReport(db, { id: 'me', kind: 'user' }, REPORT, '', NOW - 10)
+  await markFixes(db, 'me', marks, 'dismissed', NOW)
+  expect(await listFixes(db, 'me', NOW)).toEqual([])
+  const reports = await listReports(db)
+  const open = reports.find((row) => row.resolvedAt === null)
+  await resolveReport(
+    db,
+    String(open?.id),
+    { note: null, reportedVersion: 3, version: 4 },
+    NOW
+  )
+  expect(await listFixes(db, 'me', NOW + 1)).toEqual([
+    { fixedAt: NOW, seen: false, videoId: '6rG_irmOQsM' },
+  ])
+})
+
+test('a fix drops out after 30 days, read or not', async () => {
+  const { db, reportAndResolve } = await fixture()
+  await reportAndResolve('6rG_irmOQsM', { at: NOW })
+  expect(await listFixes(db, 'me', NOW + FIX_DAYS * DAY - 1)).toHaveLength(1)
+  expect(await listFixes(db, 'me', NOW + FIX_DAYS * DAY)).toEqual([])
+})
+
+test("another account neither sees nor dismisses someone's fix", async () => {
+  const { db, reportAndResolve } = await fixture()
+  await reportAndResolve('6rG_irmOQsM')
+  expect(await listFixes(db, 'other', NOW)).toEqual([])
+  await markFixes(
+    db,
+    'other',
+    { upTo: NOW, videoIds: ['6rG_irmOQsM'] },
+    'dismissed',
+    NOW
+  )
+  expect(await listFixes(db, 'me', NOW)).toHaveLength(1)
+})
+
+test('marks name real video ids, at most 50, with the newest fix shown', () => {
+  expect(parseFixMarks({ upTo: 5, videoIds: ['6rG_irmOQsM'] })).toEqual({
+    upTo: 5,
+    videoIds: ['6rG_irmOQsM'],
+  })
+  expect(parseFixMarks({ upTo: 5, videoIds: [] })).toBeNull()
+  expect(parseFixMarks({ upTo: 5, videoIds: ["x' or 1=1"] })).toBeNull()
+  expect(parseFixMarks({ videoIds: ['6rG_irmOQsM'] })).toBeNull()
+  expect(
+    parseFixMarks({
+      upTo: 5,
+      videoIds: Array.from({ length: 51 }, () => '6rG_irmOQsM'),
+    })
+  ).toBeNull()
 })
