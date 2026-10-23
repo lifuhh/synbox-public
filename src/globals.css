@@ -1158,14 +1158,16 @@
 }
 
 /* Content that arrives fades in where it will stay, instead of standing in a skeleton first. `rise-in` is for
-   a view's first appearance: a short rise with a blur that clears, staggered by --rise-delay. `appear` is for
-   small things that resolve in place (the top bar's account slot). Reduced motion keeps only the fade. Named
-   apart from tw-animate's `enter` keyframes and `fade-in` utility, which other components use */
+   a view's first appearance: a short rise, staggered by --rise-delay. `appear` is for small things that resolve
+   in place (the top bar's account slot). Reduced motion keeps only the fade. Named apart from tw-animate's
+   `enter` keyframes and `fade-in` utility, which other components use.
+   Opacity and translate only, so the compositor runs it: a blur can't be (Chromium: "filter may move pixels"),
+   which put the whole entrance on the main thread, where a cold load's renders and font layouts froze it for
+   up to 220ms */
 @keyframes rise-in {
   from {
     opacity: 0;
     translate: 0 12px;
-    filter: blur(4px);
   }
 }
 @keyframes appear {
@@ -1174,7 +1176,7 @@
   }
 }
 /* Held at its start through the delay, then let go: an animation still filling forwards keeps its block a
-   stacking context (the blur), and a row stuck inside it (the Gallery title) then fell under the top scrim */
+   stacking context, and a row stuck inside it (the Gallery title) then fell under the top scrim */
 @utility rise-in {
   animation: rise-in 0.3s ease-out var(--rise-delay, 0ms) backwards;
   @media (prefers-reduced-motion: reduce) {
