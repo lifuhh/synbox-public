@@ -610,11 +610,9 @@ export const requestGeneration = async (
   )
   if (!running) {
     set({ ...state, checking: [...state.checking, videoId] })
-    const refusal = await checkGeneration(videoId, request.mode).finally(
-      () => {
-        set({ ...state, checking: state.checking.filter((id) => id !== videoId) })
-      }
-    )
+    const refusal = await checkGeneration(videoId, request.mode).finally(() => {
+      set({ ...state, checking: state.checking.filter((id) => id !== videoId) })
+    })
     if (refusal !== null) {
       return refusal
     }

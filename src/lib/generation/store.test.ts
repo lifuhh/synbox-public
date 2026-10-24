@@ -214,7 +214,7 @@ test('a start opens the panel only for the first song in progress, or a press on
 
 test('a second press while the song is being checked asks the backend once and starts one job', async () => {
   const videoId = 'k'.repeat(11)
-  let answer = (_body: unknown) => {}
+  let answer: ((body: unknown) => void) | undefined
   const checks = vi.fn(
     async () =>
       // oxlint-disable-next-line promise/avoid-new -- the check answers when the test says
@@ -242,10 +242,12 @@ test('a second press while the song is being checked asks the backend once and s
   expect(await requestGeneration({ mode: 'new', videoId })).toBe('checking')
   expect(checks).toHaveBeenCalledTimes(1)
 
-  answer({ ok: true })
+  answer?.({ ok: true })
   expect(await first).toBeNull()
   expect(generationPhase(getGenerationState(), videoId)).toBe('generating')
-  const jobs = getGenerationState().jobs.filter((job) => job.videoId === videoId)
+  const jobs = getGenerationState().jobs.filter(
+    (job) => job.videoId === videoId
+  )
   expect(jobs).toHaveLength(1)
   cancelGeneration(jobs[0].id)
 })

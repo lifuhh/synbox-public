@@ -72,10 +72,15 @@ const useSongLines = (videoId: string, version: number | null) => {
   return { lines, loading: version === null && isPending }
 }
 
-// A tap on the band opens Lyrics Style; a press held longer is the start of a look around the song
-const useStyleTap = () => {
+// A tap on the band opens Lyrics Style; a press held longer is the start of a look around the song. Only over
+// lines (`on`): with none there is nothing to style, and a press on a disabled Generate Lyrics (which takes no
+// pointer events) would fall through to it
+const useStyleTap = (on: boolean) => {
   const setStylePanel = useSetAtom(lyricsStylePanelAtom)
   const pressedAt = useRef(0)
+  if (!on) {
+    return {}
+  }
   return {
     onClick: () => {
       if (performance.now() - pressedAt.current < TAP_MAX_MS) {
@@ -147,7 +152,6 @@ export const LyricsPanel = ({
     useAtomValue(lyricsCustomHueAtom)
   )
   const sheetVars: CssVars = { '--reader-accent': accent }
-  const styleTap = useStyleTap()
   const show: LineShow = {
     bold: false,
     japanese: useAtomValue(lyricsVisibilityAtom),
@@ -209,6 +213,7 @@ export const LyricsPanel = ({
   } else if (!(show.japanese || show.romaji || show.translation)) {
     empty = 'Lyrics, Romaji and Translation are all turned off.'
   }
+  const styleTap = useStyleTap(band && empty === null)
   const seek = (to: number) => {
     clock?.seek(to)
     follow()
@@ -246,9 +251,7 @@ export const LyricsPanel = ({
       <div
         ref={scroller}
         {...handlers}
-        // Only over lines: with none there is nothing to style, and a press on a disabled Generate Lyrics (which
-        // takes no pointer events) would fall through to it
-        {...(band && empty === null ? styleTap : {})}
+        {...styleTap}
         // A scrolling box with nothing focusable inside takes focus itself, or a keyboard can't scroll it (WCAG 2.1.1)
         // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex
         tabIndex={0}

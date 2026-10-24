@@ -198,11 +198,12 @@ const useSongActions = (
     handleSelect: () => {
       startGenerating(videoId, title)
     },
-    icon: phase !== null ? (
-      <LoaderCircleIcon className='size-5 shrink-0 motion-safe:animate-spin' />
-    ) : (
-      <SparklesIcon className='size-5 shrink-0' />
-    ),
+    icon:
+      phase === null ? (
+        <SparklesIcon className='size-5 shrink-0' />
+      ) : (
+        <LoaderCircleIcon className='size-5 shrink-0 motion-safe:animate-spin' />
+      ),
     label: GENERATE_LABELS[phase ?? 'idle'],
     // The watch page offers it in the lyrics panel, as a labelled button
     stageOnly: true,
