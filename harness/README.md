@@ -1,9 +1,10 @@
 # Synbox harness
 
-The checks that judge a change before it ships, so an agent's "done" comes with evidence. Three commands:
+The checks that judge a change before it ships, so an agent's "done" comes with evidence. Four commands:
 
 - **`bun harness/bench/cli.ts check`**: exact checks, about a minute (45 s before the 320px view and the accessibility counts, 2026-10-24). Every PR into `staging` needs it to pass on its committed tree, and every release runs it again on staging's combined tree.
 - **`bun harness/views.ts <path-or-url>`**: one page in all views, audited and shot side by side, for looking at a UI change.
+- **`bun harness/smoke.ts <url>`**: the main user flows on a real deployed copy (a deploy preview, or https://synbox.io) against the real backends, read-only, about 40 seconds. `check` judges code and layout on recorded data; this is the check that the site still works.
 - **`bun harness/bench/cli.ts trend`**: timing benchmarks, minutes to an hour, off the release path. It writes what it finds to a queue for a person to read; it never blocks anything.
 
 **All views** are web (desktop Chromium 1440×900), PWA portrait (WebKit iPhone 390×844, installed) and PWA landscape (WebKit 844×390, installed), every phone view with the iPhone's safe areas. They are defined once, in `bench/engines/browser.ts` › `ALL_VIEWS`, and both `check` and `views.ts` read them from there.
@@ -17,7 +18,7 @@ bun harness/bench/cli.ts check --only layout-player    # just the audits whose i
 
 It runs, and stops at the first failure:
 
-1. **Evaluator guard.** A branch that edits the evaluator together with app code (`src/`, `public/`, `index.html`, `vite.config.ts`, `bun.lock`, `netlify/`) fails: land the evaluator change in its own PR, judged against an unchanged app. The evaluator is whatever decides what `check` runs and how it judges: everything in `harness/bench/` except `trend.ts`, the scripts in `package.json`, `harness/release.ts` and `harness/gate.json`. Not the evaluator: `harness/budgets.json` and `harness/routes.json`, which change beside the app on purpose.
+1. **Evaluator guard.** A branch that edits the evaluator together with app code (`src/`, `public/`, `index.html`, `vite.config.ts`, `bun.lock`, `netlify/`) fails: land the evaluator change in its own PR, judged against an unchanged app. The evaluator is whatever decides what `check` runs and how it judges: everything in `harness/bench/` except `trend.ts`, the scripts in `package.json`, `harness/release.ts`, `harness/smoke.ts` and `harness/gate.json`. Not the evaluator: `harness/budgets.json` and `harness/routes.json`, which change beside the app on purpose.
 2. **Audit list**: `src/app.tsx` yields routes, and every route named in `harness/bench/probes/layout.ts` › `LAYOUT_PAGES` or `harness/routes.json` is one of them. A router refactor can't silently drop audits.
 3. **`typecheck`, `lint`, `test`, `fmt:check`**, beside the production build.
 4. **Size**: brotli KB of first-load JS, first-load CSS and all JS, against `harness/budgets.json`. A pass prints each value over its budget, so the headroom shows.
@@ -53,6 +54,33 @@ bun harness/views.ts /privacy --state search-button            # with an opened 
 ```
 
 Each view gets the same audit `check` runs (`probes/layout.ts` › `auditPage`, `pageAt`: it waits for the page as its route's audit does, `/` as home, and uses the same safe areas and installed emulation), and one line per view: `ok`, or the counts over 0 and the offending elements. It writes `.reports/YYYY-MM-DD-views-<slug>/index.html`, the screenshots side by side on a dark page (one row per view with `--compare`), prints its path, and exits 3 when a view has a finding. Without `--port`, the build is served the way `check` serves it, with the same replayed API data.
+
+## On a deployed copy: `smoke.ts`
+
+```sh
+bun harness/smoke.ts https://deploy-preview-335--synbox.netlify.app   # a deploy preview of staging
+bun harness/smoke.ts https://synbox.io                                 # production
+bun harness/smoke.ts https://synbox.io --song impSuIygMiQ              # a chosen library song instead of the first with karaoke
+```
+
+Each flow runs in all views (web, PWA portrait, PWA landscape; the views side by side, flows one after another in each, a fresh browser context per flow), against the site's real backends. Songs are picked from the live data when the run starts: the first `karaoke: true` song in `/api/library/songs`, a word of its title (Japanese first, `【…】` tags and words like "feat" or "cover" skipped), the first song of the YouTube Top 100 Japan chart that is not in the library, and the first of two public non-song videos (`jNQXAC9IVRw`, `aqz-KE-bpKQ`) in neither. A pick that can't be made fails its flows with `precondition: …`.
+
+| Flow | Passes when |
+| --- | --- |
+| `home` | `/api/library/songs` answers 200 with songs; the hero input, a Recommendations slide and the charts show; at least 90% of chart rows show a view count; every gallery card links a song from that list; no `console.error` or uncaught error from the app's own scripts |
+| `library-song` | `/v/<id>`: the YouTube iframe reaches `ready`, karaoke timing answers 200 from the lookup service, playback starts, lyrics lines render, a sung part's fill (`--p`) grows between two looks a second apart (the player's ArrowRight skips an intro 5 s a press, up to a minute), and exactly one listen POST is sent |
+| `search` | `/search?q=<word>`: once the results hold still for 1.5 s, the song is among them and every result carries the karaoke mic |
+| `chart-song` | `/v/<chart id>` plays; the watch page shows "No Lyrics Yet"; Generate Lyrics sends `/generation-check` `{id, kind: "new"}` (answered yes), then `/validate` for that id (answered with the backend's error line), and the app shows that stop; no listen |
+| `not-a-song` | `/v/<id>` says "Not on Synbox", holds no YouTube iframe after 3 s, and writes nothing (Sentry's session pings aside) |
+| `reader-versions` | `/lyrics/<id>` shows at least 5 lines and asks the lookup service for karaoke timing; `/v/<id>/versions` shows a guest the 403 page, and that service refuses a guest the versions list (401 or 403) |
+| `sign-in` | `/api/me` answers 200 with no user; Sign In sends `/api/auth/sign-in/social` with `provider: google` (answered) and the page goes to accounts.google.com (answered with a blank page) |
+| `security-headers` | `/` and `/v/<id>` carry every header in `netlify/security-headers.ts` as written; HSTS needs only its directives, since Netlify sends its own (with `preload`) on `*.netlify.app` |
+| `csp` | no `securitypolicyviolation` event and no CSP console message from the site's own documents, in any flow or view |
+| `no-writes` | no write reached Synbox's services unanswered |
+
+**Read-only, enforced at the network layer.** Every POST, PUT, PATCH and DELETE to the site's origin (the auth Worker behind `/api`), `*.synbox.io`, Appwrite, Sentry and the Cloud Run services is caught by a Playwright route before it leaves. Five are expected and answered in place (`smoke.ts` › `WRITE_RULES`): the listen, Sentry's envelopes, `/generation-check`, `/validate` and the Google sign-in start. Anything else is blocked and fails `no-writes` with its method, URL, view and flow; add a rule only with what that write would have changed. Service workers are blocked, since a route never sees what one fetches. A deploy preview's Netlify Drawer (`/.netlify/scripts/`) is blocked as Netlify's, not the app's. Google Fonts come from the bench's local copy, as in `check`.
+
+It never covers: a real sign-in (the Google round trip and the session it makes), a counted listen (the Worker's write), a paid generation (anything past `/validate`), an admin's versions list, and anything a signed-in user sees. A flow that fails because this machine lost its connection (`ERR_INTERNET_DISCONNECTED` and the like) runs once more, and its line says so. Each run writes `.reports/YYYY-MM-DD-smoke-<host>/` in the main checkout: `index.html` (every flow and view with its evidence, every answered write, every violation, a screenshot of each failure) and `result.json`.
 
 ## Shipping: staging, then one release
 

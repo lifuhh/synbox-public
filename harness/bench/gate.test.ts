@@ -38,6 +38,15 @@ describe('evaluatorTouched', () => {
     ).toBeNull()
   })
 
+  test('the flow smoke test edited beside app code is refused: the release ships on its verdict', () => {
+    expect(
+      evaluatorTouched(
+        ['harness/smoke.ts', 'netlify/youtube-proxy.ts'],
+        existed
+      )
+    ).toContain('harness/smoke.ts')
+  })
+
   test('a budget raised beside the app change that needs it passes', () => {
     expect(
       evaluatorTouched(['harness/budgets.json', 'src/app.tsx'], existed)
