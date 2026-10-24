@@ -88,7 +88,7 @@ const PrivacyPage = () => {
           href='https://www.linkedin.com/in/lifuhh/'
           target='_blank'
           rel='noreferrer'
-          className='hover:text-foreground'>
+          className='py-0.5 hover:text-foreground'>
           LinkedIn
         </a>
       </nav>
