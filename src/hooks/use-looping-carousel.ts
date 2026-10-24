@@ -7,6 +7,7 @@ import {
   releaseTarget,
   STEP_MS,
 } from '@/lib/carousel-motion'
+import { reducedMotion, scrollMotion } from '@/lib/reduced-motion'
 
 // A finger moving less than this is a tap, not a drag
 const DRAG_SLOP_PX = 6
@@ -44,9 +45,6 @@ const ARROWS: Partial<Record<string, 1 | -1>> = {
 const onDragStart = (event: DragEvent) => {
   event.preventDefault()
 }
-
-const reducedMotion = () =>
-  matchMedia('(prefers-reduced-motion: reduce)').matches
 
 // Drives a scroll-snap row whose slides repeat `copies` times, so it can run on forever both ways.
 // The row rests in the middle copy: whenever it comes to rest elsewhere it jumps by whole copies, which
@@ -187,7 +185,7 @@ const driveCarousel = (
       return
     }
     recentre()
-    track.scrollTo({ behavior: 'smooth', left: xOf(nearest() + 1) })
+    track.scrollTo({ behavior: scrollMotion(), left: xOf(nearest() + 1) })
   }
 
   const onScroll = () => {

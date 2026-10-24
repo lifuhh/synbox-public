@@ -1,5 +1,6 @@
 import './instrument'
 import { reactErrorHandler } from '@sentry/react'
+import { MotionConfig } from 'motion/react'
 import ReactDOM from 'react-dom/client'
 import { BrowserRouter } from 'react-router'
 
@@ -22,7 +23,10 @@ ReactDOM.createRoot(rootElement, {
   <BrowserRouter>
     <QueryProvider>
       <ErrorBoundary>
-        <App />
+        {/* Reduce Motion on the device keeps motion's fades and drops its moves and scales */}
+        <MotionConfig reducedMotion='user'>
+          <App />
+        </MotionConfig>
       </ErrorBoundary>
     </QueryProvider>
   </BrowserRouter>

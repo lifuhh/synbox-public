@@ -297,9 +297,8 @@ const PlayerRail = ({ inline = false }: { inline?: boolean }) => {
         // Closing the sheet rejects with AbortError, which is not a failure
         if (!(error instanceof DOMException && error.name === 'AbortError')) {
           toast({
-            description: 'Failed to share link',
-            duration: 2000,
-            title: 'Error',
+            description: 'Press Share again',
+            title: "Couldn't Share",
             variant: 'destructive',
           })
         }
@@ -316,10 +315,10 @@ const PlayerRail = ({ inline = false }: { inline?: boolean }) => {
         title: 'Link Copied',
       })
     } catch {
+      // The link itself, to select and copy by hand (the installed app has no address bar)
       toast({
-        description: 'Failed to copy link to clipboard',
-        duration: 2000,
-        title: 'Error',
+        description: <span className='select-all'>{url.href}</span>,
+        title: "Couldn't Copy the Link",
         variant: 'destructive',
       })
     }
