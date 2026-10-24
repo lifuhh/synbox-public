@@ -188,6 +188,7 @@ export const TopbarSearch = ({ variant }: { variant: 'inline' | 'button' }) => {
 
   const field = (
     <form
+      data-dock-face
       className='relative min-w-0 flex-1'
       onSubmit={(event) => {
         event.preventDefault()
@@ -201,6 +202,7 @@ export const TopbarSearch = ({ variant }: { variant: 'inline' | 'button' }) => {
       />
       <input
         ref={inputRef}
+        data-dock-shell
         type='search'
         role='combobox'
         aria-label='Search Songs'
@@ -305,6 +307,7 @@ export const TopbarSearch = ({ variant }: { variant: 'inline' | 'button' }) => {
     <>
       <Button
         ref={triggerRef}
+        data-dock-shell
         variant='toolbar'
         size='icon'
         aria-label='Search'

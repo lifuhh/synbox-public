@@ -12,6 +12,7 @@ import AppLogo from '../topbar/app-logo'
 import LibraryMenu from '../topbar/library-menu'
 import Notifications from '../topbar/notifications'
 import ProfileButton from '../topbar/profile-button'
+import { useBarSearch } from '../topbar/search-dock'
 import { TopbarSearch } from '../topbar/topbar-search'
 
 // Within this many pixels of the top a page counts as unscrolled
@@ -123,8 +124,8 @@ const TopBar = () => {
   // backdrop behind it. Pages scroll in their own boxes, so the outermost vertical scroller counts, and the box and
   // path it happened on are kept so a new page, or the same page remounted, starts clear
   const { pathname } = useLocation()
-  const searchable =
-    !isVideoPlayer && pathname !== '/' && pathname !== '/search'
+  const header = useRef<HTMLElement>(null)
+  const search = useBarSearch(isVideoPlayer, header)
   const [bar, setBar] = useState<Bar | null>(null)
   useEffect(() => {
     const runs = new WeakMap<HTMLElement, Run>()
@@ -176,7 +177,6 @@ const TopBar = () => {
   // The bar's empty space takes a tap back to the page's top, or reloads a page already there: a pointer
   // shortcut, as on iOS (the keyboard has Home and the browser's reload). Listened to on the bar itself, so
   // presses in its menus, which sit outside it, never count
-  const header = useRef<HTMLElement>(null)
   useEffect(() => {
     const listen = (box: HTMLElement) => {
       const onClick = (event: MouseEvent) => {
@@ -205,7 +205,8 @@ const TopBar = () => {
     'mr-1 ml-auto grid auto-cols-[minmax(2.5rem,3rem)] grid-flow-col justify-items-center sm:mr-2 sm:flex sm:items-center sm:gap-3',
     'tabbar:*:not-data-notifications:hidden',
     isVideoPlayer && armed && 'pointer-events-auto',
-    '*:not-data-busy:transition-fade-translate *:not-data-busy:duration-300 *:not-data-busy:ease-out',
+    // The search hands over from the flying ghost in one frame (search-dock.tsx), so it takes no fade
+    '*:not-data-busy:not-data-dock-slot:transition-fade-translate *:not-data-busy:not-data-dock-slot:duration-300 *:not-data-busy:not-data-dock-slot:ease-out',
     !iconsShown &&
       '*:not-data-busy:-translate-y-2 *:not-data-busy:opacity-0 motion-reduce:*:not-data-busy:translate-y-0'
   )
@@ -230,17 +231,24 @@ const TopBar = () => {
         ) : (
           <AppLogo />
         )}
-        {/* Search from any page but the two that have their own field (home and search) and the full-screen
-            player: in the bar on a wide screen, behind a button on a phone */}
-        {searchable && (
+        {/* Search from any page but Search, which is a field of its own, and the full-screen player (on home,
+            once its field has scrolled under the bar): in the bar on a wide screen, behind a button on a phone */}
+        {search.shown && (
           // Centred on the page once the bar has room on both sides, as on YouTube; narrower, between the two
-          <div className='hidden min-w-0 flex-1 justify-center md:flex xl:pointer-events-none xl:absolute xl:inset-x-0 xl:*:pointer-events-auto'>
+          <div
+            {...search.slot}
+            className={cn(
+              'hidden min-w-0 flex-1 justify-center md:flex xl:pointer-events-none xl:absolute xl:inset-x-0 xl:*:pointer-events-auto',
+              search.slot.className
+            )}>
             <TopbarSearch variant='inline' />
           </div>
         )}
         <div data-player-chrome className={buttons}>
-          {searchable && (
-            <span className='md:hidden'>
+          {search.shown && (
+            <span
+              {...search.slot}
+              className={cn('md:hidden', search.slot.className)}>
               <TopbarSearch variant='button' />
             </span>
           )}
@@ -251,6 +259,7 @@ const TopBar = () => {
           {!isVideoPlayer && <ProfileButton />}
         </div>
       </nav>
+      {search.ghost}
     </header>
   )
 }
