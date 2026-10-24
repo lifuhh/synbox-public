@@ -190,7 +190,7 @@ export const OPENED_STATES: Record<string, OpenedState[]> = {
         { press: { name: 'Lyrics Style', role: 'button' } },
         { shows: { name: 'Lyrics Style', role: 'dialog' } },
       ],
-      views: ['web', 'pwa-portrait', 'safari-portrait'],
+      views: ['web', 'pwa-portrait'],
     },
     {
       // On its side the rail floats over the video and shows with the controls
@@ -201,7 +201,7 @@ export const OPENED_STATES: Record<string, OpenedState[]> = {
         { press: { name: 'Lyrics Style', role: 'button' } },
         { shows: { name: 'Lyrics Style', role: 'dialog' } },
       ],
-      views: ['pwa-landscape', 'safari-landscape'],
+      views: ['pwa-landscape'],
     },
   ],
 }
