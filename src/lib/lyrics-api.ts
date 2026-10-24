@@ -3,9 +3,11 @@ import { backendToken, lastAccount } from '@/lib/auth'
 
 // Lyrics and karaoke timing come from the auth Worker, one song at a time (worker/src/lyrics.ts), never from the
 // lyrics table or the lookup service directly. Straight to api.synbox.io, not through synbox.io/api, so the Worker
-// counts each visitor's own network; an account sends its backend token. Unset (a local dev server), the same
-// origin, which Vite passes on to the local Worker
-const API = import.meta.env.VITE_SYNBOX_API_URL ?? ''
+// counts each visitor's own network; an account sends its backend token. The dev server answers the same paths
+// itself (dev/lyrics-proxy.ts); VITE_SYNBOX_API_URL points either elsewhere (a local Worker)
+const API =
+  import.meta.env.VITE_SYNBOX_API_URL ??
+  (import.meta.env.DEV ? '' : 'https://api.synbox.io')
 
 export class RateLimitedError extends Error {
   constructor() {
