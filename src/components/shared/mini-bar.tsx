@@ -1,8 +1,6 @@
 import { useAtom, useAtomValue, useSetAtom } from 'jotai'
-import { PauseIcon, PlayIcon, VolumeXIcon, XIcon } from 'lucide-react'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { RefObject } from 'react'
-import { Link } from 'react-router'
 
 import {
   connectEngine,
@@ -24,21 +22,17 @@ import {
   playedAtom,
   queueAtom,
   resumeSongAtom,
-  songPath,
-  songState,
 } from '@/lib/listening/store'
 import { countListen } from '@/lib/song-stats'
 import type { YTPlayer } from '@/lib/youtube/iframe-api'
 import { YTState } from '@/lib/youtube/iframe-api'
-import { cn } from '@/utils/cn'
+
+import { MiniBarView, THUMB_RADIUS_PX } from './mini-bar-view'
 
 type Phase = 'playing' | 'paused' | 'ended'
 
 // How long YouTube takes to report an unmute it was asked for
 const MUTE_READ_BACK_MS = 500
-
-// The bar's thumbnail is rounded-lg
-const THUMB_RADIUS_PX = 8
 
 // What plays after `song` ends here, as the player page would (model › nextSong): the queue, the playlist, then
 // with autoplay a recommendation. Applies the step and returns the song, or null when nothing is next
@@ -267,75 +261,26 @@ const MiniPlayer = ({
   }
 
   return (
-    <div
-      data-resume-box
-      className='relative flex h-14 items-center gap-1 overflow-hidden rounded-2xl bg-popover/90 p-1.5 shadow-lg ring-1 ring-white/10 backdrop-blur-xl'>
-      <Link
-        to={songPath(song.videoId)}
-        state={songState(song.videoId, 'resume')}
-        onClick={() => {
+    <div data-resume-box>
+      <MiniBarView
+        song={song}
+        playing={playing}
+        ended={phase === 'ended'}
+        muted={muted}
+        thumbRef={thumb}
+        lineRef={line}
+        onOpen={() => {
           restoring.current = heldSong()?.videoId === song.videoId
         }}
-        className='flex min-w-0 flex-1 items-center gap-3 rounded-xl focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden'>
-        <span ref={thumb} className='aspect-video h-11 shrink-0'>
-          <img
-            src={song.thumbnailUrl}
-            alt=''
-            className='size-full rounded-lg object-cover'
-          />
-        </span>
-        <span className='flex min-w-0 flex-1 flex-col'>
-          <span className='truncate text-sm font-medium text-foreground'>
-            {song.title}
-          </span>
-          <span className='truncate text-xs text-muted-foreground'>
-            {song.author}
-          </span>
-        </span>
-      </Link>
-      {muted && (
-        <button
-          type='button'
-          aria-label='Unmute'
-          onClick={unmute}
-          className='grid size-11 shrink-0 place-items-center rounded-full text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden'>
-          <VolumeXIcon className='size-5' aria-hidden />
-        </button>
-      )}
-      <button
-        type='button'
-        aria-label={playing ? 'Pause' : 'Play'}
-        onClick={toggle}
-        className='grid size-11 shrink-0 place-items-center rounded-full text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden'>
-        {playing ? (
-          <PauseIcon className='size-5 fill-current' aria-hidden />
-        ) : (
-          <PlayIcon className='size-5 fill-current' aria-hidden />
-        )}
-      </button>
-      <button
-        type='button'
-        aria-label='Close Player'
-        onClick={() => {
+        onToggle={toggle}
+        onUnmute={unmute}
+        onClose={() => {
           if (heldSong()?.videoId === song.videoId) {
             player.current?.pauseVideo()
           }
           onClose()
         }}
-        className='grid size-11 shrink-0 place-items-center rounded-full text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden'>
-        <XIcon className='size-5' aria-hidden />
-      </button>
-      <span
-        aria-hidden
-        className='pointer-events-none absolute inset-x-3 bottom-0 h-0.5 overflow-hidden rounded-full bg-white/15'>
-        <span
-          ref={line}
-          className={cn(
-            'block size-full origin-left scale-x-0 bg-foreground/80',
-            phase === 'ended' && 'bg-foreground/40'
-          )}
-        />
-      </span>
+      />
     </div>
   )
 }
