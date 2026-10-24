@@ -1843,6 +1843,50 @@
     --tabbar-h: 9.25rem;
   }
 
+  /* The tabs step back while the page is read, as Instagram's do: scrolling down (the top bar slides away,
+     data-topbar-state) shrinks the pill to 7/8 from its bottom edge and fades its labels, the icons moving down
+     to its centre; scrolling up brings it back, in the same frame and over the same 300ms as the top bar. The
+     labels only fade, so each tab keeps its name for assistive tech. Keyboard focus inside restores it. With
+     reduced motion only the labels fade */
+  [data-tab-nav] {
+    transform-origin: bottom;
+    transition: scale 300ms var(--ease-out);
+
+    & [data-tab-icon] {
+      transition: translate 300ms var(--ease-out);
+    }
+
+    & [data-tab-label] {
+      transition: opacity 150ms var(--ease-out);
+    }
+  }
+
+  [data-resume-box] {
+    transition: translate 300ms var(--ease-out);
+  }
+
+  html[data-topbar-state='hidden'] [data-tabbar-root]:not(:focus-within) {
+    & [data-tab-label] {
+      opacity: 0;
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+      & [data-tab-nav] {
+        scale: 0.875;
+      }
+
+      /* Half the label's line and the gap above it */
+      & [data-tab-icon] {
+        translate: 0 0.5625rem;
+      }
+
+      /* Down with the pill's top edge: an eighth of its 4rem */
+      & [data-resume-box] {
+        translate: 0 0.5rem;
+      }
+    }
+  }
+
   /* The iPhone stand-in for fullscreen: the player without the app's top bar */
   html[data-immersive] [data-topbar] {
     display: none;
