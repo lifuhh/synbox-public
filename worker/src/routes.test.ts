@@ -91,6 +91,13 @@ test('a guest cannot report', async () => {
   expect(await listReports(db)).toEqual([])
 })
 
+test('a guest has no open report to show, whatever the song', async () => {
+  const { call } = await setup()
+  const response = await call('/api/reports/mine?videoId=6rG_irmOQsM')
+  expect(response.status).toBe(200)
+  expect(await response.json()).toEqual({ report: null })
+})
+
 test('the fixer API refuses a missing, wrong or near-miss token, and any token when the secret is unset', async () => {
   const { env, status } = await setup()
   expect(await status('/reports', { auth: '' })).toBe(401)
@@ -151,7 +158,13 @@ test('the daily cron expires reports open past 3 days', async () => {
   const { ctx, db, env, waits } = await setup()
   const now = Date.now()
   await saveReport(db, 'me', REPORT, '', now - EXPIRE_DAYS * DAY - 1)
-  await saveReport(db, 'me', REPORT, '', now - 2 * DAY)
+  await saveReport(
+    db,
+    'me',
+    { ...REPORT, videoId: 'Dta27KjGpJs' },
+    '',
+    now - 2 * DAY
+  )
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the handler reads nothing from the controller
   const controller = { cron: '0 3 * * *' } as unknown as ScheduledController
   worker.scheduled(controller, env, ctx)

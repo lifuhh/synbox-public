@@ -12,6 +12,7 @@ import {
   listOpenReports,
   listReports,
   markFixes,
+  openReportOf,
   parseDrop,
   parseFixMarks,
   parseReport,
@@ -129,9 +130,16 @@ test('an account may send a few reports a day', async () => {
   const { db } = migratedD1()
   await addUsers(db, 'u')
   const now = 1_000_000_000
+  // Each on its own song: one open report per song
   await Promise.all(
-    Array.from({ length: REPORTS_PER_DAY }, async () => {
-      await saveReport(db, 'u', REPORT, '', now)
+    Array.from({ length: REPORTS_PER_DAY }, async (_, index) => {
+      await saveReport(
+        db,
+        'u',
+        { ...REPORT, videoId: `song${String(index).padStart(7, '0')}` },
+        '',
+        now
+      )
     })
   )
   expect(await reportAllowed(db, 'u', now)).toBe(false)
@@ -143,7 +151,13 @@ test('resolving records when, the fixing version and the note; reopening clears 
   const { db } = migratedD1()
   await addUsers(db, 'u')
   await saveReport(db, 'u', REPORT, '', 1)
-  await saveReport(db, 'u', { ...REPORT, message: 'Later' }, '', 2)
+  await saveReport(
+    db,
+    'u',
+    { ...REPORT, message: 'Later', videoId: 'Dta27KjGpJs' },
+    '',
+    2
+  )
   const [newer, older] = await listReports(db)
   const id = String(newer?.id)
   expect(
@@ -162,7 +176,7 @@ test('resolving records when, the fixing version and the note; reopening clears 
     resolvedAt: 3,
     resolvedVersion: 4,
   })
-  expect(await reopenReport(db, id)).toBe(true)
+  expect(await reopenReport(db, id)).toBe('reopened')
   const [reopened] = await listReports(db)
   expect(reopened).toMatchObject({
     id,
@@ -178,7 +192,7 @@ test('resolving records when, the fixing version and the note; reopening clears 
       4
     )
   ).toBe(false)
-  expect(await reopenReport(db, 'no-such-id')).toBe(false)
+  expect(await reopenReport(db, 'no-such-id')).toBe('not_found')
 })
 
 test('a resolution may be empty; a fractional version or an overlong note is refused', () => {
@@ -358,7 +372,7 @@ test('reopen clears a drop, and the report is open again', async () => {
     NOW
   )
   expect(await listOpenReports(db)).toEqual([])
-  expect(await reopenReport(db, id)).toBe(true)
+  expect(await reopenReport(db, id)).toBe('reopened')
   expect(await rowOf(db, id)).toMatchObject({
     dropReason: null,
     droppedAt: null,
@@ -417,4 +431,30 @@ test('a drop names a known reason; the note is optional and short', () => {
   expect(
     parseDrop({ note: 'x'.repeat(RESOLUTION_MAX + 1), reason: 'duplicate' })
   ).toBeNull()
+})
+
+test('one open report per account per song: a second is refused until the first is resolved or dropped', async () => {
+  const { db } = migratedD1()
+  await addUsers(db, 'me', 'other')
+  expect(await saveReport(db, 'me', REPORT, '', NOW)).toBe(true)
+  expect(await saveReport(db, 'me', REPORT, '', NOW + 1)).toBe(false)
+  expect(await openReportOf(db, 'me', REPORT.videoId)).toEqual({
+    createdAt: NOW,
+    message: REPORT.message,
+  })
+  // Another song, or another account on the same song, is its own report
+  expect(
+    await saveReport(db, 'me', { ...REPORT, videoId: 'Dta27KjGpJs' }, '', NOW)
+  ).toBe(true)
+  expect(await saveReport(db, 'other', REPORT, '', NOW)).toBe(true)
+  const reports = await listReports(db)
+  const first = reports.find(
+    (row) => row.videoId === REPORT.videoId && row.email === 'me@x'
+  )
+  const id = String(first?.id)
+  await dropReport(db, id, { note: null, reason: 'nothing_found' }, NOW + 2)
+  expect(await openReportOf(db, 'me', REPORT.videoId)).toBeNull()
+  expect(await saveReport(db, 'me', REPORT, '', NOW + 3)).toBe(true)
+  // The dropped one can't be reopened beside the newer open one
+  expect(await reopenReport(db, id)).toBe('conflict')
 })

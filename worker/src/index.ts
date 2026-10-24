@@ -43,6 +43,7 @@ import {
   listFixes,
   listReports,
   markFixes,
+  openReportOf,
   parseDrop,
   parseFixMarks,
   parseReport,
@@ -227,17 +228,33 @@ app.post('/api/reports', async (c) => {
     return c.json({ code: parsed.code }, 400)
   }
   const now = Date.now()
+  // One open report per song: every issue goes in it
+  if ((await openReportOf(c.env.DB, userId, parsed.report.videoId)) !== null) {
+    return c.json({ code: 'already_reported' }, 409)
+  }
   if (!(await reportAllowed(c.env.DB, userId, now))) {
     return c.json({ code: 'too_many_reports' }, 429)
   }
-  await saveReport(
+  const saved = await saveReport(
     c.env.DB,
     userId,
     parsed.report,
     c.req.header('user-agent') ?? '',
     now
   )
-  return c.body(null, 201)
+  return saved ? c.body(null, 201) : c.json({ code: 'already_reported' }, 409)
+})
+
+// The signed-in user's open report on a song, so Report Issue shows it instead of a form it would refuse
+app.get('/api/reports/mine', async (c) => {
+  const userId = await userIdOf(c.env, c.req.raw.headers)
+  const videoId = c.req.query('videoId') ?? ''
+  return c.json({
+    report:
+      userId === null || !isVideoId(videoId)
+        ? null
+        : await openReportOf(c.env.DB, userId, videoId),
+  })
 })
 
 // Songs the signed-in user reported that got new lyrics since, for their notifications; a guest has none
@@ -665,11 +682,16 @@ admin.post('/reports/:id/drop', async (c) => {
   return found ? c.body(null, 204) : c.json({ code: 'not_found' }, 404)
 })
 
-admin.post('/reports/:id/reopen', async (c) =>
-  (await reopenReport(c.env.DB, c.req.param('id')))
-    ? c.body(null, 204)
+// Refused while its reporter has a newer open report on the song (one open per song)
+admin.post('/reports/:id/reopen', async (c) => {
+  const result = await reopenReport(c.env.DB, c.req.param('id'))
+  if (result === 'reopened') {
+    return c.body(null, 204)
+  }
+  return result === 'conflict'
+    ? c.json({ code: 'already_open' }, 409)
     : c.json({ code: 'not_found' }, 404)
-)
+})
 
 // Who asked for an invite, with their note and the limit they have now
 admin.get('/invites', async (c) =>

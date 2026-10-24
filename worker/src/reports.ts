@@ -126,8 +126,28 @@ export const reportAllowed = async (
       .first('n')) ?? 0
   ) < REPORTS_PER_DAY
 
-// Old rows may carry a guestKey (reporting was open to guests until 2026-10-23); new ones never do
-export const saveReport = async (
+// The account's open report on a song (one at most: migration 0019's index), for the form to show instead of
+// another; null when there is none
+export const openReportOf = async (
+  db: D1Database,
+  userId: string,
+  videoId: string
+) => {
+  const row = await db
+    .prepare(
+      `select "message", "createdAt" from "report" where "userId" = ?1 and "videoId" = ?2
+         and "resolvedAt" is null and "droppedAt" is null`
+    )
+    .bind(userId, videoId)
+    .first<{ message: string; createdAt: number }>()
+  return row ?? null
+}
+
+// The one-open-report index refused a write
+const isOpenConflict = (error: unknown) =>
+  error instanceof Error && /UNIQUE constraint failed/u.test(error.message)
+
+const insertReport = async (
   db: D1Database,
   userId: string,
   report: Report,
@@ -151,6 +171,26 @@ export const saveReport = async (
       now
     )
     .run()
+}
+
+// Old rows may carry a guestKey (reporting was open to guests until 2026-10-23); new ones never do. False when the
+// account already has an open report on the song (two sent at once: the route checks first)
+export const saveReport = async (
+  db: D1Database,
+  userId: string,
+  report: Report,
+  client: string,
+  now: number
+) => {
+  try {
+    await insertReport(db, userId, report, client, now)
+    return true
+  } catch (error) {
+    if (isOpenConflict(error)) {
+      return false
+    }
+    throw error
+  }
 }
 
 // Neither resolved nor dropped
@@ -237,16 +277,26 @@ export const resolveReport = async (
   return meta.changes > 0
 }
 
-// False when no report has the id
-export const reopenReport = async (db: D1Database, id: string) => {
-  const { meta } = await db
-    .prepare(
-      `update "report" set "resolvedAt" = null, "resolvedVersion" = null, "resolution" = null, "seenAt" = null,
-         "dismissedAt" = null, "droppedAt" = null, "dropReason" = null where "id" = ?1`
-    )
-    .bind(id)
-    .run()
-  return meta.changes > 0
+// `conflict` when its reporter has sent another report on the song that is still open (one open per song)
+export const reopenReport = async (
+  db: D1Database,
+  id: string
+): Promise<'reopened' | 'not_found' | 'conflict'> => {
+  try {
+    const { meta } = await db
+      .prepare(
+        `update "report" set "resolvedAt" = null, "resolvedVersion" = null, "resolution" = null, "seenAt" = null,
+           "dismissedAt" = null, "droppedAt" = null, "dropReason" = null where "id" = ?1`
+      )
+      .bind(id)
+      .run()
+    return meta.changes > 0 ? 'reopened' : 'not_found'
+  } catch (error) {
+    if (isOpenConflict(error)) {
+      return 'conflict'
+    }
+    throw error
+  }
 }
 
 // Why a report was closed without a fix. The reporter is never told

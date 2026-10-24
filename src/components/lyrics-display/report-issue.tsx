@@ -1,3 +1,4 @@
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useId, useState } from 'react'
 import { useSearchParams } from 'react-router'
@@ -14,8 +15,14 @@ import { toast } from '@/components/ui/use-toast'
 import { currentVideoAtom, stageClockAtom } from '@/context/atoms'
 import { signInWithGoogle, useAccess } from '@/lib/auth'
 import { useGetLyricsBySongId } from '@/lib/react-query/queries-and-mutations'
-import { REPORT_MESSAGE_MAX, liveVersionOf, sendReport } from '@/lib/reports'
-import type { ReportResult } from '@/lib/reports'
+import { QUERY_KEYS } from '@/lib/react-query/query-keys'
+import {
+  REPORT_MESSAGE_MAX,
+  fetchMyReport,
+  liveVersionOf,
+  sendReport,
+} from '@/lib/reports'
+import type { OpenReport, ReportResult } from '@/lib/reports'
 import { formatClock } from '@/utils'
 
 import { parsePreviewVersion } from './version-preview-banner'
@@ -48,6 +55,17 @@ export const ReportIssue = ({
   const [problem, setProblem] = useState<string | null>(null)
   const fieldId = useId()
   const problemId = useId()
+  const hintId = useId()
+  // One open report per song: the account's own, when there is one, shows instead of the form
+  const queryClient = useQueryClient()
+  const videoId = target?.videoId ?? ''
+  const mineKey = [QUERY_KEYS.GET_MY_REPORT, videoId]
+  const { data: mine } = useQuery({
+    enabled: target !== null,
+    queryFn: async () => await fetchMyReport(videoId),
+    queryKey: mineKey,
+    staleTime: 0,
+  })
   const close = () => {
     setMessage('')
     setProblem(null)
@@ -65,6 +83,16 @@ export const ReportIssue = ({
     setSending(true)
     const result = await sendReport({ ...target, message })
     setSending(false)
+    if (result === 'alreadyReported') {
+      await queryClient.invalidateQueries({ queryKey: mineKey })
+      return
+    }
+    if (result === 'sent') {
+      queryClient.setQueryData<OpenReport>(mineKey, {
+        createdAt: Date.now(),
+        message: message.trim(),
+      })
+    }
     const shown = PROBLEMS[result]
     if (shown !== undefined) {
       setProblem(shown)
@@ -88,7 +116,9 @@ export const ReportIssue = ({
       }}>
       <DialogContent className='max-w-md'>
         <DialogHeader>
-          <DialogTitle>Report Issue</DialogTitle>
+          <DialogTitle>
+            {mine ? 'Already Reported' : 'Report Issue'}
+          </DialogTitle>
           <DialogDescription>
             <span className='block truncate'>
               {target?.title}
@@ -97,45 +127,64 @@ export const ReportIssue = ({
             </span>
           </DialogDescription>
         </DialogHeader>
-        <form
-          className='flex flex-col gap-3'
-          onSubmit={(event) => {
-            event.preventDefault()
-            void send()
-          }}>
-          <label htmlFor={fieldId} className='sr-only'>
-            What&apos;s Wrong
-          </label>
-          <textarea
-            id={fieldId}
-            value={message}
-            maxLength={REPORT_MESSAGE_MAX}
-            rows={4}
-            placeholder='What’s wrong?'
-            aria-invalid={problem !== null || undefined}
-            aria-describedby={problemId}
-            onChange={(event) => {
-              setMessage(event.target.value)
-              setProblem(null)
-            }}
-            onKeyDown={(event) => {
-              // Cmd/Ctrl+Enter sends; Enter alone is a new line
-              if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
-                event.preventDefault()
-                void send()
-              }
-            }}
-            className='min-h-28 w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-base placeholder:text-muted-foreground focus-visible:border-foreground/80 focus-visible:outline-hidden sm:text-sm touch:text-base'
-          />
-          <div className='flex items-center justify-between gap-3'>
-            <output id={problemId} className='text-sm text-error'>
-              {problem}
-            </output>
-            <Button type='submit' disabled={sending}>
-              {sending ? 'Sending…' : 'Send'}
-            </Button>
+        {mine ? (
+          <div className='flex flex-col gap-3'>
+            <p className='text-sm text-muted-foreground'>
+              We&apos;ll let you know when it&apos;s fixed.
+            </p>
+            <p className='max-h-40 overflow-y-auto rounded-md bg-muted px-3 py-2 text-sm wrap-break-word whitespace-pre-wrap'>
+              {mine.message}
+            </p>
+            <div className='flex justify-end'>
+              <Button type='button' onClick={close}>
+                Done
+              </Button>
+            </div>
           </div>
-        </form>
+        ) : (
+          <form
+            className='flex flex-col gap-3'
+            onSubmit={(event) => {
+              event.preventDefault()
+              void send()
+            }}>
+            <label htmlFor={fieldId} className='sr-only'>
+              What&apos;s Wrong
+            </label>
+            <textarea
+              id={fieldId}
+              value={message}
+              maxLength={REPORT_MESSAGE_MAX}
+              rows={4}
+              placeholder='What’s wrong?'
+              aria-invalid={problem !== null || undefined}
+              aria-describedby={`${hintId} ${problemId}`}
+              onChange={(event) => {
+                setMessage(event.target.value)
+                setProblem(null)
+              }}
+              onKeyDown={(event) => {
+                // Cmd/Ctrl+Enter sends; Enter alone is a new line
+                if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
+                  event.preventDefault()
+                  void send()
+                }
+              }}
+              className='min-h-28 w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-base placeholder:text-muted-foreground focus-visible:border-foreground/80 focus-visible:outline-hidden sm:text-sm touch:text-base'
+            />
+            <p id={hintId} className='-mt-1 text-xs text-muted-foreground'>
+              One report per song: list every issue
+            </p>
+            <div className='flex items-center justify-between gap-3'>
+              <output id={problemId} className='text-sm text-error'>
+                {problem}
+              </output>
+              <Button type='submit' disabled={sending}>
+                {sending ? 'Sending…' : 'Send'}
+              </Button>
+            </div>
+          </form>
+        )}
       </DialogContent>
     </Dialog>
   )
