@@ -203,8 +203,7 @@ const isStatus = (
   state: string
   target_url: string | null
   description?: string | null
-} =>
-  isRecord(v) && typeof v.context === 'string' && typeof v.state === 'string'
+} => isRecord(v) && typeof v.context === 'string' && typeof v.state === 'string'
 
 /** The deploy preview Netlify builds for `sha`, once ready; stops the release when its build fails */
 const waitForPreview = (sha: string): string => {
