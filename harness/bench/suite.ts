@@ -5,6 +5,7 @@
 import {
   ALL_VIEWS,
   SAFARI_LANDSCAPE,
+  SAFARI_NARROW,
   SAFARI_PORTRAIT,
   WEB,
 } from './engines/browser'
@@ -247,6 +248,7 @@ export const SUITE: Benchmark[] = [
       ...ALL_VIEWS,
       SAFARI_PORTRAIT,
       ...(BUSY_PAGES.has(page.name) ? [SAFARI_LANDSCAPE] : []),
+      SAFARI_NARROW,
     ])
   ),
   player('x1FV6IrjZCY'),

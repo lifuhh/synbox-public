@@ -72,12 +72,18 @@ const fromFontCache = async (route: Route, dir: string): Promise<void> => {
 
 const SAFE = {
   landscape: { bottom: 21, left: 47, right: 47, top: 0 },
+  narrow: { bottom: 0, left: 0, right: 0, top: 0 },
   portrait: { bottom: 34, left: 0, right: 0, top: 47 },
 }
+
+/** A phone's screen: its orientation's, or the 320px one */
+const phoneKey = (surface: Extract<Surface, { kind: 'phone' }>) =>
+  surface.narrow === true ? 'narrow' : surface.orientation
 
 export const VIEWPORTS = {
   desktop: { height: 900, width: 1440 },
   landscape: { height: 390, width: 844 },
+  narrow: { height: 568, width: 320 },
   portrait: { height: 844, width: 390 },
 }
 
@@ -90,9 +96,7 @@ export interface View {
 
 const view = (name: string, surface: Surface): View => {
   const { width, height } =
-    surface.kind === 'phone'
-      ? VIEWPORTS[surface.orientation]
-      : VIEWPORTS.desktop
+    surface.kind === 'phone' ? VIEWPORTS[phoneKey(surface)] : VIEWPORTS.desktop
   const where =
     surface.kind === 'desktop'
       ? 'Chromium'
@@ -118,6 +122,11 @@ export const PWA_LANDSCAPE = view('pwa-landscape', {
 })
 export const SAFARI_PORTRAIT = view('safari-portrait', PORTRAIT)
 export const SAFARI_LANDSCAPE = view('safari-landscape', LANDSCAPE)
+/** iPhone Safari at 320px wide, where every page must still fit (WCAG 1.4.10 reflow): at rest and its states */
+export const SAFARI_NARROW = view('safari-narrow', {
+  ...PORTRAIT,
+  narrow: true,
+})
 
 /**
  * "All views" (AGENTS.md): every UI change is checked in these three. The website on a monitor, and the app installed
@@ -175,7 +184,7 @@ export const open = async (
 ): Promise<Opened> => {
   const browser = await launch(surface.engine)
   const phone = surface.kind === 'phone'
-  const viewport = phone ? VIEWPORTS[surface.orientation] : VIEWPORTS.desktop
+  const viewport = phone ? VIEWPORTS[phoneKey(surface)] : VIEWPORTS.desktop
   const context = await browser.newContext({
     deviceScaleFactor: phone ? 3 : 1,
     hasTouch: phone,
@@ -194,7 +203,7 @@ export const open = async (
   }
   await context.addInitScript(RECORDER)
   const safe = phone
-    ? SAFE[surface.orientation]
+    ? SAFE[phoneKey(surface)]
     : { bottom: 0, left: 0, right: 0, top: 0 }
   if (phone) {
     // Playwright reports no safe areas, and the app reads env(safe-area-inset-*) both through its own variables
@@ -281,7 +290,10 @@ export const mark = async (
   timeoutMs = 30_000
 ): Promise<number> => {
   const handle = await page
+    // Polled on a timer, not on animation frames: inside a full check a WebKit player page sometimes stopped
+    // running frames, and a 1 s look then never returned until the audit's time limit (2026-10-24, 3 in 13 runs)
     .waitForFunction((n) => window.__bench.marks[n], name, {
+      polling: 100,
       timeout: timeoutMs,
     })
     .catch(async () => {

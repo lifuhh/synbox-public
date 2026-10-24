@@ -26,6 +26,8 @@ export type Surface =
       orientation: 'portrait' | 'landscape'
       /** Opened from the Home Screen: the installed app's own layout (tab bar, short top bar) */
       installed?: true
+      /** The narrowest phone the app supports, 320×568 (an iPhone SE in Safari, no insets): WCAG's 320px reflow */
+      narrow?: true
     }
 
 export interface BenchContext {

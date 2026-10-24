@@ -67,6 +67,10 @@ export interface Audit {
   zoomInputs: AuditTarget[]
   /** Placeholders and single-line labels wider than their box, with no title or aria-label holding the full text */
   clipped: AuditTarget[]
+  /** Controls and dialogs a screen reader announces with no name (WCAG 4.1.2) */
+  unnamed: AuditTarget[]
+  /** Boxes that scroll but hold nothing focusable and take no focus themselves: a keyboard can't scroll them (2.1.1) */
+  unscrollable: AuditTarget[]
 }
 
 /**
@@ -811,6 +815,18 @@ const recorder = (watch: typeof WATCH, backdrops: typeof INSET_BACKDROPS) => {
         (safe.left && mx < safe.left) ||
         (safe.right && mx > vw - safe.right)
       )
+    /**
+     * Content scrolled under a sticky bar of its own scroll box, inside a fixed layer (a dialog's list under its
+     * sticky header or footer): expected, as content under the page's own bars is
+     */
+    const underOwnStickyBar = (el: Element, hit: Element) => {
+      let bar: Element | null = hit
+      while (bar && getComputedStyle(bar).position !== 'sticky') {
+        bar = bar.parentElement
+      }
+      const box = bar?.parentElement
+      return Boolean(bar && box && box.contains(el) && !bar.contains(el))
+    }
     /** What a press at (mx, my) lands on instead of `el`, if anything does */
     const coveredBy = (
       el: Element,
@@ -823,7 +839,8 @@ const recorder = (watch: typeof WATCH, backdrops: typeof INSET_BACKDROPS) => {
         hit &&
         !el.contains(hit) &&
         !hit.contains(el) &&
-        !(pinned(hit) && !isPinned)
+        !(pinned(hit) && !isPinned) &&
+        !underOwnStickyBar(el, hit)
       ) {
         const owner = hit.closest(
           'a[href],button,input,select,textarea,summary,[role=button],[role=slider],[role=tab],[tabindex]'
@@ -847,7 +864,10 @@ const recorder = (watch: typeof WATCH, backdrops: typeof INSET_BACKDROPS) => {
     const occluded: { label: string; by: string }[] = []
     const offscreen: AuditTarget[] = []
     const unsafe: AuditTarget[] = []
-    const phone = safe.top + safe.bottom + safe.left + safe.right > 0
+    // A phone by its insets, or by its finger (the 320px view has no insets)
+    const phone =
+      safe.top + safe.bottom + safe.left + safe.right > 0 ||
+      matchMedia('(pointer: coarse)').matches
     let count = 0
     for (const el of targets) {
       const full = el.getBoundingClientRect()
@@ -888,6 +908,130 @@ const recorder = (watch: typeof WATCH, backdrops: typeof INSET_BACKDROPS) => {
         occluded.push({ by: labelOf(by), label: target.label })
       }
     }
+    // The accessible name, as browsers compute it for the cases this app has: aria-labelledby, aria-label, a
+    // field's label or placeholder, then the content (skipping aria-hidden parts; an image's alt, an svg's title),
+    // then title. Dialogs and text fields don't take a name from their content
+    const contentName = (node: Node): string => {
+      if (node.nodeType === Node.TEXT_NODE) {
+        return node.textContent ?? ''
+      }
+      if (
+        !(node instanceof Element) ||
+        node.getAttribute('aria-hidden') === 'true'
+      ) {
+        return ''
+      }
+      const style = getComputedStyle(node)
+      if (style.display === 'none' || style.visibility === 'hidden') {
+        return ''
+      }
+      const label = (node.getAttribute('aria-label') ?? '').trim()
+      if (label !== '') {
+        return label
+      }
+      if (node instanceof HTMLImageElement) {
+        return node.alt
+      }
+      if (node.tagName.toLowerCase() === 'svg') {
+        return node.querySelector('title')?.textContent ?? ''
+      }
+      return [...node.childNodes].map(contentName).join(' ')
+    }
+    const labelledBy = (el: Element) =>
+      (el.getAttribute('aria-labelledby') ?? '')
+        .split(/\s+/u)
+        .filter((id) => id !== '')
+        .map(
+          (id) =>
+            document.querySelector(`#${CSS.escape(id)}`)?.textContent ?? ''
+        )
+        .join(' ')
+        .trim()
+    // A <label for> names any labelable element: fields, and buttons too (the Autoplay switch)
+    const labelsOf = (el: Element) =>
+      'labels' in el && el.labels instanceof NodeList
+        ? [...el.labels]
+            .map((l) => l.textContent ?? '')
+            .join(' ')
+            .trim()
+        : ''
+    const fieldName = (
+      el: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+    ) => {
+      if (
+        el instanceof HTMLInputElement &&
+        ['button', 'submit', 'reset'].includes(el.type)
+      ) {
+        return el.value
+      }
+      return (el.getAttribute('placeholder') ?? '').trim()
+    }
+    // Dialogs and text fields don't take a name from their content
+    const NO_CONTENT_NAME = new Set([
+      'alertdialog',
+      'combobox',
+      'dialog',
+      'searchbox',
+      'textbox',
+    ])
+    const ownName = (el: Element) => {
+      if (
+        el instanceof HTMLInputElement ||
+        el instanceof HTMLSelectElement ||
+        el instanceof HTMLTextAreaElement
+      ) {
+        return fieldName(el)
+      }
+      const role = el.getAttribute('role') ?? el.tagName.toLowerCase()
+      return NO_CONTENT_NAME.has(role)
+        ? ''
+        : contentName(el).replaceAll(/\s+/gu, ' ').trim()
+    }
+    // The accessible name, as browsers compute it for what this app has: aria-labelledby, aria-label, a field's
+    // label or placeholder, the content (skipping aria-hidden parts; an image's alt, an svg's title), then title
+    const nameOf = (el: Element): string =>
+      [
+        labelledBy(el),
+        (el.getAttribute('aria-label') ?? '').trim(),
+        labelsOf(el),
+        ownName(el),
+        (el.getAttribute('title') ?? '').trim(),
+      ].find((name) => name !== '') ?? ''
+    // Unnamed things have no label to tell them apart: their first classes do
+    const withClass = (el: Element) =>
+      `${labelOf(el)} .${(el.getAttribute('class') ?? '').split(/\s+/u).slice(0, 4).join('.')}`
+    const NAMED =
+      'a[href],button,input:not([type=hidden]),select,textarea,dialog[open],[role=button],[role=link],[role=slider],[role=switch],[role=tab],[role=menuitem],[role=menuitemcheckbox],[role=menuitemradio],[role=checkbox],[role=radio],[role=combobox],[role=option],[role=textbox],[role=searchbox],[role=dialog],[role=alertdialog]'
+    const unnamed = [...document.querySelectorAll(NAMED)]
+      .filter((el) => (modal === null || modal.contains(el)) && shown(el))
+      .filter((el) => nameOf(el) === '')
+      .map((el) => ({ label: withClass(el), rect: rectOf(el) }))
+    const FOCUSABLE =
+      'a[href],button:not([disabled]),input:not([type=hidden]):not([disabled]),select,textarea,summary,iframe,[tabindex]:not([tabindex="-1"])'
+    const unscrollable = [...document.querySelectorAll('body *')]
+      .filter((el) => {
+        const s = getComputedStyle(el)
+        return (
+          (/auto|scroll/u.test(s.overflowY) &&
+            el.scrollHeight > el.clientHeight + 4) ||
+          (/auto|scroll/u.test(s.overflowX) &&
+            el.scrollWidth > el.clientWidth + 4)
+        )
+      })
+      .filter(
+        (el) =>
+          el !== document.scrollingElement &&
+          shown(el) &&
+          !el.matches(FOCUSABLE) &&
+          el.querySelector(FOCUSABLE) === null &&
+          // A list a focused combobox drives (aria-controls, aria-activedescendant) is reached through the field
+          !(
+            el.id !== '' &&
+            document.querySelector(`[aria-controls="${CSS.escape(el.id)}"]`) !==
+              null
+          )
+      )
+      .map((el) => ({ label: withClass(el), rect: rectOf(el) }))
     return {
       clipped: [...clippedPlaceholders(), ...truncatedLabels()],
       insetSurfaces: phone ? insetSurfacesOf(safe) : [],
@@ -897,7 +1041,9 @@ const recorder = (watch: typeof WATCH, backdrops: typeof INSET_BACKDROPS) => {
       pan: panOf(),
       small,
       targets: count,
+      unnamed,
       unsafe,
+      unscrollable,
       viewport: { h: vh, w: vw },
       zoomInputs: phone ? zoomInputsOf() : [],
     }

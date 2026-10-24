@@ -14,6 +14,7 @@ import {
   mark,
   open,
   SAFARI_LANDSCAPE,
+  SAFARI_NARROW,
   SAFARI_PORTRAIT,
 } from '../engines/browser'
 import type { Audit } from '../engines/recorder'
@@ -26,7 +27,8 @@ export interface LayoutPage {
   route: string
   /** A URL to audit it at (a route with parameters gets a sample) */
   path: string
-  ready: (page: Page) => Promise<void>
+  /** `note` names the wait it is in, so an audit stuck for its time limit says where */
+  ready: (page: Page, note?: (wait: string) => void) => Promise<void>
   /** UI states a user opens on this page, each audited as its own run (OPENED_STATES) */
   states?: OpenedState[]
 }
@@ -123,6 +125,16 @@ const SEARCH_BUTTON: OpenedState = {
  * bar takes their place there), and its search also on the player, whose watch page has the bar too.
  */
 export const OPENED_STATES: Record<string, OpenedState[]> = {
+  '/lyrics/:videoId': [
+    {
+      // The reader's text size, weight and colours, in a bar along the bottom
+      name: 'text-style',
+      steps: [
+        { press: { name: 'Text Style', role: 'button' } },
+        { shows: { name: 'Larger Text', role: 'button' } },
+      ],
+    },
+  ],
   '/privacy': [
     SEARCH_FIELD,
     SEARCH_BUTTON,
@@ -170,6 +182,27 @@ export const OPENED_STATES: Record<string, OpenedState[]> = {
         { shows: { name: 'Next', role: 'button' } },
       ],
     },
+    {
+      // Lyrics Style: a popover by the rail with a mouse, a dialog in the middle of a touch screen. Upright and
+      // on the web the rail sits under the video, always there
+      name: 'style',
+      steps: [
+        { press: { name: 'Lyrics Style', role: 'button' } },
+        { shows: { name: 'Lyrics Style', role: 'dialog' } },
+      ],
+      views: ['web', 'pwa-portrait', 'safari-portrait'],
+    },
+    {
+      // On its side the rail floats over the video and shows with the controls
+      name: 'style-floating',
+      steps: [
+        { at: { x: 60, y: 60 }, hover: { attr: 'data-player-stage' } },
+        { shows: { name: 'Lyrics Style', role: 'button' } },
+        { press: { name: 'Lyrics Style', role: 'button' } },
+        { shows: { name: 'Lyrics Style', role: 'dialog' } },
+      ],
+      views: ['pwa-landscape', 'safari-landscape'],
+    },
   ],
 }
 
@@ -209,8 +242,10 @@ export const LAYOUT_PAGES: LayoutPage[] = [
   {
     name: 'player',
     path: `/v/${PLAYER_SONG}`,
-    ready: async (page) => {
+    ready: async (page, note) => {
+      note?.('the YouTube iframe (mark player-iframe)')
       await mark(page, 'player-iframe', 30_000)
+      note?.('the player out of loading, starting and buffering')
       // WebKit in Playwright may never play the video; audit whatever the player settled into, controls shown
       await page
         .waitForFunction(
@@ -228,6 +263,7 @@ export const LAYOUT_PAGES: LayoutPage[] = [
       // On a phone on its side the stage shows only the current lines, so the song's intro (about 14 s here) held
       // the audit back. The player's own shortcut skips ahead 5 s a press until a line shows
       for (let skips = 0; skips < 4; skips += 1) {
+        note?.(`a lyrics line, skip ${skips + 1} of 4`)
         // oxlint-disable-next-line eslint/no-await-in-loop -- one press, then a look
         const shown = await mark(page, 'lyrics-line', 1000).then(
           () => true,
@@ -236,10 +272,13 @@ export const LAYOUT_PAGES: LayoutPage[] = [
         if (shown) {
           break
         }
+        note?.(`ArrowRight to skip ahead, ${skips + 1} of 4`)
         // oxlint-disable-next-line eslint/no-await-in-loop -- one press at a time
         await page.keyboard.press('ArrowRight')
       }
+      note?.('a lyrics line (mark lyrics-line)')
       await mark(page, 'lyrics-line', 30_000)
+      note?.('the pointer onto the stage')
       await page
         .locator('[data-player-stage]')
         .hover({ force: true, position: { x: 40, y: 40 } })
@@ -356,7 +395,9 @@ export const routeProblems = (): string[] => {
   }
   const { samples, skip } = routeConfig()
   const views = new Set(
-    [...ALL_VIEWS, SAFARI_PORTRAIT, SAFARI_LANDSCAPE].map((v) => v.name)
+    [...ALL_VIEWS, SAFARI_PORTRAIT, SAFARI_LANDSCAPE, SAFARI_NARROW].map(
+      (v) => v.name
+    )
   )
   const badViews = Object.entries(OPENED_STATES).flatMap(([route, states]) =>
     states.flatMap((st) =>
@@ -397,6 +438,9 @@ export const LAYOUT_FINDINGS = [
   'panXPx',
   'zoomInputs',
   'clippedText',
+  'unnamedControls',
+  'unscrollableRegions',
+  'smoothScrollReduced',
 ] as const
 
 const routeMatches = (route: string, pathname: string): boolean =>
@@ -633,7 +677,9 @@ const auditOnce = async (
     // When an error ends the wait first, the readiness that times out later is moot
     const ready = (async () => {
       try {
-        await p.ready(page)
+        await p.ready(page, (wait) => {
+          at.step = `waiting for the page to get ready: ${wait}`
+        })
         return null
       } catch (error) {
         return error
@@ -680,6 +726,25 @@ const auditOnce = async (
     )
     at.step = 'taking the screenshot'
     await page.screenshot({ path: shot })
+    // With Reduce Motion on, nothing may still scroll smoothly (a focus or a tap on the bar would glide): every
+    // scrolling box and the page, read under the emulated setting, then the setting put back
+    at.step = 'reading scroll behaviour under Reduce Motion'
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    const smooth: string[] = await page.evaluate(() =>
+      [document.documentElement, ...document.querySelectorAll('body *')]
+        .filter(
+          (el) =>
+            getComputedStyle(el).scrollBehavior === 'smooth' &&
+            (el === document.documentElement ||
+              el.scrollHeight > el.clientHeight + 4 ||
+              el.scrollWidth > el.clientWidth + 4)
+        )
+        .map(
+          (el) =>
+            `${el.tagName.toLowerCase()}.${(el.getAttribute('class') ?? '').split(/\s+/u).slice(0, 4).join('.')}`
+        )
+    )
+    await page.emulateMedia({ reducedMotion: null })
     const phase = await page.evaluate(
       () =>
         document.querySelector<HTMLElement>('[data-player-stage]')?.dataset
@@ -707,6 +772,17 @@ const auditOnce = async (
       ...audit.clipped.map(
         (t) =>
           `clipped text at ${t.rect.x},${t.rect.y} ${t.rect.w}×${t.rect.h}: ${t.label}`
+      ),
+      ...audit.unnamed.map(
+        (t) =>
+          `no accessible name at ${t.rect.x},${t.rect.y} ${t.rect.w}×${t.rect.h}: ${t.label}`
+      ),
+      ...audit.unscrollable.map(
+        (t) =>
+          `scrolls, but a keyboard can't reach it, at ${t.rect.x},${t.rect.y} ${t.rect.w}×${t.rect.h}: ${t.label}`
+      ),
+      ...smooth.map(
+        (label) => `scrolls smoothly under Reduce Motion: ${label}`
       ),
       ...(audit.overflowX
         ? [`page scrolls sideways by ${audit.overflowX}px`]
@@ -736,8 +812,11 @@ const auditOnce = async (
             pageErrors: thrown.length,
             panXPx: audit.pan.px,
             smallTargets: audit.small.length,
+            smoothScrollReduced: smooth.length,
             targets: audit.targets,
+            unnamedControls: audit.unnamed.length,
             unsafeTargets: audit.unsafe.length,
+            unscrollableRegions: audit.unscrollable.length,
             zoomInputs: audit.zoomInputs.length,
           },
         },
@@ -755,8 +834,13 @@ const auditOnce = async (
   }
 }
 
-/** An audit that has run this long is stuck (a WebKit call that never returns), not slow: it fails and says where */
-const AUDIT_LIMIT_MS = 90_000
+/**
+ * An audit that has run this long is stuck (a WebKit call that never returns), not slow: it fails and says where,
+ * and `check` runs it once more. A normal audit takes 1-5 s; the player's longest real waits add up to 44 s (the
+ * iframe 30, the phase 10, four 1 s looks). 90 -> 45 on 2026-10-24: a WebKit player audit stuck in a 1 s wait about
+ * once in three full runs, and each cost the whole limit before its retry passed in 4 s
+ */
+const AUDIT_LIMIT_MS = 45_000
 
 /** One page at one URL on one screen, its screenshot saved to `shot` */
 export const auditPage = async (
