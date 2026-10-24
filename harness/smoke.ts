@@ -77,6 +77,8 @@ interface Picks {
   chart: { id: string; title: string } | string
   notSong: string | null
   libraryIds: Set<string>
+  /** The library songs with word-by-word timing (`karaoke: true`), the only ones Search lists */
+  karaokeIds: Set<string>
 }
 
 /** A write the app sent to one of Synbox's own services, and what this script did with it */
@@ -189,6 +191,12 @@ const pick = async (origin: string, song?: string): Promise<Picks> => {
       return id === null ? [] : [id]
     })
   )
+  const karaokeIds = new Set(
+    songs.flatMap((s) => {
+      const id = strings(s, 'video_id')
+      return id !== null && isRecord(s) && s.karaoke === true ? [id] : []
+    })
+  )
   const karaoke = songs.find((s) =>
     song === undefined
       ? isRecord(s) && s.karaoke === true
@@ -236,6 +244,7 @@ const pick = async (origin: string, song?: string): Promise<Picks> => {
   }
   return {
     chart: outside,
+    karaokeIds,
     library,
     libraryIds,
     notSong,
@@ -597,11 +606,11 @@ const search = async (ctx: FlowContext): Promise<string> => {
     waitUntil: 'commit',
   })
   await mark(page, 'search-result', 30_000)
-  // Results arrive from two searches and badges from the library list: read once the set holds for 1.5 s
+  // Results arrive from two searches, filtered by the library list's karaoke flag: read once the set holds for
+  // 1.5 s. Each must be a karaoke song by /api/library/songs itself, not by a mark the page draws
   const read = async () =>
     await page.locator('[data-bench=search-result]').evaluateAll((cards) =>
       cards.map((card) => ({
-        badge: card.querySelector('[data-karaoke-picture-badge]') !== null,
         id:
           /\/v\/(?<id>[\w-]{11})/u.exec(card.getAttribute('href') ?? '')?.groups
             ?.id ??
@@ -622,16 +631,16 @@ const search = async (ctx: FlowContext): Promise<string> => {
     }
     results = again
   }
-  const plain = results.filter((r) => !r.badge)
+  const plain = results.filter((r) => !ctx.picks.karaokeIds.has(r.id))
   if (!results.some((r) => r.id === song.id)) {
     fail(`"${query}": ${results.length} results, ${song.id} not among them`)
   }
   if (plain.length > 0) {
     fail(
-      `"${query}": ${plain.length} of ${results.length} results without the karaoke mic (${plain[0].id})`
+      `"${query}": ${plain.length} of ${results.length} results not karaoke songs in /api/library/songs (${plain[0].id})`
     )
   }
-  return `"${query}": ${results.length} results, all with the karaoke mic, ${song.id} at #${results.findIndex((r) => r.id === song.id) + 1}`
+  return `"${query}": ${results.length} results, all karaoke songs, ${song.id} at #${results.findIndex((r) => r.id === song.id) + 1}`
 }
 
 const chartSong = async (ctx: FlowContext): Promise<string> => {
@@ -1113,7 +1122,11 @@ export const smoke = async (
           csp: log.csp,
           origin,
           pass,
-          picks: { ...picks, libraryIds: picks.libraryIds.size },
+          picks: {
+            ...picks,
+            karaokeIds: picks.karaokeIds.size,
+            libraryIds: picks.libraryIds.size,
+          },
           results,
           wallMs: Date.now() - started,
           writes: log.writes,
