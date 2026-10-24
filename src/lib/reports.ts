@@ -12,13 +12,46 @@ export interface ReportRequest {
   message: string
 }
 
-// uninformative: the Worker found nothing to act on in the message; signedOut: the session ended meanwhile
+// uninformative: the Worker found nothing to act on in the message; signedOut: the session ended meanwhile;
+// alreadyReported: the account's report on the song is still open (one open report per song)
 export type ReportResult =
   | 'sent'
   | 'limit'
   | 'uninformative'
   | 'signedOut'
+  | 'alreadyReported'
   | 'failed'
+
+// The account's open report on a song, which the form shows instead of itself
+export interface OpenReport {
+  message: string
+  createdAt: number
+}
+
+export const fetchMyReport = async (
+  videoId: string
+): Promise<OpenReport | null> => {
+  const response = await fetch(
+    `/api/reports/mine?videoId=${encodeURIComponent(videoId)}`,
+    { credentials: 'same-origin' }
+  )
+  if (!response.ok) {
+    throw new Error(`reports/mine ${response.status}`)
+  }
+  const body: unknown = await response.json()
+  const report =
+    typeof body === 'object' && body !== null && 'report' in body
+      ? body.report
+      : null
+  return typeof report === 'object' &&
+    report !== null &&
+    'message' in report &&
+    typeof report.message === 'string' &&
+    'createdAt' in report &&
+    typeof report.createdAt === 'number'
+    ? { createdAt: report.createdAt, message: report.message }
+    : null
+}
 
 const codeOf = async (response: Response) => {
   try {
@@ -52,6 +85,9 @@ export const sendReport = async (
     }
     if (response.status === 401) {
       return 'signedOut'
+    }
+    if (response.status === 409) {
+      return 'alreadyReported'
     }
     return (await codeOf(response)) === 'uninformative'
       ? 'uninformative'
