@@ -23,7 +23,9 @@ const pictureClass = (large: boolean, played: boolean) =>
   cn(
     'relative aspect-video shrink-0 bg-thumbnail-placeholder',
     played && 'opacity-50',
-    large ? 'w-[min(10.5rem,48%)] rounded-lg' : 'w-20 rounded-sm min-[360px]:w-24'
+    large
+      ? 'w-[min(10.5rem,48%)] rounded-lg'
+      : 'w-20 rounded-sm min-[360px]:w-24'
   )
 
 // A song in a list: a 96×54 thumbnail (16:9) with the karaoke edge, then the title on up to two lines and
