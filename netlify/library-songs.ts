@@ -17,7 +17,9 @@ export interface KeptList {
 }
 
 const songList = z.object({
-  songs: z.array(z.object({ karaoke: z.boolean(), video_id: z.string() })).min(1),
+  songs: z
+    .array(z.object({ karaoke: z.boolean(), video_id: z.string() }))
+    .min(1),
 })
 
 // Durable: one copy for every edge node, so a visit reaches this function only after it goes stale, and then
@@ -54,13 +56,22 @@ export const handleLibrarySongs = async (
     return new Response(fresh, { headers: listHeaders(300) })
   }
   // Still waking or down: keep the fresh list when it comes, and answer with the last one now
-  waitUntil(live.then(async (body) => body !== null && (await kept.set(body))))
+  waitUntil(
+    live.then(async (body) => {
+      if (body !== null) {
+        await kept.set(body)
+      }
+    })
+  )
   const last = await kept.get().catch(() => null)
   if (last !== null) {
     return new Response(last, { headers: listHeaders(30) })
   }
   return Response.json(
     { error: 'The library is still loading' },
-    { headers: { 'Cache-Control': 'no-store', 'Retry-After': '3' }, status: 503 }
+    {
+      headers: { 'Cache-Control': 'no-store', 'Retry-After': '3' },
+      status: 503,
+    }
   )
 }

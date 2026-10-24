@@ -32,26 +32,42 @@ afterEach(() => {
 
 describe('library songs', () => {
   it('answers the live list and keeps it', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => await Promise.resolve(new Response(LIST))))
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => await Promise.resolve(new Response(LIST)))
+    )
     const kept = keptList(OLD)
     const work: Promise<unknown>[] = []
-    const response = await handleLibrarySongs(kept.list, (w) => work.push(w))
+    const response = await handleLibrarySongs(kept.list, (w) => {
+      work.push(w)
+    })
     await settle(work)
     expect(await response.text()).toBe(LIST)
-    expect(response.headers.get('Netlify-CDN-Cache-Control')).toContain('durable')
+    expect(response.headers.get('Netlify-CDN-Cache-Control')).toContain(
+      'durable'
+    )
     expect(kept.read()).toBe(LIST)
   })
 
   it('answers the kept list while the service is still loading, briefly cached', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn(async () => await Promise.resolve(Response.json({ error: 'loading' }, { status: 503 })))
+      vi.fn(
+        async () =>
+          await Promise.resolve(
+            Response.json({ error: 'loading' }, { status: 503 })
+          )
+      )
     )
     const kept = keptList(OLD)
-    const response = await handleLibrarySongs(kept.list, () => null)
+    const response = await handleLibrarySongs(kept.list, () => {
+      // The kept list answers; nothing to finish
+    })
     expect(response.status).toBe(200)
     expect(await response.text()).toBe(OLD)
-    expect(response.headers.get('Netlify-CDN-Cache-Control')).toContain('s-maxage=30,')
+    expect(response.headers.get('Netlify-CDN-Cache-Control')).toContain(
+      's-maxage=30,'
+    )
   })
 
   it("doesn't wait out a cold start, and keeps the list once it comes", async () => {
@@ -68,7 +84,9 @@ describe('library songs', () => {
     )
     const kept = keptList(OLD)
     const work: Promise<unknown>[] = []
-    const answer = handleLibrarySongs(kept.list, (w) => work.push(w))
+    const answer = handleLibrarySongs(kept.list, (w) => {
+      work.push(w)
+    })
     await vi.advanceTimersByTimeAsync(2500)
     expect(await (await answer).text()).toBe(OLD)
     wake(new Response(LIST))
@@ -83,7 +101,9 @@ describe('library songs', () => {
     )
     const kept = keptList(null)
     const work: Promise<unknown>[] = []
-    const response = await handleLibrarySongs(kept.list, (w) => work.push(w))
+    const response = await handleLibrarySongs(kept.list, (w) => {
+      work.push(w)
+    })
     await settle(work)
     expect(response.status).toBe(503)
     expect(response.headers.get('Cache-Control')).toBe('no-store')
