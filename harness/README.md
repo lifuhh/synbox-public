@@ -149,6 +149,30 @@ bun harness/wt.ts finish <slug>                        # keep .reports/, remove 
 
 Nothing in it kills a process or forces a removal. `serve` is stopped by stopping its task. `finish` refuses while the worktree has uncommitted changes, while the branch is not in `staging`, or while its dev server still answers, and says which.
 
+## Asks: `asks.ts`
+
+The owner adds asks mid-task, and an approved one (a usage cap on the backend's `/validate`, deferred until the Worker could deploy) was dropped after its blocker cleared. The ledger tracks every ask from the message to the PR that lands it.
+
+```sh
+bun harness/asks.ts triage                                          # messages not filed yet, oldest first, with their keys
+bun harness/asks.ts new "<the ask>" --from <key> --project frontend   # file one (--status, --pr fe#N, --log <file>, --note)
+bun harness/asks.ts link A7 <key>                                   # a follow-up to an ask already filed
+bun harness/asks.ts skip <key>                                      # not an ask: a question answered in chat, a reply
+bun harness/asks.ts set A7 done --pr fe#401                         # statuses: open in_progress done deferred declined
+bun harness/asks.ts set A7 deferred --blocker "needs the Worker deploy" --unblocked-by worker-deployed
+bun harness/asks.ts cleared worker-deployed                         # reopens and prints every ask waiting on it
+bun harness/asks.ts list [--all] [--project backend]                # deferred (with blockers), in progress, open
+bun harness/asks.ts report                                          # the block for final reports and ship questions
+bun harness/asks.ts show A7                                         # one ask with its messages
+bun harness/asks.ts import <transcript.jsonl>                       # backfill a session's messages
+```
+
+- **Capture.** `~/.claude/hooks/capture-asks.py` (a global `UserPromptSubmit` hook) appends every prompt typed in a session whose folder is under `~/github-workspace` to the inbox, queued mid-task messages included; nothing outside it (work repos are in `~/gitlab-workspace`). It skips a bare slash command (`/clear`), task notifications and other sessions' messages, and keeps the first 8000 characters of a long paste. It never blocks a prompt: it prints nothing and a crash lets the prompt through. The folder can't tell synbox from other personal repos, so triage sets the project (`frontend`, `backend`, `both`, `dev-process`, `other`).
+- **Backstop.** `triage` and `report` also read on through the transcripts of every session the hook saw, so a message the hook missed is still filed. A message is keyed by its session and text, so one seen twice is filed once.
+- **Deferred asks** must name what holds them (`--blocker`) and what clears them (`--unblocked-by`): `worker-deployed`, `backend-released`, `frontend-released`, `appwrite-downgraded`, or `owner` (held, or the owner's to do). `cleared <condition>` reopens every ask waiting on it, so an ask can't sit deferred after its blocker is gone.
+- **Private.** The inbox, the transcript findings and `ledger.json` live in the main checkout's gitignored `docs/private/asks/`, shared by every worktree (`SYNBOX_ASKS_DIR` overrides it). Prompts may hold anything: never commit them, and quote an ask in a PR or log entry only as the owner's request, never a pasted secret. The ledger has one writer, this tool, under a lock.
+- **From the backend repo**, run it through the release worktree, which `bun harness/release.ts` keeps on staging's tip: `bun ~/github-workspace/synbox-release/harness/asks.ts report`.
+
 ## Known limits
 
 - What the lab can't show: the real iOS keyboard, iOS's zoom into a field under 16px (`zoomInputs` predicts it; WebKit in Playwright never zooms, so `panXPx` only catches a pan the layout itself causes), the status bar's own drawing, and touch drags.
