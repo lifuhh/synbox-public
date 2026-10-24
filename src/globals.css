@@ -371,6 +371,9 @@
   --reader-status: #111113;
   --theme-color: var(--reader-status);
   --furigana-size: 0.5em;
+  /* A line not being sung: its ink at this strength. The lowest that keeps it at 4.5:1 on the paper, for the ink
+     and for every Text Style colour */
+  --reader-dim: 0.6;
 
   &[data-theme='light'] {
     --reader-bg: #f7f3ea;
@@ -382,6 +385,8 @@
     --reader-panel: #fffdf8;
     --reader-status: #1f1c17;
     --status-scrim-fade: 0px;
+    /* 4.9:1 for the ink. A Text Style colour on the light paper needs 0.88, which would no longer read as dim */
+    --reader-dim: 0.64;
   }
 }
 
@@ -399,6 +404,11 @@
       margin-bottom: -0.3em;
     }
   }
+
+  /* A dimmed line is already as quiet as its text can be and still read (--reader-dim) */
+  & :is([data-phase='past'], [data-phase='upcoming']) .lyric-ruby-text {
+    opacity: 1;
+  }
 }
 
 /* The watch page's lyrics: the reader's type and karaoke fill on the app's own surface, the Japanese in the
@@ -408,11 +418,13 @@
   --reader-muted: var(--muted-foreground);
   --reader-scale: 1;
   --furigana-size: 0.5em;
+  /* 4.5:1 or more on the card for the ink and every Lyrics Style colour (the palest presets need 0.57) */
+  --reader-dim: 0.6;
 }
 
-/* Synced lyrics' karaoke fill on the page: sung in the Japanese colour, unsung at 40% ink. The colour means
-   sung: once the song plays, the lines still to come are wholly unsung, so reaching one changes nothing until
-   its wipe starts, and the lines behind stay wholly sung, whatever --p a seek left on them. Before the song
+/* Synced lyrics' karaoke fill on the page: sung in the Japanese colour, unsung in dimmed ink (--reader-dim).
+   The colour means sung: once the song plays, the lines still to come are wholly unsung, so reaching one changes
+   nothing until its wipe starts, and the lines behind stay wholly sung, whatever --p a seek left on them. Before the song
    plays (no data-phase) a part reads as sung until the clock writes --p: the song at full strength */
 @utility reader-karaoke-part {
   --karaoke-stop: calc(var(--p, 1) * 100%);
@@ -425,7 +437,12 @@
   --karaoke-gradient: linear-gradient(
     to right,
     var(--karaoke-sung, var(--reader-accent)) var(--karaoke-stop),
-    color-mix(in oklab, var(--reader-fg) 40%, transparent) var(--karaoke-stop)
+    color-mix(
+        in oklab,
+        var(--reader-fg) calc(var(--reader-dim) * 100%),
+        transparent
+      )
+      var(--karaoke-stop)
   );
 }
 
@@ -1638,7 +1655,8 @@
     --graphite-3: oklch(0.23 0.012 350); /* popover, sheet */
     --graphite-4: oklch(0.27 0.012 350); /* hover, track */
     --graphite-5: oklch(0.28 0.012 350); /* subtle line */
-    --graphite-6: oklch(0.36 0.012 350); /* input line */
+    --graphite-6: oklch(0.36 0.012 350); /* dock line */
+    --graphite-8: oklch(0.54 0.012 350); /* input line, 3.3:1 on a popover */
     --graphite-9: oklch(0.62 0.012 350); /* faint text, 4.6:1 on a popover */
     --graphite-11: oklch(
       0.76 0.012 350
@@ -1693,7 +1711,7 @@
     --destructive-foreground: #fff;
     --search: var(--magenta-11);
     --border: var(--graphite-5);
-    --input: var(--graphite-6);
+    --input: var(--graphite-8);
     --ring: var(--magenta-11);
     --radius: 0.3rem;
   }
