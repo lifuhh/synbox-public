@@ -13,13 +13,11 @@ import {
   ShareIcon,
   SparklesIcon,
   ThumbsUpIcon,
-  TicketIcon,
 } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
 
-import { useOpenRequestInvite } from '@/components/invite/request-invite'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -33,7 +31,6 @@ import {
   GENERATE_LABELS,
   startGenerating,
   useGenerationPhase,
-  useRequestInsteadOfGenerating,
 } from '@/components/watch/generate-lyrics-button'
 import { SaveToPlaylist } from '@/components/watch/save-to-playlist'
 import {
@@ -193,21 +190,8 @@ const useSongActions = (
   const chart = useAtomValue(chartSongAtom)?.videoId === videoId
   const title = useAtomValue(currentVideoAtom)?.title
   const phase = useGenerationPhase(videoId)
-  const requestInstead = useRequestInsteadOfGenerating()
-  const openRequestInvite = useOpenRequestInvite()
   if (!chart) {
     return { actions: libraryActions, chart }
-  }
-  // Out of today's songs on the default limit: the account can ask for more instead
-  if (requestInstead && phase === null) {
-    const request: SongAction = {
-      disabled: false,
-      handleSelect: openRequestInvite,
-      icon: <TicketIcon className='size-5 shrink-0' />,
-      label: 'Request Invite',
-      stageOnly: true,
-    }
-    return { actions: [request, share], chart }
   }
   const generate: SongAction = {
     disabled: phase !== null,

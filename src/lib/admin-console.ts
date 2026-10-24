@@ -27,8 +27,6 @@ const adminUserSchema = z.preprocess(
         }
       : row,
   z.object({
-    // The admin's own note on who this is; absent from a Worker from before migration 0020
-    adminNote: z.string().nullable().optional(),
     banned: z.union([z.number(), z.boolean()]).nullable(),
     createdAt: when,
     dailyLimit: dailyLimitSchema,
@@ -326,59 +324,6 @@ export const useAdminSignals = () =>
     queryKey: [QUERY_KEYS.GET_ADMIN_SIGNALS],
   })
 
-const inviteSchema = z.object({
-  adminNote: z.string().nullable().optional(),
-  createdAt: z.number(),
-  dailyLimit: dailyLimitSchema,
-  decidedAt: z.number().nullable(),
-  email: z.string(),
-  image: z.string().nullable(),
-  name: z.string(),
-  note: z.string(),
-  status: z.enum(['pending', 'allowed', 'dismissed']),
-  userId: z.string(),
-})
-
-export type AdminInvite = z.infer<typeof inviteSchema>
-export type InviteStatus = AdminInvite['status']
-
-export const useAdminInvites = () =>
-  useQuery({
-    queryFn: async () => {
-      const { invites } = await fetchParsed(
-        z.object({ invites: z.array(inviteSchema) }),
-        '/invites'
-      )
-      return invites
-    },
-    queryKey: [QUERY_KEYS.GET_ADMIN_INVITES],
-  })
-
-// Allow gives the account the invited daily limit (the Worker's INVITED_DAILY_LIMIT); Dismiss closes the request
-export const useDecideInvite = () => {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: async ({
-      userId,
-      decision,
-    }: {
-      userId: string
-      decision: 'allowed' | 'dismissed'
-    }) =>
-      await call(`/invites/${encodeURIComponent(userId)}/${decision}`, {
-        method: 'POST',
-      }),
-    onSettled: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.GET_ADMIN_INVITES],
-      })
-      await queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.GET_ADMIN_USERS],
-      })
-    },
-  })
-}
-
 export const useAdminSettings = () =>
   useQuery({
     queryFn: async () => await fetchParsed(settingsSchema, '/settings'),
@@ -415,26 +360,6 @@ export const useSetDailyLimit = () =>
         method: 'PUT',
       })
   )
-
-// The admin's own note on an account; empty removes it
-export const useSetAdminNote = () => {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: async ({ note, userId }: { userId: string; note: string }) =>
-      await call(`/users/${encodeURIComponent(userId)}/note`, {
-        body: JSON.stringify({ note }),
-        method: 'PUT',
-      }),
-    onSettled: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.GET_ADMIN_USERS],
-      })
-      await queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.GET_ADMIN_INVITES],
-      })
-    },
-  })
-}
 
 // Better Auth's admin plugin: a block also signs the person out everywhere
 export const useSetBlocked = () =>

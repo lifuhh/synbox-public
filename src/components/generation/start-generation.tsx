@@ -1,6 +1,5 @@
 import { LoaderCircleIcon } from 'lucide-react'
 
-import { RequestInviteToastAction } from '@/components/invite/request-invite'
 import { GoogleMark } from '@/components/shared/google-mark'
 import { ToastAction } from '@/components/ui/toast'
 import { toast } from '@/components/ui/use-toast'
@@ -32,23 +31,6 @@ const watchStay = () => {
       }
     },
   }
-}
-
-// What a refusal's toast offers: sign-in where signing in fixes it, an invite request where today's songs are used
-const refusalAction = (code: string) => {
-  if (SIGN_IN_CODES.has(code)) {
-    return (
-      <ToastAction
-        altText='Sign In'
-        onClick={() => {
-          void signInWithGoogle()
-        }}>
-        <GoogleMark className='mr-2 -ml-1' />
-        Sign In
-      </ToastAction>
-    )
-  }
-  return code === 'quota_exceeded' ? <RequestInviteToastAction /> : undefined
 }
 
 // Starts a generation from a button, or says at once why it can't start. Until the backend answers, a notice
@@ -85,7 +67,16 @@ export const startFromButton = async (
     return
   }
   const refused = {
-    action: refusalAction(refusal.code),
+    action: SIGN_IN_CODES.has(refusal.code) ? (
+      <ToastAction
+        altText='Sign In'
+        onClick={() => {
+          void signInWithGoogle()
+        }}>
+        <GoogleMark className='mr-2 -ml-1' />
+        Sign In
+      </ToastAction>
+    ) : undefined,
     description: refusal.message,
     icon: undefined,
     title: "Can't Generate This Song",

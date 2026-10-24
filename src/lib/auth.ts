@@ -20,15 +20,7 @@ const quotaSchema = z.object({
   used: z.number(),
 })
 
-// Invited: the account has its own daily limit (an admin allowed its request, or set one), so it never needs
-// to ask; requested: it has asked
-const inviteSchema = z.object({
-  invited: z.boolean(),
-  requested: z.boolean(),
-})
-
 const meSchema = z.object({
-  invite: inviteSchema.optional(),
   quota: quotaSchema.optional(),
   user: z
     .object({
@@ -42,7 +34,6 @@ const meSchema = z.object({
 })
 
 export type Quota = z.infer<typeof quotaSchema>
-export type Invite = z.infer<typeof inviteSchema>
 export type Me = z.infer<typeof meSchema>
 
 // Who was signed in when this browser last asked: their picture's URL ('' for none), or nothing for a guest.
@@ -143,7 +134,6 @@ export type Access =
       newSong: boolean
       admin: boolean
       quota: Quota
-      invite: Invite
       ready: true
     }
 
@@ -162,8 +152,6 @@ export const useAccess = (): Access => {
   const { quota } = data
   return {
     admin: user.role === 'admin',
-    // A Worker from before invites sends none: nothing to ask for
-    invite: data.invite ?? { invited: true, requested: false },
     kind: 'user',
     newSong: quota.limit === null || quota.used < quota.limit,
     quota,
@@ -179,19 +167,10 @@ export const SIGN_IN_CODES = new Set([
 ])
 
 // Why a signed-in user can't start a new song, for the places that hide the button
-export const noSongReason = (quota: Quota) => {
-  if (quota.limit === 0) {
-    return 'Generating songs is invite-only for now.'
-  }
-  const next = new Date(quota.resetsAt).toLocaleString([], {
-    hour: 'numeric',
-    minute: '2-digit',
-    weekday: 'short',
-  })
-  return quota.limit === 1
-    ? `You've used today's song. Next at ${next}.`
-    : `You've generated ${quota.limit} songs in the last 24 hours. More at ${next}.`
-}
+export const noSongReason = (quota: Quota) =>
+  quota.limit === 0
+    ? 'Generating songs is invite-only for now.'
+    : `You've generated ${quota.limit} songs in the last 24 hours. More at ${new Date(quota.resetsAt).toLocaleString([], { hour: 'numeric', minute: '2-digit', weekday: 'short' })}.`
 
 const signInFailed = () => {
   toast({

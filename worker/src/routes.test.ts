@@ -26,7 +26,6 @@ const setup = async () => {
     GUEST_DAILY_LIMIT: '1',
     GUEST_DAILY_TOTAL: '20',
     INTERNAL_SECRET: 'internal',
-    INVITED_DAILY_LIMIT: '5',
     NETWORK_DAILY_LIMIT: '30',
     REPORTS_FIXER_TOKEN: TOKEN,
     TRUSTED_ORIGINS: 'http://localhost:5173',
