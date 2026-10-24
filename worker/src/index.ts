@@ -4,6 +4,8 @@ import type { Context } from 'hono'
 import { createAuth } from './auth'
 import type { Env } from './auth'
 import { fixer } from './fixer'
+import { generation } from './generation'
+import type { GenerationEnv } from './generation'
 import { applyOps, parseOps, readLibrary } from './library'
 import type { LibraryEnv } from './library-songs'
 import { libraryMembership } from './library-songs'
@@ -56,7 +58,8 @@ import {
 } from './songs'
 
 type AppEnv = Env &
-  LibraryEnv & {
+  LibraryEnv &
+  GenerationEnv & {
     USER_DAILY_LIMIT: string
     GUEST_DAILY_LIMIT: string
     GUEST_DAILY_TOTAL: string
@@ -455,6 +458,9 @@ internal.patch('/generations/:id', async (c) => {
 app.route('/internal', internal)
 
 app.route('/api/fixer', fixer)
+
+// The app's song generation calls, passed on to the generating service (generation.ts)
+app.route('/api/generation', generation)
 
 // The admin pane (src/_root/pages/admin-page.tsx). Every route checks the session's role on the server
 const admin = new Hono<{ Bindings: AppEnv; Variables: { adminId: string } }>()
