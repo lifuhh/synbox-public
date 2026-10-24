@@ -205,6 +205,16 @@ export const OPENED_STATES: Record<string, OpenedState[]> = {
       ],
       views: ['pwa-landscape'],
     },
+    {
+      // Upright, the lyrics window under the video expands to fill the screen under it (a tap on its lines, or
+      // Expand Lyrics in its corner), with Lyrics Style and Minimize Lyrics in that corner
+      name: 'lyrics-expanded',
+      steps: [
+        { press: { name: 'Expand Lyrics', role: 'button' } },
+        { shows: { name: 'Minimize Lyrics', role: 'button' } },
+      ],
+      views: ['pwa-portrait', 'safari-portrait'],
+    },
   ],
 }
 
