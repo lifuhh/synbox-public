@@ -15,20 +15,37 @@ const FINE = '(pointer: fine)'
 // How long the bar stays after the page last moved or the pointer left it
 const LINGER_MS = 1000
 
+// Where the browser moves the thumb with the scroll itself (globals.css `[data-scrollbar-thumb]`), on the compositor
+const LINKED =
+  typeof CSS !== 'undefined' && CSS.supports('animation-timeline: scroll()')
+
+// The thumb's height and how far it travels from the top of the track to the bottom
 interface Thumb {
-  top: number
   height: number
+  travel: number
 }
 
 const measure = (box: HTMLElement): Thumb | null => {
-  const { clientHeight, scrollHeight, scrollTop } = box
+  const { clientHeight, scrollHeight } = box
   if (scrollHeight <= clientHeight + 1) {
     return null
   }
   const height = Math.max(32, (clientHeight * clientHeight) / scrollHeight)
+  return { height, travel: clientHeight - height }
+}
+
+// Without a scroll-driven animation, script places the thumb for the box's scroll position
+const place = (
+  el: HTMLElement | null,
+  box: HTMLElement,
+  thumb: Thumb | null
+) => {
+  if (LINKED || el === null || thumb === null) {
+    return
+  }
   const top =
-    (scrollTop / (scrollHeight - clientHeight)) * (clientHeight - height)
-  return { height, top }
+    (box.scrollTop / (box.scrollHeight - box.clientHeight)) * thumb.travel
+  el.style.setProperty('--thumb-y', `${top}px`)
 }
 
 // The page's scrollbar, drawn here instead of the browser's, which is hidden (globals.css `html[data-doc-scroll]`,
@@ -37,7 +54,10 @@ const measure = (box: HTMLElement): Thumb | null => {
 // bar, so the bar never hides it. With no browser scrollbar, a menu's scroll lock has no bar width to take away,
 // and showing it takes none either, so nothing moves
 const OverlayScrollbar = ({ box }: { box: HTMLElement }) => {
+  // The thumb's size, set only when the page or window resizes. Its position follows the scroll without a render:
+  // a render and a restarted transition per scroll event were most of the page's own work on every frame
   const [thumb, setThumb] = useState<Thumb | null>(null)
+  const thumbEl = useRef<HTMLDivElement>(null)
   const [moving, setMoving] = useState(false)
   const [held, setHeld] = useState(false)
   const [near, setNear] = useState(false)
@@ -69,10 +89,18 @@ const OverlayScrollbar = ({ box }: { box: HTMLElement }) => {
 
   useEffect(() => {
     const update = () => {
-      setThumb(measure(box))
+      const next = measure(box)
+      setThumb((current) =>
+        current?.height === next?.height && current?.travel === next?.travel
+          ? current
+          : next
+      )
+      place(thumbEl.current, box, next)
     }
     const onScroll = () => {
-      update()
+      if (!LINKED) {
+        place(thumbEl.current, box, measure(box))
+      }
       setMoving(true)
       clearTimeout(timer.current)
       timer.current = setTimeout(() => {
@@ -115,11 +143,10 @@ const OverlayScrollbar = ({ box }: { box: HTMLElement }) => {
   }
   const onPointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
     const start = drag.current
-    const now = thumb
-    if (start === null || now === null) {
+    if (start === null || thumb === null) {
       return
     }
-    const track = box.clientHeight - now.height
+    const track = thumb.travel
     const range = box.scrollHeight - box.clientHeight
     box.scrollTo({
       behavior: 'instant',
@@ -142,12 +169,13 @@ const OverlayScrollbar = ({ box }: { box: HTMLElement }) => {
   }
   const thumbVars: CssVars = {
     '--thumb-h': `${thumb.height}px`,
-    '--thumb-y': `${thumb.top}px`,
+    '--thumb-timeline': doc ? 'scroll(root block)' : '--overlay-scroll',
+    '--thumb-travel': `${thumb.travel}px`,
   }
   const shown = moving || held || near
   // The strip never takes presses; only the thumb does, and only while it shows. Width and colour are the app's own
   // scrollbar's (`custom-scrollbar`): 6px, flush right, the theme colour at 35%, 65% under the pointer. Only its fade
-  // and colour ease: an eased move trails a drag, chasing a target that moves every frame
+  // and colour ease: an eased move trails a drag or a scroll, chasing a target that moves every frame
   return (
     <div
       ref={strip}
@@ -155,6 +183,11 @@ const OverlayScrollbar = ({ box }: { box: HTMLElement }) => {
       data-scrollbar
       className='pointer-events-none fixed top-0 right-0 bottom-0 z-60 w-(--doc-gutter)'>
       <div
+        ref={(el) => {
+          // A thumb that just appeared takes its place before it paints
+          thumbEl.current = el
+          place(el, box, thumb)
+        }}
         data-scrollbar-thumb
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}

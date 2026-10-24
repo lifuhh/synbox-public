@@ -1,6 +1,6 @@
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { PlayIcon } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { memo, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router'
 
 import {
@@ -36,7 +36,7 @@ const CARD_CHROME_PX = 84
 // height follows from its width alone
 // The card opens the song; its menu (Play Next, Add to Queue, Save to Playlist) sits beside the title, outside
 // the link, at the top of the fixed text block
-const SongCard = ({ song }: { song: LibraryListSong }) => (
+const Card = ({ song }: { song: LibraryListSong }) => (
   <div className='relative'>
     <Link
       data-bench='gallery-tile'
@@ -76,6 +76,10 @@ const SongCard = ({ song }: { song: LibraryListSong }) => (
     </div>
   </div>
 )
+
+// Memoised: the rows render again, inside the scroll event, whenever the visible range changes or a scroll starts or
+// stops. Only cards that came into range render, not every card on screen (up to 9.5ms a scroll event before)
+const SongCard = memo(Card)
 
 const CardSkeleton = () => (
   <div>

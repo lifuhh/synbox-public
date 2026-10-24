@@ -1354,6 +1354,37 @@
   display: none;
 }
 
+/* The drawn scrollbar's thumb (OverlayScrollbar) moves with the scroll itself: a scroll-driven animation the
+   compositor runs, so no script or style work happens per frame and the thumb never trails the page. A page's box
+   names its scroll (--overlay-scroll, visible from the thumb, which sits in the body); the document is scroll(root).
+   Named on the box from its first frame, not with data-overlay-scrollbar: a timeline added later restyled the box's
+   whole subtree just before the page's first paint. Browsers without scroll-driven animations get --thumb-y written
+   on each scroll instead */
+@supports (animation-timeline: scroll()) {
+  body {
+    timeline-scope: --overlay-scroll;
+  }
+
+  [data-scroll-top] {
+    scroll-timeline: --overlay-scroll block;
+  }
+
+  [data-scrollbar-thumb] {
+    animation: scrollbar-thumb-travel linear both;
+    animation-timeline: var(--thumb-timeline);
+  }
+}
+
+@keyframes scrollbar-thumb-travel {
+  from {
+    translate: 0 0;
+  }
+
+  to {
+    translate: 0 var(--thumb-travel);
+  }
+}
+
 @utility lyrics-scroll-area {
   &::-webkit-scrollbar-thumb {
     background: white;
@@ -1417,7 +1448,7 @@
 }
 
 /* MarqueeText: one line, clipped. Too long (data-marquee), it fades at its end; while its row is hovered or holds
-   the keyboard's focus it sweeps to its end and back by the hidden distance (--marquee-shift), pausing at each
+   focus it sweeps to its end and back by the hidden distance (--marquee-shift), pausing at each
    end. The text keeps 1.5rem of room after it, so its last letters stop clear of the fade */
 @utility marquee {
   overflow: hidden;
@@ -1439,10 +1470,10 @@
     }
   }
 
+  /* :focus-within, not a :has() of :focus-visible: a :has() of a bare pseudo-class made every element inserted
+     anywhere (a gallery row coming into view) restyle the whole page, about 2ms instead of 0.4ms in Chromium */
   @media (hover: hover) and (prefers-reduced-motion: no-preference) {
-    [data-marquee-host]:is(:hover, :has(:focus-visible))
-      &[data-marquee]
-      > span {
+    [data-marquee-host]:is(:hover, :focus-within) &[data-marquee] > span {
       animation: marquee-scroll var(--marquee-duration) ease-in-out infinite
         alternate;
     }

@@ -12,7 +12,7 @@ const PAUSED_SHARE = 0.16
 const MIN_SWEEP_S = 4
 
 // One line of text. When it is too long for its box it fades at its end, and while the pointer is on its row
-// (an ancestor marked data-marquee-host) or the keyboard is in it, it scrolls to its end and back by exactly the
+// (an ancestor marked data-marquee-host) or focus is in it, it scrolls to its end and back by exactly the
 // distance that is hidden, pausing at each end. Still under reduced motion and on touch, where nothing hovers
 export const MarqueeText = ({
   children,

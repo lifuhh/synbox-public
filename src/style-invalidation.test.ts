@@ -15,6 +15,13 @@ const BANNED = [
     pattern: /(?<![\w-])(?:[\w-]+:)*group-has-/gu,
     why: 'use group-focus-within',
   },
+  // The same kind of selector written by hand in CSS, or as a has- utility whose brackets open with a colon: a :has()
+  // whose argument is only a pseudo-class (the marquee's, of focus-visible, made each gallery row scrolled into view
+  // restyle the page). Use :focus-within, or name an element or attribute inside the :has()
+  {
+    pattern: /:has\(\s*:|(?<![\w-])(?:[\w-]+:)*has-\[:/gu,
+    why: 'use :focus-within or a named element',
+  },
 ]
 
 const SRC = path.resolve(import.meta.dirname)
