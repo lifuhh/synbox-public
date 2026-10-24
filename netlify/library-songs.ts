@@ -54,10 +54,19 @@ const keep = async (kept: KeptList, list: Promise<string | null>) => {
   }
 }
 
+// The CDN keys its copy on the whole address, query included, and the app sends none: a query would run this
+// function, and wake the lookup service, on every request
 export const handleLibrarySongs = async (
+  request: Request,
   kept: KeptList,
   waitUntil: (work: Promise<unknown>) => void
 ): Promise<Response> => {
+  if (new URL(request.url).search !== '') {
+    return Response.json(
+      { error: 'Unknown query parameter' },
+      { headers: { 'Cache-Control': 'no-store' }, status: 400 }
+    )
+  }
   const live = fetchList()
   // Kept whenever it comes, also after a cold service answered too late for this request (which woke it)
   waitUntil(keep(kept, live))
