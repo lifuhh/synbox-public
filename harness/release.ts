@@ -23,6 +23,8 @@ const LIVE_POLL_MS = 20_000
 const PREVIEW_TIMEOUT_MS = 15 * 60_000
 // The commit status Netlify posts for a pull request's deploy preview
 const PREVIEW_STATUS = /^netlify\/[^/]+\/deploy-preview$/u
+// A ready preview's link: https://deploy-preview-<pr>--<site>.netlify.app
+const PREVIEW_URL = /^https:\/\/deploy-preview-\d+--[^/]+\.netlify\.app\/?$/u
 // Files a production build never reads; scripts/netlify-ignore.sh skips the build when only these change
 const NOT_APP = [
   ':(exclude)docs',
@@ -196,8 +198,12 @@ const fetchText = (url: string): string => {
 
 const isStatus = (
   v: unknown
-): v is { context: string; state: string; target_url: string | null } =>
-  isRecord(v) && typeof v.context === 'string' && typeof v.state === 'string'
+): v is {
+  context: string
+  state: string
+  target_url: string | null
+  description?: string | null
+} => isRecord(v) && typeof v.context === 'string' && typeof v.state === 'string'
 
 /** The deploy preview Netlify builds for `sha`, once ready; stops the release when its build fails */
 const waitForPreview = (sha: string): string => {
@@ -212,12 +218,15 @@ const waitForPreview = (sha: string): string => {
           (s: unknown) => isStatus(s) && PREVIEW_STATUS.test(s.context)
         )
       : undefined
-    if (
-      isStatus(latest) &&
-      latest.state === 'success' &&
-      latest.target_url !== null
-    ) {
-      return latest.target_url
+    if (isStatus(latest) && latest.state === 'success') {
+      // A canceled build also posts success, with the Netlify dashboard as its link: it happens when a PR merges
+      // into staging during the release, so the [preview] commit is no longer the head Netlify builds
+      if (latest.target_url !== null && PREVIEW_URL.test(latest.target_url)) {
+        return latest.target_url
+      }
+      throw new Error(
+        `Netlify posted "${String(latest.description)}" for the deploy preview, not a preview site: staging probably moved during the release (a PR merged into it). Nothing was merged; release again`
+      )
     }
     if (
       isStatus(latest) &&
