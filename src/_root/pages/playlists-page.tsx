@@ -40,7 +40,7 @@ const PlaylistsPage = () => {
                 setName(event.target.value)
               }}
               aria-label='New Playlist Name'
-              placeholder='New playlist name'
+              placeholder='New Playlist'
               variant='bare'
             />
             <Button type='submit' variant='hero' size='inset' gap='sm'>

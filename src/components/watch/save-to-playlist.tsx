@@ -222,7 +222,7 @@ export const SaveToPlaylist = ({
                 setName(event.target.value)
               }}
               aria-label='New Playlist Name'
-              placeholder='New playlist name'
+              placeholder='New Playlist'
               variant='bare'
             />
             <Button
