@@ -46,7 +46,8 @@ const SECTIONS = [
   },
 ]
 
-// A window-high box that scrolls under the top bar, as home and the lists do, so it gets their scrollbar
+// A window-high box that scrolls under the top bar, as home and the lists do, so it gets their scrollbar. From lg
+// the sections flow in three columns, so the page fits one screen down to a 720px-high window (1440×900 at 125%)
 const PrivacyPage = () => {
   const [box, setBox] = useState<HTMLElement | null>(null)
   return (
@@ -56,7 +57,7 @@ const PrivacyPage = () => {
       className='relative flex flex-1 flex-col overflow-y-auto pt-(--topbar-h) page-x pb-page-bottom-sm'>
       <title>Privacy · Synbox</title>
 
-      <div className='mx-auto flex w-full max-w-2xl flex-col gap-8 pt-8'>
+      <div className='mx-auto flex w-full max-w-2xl flex-col gap-8 pt-8 lg:max-w-6xl lg:gap-6 lg:pt-4'>
         <header className='flex flex-col gap-3 text-center'>
           <h1 className='text-3xl font-bold'>Privacy</h1>
           <p className='text-sm text-muted-foreground'>
@@ -64,16 +65,20 @@ const PrivacyPage = () => {
           </p>
         </header>
 
-        {SECTIONS.map((section) => (
-          <section key={section.title} className='flex flex-col gap-3'>
-            <h2 className='font-semibold'>{section.title}</h2>
-            <ul className='flex flex-col gap-2 text-sm text-pretty text-muted-foreground'>
-              {section.items.map((item) => (
-                <li key={item}>{item}</li>
-              ))}
-            </ul>
-          </section>
-        ))}
+        <div className='flex flex-col gap-8 lg:block lg:columns-3 lg:gap-x-10'>
+          {SECTIONS.map((section) => (
+            <section
+              key={section.title}
+              className='flex flex-col gap-3 lg:break-inside-avoid lg:not-last:mb-6'>
+              <h2 className='font-semibold'>{section.title}</h2>
+              <ul className='flex flex-col gap-2 text-sm text-pretty text-muted-foreground'>
+                {section.items.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            </section>
+          ))}
+        </div>
       </div>
 
       <nav
