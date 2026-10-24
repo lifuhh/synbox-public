@@ -1,8 +1,11 @@
 // Link previews (Telegram, WhatsApp, Discord, iMessage...) read the HTML without running the app, so a
 // shared /v/ link would only ever say "Synbox". This writes the song's title, channel and thumbnail
-// into the page as Open Graph tags. Any failure serves the page unchanged.
+// into the page as Open Graph tags. Any failure serves the page unchanged. Every answer carries the security
+// headers, which netlify.toml's rules don't add to a URL an Edge Function handles.
 
 import { z } from 'zod'
+
+import { withSecurityHeaders } from '../security-headers'
 
 const VIDEO_PATH = /^\/v\/(?<videoId>[\w-]{11})\/?$/u
 const LOOKUP_TIMEOUT_MS = 1500
@@ -110,7 +113,7 @@ export default async function songPreview(
   const videoId = VIDEO_PATH.exec(new URL(request.url).pathname)?.groups
     ?.videoId
   if (videoId === undefined) {
-    return await context.next()
+    return withSecurityHeaders(await context.next())
   }
   const [page, song] = await Promise.all([
     context.next(),
@@ -118,14 +121,16 @@ export default async function songPreview(
   ])
   const isHtml = page.headers.get('content-type')?.includes('text/html')
   if (song === null || page.status !== 200 || isHtml !== true) {
-    return page
+    return withSecurityHeaders(page)
   }
   const headers = new Headers(page.headers)
   headers.delete('content-length')
-  return new Response(injectPreview(await page.text(), song), {
-    headers,
-    status: page.status,
-  })
+  return withSecurityHeaders(
+    new Response(injectPreview(await page.text(), song), {
+      headers,
+      status: page.status,
+    })
+  )
 }
 
 export const config = { path: '/v/*' }
