@@ -16,6 +16,7 @@ import { LyricsPanel } from './lyrics-panel'
 import { PlaylistPanel } from './playlist-panel'
 import { Shelves } from './shelves'
 import { SongFacts } from './song-facts'
+import { SongTitle } from './song-title'
 import { UP_NEXT_COUNT, UpNext } from './up-next'
 import { useDragToMinimise } from './use-drag-to-minimise'
 
@@ -37,13 +38,10 @@ const SongInfo = ({
     return (
       <div className='flex min-w-0 flex-col gap-2'>
         <div className='min-w-0'>
-          <h1
-            className={cn(
-              'line-clamp-2 text-base leading-snug font-bold text-pretty text-foreground',
-              bracketStart(video?.title)
-            )}>
-            {video?.title ?? ''}
-          </h1>
+          <SongTitle
+            title={video?.title ?? ''}
+            className='text-base leading-snug font-bold'
+          />
           <p
             className={cn(
               'truncate text-sm text-muted-foreground',
@@ -62,13 +60,10 @@ const SongInfo = ({
       {/* Only the words take the inset: the facts card is a card like the lyrics panel, so it keeps the
           panel's edges, and its own padding puts its text on the same line as the title's */}
       <div className={cn('flex min-w-0 flex-col gap-1', inset && 'px-4')}>
-        <h1
-          className={cn(
-            'line-clamp-2 text-xl leading-snug font-bold text-pretty text-foreground',
-            bracketStart(video?.title)
-          )}>
-          {video?.title ?? ''}
-        </h1>
+        <SongTitle
+          title={video?.title ?? ''}
+          className='text-xl leading-snug font-bold'
+        />
         {/* The buttons on the channel's line, as on YouTube: a long title keeps the full width */}
         <div className='flex flex-wrap items-center justify-between gap-x-6 gap-y-2'>
           <p
