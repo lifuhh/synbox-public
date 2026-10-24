@@ -1,5 +1,5 @@
-import { useAtomValue } from 'jotai'
-import type { ReactNode } from 'react'
+import { useAtom, useAtomValue, useSetAtom } from 'jotai'
+import type { ReactNode, RefObject } from 'react'
 import {
   useCallback,
   useEffect,
@@ -26,6 +26,8 @@ import {
   translationIsEnglishAtom,
   translationVisibilityAtom,
   lyricsTranslationAnchorAtom,
+  lyricsTranslationDockedAtom,
+  lyricsStylePanelAtom,
 } from '@/context/atoms'
 import { useLyricsSurface } from '@/hooks/use-media-query'
 import { balanceWrap } from '@/lib/balance-wrap'
@@ -47,6 +49,7 @@ import {
 } from '@/lib/lyrics-style'
 import { getLyricsThemeColors } from '@/lib/lyrics-themes'
 import type { LyricsThemeColors } from '@/lib/lyrics-themes'
+import { pagePoint } from '@/lib/page-turn'
 import {
   useGetKaraokeById,
   useGetLyricsBySongId,
@@ -58,7 +61,7 @@ import type { CssVars, KaraokeDocLine } from '@/types'
 import { spaceDashes } from '@/utils'
 import { cn } from '@/utils/cn'
 
-import { DraggableLyrics } from './draggable-lyrics'
+import { DraggableLyrics, swallowNextClick } from './draggable-lyrics'
 import type { StageLayout } from './player-stage'
 import type { StagePlayer } from './use-you-tube-player'
 
@@ -504,20 +507,21 @@ const TwoRows = ({
 }
 
 // Two Lines' one translation, for the line being sung, centred in its own room at the top of the video, where
-// the viewer can drag it (its place saved apart from the rows'). It changes with the line, fading in where motion
-// is welcome; with no translation to show the block stays mounted, so a drag survives a gap
+// the viewer can drag it (its place saved apart from the rows'). Pulled down past the room's floor it docks under the
+// rows instead (DockedTranslation); while docked the room stays, empty, for its place when it comes back. With no
+// translation to show the block stays mounted, so a drag survives a gap
 const StaggerTranslation = ({
-  line: { text, translation },
-  lineKey,
+  children,
   layout,
   scale,
   colors,
+  dock,
 }: {
-  line: ReturnType<typeof lineAt>
-  lineKey: number
+  children: ReactNode
   layout: StageLayout
   scale: number
   colors: LyricsThemeColors
+  dock: { onPull: (over: boolean) => void; onDock: () => void }
 }) => (
   <div data-lyric-translation className='lyric-stagger-translation-area'>
     <DraggableLyrics
@@ -525,19 +529,178 @@ const StaggerTranslation = ({
       scale={scale}
       colors={colors}
       anchorAtom={lyricsTranslationAnchorAtom}
-      lifts={false}>
-      {translation && text !== undefined && !sameText(translation, text) ? (
-        <LyricLine
-          key={lineKey}
-          html={translation}
-          kind='translation'
-          size={STAGGER_SIZE.translation}
-          className='italic motion-safe:animate-in motion-safe:fade-in'
-        />
-      ) : undefined}
+      lifts={false}
+      dock={dock}>
+      {children}
     </DraggableLyrics>
   </div>
 )
+
+// How far the docked translation must be pulled up off the rows to come away: past it the pull lets go, short of
+// it the translation springs back
+const TEAR_PX = 56
+const TAP_SLOP_PX = { mouse: 4, touch: 10 }
+
+// Karaoke Style's translation docked under the rows, centred: part of their block, so it moves when they are
+// dragged. Its own drag pulls it upward off them (the rows stay); let go past TEAR_PX it goes back to its room at
+// the top, where it was let go. `ghost`: the place it would dock, shown while it is pulled down over the rows
+const DockedTranslation = ({
+  children,
+  layout,
+  ghost = false,
+  onTear,
+}: {
+  children: ReactNode
+  layout: StageLayout
+  ghost?: boolean
+  onTear?: (pointerY: number, height: number) => void
+}) => {
+  const [pull, setPull] = useState(0)
+  const press = useRef<{ y: number; slop: number; moved: boolean } | null>(null)
+  const setStylePanel = useSetAtom(lyricsStylePanelAtom)
+  const torn = pull > TEAR_PX
+  const handleDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    // Its own drag, not the rows'
+    event.stopPropagation()
+    event.currentTarget.setPointerCapture(event.pointerId)
+    press.current = {
+      moved: false,
+      slop:
+        event.pointerType === 'mouse' ? TAP_SLOP_PX.mouse : TAP_SLOP_PX.touch,
+      y: pagePoint(event).y,
+    }
+  }
+  const handleMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    event.stopPropagation()
+    const start = press.current
+    if (start === null) {
+      return
+    }
+    const delta = pagePoint(event).y - start.y
+    if (!start.moved) {
+      if (Math.abs(delta) < start.slop) {
+        return
+      }
+      start.moved = true
+      layout.onDragChange(true)
+    }
+    setPull(Math.max(0, -delta))
+  }
+  const handleUp = (event: React.PointerEvent<HTMLDivElement>) => {
+    event.stopPropagation()
+    const start = press.current
+    press.current = null
+    if (start === null || (event.type === 'pointercancel' && !start.moved)) {
+      return
+    }
+    if (start.moved) {
+      layout.onDragChange(false)
+      swallowNextClick()
+      if (torn) {
+        onTear?.(pagePoint(event).y, event.currentTarget.offsetHeight)
+      }
+      setPull(0)
+    } else if (event.pointerType === 'mouse') {
+      setStylePanel('pinned')
+    } else {
+      layout.tapStage()
+    }
+  }
+  const vars: CssVars = { '--dock-pull': `${-pull}px` }
+  return (
+    <div
+      data-docked-translation={ghost ? 'ghost' : 'docked'}
+      className='flex justify-center docked-translation'>
+      <div
+        style={vars}
+        className={cn(
+          'max-w-[85%] translate-y-(--dock-pull) rounded-xl px-cqw text-center',
+          ghost
+            ? 'pointer-events-none'
+            : 'lyrics-hit-text cursor-grab touch-none transition-fade-translate duration-200 ease-out motion-reduce:transition-none',
+          pull > 0 && 'cursor-grabbing transition-none',
+          torn && 'opacity-60'
+        )}
+        onPointerDown={ghost ? undefined : handleDown}
+        onPointerMove={ghost ? undefined : handleMove}
+        onPointerUp={ghost ? undefined : handleUp}
+        onPointerCancel={ghost ? undefined : handleUp}>
+        {children}
+      </div>
+    </div>
+  )
+}
+
+// The sung line's translation, unless it has none or it only repeats the line
+const translationOf = (
+  line: ReturnType<typeof lineAt>,
+  lineKey: number
+): ReactNode =>
+  line.translation &&
+  line.text !== undefined &&
+  !sameText(line.translation, line.text) ? (
+    <LyricLine
+      key={lineKey}
+      html={line.translation}
+      kind='translation'
+      size={STAGGER_SIZE.translation}
+      className='italic motion-safe:animate-in motion-safe:fade-in'
+    />
+  ) : undefined
+
+// Whether Karaoke Style's translation is docked under the rows (saved with the style), whether a pull down offers
+// to dock it right now, and pulling it off again: back to its room at the top, where it was let go
+const useTranslationDock = (layer: RefObject<HTMLDivElement | null>) => {
+  const [docked, setDocked] = useAtom(lyricsTranslationDockedAtom)
+  const setAnchor = useSetAtom(lyricsTranslationAnchorAtom)
+  const [offered, setOffered] = useState(false)
+  const handleTear = (pointerY: number, height: number) => {
+    const room = layer.current
+      ?.querySelector('[data-lyric-translation]')
+      ?.getBoundingClientRect()
+    if (room !== undefined) {
+      const free = Math.max(1, room.height - height)
+      setAnchor(
+        Math.min(1, Math.max(0, (pointerY - height / 2 - room.top) / free))
+      )
+    }
+    setDocked(false)
+  }
+  const pull = {
+    onDock: () => {
+      setDocked(true)
+    },
+    onPull: setOffered,
+  }
+  return { docked, handleTear, offered, pull }
+}
+
+// Under the rows: the docked translation, or while it is pulled down to dock, its place there
+const UnderRows = ({
+  dock,
+  layout,
+  children,
+}: {
+  dock: ReturnType<typeof useTranslationDock>
+  layout: StageLayout
+  children: ReactNode
+}) => {
+  if (children === undefined) {
+    return null
+  }
+  if (dock.docked) {
+    return (
+      <DockedTranslation layout={layout} onTear={dock.handleTear}>
+        {children}
+      </DockedTranslation>
+    )
+  }
+  return dock.offered ? (
+    <DockedTranslation layout={layout} ghost>
+      {children}
+    </DockedTranslation>
+  ) : null
+}
 
 const NO_VIEW: TwoLineView = { active: -1, rows: [-1, -1] }
 const sameView = (a: TwoLineView, b: TwoLineView) =>
@@ -757,21 +920,37 @@ export const StageLyrics = ({
     '--lyric-glow': colors.glow,
     '--lyric-scale': scale,
   }
+  // Karaoke Style's translation: in its room at the top, or docked under the rows
+  const translated = twoLines && showTranslation
+  const translationLine = translationOf(
+    lineAt(lyrics, karaokeLines, view.active, english, placeholder),
+    view.active
+  )
+  const layerRef = useRef<HTMLDivElement>(null)
+  const dock = useTranslationDock(layerRef)
+  const underRows = translated && (
+    <UnderRows dock={dock} layout={layout}>
+      {translationLine}
+    </UnderRows>
+  )
   return (
-    <div className='absolute inset-0 lyric-stagger-layer' style={layerVars}>
-      {twoLines && showTranslation && (
+    <div
+      ref={layerRef}
+      className='absolute inset-0 lyric-stagger-layer'
+      style={layerVars}>
+      {translated && (
         <StaggerTranslation
-          line={lineAt(lyrics, karaokeLines, view.active, english, placeholder)}
-          lineKey={view.active}
           layout={layout}
           scale={scale}
           colors={colors}
-        />
+          dock={dock.pull}>
+          {dock.docked ? undefined : translationLine}
+        </StaggerTranslation>
       )}
       {/* Always this box, so the lyrics stay mounted when two lines turn on or off; two lines move only in
           the stage's lower part, under their translation */}
       <div
-        data-translation={(twoLines && showTranslation) || undefined}
+        data-translation={(translated && !dock.docked) || undefined}
         className={cn(
           'absolute inset-x-0 bottom-0',
           twoLines ? 'lyric-stagger-area' : 'top-0'
@@ -782,12 +961,15 @@ export const StageLyrics = ({
           colors={colors}
           wide={twoLines}>
           {twoLines && view.active >= 0 ? (
-            <TwoRows
-              view={view}
-              rowsOf={rowsOf}
-              songLines={songLines}
-              scale={scale}
-            />
+            <>
+              <TwoRows
+                view={view}
+                rowsOf={rowsOf}
+                songLines={songLines}
+                scale={scale}
+              />
+              {underRows}
+            </>
           ) : (
             rowsOf(view.active)
           )}

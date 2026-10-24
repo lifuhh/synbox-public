@@ -835,6 +835,18 @@
   }
 }
 
+/* Karaoke Style's translation docked under the rows (stage-lyrics › DockedTranslation), a little under them; while
+   the translation is pulled down to dock, its place there shows faint and outlined */
+@utility docked-translation {
+  padding-top: 0.4em;
+
+  &[data-docked-translation='ghost'] > * {
+    opacity: 0.45;
+    outline: 1px dashed oklch(1 0 0 / 0.35);
+    outline-offset: 0.15em;
+  }
+}
+
 /* On a phone on its side the lyrics' layer keeps clear of the rail on both sides (one line stays centred), but
    the rows are a left and a right line, and only the left has the rail beside it: the rows' box runs on to the
    right safe area plus a gap, and drops the block's own side padding, so both lines get more of the width */

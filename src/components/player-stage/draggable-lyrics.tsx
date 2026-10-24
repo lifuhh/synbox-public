@@ -31,7 +31,7 @@ const swallow = (event: MouseEvent) => {
   event.preventDefault()
 }
 
-const swallowNextClick = () => {
+export const swallowNextClick = () => {
   window.addEventListener('click', swallow, { capture: true, once: true })
   setTimeout(() => {
     window.removeEventListener('click', swallow, { capture: true })
@@ -39,6 +39,11 @@ const swallowNextClick = () => {
 }
 
 const clamp01 = (value: number) => Math.min(1, Math.max(0, value))
+
+// Karaoke Style's translation pulled past the floor of its room toward the rows: it follows at this share of the
+// pointer's travel (a felt resistance, the floor giving way), and docks once the pointer is this far past the floor
+const PULL_FOLLOW = 0.5
+export const DOCK_PULL_PX = 40
 
 // The least room under the block. While it is dragged, only the edge: it goes where the pointer puts it, the
 // floor included. Dropped, it keeps clear of the home indicator. The floating UI never moves it: the controls
@@ -70,6 +75,9 @@ interface DraggableLyricsProps {
   anchorAtom?: WritableAtom<number, [number], void>
   // Whether the block keeps clear of the home indicator; a block at the top of the stage has nothing to clear
   lifts?: boolean
+  // Pulled down past its floor, the block offers to dock (Karaoke Style's translation under the rows): `onPull`
+  // as the pull crosses DOCK_PULL_PX either way, `onDock` when released past it
+  dock?: { onPull: (over: boolean) => void; onDock: () => void }
 }
 
 // `anchor` is where the viewer put the lyrics (0 = top, 1 = bottom of their
@@ -89,6 +97,7 @@ export const DraggableLyrics = ({
   wide = false,
   anchorAtom,
   lifts = true,
+  dock,
 }: DraggableLyricsProps) => {
   const lyricsAnchor = usePortrait()
     ? lyricsAnchorPortraitAtom
@@ -98,6 +107,9 @@ export const DraggableLyrics = ({
   const [dragAnchor, setDragAnchor] = useState<number | null>(null)
   const anchor = dragAnchor ?? savedAnchor
   const dragging = dragAnchor !== null
+  // How far past the floor the pointer has pulled the block (dock only), and whether that reaches the dock
+  const [pullPx, setPullPx] = useState(0)
+  const over = pullPx > DOCK_PULL_PX
   const blockRef = useRef<HTMLDivElement>(null)
   const dragRef = useRef<DragStart | null>(null)
   const setStylePanel = useSetAtom(lyricsStylePanelAtom)
@@ -154,7 +166,15 @@ export const DraggableLyrics = ({
       drag.moved = true
       layout.onDragChange(true)
     }
-    setDragAnchor(clamp01(drag.anchor + delta / drag.range))
+    const next = drag.anchor + delta / drag.range
+    setDragAnchor(clamp01(next))
+    if (dock) {
+      const pulled = Math.max(0, (next - 1) * drag.range)
+      if (pulled > DOCK_PULL_PX !== over) {
+        dock.onPull(!over)
+      }
+      setPullPx(pulled)
+    }
   }
 
   const handlePointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
@@ -164,9 +184,14 @@ export const DraggableLyrics = ({
       return
     }
     if (drag.moved) {
-      // Where it was dropped is its place
+      // Where it was dropped is its place; dropped past the floor far enough, it docks under the rows
       setSavedAnchor(anchor)
       setDragAnchor(null)
+      setPullPx(0)
+      if (dock && over) {
+        dock.onPull(false)
+        dock.onDock()
+      }
       layout.onDragChange(false)
       // A drag that ends over the video must not also count as a tap on it
       swallowNextClick()
@@ -190,6 +215,7 @@ export const DraggableLyrics = ({
     '--lyric-accent': colors.accent,
     '--lyric-glow': colors.glow,
     '--lyric-scale': scale,
+    '--pull-y': `${pullPx * PULL_FOLLOW}px`,
   }
   const liftVars: CssVars = {
     '--lift-grow': 1 - anchor,
@@ -206,7 +232,7 @@ export const DraggableLyrics = ({
       <div
         ref={blockRef}
         className={cn(
-          'player-lyrics-overlay relative isolate shrink-0 px-3 py-cqh select-none',
+          'player-lyrics-overlay relative isolate shrink-0 translate-y-(--pull-y) px-3 py-cqh select-none',
           children === undefined && 'invisible'
         )}
         style={blockVars}>
