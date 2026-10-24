@@ -193,10 +193,10 @@ const SKELETON_CARDS = 8
 
 // The web fonts come a slice of characters at a time (unicode-range), each loaded when a character from it first
 // shows. Only the rows near the view exist, so the titles' slices arrived mid-scroll, and in WebKit each slice that
-// arrives restyles and lays out the whole page (about 95ms on Home), a stall per slice. Asked for together once the
-// page has loaded, they cost one such pause, at rest. One family at a time: given the whole stack, WebKit loads a
-// character's slice only from the first family whose range lists it, so a symbol Plus Jakarta Sans's range lists but
-// the font doesn't draw still brought Noto Sans JP's Latin slice in mid-scroll
+// arrives restyles and lays out the whole page (about 95ms on Home), a stall per slice. Asked for together, they cost
+// one such pause, at rest. One family at a time: given the whole stack, WebKit loads a character's slice only from
+// the first family whose range lists it, so a symbol Plus Jakarta Sans's range lists but the font doesn't draw still
+// brought Noto Sans JP's Latin slice in mid-scroll
 const loadTitleFonts = (songs: LibraryListSong[]) => {
   const text = songs.map((song) => `${song.title}${song.author}`).join('')
   for (const family of getComputedStyle(document.body).fontFamily.split(',')) {
@@ -204,21 +204,32 @@ const loadTitleFonts = (songs: LibraryListSong[]) => {
   }
 }
 
+// After the first screen, as the pages' prefetch (src/app.tsx): asked for at `load`, the slices competed with the
+// first screen's pictures and fonts (Chromium LCP 1,144 → 1,392 ms)
+const OPENING_MS = 4000
+
 const useTitleFonts = (songs: LibraryListSong[]) => {
   useEffect(() => {
     if (songs.length === 0) {
       return
     }
-    const load = () => {
-      loadTitleFonts(songs)
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const later = () => {
+      timer = setTimeout(
+        () => {
+          loadTitleFonts(songs)
+        },
+        Math.max(0, OPENING_MS - performance.now())
+      )
     }
     if (document.readyState === 'complete') {
-      load()
-      return
+      later()
+    } else {
+      window.addEventListener('load', later, { once: true })
     }
-    window.addEventListener('load', load, { once: true })
     return () => {
-      window.removeEventListener('load', load)
+      window.removeEventListener('load', later)
+      clearTimeout(timer)
     }
   }, [songs])
 }
