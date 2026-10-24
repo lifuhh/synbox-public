@@ -88,11 +88,21 @@ Finished work is merged into `staging`, never into `main`. `bun harness/release.
 
 ```sh
 bun harness/release.ts --dry-run   # what staging would ship
-bun harness/release.ts --preview   # one deploy preview of staging, for a phone check
-bun harness/release.ts             # check staging's tree, PR staging → main, merge, wait until live
+bun harness/release.ts --preview   # one deploy preview of staging, smoke-tested, for a phone check; merges nothing
+bun harness/release.ts             # check, PR staging → main, deploy preview + smoke, merge, wait until live, smoke the live site
+bun harness/smoke.ts <url>         # the smoke alone, on any deployed copy
 ```
 
-The release runs `check` on staging's tree every time (per-PR verdicts judged other trees), unless nothing in `harness/gate.json` › `paths` differs from `main`. It stops on a failure: fix it in a PR into staging and release again. One release runs at a time on a machine (a lock in `.harness/release/`). A release that changes only docs, the harness, scripts or Markdown costs no Netlify build (`scripts/netlify-ignore.sh`).
+A release, in order, each step stopping it on a failure (fix it in a PR into staging and release again):
+
+1. `check` on staging's tree, every time (per-PR verdicts judged other trees), unless nothing in `harness/gate.json` › `paths` differs from `main`. About a minute.
+2. The PR staging → main, opened or reused.
+3. A deploy preview of staging's tip: an empty `[preview]` commit pushed to staging (`scripts/netlify-ignore.sh` builds previews only for those), then the PR's commit status from Netlify is polled until the preview is ready, up to 15 minutes. A failed build stops the release with its log link; `bunx netlify-cli build --offline --context deploy-preview` in a copy of staging reproduces it (this is how #336's Edge Function import was found).
+4. `harness/smoke.ts` from staging's tree on the preview (about 40 seconds; "On a deployed copy" above). A FAIL stops the release before anything is merged. The preview uses the production backend: a failure caused only by backend changes not yet released means releasing the backend first.
+5. The merge, then the wait until https://synbox.io serves it.
+6. `harness/smoke.ts` on https://synbox.io. The release is already live, so a FAIL can't stop it: it prints a loud warning with the way back (Netlify › Deploys › the previous production deploy › Publish deploy, instant; then `git revert -m 1 <merge>` in a PR into staging and a release) and exits 1.
+
+`--preview` runs steps 1 to 4 and prints the smoke verdict with the link. One release runs at a time on a machine (a lock in `.harness/release/`). A release that changes only docs, the harness, scripts or Markdown costs no Netlify build (`scripts/netlify-ignore.sh`).
 
 ## Timing: `trend`
 
