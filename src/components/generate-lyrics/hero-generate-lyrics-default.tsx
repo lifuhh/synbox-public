@@ -1,3 +1,4 @@
+import { useSetAtom } from 'jotai'
 import {
   ArrowRightIcon,
   Info,
@@ -18,6 +19,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
+import { homeSearchFieldAtom } from '@/context/atoms'
 import { useMediaQuery } from '@/hooks/use-media-query'
 import { noSongReason, signInWithGoogle, useAccess } from '@/lib/auth'
 import { useGetLyricsBySongId } from '@/lib/react-query/queries-and-mutations'
@@ -82,6 +84,8 @@ const HeroGenerateLyricsDefault = ({
   // A tooltip only opens on hover or keyboard focus, so a tap toggles it too
   const [infoOpen, setInfoOpen] = useState(false)
   const navigate = useNavigate()
+  // The top bar's search docks from this field once it scrolls under the bar
+  const setDockField = useSetAtom(homeSearchFieldAtom)
   // A Synbox link opens its own page: no lyrics lookup, no generation
   const ownPath = ownSongPath(inputValue)
   const isSearch = isSearchText(inputValue)
@@ -297,7 +301,7 @@ const HeroGenerateLyricsDefault = ({
             event.preventDefault()
             submit()
           }}>
-          <InputField state={inputMode} className='relative'>
+          <InputField ref={setDockField} state={inputMode} className='relative'>
             <Input
               value={inputValue}
               onChange={handleInputChange}

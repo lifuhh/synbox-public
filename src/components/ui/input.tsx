@@ -74,8 +74,7 @@ const InputField = ({
   className,
   state,
   ...props
-}: React.HTMLAttributes<HTMLDivElement> &
-  VariantProps<typeof inputFieldVariants>) => (
+}: React.ComponentProps<'div'> & VariantProps<typeof inputFieldVariants>) => (
   <div className={cn(inputFieldVariants({ state }), className)} {...props} />
 )
 

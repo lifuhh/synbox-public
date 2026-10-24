@@ -1293,6 +1293,33 @@
   }
 }
 
+/* Home's search in flight between its field and the top bar (search-dock.tsx sets its box and --dock-t): its edge
+   and fill blend from the field's to the bar's as --dock-t goes 0 to 1. Empty, and so not drawn, at rest */
+@utility search-ghost {
+  position: absolute;
+  top: 0;
+  left: 0;
+  overflow: hidden;
+  border-radius: 9999px;
+  pointer-events: none;
+  contain: layout paint style;
+  will-change: transform;
+  background: color-mix(
+    in oklab,
+    var(--dock-to-fill) calc(var(--dock-t) * 100%),
+    var(--dock-from-fill)
+  );
+  box-shadow: inset 0 0 0 1px
+    color-mix(
+      in oklab,
+      var(--dock-to-edge) calc(var(--dock-t) * 100%),
+      var(--dock-from-edge)
+    );
+  &:empty {
+    display: none;
+  }
+}
+
 /* A loading placeholder: a lighter band sweeps across it, so it reads as loading on a dark card, where a
    pulse between two near-blacks looked like an empty box */
 /* A skeleton stays invisible for its first 400 ms and then fades in, so a load that finishes quickly shows
