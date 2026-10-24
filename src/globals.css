@@ -1914,8 +1914,22 @@
     }
   }
 
+  /* The resume bar zooms with the pill as one group, about the pill's centre: below its own bottom edge by the
+     gap and half the pill's 4rem */
   [data-resume-box] {
-    transition: translate 300ms var(--ease-out);
+    transform-origin: 50% calc(100% + 0.5rem + 2rem);
+    transition: scale 300ms var(--ease-out);
+
+    /* Its close button's press area reaches over the bar's padding, so it stays 44px zoomed out */
+    & button {
+      position: relative;
+
+      &::after {
+        content: '';
+        position: absolute;
+        inset: -0.375rem;
+      }
+    }
   }
 
   html[data-topbar-state='hidden'] [data-tabbar-root]:not(:focus-within) {
@@ -1939,9 +1953,8 @@
         scale: calc(0.875 / var(--tab-compact));
       }
 
-      /* Down with the pill's top edge */
       & [data-resume-box] {
-        translate: 0 calc(2rem * (1 - var(--tab-compact)));
+        scale: var(--tab-compact);
       }
     }
   }
