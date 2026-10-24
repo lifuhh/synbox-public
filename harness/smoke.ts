@@ -262,12 +262,11 @@ const isOurs = (url: URL, origin: string) =>
   /(?:^|\.)sentry\.io$/u.test(url.hostname) ||
   /^synbox-[\w-]+\.(?:[\w-]+\.)?run\.app$/u.test(url.hostname)
 
-/** One of the generation calls: through the auth Worker (worker/src/generation.ts), or straight to the Cloud Run
- * service from a build older than that */
+/** One of the generation calls, through the auth Worker (worker/src/generation.ts; netlify.toml ›
+ * VITE_SYNBOX_BE_URL). A build that still calls a Cloud Run service directly is unstubbed, so its write fails the run */
 const isGeneration = (url: URL, endpoint: string) =>
-  (url.hostname === 'api.synbox.io' &&
-    url.pathname === `/api/generation/${endpoint}`) ||
-  (url.hostname.endsWith('.run.app') && url.pathname === `/${endpoint}`)
+  url.hostname === 'api.synbox.io' &&
+  url.pathname === `/api/generation/${endpoint}`
 
 const cors = (origin: string) => ({
   'access-control-allow-credentials': 'true',
