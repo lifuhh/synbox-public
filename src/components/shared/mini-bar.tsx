@@ -1,5 +1,5 @@
 import { useAtom, useAtomValue, useSetAtom } from 'jotai'
-import { PauseIcon, PlayIcon, XIcon } from 'lucide-react'
+import { PauseIcon, PlayIcon, VolumeXIcon, XIcon } from 'lucide-react'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { RefObject } from 'react'
 import { Link } from 'react-router'
@@ -12,6 +12,7 @@ import {
   loadSong,
 } from '@/components/player-stage/youtube-engine'
 import { DEFAULT_YOUTUBE_QUIRKS } from '@/components/player-stage/youtube-quirks'
+import { playerVolumeAtom } from '@/context/atoms'
 import { useSongPresence } from '@/lib/library/presence'
 import { addToHistoryAtom, historyAtom } from '@/lib/library/store'
 import type { ListSong } from '@/lib/listening/model'
@@ -32,6 +33,9 @@ import { YTState } from '@/lib/youtube/iframe-api'
 import { cn } from '@/utils/cn'
 
 type Phase = 'playing' | 'paused' | 'ended'
+
+// How long YouTube takes to report an unmute it was asked for
+const MUTE_READ_BACK_MS = 500
 
 // The bar's thumbnail is rounded-lg
 const THUMB_RADIUS_PX = 8
@@ -159,6 +163,21 @@ const MiniPlayer = ({
     latest.current = { finish }
   })
 
+  // A song that plays muted here (the browser refused sound when it started, or the listener muted it on the
+  // player) shows Unmute: the press is the permission the browser waits for, as the stage's Tap to Unmute. The saved
+  // volume follows, so the player agrees when the bar is tapped
+  const [muted, setMuted] = useState(false)
+  const [volume, setVolume] = useAtom(playerVolumeAtom)
+  // YouTube answers a little later, so the button goes at once and its state is read back after
+  const unmute = () => {
+    player.current?.unMute()
+    setVolume({ ...volume, muted: false })
+    setMuted(false)
+    setTimeout(() => {
+      setMuted(player.current?.isMuted() ?? false)
+    }, MUTE_READ_BACK_MS)
+  }
+
   useEffect(() => {
     const disconnect = connectEngine({
       onAutoplayBlocked: () => {
@@ -169,8 +188,10 @@ const MiniPlayer = ({
       },
       onReady: (ready) => {
         player.current = ready
+        setMuted(ready.isMuted())
       },
       onStateChange: (state) => {
+        setMuted(player.current?.isMuted() ?? false)
         if (state === YTState.Cued && playWhenCued.current) {
           playWhenCued.current = false
           player.current?.playVideo()
@@ -272,6 +293,15 @@ const MiniPlayer = ({
           </span>
         </span>
       </Link>
+      {muted && (
+        <button
+          type='button'
+          aria-label='Unmute'
+          onClick={unmute}
+          className='grid size-11 shrink-0 place-items-center rounded-full text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden'>
+          <VolumeXIcon className='size-5' aria-hidden />
+        </button>
+      )}
       <button
         type='button'
         aria-label={playing ? 'Pause' : 'Play'}
