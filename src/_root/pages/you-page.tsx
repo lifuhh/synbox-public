@@ -60,7 +60,7 @@ const YouPage = () => {
       ref={setBox}
       data-scroll-top
       className='flex flex-1 flex-col overflow-y-auto px-4 pt-(--topbar-h) pb-page-bottom'>
-      <title>You | Synbox</title>
+      <title>You · Synbox</title>
       <div className='mx-auto flex w-full max-w-xl flex-col gap-6 pt-4'>
         <h1 className='px-2 text-3xl font-semibold tracking-tight text-foreground'>
           You

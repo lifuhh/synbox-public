@@ -22,7 +22,7 @@ const PlaylistsPage = () => {
       ref={setBox}
       data-scroll-top
       className='flex flex-1 flex-col overflow-y-auto pt-(--topbar-h) page-x pb-page-bottom'>
-      <title>Playlists | Synbox</title>
+      <title>Playlists · Synbox</title>
       <div className='mx-auto flex w-full max-w-3xl flex-col gap-6 pt-6'>
         <h1 className='text-3xl font-semibold tracking-tight text-foreground'>
           Playlists
@@ -52,7 +52,7 @@ const PlaylistsPage = () => {
         {playlists.length === 0 ? (
           <div className='flex flex-col items-center gap-2 py-12 text-center'>
             <p className='text-lg font-medium text-foreground'>
-              No playlists yet
+              No Playlists Yet
             </p>
             <p className='max-w-sm text-sm text-pretty text-muted-foreground'>
               Name one above, or save a song to a new playlist from its menu or
@@ -64,7 +64,7 @@ const PlaylistsPage = () => {
             {playlists.map((list) => (
               <li
                 key={list.id}
-                className='flex items-center gap-1 rounded-xl transition-colors has-[a:hover]:bg-accent'>
+                className='flex items-center gap-1 rounded-xl transition-colors pointer-fine:has-[a:hover]:bg-accent'>
                 <Link
                   to={`/playlists/${list.id}`}
                   className='flex min-w-0 flex-1 items-center gap-3 rounded-xl p-2 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden'>

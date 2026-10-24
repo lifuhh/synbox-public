@@ -287,7 +287,7 @@ const PlayerPage = () => {
 
   return (
     <>
-      <title>{`${currentVideo?.title ?? 'Player Page'} | Synbox`}</title>
+      <title>{`${currentVideo?.title ?? 'Player'} · Synbox`}</title>
       {surface === 'stage' && <PlayerRail />}
       {previewVersion !== null && (
         <VersionPreviewBanner videoId={stageVideoId} />

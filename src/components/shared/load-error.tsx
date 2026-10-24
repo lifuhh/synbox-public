@@ -24,7 +24,7 @@ const LoadError = ({
     <p className='text-sm text-muted-foreground'>{message}</p>
     <Button variant='outline' onClick={onRetry} disabled={retrying} gap='md'>
       <RotateCwIcon
-        className={cn('size-4', retrying && 'animate-spin')}
+        className={cn('size-4', retrying && 'motion-safe:animate-spin')}
         aria-hidden
       />
       {retrying ? 'Retrying' : 'Retry'}

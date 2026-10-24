@@ -152,12 +152,12 @@ const PlaylistPage = () => {
       ref={setBox}
       data-scroll-top
       className='flex flex-1 flex-col overflow-y-auto pt-(--topbar-h) page-x pb-page-bottom'>
-      <title>{`${playlist?.name ?? 'Playlist'} | Synbox`}</title>
+      <title>{`${playlist?.name ?? 'Playlist'} · Synbox`}</title>
       <div className='mx-auto flex w-full max-w-3xl flex-col gap-6 pt-6'>
         {playlist === undefined ? (
           <div className='flex flex-col items-center gap-3 py-16 text-center'>
             <p className='text-lg font-medium text-foreground'>
-              This playlist isn&apos;t on this device
+              Playlist Not on This Device
             </p>
             <Button asChild variant='outline'>
               <Link to='/playlists'>All Playlists</Link>

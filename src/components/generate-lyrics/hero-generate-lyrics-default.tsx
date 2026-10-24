@@ -5,7 +5,7 @@ import {
   PlayIcon,
   SearchIcon,
 } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useId, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router'
 
 import { startFromButton } from '@/components/generation/start-generation'
@@ -18,6 +18,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
+import { useMediaQuery } from '@/hooks/use-media-query'
 import { noSongReason, signInWithGoogle, useAccess } from '@/lib/auth'
 import { useGetLyricsBySongId } from '@/lib/react-query/queries-and-mutations'
 import { YouTubeUrlOrIdValidation } from '@/lib/validation'
@@ -28,6 +29,10 @@ interface HeroGenerateLyricsDefaultProps {
   setInputVideoId: (videoId: string) => void
   inputVideoId: string
 }
+
+// Under 360px wide the full text runs past the field
+const heroPlaceholder = (roomy: boolean) =>
+  roomy ? 'Search or paste a YouTube URL' : 'Search or paste a link'
 
 // A bare 11-character word only counts as a video id when it has a digit, - or _, or mixed case.
 const looksLikeYoutubeLink = (value: string) => {
@@ -69,6 +74,8 @@ const HeroGenerateLyricsDefault = ({
 }: HeroGenerateLyricsDefaultProps) => {
   const [inputValue, setInputValue] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
+  const statusId = useId()
+  const roomy = useMediaQuery('(min-width: 22.5rem)')
   const [validationSuccess, setValidationSuccess] = useState(false)
   // Asking the backend whether it would take the song, before the panel opens
   const [checking, setChecking] = useState(false)
@@ -118,7 +125,7 @@ const HeroGenerateLyricsDefault = ({
         setValidationSuccess(true)
         setErrorMessage('')
       } else {
-        setErrorMessage('Invalid URL')
+        setErrorMessage('Paste a youtube.com or youtu.be link')
         setValidationSuccess(false)
       }
     } else {
@@ -178,7 +185,7 @@ const HeroGenerateLyricsDefault = ({
       return 'Looking for lyrics…'
     }
     if (existingLyrics) {
-      return 'Lyrics and translations ready'
+      return 'Lyrics Ready'
     }
     if (blocked) {
       return access.kind === 'user'
@@ -241,7 +248,7 @@ const HeroGenerateLyricsDefault = ({
         className={cn(
           // The first lines of the home page's rise, a line at a time
           'in-data-rise:rise-in',
-          'text-left text-4xl font-semibold tracking-tight text-balance text-foreground no-select md:text-center md:text-6xl installed:hidden short:text-4xl'
+          'text-left text-4xl font-semibold tracking-tight text-balance text-foreground no-select md:text-center md:text-6xl installed:sr-only short:text-4xl'
         )}>
         AI-Powered Japanese Karaoke
       </h1>
@@ -299,7 +306,9 @@ const HeroGenerateLyricsDefault = ({
               autoCapitalize='off'
               autoCorrect='off'
               spellCheck={false}
-              placeholder='Search or paste a YouTube URL'
+              placeholder={heroPlaceholder(roomy)}
+              aria-invalid={errorMessage !== ''}
+              aria-describedby={statusId}
               data-bench='hero-input'
               variant='bare'
             />
@@ -332,7 +341,7 @@ const HeroGenerateLyricsDefault = ({
             )}
           </InputField>
         </form>
-        <div className='min-h-6 px-5 text-sm' aria-live='polite'>
+        <div id={statusId} className='min-h-6 px-5 text-sm' aria-live='polite'>
           {inputMode === 'search' && (
             <p className='text-search'>Search by title, artist or mood</p>
           )}

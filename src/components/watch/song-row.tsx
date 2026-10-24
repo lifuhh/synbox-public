@@ -110,7 +110,7 @@ export const SongRow = ({
   return (
     <Root
       className={cn(
-        'group/row flex items-center gap-1 rounded-xl transition-colors has-[a:hover]:bg-accent',
+        'group/row flex items-center gap-1 rounded-xl transition-colors pointer-fine:has-[a:hover]:bg-accent',
         // A big row's menu sits at the top beside the title, as on YouTube
         large && 'items-start',
         current && 'bg-accent',

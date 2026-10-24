@@ -45,7 +45,7 @@ export const PlaybackBar = ({
         type='button'
         aria-label={playing ? 'Pause' : 'Play'}
         onClick={onToggle}
-        className='mx-auto flex size-14 items-center justify-center rounded-full bg-(--reader-fg) text-(--reader-bg) transition-transform active:scale-95'>
+        className='mx-auto flex size-14 items-center justify-center rounded-full bg-(--reader-fg) text-(--reader-bg) transition-transform motion-safe:active:scale-96'>
         {playing ? (
           <PauseIcon className='size-6 fill-current' />
         ) : (

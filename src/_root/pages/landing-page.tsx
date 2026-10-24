@@ -24,7 +24,6 @@ const LandingPage = () => {
       data-rise={rise || undefined}
       className='flex custom-scrollbar flex-1 flex-col overflow-x-hidden overflow-y-scroll page-x-md'>
       <title>Synbox</title>
-      <meta name='Synbox Homepage' content='Synbox - AI Powered Karaoke' />
       <HeroGenerateLyricsSection />
       <section className='mx-auto flex w-full flex-col gap-8 lg:flex-row lg:gap-6'>
         <SongHighlightCarousel />

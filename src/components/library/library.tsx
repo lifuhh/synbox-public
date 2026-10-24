@@ -17,10 +17,13 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { ToastAction } from '@/components/ui/toast'
+import { toast } from '@/components/ui/use-toast'
 import { PlaylistCover } from '@/components/watch/playlist-cover'
 import { SongRow } from '@/components/watch/song-row'
 import { useMe } from '@/lib/auth'
 import {
+  addFavoriteAtom,
   clearHistoryAtom,
   favoritesAtom,
   historyAtom,
@@ -312,6 +315,24 @@ const emptyText = (library: Library, tab: LibraryTab) => {
   return TABS.find(({ id }) => id === tab)?.empty
 }
 
+// As the player's bookmark button: a removed bookmark comes back in one press
+const offerBookmarkUndo = (song: ListSong, add: (song: ListSong) => void) => {
+  toast({
+    action: (
+      <ToastAction
+        altText='Undo Remove Bookmark'
+        onClick={() => {
+          add(song)
+        }}>
+        Undo
+      </ToastAction>
+    ),
+    description: song.title,
+    duration: 5000,
+    title: 'Removed Bookmark',
+  })
+}
+
 // Bookmarks are `removable`: each row has its own Remove button beside the link
 const SongList = ({
   library,
@@ -325,6 +346,7 @@ const SongList = ({
   removable: boolean
 }) => {
   const removeFavorite = useSetAtom(removeFavoriteAtom)
+  const addFavorite = useSetAtom(addFavoriteAtom)
   return (
     <ul className='flex flex-col'>
       {results.map(({ song, match }) => {
@@ -347,6 +369,7 @@ const SongList = ({
                   className='mr-1 shrink-0 touch:size-11'
                   onClick={() => {
                     removeFavorite(song.videoId)
+                    offerBookmarkUndo(song, addFavorite)
                   }}>
                   <XIcon className='size-4' />
                   <span className='sr-only'>
