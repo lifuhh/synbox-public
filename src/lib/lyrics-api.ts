@@ -7,13 +7,13 @@ import {
 } from '@/lib/lyrics-direct'
 import { deviceId } from '@/lib/song-stats'
 
-// Lyrics and karaoke timing come from the auth Worker, one song at a time (worker/src/lyrics.ts), never from the
-// lyrics table or the lookup service directly. Straight to api.synbox.io, not through synbox.io/api, so the Worker
-// counts each visitor's own network; an account sends its backend token. The dev server answers the same paths
-// itself (dev/lyrics-proxy.ts); VITE_SYNBOX_API_URL points either elsewhere (a local Worker)
+// Lyrics and karaoke timing come from the auth Worker, one song at a time (worker/src/lyrics.ts): straight to the
+// address in VITE_SYNBOX_API_URL (api.synbox.io), not through synbox.io/api, so the Worker counts each visitor's own
+// network; an account sends its backend token. Unset, the dev server answers the same paths itself
+// (dev/lyrics-proxy.ts), and a built site (Netlify, `check`'s bench) reads as it did before the Worker served lyrics
+// (src/lib/lyrics-direct.ts) until the Worker's routes are deployed and the address is set
 const API =
-  import.meta.env.VITE_SYNBOX_API_URL ??
-  (import.meta.env.DEV ? '' : 'https://api.synbox.io')
+  import.meta.env.VITE_SYNBOX_API_URL ?? (import.meta.env.DEV ? '' : null)
 
 export class RateLimitedError extends Error {
   constructor() {
@@ -51,7 +51,7 @@ const viaWorker = async <T>(
   worker: () => Promise<T>,
   direct: () => Promise<T>
 ): Promise<T> => {
-  if (Date.now() < workerMissingUntil) {
+  if (API === null || Date.now() < workerMissingUntil) {
     return await direct()
   }
   try {
@@ -89,7 +89,7 @@ const get = async (path: string, signal?: AbortSignal) => {
   }
   let response: Response
   try {
-    response = await fetch(`${API}${path}`, {
+    response = await fetch(`${API ?? ''}${path}`, {
       credentials: API === '' ? 'same-origin' : 'omit',
       headers,
       signal,
