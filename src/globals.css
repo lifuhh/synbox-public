@@ -1877,49 +1877,78 @@
   }
 
   /* The tabs step back while the page is read, as Instagram's do: scrolling down (the top bar slides away,
-     data-topbar-state) shrinks the pill to 7/8 from its bottom edge and fades its labels, the icons moving down
-     to its centre; scrolling up brings it back, in the same frame and over the same 300ms as the top bar. The
-     labels only fade, so each tab keeps its name for assistive tech. Keyboard focus inside restores it. With
-     reduced motion only the labels fade */
+     data-topbar-state) zooms the pill out about its centre to --tab-compact and fades its labels, each icon and
+     its label moving down together until the icon sits at the tab's centre; scrolling up zooms it back, in the
+     same frame and over the same 300ms as the top bar. The icons zoom out less than the pill (to 7/8), so the
+     room the labels leave goes with them. Icon and label move as one, so the label fades on the same curve with
+     no delay and never crosses its icon. The labels only fade, so each tab keeps its name for assistive tech.
+     Keyboard focus inside restores it. With reduced motion only the labels fade */
+  [data-tabbar-root] {
+    --tab-compact: 0.78;
+  }
+
   [data-tab-nav] {
-    transform-origin: bottom;
     transition: scale 300ms var(--ease-out);
 
-    & [data-tab-icon] {
-      transition: translate 300ms var(--ease-out);
+    & [data-tab-icon],
+    & [data-tab-label] {
+      transition: 300ms var(--ease-out);
+      transition-property: translate, scale, opacity;
     }
 
-    /* Back in only once its icon has moved up out of its way (about 100ms into the 300ms), so the two never
-       overlap; out (below) faster than the icon comes down over it */
-    & [data-tab-label] {
-      transition: opacity 150ms var(--ease-out) 100ms;
+    /* The press area reaches across the pill's padding and half the gaps, so a compact tab stays over 44px */
+    & a {
+      position: relative;
+
+      &::after {
+        content: '';
+        position: absolute;
+        inset: -0.25rem -0.125rem;
+      }
     }
   }
 
+  /* The resume bar zooms with the pill as one group, about the pill's centre: below its own bottom edge by the
+     gap and half the pill's 4rem */
   [data-resume-box] {
-    transition: translate 300ms var(--ease-out);
+    transform-origin: 50% calc(100% + 0.5rem + 2rem);
+    transition: scale 300ms var(--ease-out);
+
+    /* Its close button's press area reaches over the bar's padding, so it stays 44px zoomed out */
+    & button {
+      position: relative;
+
+      &::after {
+        content: '';
+        position: absolute;
+        inset: -0.375rem;
+      }
+    }
   }
 
   html[data-topbar-state='hidden'] [data-tabbar-root]:not(:focus-within) {
     & [data-tab-label] {
       opacity: 0;
-      transition-duration: 75ms;
-      transition-delay: 0s;
+      transition-duration: 300ms, 300ms, 200ms;
     }
 
     @media (prefers-reduced-motion: no-preference) {
       & [data-tab-nav] {
-        scale: 0.875;
+        scale: var(--tab-compact);
       }
 
-      /* Half the label's line and the gap above it */
-      & [data-tab-icon] {
+      /* Half the label's line and the gap above it, in the pill's own units */
+      & [data-tab-icon],
+      & [data-tab-label] {
         translate: 0 0.5625rem;
       }
 
-      /* Down with the pill's top edge: an eighth of its 4rem */
+      & [data-tab-icon] {
+        scale: calc(0.875 / var(--tab-compact));
+      }
+
       & [data-resume-box] {
-        translate: 0 0.5rem;
+        scale: var(--tab-compact);
       }
     }
   }
