@@ -175,6 +175,7 @@
   --transition-property-fade-translate: opacity, translate;
   --transition-property-filter-fade: filter, opacity;
   --transition-property-surface: background-color, box-shadow;
+  --transition-property-fade-fill: opacity, background-color;
 
   --breakpoint-xs: 480px;
 
