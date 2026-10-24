@@ -44,6 +44,9 @@ export interface GenerationState {
   expanded: boolean
   // Songs this tab is asking the backend about (requestGeneration), before any job exists
   checking: readonly string[]
+  // What this tab's panel found unread (a job's id, a fix's `fix:` key): marked read as the panel opened, each
+  // keeps its dot until the panel closes
+  unread: readonly string[]
 }
 
 const RETRIES = 2
@@ -68,7 +71,7 @@ const SENT_MS = 2000
 
 const readStored = () => {
   try {
-    return decodeJobs(localStorage.getItem(STORAGE_KEY), Date.now())
+    return decodeJobs(localStorage.getItem(STORAGE_KEY))
   } catch {
     // No storage (private windows can refuse it): this tab's queue lives only in memory
     return []
@@ -80,6 +83,7 @@ let state: GenerationState = {
   expanded: false,
   focusedId: null,
   jobs: readStored(),
+  unread: [],
 }
 const controllers = new Map<string, AbortController>()
 // When each job last heard the backend. Kept out of `state`: heartbeats would re-render for nothing
@@ -112,6 +116,7 @@ const withJobs = (jobs: readonly Job[]): GenerationState => {
     expanded: (jobs.length > 0 || otherNotifications > 0) && state.expanded,
     focusedId: next,
     jobs,
+    unread: state.unread,
   }
 }
 
@@ -528,7 +533,7 @@ if (typeof window !== 'undefined') {
     while (sent.length > 0 && now - sent[0].at > SENT_MS) {
       sent.shift()
     }
-    let jobs: readonly Job[] = decodeJobs(event.newValue, now)
+    let jobs: readonly Job[] = decodeJobs(event.newValue)
     for (const { command } of sent) {
       jobs = applyCommand(jobs, command)
     }
@@ -663,9 +668,18 @@ export const focusGeneration = (id: string) => {
 
 export const setGenerationExpanded = (expanded: boolean) => {
   if (state.expanded !== expanded) {
-    set({ ...state, expanded })
+    set({ ...state, expanded, unread: expanded ? state.unread : [] })
   }
 }
+
+// Rows the open panel is marking read, kept unread-looking until it closes (GenerationState.unread)
+export const noteUnread = (keys: readonly string[]) => {
+  const fresh = keys.filter((key) => !state.unread.includes(key))
+  if (fresh.length > 0) {
+    set({ ...state, unread: [...state.unread, ...fresh] })
+  }
+}
+export const fixKey = (videoId: string) => `fix:${videoId}`
 
 const isFinished = (job: Job) => !isActive(job)
 
@@ -674,7 +688,9 @@ export const unseenCount = ({ jobs }: GenerationState) =>
   jobs.filter((job) => isFinished(job) && !job.seen).length
 
 export const markGenerationsSeen = () => {
-  if (state.jobs.some((job) => isFinished(job) && !job.seen)) {
+  const unseen = state.jobs.filter((job) => isFinished(job) && !job.seen)
+  if (unseen.length > 0) {
+    noteUnread(unseen.map((job) => job.id))
     send({ type: 'seen' })
   }
 }

@@ -189,3 +189,11 @@ export const formatClock = (seconds: number) => {
   const whole = Math.max(0, Math.floor(seconds))
   return `${Math.floor(whole / 60)}:${String(whole % 60).padStart(2, '0')}`
 }
+
+const two = (n: number) => String(n).padStart(2, '0')
+
+// A moment in the listener's own time zone, day first, 24-hour: "25/10/26 01:40"
+export const formatStamp = (ms: number) => {
+  const at = new Date(ms)
+  return `${two(at.getDate())}/${two(at.getMonth() + 1)}/${two(at.getFullYear() % 100)} ${two(at.getHours())}:${two(at.getMinutes())}`
+}

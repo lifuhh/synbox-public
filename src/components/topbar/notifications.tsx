@@ -20,7 +20,9 @@ import {
   activeCount,
   focusedJob,
   leadJob,
+  fixKey,
   markGenerationsSeen,
+  noteUnread,
   setGenerationExpanded,
   setOtherNotifications,
   unseenCount,
@@ -198,9 +200,12 @@ const Notifications = () => {
       markGenerationsSeen()
     }
     if (unseenFixes > 0) {
+      noteUnread(
+        fixes.filter((fix) => !fix.seen).map((fix) => fixKey(fix.videoId))
+      )
       void markFixesSeen()
     }
-  }, [expanded, unseenSongs, unseenFixes, markFixesSeen])
+  }, [expanded, unseenSongs, unseenFixes, fixes, markFixesSeen])
   // The panel closes when the last thing in it goes, as when its last song is dismissed
   const onDismissFixes = (dismissed: readonly Fix[]) => {
     void dismissFixes(dismissed)

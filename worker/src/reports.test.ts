@@ -2,7 +2,6 @@ import { expect, test } from 'bun:test'
 
 import {
   EXPIRE_DAYS,
-  FIX_DAYS,
   REPORTS_PER_DAY,
   REPORT_MESSAGE_MAX,
   RESOLUTION_MAX,
@@ -232,7 +231,7 @@ test('a report resolved with new lyrics is one notification for its reporter, ho
   const { db, reportAndResolve } = await fixture()
   await reportAndResolve('6rG_irmOQsM')
   await reportAndResolve('6rG_irmOQsM', { at: NOW - 2 * DAY })
-  expect(await listFixes(db, 'me', NOW)).toEqual([
+  expect(await listFixes(db, 'me')).toEqual([
     { fixedAt: NOW - DAY, seen: false, videoId: '6rG_irmOQsM' },
   ])
 })
@@ -242,7 +241,7 @@ test('a resolve that kept the reported lyrics, or recorded no version, tells nob
   await reportAndResolve('6rG_irmOQsM', { reportedVersion: 3, version: 3 })
   await reportAndResolve('Dta27KjGpJs', { reportedVersion: 0, version: 0 })
   await reportAndResolve('aaaaaaaaaaa', { version: null })
-  expect(await listFixes(db, 'me', NOW)).toEqual([])
+  expect(await listFixes(db, 'me')).toEqual([])
 })
 
 test('seen stays listed and counts as read; dismissed is gone, and leaves a later report of the song alone', async () => {
@@ -250,13 +249,13 @@ test('seen stays listed and counts as read; dismissed is gone, and leaves a late
   await reportAndResolve('6rG_irmOQsM')
   const marks = { upTo: NOW - DAY, videoIds: ['6rG_irmOQsM'] }
   await markFixes(db, 'me', marks, 'seen', NOW)
-  expect(await listFixes(db, 'me', NOW)).toEqual([
+  expect(await listFixes(db, 'me')).toEqual([
     { fixedAt: NOW - DAY, seen: true, videoId: '6rG_irmOQsM' },
   ])
   // Reported again, still open, when the first fix is dismissed
   await saveReport(db, 'me', REPORT, '', NOW - 10)
   await markFixes(db, 'me', marks, 'dismissed', NOW)
-  expect(await listFixes(db, 'me', NOW)).toEqual([])
+  expect(await listFixes(db, 'me')).toEqual([])
   const reports = await listReports(db)
   const open = reports.find((row) => row.resolvedAt === null)
   await resolveReport(
@@ -265,22 +264,21 @@ test('seen stays listed and counts as read; dismissed is gone, and leaves a late
     { note: null, reportedVersion: 3, version: 4 },
     NOW
   )
-  expect(await listFixes(db, 'me', NOW + 1)).toEqual([
+  expect(await listFixes(db, 'me')).toEqual([
     { fixedAt: NOW, seen: false, videoId: '6rG_irmOQsM' },
   ])
 })
 
-test('a fix drops out after 30 days, read or not', async () => {
+test('a fix stays until dismissed, however long ago it was resolved', async () => {
   const { db, reportAndResolve } = await fixture()
   await reportAndResolve('6rG_irmOQsM', { at: NOW })
-  expect(await listFixes(db, 'me', NOW + FIX_DAYS * DAY - 1)).toHaveLength(1)
-  expect(await listFixes(db, 'me', NOW + FIX_DAYS * DAY)).toEqual([])
+  expect(await listFixes(db, 'me')).toHaveLength(1)
 })
 
 test("another account neither sees nor dismisses someone's fix", async () => {
   const { db, reportAndResolve } = await fixture()
   await reportAndResolve('6rG_irmOQsM')
-  expect(await listFixes(db, 'other', NOW)).toEqual([])
+  expect(await listFixes(db, 'other')).toEqual([])
   await markFixes(
     db,
     'other',
@@ -288,7 +286,7 @@ test("another account neither sees nor dismisses someone's fix", async () => {
     'dismissed',
     NOW
   )
-  expect(await listFixes(db, 'me', NOW)).toHaveLength(1)
+  expect(await listFixes(db, 'me')).toHaveLength(1)
 })
 
 test('marks name real video ids, at most 50, with the newest fix shown', () => {
@@ -315,15 +313,15 @@ const rowOf = async (db: D1Database, id: string) => {
 test('a dropped report tells nobody, leaves the open list, and is resolved or dropped, never both', async () => {
   const { db, reportAndResolve } = await fixture()
   const id = await reportAndResolve('6rG_irmOQsM')
-  expect(await listFixes(db, 'me', NOW)).toHaveLength(1)
+  expect(await listFixes(db, 'me')).toHaveLength(1)
   // FIXED itself refuses a dropped row, even one written by hand with its resolve still on it
   await db
     .prepare(`update "report" set "droppedAt" = ?1 where "id" = ?2`)
     .bind(NOW, id)
     .run()
-  expect(await listFixes(db, 'me', NOW)).toEqual([])
+  expect(await listFixes(db, 'me')).toEqual([])
   await dropReport(db, id, { note: null, reason: 'nothing_found' }, NOW)
-  expect(await listFixes(db, 'me', NOW)).toEqual([])
+  expect(await listFixes(db, 'me')).toEqual([])
   await saveReport(db, 'me', { ...REPORT, videoId: 'Dta27KjGpJs' }, '', NOW)
   const open = await listOpenReports(db)
   expect(open.map((row) => row.videoId)).toEqual(['Dta27KjGpJs'])

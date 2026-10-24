@@ -24,12 +24,15 @@ import {
   cancelGeneration,
   dismissFinishedGenerations,
   dismissGeneration,
+  fixKey,
   focusGeneration,
   isActive,
   retryGeneration,
+  useGeneration,
 } from '@/lib/generation/store'
 import { useGetSongInfoBySongId } from '@/lib/react-query/queries-and-mutations'
 import type { Fix } from '@/lib/report-fixes'
+import { formatStamp } from '@/utils'
 import { cn } from '@/utils/cn'
 
 import StepWheel from './step-wheel'
@@ -65,6 +68,31 @@ const generatingLabel = (job: Job, running: boolean) => {
   return job.mode === 'regenerate' ? 'Regenerating Lyrics' : 'Generating Lyrics'
 }
 
+// When a song finished, or null while it is still going
+const finishedAt = ({ status }: Job) =>
+  status.kind === 'complete' || status.kind === 'failed' ? status.at : null
+
+// A notification's time, under or beside its name
+const Stamp = ({ at, className }: { at: number; className?: string }) => (
+  <time
+    dateTime={new Date(at).toISOString()}
+    className={cn('text-xs text-muted-foreground tabular-nums', className)}>
+    {formatStamp(at)}
+  </time>
+)
+
+// Marks what was unread when the panel opened, at the row's left; read out as "Unread" before its name
+const UnreadDot = ({ className }: { className: string }) => (
+  <span
+    aria-hidden
+    className={cn('absolute size-1.5 rounded-full bg-brand-light', className)}
+  />
+)
+const UNREAD_LABEL = <span className='sr-only'>Unread: </span>
+
+// Whether the open panel found this row unread (GenerationState.unread)
+const useUnread = (key: string) => useGeneration().unread.includes(key)
+
 const SongHeader = ({ job }: { job: Job }) => {
   const running = isActive(job)
   let title = titleOf(job)
@@ -73,8 +101,11 @@ const SongHeader = ({ job }: { job: Job }) => {
   }
   const channel = job.video?.channel ?? ''
   const subtitle = channel === '' ? generatingLabel(job, running) : channel
+  const at = finishedAt(job)
+  const unread = useUnread(job.id)
   return (
-    <div className='flex items-center gap-3'>
+    <div className='relative flex items-center gap-3'>
+      {unread && <UnreadDot className='top-1/2 -left-3 -translate-y-1/2' />}
       <span className='h-10 w-[71px] shrink-0 overflow-hidden rounded-md bg-thumbnail-placeholder'>
         <img
           key={thumbnailOf(job)}
@@ -86,9 +117,16 @@ const SongHeader = ({ job }: { job: Job }) => {
         />
       </span>
       <div className='min-w-0 flex-1'>
-        <p className='truncate text-label font-semibold text-white'>{title}</p>
-        {subtitle !== '' && (
-          <p className='truncate text-sm text-muted-foreground'>{subtitle}</p>
+        <p className='truncate text-label font-semibold text-white'>
+          {unread && UNREAD_LABEL}
+          {title}
+        </p>
+        {(subtitle !== '' || at !== null) && (
+          <p className='truncate text-sm text-muted-foreground'>
+            {subtitle}
+            {subtitle !== '' && at !== null && ' · '}
+            {at !== null && <Stamp at={at} className='text-sm' />}
+          </p>
         )}
       </div>
       {/* A failed song says Dismiss beside Try Again instead */}
@@ -275,6 +313,7 @@ const FLICK_SPEED = 500
 // hover (and the keyboard on focus); the rows below close the gap
 const SwipeRow = ({
   name,
+  unread,
   finished,
   hoverDismiss,
   onDismiss: dismiss,
@@ -283,6 +322,8 @@ const SwipeRow = ({
   action,
 }: {
   name: string
+  // Unread when the panel opened: a dot in the gutter at its left
+  unread: boolean
   // Swipes away on touch
   finished: boolean
   // A failed song has its X in view already
@@ -320,7 +361,8 @@ const SwipeRow = ({
       data-marquee-host
       exit={reduced ? { opacity: 0 } : { height: 0, opacity: 0 }}
       transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
-      className='relative overflow-hidden rounded-lg'>
+      className='relative overflow-hidden rounded-lg pl-2.5'>
+      {unread && <UnreadDot className='top-1/2 left-1 -translate-y-1/2' />}
       {/* Under the row, which covers it until it moves aside */}
       {finished && (
         <span
@@ -402,9 +444,12 @@ const SongRow = ({ job, picked }: { job: Job; picked: boolean }) => {
   const title = titleOf(job)
   const status = rowStatus(job)
   const name = title === '' ? 'this song' : title
+  const at = finishedAt(job)
+  const unread = useUnread(job.id)
   return (
     <SwipeRow
       name={name}
+      unread={unread}
       finished={!isActive(job)}
       hoverDismiss={job.status.kind === 'complete'}
       onDismiss={() => {
@@ -421,13 +466,17 @@ const SongRow = ({ job, picked }: { job: Job; picked: boolean }) => {
           }}
           className={ROW_MAIN}>
           <RowThumbnail src={thumbnailOf(job)} />
-          <MarqueeText
-            className={cn(
-              'min-w-0 flex-1 text-sm',
-              title === '' ? 'text-faint' : 'text-foreground'
-            )}>
-            {title === '' ? PENDING_TITLE : title}
-          </MarqueeText>
+          <span className='flex min-w-0 flex-1 flex-col'>
+            {unread && UNREAD_LABEL}
+            <MarqueeText
+              className={cn(
+                'min-w-0 text-sm',
+                title === '' ? 'text-faint' : 'text-foreground'
+              )}>
+              {title === '' ? PENDING_TITLE : title}
+            </MarqueeText>
+            {at !== null && <Stamp at={at} />}
+          </span>
           {job.status.kind === 'complete' &&
             (madeKaraoke(job.status) ? (
               <KaraokeBadge />
@@ -471,9 +520,11 @@ const FixRow = ({
   if (title === '') {
     shownTitle = isError ? 'Song Details Unavailable' : PENDING_TITLE
   }
+  const unread = useUnread(fixKey(fix.videoId))
   return (
     <SwipeRow
       name={name}
+      unread={unread}
       finished
       hoverDismiss
       onDismiss={dismiss}
@@ -482,13 +533,17 @@ const FixRow = ({
           <RowThumbnail
             src={`https://i.ytimg.com/vi/${fix.videoId}/mqdefault.jpg`}
           />
-          <MarqueeText
-            className={cn(
-              'min-w-0 flex-1 text-sm',
-              title === '' ? 'text-faint' : 'text-foreground'
-            )}>
-            {shownTitle}
-          </MarqueeText>
+          <span className='flex min-w-0 flex-1 flex-col'>
+            {unread && UNREAD_LABEL}
+            <MarqueeText
+              className={cn(
+                'min-w-0 text-sm',
+                title === '' ? 'text-faint' : 'text-foreground'
+              )}>
+              {shownTitle}
+            </MarqueeText>
+            <Stamp at={fix.fixedAt} />
+          </span>
         </Link>
       }
       action={
@@ -520,7 +575,9 @@ const FixList = ({
       className='text-xs font-medium tracking-wide text-muted-foreground uppercase'>
       Lyrics Fixed
     </h3>
-    <ul aria-label='Lyrics Fixed' className='-mx-1.5 flex flex-col gap-0.5'>
+    <ul
+      aria-label='Lyrics Fixed'
+      className='-mr-1.5 -ml-4 flex flex-col gap-0.5'>
       <AnimatePresence initial={false}>
         {fixes.map((fix) => (
           <FixRow key={fix.videoId} fix={fix} onDismiss={onDismiss} />
@@ -538,7 +595,7 @@ const SongQueue = ({
   jobs: readonly Job[]
   focusedId: string
 }) => (
-  <ul aria-label='Songs' className='-mx-1.5 flex flex-col gap-0.5'>
+  <ul aria-label='Songs' className='-mr-1.5 -ml-4 flex flex-col gap-0.5'>
     <AnimatePresence initial={false}>
       {jobs.map((job) => (
         <SongRow key={job.id} job={job} picked={job.id === focusedId} />
