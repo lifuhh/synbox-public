@@ -6,8 +6,8 @@ import {
   SearchIcon,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
-import { lazy, Suspense, useEffect, useRef } from 'react'
-import type { MouseEvent } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import type { ComponentType, MouseEvent } from 'react'
 import { Link, useLocation } from 'react-router'
 
 import { resumeSongAtom } from '@/lib/listening/store'
@@ -16,8 +16,28 @@ import { scrollMotion } from '@/lib/reduced-motion'
 import { tabTap } from '@/lib/tab-tap'
 import { cn } from '@/utils/cn'
 
-// Only the installed app shows it, and only once a song has played, so it loads then (the player engine with it)
-const MiniBar = lazy(async () => await import('./mini-bar'))
+// The mini player's code, fetched once a song plays in the installed app, while the player still shows: leaving
+// the player hands the song to the bar in the same commit, or the song stops, so the bar can't wait to load then
+let loadedMiniBar: ComponentType | null = null
+const loadMiniBar = async () => {
+  const { default: loaded } = await import('./mini-bar')
+  loadedMiniBar = loaded
+  return loaded
+}
+const useMiniBar = (wanted: boolean) => {
+  const [miniBar, setMiniBar] = useState(() => loadedMiniBar)
+  useEffect(() => {
+    if (!wanted || miniBar !== null) {
+      return
+    }
+    const load = async () => {
+      const loaded = await loadMiniBar()
+      setMiniBar(() => loaded)
+    }
+    void load()
+  }, [wanted, miniBar])
+  return miniBar
+}
 
 // `also`: other pages the tab is the home of (playlists open from the Library)
 // A tab is current on its own page, and on the pages it is the home of; NavLink's own aria-current would leave
@@ -58,6 +78,7 @@ const TabBar = () => {
   const [song] = useAtom(resumeSongAtom)
   const shown = isInstalledPhone() && TAB_PAGES.test(pathname)
   const resume = shown && song !== null
+  const MiniBar = useMiniBar(isInstalledPhone() && song !== null)
   // The last tap on a tab whose page showed, for double taps
   const lastTap = useRef<{ to: string; at: number } | null>(null)
 
@@ -102,11 +123,8 @@ const TabBar = () => {
     <div
       data-tabbar-root
       className='fixed inset-x-0 bottom-[calc(var(--safe-bottom)+0.5rem)] z-40 mx-auto flex w-[min(28rem,calc(100%-2rem))] flex-col gap-2'>
-      {song !== null && (
-        <Suspense>
-          <MiniBar />
-        </Suspense>
-      )}
+      {/* oxlint-disable-next-line react/static-components -- mini-bar.tsx's default export, loaded once, never made here */}
+      {MiniBar !== null && <MiniBar />}
       <nav
         aria-label='App'
         data-tab-nav
