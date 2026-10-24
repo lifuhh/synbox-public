@@ -137,22 +137,28 @@ export const tokenFillParts = (line: KaraokeDocLine): FillPart[][] => {
 // them), so it wipes on the same clock as the Japanese, mora by mora
 export const romajiFillParts = (line: KaraokeDocLine): FillPart[] => {
   const ramps = lineRamps(line)
-  return line.tokens.flatMap((token, t) =>
-    token.morae.length === 0
-      ? []
-      : [
-          {
-            base: token.is_latin
-              ? token.surface
-              : token.morae.map(({ romaji }) => romaji).join(''),
-            rt: '',
-            spans: token.morae.map(({ romaji }, k) => ({
-              ...ramps[t][k],
-              weight: Math.max(1, romaji.length),
-            })),
-          },
-        ]
-  )
+  const parts: FillPart[] = []
+  for (const [t, token] of line.tokens.entries()) {
+    if (token.morae.length === 0) {
+      continue
+    }
+    const base = token.is_latin
+      ? token.surface
+      : token.morae.map(({ romaji }) => romaji).join('')
+    const spans = token.morae.map(({ romaji }, k) => ({
+      ...ramps[t][k],
+      weight: Math.max(1, romaji.length),
+    }))
+    const previous = parts.at(-1)
+    // A verb ending fills as part of its word, as the plain romaji line writes it (kawatteta)
+    if (token.joins === true && previous !== undefined) {
+      previous.base += base
+      previous.spans.push(...spans)
+    } else {
+      parts.push({ base, rt: '', spans })
+    }
+  }
+  return parts
 }
 
 // A line shows this long before its first mora (unfilled, to be read before
