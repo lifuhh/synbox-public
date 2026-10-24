@@ -33,6 +33,9 @@
       href="/apple-touch-icon-180x180-b75d2442.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!-- Lyrics and karaoke timing come from the Worker (src/lib/lyrics-api.ts), without cookies: a warm connection takes
+         the TLS setup off the first song's lyrics -->
+    <link rel="preconnect" href="https://api.synbox.io" crossorigin />
     <!-- Noto Sans draws the latin lyric lines, and Noto Sans SC the Chinese translations at the lyrics' weight (the
          Japanese font lacks simplified characters, which fell back to a lighter system font); phones ship neither, so
          they load like the rest, a unicode-range slice at a time -->
