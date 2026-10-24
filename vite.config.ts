@@ -64,6 +64,12 @@ const LIBRARY_SONGS_PROXY = {
   target: 'https://synbox-lookup-1045990822048.asia-southeast1.run.app',
 }
 
+// The Content-Security-Policy (netlify.toml) allows no eval. Zod would compile its object parsers with
+// `new Function`, and its probe for that is reported as a violation even though it is caught. Zod reads its
+// config from this global, so setting it at the top of every chunk turns that off before any schema parses:
+// an import can't, since a chunk's modules run before the entry's own code
+const ZOD_JITLESS = '(globalThis.__zod_globalConfig ??= {}).jitless = true;'
+
 export default defineConfig({
   build: {
     chunkSizeWarningLimit: 1000,
@@ -77,6 +83,7 @@ export default defineConfig({
         }
         handler(level, log)
       },
+      output: { banner: ZOD_JITLESS },
     },
     // Maps go to Sentry, not to the deployed site
     sourcemap: 'hidden',

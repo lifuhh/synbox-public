@@ -2,6 +2,41 @@
 [build]
 ignore = "bash scripts/netlify-ignore.sh"
 
+# Every page and file. The policy lists what the app loads, and nothing else: its own files and /api; the YouTube
+# player (iframe and its API script) and thumbnails; Google Fonts; Google account pictures; Appwrite; the backend's
+# generation and lookup services on Cloud Run; Sentry (Replay's script from its CDN, events to its ingest host).
+# Fetched rather than shown, so in connect-src: YouTube's oEmbed (the player's video shape,
+# src/components/player-stage/video-fit.ts) and thumbnails saved for offline (src/lib/offline/sync.ts). The
+# service worker gets the same policy, and fetches fonts and account pictures itself (vite.config.ts ›
+# runtimeCaching), so those are in connect-src too. No eval: Zod runs jitless (vite.config.ts › ZOD_JITLESS). Styles allow
+# inline, for the <style> tags Radix's scroll lock adds. Nothing may frame the app. HSTS covers subdomains: the
+# zone's only names are synbox.io, www and api, all HTTPS (checked 2026-10-24)
+[[headers]]
+for = "/*"
+[headers.values]
+Content-Security-Policy = """\
+  default-src 'self'; \
+  script-src 'self' https://www.youtube.com https://browser.sentry-cdn.com; \
+  style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; \
+  font-src 'self' https://fonts.gstatic.com; \
+  img-src 'self' data: blob: https://*.ytimg.com https://*.googleusercontent.com https://*.ggpht.com; \
+  connect-src 'self' https://cloud.appwrite.io https://synbox-lookup-1045990822048.asia-southeast1.run.app \
+    https://synbox-flask-cloud-run-dtitfmn76a-as.a.run.app https://*.ingest.us.sentry.io \
+    https://www.youtube.com https://i.ytimg.com \
+    https://fonts.googleapis.com https://fonts.gstatic.com https://lh3.googleusercontent.com; \
+  frame-src https://www.youtube.com https://www.youtube-nocookie.com; \
+  worker-src 'self' blob:; \
+  manifest-src 'self'; \
+  object-src 'none'; \
+  base-uri 'self'; \
+  form-action 'self'; \
+  frame-ancestors 'none'\
+  """
+X-Frame-Options = "DENY"
+X-Content-Type-Options = "nosniff"
+Referrer-Policy = "strict-origin-when-cross-origin"
+Strict-Transport-Security = "max-age=31536000; includeSubDomains"
+
 # A stale service worker would pin every visitor to an old deploy
 [[headers]]
 for = "/sw.js"
