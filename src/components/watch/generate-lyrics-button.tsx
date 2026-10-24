@@ -1,7 +1,12 @@
-import { LoaderCircleIcon, SparklesIcon } from 'lucide-react'
+import { LoaderCircleIcon, SparklesIcon, TicketIcon } from 'lucide-react'
 
 import { startFromButton } from '@/components/generation/start-generation'
+import {
+  useCanRequestInvite,
+  useOpenRequestInvite,
+} from '@/components/invite/request-invite'
 import { Button } from '@/components/ui/button'
+import { useAccess } from '@/lib/auth'
 import { generationPhase, useGeneration } from '@/lib/generation/store'
 import { cn } from '@/utils/cn'
 
@@ -12,6 +17,14 @@ export const useGenerationPhase = (videoId: string) =>
 // Whether a generation for this video is being checked or running in this browser
 export const useGenerating = (videoId: string) =>
   useGenerationPhase(videoId) !== null
+
+// An account on the default limit that has used today's songs and can still ask for more: its Generate Lyrics is
+// Request Invite instead
+export const useRequestInsteadOfGenerating = () => {
+  const access = useAccess()
+  const canRequest = useCanRequestInvite()
+  return access.kind === 'user' && !access.newSong && canRequest
+}
 
 export const startGenerating = (videoId: string, title: string | undefined) => {
   void startFromButton({ mode: 'new', title, videoId })
@@ -35,7 +48,19 @@ export const GenerateLyricsButton = ({
   title: string | undefined
 }) => {
   const phase = useGenerationPhase(videoId)
+  const requestInstead = useRequestInsteadOfGenerating()
+  const openRequestInvite = useOpenRequestInvite()
   const current = phase ?? 'idle'
+  if (requestInstead && phase === null) {
+    return (
+      <Button onClick={openRequestInvite}>
+        <span className='inline-flex items-center gap-2'>
+          <TicketIcon aria-hidden className='size-4 shrink-0' />
+          Request Invite
+        </span>
+      </Button>
+    )
+  }
   return (
     <Button
       disabled={phase !== null}

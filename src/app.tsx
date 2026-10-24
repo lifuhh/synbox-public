@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect } from 'react'
 import { Navigate, Route, Routes, useParams } from 'react-router'
 
+import { RequestInviteDialog } from '@/components/invite/request-invite'
 import AppNotices from '@/components/shared/app-notices'
 import { Toaster } from '@/components/ui/toaster'
 import { LibrarySync } from '@/lib/library/sync'
@@ -184,6 +185,7 @@ const App = () => {
       <PrefsSync />
       {/* Keeps this device's offline lyrics in step with the user's songs, bookmarks and recent songs */}
       <OfflineSync />
+      <RequestInviteDialog />
       <Toaster />
     </main>
   )
