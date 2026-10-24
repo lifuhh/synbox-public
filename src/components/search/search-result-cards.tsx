@@ -1,10 +1,6 @@
 import { SparklesIcon } from 'lucide-react'
 import { Link } from 'react-router'
 
-import {
-  KaraokeLabelMark,
-  KaraokePictureBadgeMark,
-} from '@/components/shared/karaoke-badge'
 import { ListenCount } from '@/components/shared/listen-count'
 import { SongMenu } from '@/components/watch/song-menu'
 import type {
@@ -12,7 +8,7 @@ import type {
   VideoSearchResult,
 } from '@/lib/synbox-flask/discovery'
 
-const Thumbnail = ({ src, videoId }: { src: string; videoId: string }) => (
+const Thumbnail = ({ src }: { src: string }) => (
   <div className='relative aspect-video w-full overflow-hidden rounded-lg bg-input'>
     {src !== '' && (
       <img
@@ -23,7 +19,6 @@ const Thumbnail = ({ src, videoId }: { src: string; videoId: string }) => (
         className='absolute inset-0 h-full w-full object-cover'
       />
     )}
-    <KaraokePictureBadgeMark videoId={videoId} />
   </div>
 )
 
@@ -52,9 +47,8 @@ export const VideoResultCard = ({
       onSelect(result)
     }}
     className={`${CARD} text-left`}>
-    <Thumbnail src={result.thumbnail_url} videoId={result.video_id} />
+    <Thumbnail src={result.thumbnail_url} />
     <Title>{result.title}</Title>
-    <KaraokeLabelMark videoId={result.video_id} />
     <p className='truncate text-xs text-muted-foreground'>{result.channel}</p>
   </button>
 )
@@ -72,9 +66,8 @@ export const LibrarySongCard = ({
       to={`/v/${song.video_id}`}
       state={{ videoId: song.video_id }}
       className='flex flex-col gap-2 text-left'>
-      <Thumbnail src={song.thumbnail_url} videoId={song.video_id} />
+      <Thumbnail src={song.thumbnail_url} />
       <Title>{song.title}</Title>
-      <KaraokeLabelMark videoId={song.video_id} />
     </Link>
     <div className='flex items-center gap-2'>
       <p className='flex min-w-0 flex-1 items-center gap-2.5 text-xs text-muted-foreground'>

@@ -1,10 +1,6 @@
 import type { ReactNode } from 'react'
 import { Link } from 'react-router'
 
-import {
-  KaraokeThumbBadgeMark,
-  KaraokeLabelMark,
-} from '@/components/shared/karaoke-badge'
 import { ListenCount } from '@/components/shared/listen-count'
 import type { ListSong } from '@/lib/listening/model'
 import type { OpenedBy } from '@/lib/listening/store'
@@ -28,7 +24,7 @@ const pictureClass = (large: boolean, played: boolean) =>
       : 'w-20 rounded-sm min-[360px]:w-24'
   )
 
-// A song in a list: a 96×54 thumbnail (16:9) with the karaoke edge, then the title on up to two lines and
+// A song in a list: a 96×54 thumbnail (16:9), then the title on up to two lines and
 // the channel, the whole row opening the song. `lead` sits before the picture (a drag handle, a number),
 // `actions` after the text. Rows are 8px padded; the thumbnail's 4px corners plus that padding make the
 // row's 12px ones
@@ -88,7 +84,6 @@ export const SongRow = ({
             className='size-full rounded-inherit object-cover'
           />
         )}
-        <KaraokeThumbBadgeMark videoId={song.videoId} />
       </span>
       <span
         className={cn(
@@ -106,7 +101,6 @@ export const SongRow = ({
           )}>
           {song.title}
         </span>
-        <KaraokeLabelMark videoId={song.videoId} />
         <span className='flex min-w-0 items-center gap-2.5 text-xs text-muted-foreground'>
           <ListenCount videoId={song.videoId} />
           <span className={cn('truncate', bracketStart(song.author))}>

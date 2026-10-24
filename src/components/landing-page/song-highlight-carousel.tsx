@@ -3,10 +3,6 @@ import { memo, useState } from 'react'
 import { Link } from 'react-router'
 
 import { EditRecommendations } from '@/components/admin/edit-recommendations'
-import {
-  KaraokeLabelMark,
-  KaraokePictureBadgeMark,
-} from '@/components/shared/karaoke-badge'
 import LoadError from '@/components/shared/load-error'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -57,7 +53,6 @@ const Card = ({
       <span className='absolute right-2.5 bottom-2.5 grid size-10 place-items-center rounded-full bg-black/70 text-white opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100'>
         <PlayIcon className='size-4 fill-current' aria-hidden />
       </span>
-      <KaraokePictureBadgeMark videoId={item.videoId} />
     </span>
     {/* Two title lines and the channel's, however long the title, so every card (and the loading one) is
         the same height and the row matches the charts beside it */}
@@ -65,7 +60,6 @@ const Card = ({
       <span className='line-clamp-2 text-base leading-6 font-semibold text-foreground transition-colors duration-150 group-data-[active=false]:text-muted-foreground'>
         {item.title}
       </span>
-      <KaraokeLabelMark videoId={item.videoId} />
       <span className='truncate text-sm leading-5 text-muted-foreground'>
         {item.channel}
       </span>
