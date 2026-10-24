@@ -736,54 +736,79 @@
   }
 }
 
-/* Where Two Lines' translation hangs: under the top bar, and under Tap to Unmute while that shows
-   (--lyric-stagger-top, which also sets the rows' room, so the rows never resize as the controls come and go).
-   On a phone on its side the bar shows only with the controls and draws over the lyrics, so the translation
-   itself (--lyric-translation-top) sits just under the status bar whether the bar shows or not */
+/* Where Two Lines' translation hangs: under the top bar, and under Tap to Unmute while that shows. On a phone on
+   its side the bar shows only with the controls and draws over the lyrics, so the translation sits just under the
+   status bar whether the bar shows or not (--lyric-translation-top).
+   --lyric-stagger-top, the top bar's bottom whether it shows or not, sets where the two rooms split, so neither
+   room resizes as the controls come and go */
 @utility lyric-stagger-layer {
   --lyric-stagger-top: calc(
     var(--topbar-h) + var(--notices-h, 0px) + var(--preview-banner-h, 0px) +
       0.5rem
   );
-  --lyric-translation-top: var(--lyric-stagger-top);
+  --lyric-translation-top: calc(
+    var(--topbar-h) + var(--notices-h, 0px) + var(--preview-banner-h, 0px) +
+      0.25rem
+  );
+  /* Where the translation's room ends and the rows' begins: past three of the translation's lines, and never
+     above 36% of the stage. A phone on its side has no height to spare: there it is 30% or three lines, whichever
+     reaches further down, plus 0.5rem, so a bigger size moves it down */
+  --stagger-split: max(
+    36%,
+    calc(
+      var(--lyric-stagger-top) + 3 * --theme(--text-lyric-stagger-translation) +
+        1rem
+    )
+  );
+  /* Out of reach of both, centred on the split: half a lyric line, so it grows and shrinks with the lyrics' size
+     (a bigger size keeps the two further apart, a smaller one lets each reach further). Between their drawn boxes:
+     the blocks drop their padding on the sides that face each other */
+  --stagger-gap: calc(--theme(--text-lyric-stagger) / 2);
 
   [data-player-stage]:has([data-unmute-pill]) & {
     --lyric-stagger-top: calc(
       var(--topbar-h) + var(--notices-h, 0px) + var(--preview-banner-h, 0px) +
         3.25rem
     );
+    --lyric-translation-top: calc(
+      var(--topbar-h) + var(--notices-h, 0px) + var(--preview-banner-h, 0px) +
+        3.5rem
+    );
   }
 
   @variant short {
+    --stagger-split: calc(
+      max(
+          30%,
+          calc(
+            var(--lyric-stagger-top) + 3 *
+              --theme(--text-lyric-stagger-translation) + 0.5rem
+          )
+        ) +
+        0.5rem
+    );
+
     [data-player-stage]:not(:has([data-unmute-pill])) & {
       --lyric-translation-top: calc(
         var(--safe-top) + var(--notices-h, 0px) + var(--preview-banner-h, 0px) +
-          0.5rem
+          0.25rem
       );
     }
   }
 }
 
 /* Two Lines' two rooms, which never meet, so a drag in one can't put its text over the other's:
-   - The translation's, at the top: from under the top bar down to 30% of the stage, never less than three of its
-     lines. Its text is centred and narrower than the stage, clear of the corner buttons.
-   - The rows', the bottom half (the whole room under the translation on a phone on its side, which has no height
-     to spare), starting under the translation's room whatever the translation's size. Rows that wrap too tall
-     for it shrink to fit (stage-lyrics' useRowFit), so they never reach up into the translation */
+   - The translation's, at the top: from just under the top edge (or the top bar, or Tap to Unmute) down to the
+     split, less half the gap. Its text is centred and narrower than the stage, clear of the corner buttons.
+   - The rows', from the split, plus half the gap, down to the floor. Rows that wrap too tall for it shrink to fit
+     (stage-lyrics' fitSong), so they never reach up into the translation.
+   The half gaps are the blocks' own spacers (DraggableLyrics' EDGE elsewhere), not the rooms' edges, so a size
+   change resizes neither room: the rows' fit re-measures only when its room does */
 @utility lyric-stagger-translation-area {
-  --stagger-translation-bottom: max(
-    30%,
-    calc(
-      var(--lyric-stagger-top) + 3 * --theme(--text-lyric-stagger-translation) +
-        0.5rem
-    )
-  );
   position: absolute;
   top: var(--lyric-translation-top);
   inset-inline: 0;
-  height: calc(
-    var(--stagger-translation-bottom) - var(--lyric-translation-top)
-  );
+  height: calc(var(--stagger-split) - var(--lyric-translation-top));
   transition:
     top 200ms ease,
     height 200ms ease;
@@ -794,6 +819,18 @@
 
   & [data-lyrics-style-toggle] {
     max-width: 70%;
+  }
+
+  & .anchor-spacer {
+    min-height: 0;
+  }
+
+  & .player-lyrics-overlay {
+    padding-bottom: 0;
+  }
+
+  & .lyrics-lift {
+    min-height: calc(var(--stagger-gap) / 2);
   }
 }
 
@@ -813,19 +850,15 @@
   }
 
   &[data-translation] {
-    top: max(
-      var(--stagger-area-top),
-      calc(
-        max(
-            30%,
-            calc(
-              var(--lyric-stagger-top) + 3 *
-                --theme(--text-lyric-stagger-translation) + 0.5rem
-            )
-          ) +
-          0.5rem
-      )
-    );
+    top: var(--stagger-split);
+
+    & .anchor-spacer {
+      min-height: calc(var(--stagger-gap) / 2);
+    }
+
+    & .player-lyrics-overlay {
+      padding-top: 0;
+    }
   }
 
   @variant short {

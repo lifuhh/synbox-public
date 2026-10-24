@@ -21,7 +21,9 @@ const TAP_SLOP_PX = { mouse: 4, touch: 10 }
 const LIFT_MS = 200
 const CLICK_AFTER_DRAG_MS = 400
 // The least room kept above and below the block, so lyrics dragged to an edge never sit on it: a share of the
-// stage, not pixels (the same few pixels are a finger's width on a phone and nothing on a desktop), with a floor
+// stage, not pixels (the same few pixels are a finger's width on a phone and nothing on a desktop), with a floor.
+// Karaoke Style's translation and rows replace it on the sides that face each other (globals.css ›
+// lyric-stagger-translation-area)
 const EDGE = 'max(0.5rem, 2cqh)'
 
 const swallow = (event: MouseEvent) => {
