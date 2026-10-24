@@ -12,6 +12,13 @@ import { songPath, songState } from '@/lib/listening/store'
 import { bracketStart } from '@/utils'
 import { cn } from '@/utils/cn'
 
+const titleTone = (current: boolean, played: boolean) => {
+  if (current) {
+    return 'text-primary-text'
+  }
+  return played ? 'text-muted-foreground' : 'text-foreground'
+}
+
 // A song in a list: a 96×54 thumbnail (16:9) with the karaoke edge, then the title on up to two lines and
 // the channel, the whole row opening the song. `lead` sits before the picture (a drag handle, a number),
 // `actions` after the text. Rows are 8px padded; the thumbnail's 4px corners plus that padding make the
@@ -92,8 +99,7 @@ export const SongRow = ({
             large ? 'line-clamp-3 font-semibold' : 'line-clamp-2 font-medium',
             // A title with no spaces (a romanised one) breaks anywhere, so the clamp can end it in an ellipsis
             'wrap-anywhere',
-            current && 'text-primary-text',
-            !current && (played ? 'text-muted-foreground' : 'text-foreground'),
+            titleTone(current, played),
             bracketStart(song.title)
           )}>
           {song.title}
