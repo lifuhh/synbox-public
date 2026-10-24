@@ -21,6 +21,7 @@ export const SongRow = ({
   lead,
   actions,
   current = false,
+  played = false,
   onOpen,
   openedBy,
   className,
@@ -35,6 +36,9 @@ export const SongRow = ({
   actions?: ReactNode
   // The song playing now: marked, and not a link to itself
   current?: boolean
+  // A song the playlist being played has played: the picture dims and the title drops to the channel's colour,
+  // so its text still reads at 4.5:1
+  played?: boolean
   onOpen?: () => void
   // A queued song's row: opening it keeps the playlist being played waiting
   openedBy?: OpenedBy
@@ -55,6 +59,7 @@ export const SongRow = ({
       <span
         className={cn(
           'relative aspect-video shrink-0 bg-thumbnail-placeholder',
+          played && 'opacity-50',
           large
             ? 'w-[min(10.5rem,48%)] rounded-lg'
             : 'w-20 rounded-sm min-[360px]:w-24'
@@ -87,7 +92,8 @@ export const SongRow = ({
             large ? 'line-clamp-3 font-semibold' : 'line-clamp-2 font-medium',
             // A title with no spaces (a romanised one) breaks anywhere, so the clamp can end it in an ellipsis
             'wrap-anywhere',
-            current ? 'text-primary-text' : 'text-foreground',
+            current && 'text-primary-text',
+            !current && (played ? 'text-muted-foreground' : 'text-foreground'),
             bracketStart(song.title)
           )}>
           {song.title}

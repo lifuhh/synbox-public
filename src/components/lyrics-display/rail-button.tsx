@@ -33,7 +33,8 @@ const railButtonClass = (inline: boolean, pressed: boolean | undefined) =>
         'grid size-9 shrink-0 place-items-center rounded-lg text-white/85 transition-colors hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:pointer-events-none disabled:opacity-30 touch:size-10 portrait:touch:size-9.5 short:size-8',
         pressed === true &&
           'bg-primary-subtle text-primary-text hover:bg-primary-subtle-hover',
-        pressed === false && 'text-white/45'
+        // 3.2:1 on the glass over a white frame, the brightest video
+        pressed === false && 'text-white/70'
       )
 
 export const RailButton = ({

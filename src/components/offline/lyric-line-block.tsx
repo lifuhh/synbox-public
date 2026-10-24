@@ -150,11 +150,12 @@ export const LyricLineBlock = ({
         // the song
         seeks &&
           'pointer-events-none justify-items-start *:pointer-events-auto *:cursor-pointer',
-        phase === 'past' && 'opacity-40',
+        // Dimmed to --reader-dim (globals.css): the lowest strength its text still reads at 4.5:1
+        phase === 'past' && 'opacity-(--reader-dim)',
         // A line to come dims piece by piece: its karaoke text already draws unsung at the strength the rest
         // dims to (globals.css, reader-karaoke-part) and stays as it is when the line is reached; only the
         // other text brightens then
-        '*:transition-opacity *:duration-300 data-[phase=upcoming]:*:not-has-[.reader-karaoke-part]:opacity-40'
+        '*:transition-opacity *:duration-300 data-[phase=upcoming]:*:not-has-[.reader-karaoke-part]:opacity-(--reader-dim)'
       )}>
       {source && (
         <div>

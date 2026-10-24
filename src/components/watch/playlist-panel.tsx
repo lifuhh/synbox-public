@@ -110,11 +110,9 @@ export const PlaylistPanel = ({
               song={song}
               large={large}
               current={index === playing}
-              className={cn(
-                index !== playing &&
-                  context.played.includes(song.videoId) &&
-                  'opacity-60'
-              )}
+              played={
+                index !== playing && context.played.includes(song.videoId)
+              }
               lead={
                 <span
                   aria-hidden

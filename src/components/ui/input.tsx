@@ -56,7 +56,7 @@ const inputFieldVariants = cva(
     variants: {
       state: {
         default:
-          'border-input focus-within:border-foreground/60 hover:border-foreground/40',
+          'border-input focus-within:border-foreground/80 hover:border-foreground/60',
         empty:
           'border-foreground/60 focus-within:border-foreground/90 hover:border-foreground/80',
         invalid:
