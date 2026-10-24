@@ -20,7 +20,8 @@ const RecommendationsEditor = lazy(async () => {
 })
 
 // Beside the home page's Recommendations title, for admins only: the list's editor in a dialog, so the carousel
-// it changes stays in sight once it closes
+// it changes stays in sight once it closes. The 36px button reaches past the title's 28px line (-my-1) rather
+// than growing the row, so nothing moves when it appears once the account has loaded
 export const EditRecommendations = () => {
   const { admin } = useAccess()
   const [open, setOpen] = useState(false)
@@ -34,7 +35,7 @@ export const EditRecommendations = () => {
         size='icon-round'
         aria-label='Edit Recommendations'
         title='Edit Recommendations'
-        className='relative'
+        className='relative -my-1'
         onClick={() => {
           setOpen(true)
         }}>
