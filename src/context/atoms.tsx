@@ -366,23 +366,38 @@ export const dismissSharedLyricsStyleAtom = atom(null, (get, set) => {
   }
 })
 
-// Reset This Song to My Default
+// Puts a song's style back as it was, for Undo
+const restoreSong = (set: Setter, song: SongLyricsStyle) => {
+  set(songLyricsStyleAtom, song)
+  writeSongStyle(song.videoId, song.overrides)
+}
+
+// Reset This Song to My Default. Returns its Undo
 export const resetSongLyricsStyleAtom = atom(null, (get, set) => {
   const song = get(songLyricsStyleAtom)
-  if (song !== null) {
-    saveSongOverrides(set, song, {}, 'all')
+  if (song === null) {
+    return null
+  }
+  saveSongOverrides(set, song, {}, 'all')
+  return () => {
+    restoreSong(set, song)
   }
 })
 
 // Save as My Default: the style on screen becomes the default for every song without one of its own, and
-// this song follows it again
+// this song follows it again. Returns its Undo
 export const applySongLyricsStyleToAllAtom = atom(null, (get, set) => {
   const song = get(songLyricsStyleAtom)
   if (song === null) {
-    return
+    return null
   }
+  const defaults = readDefaults(get)
   setDefaults(set, ownOverrides(song))
   saveSongOverrides(set, song, {}, 'all')
+  return () => {
+    setDefaults(set, defaults)
+    restoreSong(set, song)
+  }
 })
 
 // My Styles
@@ -434,11 +449,16 @@ export const applyLyricsTemplateAtom = atom(null, (get, set, id: string) => {
   }
 })
 
+// Returns its Undo
 export const deleteLyricsTemplateAtom = atom(null, (get, set, id: string) => {
+  const before = get(lyricsTemplatesAtom)
   saveTemplates(
     set,
-    get(lyricsTemplatesAtom).filter((template) => template.id !== id)
+    before.filter((template) => template.id !== id)
   )
+  return () => {
+    saveTemplates(set, before)
+  }
 })
 
 // Whether the player's floating UI shows: the rail, the top bar's buttons and the stage controls show and

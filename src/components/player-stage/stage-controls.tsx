@@ -273,7 +273,7 @@ const FullScreenChrome = ({
           'short:top-[calc(var(--topbar-h)+0.25rem)] short:right-[calc(var(--spacing-controls-right)+2px)] short:rounded-xl',
           visible
             ? 'translate-x-0'
-            : 'translate-x-[calc(100%+var(--spacing-controls-right)+1.125rem)]',
+            : 'translate-x-[calc(100%+var(--spacing-controls-right)+1.125rem)] motion-reduce:translate-x-0 motion-reduce:opacity-0',
           !armed && 'pointer-events-none'
         )}>
         <IconButton
@@ -418,6 +418,9 @@ export const StageControls = ({
               look='seek'
               aria-label='Seek'
               hoverLabel={formatClock}
+              valueText={(value) =>
+                `${formatClock(value)} of ${formatClock(duration)}`
+              }
               min={0}
               max={Math.max(duration, 1)}
               step={0.1}
@@ -515,11 +518,12 @@ export const StageControls = ({
                 }}>
                 <VolumeGlyph level={volume.level} muted={volume.muted} />
               </IconButton>
-              <div className='flex h-9 w-0 items-center overflow-hidden transition-width duration-200 ease-out group-focus-within/volume:w-24 group-hover/volume:w-24 touch:hidden'>
+              <div className='flex h-9 w-0 items-center overflow-hidden transition-width duration-200 ease-out group-focus-within/volume:w-24 group-hover/volume:w-24 motion-reduce:transition-none touch:hidden'>
                 <div className='w-24 shrink-0 px-2.5'>
                   <Slider
                     look='volume'
                     aria-label='Volume'
+                    valueText={(value) => `${Math.round(value * 100)}%`}
                     min={0}
                     max={1}
                     step={0.01}

@@ -226,8 +226,11 @@ export const LyricsPanel = ({
         ref={scroller}
         {...handlers}
         {...(band ? styleTap : {})}
+        // A scrolling box with nothing focusable inside takes focus itself, or a keyboard can't scroll it (WCAG 2.1.1)
+        // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex
+        tabIndex={0}
         className={cn(
-          'min-h-0 flex-1 overflow-y-auto px-4 font-reader [overflow-anchor:none]',
+          'min-h-0 flex-1 overflow-y-auto px-4 font-reader [overflow-anchor:none] focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden focus-visible:ring-inset',
           scrollerLook(band, empty !== null)
         )}>
         <div ref={content}>

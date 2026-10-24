@@ -47,13 +47,19 @@ export const ReportIssue = ({
   const [sending, setSending] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
   const fieldId = useId()
+  const problemId = useId()
   const close = () => {
     setMessage('')
     setProblem(null)
     onClose()
   }
   const send = async () => {
-    if (target === null || message.trim() === '' || sending) {
+    if (target === null || sending) {
+      return
+    }
+    // Checked on Send, so the button never sits greyed out with no reason given
+    if (message.trim() === '') {
+      setProblem(PROBLEMS.uninformative ?? null)
       return
     }
     setSending(true)
@@ -98,7 +104,7 @@ export const ReportIssue = ({
             void send()
           }}>
           <label htmlFor={fieldId} className='sr-only'>
-            What&apos;s wrong
+            What&apos;s Wrong
           </label>
           <textarea
             id={fieldId}
@@ -106,6 +112,8 @@ export const ReportIssue = ({
             maxLength={REPORT_MESSAGE_MAX}
             rows={4}
             placeholder='What’s wrong?'
+            aria-invalid={problem !== null || undefined}
+            aria-describedby={problemId}
             onChange={(event) => {
               setMessage(event.target.value)
               setProblem(null)
@@ -120,8 +128,10 @@ export const ReportIssue = ({
             className='min-h-28 w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-base placeholder:text-muted-foreground focus-visible:border-foreground/80 focus-visible:outline-hidden sm:text-sm touch:text-base'
           />
           <div className='flex items-center justify-between gap-3'>
-            <output className='text-sm text-error'>{problem}</output>
-            <Button type='submit' disabled={message.trim() === '' || sending}>
+            <output id={problemId} className='text-sm text-error'>
+              {problem}
+            </output>
+            <Button type='submit' disabled={sending}>
               {sending ? 'Sending…' : 'Send'}
             </Button>
           </div>

@@ -3,6 +3,8 @@ import { CheckIcon, XIcon } from 'lucide-react'
 import { useId, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
+import { ToastAction } from '@/components/ui/toast'
+import { toast } from '@/components/ui/use-toast'
 import {
   applyLyricsTemplateAtom,
   applySongLyricsStyleToAllAtom,
@@ -29,6 +31,22 @@ const SEGMENT =
   'rounded-sm py-1.5 text-xs font-medium transition-colors focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-hidden touch:py-2.5 touch:text-sm'
 const TEXT_BUTTON =
   'rounded-lg px-2 py-2 text-xs font-medium transition-colors focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-hidden touch:py-2.5 touch:text-sm'
+
+// A style change that drops what was there, with the app's short Undo toast (as removing a song from the queue)
+const offerUndo = (title: string, undo: (() => void) | null) => {
+  if (undo === null) {
+    return
+  }
+  toast({
+    action: (
+      <ToastAction altText={`Undo: ${title}`} onClick={undo}>
+        Undo
+      </ToastAction>
+    ),
+    duration: 5000,
+    title,
+  })
+}
 
 const SCOPES: { id: LyricsStyleScope; name: string }[] = [
   { id: 'all', name: 'All Songs' },
@@ -84,7 +102,9 @@ export const LyricsStyleScopeSection = () => {
         <div className='grid grid-cols-2 gap-2'>
           <button
             type='button'
-            onClick={saveAsDefault}
+            onClick={() => {
+              offerUndo('Applied to All Songs', saveAsDefault())
+            }}
             className={cn(
               TEXT_BUTTON,
               'bg-primary-subtle text-primary-text hover:bg-primary-subtle-hover'
@@ -93,7 +113,9 @@ export const LyricsStyleScopeSection = () => {
           </button>
           <button
             type='button'
-            onClick={resetSong}
+            onClick={() => {
+              offerUndo('Song Style Reset', resetSong())
+            }}
             className={cn(
               TEXT_BUTTON,
               'bg-secondary text-foreground hover:bg-accent'
@@ -149,7 +171,7 @@ export const MyStyles = ({ onApplied }: { onApplied: () => void }) => {
                 type='button'
                 aria-label={`Delete ${template.name}`}
                 onClick={() => {
-                  remove(template.id)
+                  offerUndo(`${template.name} Deleted`, remove(template.id))
                 }}
                 className='flex size-7 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-hidden touch:size-10'>
                 <XIcon className='size-3.5 shrink-0' />

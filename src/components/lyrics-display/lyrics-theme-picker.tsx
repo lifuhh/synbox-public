@@ -79,9 +79,10 @@ const ThemeSwatch = ({
       className='group flex flex-col items-center gap-1 focus-visible:outline-hidden'>
       <span
         className={cn(
-          'relative flex h-11 w-14 items-center justify-center overflow-hidden rounded-md ring-2 ring-offset-2 ring-offset-popover transition-all duration-150 bg-theme-swatch',
+          'relative flex h-11 w-14 items-center justify-center overflow-hidden rounded-md ring-2 ring-offset-2 ring-offset-popover transition-shadow duration-150 bg-theme-swatch',
+          // Focus turns even the chosen swatch's ring to the focus colour
           selected
-            ? 'ring-foreground'
+            ? 'ring-foreground group-focus-visible:ring-ring'
             : 'ring-transparent group-hover:ring-border group-focus-visible:ring-ring'
         )}
         style={themeVars}>
@@ -276,7 +277,7 @@ export const LyricsThemePicker = ({
         </h3>
         <div
           role='radiogroup'
-          aria-label='Lyrics colour'
+          aria-label='Lyrics Colour'
           className='grid grid-cols-4 gap-x-2 gap-y-3'>
           {LYRICS_THEMES.map((theme) => (
             <ThemeSwatch
@@ -431,8 +432,9 @@ export const LyricsThemePicker = ({
         onPointerLeave={() => {
           peek.leave(false)
         }}
+        aria-label='Lyrics Style'
         variant='floating'
-        className='z-300 max-h-(--radix-popover-content-available-height) w-[min(300px,calc(100vw-1rem))] scroll-pb-20 overflow-y-auto'>
+        className='z-300 max-h-(--radix-popover-content-available-height) w-[min(300px,calc(100vw-1rem))] scroll-pb-20 overflow-y-auto overscroll-contain'>
         {body}
       </PopoverContent>
     </Popover>

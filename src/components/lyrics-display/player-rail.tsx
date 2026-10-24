@@ -229,7 +229,7 @@ const railClass = (inline: boolean, interactive: boolean, open: boolean) =>
         // Past the notch inset too, or a phone on its side shows the rail's edge beside it
         open
           ? 'translate-x-0'
-          : '-translate-x-[calc(100%+var(--safe-left))] portrait:translate-x-0 portrait:opacity-0'
+          : '-translate-x-[calc(100%+var(--safe-left))] motion-reduce:translate-x-0 motion-reduce:opacity-0 portrait:translate-x-0 portrait:opacity-0'
       )
 
 // The player's own buttons: the lyrics toggles and style, versions (admins), bookmark, share and Read Lyrics.

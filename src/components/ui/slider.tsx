@@ -58,6 +58,8 @@ const SliderRender: React.ForwardRefRenderFunction<
     // Shown above the pointer while a mouse is over the slider (or drags it), as YouTube's seek time: a finger
     // covers the spot, so touch shows none
     hoverLabel?: (value: number) => React.ReactNode
+    // What a screen reader says for the value ("1:12 of 3:45"), in place of the bare number
+    valueText?: (value: number) => string
   }
 > = (
   {
@@ -67,6 +69,7 @@ const SliderRender: React.ForwardRefRenderFunction<
     onPointerLeave,
     look = 'block',
     hoverLabel,
+    valueText,
     min = 0,
     max = 100,
     'aria-label': ariaLabel,
@@ -128,6 +131,11 @@ const SliderRender: React.ForwardRefRenderFunction<
       {/* The thumb is the element with role="slider", so it carries the name; on the root it names nothing */}
       <SliderPrimitive.Thumb
         aria-label={ariaLabel}
+        aria-valuetext={
+          valueText && props.value?.[0] !== undefined
+            ? valueText(props.value[0])
+            : undefined
+        }
         className={cn(
           'block rounded-full shadow-md ring-offset-accent-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-hidden disabled:pointer-events-none disabled:opacity-50',
           LOOKS[look].thumb
