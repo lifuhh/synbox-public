@@ -1,24 +1,22 @@
-import { ArrowUpRightIcon, LoaderCircleIcon } from 'lucide-react'
+import { ArrowUpRightIcon } from 'lucide-react'
 import { Link } from 'react-router'
 
-import { startFromButton } from '@/components/generation/start-generation'
 import { YouTubeIcon } from '@/components/svgicons'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { isActive, useGeneration } from '@/lib/generation/store'
 import { useYoutubeVideo } from '@/lib/react-query/queries-and-mutations'
 import { mightBeJapaneseSong } from '@/lib/youtube/song-guess'
 import { bracketStart } from '@/utils'
 import { cn } from '@/utils/cn'
+
+import { GenerateLyricsButton, useGenerating } from './generate-lyrics-button'
 
 // A /v/ link to a video that isn't a Synbox song. The player doesn't play it: Synbox is not a YouTube player.
 // It shows which video the link is, and a Japanese song can be generated from here; when it finishes, its lyrics
 // row appears and the page becomes the player (player-page.tsx › useSongPresence)
 export const NotInLibrary = ({ videoId }: { videoId: string }) => {
   const { data: video, isPending } = useYoutubeVideo(videoId)
-  const generating = useGeneration().jobs.some(
-    (job) => job.videoId === videoId && isActive(job)
-  )
+  const generating = useGenerating(videoId)
   const offer =
     generating || (video !== undefined && mightBeJapaneseSong(video))
   return (
@@ -62,24 +60,7 @@ export const NotInLibrary = ({ videoId }: { videoId: string }) => {
         </div>
         <div className='flex flex-wrap items-center justify-center gap-2'>
           {offer && video !== undefined && (
-            <Button
-              disabled={generating}
-              gap='md'
-              onClick={() => {
-                void startFromButton({
-                  mode: 'new',
-                  title: video.title,
-                  videoId,
-                })
-              }}>
-              {generating && (
-                <LoaderCircleIcon
-                  aria-hidden
-                  className='size-4 shrink-0 motion-safe:animate-spin'
-                />
-              )}
-              {generating ? 'Generating Lyrics' : 'Generate Lyrics'}
-            </Button>
+            <GenerateLyricsButton videoId={videoId} title={video.title} />
           )}
           <Button asChild variant={offer ? 'outline' : 'default'}>
             <Link to='/'>Go Home</Link>

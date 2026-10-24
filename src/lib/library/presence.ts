@@ -1,24 +1,42 @@
 import {
   useGallerySongs,
+  useGetChartsPlaylist,
   useGetLyricsBySongId,
 } from '@/lib/react-query/queries-and-mutations'
 
-// Whether a /v/ link's video is a song in Synbox. A song is in the library when its lyrics row exists (the
-// backend's test, services/discovery/library.py); the player reads that row anyway, so asking costs nothing.
-// The library list answers first when it is already loaded. A lyrics read that fails (offline, Appwrite down)
-// can't tell, and the page plays as it always has: the auth Worker refuses the listen of a video it can't find
-export type SongPresence = 'checking' | 'in-library' | 'not-in-library'
+// What a /v/ link's video is to Synbox. A song is in the library when its lyrics row exists (the backend's test,
+// services/discovery/library.py); the player reads that row anyway, so asking costs nothing, and the library
+// list answers first when it is already loaded. A lyrics read that fails (offline, Appwrite down) can't tell, and
+// the page plays as it always has: the auth Worker refuses the listen of a video it can't find.
+// A video outside the library that is in YouTube's Top 100 Japan (the home page's chart, read only for these) is a
+// chart song: it plays, with Generate Lyrics, and nothing about it is kept until it is generated
+export type SongPresence =
+  | { kind: 'checking' }
+  | { kind: 'in-library' }
+  | { kind: 'chart-song'; rank: number }
+  | { kind: 'not-in-library' }
 
 export const useSongPresence = (videoId: string): SongPresence => {
   const lyrics = useGetLyricsBySongId(videoId)
   const { songs } = useGallerySongs()
+  const outside = !lyrics.isPending && !lyrics.isError && lyrics.data === null
+  const chart = useGetChartsPlaylist(outside)
   if (lyrics.isError) {
-    return 'in-library'
+    return { kind: 'in-library' }
   }
-  if (!lyrics.isPending) {
-    return lyrics.data === null ? 'not-in-library' : 'in-library'
+  if (lyrics.isPending) {
+    return songs.some((song) => song.videoId === videoId)
+      ? { kind: 'in-library' }
+      : { kind: 'checking' }
   }
-  return songs.some((song) => song.videoId === videoId)
-    ? 'in-library'
-    : 'checking'
+  if (lyrics.data !== null) {
+    return { kind: 'in-library' }
+  }
+  if (chart.isPending) {
+    return { kind: 'checking' }
+  }
+  const charted = chart.data?.find((song) => song.id === videoId)
+  return charted === undefined
+    ? { kind: 'not-in-library' }
+    : { kind: 'chart-song', rank: charted.rank }
 }

@@ -9,10 +9,13 @@ import {
 } from '@/lib/react-query/queries-and-mutations'
 import type { CurrentPlayingInfo } from '@/types'
 
-// Publishes the song being watched (currentVideoAtom: title, bookmarks) and records it in watch history, once
-// the song is known to be in the library (`inLibrary`): a video that isn't leaves no trace. A song whose
-// song_info row can't be read is named from YouTube's details; only the backend writes song_info
-export const useSongVisit = (videoId: string, inLibrary: boolean) => {
+// Publishes the song being watched (currentVideoAtom: title, bookmarks) and records it in watch history.
+// `record`: a library song, both. `show`: a chart song (played, not yet in Synbox), named but not recorded.
+// `none`: anything else leaves no trace. A song whose song_info row can't be read is named from YouTube's
+// details; only the backend writes song_info
+export type SongVisit = 'record' | 'show' | 'none'
+
+export const useSongVisit = (videoId: string, visit: SongVisit) => {
   const setCurrentVideo = useSetAtom(currentVideoAtom)
   const addToHistory = useSetAtom(addToHistoryAtom)
   const {
@@ -32,7 +35,12 @@ export const useSongVisit = (videoId: string, inLibrary: boolean) => {
   }, [videoId, setCurrentVideo])
 
   useEffect(() => {
-    if (!videoId || !inLibrary || isLoadingYoutubeInfo || isLoadingSongInfo) {
+    if (
+      !videoId ||
+      visit === 'none' ||
+      isLoadingYoutubeInfo ||
+      isLoadingSongInfo
+    ) {
       return
     }
     let info: CurrentPlayingInfo | null = null
@@ -53,11 +61,13 @@ export const useSongVisit = (videoId: string, inLibrary: boolean) => {
     }
     if (info !== null) {
       setCurrentVideo(songInfo ?? info)
-      addToHistory(info)
+      if (visit === 'record') {
+        addToHistory(info)
+      }
     }
   }, [
     videoId,
-    inLibrary,
+    visit,
     songInfo,
     youtubeInfo,
     isSongInfoMissing,

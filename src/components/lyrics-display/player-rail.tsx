@@ -7,9 +7,11 @@ import {
   EllipsisIcon,
   FlagIcon,
   LanguagesIcon,
+  LoaderCircleIcon,
   MessageSquareTextIcon,
   Share2Icon,
   ShareIcon,
+  SparklesIcon,
   ThumbsUpIcon,
 } from 'lucide-react'
 import type { ReactNode } from 'react'
@@ -25,8 +27,13 @@ import {
 import { ToastAction } from '@/components/ui/toast'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { useToast } from '@/components/ui/use-toast'
+import {
+  startGenerating,
+  useGenerating,
+} from '@/components/watch/generate-lyrics-button'
 import { SaveToPlaylist } from '@/components/watch/save-to-playlist'
 import {
+  chartSongAtom,
   currentVideoAtom,
   lyricsVisibilityAtom,
   romajiVisibilityAtom,
@@ -160,6 +167,36 @@ const useLikeAction = (videoId: string): SongAction => {
   }
 }
 
+// The song's actions. A chart song (Top 100 Japan, not yet in Synbox) can only be generated or shared: nothing
+// else is kept for it
+const useSongActions = (
+  videoId: string,
+  share: SongAction,
+  libraryActions: SongAction[]
+): { actions: SongAction[]; chart: boolean } => {
+  const chart = useAtomValue(chartSongAtom)?.videoId === videoId
+  const title = useAtomValue(currentVideoAtom)?.title
+  const generating = useGenerating(videoId)
+  if (!chart) {
+    return { actions: libraryActions, chart }
+  }
+  const generate: SongAction = {
+    disabled: generating,
+    handleSelect: () => {
+      startGenerating(videoId, title)
+    },
+    icon: generating ? (
+      <LoaderCircleIcon className='size-5 shrink-0 motion-safe:animate-spin' />
+    ) : (
+      <SparklesIcon className='size-5 shrink-0' />
+    ),
+    label: generating ? 'Generating Lyrics' : 'Generate Lyrics',
+    // The watch page offers it in the lyrics panel, as a labelled button
+    stageOnly: true,
+  }
+  return { actions: [generate, share], chart }
+}
+
 const BookmarkGlyph = ({ bookmarked }: { bookmarked: boolean }) =>
   bookmarked ? (
     <BookmarkCheckIcon className='size-5 shrink-0 fill-current [&>path:last-child]:stroke-black' />
@@ -169,10 +206,19 @@ const BookmarkGlyph = ({ bookmarked }: { bookmarked: boolean }) =>
 
 // On a phone on its side the rail is a column beside a video only ~390px tall, and upright a row across a screen
 // ~400px wide: the lyrics' buttons fill either, so the song's own actions wait behind More
-const SongActionsMenu = ({ actions }: { actions: SongAction[] }) => {
+const SongActionsMenu = ({
+  actions,
+  hidden,
+}: {
+  actions: SongAction[]
+  hidden: boolean
+}) => {
   const [open, setOpen] = useState(false)
   // Upright the rail lies along the bottom, so the menu opens up from it
   const portrait = usePortrait()
+  if (hidden) {
+    return null
+  }
   return (
     <DropdownMenu modal={false} open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger asChild>
@@ -214,9 +260,18 @@ const groupClass = (inline: boolean) =>
     ? 'flex items-center gap-2 watch-narrow:grid watch-narrow:grid-flow-col watch-narrow:auto-cols-fr'
     : 'contents'
 
-// The song's actions as buttons, but on a phone's floating rail (on its side or upright) behind More instead
-const actionsClass = (inline: boolean) =>
-  cn(groupClass(inline), 'short:hidden', !inline && 'portrait:hidden')
+// The song's actions as buttons, but on a phone's floating rail (on its side or upright) behind More instead. A
+// chart song has no lyrics to show or style: its rail is its two actions, Generate Lyrics first, never behind More
+const actionsClass = (inline: boolean, chart: boolean) =>
+  chart
+    ? groupClass(inline)
+    : cn(groupClass(inline), 'short:hidden', !inline && 'portrait:hidden')
+const lyricsGroupClass = (inline: boolean, chart: boolean) =>
+  chart ? 'hidden' : groupClass(inline)
+const dividerClass = (chart: boolean) =>
+  chart
+    ? 'hidden'
+    : 'my-0.5 h-px w-6 shrink-0 bg-white/15 portrait:my-0 portrait:h-6 portrait:w-px'
 
 const railClass = (inline: boolean, interactive: boolean, open: boolean) =>
   inline
@@ -369,7 +424,15 @@ const PlayerRail = ({ inline = false }: { inline?: boolean }) => {
     return bookmarked ? 'Remove from Bookmarks' : 'Add to Bookmarks'
   })()
 
-  const actions: SongAction[] = [
+  const shareAction: SongAction = {
+    disabled: false,
+    handleSelect: () => {
+      void handleShare()
+    },
+    icon: <PlatformShareIcon className='size-5 shrink-0' />,
+    label: shareLabel,
+  }
+  const { actions: songActions, chart } = useSongActions(videoId, shareAction, [
     likeAction,
     {
       disabled: !currentVideo,
@@ -385,14 +448,7 @@ const PlayerRail = ({ inline = false }: { inline?: boolean }) => {
       icon: <ListPlusIcon className='size-5 shrink-0' />,
       label: 'Save to Playlist',
     },
-    {
-      disabled: false,
-      handleSelect: () => {
-        void handleShare()
-      },
-      icon: <PlatformShareIcon className='size-5 shrink-0' />,
-      label: shareLabel,
-    },
+    shareAction,
     // The song's lyrics as a page to read or play along without the video. The watch page has them right
     // under the video already
     {
@@ -410,7 +466,10 @@ const PlayerRail = ({ inline = false }: { inline?: boolean }) => {
       icon: <FlagIcon className='size-5 shrink-0' />,
       label: report.label,
     },
-  ].filter((action) => !(inline && action.stageOnly === true))
+  ])
+  const actions = songActions.filter(
+    (action) => !(inline && action.stageOnly === true)
+  )
 
   return (
     // Hoverable tooltips wait for a pointer move to close after the trigger is left, and none comes once
@@ -431,7 +490,7 @@ const PlayerRail = ({ inline = false }: { inline?: boolean }) => {
               data-player-chrome={inline ? undefined : true}
               aria-label='Player Controls'
               className={railClass(inline, open && armed, open)}>
-              <div className={groupClass(inline)}>
+              <div className={lyricsGroupClass(inline, chart)}>
                 <RailTooltip label={showLyrics ? 'Hide Lyrics' : 'Show Lyrics'}>
                   <RailButton
                     label='Lyrics'
@@ -491,11 +550,9 @@ const PlayerRail = ({ inline = false }: { inline?: boolean }) => {
                 )}
               </div>
 
-              {!inline && (
-                <div className='my-0.5 h-px w-6 shrink-0 bg-white/15 portrait:my-0 portrait:h-6 portrait:w-px' />
-              )}
+              {!inline && <div className={dividerClass(chart)} />}
 
-              <div className={actionsClass(inline)}>
+              <div className={actionsClass(inline, chart)}>
                 {actions.map((action) => (
                   <RailTooltip key={action.label} label={action.label}>
                     <RailButton
@@ -515,7 +572,7 @@ const PlayerRail = ({ inline = false }: { inline?: boolean }) => {
                   </RailTooltip>
                 ))}
               </div>
-              {!inline && <SongActionsMenu actions={actions} />}
+              {!inline && <SongActionsMenu actions={actions} hidden={chart} />}
             </nav>
           </div>
         </RailTooltipsOff>

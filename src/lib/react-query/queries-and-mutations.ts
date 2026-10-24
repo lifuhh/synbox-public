@@ -32,8 +32,10 @@ export const useGetLandingPagePlaylist = () =>
     staleTime: DAY_MS,
   })
 
-export const useGetChartsPlaylist = () =>
+// `enabled: false` reads the chart only if something already fetched it
+export const useGetChartsPlaylist = (enabled = true) =>
   useQuery({
+    enabled,
     gcTime: 1000 * 60 * 60,
     queryFn: async () => await getChartsPlaylist(),
     queryKey: [QUERY_KEYS.GET_CHARTS_PLAYLIST],
