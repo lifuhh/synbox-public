@@ -3,10 +3,6 @@ import { PlayIcon } from 'lucide-react'
 import { memo, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router'
 
-import {
-  KaraokeLabel,
-  KaraokePictureBadge,
-} from '@/components/shared/karaoke-badge'
 import { ListenCount } from '@/components/shared/listen-count'
 import LoadError from '@/components/shared/load-error'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -57,14 +53,12 @@ const Card = ({ song }: { song: LibraryListSong }) => (
         <span className='absolute right-2.5 bottom-2.5 grid size-10 place-items-center rounded-full bg-black/70 text-white opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100'>
           <PlayIcon className='size-4 fill-current' aria-hidden />
         </span>
-        {song.karaoke && <KaraokePictureBadge />}
       </span>
       {/* A fixed-height block, so every row is the same height; the channel sits right under one line or two */}
       <span className='mt-3 flex h-18 flex-col gap-1 pe-10'>
         <span className='line-clamp-2 text-base leading-6 font-semibold wrap-anywhere text-foreground'>
           {song.title}
         </span>
-        {song.karaoke && <KaraokeLabel />}
         <span className='flex min-w-0 items-center gap-2.5 text-sm leading-5 text-muted-foreground'>
           <ListenCount videoId={song.videoId} />
           <span className='truncate'>{song.author}</span>

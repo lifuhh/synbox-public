@@ -4,7 +4,6 @@ import { useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Link } from 'react-router'
 
-import { KaraokeMark } from '@/components/shared/karaoke-badge'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -112,9 +111,6 @@ const LibrarySearch = ({
                       {song.author}
                     </span>
                   </div>
-                  <span className='flex w-4 shrink-0 justify-center'>
-                    <KaraokeMark videoId={song.videoId} />
-                  </span>
                   <Button
                     variant='outline'
                     size='sm'
@@ -282,10 +278,6 @@ const Row = ({
         {song.author}
       </span>
     </div>
-    {/* A column of its own, so the marks line up down the list */}
-    <span className='flex w-4 shrink-0 justify-center'>
-      <KaraokeMark videoId={song.videoId} />
-    </span>
     <Button
       variant='row-icon'
       size='icon'

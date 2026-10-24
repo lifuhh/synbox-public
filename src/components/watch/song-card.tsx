@@ -1,10 +1,6 @@
 import { PlayIcon } from 'lucide-react'
 import { Link } from 'react-router'
 
-import {
-  KaraokePictureBadgeMark,
-  KaraokeLabelMark,
-} from '@/components/shared/karaoke-badge'
 import { ListenCount } from '@/components/shared/listen-count'
 import type { ListSong } from '@/lib/listening/model'
 import { songPath } from '@/lib/listening/store'
@@ -42,12 +38,8 @@ export const SongCard = ({
         <span className='absolute right-2 bottom-2 grid size-9 place-items-center rounded-full bg-black/70 text-white opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100'>
           <PlayIcon className='size-4 fill-current' aria-hidden />
         </span>
-        <KaraokePictureBadgeMark videoId={song.videoId} />
       </span>
-      <span className='sr-only'>
-        {song.title}
-        <KaraokeLabelMark videoId={song.videoId} />
-      </span>
+      <span className='sr-only'>{song.title}</span>
     </Link>
     <div className='mt-2 flex items-start gap-1'>
       {/* The words open the song too; the picture's link is the one a keyboard and a screen reader meet */}

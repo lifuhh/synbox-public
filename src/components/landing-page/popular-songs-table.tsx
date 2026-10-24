@@ -1,16 +1,15 @@
-import { PlayIcon } from 'lucide-react'
+import { MicVocalIcon, PlayIcon } from 'lucide-react'
 import type React from 'react'
 import { Link } from 'react-router'
 
-import {
-  KaraokeThumbBadgeMark,
-  KaraokeLabelMark,
-} from '@/components/shared/karaoke-badge'
 import { ListenCount } from '@/components/shared/listen-count'
 import LoadError from '@/components/shared/load-error'
 import { MarqueeText } from '@/components/shared/marquee-text'
 import { Skeleton } from '@/components/ui/skeleton'
-import { useGetChartsPlaylist } from '@/lib/react-query/queries-and-mutations'
+import {
+  useGetChartsPlaylist,
+  useHasKaraoke,
+} from '@/lib/react-query/queries-and-mutations'
 import { compactCount } from '@/lib/song-stats'
 import type { ChartSong, CssVars } from '@/types'
 
@@ -31,6 +30,27 @@ const SKELETON_TITLES = [
   <Skeleton key='f' className='h-3.5 w-4/5' />,
   <Skeleton key='g' className='h-3.5 w-2/3' />,
 ]
+
+// Only this list mixes songs with karaoke and songs without (a chart song outside the library plays with Generate
+// Lyrics), so only it marks the karaoke ones: the bare mic tucked into the thumbnail's bottom-left corner, with a dark
+// halo so it reads on any picture; a tighter, lighter one on a phone, where the halo would swamp so small a mark. The
+// glyph's box is a tenth of its size emptier on the left than at the bottom, so the left offset is smaller and the
+// drawn mic sits the same distance from both edges. A screen reader hears it after the title
+const KaraokeMark = ({ videoId }: { videoId: string }) =>
+  useHasKaraoke(videoId) ? (
+    <MicVocalIcon
+      aria-hidden
+      data-karaoke-badge
+      strokeWidth={2.5}
+      className='pointer-events-none absolute bottom-1 left-0.5 size-4 text-primary-text drop-shadow-sm drop-shadow-black/90 touch:drop-shadow-xs touch:drop-shadow-black/60'
+    />
+  ) : null
+
+// Never inside the scrolling title: WebKit counts its hidden text and clips a title that fits with an ellipsis
+const KaraokeLabel = ({ videoId }: { videoId: string }) =>
+  useHasKaraoke(videoId) ? (
+    <span className='sr-only'>, Karaoke Lyrics</span>
+  ) : null
 
 // The whole row opens the song, so the rank and counts are plain text, not chips that look pressable (listens as on
 // the song cards). The picture
@@ -53,7 +73,7 @@ const SongRow = ({ song }: { song: ChartSong }) => (
           decoding='async'
           className='size-full rounded-sm object-cover'
         />
-        <KaraokeThumbBadgeMark videoId={song.id} />
+        <KaraokeMark videoId={song.id} />
       </span>
       <span className='flex min-w-0 flex-1 flex-col gap-0.5'>
         <MarqueeText className='text-sm leading-5'>{song.title}</MarqueeText>
@@ -67,7 +87,7 @@ const SongRow = ({ song }: { song: ChartSong }) => (
           <ListenCount videoId={song.id} />
         </span>
       </span>
-      <KaraokeLabelMark videoId={song.id} />
+      <KaraokeLabel videoId={song.id} />
       {/* A pointer's cue that the row plays; on touch the title gets the room */}
       <PlayIcon
         aria-hidden

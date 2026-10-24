@@ -13,13 +13,12 @@ import { Link } from 'react-router'
 import { startFromButton } from '@/components/generation/start-generation'
 import { AdminMark } from '@/components/shared/admin-mark'
 import { GoogleMark } from '@/components/shared/google-mark'
-import { KaraokeBadge, KaraokeMark } from '@/components/shared/karaoke-badge'
 import { MarqueeText } from '@/components/shared/marquee-text'
 import { Button } from '@/components/ui/button'
 import { toast } from '@/components/ui/use-toast'
 import { SIGN_IN_CODES, signInWithGoogle, useAccess } from '@/lib/auth'
 import { overallValue } from '@/lib/generation/progress'
-import type { Job, JobStatus } from '@/lib/generation/store'
+import type { Job } from '@/lib/generation/store'
 import {
   cancelGeneration,
   dismissFinishedGenerations,
@@ -229,12 +228,6 @@ const rowStatus = (job: Job) => {
     `${Math.floor(overallValue(job.runs, now, false) * 100)}%`
   )
 }
-
-// The run's timed lyrics are now the song's live lyrics. When it saved nothing new, the library list says
-const madeKaraoke = (status: Extract<JobStatus, { kind: 'complete' }>) =>
-  status.karaoke !== null &&
-  (status.outcome.kind === 'created' ||
-    (status.outcome.kind === 'version' && status.outcome.active))
 
 // A song's own action at the end of its row: Play once it is ready, Dismiss once it failed. Play is a slim pill in
 // the row's height; on touch its press target reaches 44 px tall, still inside the row
@@ -477,12 +470,6 @@ const SongRow = ({ job, picked }: { job: Job; picked: boolean }) => {
             </MarqueeText>
             {at !== null && <Stamp at={at} />}
           </span>
-          {job.status.kind === 'complete' &&
-            (madeKaraoke(job.status) ? (
-              <KaraokeBadge />
-            ) : (
-              <KaraokeMark videoId={job.videoId} />
-            ))}
           {status !== null && (
             <span
               className={cn(
