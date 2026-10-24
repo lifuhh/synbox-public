@@ -27,7 +27,7 @@ const LibraryPage = () => {
           section.style.scrollPaddingTop = `${controls.bottom - section.getBoundingClientRect().top}px`
         }
       }}
-      className='flex custom-scrollbar flex-1 flex-col overflow-y-auto overscroll-contain pr-(--safe-right) pb-page-bottom pl-(--safe-left)'>
+      className='flex flex-1 flex-col overflow-y-auto overscroll-contain pr-(--safe-right) pb-page-bottom pl-(--safe-left)'>
       <title>Library · Synbox</title>
       <LibraryView variant='page' headerRef={header} barRef={bar} />
       <BoxScrollbar box={box} />
