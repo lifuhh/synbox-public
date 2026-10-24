@@ -51,8 +51,10 @@ const KEEP_HITS_DAYS = 30
 const CACHE_SECONDS = 120
 const DATES_MAX = 50
 
+// The app's pages: the site, its deploy previews (the release smoke-tests one before merging) and local servers, as
+// worker/src/generation.ts allows
 const APP_ORIGIN =
-  /^(?:https:\/\/(?:www\.)?synbox\.io|https:\/\/synbox\.netlify\.app|http:\/\/localhost:\d+)$/u
+  /^(?:https:\/\/(?:(?:www\.)?synbox\.io|(?:[a-z0-9-]+--)?synbox\.netlify\.app)|http:\/\/localhost:\d+)$/u
 
 const perHour = (value: string | undefined, fallback: number) => {
   const n = Number(value)

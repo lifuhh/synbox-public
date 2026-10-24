@@ -231,3 +231,19 @@ test("a request without a browser id is counted by its network at a browser's ra
     await statusOf(`/api/lyrics/${OTHER}`, { 'x-synbox-device': 'not-a-uuid' })
   ).toBe(429)
 })
+
+test("the app's pages, its deploy previews included, may read a song; other sites may not", async () => {
+  upstream()
+  const { call } = await setup()
+  const allowOf = async (origin: string) => {
+    const response = await call(`/api/lyrics/${SONG}`, { origin })
+    return response.headers.get('access-control-allow-origin')
+  }
+  expect(await allowOf('https://synbox.io')).toBe('https://synbox.io')
+  expect(await allowOf('https://deploy-preview-380--synbox.netlify.app')).toBe(
+    'https://deploy-preview-380--synbox.netlify.app'
+  )
+  expect(await allowOf('https://evil.netlify.app')).toBeNull()
+  expect(await allowOf('https://synbox.netlify.app.evil.test')).toBeNull()
+  expect(await allowOf('https://x--evil.netlify.app')).toBeNull()
+})
