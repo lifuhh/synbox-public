@@ -19,10 +19,13 @@ import { cn } from '@/utils/cn'
 // The mini player's code, fetched once a song plays in the installed app, while the player still shows: leaving
 // the player hands the song to the bar in the same commit, or the song stops, so the bar can't wait to load then
 let loadedMiniBar: ComponentType | null = null
-const loadMiniBar = async () => {
-  const { default: loaded } = await import('./mini-bar')
-  loadedMiniBar = loaded
-  return loaded
+// Null when the part didn't load: a deploy that replaced it makes the app reload (src/lib/pwa.ts › vite:preloadError),
+// and the import then settles with nothing
+const loadMiniBar = async (): Promise<ComponentType | null> => {
+  const loaded = await import('./mini-bar').catch(() => null)
+  const miniBar = loaded?.default ?? null
+  loadedMiniBar = miniBar
+  return miniBar
 }
 const useMiniBar = (wanted: boolean) => {
   const [miniBar, setMiniBar] = useState(() => loadedMiniBar)
@@ -32,7 +35,9 @@ const useMiniBar = (wanted: boolean) => {
     }
     const load = async () => {
       const loaded = await loadMiniBar()
-      setMiniBar(() => loaded)
+      if (loaded !== null) {
+        setMiniBar(() => loaded)
+      }
     }
     void load()
   }, [wanted, miniBar])
