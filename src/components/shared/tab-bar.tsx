@@ -56,7 +56,9 @@ const ResumeBar = () => {
     return null
   }
   return (
-    <div className='flex h-14 items-center gap-1 rounded-2xl bg-popover/90 p-1.5 shadow-lg ring-1 ring-white/10 backdrop-blur-xl'>
+    <div
+      data-resume-box
+      className='flex h-14 items-center gap-1 rounded-2xl bg-popover/90 p-1.5 shadow-lg ring-1 ring-white/10 backdrop-blur-xl'>
       <Link
         to={songPath(song.videoId)}
         state={{ videoId: song.videoId }}
@@ -92,7 +94,8 @@ const ResumeBar = () => {
 }
 
 // The installed app on a phone moves its navigation to the thumb: four tabs in a floating pill over the
-// home indicator, with the resume bar above them. The website (and the app on a computer) keeps the top bar
+// home indicator, with the resume bar above them. The website (and the app on a computer) keeps the top bar.
+// While the page scrolls down the pill shrinks and drops its labels, and comes back on the way up (globals.css)
 const TabBar = () => {
   const { pathname } = useLocation()
   const [song] = useAtom(resumeSongAtom)
@@ -139,10 +142,13 @@ const TabBar = () => {
   }
 
   return (
-    <div className='fixed inset-x-0 bottom-[calc(var(--safe-bottom)+0.5rem)] z-40 mx-auto flex w-[min(28rem,calc(100%-2rem))] flex-col gap-2'>
+    <div
+      data-tabbar-root
+      className='fixed inset-x-0 bottom-[calc(var(--safe-bottom)+0.5rem)] z-40 mx-auto flex w-[min(28rem,calc(100%-2rem))] flex-col gap-2'>
       <ResumeBar />
       <nav
         aria-label='App'
+        data-tab-nav
         className='grid h-16 grid-cols-4 gap-1 rounded-full bg-popover/85 p-1 shadow-lg ring-1 ring-white/10 backdrop-blur-xl'>
         {TABS.map(({ to, label, icon: Icon, also }) => {
           const active = pathname === to || also?.test(pathname) === true
@@ -160,8 +166,8 @@ const TabBar = () => {
                   ? 'bg-primary-subtle text-primary-text'
                   : 'text-muted-foreground'
               )}>
-              <Icon className='size-6' aria-hidden />
-              {label}
+              <Icon data-tab-icon className='size-6' aria-hidden />
+              <span data-tab-label>{label}</span>
             </Link>
           )
         })}
