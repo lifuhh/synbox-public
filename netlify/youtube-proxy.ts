@@ -21,17 +21,39 @@ const cacheHeaders = (cdnSeconds: number) => ({
 const json = (status: number, body: unknown, headers: HeadersInit = {}) =>
   Response.json(body, { headers, status })
 
-const upstreamUrl = (path: string, search: URLSearchParams) => {
+// The CDN keys its copy on the whole address, query included, so a query the app never sends would reach
+// YouTube on every request. Only the parameters a route reads are allowed, each once, and valid
+const onlyParams = (search: URLSearchParams, allowed: string[]) =>
+  [...search.keys()].every(
+    (name) => allowed.includes(name) && search.getAll(name).length === 1
+  )
+
+interface Upstream {
+  cdnSeconds: number
+  statistics?: true
+  url: string
+}
+
+const upstreamUrl = (
+  path: string,
+  search: URLSearchParams
+): Upstream | 'bad_request' | null => {
   const playlist = /^\/api\/youtube\/playlist\/(?<id>[\w-]+)$/u.exec(path)
     ?.groups?.id
   if (playlist !== undefined && PLAYLISTS.has(playlist)) {
     const pageToken = search.get('pageToken')
+    if (
+      !onlyParams(search, ['pageToken']) ||
+      (pageToken !== null && !PAGE_TOKEN.test(pageToken))
+    ) {
+      return 'bad_request'
+    }
     const params = new URLSearchParams({
       maxResults: '50',
       part: 'snippet',
       playlistId: playlist,
     })
-    if (pageToken !== null && PAGE_TOKEN.test(pageToken)) {
+    if (pageToken !== null) {
       params.set('pageToken', pageToken)
     }
     return {
@@ -42,6 +64,9 @@ const upstreamUrl = (path: string, search: URLSearchParams) => {
   }
   const video = /^\/api\/youtube\/video\/(?<id>[\w-]+)$/u.exec(path)?.groups?.id
   if (video !== undefined && VIDEO_ID.test(video)) {
+    if (!onlyParams(search, [])) {
+      return 'bad_request'
+    }
     const params = new URLSearchParams({
       id: video,
       part: 'snippet,statistics,contentDetails',
@@ -108,6 +133,9 @@ export const handleYoutube = async (
   const target = upstreamUrl(pathname, searchParams)
   if (target === null) {
     return json(404, { error: 'Not found' })
+  }
+  if (target === 'bad_request') {
+    return json(400, { error: 'Unknown query parameter' })
   }
   if (key === undefined || key === '') {
     return json(503, { error: 'YOUTUBE_API_KEY is not set' })

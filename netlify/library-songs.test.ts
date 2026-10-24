@@ -10,6 +10,8 @@ const OLD = JSON.stringify({
   songs: [{ karaoke: false, title: 'B', video_id: 'EaA6NlH80wg' }],
 })
 
+const SONGS = 'https://synbox.io/api/library/songs'
+
 const keptList = (initial: string | null) => {
   let body = initial
   const list: KeptList = {
@@ -39,9 +41,13 @@ describe('library songs', () => {
     )
     const kept = keptList(OLD)
     const work: Promise<unknown>[] = []
-    const response = await handleLibrarySongs(kept.list, (w) => {
-      work.push(w)
-    })
+    const response = await handleLibrarySongs(
+      new Request(SONGS),
+      kept.list,
+      (w) => {
+        work.push(w)
+      }
+    )
     await settle(work)
     expect(await response.text()).toBe(LIST)
     expect(response.headers.get('Netlify-CDN-Cache-Control')).toContain(
@@ -61,9 +67,13 @@ describe('library songs', () => {
       )
     )
     const kept = keptList(OLD)
-    const response = await handleLibrarySongs(kept.list, () => {
-      // The kept list answers; nothing to finish
-    })
+    const response = await handleLibrarySongs(
+      new Request(SONGS),
+      kept.list,
+      () => {
+        // The kept list answers; nothing to finish
+      }
+    )
     expect(response.status).toBe(200)
     expect(await response.text()).toBe(OLD)
     expect(response.headers.get('Netlify-CDN-Cache-Control')).toContain(
@@ -86,7 +96,7 @@ describe('library songs', () => {
     )
     const kept = keptList(OLD)
     const work: Promise<unknown>[] = []
-    const answer = handleLibrarySongs(kept.list, (w) => {
+    const answer = handleLibrarySongs(new Request(SONGS), kept.list, (w) => {
       work.push(w)
     })
     await vi.advanceTimersByTimeAsync(2500)
@@ -104,12 +114,33 @@ describe('library songs', () => {
     )
     const kept = keptList(null)
     const work: Promise<unknown>[] = []
-    const response = await handleLibrarySongs(kept.list, (w) => {
-      work.push(w)
-    })
+    const response = await handleLibrarySongs(
+      new Request(SONGS),
+      kept.list,
+      (w) => {
+        work.push(w)
+      }
+    )
     await settle(work)
     expect(response.status).toBe(503)
     expect(response.headers.get('Cache-Control')).toBe('no-store')
     expect(kept.read()).toBeNull()
+  })
+
+  it('answers 400 to any query, without asking the lookup service or reading the kept list', async () => {
+    const fetcher = vi.fn(async () => await Promise.resolve(new Response(LIST)))
+    vi.stubGlobal('fetch', fetcher)
+    const kept = keptList(OLD)
+    const work: Promise<unknown>[] = []
+    const response = await handleLibrarySongs(
+      new Request(`${SONGS}?x=1`),
+      kept.list,
+      (w) => {
+        work.push(w)
+      }
+    )
+    await settle(work)
+    expect([response.status, work.length, kept.read()]).toEqual([400, 0, OLD])
+    expect(fetcher).not.toHaveBeenCalled()
   })
 })
