@@ -67,7 +67,8 @@ const BUILT_WITH = [
   'pyopenjtalk',
 ]
 
-// One screen on a desktop: what Synbox does, how, the questions people ask, and the fine print
+// One screen on a desktop, down to a 720px-high window (1440×900 at 125%): what Synbox does, how, the questions
+// people ask, and the fine print. From lg the questions share a row with Built With and the fine print
 // A window-high box that scrolls under the top bar, as home and the lists do, so it gets their scrollbar
 const AboutPage = () => {
   const [box, setBox] = useState<HTMLElement | null>(null)
@@ -78,10 +79,10 @@ const AboutPage = () => {
       className='relative flex flex-1 flex-col overflow-y-auto pt-(--topbar-h) page-x pb-page-bottom-sm'>
       <title>About · Synbox</title>
 
-      <div className='mx-auto flex w-full max-w-3xl flex-col gap-8 pt-8'>
-        <header className='flex flex-col gap-3 text-center'>
+      <div className='mx-auto flex w-full max-w-3xl flex-col gap-8 pt-8 lg:max-w-5xl lg:gap-5 lg:pt-4'>
+        <header className='flex flex-col gap-3 text-center lg:gap-2'>
           <h1 className='text-3xl font-bold'>About</h1>
-          <p className='text-lg text-pretty text-muted-foreground'>
+          <p className='mx-auto max-w-3xl text-lg text-pretty text-muted-foreground'>
             Synbox turns a Japanese song on YouTube into karaoke: timed lyrics
             with furigana, romaji and translations over the original video.
           </p>
@@ -91,11 +92,13 @@ const AboutPage = () => {
           {STEPS.map((step, index) => (
             <li
               key={step.title}
-              className='flex flex-col gap-1 rounded-xl bg-card p-4'>
-              <span className='text-sm font-semibold text-primary-text tabular-nums'>
-                {index + 1}
-              </span>
-              <h2 className='font-semibold'>{step.title}</h2>
+              className='flex flex-col gap-1 rounded-xl bg-card p-4 lg:py-3'>
+              <div className='flex items-baseline gap-2'>
+                <span className='text-sm font-semibold text-primary-text tabular-nums'>
+                  {index + 1}
+                </span>
+                <h2 className='font-semibold'>{step.title}</h2>
+              </div>
               <p className='text-sm text-pretty text-muted-foreground'>
                 {step.text}
               </p>
@@ -103,35 +106,42 @@ const AboutPage = () => {
           ))}
         </ol>
 
-        <Accordion type='multiple' className='w-full'>
-          {FAQS.map((faq) => (
-            <AccordionItem key={faq.question} value={faq.question}>
-              <AccordionTrigger>{faq.question}</AccordionTrigger>
-              <AccordionContent>{faq.answer}</AccordionContent>
-            </AccordionItem>
-          ))}
-        </Accordion>
-
-        <section aria-labelledby='built-with' className='flex flex-col gap-3'>
-          <h2 id='built-with' className='text-sm font-semibold'>
-            Built With
-          </h2>
-          <ul className='flex flex-wrap gap-1.5'>
-            {BUILT_WITH.map((name) => (
-              <li
-                key={name}
-                className='rounded-full bg-card px-2.5 py-1 text-xs text-muted-foreground'>
-                {name}
-              </li>
+        <div className='flex flex-col gap-8 lg:grid lg:grid-cols-2 lg:items-start lg:gap-x-10'>
+          <Accordion type='multiple' className='w-full'>
+            {FAQS.map((faq) => (
+              <AccordionItem key={faq.question} value={faq.question}>
+                <AccordionTrigger>{faq.question}</AccordionTrigger>
+                <AccordionContent>{faq.answer}</AccordionContent>
+              </AccordionItem>
             ))}
-          </ul>
-        </section>
+          </Accordion>
 
-        <p className='text-xs text-pretty text-muted-foreground'>
-          A non-commercial personal project with no ads. Songs, videos and
-          lyrics belong to their owners and are shown for learning and singing
-          along; rights holders can ask for removal through the link below.
-        </p>
+          <div className='flex flex-col gap-8 lg:gap-5'>
+            <section
+              aria-labelledby='built-with'
+              className='flex flex-col gap-3'>
+              <h2 id='built-with' className='text-sm font-semibold'>
+                Built With
+              </h2>
+              <ul className='flex flex-wrap gap-1.5'>
+                {BUILT_WITH.map((name) => (
+                  <li
+                    key={name}
+                    className='rounded-full bg-card px-2.5 py-1 text-xs text-muted-foreground'>
+                    {name}
+                  </li>
+                ))}
+              </ul>
+            </section>
+
+            <p className='text-xs text-pretty text-muted-foreground'>
+              A non-commercial personal project with no ads. Songs, videos and
+              lyrics belong to their owners and are shown for learning and
+              singing along; rights holders can ask for removal through the link
+              below.
+            </p>
+          </div>
+        </div>
       </div>
 
       <nav
