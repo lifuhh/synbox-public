@@ -196,7 +196,7 @@ const TopBar = () => {
   const cluster = cn(
     'flex items-center gap-2 transition-fade-translate duration-300 ease-out sm:gap-3',
     isVideoPlayer && armed && 'pointer-events-auto',
-    !iconsShown && '-translate-y-2 opacity-0'
+    !iconsShown && '-translate-y-2 opacity-0 motion-reduce:translate-y-0'
   )
   // The buttons share one rhythm on a phone: equal cells, 48 px while there is room and down to the
   // buttons' own 40 px when there is not. Notifications stays while songs generate, when the others hide with
@@ -206,7 +206,8 @@ const TopBar = () => {
     'tabbar:*:not-data-notifications:hidden',
     isVideoPlayer && armed && 'pointer-events-auto',
     '*:not-data-busy:transition-fade-translate *:not-data-busy:duration-300 *:not-data-busy:ease-out',
-    !iconsShown && '*:not-data-busy:-translate-y-2 *:not-data-busy:opacity-0'
+    !iconsShown &&
+      '*:not-data-busy:-translate-y-2 *:not-data-busy:opacity-0 motion-reduce:*:not-data-busy:translate-y-0'
   )
 
   return (

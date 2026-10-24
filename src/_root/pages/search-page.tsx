@@ -31,6 +31,16 @@ const Notice = ({ children }: { children: React.ReactNode }) => (
   </p>
 )
 
+// A search that failed: what failed and the way to try again, as the library's still-loading notice does
+const Failed = ({ what, retry }: { what: string; retry: () => void }) => (
+  <div className='flex flex-wrap items-center gap-3'>
+    <Notice>{what}</Notice>
+    <Button variant='ghost' onClick={retry}>
+      Try Again
+    </Button>
+  </div>
+)
+
 const ResultGrid = ({ children }: { children: React.ReactNode }) => (
   // Each card pads its hover surface, so the grid reaches out by that padding and the pictures line up
   // with the search field
@@ -77,7 +87,7 @@ const youtubeSearchUrl = (query: string) =>
 const LookUpOnYoutube = ({ query, none }: { query: string; none: boolean }) => (
   <div className='flex flex-wrap items-center gap-x-3 gap-y-2'>
     <output className='text-sm text-muted-foreground'>
-      {none ? 'No results' : 'Can’t find your song?'}
+      {none ? 'No Results' : 'Can’t find your song?'}
     </output>
     <Button asChild variant='outline' gap='sm' className='touch:h-11'>
       <a
@@ -108,7 +118,14 @@ const LibraryStatus = ({
     return null
   }
   if (library.error) {
-    return <Notice>{library.error.message}</Notice>
+    return (
+      <Failed
+        what="Couldn't search the songs."
+        retry={() => {
+          void library.refetch()
+        }}
+      />
+    )
   }
   if (notReady) {
     return (
@@ -165,7 +182,12 @@ const SearchResults = ({
           <LibraryStatus library={library} searching={searching} />
           {/* A pasted link's video comes only from the YouTube search */}
           {linkId !== null && videos.error && (
-            <Notice>{videos.error.message}</Notice>
+            <Failed
+              what="Couldn't look up this link."
+              retry={() => {
+                void videos.refetch()
+              }}
+            />
           )}
           <ResultGrid>
             {libraryResults.map((song) => (
@@ -214,7 +236,7 @@ const SimilarSongs = ({
   onBack: () => void
   onMoreLikeThis: (videoId: string) => void
 }) => {
-  const { data, error, isLoading } = useGetSimilarSongs(videoId)
+  const { data, error, isLoading, refetch } = useGetSimilarSongs(videoId)
   return (
     <div className='flex flex-col gap-3'>
       <div className='flex items-center justify-between gap-4'>
@@ -222,11 +244,18 @@ const SimilarSongs = ({
           More Like {data?.song?.title ?? 'This'}
         </h2>
         <Button variant='ghost' onClick={onBack}>
-          Back To Results
+          Back to Results
         </Button>
       </div>
       {isLoading && <DotsLoader />}
-      {error && <Notice>{error.message}</Notice>}
+      {error && (
+        <Failed
+          what="Couldn't load similar songs."
+          retry={() => {
+            void refetch()
+          }}
+        />
+      )}
       {data?.results.length === 0 && <Notice>No similar songs yet.</Notice>}
       <ResultGrid>
         {data?.results.map((song) => (
@@ -331,6 +360,7 @@ const SearchPage = () => {
       data-scroll-top
       className='flex custom-scrollbar flex-1 flex-col gap-4 overflow-y-scroll pt-page-top page-x pb-page-bottom'>
       <title>Search · Synbox</title>
+      <h1 className='sr-only'>Search</h1>
       <form
         key={query}
         className='w-full sm:mx-auto sm:w-4/5'

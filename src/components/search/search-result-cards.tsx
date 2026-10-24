@@ -12,20 +12,13 @@ import type {
   VideoSearchResult,
 } from '@/lib/synbox-flask/discovery'
 
-const Thumbnail = ({
-  src,
-  alt,
-  videoId,
-}: {
-  src: string
-  alt: string
-  videoId: string
-}) => (
+const Thumbnail = ({ src, videoId }: { src: string; videoId: string }) => (
   <div className='relative aspect-video w-full overflow-hidden rounded-lg bg-input'>
     {src !== '' && (
       <img
         src={src}
-        alt={alt}
+        // The card's title names the song; the picture would say it twice
+        alt=''
         loading='lazy'
         className='absolute inset-0 h-full w-full object-cover'
       />
@@ -59,11 +52,7 @@ export const VideoResultCard = ({
       onSelect(result)
     }}
     className={`${CARD} text-left`}>
-    <Thumbnail
-      src={result.thumbnail_url}
-      alt={result.title}
-      videoId={result.video_id}
-    />
+    <Thumbnail src={result.thumbnail_url} videoId={result.video_id} />
     <Title>{result.title}</Title>
     <KaraokeLabelMark videoId={result.video_id} />
     <p className='truncate text-xs text-muted-foreground'>{result.channel}</p>
@@ -83,11 +72,7 @@ export const LibrarySongCard = ({
       to={`/v/${song.video_id}`}
       state={{ videoId: song.video_id }}
       className='flex flex-col gap-2 text-left'>
-      <Thumbnail
-        src={song.thumbnail_url}
-        alt={song.title}
-        videoId={song.video_id}
-      />
+      <Thumbnail src={song.thumbnail_url} videoId={song.video_id} />
       <Title>{song.title}</Title>
       <KaraokeLabelMark videoId={song.video_id} />
     </Link>

@@ -1206,7 +1206,14 @@
   right: max(0.75rem, calc(var(--safe-right) + 0.5rem));
   width: auto;
   max-width: none;
-  max-height: calc(var(--vv-h, var(--app-h)) - var(--safe-top) - 1rem);
+  /* Above the keyboard while it is up, and above the home indicator while it is down */
+  max-height: min(
+    calc(var(--vv-h, var(--app-h)) - var(--safe-top) - 1rem),
+    calc(
+      var(--app-h) - var(--vv-top, 0px) - var(--safe-top) - var(--safe-bottom) -
+        1rem
+    )
+  );
   margin: 0;
   transform-origin: top;
   animation: float-in 0.2s ease-out;
