@@ -64,14 +64,15 @@ export const songPath = (videoId: string) => `/v/${videoId}`
 
 // How a song was opened, carried in the navigation's state for the player page. By Previous (`back`): the song
 // it left is not put on Previous's trail. By Previous or from the queue (`queued`): the playlist being played
-// waits (model › followSong). Any other way of opening a song that isn't in the playlist ends it
-export type OpenedBy = 'back' | 'queued'
+// waits (model › followSong). Back from the mini bar (`resume`): the same song going on, not another listen.
+// Any other way of opening a song that isn't in the playlist ends it
+export type OpenedBy = 'back' | 'queued' | 'resume'
 export const songState = (videoId: string, by?: OpenedBy) => ({ by, videoId })
 export const openedBy = (state: unknown): OpenedBy | undefined =>
   typeof state === 'object' &&
   state !== null &&
   'by' in state &&
-  (state.by === 'back' || state.by === 'queued')
+  (state.by === 'back' || state.by === 'queued' || state.by === 'resume')
     ? state.by
     : undefined
 

@@ -42,6 +42,8 @@ let song: Song | null = null
 let building = false
 // Bumped on every rebuild, so a replaced player's late callbacks are dropped
 let generation = 0
+// The video's size on the stage it was last laid over, kept while it floats; before any stage, YouTube's usual size
+let frameSize = { height: 270, width: 480 }
 
 const ensureLayer = () => {
   if (layer && frame && host) {
@@ -130,29 +132,54 @@ const create = async () => {
   })
 }
 
-// The stage listening to the player; a newer one replaces it. Leaving pauses the song
+// The stage or the installed app's mini bar listening to the player; a newer one replaces it. Leaving pauses the
+// song, unless another listener takes it in the same commit (the player page handing it to the mini bar) or the
+// one leaving keeps it going (the mini bar handing it back to a page that connects once it has loaded)
 export const connectEngine = (next: EngineListener) => {
   listener = next
   if (player) {
     next.onReady(player)
   }
-  return () => {
+  return ({ keepPlaying = false }: { keepPlaying?: boolean } = {}) => {
     if (listener === next) {
       listener = null
-      player?.pauseVideo()
+      queueMicrotask(() => {
+        if (listener === null && !keepPlaying) {
+          player?.pauseVideo()
+        }
+      })
     }
   }
 }
 
+// The song the player holds, and whether it is under way (playing, buffering or paused part-way)
+export const heldSong = (): { videoId: string; state: YTStateCode } | null => {
+  if (player === null || song === null) {
+    return null
+  }
+  const state = player.getPlayerState()
+  const underway =
+    state === YTState.Playing ||
+    state === YTState.Buffering ||
+    state === YTState.Paused
+  return underway ? { state, videoId: song.videoId } : null
+}
+
 // Cue a song, ready to play from `start`; the first one builds the player, and one asked for while it
-// is being built is cued once it is ready
-export const loadSong = (videoId: string, start = 0) => {
+// is being built is cued once it is ready. The song the player already holds under way is kept where it is
+// (back from the mini bar), and its state returned; otherwise null
+export const loadSong = (videoId: string, start = 0): YTStateCode | null => {
+  const held = heldSong()
+  if (held !== null && held.videoId === videoId) {
+    return held.state
+  }
   song = { start, videoId }
   if (player) {
     player.cueVideoById({ startSeconds: start, videoId })
   } else if (!building) {
     void create()
   }
+  return null
 }
 
 // A last resort for an embed that stopped answering: a new player, so the next unmute is a new one too
@@ -188,6 +215,49 @@ const pageRect = (element: HTMLElement) => {
       }
 }
 
+// The placement in force, for a box that moves without resizing (a transform: the mini bar's zoom)
+let placed: (() => void) | null = null
+export const followEngine = () => {
+  placed?.()
+}
+
+// Places the video now and again whenever a watched element resizes, until the cleanup. `keepShown`: the video stays
+// where it is until the next placement (the mini bar handing it back to a page still loading)
+const keepPlaced = (place: () => void, watched: HTMLElement[]) => {
+  const parts = ensureLayer()
+  place()
+  placed = place
+  const observer = new ResizeObserver(place)
+  for (const element of watched) {
+    observer.observe(element)
+  }
+  window.addEventListener('resize', place)
+  return ({ keepShown = false }: { keepShown?: boolean } = {}) => {
+    if (placed === place) {
+      placed = null
+    }
+    observer.disconnect()
+    window.removeEventListener('resize', place)
+    if (keepShown) {
+      return
+    }
+    Object.assign(parts.layer.style, {
+      borderRadius: '',
+      transform: '',
+      visibility: 'hidden',
+      zIndex: '',
+    })
+    parts.layer.inert = true
+    parts.host.style.pointerEvents = 'none'
+  }
+}
+
+// 0 everywhere but a page that scrolls the document itself
+const scrolled = () => ({
+  left: document.scrollingElement?.scrollLeft ?? 0,
+  top: document.scrollingElement?.scrollTop ?? 0,
+})
+
 // Lays the video over a stage and its video box, following both as they resize, until the cleanup
 export const placeEngine = (
   stage: HTMLElement,
@@ -198,12 +268,13 @@ export const placeEngine = (
   const place = () => {
     const outer = pageRect(stage)
     const inner = pageRect(box)
-    // 0 everywhere but a page that scrolls the document itself
-    const scroller = document.scrollingElement
+    const scroll = scrolled()
     Object.assign(parts.layer.style, {
+      borderRadius: '',
       height: `${outer.height}px`,
-      left: `${outer.left + (scroller?.scrollLeft ?? 0)}px`,
-      top: `${outer.top + (scroller?.scrollTop ?? 0)}px`,
+      left: `${outer.left + scroll.left}px`,
+      top: `${outer.top + scroll.top}px`,
+      transform: '',
       visibility: 'visible',
       width: `${outer.width}px`,
     })
@@ -213,6 +284,7 @@ export const placeEngine = (
       top: `${inner.top - outer.top}px`,
       width: `${inner.width}px`,
     })
+    frameSize = { height: inner.height, width: inner.width }
   }
   // Extra iframe height above and below the frame keeps YouTube's title bar out of sight
   Object.assign(parts.host.style, {
@@ -225,17 +297,40 @@ export const placeEngine = (
   parts.layer.style.zIndex = blockInput ? '' : '5'
   // Out of the tab order and the accessibility tree unless YouTube's own screen is the thing to use
   parts.layer.inert = blockInput
-  place()
-  const observer = new ResizeObserver(place)
-  observer.observe(stage)
-  observer.observe(box)
-  window.addEventListener('resize', place)
-  return () => {
-    observer.disconnect()
-    window.removeEventListener('resize', place)
-    parts.layer.style.visibility = 'hidden'
-    parts.layer.style.zIndex = ''
-    parts.layer.inert = true
-    parts.host.style.pointerEvents = 'none'
+  return keepPlaced(place, [stage, box])
+}
+
+// Shrinks the video onto a small box over the app (the mini bar's thumbnail), rounded. Scaled, never resized: YouTube
+// pauses an embed grown back from a tiny size, and a transform costs no layout, so the video keeps the size its stage
+// gave it
+export const floatEngine = (target: HTMLElement, radiusPx: number) => {
+  const parts = ensureLayer()
+  const { width, height } = frameSize
+  Object.assign(parts.frame.style, {
+    height: `${height}px`,
+    left: '0',
+    top: '0',
+    width: `${width}px`,
+  })
+  const place = () => {
+    const box = pageRect(target)
+    const scroll = scrolled()
+    const sx = box.width / width
+    const sy = box.height / height
+    Object.assign(parts.layer.style, {
+      borderRadius: `${radiusPx / sx}px / ${radiusPx / sy}px`,
+      height: `${height}px`,
+      left: `${box.left + scroll.left}px`,
+      top: `${box.top + scroll.top}px`,
+      transform: `scale(${sx}, ${sy})`,
+      transformOrigin: '0 0',
+      visibility: 'visible',
+      width: `${width}px`,
+    })
   }
+  parts.host.style.pointerEvents = 'none'
+  parts.layer.inert = true
+  // Over the tab bar (z-40)
+  parts.layer.style.zIndex = '41'
+  return keepPlaced(place, [target])
 }

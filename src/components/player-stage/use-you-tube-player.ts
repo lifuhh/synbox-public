@@ -14,6 +14,7 @@ import { holdReading, NO_READING } from './player-reading'
 import { clampSeek } from './seek-steps'
 import {
   connectEngine,
+  heldSong,
   loadSong,
   placeEngine,
   rebuildEngine,
@@ -45,6 +46,18 @@ interface UseYouTubePlayerOptions {
   // The browser refused to start the song with sound, so it plays muted
   onBlocked?: () => void
 }
+
+const heldPhase = (state: YTStateCode): StagePhase => {
+  if (state === YTState.Playing) {
+    return { kind: 'playing', settled: true }
+  }
+  return state === YTState.Buffering
+    ? { kind: 'buffering' }
+    : { kind: 'paused' }
+}
+
+// How long after a song comes back from the mini bar a pause it didn't ask for is undone
+const CARRIED_ON_MS = 1500
 
 // A play YouTube has not answered at all by then: no buffering, no playing, no refusal
 const START_CHECK_MS = 1500
@@ -110,9 +123,16 @@ export const useYouTubePlayer = ({
   const stageRef = useRef<HTMLDivElement>(null)
   const boxRef = useRef<HTMLDivElement>(null)
   const playerRef = useRef<YTPlayer | null>(null)
-  const [phase, setPhase] = useState<StagePhase>({ kind: 'loading' })
+  // A song the player already holds (back from the mini bar) goes on from where it is, as it is (loadSong keeps it)
+  const [phase, setPhase] = useState<StagePhase>(() => {
+    const held = heldSong()
+    return held?.videoId === videoId
+      ? heldPhase(held.state)
+      : { kind: 'loading' }
+  })
   const phaseRef = useRef(phase)
   const stoppedByGuardRef = useRef(false)
+  const carriedOnUntilRef = useRef(0)
 
   // Read inside long-lived YouTube callbacks without re-creating the player
   const latest = useRef({ loop, onBlocked, onEvent, quirks })
@@ -234,6 +254,13 @@ export const useYouTubePlayer = ({
       )
     }
     let settleTimer: ReturnType<typeof setTimeout> | undefined
+    // A song going on from the mini bar that YouTube pauses by itself straight away (WebKit stops a muted autoplay
+    // when the video moves to its stage) plays on: the listener never asked for that pause
+    const held = heldSong()
+    carriedOnUntilRef.current =
+      held?.videoId === videoId && held.state === YTState.Playing
+        ? performance.now() + CARRIED_ON_MS
+        : 0
     const disconnect = connectEngine({
       onAutoplayBlocked: () => {
         clearTimeout(startCheckRef.current)
@@ -247,13 +274,31 @@ export const useYouTubePlayer = ({
       },
       onReady: (player) => {
         playerRef.current = player
-        applyVolume(player, volumeRef.current)
+        // A song going on from the mini bar that YouTube plays muted (sound was refused) stays muted: unmuting it
+        // without a tap stops it. The stage offers the tap instead
+        if (
+          heldSong()?.videoId === videoId &&
+          player.isMuted() &&
+          !volumeRef.current.muted
+        ) {
+          latest.current.onBlocked?.()
+        } else {
+          applyVolume(player, volumeRef.current)
+        }
         dropCaptions(player)
         log('ready')
       },
       onStateChange: (state) => {
         const player = playerRef.current
         log(`state ${STATE_NAMES[state] ?? state}`)
+        if (
+          state === YTState.Paused &&
+          performance.now() < carriedOnUntilRef.current
+        ) {
+          carriedOnUntilRef.current = 0
+          player?.playVideo()
+          return
+        }
         if (state === YTState.Buffering || state === YTState.Playing) {
           clearTimeout(startCheckRef.current)
         }
@@ -403,6 +448,7 @@ export const useYouTubePlayer = ({
     if (!player) {
       return
     }
+    carriedOnUntilRef.current = 0
     player.pauseVideo()
   }, [])
 
