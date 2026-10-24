@@ -13,6 +13,7 @@ import { migratedD1, sessionCookie } from './test-d1'
 
 const SONG = '6rG_irmOQsM'
 const OTHER = 'EaA6NlH80wg'
+const THIRD = 'PYhCIS29gtc'
 const SECRET = 'test-secret-test-secret-test-secret'
 const TRACE = 'trace-test-key'
 
@@ -31,7 +32,7 @@ const upstream = () => {
       return Response.json({ lines: [], version: 2 })
     }
     const decoded = decodeURIComponent(url)
-    const rows = [SONG, OTHER]
+    const rows = [SONG, OTHER, THIRD]
       .filter((id) => decoded.includes(id))
       .map((id) => ({
         $createdAt: '2026-10-01T00:00:00.000+00:00',
@@ -53,7 +54,7 @@ const upstream = () => {
   return asked
 }
 
-const setup = async (guestPerHour = '60') => {
+const setup = async (guestPerHour = '60', networkPerHour = '300') => {
   const { db } = migratedD1()
   await db
     .prepare(
@@ -77,6 +78,7 @@ const setup = async (guestPerHour = '60') => {
     LOOKUP_KEY: 'lookup-key',
     LYRICS_ACCOUNT_PER_HOUR: '3',
     LYRICS_GUEST_PER_HOUR: guestPerHour,
+    LYRICS_NETWORK_PER_HOUR: networkPerHour,
     TRACE_KEY: TRACE,
     TRUSTED_ORIGINS: 'http://localhost:5173',
   }
@@ -187,4 +189,36 @@ test('a mark survives a copy of part of a line and a column that is not JSON sta
   const line = Array.isArray(parsed) ? String(parsed[0]) : ''
   expect(readMarks(`copied: ${line.slice(0, 40)}`)).toEqual([tag])
   expect(markColumn('not json', traceMark(tag))).toBe('not json')
+})
+
+const DEVICE_A = '0f8b3c3e-6a1e-4c62-9d2a-5b7d1f0c9e11'
+const DEVICE_B = '1a2b3c4d-5e6f-4a1b-8c2d-3e4f5a6b7c8d'
+
+test('guests on one network are counted by browser, under the network backstop', async () => {
+  upstream()
+  const { statusOf } = await setup('1', '2')
+  const a = { 'x-synbox-device': DEVICE_A }
+  const b = { 'x-synbox-device': DEVICE_B }
+  // Each browser opens its one song; the network's two are spent
+  expect(await statusOf(`/api/lyrics/${SONG}`, a)).toBe(200)
+  expect(await statusOf(`/api/lyrics/${OTHER}`, b)).toBe(200)
+  // A browser past its own budget, then a new browser past the network's
+  expect(await statusOf(`/api/lyrics/${OTHER}`, a)).toBe(429)
+  expect(
+    await statusOf(`/api/lyrics/${THIRD}`, {
+      'x-synbox-device': '2b3c4d5e-6f7a-4b2c-9d3e-4f5a6b7c8d9e',
+    })
+  ).toBe(429)
+  // Songs a browser already opened stay free
+  expect(await statusOf(`/api/lyrics/${SONG}`, a)).toBe(200)
+})
+
+test("a request without a browser id is counted by its network at a browser's rate", async () => {
+  upstream()
+  const { statusOf } = await setup('1', '100')
+  expect(await statusOf(`/api/lyrics/${SONG}`)).toBe(200)
+  expect(await statusOf(`/api/lyrics/${OTHER}`)).toBe(429)
+  expect(
+    await statusOf(`/api/lyrics/${OTHER}`, { 'x-synbox-device': 'not-a-uuid' })
+  ).toBe(429)
 })

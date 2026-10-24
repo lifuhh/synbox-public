@@ -1,5 +1,6 @@
 import { toast } from '@/components/ui/use-toast'
 import { backendToken, lastAccount } from '@/lib/auth'
+import { deviceId } from '@/lib/song-stats'
 
 // Lyrics and karaoke timing come from the auth Worker, one song at a time (worker/src/lyrics.ts), never from the
 // lyrics table or the lookup service directly. Straight to api.synbox.io, not through synbox.io/api, so the Worker
@@ -29,9 +30,14 @@ const noteRateLimited = () => {
 // The response, or null for a 404; a refusal throws
 const get = async (path: string, signal?: AbortSignal) => {
   const headers = new Headers({ Accept: 'application/json' })
+  // An account is counted by its token; a guest by this browser's id, so guests sharing a network (an office, a
+  // carrier's shared address) aren't counted as one
   const token = lastAccount() === null ? null : await backendToken()
+  const device = deviceId()
   if (token !== null) {
     headers.set('Authorization', `Bearer ${token}`)
+  } else if (device !== null) {
+    headers.set('X-Synbox-Device', device)
   }
   const response = await fetch(`${API}${path}`, {
     credentials: API === '' ? 'same-origin' : 'omit',

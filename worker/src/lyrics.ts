@@ -22,6 +22,7 @@ export interface LyricsEnv extends Env, LibraryEnv {
   // Signs the translations' invisible mark and the guests' network keys
   TRACE_KEY?: string
   LYRICS_GUEST_PER_HOUR?: string
+  LYRICS_NETWORK_PER_HOUR?: string
   LYRICS_ACCOUNT_PER_HOUR?: string
 }
 
@@ -37,15 +38,17 @@ export const LYRICS_FIELDS = [
 ] as const
 const TRACED_FIELDS = ['eng_translation', 'chi_translation'] as const
 
-// Guests: a song a minute keeps playing a queue and saving the last 30 songs for offline reading in reach; an
-// account more than a listener opens in an hour
+// A guest browser: a song a minute keeps playing a queue and saving the last 30 songs for offline reading in reach. Its
+// network (an office, a carrier's shared address) gets five browsers' worth, a backstop against a browser id made up
+// per request. An account: more than a listener opens in an hour
 const GUEST_PER_HOUR = 60
+const NETWORK_PER_HOUR = 300
 const ACCOUNT_PER_HOUR = 300
 const HOUR = 3_600_000
 const KEEP_HITS_DAYS = 30
-// A lyrics row or timing changes only on a fix or a new version; five minutes at the edge saves Appwrite and the
-// lookup service from repeat reads
-const CACHE_SECONDS = 300
+// A lyrics row or timing changes only on a fix or a new version; two minutes at the edge saves Appwrite and the
+// lookup service from repeat reads, and a fixer's new version shows within them
+const CACHE_SECONDS = 120
 const DATES_MAX = 50
 
 const APP_ORIGIN =
@@ -161,9 +164,16 @@ const corsOf = (c: Ctx): Record<string, string> => {
     : {}
 }
 
-// Who is asking: the account (a session cookie through the app's own origin, or the backend token the app sends
-// cross-origin), else the guest's network for the day, kept only as an HMAC
-export const requesterOf = async (c: Ctx): Promise<string> => {
+// One hourly budget: whose songs are counted, and how many new ones an hour
+interface Budget {
+  key: string
+  limit: number
+}
+
+// A guest's browser id: the random one the app keeps for listens (src/lib/song-stats.ts › deviceId)
+const DEVICE = /^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/u
+
+const accountOf = async (c: Ctx): Promise<string | null> => {
   const auth = createAuth(c.env)
   const bearer = /^Bearer (?<token>.+)$/u.exec(
     c.req.header('authorization') ?? ''
@@ -172,38 +182,72 @@ export const requesterOf = async (c: Ctx): Promise<string> => {
     try {
       const verified = await auth.api.verifyJWT({ body: { token: bearer } })
       if (verified.payload?.sub !== undefined) {
-        return `u:${verified.payload.sub}`
+        return verified.payload.sub
       }
     } catch {
       // An expired or foreign token counts as no account
     }
   }
   const session = await auth.api.getSession({ headers: c.req.raw.headers })
-  if (session !== null) {
-    return `u:${session.user.id}`
-  }
-  const address = c.req.header('cf-connecting-ip') ?? 'unknown'
-  const day = Math.floor(Date.now() / (24 * HOUR))
-  const secret = c.env.TRACE_KEY ?? c.env.BETTER_AUTH_SECRET
-  const network = await hmac(secret, `net:${address}:${day}`)
-  return `g:${network.slice(0, 16)}`
+  return session?.user.id ?? null
 }
 
-// Counts a song against the requester's hour; a song already counted this hour is free. The seconds to wait, or
-// null when it may be read
-export const takeSong = async (
+// Who is asking and what they may open: an account (a session cookie through the app's own origin, or the backend
+// token the app sends cross-origin) on its own budget; a guest browser on its own, and on its network's backstop;
+// a guest without a browser id (storage blocked, or a script) on its network at a browser's rate. Networks and
+// browsers are kept only as HMACs. `mark` names who the translations' mark points to
+export const requesterOf = async (
+  c: Ctx
+): Promise<{ mark: string; budgets: Budget[] }> => {
+  const { env } = c
+  const account = await accountOf(c)
+  if (account !== null) {
+    const key = `u:${account}`
+    return {
+      budgets: [
+        { key, limit: perHour(env.LYRICS_ACCOUNT_PER_HOUR, ACCOUNT_PER_HOUR) },
+      ],
+      mark: key,
+    }
+  }
+  const secret = env.TRACE_KEY ?? env.BETTER_AUTH_SECRET
+  const address = c.req.header('cf-connecting-ip') ?? 'unknown'
+  const day = Math.floor(Date.now() / (24 * HOUR))
+  const networkMac = await hmac(secret, `net:${address}:${day}`)
+  const network = networkMac.slice(0, 16)
+  const guestLimit = perHour(env.LYRICS_GUEST_PER_HOUR, GUEST_PER_HOUR)
+  const device = c.req.header('x-synbox-device') ?? ''
+  if (!DEVICE.test(device)) {
+    const key = `n:${network}`
+    return { budgets: [{ key, limit: guestLimit }], mark: key }
+  }
+  const browser = await hmac(secret, `device:${device}`)
+  const key = `d:${browser.slice(0, 16)}`
+  return {
+    budgets: [
+      { key, limit: guestLimit },
+      {
+        key: `g:${network}`,
+        limit: perHour(env.LYRICS_NETWORK_PER_HOUR, NETWORK_PER_HOUR),
+      },
+    ],
+    mark: key,
+  }
+}
+
+// The seconds until a budget's hour turns, or null when the song is already counted in it or still fits
+const budgetWait = async (
   db: D1Database,
-  requester: string,
+  { key, limit }: Budget,
   videoId: string,
-  limit: number,
+  hour: number,
   now: number
 ): Promise<number | null> => {
-  const hour = Math.floor(now / HOUR)
   const seen = await db
     .prepare(
       `select 1 from "lyrics_hit" where "requester" = ?1 and "hour" = ?2 and "videoId" = ?3`
     )
-    .bind(requester, hour, videoId)
+    .bind(key, hour, videoId)
     .first()
   if (seen !== null) {
     return null
@@ -212,17 +256,40 @@ export const takeSong = async (
     .prepare(
       `select count(*) as "n" from "lyrics_hit" where "requester" = ?1 and "hour" = ?2`
     )
-    .bind(requester, hour)
+    .bind(key, hour)
     .first<{ n: number }>()
-  if ((counted?.n ?? 0) >= limit) {
-    return Math.max(1, Math.ceil(((hour + 1) * HOUR - now) / 1000))
-  }
-  await db
-    .prepare(
-      `insert or ignore into "lyrics_hit" ("requester", "hour", "videoId") values (?1, ?2, ?3)`
+  return (counted?.n ?? 0) >= limit
+    ? Math.max(1, Math.ceil(((hour + 1) * HOUR - now) / 1000))
+    : null
+}
+
+// Counts a song against every budget of the requester's hour; a song already counted in a budget is free there. The
+// seconds to wait when any budget is spent (nothing is counted then), or null when it may be read
+export const takeSong = async (
+  db: D1Database,
+  budgets: Budget[],
+  videoId: string,
+  now: number
+): Promise<number | null> => {
+  const hour = Math.floor(now / HOUR)
+  const waits = await Promise.all(
+    budgets.map(
+      async (budget) => await budgetWait(db, budget, videoId, hour, now)
     )
-    .bind(requester, hour, videoId)
-    .run()
+  )
+  const wait = Math.max(...waits.map((w) => w ?? 0))
+  if (wait > 0) {
+    return wait
+  }
+  await db.batch(
+    budgets.map(({ key }) =>
+      db
+        .prepare(
+          `insert or ignore into "lyrics_hit" ("requester", "hour", "videoId") values (?1, ?2, ?3)`
+        )
+        .bind(key, hour, videoId)
+    )
+  )
   return null
 }
 
@@ -337,7 +404,7 @@ const preflight = (c: Ctx) => {
   }
   return c.body(null, 204, {
     ...cors,
-    'Access-Control-Allow-Headers': 'Authorization',
+    'Access-Control-Allow-Headers': 'Authorization, X-Synbox-Device',
     'Access-Control-Allow-Methods': 'GET',
     'Access-Control-Max-Age': '600',
   })
@@ -364,22 +431,11 @@ lyrics.get('/lyrics-dates', async (c) => {
   return c.json({ songs }, 200, cors)
 })
 
-const limitOf = (env: LyricsEnv, requester: string) =>
-  requester.startsWith('u:')
-    ? perHour(env.LYRICS_ACCOUNT_PER_HOUR, ACCOUNT_PER_HOUR)
-    : perHour(env.LYRICS_GUEST_PER_HOUR, GUEST_PER_HOUR)
-
-// Counts the song before anything is read, cached or not: the 429, or the requester
+// Counts the song before anything is read, cached or not: the 429, or whom the mark names
 const admit = async (c: Ctx, videoId: string) => {
-  const requester = await requesterOf(c)
-  const wait = await takeSong(
-    c.env.DB,
-    requester,
-    videoId,
-    limitOf(c.env, requester),
-    Date.now()
-  )
-  return { requester, wait }
+  const { mark, budgets } = await requesterOf(c)
+  const wait = await takeSong(c.env.DB, budgets, videoId, Date.now())
+  return { requester: mark, wait }
 }
 
 const tooMany = (c: Ctx, wait: number) =>
