@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
 
-import { handleLibrarySongs, type KeptList } from './library-songs'
+import type { KeptList } from './library-songs'
+import { handleLibrarySongs } from './library-songs'
 
 const LIST = JSON.stringify({
   songs: [{ karaoke: true, title: 'A', video_id: 'gcgKUcJKxls' }],
@@ -72,7 +73,7 @@ describe('library songs', () => {
 
   it("doesn't wait out a cold start, and keeps the list once it comes", async () => {
     vi.useFakeTimers()
-    let wake = (_: Response) => undefined as unknown
+    let wake: ((response: Response) => void) | undefined
     vi.stubGlobal(
       'fetch',
       vi.fn(
@@ -91,7 +92,7 @@ describe('library songs', () => {
     await vi.advanceTimersByTimeAsync(2500)
     const response = await answer
     expect(await response.text()).toBe(OLD)
-    wake(new Response(LIST))
+    wake?.(new Response(LIST))
     await settle(work)
     expect(kept.read()).toBe(LIST)
   })
