@@ -22,7 +22,7 @@ const LandingPage = () => {
       ref={setBox}
       data-scroll-top
       data-rise={rise || undefined}
-      className='flex custom-scrollbar flex-1 flex-col overflow-x-hidden overflow-y-scroll page-x-md'>
+      className='flex flex-1 flex-col overflow-x-hidden overflow-y-scroll page-x-md'>
       <title>Synbox</title>
       <HeroGenerateLyricsSection />
       <section className='mx-auto flex w-full flex-col gap-8 lg:flex-row lg:gap-6'>

@@ -53,7 +53,7 @@ const PrivacyPage = () => {
     <section
       ref={setBox}
       data-scroll-top
-      className='relative flex custom-scrollbar flex-1 flex-col overflow-y-auto pt-(--topbar-h) page-x pb-page-bottom-sm'>
+      className='relative flex flex-1 flex-col overflow-y-auto pt-(--topbar-h) page-x pb-page-bottom-sm'>
       <title>Privacy · Synbox</title>
 
       <div className='mx-auto flex w-full max-w-2xl flex-col gap-8 pt-8'>
