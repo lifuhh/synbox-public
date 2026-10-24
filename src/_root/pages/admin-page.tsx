@@ -5,6 +5,7 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   EllipsisIcon,
+  PencilIcon,
   Undo2Icon,
 } from 'lucide-react'
 import { useState } from 'react'
@@ -47,6 +48,7 @@ import {
   dropReasonLabel,
   reportState,
   useAdminGenerations,
+  useAdminInvites,
   useAdminReports,
   useAdminSettings,
   useAdminSignals,
@@ -55,9 +57,13 @@ import {
   useSetGenerationEnabled,
   useSetDailyLimit,
   useChangeReport,
+  useDecideInvite,
+  useSetAdminNote,
 } from '@/lib/admin-console'
 import type {
   AdminGeneration,
+  AdminInvite,
+  InviteStatus,
   AdminReport,
   ReportChange,
   ReportState,
@@ -140,7 +146,11 @@ const Badge = ({
   </span>
 )
 
-const Avatar = ({ user }: { user: AdminUser }) =>
+const Avatar = ({
+  user,
+}: {
+  user: Pick<AdminUser, 'email' | 'image' | 'name'>
+}) =>
   user.image !== null && user.image !== '' ? (
     <img
       src={user.image}
@@ -155,6 +165,80 @@ const Avatar = ({ user }: { user: AdminUser }) =>
       {(user.name.trim()[0] ?? user.email[0] ?? '?').toUpperCase()}
     </span>
   )
+
+// Who someone is, in the admin's words: the note, or Add Note, with a pen that edits it in place
+const AdminNote = ({
+  user,
+}: {
+  user: { id: string; name: string; adminNote?: string | null }
+}) => {
+  const { toast } = useToast()
+  const { isPending, mutate, variables } = useSetAdminNote()
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState('')
+  const saved = user.adminNote ?? ''
+  const shown = isPending && variables !== undefined ? variables.note : saved
+  if (editing) {
+    const commit = () => {
+      setEditing(false)
+      if (draft.trim() === saved) {
+        return
+      }
+      mutate(
+        { note: draft.trim(), userId: user.id },
+        {
+          onError: () => {
+            toast({
+              description: 'Try again.',
+              title: 'Could Not Save the Note',
+              variant: 'destructive',
+            })
+          },
+        }
+      )
+    }
+    return (
+      <Input
+        // oxlint-disable-next-line jsx-a11y/no-autofocus -- it replaces the pen the admin just pressed
+        autoFocus
+        aria-label={`Note on ${user.name}`}
+        placeholder='Who is this?'
+        maxLength={200}
+        value={draft}
+        className='h-8 w-full max-w-64'
+        onChange={(event) => {
+          setDraft(event.target.value)
+        }}
+        onBlur={commit}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter') {
+            commit()
+          } else if (event.key === 'Escape') {
+            setEditing(false)
+          }
+        }}
+      />
+    )
+  }
+  return (
+    <button
+      type='button'
+      aria-label={
+        shown === '' ? `Add Note on ${user.name}` : `Edit Note on ${user.name}`
+      }
+      className={cn(
+        '-ml-1.5 flex h-7 max-w-64 items-center gap-1.5 rounded-md px-1.5 text-xs transition-colors hover:bg-accent focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-hidden',
+        shown === '' ? 'text-muted-foreground' : 'text-foreground'
+      )}
+      onClick={() => {
+        setDraft(shown)
+        setEditing(true)
+      }}>
+      <PencilIcon aria-hidden className='size-3.5 shrink-0' />
+      <span className='truncate'>{shown === '' ? 'Add Note' : shown}</span>
+    </button>
+  )
+}
 
 const Stat = ({ label, children }: { label: string; children: ReactNode }) => (
   <div className='flex flex-col gap-1'>
@@ -500,6 +584,7 @@ const Account = ({ user, isSelf }: AccountProps) => (
       <span className='block truncate text-xs text-muted-foreground'>
         {user.email}
       </span>
+      <AdminNote user={user} />
     </div>
   </div>
 )
@@ -1274,9 +1359,149 @@ const SignalsPanel = () => {
   )
 }
 
+const INVITE_STATES: { id: InviteStatus; name: string; empty: string }[] = [
+  { empty: 'No pending requests.', id: 'pending', name: 'Pending' },
+  { empty: 'No allowed requests.', id: 'allowed', name: 'Allowed' },
+  { empty: 'No dismissed requests.', id: 'dismissed', name: 'Dismissed' },
+]
+
+const InviteActions = ({ invite }: { invite: AdminInvite }) => {
+  const { toast } = useToast()
+  const { isPending, mutate } = useDecideInvite()
+  const decide = (decision: 'allowed' | 'dismissed') => {
+    mutate(
+      { decision, userId: invite.userId },
+      {
+        onError: () => {
+          toast({
+            description: 'Try again.',
+            title: 'Could Not Save',
+            variant: 'destructive',
+          })
+        },
+      }
+    )
+  }
+  return (
+    <div className='flex shrink-0 gap-2'>
+      {invite.status !== 'allowed' && (
+        <Button
+          size='sm'
+          disabled={isPending}
+          onClick={() => {
+            decide('allowed')
+          }}>
+          Allow
+        </Button>
+      )}
+      {invite.status === 'pending' && (
+        <Button
+          size='sm'
+          variant='outline'
+          disabled={isPending}
+          onClick={() => {
+            decide('dismissed')
+          }}>
+          Dismiss
+        </Button>
+      )}
+    </div>
+  )
+}
+
+// Who asked for more songs a day, with their note. Allow sets their limit, which the Accounts tab can change later
+const InvitesList = () => {
+  const { data: invites, error } = useAdminInvites()
+  const defaultLimit = useAdminSettings().data?.limits.user ?? 1
+  const [shownStatus, setShownStatus] = useState<InviteStatus>('pending')
+  if (error !== null) {
+    return <LoadError error={error} />
+  }
+  if (invites === undefined) {
+    return <Skeleton className='h-40 w-full' />
+  }
+  const shown = invites.filter((invite) => invite.status === shownStatus)
+  return (
+    <div className='flex flex-col gap-3'>
+      <div
+        role='radiogroup'
+        aria-label='Request State'
+        className='inline-flex gap-1 self-start rounded-lg bg-secondary p-1'>
+        {INVITE_STATES.map((option) => (
+          <button
+            key={option.id}
+            type='button'
+            // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- segmented buttons in an ARIA radio group, like Reports
+            role='radio'
+            aria-checked={shownStatus === option.id}
+            onClick={() => {
+              setShownStatus(option.id)
+            }}
+            className={cn(
+              'h-7 rounded-md px-3 text-sm font-medium transition-colors focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-hidden touch:h-9',
+              shownStatus === option.id
+                ? 'bg-background text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
+            )}>
+            {option.name}
+            <span className='ml-1.5 text-muted-foreground tabular-nums'>
+              {invites.filter((invite) => invite.status === option.id).length}
+            </span>
+          </button>
+        ))}
+      </div>
+      {shown.length === 0 ? (
+        <p className='py-6 text-center text-sm text-muted-foreground'>
+          {INVITE_STATES.find((option) => option.id === shownStatus)?.empty}
+        </p>
+      ) : (
+        <ul className='text-sm'>
+          {shown.map((invite) => (
+            <li
+              key={invite.userId}
+              className='flex flex-col gap-2 border-t border-border py-3'>
+              <div className='flex items-center justify-between gap-3'>
+                <div className='flex min-w-0 items-center gap-3'>
+                  <Avatar user={invite} />
+                  <div className='flex min-w-0 flex-col'>
+                    <span className='truncate font-medium text-foreground'>
+                      {invite.name}
+                    </span>
+                    <span className='truncate text-xs text-muted-foreground'>
+                      {invite.email}
+                    </span>
+                    <AdminNote
+                      user={{
+                        adminNote: invite.adminNote,
+                        id: invite.userId,
+                        name: invite.name,
+                      }}
+                    />
+                  </div>
+                </div>
+                <InviteActions invite={invite} />
+              </div>
+              {invite.note !== '' && (
+                <p className='text-pretty whitespace-pre-wrap text-foreground'>
+                  {invite.note}
+                </p>
+              )}
+              <p className='text-xs text-muted-foreground'>
+                <When value={invite.createdAt} /> · Now{' '}
+                {limitLabel(invite.dailyLimit, defaultLimit)}
+              </p>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
 const TABS = [
   'songs',
   'reports',
+  'invites',
   'recommendations',
   'accounts',
   'signals',
@@ -1314,6 +1539,9 @@ const AdminTabs = () => {
           <TabsTrigger value='reports' className='h-full'>
             Reports
           </TabsTrigger>
+          <TabsTrigger value='invites' className='h-full'>
+            Invites
+          </TabsTrigger>
           <TabsTrigger value='recommendations' className='h-full'>
             Recommendations
           </TabsTrigger>
@@ -1339,6 +1567,9 @@ const AdminTabs = () => {
       </TabsContent>
       <TabsContent value='reports' className='mt-4'>
         <ReportsList />
+      </TabsContent>
+      <TabsContent value='invites' className='mt-4'>
+        <InvitesList />
       </TabsContent>
       <TabsContent value='recommendations' className='mt-4'>
         <div className='flex flex-col gap-3'>

@@ -6,6 +6,14 @@ import type { Env } from './auth'
 import { fixer } from './fixer'
 import { generation } from './generation'
 import type { GenerationEnv } from './generation'
+import {
+  decideInvite,
+  listInviteRequests,
+  parseInviteNote,
+  readInviteStatus,
+  requestInvite,
+  setAdminNote,
+} from './invites'
 import { applyOps, parseOps, readLibrary } from './library'
 import type { LibraryEnv } from './library-songs'
 import { libraryMembership } from './library-songs'
@@ -61,6 +69,7 @@ type AppEnv = Env &
   LibraryEnv &
   GenerationEnv & {
     USER_DAILY_LIMIT: string
+    INVITED_DAILY_LIMIT: string
     GUEST_DAILY_LIMIT: string
     GUEST_DAILY_TOTAL: string
     NETWORK_DAILY_LIMIT: string
@@ -102,9 +111,24 @@ app.get('/api/me', async (c) => {
   }
   const { id, name, email, image, role } = session.user
   return c.json({
+    invite: await readInviteStatus(c.env.DB, id, role ?? 'user'),
     quota: await getQuota(c.env.DB, id, limitsOf(c.env)),
     user: { email, id, image, name, role: role ?? 'user' },
   })
+})
+
+// A signed-in user asks for more new songs a day than the default ({ note? }); asking again changes nothing
+app.post('/api/me/invite-request', async (c) => {
+  const userId = await userIdOf(c.env, c.req.raw.headers)
+  if (userId === null) {
+    return c.json({ code: 'unauthorized' }, 401)
+  }
+  const note = parseInviteNote(await c.req.json<unknown>().catch(() => ({})))
+  if (note === null) {
+    return c.json({ code: 'bad_request' }, 400)
+  }
+  await requestInvite(c.env.DB, userId, note, Date.now())
+  return c.body(null, 204)
 })
 
 // The songs the signed-in user generated, newest first, for their offline lyrics; a guest has none
@@ -485,6 +509,7 @@ admin.get('/users', async (c) => {
   const { results } = await c.env.DB.prepare(
     `select u."id", u."email", u."name", u."image", u."role", u."banned", u."banReason", u."createdAt",
        (select max(s."updatedAt") from "session" s where s."userId" = u."id") as "lastSeenAt",
+       (select n."note" from "adminNote" n where n."userId" = u."id") as "adminNote",
        case when q."userId" is null then 'default' when q."dailyLimit" is null then 'unlimited'
          else q."dailyLimit" end as "dailyLimit",
        (select count(*) from "generation" g where g."userId" = u."id" and g."createdAt" > ?1
@@ -553,6 +578,17 @@ admin.put('/users/:id/limit', async (c) => {
     )
     .run()
   return c.body(null, 204)
+})
+
+// The admin's own note on an account ({ note }); empty removes it
+admin.put('/users/:id/note', async (c) => {
+  const saved = await setAdminNote(
+    c.env.DB,
+    c.req.param('id'),
+    await c.req.json<unknown>().catch(() => null),
+    { adminId: c.get('adminId'), now: Date.now() }
+  )
+  return saved ? c.body(null, 204) : c.json({ code: 'bad_request' }, 400)
 })
 
 // The limits in force, today's guest songs, and the switch that pauses all generation
@@ -634,6 +670,23 @@ admin.post('/reports/:id/reopen', async (c) =>
     ? c.body(null, 204)
     : c.json({ code: 'not_found' }, 404)
 )
+
+// Who asked for an invite, with their note and the limit they have now
+admin.get('/invites', async (c) =>
+  c.json({ invites: await listInviteRequests(c.env.DB) })
+)
+
+// Allow gives the account INVITED_DAILY_LIMIT new songs a day; Dismiss closes the request, unseen by its author
+admin.post('/invites/:userId/:decision{allowed|dismissed}', async (c) => {
+  const decision =
+    c.req.param('decision') === 'allowed' ? 'allowed' : 'dismissed'
+  const found = await decideInvite(c.env.DB, c.req.param('userId'), decision, {
+    adminId: c.get('adminId'),
+    dailyLimit: count(c.env.INVITED_DAILY_LIMIT),
+    now: Date.now(),
+  })
+  return found ? c.body(null, 204) : c.json({ code: 'not_found' }, 404)
+})
 
 // Leads on someone working around the song limit (worker/src/signals.ts)
 admin.get('/signals', async (c) =>

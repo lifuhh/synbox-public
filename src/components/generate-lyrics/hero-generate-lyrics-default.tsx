@@ -4,11 +4,16 @@ import {
   LoaderCircleIcon,
   PlayIcon,
   SearchIcon,
+  TicketIcon,
 } from 'lucide-react'
 import { useId, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router'
 
 import { startFromButton } from '@/components/generation/start-generation'
+import {
+  useCanRequestInvite,
+  useOpenRequestInvite,
+} from '@/components/invite/request-invite'
 import { GoogleMark } from '@/components/shared/google-mark'
 import { Button } from '@/components/ui/button'
 import { Input, InputField } from '@/components/ui/input'
@@ -51,6 +56,20 @@ const isSearchText = (value: string) =>
   value.trim().length > 0 &&
   ownSongPath(value) === null &&
   !looksLikeYoutubeLink(value)
+
+// A link to a song Synbox doesn't have yet, once the lookup has answered
+const isNewSong = (
+  validLink: boolean,
+  checking: boolean,
+  hasLyrics: boolean
+): boolean => validLink && !checking && !hasLyrics
+
+// A signed-in account out of songs gets no button, unless it can ask for an invite instead
+const showsAction = (
+  blocked: boolean,
+  user: boolean,
+  requestInstead: boolean
+) => requestInstead || !(blocked && user)
 
 // Search is a mode, not an error, so it gets its own colour; red is kept for a link that fails to parse.
 type InputMode = 'empty' | 'search' | 'valid' | 'invalid'
@@ -139,12 +158,16 @@ const HeroGenerateLyricsDefault = ({
   // A new song here would be refused, so offer what would work instead: sign-in for a guest, nothing for a
   // signed-in user who has used today's songs
   const access = useAccess()
-  const blocked =
-    !isSearch &&
-    validationSuccess &&
-    !isCheckingLyrics &&
-    !existingLyrics &&
-    !access.newSong
+  const newSong = isNewSong(
+    validationSuccess,
+    isCheckingLyrics,
+    existingLyrics !== null && existingLyrics !== undefined
+  )
+  const blocked = !isSearch && newSong && !access.newSong
+  // Out of songs on the default limit: the account can ask for more instead
+  const canRequestInvite = useCanRequestInvite()
+  const requestInstead = blocked && canRequestInvite
+  const openRequestInvite = useOpenRequestInvite()
 
   const handleOpenLandingPageDialog = () => {
     if (ownPath !== null) {
@@ -162,6 +185,8 @@ const HeroGenerateLyricsDefault = ({
         void navigate(`/v/${extractedVideoId}`, {
           state: { videoId: extractedVideoId },
         })
+      } else if (requestInstead) {
+        openRequestInvite()
       } else if (blocked) {
         void signInWithGoogle()
       } else {
@@ -209,7 +234,7 @@ const HeroGenerateLyricsDefault = ({
       return 'Starting…'
     }
     if (blocked) {
-      return 'Sign In to Generate'
+      return requestInstead ? 'Request Invite' : 'Sign In to Generate'
     }
     return existingLyrics ? 'Play Video' : 'Try Now'
   }
@@ -225,7 +250,11 @@ const HeroGenerateLyricsDefault = ({
       return null
     }
     if (blocked) {
-      return <GoogleMark />
+      return requestInstead ? (
+        <TicketIcon className='size-5 shrink-0' />
+      ) : (
+        <GoogleMark />
+      )
     }
     return existingLyrics ? (
       <PlayIcon className='size-5 shrink-0 fill-current' />
@@ -234,7 +263,11 @@ const HeroGenerateLyricsDefault = ({
     )
   }
 
-  const showAction = !(blocked && access.kind === 'user')
+  const showAction = showsAction(
+    blocked,
+    access.kind === 'user',
+    requestInstead
+  )
   const actionDisabled = errorMessage !== '' || isCheckingLyrics || checking
   const submit = () => {
     if (inputValue.length === 0 || actionDisabled) {
