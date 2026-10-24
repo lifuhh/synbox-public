@@ -42,6 +42,8 @@ export interface GenerationState {
   focusedId: string | null
   // This tab's top bar panel is open
   expanded: boolean
+  // Songs this tab is asking the backend about (requestGeneration), before any job exists
+  checking: readonly string[]
 }
 
 const RETRIES = 2
@@ -74,6 +76,7 @@ const readStored = () => {
 }
 
 let state: GenerationState = {
+  checking: [],
   expanded: false,
   focusedId: null,
   jobs: readStored(),
@@ -105,6 +108,7 @@ const withJobs = (jobs: readonly Job[]): GenerationState => {
   // The panel closes when its list empties. Not on a null focus: a page loaded with songs listed has none
   // until one is picked, and the panel opened on them must stay open as they are marked seen
   return {
+    checking: state.checking,
     expanded: (jobs.length > 0 || otherNotifications > 0) && state.expanded,
     focusedId: next,
     jobs,
@@ -591,16 +595,24 @@ export const startGeneration = (
 
 // What a button calls: asks the backend first, so a refused song never opens the panel. Resolves to the
 // refusal, or null once the generation started (or its running job was picked). `stayed` is read once the
-// backend answered, which can take seconds while it starts up
+// backend answered, which can take seconds while it starts up. A press on a song already being checked does
+// nothing (`'checking'`): the first press's answer starts it
 export const requestGeneration = async (
   request: GenerationRequest,
   stayed: () => boolean = () => true
-): Promise<Refusal | null> => {
+): Promise<Refusal | 'checking' | null> => {
+  const { videoId } = request
+  if (state.checking.includes(videoId)) {
+    return 'checking'
+  }
   const running = state.jobs.some(
-    (job) => isActive(job) && job.videoId === request.videoId
+    (job) => isActive(job) && job.videoId === videoId
   )
   if (!running) {
-    const refusal = await checkGeneration(request.videoId, request.mode)
+    set({ ...state, checking: [...state.checking, videoId] })
+    const refusal = await checkGeneration(videoId, request.mode).finally(() => {
+      set({ ...state, checking: state.checking.filter((id) => id !== videoId) })
+    })
     if (refusal !== null) {
       return refusal
     }
@@ -686,6 +698,19 @@ export const leadJob = (jobs: readonly Job[], now: number): Job | null => {
     }
   }
   return best
+}
+
+// Where a song stands in this tab: being checked, generating (queued or running), or neither
+export const generationPhase = (
+  { checking, jobs }: GenerationState,
+  videoId: string
+): 'checking' | 'generating' | null => {
+  if (checking.includes(videoId)) {
+    return 'checking'
+  }
+  return jobs.some((job) => isActive(job) && job.videoId === videoId)
+    ? 'generating'
+    : null
 }
 
 export const activeCount = ({ jobs }: GenerationState) =>

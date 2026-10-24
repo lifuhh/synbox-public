@@ -28,8 +28,9 @@ import { ToastAction } from '@/components/ui/toast'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { useToast } from '@/components/ui/use-toast'
 import {
+  GENERATE_LABELS,
   startGenerating,
-  useGenerating,
+  useGenerationPhase,
 } from '@/components/watch/generate-lyrics-button'
 import { SaveToPlaylist } from '@/components/watch/save-to-playlist'
 import {
@@ -188,21 +189,22 @@ const useSongActions = (
 ): { actions: SongAction[]; chart: boolean } => {
   const chart = useAtomValue(chartSongAtom)?.videoId === videoId
   const title = useAtomValue(currentVideoAtom)?.title
-  const generating = useGenerating(videoId)
+  const phase = useGenerationPhase(videoId)
   if (!chart) {
     return { actions: libraryActions, chart }
   }
   const generate: SongAction = {
-    disabled: generating,
+    disabled: phase !== null,
     handleSelect: () => {
       startGenerating(videoId, title)
     },
-    icon: generating ? (
-      <LoaderCircleIcon className='size-5 shrink-0 motion-safe:animate-spin' />
-    ) : (
-      <SparklesIcon className='size-5 shrink-0' />
-    ),
-    label: generating ? 'Generating Lyrics' : 'Generate Lyrics',
+    icon:
+      phase === null ? (
+        <SparklesIcon className='size-5 shrink-0' />
+      ) : (
+        <LoaderCircleIcon className='size-5 shrink-0 motion-safe:animate-spin' />
+      ),
+    label: GENERATE_LABELS[phase ?? 'idle'],
     // The watch page offers it in the lyrics panel, as a labelled button
     stageOnly: true,
   }

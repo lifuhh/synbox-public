@@ -61,7 +61,8 @@ export const startFromButton = async (
     watch.stop
   )
   clearTimeout(timer)
-  if (refusal === null) {
+  // Started, or a second press while the first is still being checked
+  if (refusal === null || refusal === 'checking') {
     notice?.dismiss()
     return
   }
