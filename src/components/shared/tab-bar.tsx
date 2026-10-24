@@ -17,7 +17,7 @@ import { tabTap } from '@/lib/tab-tap'
 import { cn } from '@/utils/cn'
 
 // Only the installed app shows it, and only once a song has played, so it loads then (the player engine with it)
-const MiniBar = lazy(async () => import('./mini-bar'))
+const MiniBar = lazy(async () => await import('./mini-bar'))
 
 // `also`: other pages the tab is the home of (playlists open from the Library)
 // A tab is current on its own page, and on the pages it is the home of; NavLink's own aria-current would leave
