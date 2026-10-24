@@ -11,8 +11,15 @@ import { useLoopingCarousel } from '@/hooks/use-looping-carousel'
 import { loopCopies } from '@/lib/carousel-motion'
 import { useGetLandingPagePlaylist } from '@/lib/react-query/queries-and-mutations'
 import type { formattedYoutubeVideoItemForCarousel } from '@/types'
+import { cn } from '@/utils/cn'
 
 const SKELETON_CARDS = 5
+// The loading row's slide in the middle, the one centred (carousel-track: the loading row is centred)
+const SKELETON_CENTRE = Math.floor(SKELETON_CARDS / 2)
+// Off-centre slides shrink a little; the loading row's do too, so its neighbours sit exactly where the songs'
+// will and nothing moves sideways when they arrive
+const SLIDE_SCALE =
+  'motion-safe:scale-100 motion-safe:transition-transform motion-safe:duration-150 data-[active=false]:motion-safe:scale-94'
 // Slides on each side of the list's middle copy, more than one flick can travel past
 const LOOP_BUFFER = 16
 
@@ -36,7 +43,10 @@ const Card = ({
     aria-hidden={clone || undefined}
     tabIndex={clone ? -1 : undefined}
     data-active={active}
-    className='group flex min-w-0 snap-center flex-col rounded-xl focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden motion-safe:scale-100 motion-safe:transition-transform motion-safe:duration-150 data-[active=false]:motion-safe:scale-94'>
+    className={cn(
+      'group flex min-w-0 snap-center flex-col rounded-xl focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden',
+      SLIDE_SCALE
+    )}>
     {/* Off-centre slides shrink, fade their picture and mute their title, so the centred one stands out
         whatever the pictures look like. Text is muted, not faded: faded text would fall below 4.5:1. The
         centred slide keeps a scale (100%), so a slide changing place restyles without laying out the row */}
@@ -70,9 +80,11 @@ const Card = ({
 // Memoised: when the centred song changes, only the cards whose `active` flips render again
 const SongCard = memo(Card)
 
-// A card's exact box: the picture, then the same fixed text block
-const CardSkeleton = () => (
-  <div className='flex min-w-0 flex-col'>
+// A card's exact box: the picture, then the same fixed text block, shrunk off centre as a card is
+const CardSkeleton = ({ active }: { active: boolean }) => (
+  <div
+    data-active={active}
+    className={cn('flex min-w-0 flex-col', SLIDE_SCALE)}>
     <Skeleton shape='card' className='aspect-video w-full' />
     <div className='mt-4 flex h-19 flex-col gap-2.5 pt-1'>
       <Skeleton className='h-4 w-4/5' />
@@ -183,7 +195,7 @@ const SongHighlightCarousel = () => {
               className='carousel-track'>
               {Array.from({ length: SKELETON_CARDS }, (_, index) => (
                 // oxlint-disable-next-line no-array-index-key
-                <CardSkeleton key={index} />
+                <CardSkeleton key={index} active={index === SKELETON_CENTRE} />
               ))}
             </output>
           ) : (
