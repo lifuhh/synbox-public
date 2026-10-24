@@ -1890,16 +1890,10 @@
   [data-tab-nav] {
     transition: scale 300ms var(--ease-out);
 
-    & [data-tab-icon] {
-      transition:
-        translate 300ms var(--ease-out),
-        scale 300ms var(--ease-out);
-    }
-
+    & [data-tab-icon],
     & [data-tab-label] {
-      transition:
-        translate 300ms var(--ease-out),
-        opacity 300ms var(--ease-out);
+      transition: 300ms var(--ease-out);
+      transition-property: translate, scale, opacity;
     }
 
     /* The press area reaches across the pill's padding and half the gaps, so a compact tab stays over 44px */
@@ -1935,7 +1929,7 @@
   html[data-topbar-state='hidden'] [data-tabbar-root]:not(:focus-within) {
     & [data-tab-label] {
       opacity: 0;
-      transition-duration: 300ms, 200ms;
+      transition-duration: 300ms, 300ms, 200ms;
     }
 
     @media (prefers-reduced-motion: no-preference) {
