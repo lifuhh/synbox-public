@@ -51,11 +51,10 @@ export const EditRecommendations = () => {
               visitor sees the list shuffled.
             </DialogDescription>
           </DialogHeader>
-          {open && (
-            <Suspense fallback={<Skeleton className='h-40 w-full' />}>
-              <RecommendationsEditor />
-            </Suspense>
-          )}
+          {/* The content mounts only while open or closing, so the editor stays drawn as the dialog closes */}
+          <Suspense fallback={<Skeleton className='h-40 w-full' />}>
+            <RecommendationsEditor />
+          </Suspense>
         </DialogContent>
       </Dialog>
     </>

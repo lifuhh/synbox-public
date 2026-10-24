@@ -109,6 +109,27 @@ const nameOf = (
   return unseen > 0 ? `Notifications: ${unseen} new` : 'Notifications'
 }
 
+interface PanelContent {
+  job: Job | null
+  jobs: readonly Job[]
+  fixes: readonly Fix[]
+}
+
+// While it closes, the panel keeps exactly what it showed last while open, whatever left the list as it closed
+// (its last song, Dismiss All): never an older state, which would grow it before it shrinks
+const useShownWhileClosing = (open: boolean, live: PanelContent) => {
+  const [lastOpen, setLastOpen] = useState(live)
+  if (
+    open &&
+    (live.job !== lastOpen.job ||
+      live.jobs !== lastOpen.jobs ||
+      live.fixes !== lastOpen.fixes)
+  ) {
+    setLastOpen(live)
+  }
+  return open ? live : lastOpen
+}
+
 // The top bar's one place for lyrics generations. While songs generate it is a ring with the head of the
 // line's progress and how many are going; otherwise a bell, counting finished songs not yet looked at. It
 // opens the panel with every song, the picked one's steps, and each song's actions
@@ -221,13 +242,11 @@ const Notifications = () => {
   const byKeyboard = useRef(false)
   const focusInside = useRef(false)
 
-  // The panel keeps showing its last song while it closes after that song left the list
-  const shown = focusedJob(generation) ?? jobs.at(-1) ?? null
-  const [kept, setKept] = useState<Job | null>(shown)
-  if (shown !== null && shown !== kept) {
-    setKept(shown)
-  }
-  const body = shown ?? (expanded ? null : kept)
+  const content = useShownWhileClosing(expanded, {
+    fixes,
+    job: focusedJob(generation) ?? jobs.at(-1) ?? null,
+    jobs,
+  })
 
   const name = nameOf(going, ring ? view : null, unseen)
 
@@ -333,15 +352,15 @@ const Notifications = () => {
           focusInside.current = false
         }}
         className='max-h-[min(38rem,calc(var(--radix-popover-content-available-height)-var(--safe-bottom)))] w-[min(25rem,calc(100vw-1rem-var(--safe-left)-var(--safe-right)))] overflow-x-hidden overflow-y-auto overscroll-contain'>
-        {body === null && fixes.length === 0 ? (
+        {content.job === null && content.fixes.length === 0 ? (
           <p className='px-6 py-8 text-center text-sm text-muted-foreground'>
             No Notifications
           </p>
         ) : (
           <GenerationPanel
-            job={body}
-            jobs={jobs}
-            fixes={fixes}
+            job={content.job}
+            jobs={content.jobs}
+            fixes={content.fixes}
             onDismissFixes={onDismissFixes}
           />
         )}

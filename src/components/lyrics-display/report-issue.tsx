@@ -66,11 +66,20 @@ export const ReportIssue = ({
     queryKey: mineKey,
     staleTime: 0,
   })
-  const close = () => {
-    setMessage('')
-    setProblem(null)
-    onClose()
+  // While it closes it keeps showing what it showed last while open: the song, the form with what was typed or
+  // the account's report. A new report starts empty
+  const [lastOpen, setLastOpen] = useState({ mine, target })
+  if (
+    target !== null &&
+    (target !== lastOpen.target || mine !== lastOpen.mine)
+  ) {
+    if (target !== lastOpen.target) {
+      setMessage('')
+      setProblem(null)
+    }
+    setLastOpen({ mine, target })
   }
+  const view = target === null ? lastOpen : { mine, target }
   const send = async () => {
     if (target === null || sending) {
       return
@@ -98,7 +107,7 @@ export const ReportIssue = ({
       setProblem(shown)
       return
     }
-    close()
+    onClose()
     toast(
       result === 'sent'
         ? { title: 'Report Sent' }
@@ -111,32 +120,32 @@ export const ReportIssue = ({
       open={target !== null}
       onOpenChange={(open) => {
         if (!open) {
-          close()
+          onClose()
         }
       }}>
       <DialogContent className='max-w-md'>
         <DialogHeader>
           <DialogTitle>
-            {mine ? 'Already Reported' : 'Report Issue'}
+            {view.mine ? 'Already Reported' : 'Report Issue'}
           </DialogTitle>
           <DialogDescription>
             <span className='block truncate'>
-              {target?.title}
-              {typeof target?.atSeconds === 'number' &&
-                ` · ${formatClock(target.atSeconds)}`}
+              {view.target?.title}
+              {typeof view.target?.atSeconds === 'number' &&
+                ` · ${formatClock(view.target.atSeconds)}`}
             </span>
           </DialogDescription>
         </DialogHeader>
-        {mine ? (
+        {view.mine ? (
           <div className='flex flex-col gap-3'>
             <p className='text-sm text-muted-foreground'>
               We&apos;ll let you know when it&apos;s fixed.
             </p>
             <p className='max-h-40 overflow-y-auto rounded-md bg-muted px-3 py-2 text-sm wrap-break-word whitespace-pre-wrap'>
-              {mine.message}
+              {view.mine.message}
             </p>
             <div className='flex justify-end'>
-              <Button type='button' onClick={close}>
+              <Button type='button' onClick={onClose}>
                 Done
               </Button>
             </div>

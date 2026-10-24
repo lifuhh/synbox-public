@@ -199,6 +199,16 @@ const MakeDefaultDialog = ({
   const queryClient = useQueryClient()
   const [error, setError] = useState<string | null>(null)
   const { isPending, mutate: activate } = useActivateLyricsVersion()
+  // While it closes it keeps naming the version it asked about; each opening starts without the last error
+  const [was, setWas] = useState(version)
+  const [asked, setAsked] = useState(version)
+  if (version !== was) {
+    setWas(version)
+    if (version !== null) {
+      setAsked(version)
+      setError(null)
+    }
+  }
 
   const submit = () => {
     if (version === null) {
@@ -230,7 +240,6 @@ const MakeDefaultDialog = ({
       open={version !== null}
       onOpenChange={(open) => {
         if (!open) {
-          setError(null)
           onClose()
         }
       }}>
@@ -242,7 +251,7 @@ const MakeDefaultDialog = ({
             submit()
           }}>
           <DialogHeader>
-            <DialogTitle>Make Version {version} the Default?</DialogTitle>
+            <DialogTitle>Make Version {asked} the Default?</DialogTitle>
             <DialogDescription>
               Everyone who plays this song will get these lyrics. You can switch
               back at any time.
