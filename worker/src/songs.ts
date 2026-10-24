@@ -1,5 +1,6 @@
 // Each song's listens (a visit to its player page counts one) and likes (one per account, or per device for a
-// guest). Public: anyone may add a listen or like, so the counts are a signal, not an audit
+// guest). Public: anyone may add a listen or like to a library song (index.ts › refusedSong), so the counts are a
+// signal, not an audit
 
 const VIDEO_ID = /^[\w-]{11}$/u
 // A guest's device: the random id the app keeps in the browser (crypto.randomUUID)
@@ -29,8 +30,8 @@ export const addListen = async (
     .run()
 }
 
-// The songs anyone played most recently, latest first. Any video id can be sent a listen, so the app keeps only
-// its library's songs from these
+// The songs anyone played most recently, latest first. Rows from before listens were kept to library songs
+// (2026-10-24) may name other videos, so the app keeps only its library's songs from these
 export const RECENT_LISTENS = 60
 export const listRecentListens = async (db: D1Database) => {
   const { results } = await db

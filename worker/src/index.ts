@@ -5,6 +5,8 @@ import { createAuth } from './auth'
 import type { Env } from './auth'
 import { fixer } from './fixer'
 import { applyOps, parseOps, readLibrary } from './library'
+import type { LibraryEnv } from './library-songs'
+import { libraryMembership } from './library-songs'
 import { applyPrefOps, parsePrefOps, readPrefs } from './prefs'
 import {
   checkGeneration,
@@ -51,13 +53,14 @@ import {
   setLike,
 } from './songs'
 
-type AppEnv = Env & {
-  USER_DAILY_LIMIT: string
-  GUEST_DAILY_LIMIT: string
-  GUEST_DAILY_TOTAL: string
-  NETWORK_DAILY_LIMIT: string
-  REPORTS_FIXER_TOKEN?: string
-}
+type AppEnv = Env &
+  LibraryEnv & {
+    USER_DAILY_LIMIT: string
+    GUEST_DAILY_LIMIT: string
+    GUEST_DAILY_TOTAL: string
+    NETWORK_DAILY_LIMIT: string
+    REPORTS_FIXER_TOKEN?: string
+  }
 
 const app = new Hono<{ Bindings: AppEnv }>()
 
@@ -231,11 +234,27 @@ app.post('/api/me/fixes/:mark{seen|dismiss}', async (c) => {
   return c.body(null, 204)
 })
 
+// Listens and likes are kept for library songs only (library-songs.ts): a video that isn't one is refused,
+// and so is any song while the library can't be asked
+const refusedSong = async (env: AppEnv, videoId: string) => {
+  const membership = await libraryMembership(env, videoId)
+  if (membership === 'in') {
+    return null
+  }
+  return membership === 'out'
+    ? ({ body: { code: 'not_in_library' }, status: 404 } as const)
+    : ({ body: { code: 'library_unavailable' }, status: 503 } as const)
+}
+
 // A visit to a song's player page: one more listen
 app.post('/api/songs/:videoId/listen', async (c) => {
   const videoId = c.req.param('videoId')
   if (!isVideoId(videoId)) {
     return c.json({ code: 'bad_request' }, 400)
+  }
+  const refused = await refusedSong(c.env, videoId)
+  if (refused !== null) {
+    return c.json(refused.body, refused.status)
   }
   await addListen(c.env.DB, videoId, Date.now())
   return c.body(null, 204)
@@ -279,6 +298,10 @@ app.put('/api/songs/:videoId/like', async (c) => {
     liker === null
   ) {
     return c.json({ code: 'bad_request' }, 400)
+  }
+  const refused = await refusedSong(c.env, videoId)
+  if (refused !== null) {
+    return c.json(refused.body, refused.status)
   }
   await setLike(c.env.DB, videoId, liker, body.liked, Date.now())
   return c.json(await readStats(c.env.DB, videoId, liker))

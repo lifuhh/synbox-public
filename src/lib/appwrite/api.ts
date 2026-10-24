@@ -51,29 +51,6 @@ const getSongDocument = async (tableId: string, songId: string) => {
   }
 }
 
-export const addSongInfoBySongId = async (songInfo: CurrentPlayingInfo) => {
-  const { videoId, title, author, thumbnailUrl } = songInfo
-
-  let songInfoUpload: Models.DefaultRow | undefined
-  try {
-    const appwriteId = createAppwriteIdFromYoutubeId(videoId)
-
-    songInfoUpload = await tables.createRow({
-      data: {
-        author,
-        thumbnailUrl,
-        title,
-      },
-      databaseId: appwriteConfig.databaseId,
-      rowId: appwriteId,
-      tableId: appwriteConfig.songInfoId,
-    })
-  } catch (error) {
-    console.log('Add Song Info Error:', error)
-  }
-  return songInfoUpload
-}
-
 export const getSongInfoBySongId = async (
   songId: string
 ): Promise<CurrentPlayingInfo | null> => {
