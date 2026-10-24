@@ -2,8 +2,9 @@
 // the last release, from any session. The only way changes reach main (the PR hook blocks every other).
 //
 //   bun harness/release.ts --dry-run    what would ship; changes nothing
-//   bun harness/release.ts --preview    a deploy preview of staging for a phone check; merges nothing
-//   bun harness/release.ts              check staging's tree, PR staging → main, merge, wait for live
+//   bun harness/release.ts --preview    a deploy preview of staging, smoke-tested, for a phone check; merges nothing
+//   bun harness/release.ts              check staging's tree, PR staging → main, a deploy preview smoke-tested
+//                                       (harness/smoke.ts), merge, wait for live, smoke-test https://synbox.io
 //
 // One release at a time on this machine: a lock in the main checkout's .harness/ names the process holding it.
 
@@ -19,6 +20,9 @@ const STAGING = 'staging'
 const SITE = 'https://synbox.io'
 const LIVE_TIMEOUT_MS = 15 * 60_000
 const LIVE_POLL_MS = 20_000
+const PREVIEW_TIMEOUT_MS = 15 * 60_000
+// The commit status Netlify posts for a pull request's deploy preview
+const PREVIEW_STATUS = /^netlify\/[^/]+\/deploy-preview$/u
 // Files a production build never reads; scripts/netlify-ignore.sh skips the build when only these change
 const NOT_APP = [
   ':(exclude)docs',
@@ -190,6 +194,78 @@ const fetchText = (url: string): string => {
   return result.status === 0 ? result.stdout : ''
 }
 
+const isStatus = (
+  v: unknown
+): v is { context: string; state: string; target_url: string | null } =>
+  isRecord(v) && typeof v.context === 'string' && typeof v.state === 'string'
+
+/** The deploy preview Netlify builds for `sha`, once ready; stops the release when its build fails */
+const waitForPreview = (sha: string): string => {
+  const deadline = Date.now() + PREVIEW_TIMEOUT_MS
+  while (Date.now() < deadline) {
+    const statuses: unknown = JSON.parse(
+      gh('api', `repos/{owner}/{repo}/commits/${sha}/statuses`)
+    )
+    // Newest first: the build's latest word
+    const latest: unknown = Array.isArray(statuses)
+      ? statuses.find(
+          (s: unknown) => isStatus(s) && PREVIEW_STATUS.test(s.context)
+        )
+      : undefined
+    if (
+      isStatus(latest) &&
+      latest.state === 'success' &&
+      latest.target_url !== null
+    ) {
+      return latest.target_url
+    }
+    if (
+      isStatus(latest) &&
+      (latest.state === 'failure' || latest.state === 'error')
+    ) {
+      throw new Error(
+        `the deploy preview of staging failed to build (${latest.target_url ?? 'no log link'}). Reproduce it locally with \`bunx netlify-cli build --offline --context deploy-preview\` in a copy of staging, fix it in a PR into staging, then release again`
+      )
+    }
+    spawnSync('sleep', [String(LIVE_POLL_MS / 1000)])
+  }
+  throw new Error(
+    `no deploy preview after ${PREVIEW_TIMEOUT_MS / 60_000} minutes; check the Netlify deploy log`
+  )
+}
+
+/** `harness/smoke.ts` from staging's tree (the evaluator that ships), against a deployed copy */
+const smoke = (dir: string, url: string): boolean => {
+  say(`smoke: ${url}`)
+  return (
+    spawnSync('bun', ['harness/smoke.ts', url], { cwd: dir, stdio: 'inherit' })
+      .status === 0
+  )
+}
+
+/** Builds a deploy preview of staging's tip (a [preview] commit) and smoke-tests it; false when the smoke fails */
+const smokePreview = (dir: string, number: string): boolean => {
+  run(
+    'git',
+    [
+      '-C',
+      dir,
+      'commit',
+      '--quiet',
+      '--allow-empty',
+      '-m',
+      'Build a preview [preview]',
+    ],
+    dir
+  )
+  run('git', ['-C', dir, 'push', '--quiet', 'origin', `HEAD:${STAGING}`], dir)
+  const sha = run('git', ['-C', dir, 'rev-parse', 'HEAD'], dir)
+  say(`preview: building #${number} at ${sha.slice(0, 8)} (a few minutes)`)
+  const url = waitForPreview(sha)
+  say(`preview: ${url}`)
+  return smoke(dir, url)
+}
+
 const waitForLive = (sha: string) => {
   const appChanged = run(
     'git',
@@ -230,6 +306,9 @@ const release = () => {
   const dir = stagingWorktree()
   checkStaging(dir)
   if (flags['dry-run'] === true) {
+    say(
+      'smoke: a release builds a deploy preview of staging and runs harness/smoke.ts on it before merging, then on the live site'
+    )
     return
   }
   const open = gh(
@@ -268,31 +347,44 @@ const release = () => {
           )
         )?.groups?.n ?? '')
       : open
+  const smoked = smokePreview(dir, number)
   if (flags.preview === true) {
-    run(
-      'git',
-      [
-        '-C',
-        dir,
-        'commit',
-        '--quiet',
-        '--allow-empty',
-        '-m',
-        'Build a preview [preview]',
-      ],
-      dir
-    )
-    run('git', ['-C', dir, 'push', '--quiet', 'origin', `HEAD:${STAGING}`], dir)
     say(
-      `preview: https://deploy-preview-${number}--synbox.netlify.app (ready in a few minutes); run without --preview to ship`
+      smoked
+        ? 'preview: smoke PASS; run without --preview to ship'
+        : 'preview: smoke FAIL (above); fix it in a PR into staging before shipping'
     )
+    if (!smoked) {
+      process.exitCode = 1
+    }
     return
+  }
+  if (!smoked) {
+    throw new Error(
+      `smoke FAIL on the deploy preview of #${number}: nothing was merged. Fix it in a PR into staging, then release again`
+    )
   }
   gh('pr', 'merge', number, '--merge')
   git('fetch', '--quiet', 'origin')
   const sha = git('rev-parse', 'origin/main')
   say(`merged #${number} into main (${sha.slice(0, 8)})`)
   waitForLive(sha)
+  run('git', ['-C', dir, 'checkout', '--quiet', '--detach', sha], dir)
+  if (!smoke(dir, SITE)) {
+    process.exitCode = 1
+    say(
+      [
+        '',
+        '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!',
+        `!!  smoke FAIL on ${SITE}: the release is LIVE and something is broken`,
+        '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!',
+        'The failing lines are above, the report beside them. To roll back now:',
+        '  1. Netlify › synbox › Deploys: open the previous production deploy, press "Publish deploy" (instant, no build).',
+        `  2. Then fix forward: a PR into staging (git revert -m 1 ${sha.slice(0, 8)} reverts the whole release), and release again.`,
+        'A failure the preview did not show is usually live data or a backend difference: compare the two reports.',
+      ].join('\n')
+    )
+  }
 }
 
 try {
