@@ -59,6 +59,37 @@ const heldPhase = (state: YTStateCode): StagePhase => {
 // How long after a song comes back from the mini bar a pause it didn't ask for is undone
 const CARRIED_ON_MS = 1500
 
+// YouTube's own mute and volume against the control's, read back once YouTube has had time to apply a change.
+// `mute`/`level`: sound the control doesn't show (or the wrong level), so the control's setting is applied again.
+// `blocked`: silent while the control shows sound and the song plays, as when the browser kept it muted; the
+// control then shows it muted, with Tap to Unmute. A paused song makes no sound, so a silent one waits for its play
+export type VolumeDrift = 'none' | 'mute' | 'level' | 'blocked'
+export const volumeDrift = (
+  want: PlayerVolume,
+  heard: { muted: boolean; volume: number },
+  playing: boolean
+): VolumeDrift => {
+  if (heard.muted !== want.muted) {
+    if (!heard.muted) {
+      return 'mute'
+    }
+    return playing ? 'blocked' : 'none'
+  }
+  if (
+    !want.muted &&
+    Math.abs(heard.volume - Math.round(want.level * 100)) > 1
+  ) {
+    return 'level'
+  }
+  return 'none'
+}
+// How long YouTube takes to report a mute or volume it was asked for
+const VERIFY_MS = 500
+// While a song plays the check also runs on its own, for any change no event announced (YouTube's own)
+const VERIFY_EVERY_MS = 2000
+// Re-applying the control's setting more often than this means YouTube won't take it; it is left to the next change
+const VERIFY_TRIES = 3
+
 // A play YouTube has not answered at all by then: no buffering, no playing, no refusal
 const START_CHECK_MS = 1500
 
@@ -179,6 +210,43 @@ export const useYouTubePlayer = ({
     []
   )
 
+  // The control must never show muted over a song that plays aloud, or the reverse: after every change and every
+  // start of playback, what YouTube reports is checked against it (volumeDrift)
+  const verifyTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined
+  )
+  const verifyTriesRef = useRef(0)
+  const verifyVolume = useCallback(() => {
+    const check = () => {
+      const player = playerRef.current
+      if (!player) {
+        return
+      }
+      const { kind } = phaseRef.current
+      const drift = volumeDrift(
+        volumeRef.current,
+        { muted: player.isMuted(), volume: player.getVolume() },
+        kind === 'playing' || kind === 'buffering'
+      )
+      if (drift === 'none') {
+        verifyTriesRef.current = 0
+        return
+      }
+      log(`volume drift: ${drift}`)
+      if (drift === 'blocked') {
+        latest.current.onBlocked?.()
+        return
+      }
+      verifyTriesRef.current += 1
+      if (verifyTriesRef.current <= VERIFY_TRIES) {
+        applyVolume(player, volumeRef.current)
+        verifyTimerRef.current = setTimeout(check, VERIFY_MS)
+      }
+    }
+    clearTimeout(verifyTimerRef.current)
+    verifyTimerRef.current = setTimeout(check, VERIFY_MS)
+  }, [applyVolume, log])
+
   const startCheckRef = useRef<ReturnType<typeof setTimeout> | undefined>(
     undefined
   )
@@ -285,6 +353,7 @@ export const useYouTubePlayer = ({
         } else {
           applyVolume(player, volumeRef.current)
         }
+        verifyVolume()
         dropCaptions(player)
         log('ready')
       },
@@ -303,6 +372,7 @@ export const useYouTubePlayer = ({
           clearTimeout(startCheckRef.current)
         }
         if (state === YTState.Playing && player) {
+          verifyVolume()
           stoppedByGuardRef.current = false
           dropCaptions(player)
           clearTimeout(settleTimer)
@@ -322,10 +392,11 @@ export const useYouTubePlayer = ({
     return () => {
       clearTimeout(settleTimer)
       clearTimeout(startCheckRef.current)
+      clearTimeout(verifyTimerRef.current)
       playerRef.current = null
       disconnect()
     }
-  }, [videoId, applyVolume, dropCaptions, log, play])
+  }, [videoId, applyVolume, dropCaptions, log, play, verifyVolume])
 
   // The video lies over this stage's box. YouTube's own error screens (unavailable, sign-in, age gate)
   // need its UI, so they take input
@@ -372,6 +443,16 @@ export const useYouTubePlayer = ({
     }
   }, [rebuild])
 
+  const playingNow = phase.kind === 'playing'
+  useEffect(() => {
+    const timer = playingNow
+      ? setInterval(verifyVolume, VERIFY_EVERY_MS)
+      : undefined
+    return () => {
+      clearInterval(timer)
+    }
+  }, [playingNow, verifyVolume])
+
   // Before onReady these only record the value; onReady applies it
   const { level, muted } = volume
   useEffect(() => {
@@ -379,8 +460,10 @@ export const useYouTubePlayer = ({
     const player = playerRef.current
     if (player) {
       applyVolume(player, { level, muted })
+      verifyTriesRef.current = 0
+      verifyVolume()
     }
-  }, [level, muted, applyVolume])
+  }, [level, muted, applyVolume, verifyVolume])
 
   const { unloadCaptions } = quirks
   useEffect(() => {
@@ -475,7 +558,8 @@ export const useYouTubePlayer = ({
     if (kind === 'playing' || kind === 'buffering') {
       player.playVideo()
     }
-  }, [])
+    verifyVolume()
+  }, [verifyVolume])
 
   const seek = useCallback(
     (seconds: number) => {
