@@ -13,7 +13,8 @@ import { cn } from '@/utils/cn'
 const MAX_SONGS = 8
 
 // What the dropdown lists while the field has text: the karaoke songs (the mic badge) whose title or channel holds
-// every word, then the full search for the words. Mounted only while open, so a page that never searches never loads the list
+// every word, then the full search for the words. Mounted only while open, so a page that never searches never
+// loads the list
 const Results = ({
   query,
   active,
