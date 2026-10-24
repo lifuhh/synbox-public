@@ -1918,7 +1918,7 @@
     transition: scale 300ms var(--ease-out);
 
     /* Its close button's press area reaches over the bar's padding, so it stays 44px zoomed out */
-    & button {
+    & > button:last-of-type {
       position: relative;
 
       &::after {

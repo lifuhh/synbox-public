@@ -145,7 +145,7 @@ const VISIT: Record<SongPresence['kind'], SongVisit> = {
   'in-library': 'record',
   'not-in-library': 'none',
 }
-const useSongPresenceEffects = (videoId: string) => {
+const useSongPresenceEffects = (videoId: string, resumed: boolean) => {
   const presence = useSongPresence(videoId)
   const inLibrary = presence.kind === 'in-library'
   const chartRank = presence.kind === 'chart-song' ? presence.rank : null
@@ -160,13 +160,14 @@ const useSongPresenceEffects = (videoId: string) => {
     },
     [setChartSong]
   )
-  // Every visit to a library song's page is one more listen. A layout effect, so the listen is on its way before
-  // any part of the page asks for the song's stats (those wait for it)
+  // Every visit to a library song's page is one more listen, but the song coming back from the mini bar was
+  // counted when it started. A layout effect, so the listen is on its way before any part of the page asks for
+  // the song's stats (those wait for it)
   useLayoutEffect(() => {
-    if (videoId !== '' && inLibrary) {
+    if (videoId !== '' && inLibrary && !resumed) {
       countListen(videoId)
     }
-  }, [videoId, inLibrary])
+  }, [videoId, inLibrary, resumed])
   return presence
 }
 
@@ -184,15 +185,15 @@ const PlayerPage = () => {
   const [error, setError] = useState<string | null>(null)
   const [stageVideoId, setStageVideoId] = useState<string | null>(null)
 
-  const presence = useSongPresenceEffects(videoId)
+  const by = openedBy(useLocation().state)
+  const presence = useSongPresenceEffects(videoId, by === 'resume')
   const inLibrary = presence.kind === 'in-library'
   const playable = inLibrary || presence.kind === 'chart-song'
   const currentVideo = useAtomValue(currentVideoAtom)
-  // The installed app's resume bar takes the listener back to this song from the other tabs. The song it held
+  // The installed app's mini bar takes the listener back to this song from the other tabs. The song it held
   // until now is the one just left: it goes on Previous's trail, unless Previous is what left it
   const [resumeSong, setResumeSong] = useAtom(resumeSongAtom)
   const setPlayed = useSetAtom(playedAtom)
-  const by = openedBy(useLocation().state)
   useEffect(() => {
     if (currentVideo !== null && currentVideo.videoId === videoId) {
       if (
