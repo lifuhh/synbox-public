@@ -14,7 +14,6 @@ import {
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router'
 
-import { RequestInviteMenuItem } from '@/components/invite/request-invite'
 import { GoogleMark } from '@/components/shared/google-mark'
 import { UserAvatar } from '@/components/shared/user-avatar'
 import {
@@ -221,15 +220,11 @@ const ProfileButtonDropdown = () => {
               {me?.quota && (
                 <p className='pt-1 text-xs text-muted-foreground'>
                   {quotaText(me.quota)}
-                  {me.invite?.requested === true && !me.invite.invited
-                    ? ' · Invite requested'
-                    : null}
                 </p>
               )}
             </div>
           ) : null}
           <DropdownMenuGroup>
-            <RequestInviteMenuItem />
             {user?.role === 'admin' && (
               <DropdownMenuItem asChild className='cursor-pointer'>
                 <Link to='/admin'>
