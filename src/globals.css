@@ -946,9 +946,11 @@
     gap: 1rem 1.5rem;
     padding: calc(var(--topbar-h) + 0.25rem) var(--page-gutter-wide) 3rem;
 
+    /* Theater is the video as big as the window allows: half the page's gutter at its sides (20-32px), never none */
     &[data-theater] {
       grid-template-columns: minmax(0, 1fr) minmax(20rem, 25.125rem);
       grid-template-areas: 'stage stage' 'main next';
+      padding-inline: calc(var(--page-gutter-wide) / 2);
     }
   }
 }
