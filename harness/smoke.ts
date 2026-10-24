@@ -253,6 +253,13 @@ const isOurs = (url: URL, origin: string) =>
   /(?:^|\.)sentry\.io$/u.test(url.hostname) ||
   /^synbox-[\w-]+\.(?:[\w-]+\.)?run\.app$/u.test(url.hostname)
 
+/** One of the generation calls: through the auth Worker (worker/src/generation.ts), or straight to the Cloud Run
+ * service from a build older than that */
+const isGeneration = (url: URL, endpoint: string) =>
+  (url.hostname === 'api.synbox.io' &&
+    url.pathname === `/api/generation/${endpoint}`) ||
+  (url.hostname.endsWith('.run.app') && url.pathname === `/${endpoint}`)
+
 const cors = (origin: string) => ({
   'access-control-allow-credentials': 'true',
   'access-control-allow-headers': 'authorization, content-type, accept',
@@ -302,8 +309,7 @@ const WRITE_RULES: WriteRule[] = [
     answer: async (route, origin) => {
       await route.fulfill({ headers: cors(origin), json: { ok: true } })
     },
-    matches: (url) =>
-      url.hostname.endsWith('.run.app') && url.pathname === '/generation-check',
+    matches: (url) => isGeneration(url, 'generation-check'),
     name: 'generation-check',
   },
   {
@@ -315,8 +321,7 @@ const WRITE_RULES: WriteRule[] = [
         headers: { ...cors(origin), 'content-type': 'application/x-ndjson' },
       })
     },
-    matches: (url) =>
-      url.hostname.endsWith('.run.app') && url.pathname === '/validate',
+    matches: (url) => isGeneration(url, 'validate'),
     name: 'generation-validate',
   },
   {
