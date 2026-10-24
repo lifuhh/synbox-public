@@ -10,7 +10,7 @@ export const SECURITY_HEADERS: Record<string, string> = {
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com",
     "img-src 'self' data: blob: https://*.ytimg.com https://*.googleusercontent.com https://*.ggpht.com",
-    "connect-src 'self' https://cloud.appwrite.io https://synbox-lookup-1045990822048.asia-southeast1.run.app https://synbox-flask-cloud-run-dtitfmn76a-as.a.run.app https://*.ingest.us.sentry.io https://www.youtube.com https://i.ytimg.com https://fonts.googleapis.com https://fonts.gstatic.com https://lh3.googleusercontent.com",
+    "connect-src 'self' https://cloud.appwrite.io https://synbox-lookup-1045990822048.asia-southeast1.run.app https://api.synbox.io https://*.ingest.us.sentry.io https://www.youtube.com https://i.ytimg.com https://fonts.googleapis.com https://fonts.gstatic.com https://lh3.googleusercontent.com",
     'frame-src https://www.youtube.com https://www.youtube-nocookie.com',
     "worker-src 'self' blob:",
     "manifest-src 'self'",
