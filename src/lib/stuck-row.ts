@@ -5,12 +5,13 @@ export const markStuck = (row: HTMLElement, stuck: boolean) => {
   if (stuck === Object.hasOwn(row.dataset, 'stuck')) {
     return
   }
-  // Written on <html> only when the height changes: every element inherits it, so each write restyles the page
-  if (stuck) {
+  // Written on the top scrim (root-layout.tsx), its only reader. On <html> every element inherited it, and the first
+  // stick restyled the whole page in the scroll: about 50ms in WebKit on Home
+  const scrim = document.querySelector<HTMLElement>('[data-status-scrim]')
+  if (stuck && scrim !== null) {
     const height = `${row.offsetHeight}px`
-    const root = document.documentElement.style
-    if (root.getPropertyValue('--stuck-row-h') !== height) {
-      root.setProperty('--stuck-row-h', height)
+    if (scrim.style.getPropertyValue('--stuck-row-h') !== height) {
+      scrim.style.setProperty('--stuck-row-h', height)
     }
   }
   row.toggleAttribute('data-stuck', stuck)

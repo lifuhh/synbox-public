@@ -191,6 +191,38 @@ const VirtualRows = ({
 // A first screen's worth at every column count
 const SKELETON_CARDS = 8
 
+// The web fonts come a slice of characters at a time (unicode-range), each loaded when a character from it first
+// shows. Only the rows near the view exist, so the titles' slices arrived mid-scroll, and in WebKit each slice that
+// arrives restyles and lays out the whole page (about 95ms on Home), a stall per slice. Asked for together once the
+// page has loaded, they cost one such pause, at rest. One family at a time: given the whole stack, WebKit loads a
+// character's slice only from the first family whose range lists it, so a symbol Plus Jakarta Sans's range lists but
+// the font doesn't draw still brought Noto Sans JP's Latin slice in mid-scroll
+const loadTitleFonts = (songs: LibraryListSong[]) => {
+  const text = songs.map((song) => `${song.title}${song.author}`).join('')
+  for (const family of getComputedStyle(document.body).fontFamily.split(',')) {
+    void document.fonts.load(`600 1rem ${family.trim()}`, text)
+  }
+}
+
+const useTitleFonts = (songs: LibraryListSong[]) => {
+  useEffect(() => {
+    if (songs.length === 0) {
+      return
+    }
+    const load = () => {
+      loadTitleFonts(songs)
+    }
+    if (document.readyState === 'complete') {
+      load()
+      return
+    }
+    window.addEventListener('load', load, { once: true })
+    return () => {
+      window.removeEventListener('load', load)
+    }
+  }, [songs])
+}
+
 // Marks the title stuck while the gallery has scrolled up under it. Returns the cleanup
 const watchStuck = (
   heading: HTMLElement,
@@ -222,6 +254,7 @@ const SongGallery = () => {
   const [list, setList] = useState<HTMLDivElement | null>(null)
   const scroller = section?.closest<HTMLElement>('[data-scroll-top]') ?? null
   const title = useRef<HTMLHeadingElement>(null)
+  useTitleFonts(songs)
 
   // data-stuck is set on the title as the page scrolls, not through React state: a render later, a fast fling
   // had already carried cards under a see-through title for a frame or two
