@@ -1,7 +1,8 @@
 import { ChevronLeftIcon, ChevronRightIcon } from 'lucide-react'
-import { useEffect, useId, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useRef, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
+import { wheelSideways } from '@/hooks/wheel-sideways'
 import type { ListSong } from '@/lib/listening/model'
 import {
   useArtistSongs,
@@ -44,13 +45,21 @@ const useEnds = () => {
   return { ends, ref }
 }
 
-// One sideways row of song cards under a heading. Fingers swipe it; a mouse gets arrows beside the heading.
+// One sideways row of song cards under a heading. Fingers swipe it; a mouse gets arrows beside the heading, and its
+// wheel scrolls the row while pointing at it.
 // The row reaches past the page's side padding by --shelf-bleed (the page sets it to its gutter to run the row to
 // the screen's edges, so cards cut off at both ends say it scrolls) and pads back in, so the first card still
 // starts under the heading and snaps there
 const Shelf = ({ title, songs }: { title: string; songs: ListSong[] }) => {
   const id = useId()
   const { ends, ref } = useEnds()
+  const rowRef = useCallback(
+    (el: HTMLUListElement | null) => {
+      ref.current = el
+      return wheelSideways(el)
+    },
+    [ref]
+  )
   const page = (direction: -1 | 1) => {
     const row = ref.current
     if (row !== null) {
@@ -91,7 +100,7 @@ const Shelf = ({ title, songs }: { title: string; songs: ListSong[] }) => {
         </div>
       </div>
       <ul
-        ref={ref}
+        ref={rowRef}
         className='-mx-(--shelf-bleed,0.25rem) no-scrollbar flex snap-x snap-mandatory scroll-px-(--shelf-bleed,0.25rem) gap-4 overflow-x-auto overscroll-x-contain px-(--shelf-bleed,0.25rem) py-1'>
         {songs.map((song) => (
           <SongCard

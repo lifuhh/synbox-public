@@ -1,6 +1,6 @@
 import { useAtom, useAtomValue } from 'jotai'
 import { EllipsisIcon, ListPlusIcon, XIcon } from 'lucide-react'
-import { useRef, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
 import {
@@ -11,6 +11,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { useScrollEdges } from '@/hooks/use-scroll-edges'
+import { wheelSideways } from '@/hooks/wheel-sideways'
 import type { ListSong } from '@/lib/listening/model'
 import { filterKey, filterLabel } from '@/lib/listening/next-filter'
 import { useNextList } from '@/lib/listening/recommendations'
@@ -104,7 +105,19 @@ export const UpNext = ({
   const [autoplay, setAutoplay] = useAtom(autoplayAtom)
   const { clearQueue, moveInQueue } = useListening()
   const { filter, filters, setFilter, songs } = useNextList(videoId)
-  const chipsRef = useScrollEdges()
+  const edges = useScrollEdges()
+  // The chips fade at the edge with more past it, and a mouse wheel over them scrolls them sideways
+  const chipsRef = useCallback(
+    (el: HTMLElement | null) => {
+      const unwatch = [edges(el), wheelSideways(el)]
+      return () => {
+        for (const stop of unwatch) {
+          stop?.()
+        }
+      }
+    },
+    [edges]
+  )
   const queued = new Set(queue.map((song) => song.videoId))
   const suggestions = songs
     .filter((song) => !queued.has(song.videoId))
