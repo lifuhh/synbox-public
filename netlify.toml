@@ -134,6 +134,5 @@ VITE_SYNBOX_LOOKUP_URL = "https://synbox-lookup-1045990822048.asia-southeast1.ru
 # (worker/src/generation.ts). Straight to api.synbox.io, not through synbox.io/api: Netlify's proxy cuts a request
 # off after 26 s, and a generation stream runs for minutes
 VITE_SYNBOX_BE_URL = "https://api.synbox.io/api/generation"
-# Lyrics and karaoke timing come from the auth Worker, one song at a time (worker/src/lyrics.ts). Straight to
-# api.synbox.io, so the Worker counts each visitor's own network rather than Netlify's
-VITE_SYNBOX_API_URL = "https://api.synbox.io"
+# Lyrics and karaoke timing come from the auth Worker once its lyrics routes are deployed: then set
+# VITE_SYNBOX_API_URL = "https://api.synbox.io" here (src/lib/lyrics-api.ts). Until then the app reads them as before

@@ -28,7 +28,7 @@ const orElse = (value: string | null | undefined, fallback: string) => {
 }
 
 // Reads fall back to the pre-migration id, so a song is found while its row is being moved.
-const getSongDocument = async (tableId: string, songId: string) => {
+export const getSongDocument = async (tableId: string, songId: string) => {
   const id = createAppwriteIdFromYoutubeId(songId)
   const legacyId = legacyAppwriteIdFromYoutubeId(songId)
   try {
