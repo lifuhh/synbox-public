@@ -34,7 +34,8 @@ const tomlBlocks = (toml: string, table: string): Record<string, string>[] =>
       )
     )
 
-/** Proxies exactly as netlify.toml declares them, plus the two routes Netlify answers itself */
+/** Proxies exactly as netlify.toml declares them, plus the two routes Netlify answers itself and the two services the
+ * site calls directly */
 export const proxiesFrom = (repoTop: string): Proxy[] => {
   const toml = readFileSync(path.join(repoTop, 'netlify.toml'), 'utf-8')
   const declared = tomlBlocks(toml, 'redirects')
@@ -47,6 +48,10 @@ export const proxiesFrom = (repoTop: string): Proxy[] => {
       'netlify.toml has no VITE_SYNBOX_LOOKUP_URL; the bench build needs it'
     )
   }
+  // Trees from before the site read lyrics through the Worker don't set it
+  const api =
+    /VITE_SYNBOX_API_URL\s*=\s*"(?<url>[^"]+)"/u.exec(toml)?.groups?.url ??
+    'https://api.synbox.io'
   return [
     ...declared,
     // netlify/functions/youtube.ts answers this path in production
@@ -55,6 +60,8 @@ export const proxiesFrom = (repoTop: string): Proxy[] => {
     { from: '/api/library/songs', to: `${lookup}/library/songs` },
     // Bench builds point the lookup service here (VITE_SYNBOX_LOOKUP_URL=/__lookup), so its reads replay too
     { from: '/__lookup/*', to: `${lookup}/:splat` },
+    // And the Worker the site reads lyrics and karaoke timing from (VITE_SYNBOX_API_URL=/__api)
+    { from: '/__api/*', to: `${api}/:splat` },
   ]
 }
 

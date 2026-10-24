@@ -29,7 +29,13 @@ const vpBuild = async (srcDir: string, outDir: string): Promise<void> => {
     ['vp', 'build', '--outDir', outDir, '--emptyOutDir'],
     {
       cwd: srcDir,
-      env: { ...process.env, VITE_SYNBOX_LOOKUP_URL: '/__lookup' },
+      // The lookup service and the Worker's lyrics routes (the site calls both directly, not through /api) go through
+      // the bench server, so their reads are recorded and replayed like the rest (server.ts › proxiesFrom)
+      env: {
+        ...process.env,
+        VITE_SYNBOX_API_URL: '/__api',
+        VITE_SYNBOX_LOOKUP_URL: '/__lookup',
+      },
       maxBuffer: 64 * 1024 * 1024,
     }
   )
