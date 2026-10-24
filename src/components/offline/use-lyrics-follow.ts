@@ -39,10 +39,12 @@ const readingPlace = (
   return partly
 }
 
-// Calls `onResize` whenever the element changes size; returns the cleanup
-const observeSize = (element: Element, onResize: () => void) => {
+// Calls `onResize` whenever one of the elements changes size; returns the cleanup
+const observeSize = (elements: Element[], onResize: () => void) => {
   const observer = new ResizeObserver(onResize)
-  observer.observe(element)
+  for (const element of elements) {
+    observer.observe(element)
+  }
   return () => {
     observer.disconnect()
   }
@@ -114,8 +116,8 @@ export const useLyricsFollow = <Content extends HTMLElement = HTMLDivElement>({
     }
   }, [enabled, following, scrollToTarget])
 
-  // Rows that grew or shrank (the show toggles, fonts and furigana settling): the followed line jumps straight
-  // back to its place, or the line being read elsewhere stays put. A resize is seen before paint, so the
+  // Rows that grew or shrank (the show toggles, fonts and furigana settling), or a box that did (the watch page's
+  // lyrics expanding): the followed line jumps straight back to its place, or the line being read elsewhere stays put. A resize is seen before paint, so the
   // move never is
   const place = useRef<ReadingPlace | null>(null)
   const scrollToTargetRef = useRef(scrollToTarget)
@@ -147,7 +149,10 @@ export const useLyricsFollow = <Content extends HTMLElement = HTMLDivElement>({
       }
     }
     const rows = content.current
-    return enabled && rows !== null ? observeSize(rows, keepPlace) : undefined
+    const box = scroller.current
+    return enabled && rows !== null && box !== null
+      ? observeSize([rows, box], keepPlace)
+      : undefined
   }, [enabled])
 
   const touchY = useRef<number | null>(null)

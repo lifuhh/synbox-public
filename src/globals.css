@@ -1032,6 +1032,17 @@
 @utility watch-lyrics-band {
   container-type: size;
   height: clamp(11rem, 46cqh, 17rem);
+  /* Expanded (Expand Lyrics, or a tap on it), it grows to fill the screen under the video, on iOS's sheet curve;
+     the sung line stays centred all the way (use-lyrics-follow follows the box's size) */
+  transition: height 420ms cubic-bezier(0.32, 0.72, 0, 1);
+
+  &[data-expanded] {
+    height: calc(100cqh - 1rem - var(--safe-bottom));
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
 }
 
 @utility watch-lyrics-band-scroller {
