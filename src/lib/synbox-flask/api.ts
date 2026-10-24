@@ -1,6 +1,5 @@
+import { fetchKaraokeJson } from '@/lib/lyrics-api'
 import type { KaraokeDoc } from '@/types'
-
-import { LOOKUP_ADDRESS } from './address'
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null
@@ -27,24 +26,16 @@ export const isKaraokeDoc = (value: unknown): value is KaraokeDoc =>
       )
   )
 
-// null when the song (or that saved version) has no karaoke timing (404)
+// null when the song (or that saved version) has no karaoke timing (404). Through the Worker (src/lib/lyrics-api.ts)
 export const getKaraoke = async (
   id: string,
   version: number | null,
   signal?: AbortSignal
 ): Promise<KaraokeDoc | null> => {
-  const query = version === null ? '' : `?version=${version}`
-  const response = await fetch(
-    `${LOOKUP_ADDRESS}/karaoke/${encodeURIComponent(id)}${query}`,
-    { headers: { Accept: 'application/json' }, signal }
-  )
-  if (response.status === 404) {
+  const doc = await fetchKaraokeJson(id, version, signal)
+  if (doc === null) {
     return null
   }
-  if (!response.ok) {
-    throw new Error(`Karaoke request failed with status ${response.status}`)
-  }
-  const doc: unknown = await response.json()
   if (!isKaraokeDoc(doc)) {
     throw new Error('Unsupported karaoke document')
   }

@@ -5,6 +5,7 @@ import { useSearchParams } from 'react-router'
 import { parsePreviewVersion } from '@/components/lyrics-display/version-preview-banner'
 import { parseLyricsText } from '@/components/player-stage/stage-lyrics'
 import { translationIsEnglishAtom } from '@/context/atoms'
+import { withoutTrace } from '@/lib/lyrics-api'
 import { parseLyricsDocument } from '@/lib/lyrics-document'
 import { loadLyricsFont } from '@/lib/lyrics-font'
 import {
@@ -36,7 +37,7 @@ export const useLyricsReady = (videoId: string) => {
   const english = useAtomValue(translationIsEnglishAtom)
   const chinese =
     settled && !english
-      ? (parseLyricsDocument(lyrics.data)?.chi.join('') ?? '')
+      ? withoutTrace(parseLyricsDocument(lyrics.data)?.chi.join('') ?? '')
       : ''
   const fontText = settled
     ? [

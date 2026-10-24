@@ -109,3 +109,17 @@ describe('searchSongs', () => {
     expect(ids(searchSongs(index, '  '))).toEqual(['night', 'idol', 'other'])
   })
 })
+
+describe('a translation with its invisible mark (worker/src/lyrics.ts › traceMark)', () => {
+  it('is found by its words', () => {
+    const mark = [0x20_60, 0x20_62, 0x20_63, 0x20_62, 0x20_60]
+      .map((code) => String.fromCodePoint(code))
+      .join('')
+    const marked = song('marked', 'Title', 'Artist', [
+      line([{ base: '歌', rt: 'うた' }], 'uta', `S${mark}unlight on the river`),
+    ])
+    expect(ids(searchSongs([indexSong(marked)], 'sunlight'))).toEqual([
+      'marked',
+    ])
+  })
+})

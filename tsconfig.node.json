@@ -9,5 +9,10 @@
     "types": ["node"],
     "strictNullChecks": true
   },
-  "include": ["vite.config.ts", "netlify/**/*.ts", "scripts/**/*.ts"]
+  "include": [
+    "vite.config.ts",
+    "netlify/**/*.ts",
+    "scripts/**/*.ts",
+    "dev/**/*.ts"
+  ]
 }

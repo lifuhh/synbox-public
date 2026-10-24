@@ -8,6 +8,8 @@ export interface LibraryEnv {
   APPWRITE_PROJECT_ID?: string
   APPWRITE_DATABASE_ID?: string
   APPWRITE_LYRICS_TABLE_ID?: string
+  // A server key with read access to the lyrics table; the Worker reads it with this key
+  APPWRITE_API_KEY?: string
 }
 
 // `unknown`: Appwrite didn't answer, or the Worker has no Appwrite settings. Callers refuse the write
@@ -62,9 +64,13 @@ const askAppwrite = async (
     .map((query) => `queries[]=${encodeURIComponent(JSON.stringify(query))}`)
     .join('&')
   try {
+    const headers: Record<string, string> = { 'X-Appwrite-Project': project }
+    if (env.APPWRITE_API_KEY !== undefined && env.APPWRITE_API_KEY !== '') {
+      headers['X-Appwrite-Key'] = env.APPWRITE_API_KEY
+    }
     const response = await fetcher(
       `${url}/tablesdb/${database}/tables/${table}/rows?${queries}&total=false`,
-      { headers: { 'X-Appwrite-Project': project } }
+      { headers }
     )
     if (!response.ok) {
       console.error(`library check: Appwrite answered ${response.status}`)

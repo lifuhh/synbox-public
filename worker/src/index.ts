@@ -17,6 +17,8 @@ import {
 import { applyOps, parseOps, readLibrary } from './library'
 import type { LibraryEnv } from './library-songs'
 import { libraryMembership } from './library-songs'
+import { lyrics, pruneHits } from './lyrics'
+import type { LyricsEnv } from './lyrics'
 import { applyPrefOps, parsePrefOps, readPrefs } from './prefs'
 import {
   checkGeneration,
@@ -68,6 +70,7 @@ import {
 
 type AppEnv = Env &
   LibraryEnv &
+  LyricsEnv &
   GenerationEnv & {
     USER_DAILY_LIMIT: string
     INVITED_DAILY_LIMIT: string
@@ -503,6 +506,9 @@ app.route('/api/fixer', fixer)
 // The app's song generation calls, passed on to the generating service (generation.ts)
 app.route('/api/generation', generation)
 
+// Lyrics and karaoke timing, one song at a time, counted per requester (lyrics.ts)
+app.route('/api', lyrics)
+
 // The admin pane (src/_root/pages/admin-page.tsx). Every route checks the session's role on the server
 const admin = new Hono<{ Bindings: AppEnv; Variables: { adminId: string } }>()
 
@@ -720,10 +726,11 @@ app.route('/api/admin', admin)
 export default {
   fetch: app.fetch,
   // The daily cron (wrangler.jsonc): reports the fixer left open past EXPIRE_DAYS are dropped as expired, and
-  // listen rows past their hour go
+  // listen rows past their hour and lyrics hits past their 30 days go
   scheduled: (_controller, env, ctx) => {
     const now = Date.now()
     ctx.waitUntil(expireReports(env.DB, now))
     ctx.waitUntil(pruneListens(env.DB, now))
+    ctx.waitUntil(pruneHits(env.DB, now))
   },
 } satisfies ExportedHandler<AppEnv>

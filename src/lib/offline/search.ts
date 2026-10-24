@@ -1,5 +1,7 @@
 import { toRomaji } from 'wanakana'
 
+import { withoutTrace } from '@/lib/lyrics-api'
+
 import type { OfflineSong } from './song'
 import { lineText } from './song'
 
@@ -43,8 +45,8 @@ export const indexSong = (song: OfflineSong): SearchIndexEntry => ({
     keys: [
       fold(lineText(line)),
       fold(line.romaji),
-      fold(line.en),
-      fold(line.zh),
+      fold(withoutTrace(line.en)),
+      fold(withoutTrace(line.zh)),
     ],
     shown: line.romaji === '' ? lineText(line) : line.romaji,
   })),

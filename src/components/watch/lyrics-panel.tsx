@@ -25,6 +25,7 @@ import {
   translationVisibilityAtom,
 } from '@/context/atoms'
 import { currentLineIndex, karaokeMatchesLyrics } from '@/lib/karaoke'
+import { RateLimitedError } from '@/lib/lyrics-api'
 import { parseLyricsDocument } from '@/lib/lyrics-document'
 import { getLyricsThemeColors } from '@/lib/lyrics-themes'
 import type { OfflineLine } from '@/lib/offline/song'
@@ -51,9 +52,11 @@ const NO_LINES: OfflineLine[] = []
 
 // The song's lines as the reader draws them, with karaoke timing where it was made for exactly these lines
 const useSongLines = (videoId: string, version: number | null) => {
-  const { data: activeLyrics, isPending } = useGetLyricsBySongId(
-    version === null ? videoId : ''
-  )
+  const {
+    data: activeLyrics,
+    error,
+    isPending,
+  } = useGetLyricsBySongId(version === null ? videoId : '')
   const { data: versionLyrics } = useGetLyricsVersion(videoId, version)
   const data = version === null ? activeLyrics : versionLyrics
   const { data: karaokeDoc } = useGetKaraokeById(videoId, version)
@@ -69,7 +72,11 @@ const useSongLines = (videoId: string, version: number | null) => {
         : null
     return offlineLines(lyrics, karaoke)
   }, [data, karaokeDoc])
-  return { lines, loading: version === null && isPending }
+  return {
+    limited: error instanceof RateLimitedError,
+    lines,
+    loading: version === null && isPending,
+  }
 }
 
 // A tap on the band opens Lyrics Style; a press held longer is the start of a look around the song. Only over
@@ -110,12 +117,46 @@ const scrollerLook = (band: boolean, empty: boolean) => {
 // As a band (under the video on a phone held upright) it is a karaoke window instead: the sung line centred at
 // the Lyrics Style size, the lines either side fading out at its edges, and a tap opens Lyrics Style, never a
 // seek. Holding and scrolling reads elsewhere until Current Line or a seek, while the song plays on
+// What the panel says instead of lines: '' while they load, null when it has lines to show
+const emptyText = ({
+  anyShown,
+  hasLines,
+  limited,
+  loading,
+}: {
+  anyShown: boolean
+  hasLines: boolean
+  limited: boolean
+  loading: boolean
+}) => {
+  if (hasLines) {
+    return anyShown
+      ? null
+      : 'Lyrics, Romaji and Translation are all turned off.'
+  }
+  if (loading) {
+    return ''
+  }
+  return limited
+    ? 'Too many songs this hour. Try again soon.'
+    : 'No lyrics for this song yet.'
+}
+
 // Why the panel has no lines. A chart song (Top 100 Japan, not in Synbox yet) offers its lyrics where they
 // would be
-const EmptyLyrics = ({ videoId, text }: { videoId: string; text: string }) => {
+const EmptyLyrics = ({
+  videoId,
+  text,
+  limited,
+}: {
+  videoId: string
+  text: string
+  limited: boolean
+}) => {
   const chart = useAtomValue(chartSongAtom)?.videoId === videoId
   const title = useAtomValue(currentVideoAtom)?.title
-  if (!chart) {
+  // Refused for opening too many songs this hour: the song may well have lyrics, so no Generate Lyrics
+  if (!chart || limited) {
     return <p className='py-6 text-sm text-muted-foreground'>{text}</p>
   }
   // Nothing while the lyrics are still being asked for
@@ -144,7 +185,7 @@ export const LyricsPanel = ({
   band?: boolean
   className?: string
 }) => {
-  const { lines, loading } = useSongLines(videoId, version)
+  const { limited, lines, loading } = useSongLines(videoId, version)
   const clock = useAtomValue(stageClockAtom)
   // The Japanese and the karaoke fill take the lyrics colour (Lyrics Style), as the lyrics over the video do
   const { accent } = getLyricsThemeColors(
@@ -207,12 +248,12 @@ export const LyricsPanel = ({
     [clock, lines, follow]
   )
   const lit = active >= 0 ? active : reached
-  let empty: string | null = null
-  if (lines.length === 0) {
-    empty = loading ? '' : 'No lyrics for this song yet.'
-  } else if (!(show.japanese || show.romaji || show.translation)) {
-    empty = 'Lyrics, Romaji and Translation are all turned off.'
-  }
+  const empty = emptyText({
+    anyShown: show.japanese || show.romaji || show.translation,
+    hasLines: lines.length > 0,
+    limited,
+    loading,
+  })
   const styleTap = useStyleTap(band && empty === null)
   const seek = (to: number) => {
     clock?.seek(to)
@@ -283,7 +324,7 @@ export const LyricsPanel = ({
               />
             ))
           ) : (
-            <EmptyLyrics videoId={videoId} text={empty} />
+            <EmptyLyrics videoId={videoId} text={empty} limited={limited} />
           )}
         </div>
       </div>

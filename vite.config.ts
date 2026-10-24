@@ -13,6 +13,7 @@ import shadcn from 'ultracite/oxlint/shadcn'
 import { VitePWA } from 'vite-plugin-pwa'
 import { defineConfig, lazyPlugins, loadEnv } from 'vite-plus'
 
+import { handleLyrics } from './dev/lyrics-proxy'
 import { handleYoutube } from './netlify/youtube-proxy'
 
 // A git worktree has no env file of its own, so every checkout reads the main checkout's
@@ -28,6 +29,37 @@ const envDir = (() => {
     return import.meta.dirname
   }
 })()
+
+// The dev and preview servers' stand-in for the Worker's lyrics routes (dev/lyrics-proxy.ts)
+const serveLyrics = async (
+  req: IncomingMessage,
+  res: ServerResponse,
+  next: (error?: unknown) => void
+) => {
+  if (!/^\/api\/(?:lyrics|lyrics-dates|karaoke)\b/u.test(req.url ?? '')) {
+    // oxlint-disable-next-line node/callback-return -- Connect's next() passes the request on
+    next()
+    return
+  }
+  try {
+    const env = loadEnv(process.env.NODE_ENV ?? 'development', envDir, '')
+    const response = await handleLyrics(
+      new Request(new URL(req.url ?? '', 'http://localhost')),
+      env
+    )
+    if (response === null) {
+      // oxlint-disable-next-line node/callback-return -- as above
+      next()
+      return
+    }
+    res.statusCode = response.status
+    res.setHeader('Content-Type', 'application/json')
+    res.end(await response.text())
+  } catch (error) {
+    // oxlint-disable-next-line node/callback-return -- Connect's next() ends the request
+    next(error)
+  }
+}
 
 // The dev server's stand-in for the Netlify function at /api/youtube
 const serveYoutube = async (
@@ -140,6 +172,21 @@ export default defineConfig({
         }
       },
       name: 'require-backend-url',
+    },
+    // The auth Worker serves lyrics and karaoke timing (worker/src/lyrics.ts); locally a stand-in answers the same
+    // paths, so a dev server or a preview build shows lyrics without a Worker running
+    {
+      configurePreviewServer(server) {
+        server.middlewares.use((req, res, next) => {
+          void serveLyrics(req, res, next)
+        })
+      },
+      configureServer(server) {
+        server.middlewares.use((req, res, next) => {
+          void serveLyrics(req, res, next)
+        })
+      },
+      name: 'lyrics-proxy',
     },
     // Netlify serves /api/youtube from a function; the dev server answers with the same handler
     {

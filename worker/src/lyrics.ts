@@ -1,0 +1,483 @@
+import { Hono } from 'hono'
+import type { Context } from 'hono'
+
+import { createAuth } from './auth'
+import type { Env } from './auth'
+import type { LibraryEnv } from './library-songs'
+import { lyricsRowIds } from './library-songs'
+import { isVideoId } from './songs'
+
+// The app's lyrics and karaoke timing, one song at a time, through the Worker: the lyrics row from Appwrite with the
+// Worker's own key, the timing from the backend's lookup service with the key it shares with the Worker. Each
+// requester (an account, or a guest's network for the day) may open so many songs an hour; a song already opened
+// this hour is free again. The translations carry an invisible mark of who asked (traceMark), so a copied text can
+// be traced back (scripts/trace-decode.ts)
+
+export interface LyricsEnv extends Env, LibraryEnv {
+  // A server key with read access to the lyrics table (Appwrite console › API keys, scope rows.read)
+  APPWRITE_API_KEY?: string
+  // The backend's lookup service, and the key it checks on lyric reads (synbox-transcribe-whisper)
+  LOOKUP_BASE?: string
+  LOOKUP_KEY?: string
+  // Signs the translations' invisible mark and the guests' network keys
+  TRACE_KEY?: string
+  LYRICS_GUEST_PER_HOUR?: string
+  LYRICS_ACCOUNT_PER_HOUR?: string
+}
+
+// What the app reads of a lyrics row (src/lib/lyrics-document.ts, the player's plain text check, the report form's
+// version); the row's other columns (the unlabelled text, counters) never leave the Worker
+export const LYRICS_FIELDS = [
+  'labelled_full_lyrics',
+  'romaji',
+  'eng_translation',
+  'chi_translation',
+  'plain_lyrics',
+  'active_version',
+] as const
+const TRACED_FIELDS = ['eng_translation', 'chi_translation'] as const
+
+// Guests: a song a minute keeps playing a queue and saving the last 30 songs for offline reading in reach; an
+// account more than a listener opens in an hour
+const GUEST_PER_HOUR = 60
+const ACCOUNT_PER_HOUR = 300
+const HOUR = 3_600_000
+const KEEP_HITS_DAYS = 30
+// A lyrics row or timing changes only on a fix or a new version; five minutes at the edge saves Appwrite and the
+// lookup service from repeat reads
+const CACHE_SECONDS = 300
+const DATES_MAX = 50
+
+const APP_ORIGIN =
+  /^(?:https:\/\/(?:www\.)?synbox\.io|https:\/\/synbox\.netlify\.app|http:\/\/localhost:\d+)$/u
+
+const perHour = (value: string | undefined, fallback: number) => {
+  const n = Number(value)
+  return value !== undefined && Number.isInteger(n) && n > 0 ? n : fallback
+}
+
+const hex = (bytes: ArrayBuffer) =>
+  [...new Uint8Array(bytes)]
+    .map((byte) => byte.toString(16).padStart(2, '0'))
+    .join('')
+
+export const hmac = async (secret: string, text: string) => {
+  const key = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(secret),
+    { hash: 'SHA-256', name: 'HMAC' },
+    false,
+    ['sign']
+  )
+  return hex(
+    await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(text))
+  )
+}
+
+// The mark: 24 bits of the requester's HMAC, as default-ignorable characters that draw nothing and never break a
+// line, framed by word joiners. Written after a line's first character, so a part copied from its start keeps it
+const FRAME = String.fromCodePoint(0x20_60)
+const ZERO = String.fromCodePoint(0x20_62)
+const ONE = String.fromCodePoint(0x20_63)
+export const TRACE_CHARS = new RegExp(`[${FRAME}${ZERO}${ONE}]`, 'gu')
+const MARK = new RegExp(`${FRAME}(?<bits>[${ZERO}${ONE}]{24})${FRAME}`, 'gu')
+
+export const traceTag = async (secret: string, requester: string) => {
+  const mac = await hmac(secret, `trace:${requester}`)
+  return mac.slice(0, 6)
+}
+
+export const traceMark = (tag: string) =>
+  FRAME +
+  Number.parseInt(tag, 16)
+    .toString(2)
+    .padStart(24, '0')
+    .split('')
+    .map((bit) => (bit === '1' ? ONE : ZERO))
+    .join('') +
+  FRAME
+
+// Every mark in a text, as tags
+export const readMarks = (text: string) =>
+  [...text.matchAll(MARK)].map((match) =>
+    Number.parseInt(
+      (match.groups?.bits ?? '')
+        .split('')
+        .map((char) => (char === ONE ? '1' : '0'))
+        .join(''),
+      2
+    )
+      .toString(16)
+      .padStart(6, '0')
+  )
+
+const graphemes = new Intl.Segmenter()
+const markLine = (line: string, mark: string) => {
+  const first = graphemes.segment(line)[Symbol.iterator]().next().value?.segment
+  return first === undefined || line.trim() === ''
+    ? line
+    : `${first}${mark}${line.slice(first.length)}`
+}
+
+// Every MARK_EVERY-th line with text, from the first: a copy of a whole song carries the mark many times over,
+// and the answer stays small
+const MARK_EVERY = 3
+const markEvery = (lines: unknown[], mark: string) => {
+  let withText = 0
+  return lines.map((line) => {
+    if (typeof line !== 'string' || line.trim() === '') {
+      return line
+    }
+    withText += 1
+    return (withText - 1) % MARK_EVERY === 0 ? markLine(line, mark) : line
+  })
+}
+
+// A translation column is a JSON array of lines in a string; a column that isn't one passes unmarked
+export const markColumn = (column: unknown, mark: string) => {
+  if (typeof column !== 'string') {
+    return column
+  }
+  try {
+    const lines: unknown = JSON.parse(column)
+    return Array.isArray(lines)
+      ? JSON.stringify(markEvery(lines, mark))
+      : column
+  } catch {
+    return column
+  }
+}
+
+type Ctx = Context<{ Bindings: LyricsEnv }>
+
+const corsOf = (c: Ctx): Record<string, string> => {
+  const origin = c.req.header('origin') ?? ''
+  return APP_ORIGIN.test(origin)
+    ? {
+        'Access-Control-Allow-Credentials': 'true',
+        'Access-Control-Allow-Origin': origin,
+        Vary: 'Origin',
+      }
+    : {}
+}
+
+// Who is asking: the account (a session cookie through the app's own origin, or the backend token the app sends
+// cross-origin), else the guest's network for the day, kept only as an HMAC
+export const requesterOf = async (c: Ctx): Promise<string> => {
+  const auth = createAuth(c.env)
+  const bearer = /^Bearer (?<token>.+)$/u.exec(
+    c.req.header('authorization') ?? ''
+  )?.groups?.token
+  if (bearer !== undefined) {
+    try {
+      const verified = await auth.api.verifyJWT({ body: { token: bearer } })
+      if (verified.payload?.sub !== undefined) {
+        return `u:${verified.payload.sub}`
+      }
+    } catch {
+      // An expired or foreign token counts as no account
+    }
+  }
+  const session = await auth.api.getSession({ headers: c.req.raw.headers })
+  if (session !== null) {
+    return `u:${session.user.id}`
+  }
+  const address = c.req.header('cf-connecting-ip') ?? 'unknown'
+  const day = Math.floor(Date.now() / (24 * HOUR))
+  const secret = c.env.TRACE_KEY ?? c.env.BETTER_AUTH_SECRET
+  const network = await hmac(secret, `net:${address}:${day}`)
+  return `g:${network.slice(0, 16)}`
+}
+
+// Counts a song against the requester's hour; a song already counted this hour is free. The seconds to wait, or
+// null when it may be read
+export const takeSong = async (
+  db: D1Database,
+  requester: string,
+  videoId: string,
+  limit: number,
+  now: number
+): Promise<number | null> => {
+  const hour = Math.floor(now / HOUR)
+  const seen = await db
+    .prepare(
+      `select 1 from "lyrics_hit" where "requester" = ?1 and "hour" = ?2 and "videoId" = ?3`
+    )
+    .bind(requester, hour, videoId)
+    .first()
+  if (seen !== null) {
+    return null
+  }
+  const counted = await db
+    .prepare(
+      `select count(*) as "n" from "lyrics_hit" where "requester" = ?1 and "hour" = ?2`
+    )
+    .bind(requester, hour)
+    .first<{ n: number }>()
+  if ((counted?.n ?? 0) >= limit) {
+    return Math.max(1, Math.ceil(((hour + 1) * HOUR - now) / 1000))
+  }
+  await db
+    .prepare(
+      `insert or ignore into "lyrics_hit" ("requester", "hour", "videoId") values (?1, ?2, ?3)`
+    )
+    .bind(requester, hour, videoId)
+    .run()
+  return null
+}
+
+// Hits are kept KEEP_HITS_DAYS: they say which requesters a traced copy can come from
+export const pruneHits = async (db: D1Database, now: number) => {
+  await db
+    .prepare(`delete from "lyrics_hit" where "hour" < ?1`)
+    .bind(Math.floor((now - KEEP_HITS_DAYS * 24 * HOUR) / HOUR))
+    .run()
+}
+
+const cached = async (
+  key: string,
+  load: () => Promise<Response>
+): Promise<Response> => {
+  const cache = 'caches' in globalThis ? caches.default : undefined
+  const request = new Request(`https://api.synbox.io/__lyrics/${key}`)
+  const hit = await cache?.match(request)
+  if (hit !== undefined) {
+    return hit
+  }
+  const response = await load()
+  if (response.ok || response.status === 404) {
+    const stored = new Response(await response.clone().arrayBuffer(), {
+      headers: {
+        'Cache-Control': `max-age=${CACHE_SECONDS}`,
+        'Content-Type':
+          response.headers.get('content-type') ?? 'application/json',
+      },
+      status: response.status,
+    })
+    await cache?.put(request, stored)
+  }
+  return response
+}
+
+const appwriteRows = async (
+  env: LyricsEnv,
+  videoIds: string[],
+  fields: readonly string[]
+): Promise<Record<string, unknown>[] | null> => {
+  const {
+    APPWRITE_URL: url = 'https://cloud.appwrite.io/v1',
+    APPWRITE_PROJECT_ID: project = '',
+    APPWRITE_DATABASE_ID: database = '',
+    APPWRITE_LYRICS_TABLE_ID: table = '',
+    APPWRITE_API_KEY: key = '',
+  } = env
+  if (project === '' || database === '' || table === '') {
+    console.error('lyrics: Appwrite settings missing')
+    return null
+  }
+  const rowIds = videoIds.flatMap(lyricsRowIds)
+  const queries = [
+    { attribute: '$id', method: 'equal', values: rowIds },
+    {
+      method: 'select',
+      values: ['$id', '$createdAt', '$updatedAt', ...fields],
+    },
+    { method: 'limit', values: [rowIds.length] },
+  ]
+    .map((query) => `queries[]=${encodeURIComponent(JSON.stringify(query))}`)
+    .join('&')
+  const headers: Record<string, string> = { 'X-Appwrite-Project': project }
+  if (key !== '') {
+    headers['X-Appwrite-Key'] = key
+  }
+  const response = await fetch(
+    `${url}/tablesdb/${database}/tables/${table}/rows?${queries}&total=false`,
+    { headers }
+  )
+  if (!response.ok) {
+    console.error(`lyrics: Appwrite answered ${response.status}`)
+    return null
+  }
+  const body: { rows?: unknown } = await response.json()
+  return Array.isArray(body.rows)
+    ? body.rows.filter(
+        (row): row is Record<string, unknown> =>
+          typeof row === 'object' && row !== null
+      )
+    : []
+}
+
+// The row of each video, the current id encoding winning over the old one (src/lib/appwrite/api.ts)
+const rowsByVideo = (videoIds: string[], rows: Record<string, unknown>[]) => {
+  const found = new Map<string, Record<string, unknown>>()
+  for (const videoId of videoIds) {
+    const [current, legacy] = lyricsRowIds(videoId)
+    const row =
+      rows.find((r) => r.$id === current) ?? rows.find((r) => r.$id === legacy)
+    if (row !== undefined) {
+      found.set(videoId, row)
+    }
+  }
+  return found
+}
+
+const datesOf = (row: Record<string, unknown>) => ({
+  createdAt:
+    typeof row.$createdAt === 'string' ? Date.parse(row.$createdAt) : 0,
+  updatedAt:
+    typeof row.$updatedAt === 'string' ? Date.parse(row.$updatedAt) : 0,
+})
+
+export const lyrics = new Hono<{ Bindings: LyricsEnv }>()
+
+const preflight = (c: Ctx) => {
+  const cors = corsOf(c)
+  if (cors['Access-Control-Allow-Origin'] === undefined) {
+    return c.body(null, 403)
+  }
+  return c.body(null, 204, {
+    ...cors,
+    'Access-Control-Allow-Headers': 'Authorization',
+    'Access-Control-Allow-Methods': 'GET',
+    'Access-Control-Max-Age': '600',
+  })
+}
+lyrics.options('/lyrics/:videoId', preflight)
+lyrics.options('/lyrics-dates', preflight)
+lyrics.options('/karaoke/:videoId', preflight)
+
+// The dates of up to DATES_MAX songs' lyrics, no text: what the offline copy checks before fetching a song again
+lyrics.get('/lyrics-dates', async (c) => {
+  const cors = corsOf(c)
+  const ids = (c.req.query('ids') ?? '').split(',').filter((id) => id !== '')
+  if (ids.length === 0 || ids.length > DATES_MAX || !ids.every(isVideoId)) {
+    return c.json({ code: 'bad_request' }, 400, cors)
+  }
+  const rows = await appwriteRows(c.env, ids, [])
+  if (rows === null) {
+    return c.json({ code: 'unavailable' }, 503, cors)
+  }
+  const songs = [...rowsByVideo(ids, rows)].map(([videoId, row]) => ({
+    videoId,
+    ...datesOf(row),
+  }))
+  return c.json({ songs }, 200, cors)
+})
+
+const limitOf = (env: LyricsEnv, requester: string) =>
+  requester.startsWith('u:')
+    ? perHour(env.LYRICS_ACCOUNT_PER_HOUR, ACCOUNT_PER_HOUR)
+    : perHour(env.LYRICS_GUEST_PER_HOUR, GUEST_PER_HOUR)
+
+// Counts the song before anything is read, cached or not: the 429, or the requester
+const admit = async (c: Ctx, videoId: string) => {
+  const requester = await requesterOf(c)
+  const wait = await takeSong(
+    c.env.DB,
+    requester,
+    videoId,
+    limitOf(c.env, requester),
+    Date.now()
+  )
+  return { requester, wait }
+}
+
+const tooMany = (c: Ctx, wait: number) =>
+  c.json({ code: 'rate_limited' }, 429, {
+    ...corsOf(c),
+    'Retry-After': String(wait),
+  })
+
+lyrics.get('/lyrics/:videoId', async (c) => {
+  const cors = corsOf(c)
+  const videoId = c.req.param('videoId')
+  if (!isVideoId(videoId)) {
+    return c.json({ code: 'bad_request' }, 400, cors)
+  }
+  const { requester, wait } = await admit(c, videoId)
+  if (wait !== null) {
+    return tooMany(c, wait)
+  }
+  const response = await cached(`lyrics/${videoId}`, async () => {
+    const rows = await appwriteRows(c.env, [videoId], LYRICS_FIELDS)
+    if (rows === null) {
+      return Response.json({ code: 'unavailable' }, { status: 503 })
+    }
+    const row = rowsByVideo([videoId], rows).get(videoId)
+    if (row === undefined) {
+      return Response.json({ code: 'not_found' }, { status: 404 })
+    }
+    const body: Record<string, unknown> = { videoId, ...datesOf(row) }
+    for (const field of LYRICS_FIELDS) {
+      body[field] = row[field] ?? null
+    }
+    return Response.json(body)
+  })
+  if (!response.ok) {
+    return c.json(
+      await response.json(),
+      response.status === 404 ? 404 : 503,
+      cors
+    )
+  }
+  const body: Record<string, unknown> = await response.json()
+  const secret = c.env.TRACE_KEY ?? ''
+  if (secret !== '') {
+    const mark = traceMark(await traceTag(secret, requester))
+    for (const field of TRACED_FIELDS) {
+      body[field] = markColumn(body[field], mark)
+    }
+  }
+  return c.json(body, 200, { ...cors, 'Cache-Control': 'private, no-store' })
+})
+
+lyrics.get('/karaoke/:videoId', async (c) => {
+  const cors = corsOf(c)
+  const videoId = c.req.param('videoId')
+  const version = c.req.query('version')
+  if (
+    !isVideoId(videoId) ||
+    (version !== undefined && !/^\d{1,6}$/u.test(version))
+  ) {
+    return c.json({ code: 'bad_request' }, 400, cors)
+  }
+  const { LOOKUP_BASE: base = '', LOOKUP_KEY: key = '' } = c.env
+  if (base === '') {
+    return c.json({ code: 'unavailable' }, 503, cors)
+  }
+  const { wait } = await admit(c, videoId)
+  if (wait !== null) {
+    return tooMany(c, wait)
+  }
+  const query = version === undefined ? '' : `?version=${version}`
+  const response = await cached(
+    `karaoke/${videoId}/${version ?? 'live'}`,
+    async () => {
+      const headers: Record<string, string> = { Accept: 'application/json' }
+      if (key !== '') {
+        headers['X-Synbox-Lookup-Key'] = key
+      }
+      try {
+        return await fetch(
+          `${base}/karaoke/${encodeURIComponent(videoId)}${query}`,
+          { headers }
+        )
+      } catch {
+        return Response.json({ code: 'unreachable' }, { status: 502 })
+      }
+    }
+  )
+  if (response.status === 404) {
+    return c.json({ code: 'not_found' }, 404, cors)
+  }
+  if (!response.ok) {
+    return c.json({ code: 'unavailable' }, 502, cors)
+  }
+  return new Response(response.body, {
+    headers: {
+      ...cors,
+      'Cache-Control': 'private, no-store',
+      'Content-Type': 'application/json',
+    },
+  })
+})

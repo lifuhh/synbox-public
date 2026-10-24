@@ -1,7 +1,8 @@
 import type { QueryClient } from '@tanstack/react-query'
 import { queryOptions, useMutation, useQuery } from '@tanstack/react-query'
 
-import { getSongInfoBySongId, getSongLyricsById } from '../appwrite/api'
+import { getSongInfoBySongId } from '../appwrite/api'
+import { fetchLyricsRow, RateLimitedError } from '../lyrics-api'
 import { getLandingPagePlaylist } from '../recommendations'
 import { getKaraoke } from '../synbox-flask/api'
 import type { LibraryListSong } from '../synbox-flask/discovery'
@@ -126,7 +127,10 @@ export const useGetLyricsBySongId = (songId: string) =>
   useQuery({
     enabled: Boolean(songId?.trim()),
     gcTime: 1000 * 60 * 60,
-    queryFn: async () => await getSongLyricsById(songId),
+    queryFn: async ({ signal }) => {
+      const found = await fetchLyricsRow(songId, signal)
+      return found === null ? null : { ...found.row, videoId: songId }
+    },
     queryKey: [QUERY_KEYS.GET_LYRICS_BY_SONG_ID, songId],
     refetchOnMount: false,
     refetchOnReconnect: false,
@@ -155,7 +159,8 @@ export const useGetKaraokeById = (
     refetchOnWindowFocus: false,
     // A busy server turns requests away for up to a minute while a lyrics job
     // runs; giving up sooner leaves plain lyrics until something remounts
-    retry: 7,
+    retry: (failures, error) =>
+      !(error instanceof RateLimitedError) && failures < 7,
     retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 20_000),
     staleTime: 1000 * 60 * 60,
   })

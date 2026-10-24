@@ -4,11 +4,12 @@ import { createStore, del, get, set, values } from 'idb-keyval'
 import { useAtomValue } from 'jotai'
 import { useEffect, useRef, useSyncExternalStore } from 'react'
 
-import { getGallerySongs, getLyricsRows } from '@/lib/appwrite/api'
-import type { LyricsRow } from '@/lib/appwrite/api'
+import { getGallerySongs } from '@/lib/appwrite/api'
 import { fetchMySongs, useMe } from '@/lib/auth'
 import { karaokeMatchesLyrics } from '@/lib/karaoke'
 import { favoritesAtom, historyAtom } from '@/lib/library/store'
+import { fetchLyricsDates, fetchLyricsRow } from '@/lib/lyrics-api'
+import type { LyricsRow } from '@/lib/lyrics-api'
 import { parseLyricsDocument } from '@/lib/lyrics-document'
 import { useOnline } from '@/lib/pwa'
 import { QUERY_KEYS } from '@/lib/react-query/query-keys'
@@ -152,6 +153,16 @@ const fetchThumbnail = async (videoId: string) => {
   }
 }
 
+// Each song's lyrics, one request per song (the Worker serves no list of lyrics); a song without any is left out
+const lyricsRows = async (videoIds: string[]) => {
+  const rows = await Promise.all(
+    videoIds.map(async (id) => await fetchLyricsRow(id))
+  )
+  return new Map(
+    rows.flatMap((row) => (row === null ? [] : [[row.videoId, row] as const]))
+  )
+}
+
 // The song's karaoke timing when it belongs to these lyrics (it holds the newest generation, which an older
 // active version doesn't match); null when there is none. A failed request throws
 const fetchKaraoke = async (
@@ -210,7 +221,7 @@ export const useLyricsSong = (videoId: string) =>
         return saved ?? null
       }
       const [rows, infos] = await Promise.all([
-        getLyricsRows([videoId]),
+        lyricsRows([videoId]),
         getGallerySongs([videoId]).catch(() => []),
       ])
       const found = rows.get(videoId)
@@ -227,7 +238,7 @@ const saveChunk = async (
   wanted: Map<string, WantedSong>
 ): Promise<number> => {
   const [rows, infos] = await Promise.all([
-    getLyricsRows(ids),
+    lyricsRows(ids),
     getGallerySongs(ids).catch(() => []),
   ])
   const results = await Promise.all(
@@ -259,7 +270,7 @@ const syncSongs = async (
   const dates = new Map<string, { updatedAt: number }>()
   for (const chunk of chunked(ids, DATES_CHUNK)) {
     // oxlint-disable-next-line eslint/no-await-in-loop -- a handful of small requests, one after another
-    const rows = await getLyricsRows(chunk, { datesOnly: true })
+    const rows = await fetchLyricsDates(chunk)
     for (const [videoId, row] of rows) {
       dates.set(videoId, row)
     }
