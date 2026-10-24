@@ -13,7 +13,7 @@ const librarySongs = async (_request: Request, context: Context) => {
   const store = getStore('library-songs')
   return await handleLibrarySongs(
     {
-      get: async () => await store.get(KEY),
+      get: async () => await store.get(KEY, { type: 'text' }),
       set: async (body) => {
         await store.set(KEY, body)
       },

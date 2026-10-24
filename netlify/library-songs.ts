@@ -31,20 +31,36 @@ const listHeaders = (cdnSeconds: number) => ({
 })
 
 const fetchList = async (): Promise<string | null> => {
-  const response = await fetch(LOOKUP_SONGS).catch(() => null)
-  if (response?.ok !== true) {
+  try {
+    const response = await fetch(LOOKUP_SONGS)
+    if (!response.ok) {
+      return null
+    }
+    const body = await response.text()
+    return songList.safeParse(JSON.parse(body)).success ? body : null
+  } catch {
     return null
   }
-  const body = await response.text().catch(() => '')
-  const parsed = songList.safeParse(JSON.parse(body || 'null'))
-  return parsed.success ? body : null
+}
+
+const keep = async (kept: KeptList, list: Promise<string | null>) => {
+  try {
+    const body = await list
+    if (body !== null) {
+      await kept.set(body)
+    }
+  } catch {
+    // A failed write leaves the last list kept
+  }
 }
 
 export const handleLibrarySongs = async (
   kept: KeptList,
   waitUntil: (work: Promise<unknown>) => void
 ): Promise<Response> => {
-  const live = fetchList().catch(() => null)
+  const live = fetchList()
+  // Kept whenever it comes, also after a cold service answered too late for this request (which woke it)
+  waitUntil(keep(kept, live))
   const fresh = await Promise.race([
     live,
     new Promise<undefined>((resolve) => {
@@ -52,18 +68,15 @@ export const handleLibrarySongs = async (
     }),
   ])
   if (typeof fresh === 'string') {
-    waitUntil(kept.set(fresh).catch(() => null))
     return new Response(fresh, { headers: listHeaders(300) })
   }
-  // Still waking or down: keep the fresh list when it comes, and answer with the last one now
-  waitUntil(
-    live.then(async (body) => {
-      if (body !== null) {
-        await kept.set(body)
-      }
-    })
-  )
-  const last = await kept.get().catch(() => null)
+  // Still waking or down: the last list now
+  let last: string | null = null
+  try {
+    last = await kept.get()
+  } catch {
+    // No kept list to fall back on
+  }
   if (last !== null) {
     return new Response(last, { headers: listHeaders(30) })
   }
