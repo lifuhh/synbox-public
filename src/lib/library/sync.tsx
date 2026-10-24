@@ -55,7 +55,8 @@ const fetchLibrary = async (): Promise<Library> => {
   }
 }
 
-// false: the Worker refused these ops as malformed, so sending them again can never work
+// false: the Worker refused these ops, as malformed (400) or past the account's limits (413), so sending them
+// again can never work
 const sendOps = async (ops: LibraryOp[]) => {
   const response = await fetch('/api/me/library', {
     body: JSON.stringify({ ops }),
@@ -63,7 +64,7 @@ const sendOps = async (ops: LibraryOp[]) => {
     headers: { 'Content-Type': 'application/json' },
     method: 'POST',
   })
-  if (response.status === 400) {
+  if (response.status === 400 || response.status === 413) {
     return false
   }
   if (!response.ok) {

@@ -5,7 +5,7 @@ import { QUERY_KEYS } from '@/lib/react-query/query-keys'
 
 // Each song's listens and likes, kept by the auth Worker (worker/src/songs.ts)
 
-// A guest's likes belong to this browser: a random id kept here, never synced to an account
+// A guest's listens are counted by this browser: a random id kept here, never synced to an account
 const DEVICE_KEY = 'synboxDevice'
 export const deviceId = () => {
   try {
@@ -36,7 +36,11 @@ export const countListen = (videoId: string) => {
   lastListen = { at: now, videoId }
   const send = async () => {
     try {
+      // The Worker counts one listen per account, or per guest's browser, an hour (worker/src/songs.ts)
       await fetch(`/api/songs/${videoId}/listen`, {
+        body: JSON.stringify({ device: deviceId() }),
+        credentials: 'same-origin',
+        headers: { 'content-type': 'application/json' },
         keepalive: true,
         method: 'POST',
       })
@@ -69,7 +73,7 @@ export const useSongStats = (videoId: string) =>
     queryFn: async () => {
       await sending.get(videoId)
       return await readJson(
-        await fetch(`/api/songs/${videoId}/stats?device=${deviceId() ?? ''}`, {
+        await fetch(`/api/songs/${videoId}/stats`, {
           credentials: 'same-origin',
         })
       )
@@ -77,7 +81,7 @@ export const useSongStats = (videoId: string) =>
     queryKey: statsKey(videoId),
   })
 
-// Shows the like at once and settles on the server's answer; a refused like puts the button back
+// Shows the like at once and settles on the server's answer; a refused like puts the button back. Signed in only
 export const useLikeSong = (videoId: string) => {
   const queryClient = useQueryClient()
   return useMutation<
@@ -89,7 +93,7 @@ export const useLikeSong = (videoId: string) => {
     mutationFn: async (liked: boolean) =>
       await readJson(
         await fetch(`/api/songs/${videoId}/like`, {
-          body: JSON.stringify({ device: deviceId(), liked }),
+          body: JSON.stringify({ liked }),
           credentials: 'same-origin',
           headers: { 'content-type': 'application/json' },
           method: 'PUT',

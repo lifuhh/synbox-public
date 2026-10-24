@@ -16,7 +16,8 @@
       "migrations_dir": "migrations",
     },
   ],
-  // Daily: drops reports the backend's 12-hourly fixer left open for 3 days (src/reports.ts › expireReports)
+  // Daily: drops reports the backend's 12-hourly fixer left open for 3 days (src/reports.ts › expireReports) and
+  // listen rows past their hour (src/songs.ts › pruneListens)
   "triggers": { "crons": ["0 3 * * *"] },
   // Secrets (wrangler secret put): BETTER_AUTH_SECRET, GOOGLE_CLIENT_SECRET, INTERNAL_SECRET, ADMIN_EMAILS,
   // REPORTS_FIXER_TOKEN (the backend's report fixer holds the same value), and APPWRITE_PROJECT_ID,

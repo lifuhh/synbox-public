@@ -1,9 +1,16 @@
 import { beforeEach, expect, test } from 'bun:test'
 
-import { applyPrefOps, parsePrefOps, readPrefs } from './prefs'
+import {
+  PREFS_KEYS_LIMIT,
+  PREFS_SIZE_LIMIT,
+  applyPrefOps,
+  parsePrefOps,
+  readPrefs,
+} from './prefs'
 import { migratedD1 } from './test-d1'
 
 let db: D1Database
+let sqlite: ReturnType<typeof migratedD1>['sqlite']
 const NOW = 1_000_000
 
 const sync = async (...ops: unknown[]) => {
@@ -16,8 +23,8 @@ const sync = async (...ops: unknown[]) => {
 }
 
 beforeEach(() => {
-  const { db: fresh, sqlite } = migratedD1()
-  db = fresh
+  const fresh = migratedD1()
+  ;({ db, sqlite } = fresh)
   sqlite
     .prepare(
       `insert into "user" ("id", "name", "email", "emailVerified", "createdAt", "updatedAt") values (?, 'n', ?, 1, 0, 0)`
@@ -73,4 +80,57 @@ test('a batch with any malformed op is refused whole, and a time ahead of the se
   expect(
     parsePrefOps({ ops: [{ at: NOW * 2, key: 'ok', value: true }] }, NOW)
   ).toEqual([{ at: NOW, key: 'ok', value: 'true' }])
+})
+
+// `count` song styles already on the account, each a JSON string `size` characters long
+const stored = (count: number, size = 3) => {
+  const insert = sqlite.prepare(
+    `insert into "preference" ("userId", "key", "value", "changedAt") values ('u1', ?, ?, 1)`
+  )
+  for (let n = 0; n < count; n += 1) {
+    insert.run(`lyricsStyle:song${n}`, JSON.stringify('x'.repeat(size - 2)))
+  }
+}
+
+// One op setting each key
+const ops = (...keys: string[]) =>
+  parsePrefOps({ ops: keys.map((key) => ({ at: 5, key, value: 'y' })) }, NOW) ??
+  []
+
+test('an account at its settings limit gets nothing of a batch that adds a key; changing kept keys still works', async () => {
+  stored(PREFS_KEYS_LIMIT - 1)
+  // One new key fits; two don't, and the batch's change to a kept key doesn't land either
+  expect(await applyPrefOps(db, 'u1', ops('lyricsTheme'))).toBe(true)
+  expect(
+    await applyPrefOps(db, 'u1', ops('lyricsStyle:song0', 'offlineReader'))
+  ).toBe(false)
+  const prefs = await readPrefs(db, 'u1')
+  expect([Object.keys(prefs).length, prefs['lyricsStyle:song0']?.at]).toEqual([
+    PREFS_KEYS_LIMIT,
+    1,
+  ])
+  expect(await applyPrefOps(db, 'u1', ops('lyricsStyle:song0'))).toBe(true)
+})
+
+test("an account's settings stay under their size limit", async () => {
+  const size = 10_000
+  stored(Math.floor(PREFS_SIZE_LIMIT / size), size)
+  // A value is stored as JSON: a string two quotes longer
+  const big = (key: string) =>
+    parsePrefOps({ ops: [{ at: 5, key, value: 'y'.repeat(size - 2) }] }, NOW) ??
+    []
+  expect(await applyPrefOps(db, 'u1', big('lyricsTemplates'))).toBe(false)
+  // Replacing a kept value with one as long fits
+  expect(await applyPrefOps(db, 'u1', big('lyricsStyle:song0'))).toBe(true)
+  expect(
+    await applyPrefOps(
+      db,
+      'u1',
+      parsePrefOps(
+        { ops: [{ at: 5, key: 'lyricsStyle:song0', value: null }] },
+        NOW
+      ) ?? []
+    )
+  ).toBe(true)
+  expect(await applyPrefOps(db, 'u1', big('lyricsTemplates'))).toBe(true)
 })

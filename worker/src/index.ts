@@ -49,6 +49,8 @@ import {
   likerOf,
   listListenCounts,
   listRecentListens,
+  listenerOf,
+  pruneListens,
   readStats,
   setLike,
 } from './songs'
@@ -146,7 +148,10 @@ app.post('/api/me/library', async (c) => {
   if (ops === null) {
     return c.json({ code: 'bad_request' }, 400)
   }
-  await applyOps(c.env.DB, session.user.id, ops)
+  // An account past its limits (library.ts › BOOKMARKS_LIMIT and the rest) gets nothing of the batch
+  if (!(await applyOps(c.env.DB, session.user.id, ops))) {
+    return c.json({ code: 'library_full' }, 413)
+  }
   return c.body(null, 204)
 })
 
@@ -176,7 +181,10 @@ app.post('/api/me/prefs', async (c) => {
   if (ops === null) {
     return c.json({ code: 'bad_request' }, 400)
   }
-  await applyPrefOps(c.env.DB, session.user.id, ops)
+  // An account past its limits (prefs.ts › PREFS_KEYS_LIMIT, PREFS_SIZE_LIMIT) gets nothing of the batch
+  if (!(await applyPrefOps(c.env.DB, session.user.id, ops))) {
+    return c.json({ code: 'prefs_full' }, 413)
+  }
   return c.body(null, 204)
 })
 
@@ -246,17 +254,21 @@ const refusedSong = async (env: AppEnv, videoId: string) => {
     : ({ body: { code: 'library_unavailable' }, status: 503 } as const)
 }
 
-// A visit to a song's player page: one more listen
+// A visit to a song's player page ({ device } for a guest): one more listen, once an hour per account or device
+// (songs.ts › addListen). A listen that doesn't count still answers 204
 app.post('/api/songs/:videoId/listen', async (c) => {
   const videoId = c.req.param('videoId')
-  if (!isVideoId(videoId)) {
+  const body = await c.req.json<Record<string, unknown>>().catch(() => null)
+  const device = typeof body?.device === 'string' ? body.device : null
+  const listener = listenerOf(await userIdOf(c.env, c.req.raw.headers), device)
+  if (!isVideoId(videoId) || listener === null) {
     return c.json({ code: 'bad_request' }, 400)
   }
   const refused = await refusedSong(c.env, videoId)
   if (refused !== null) {
     return c.json(refused.body, refused.status)
   }
-  await addListen(c.env.DB, videoId, Date.now())
+  await addListen(c.env.DB, videoId, listener, Date.now())
   return c.body(null, 204)
 })
 
@@ -273,30 +285,29 @@ app.get('/api/songs/listens', async (c) => {
   return c.json({ listens: await listListenCounts(c.env.DB) })
 })
 
-// A song's listens and likes, and whether this account (or, for a guest, ?device=) likes it
+// A song's listens and likes, and whether this account likes it
 app.get('/api/songs/:videoId/stats', async (c) => {
   const videoId = c.req.param('videoId')
   if (!isVideoId(videoId)) {
     return c.json({ code: 'bad_request' }, 400)
   }
-  const liker = likerOf(
-    await userIdOf(c.env, c.req.raw.headers),
-    c.req.query('device') ?? null
+  const userId = await userIdOf(c.env, c.req.raw.headers)
+  return c.json(
+    await readStats(c.env.DB, videoId, userId === null ? null : likerOf(userId))
   )
-  return c.json(await readStats(c.env.DB, videoId, liker))
 })
 
-// Like or unlike a song: { liked, device? }; answers with the song's stats after
+// Like or unlike a song: { liked }; answers with the song's stats after. Likes are for accounts: a guest's press
+// signs in instead (src/components/lyrics-display/player-rail.tsx › useLikeAction)
 app.put('/api/songs/:videoId/like', async (c) => {
+  const userId = await userIdOf(c.env, c.req.raw.headers)
+  if (userId === null) {
+    return c.json({ code: 'unauthorized' }, 401)
+  }
   const videoId = c.req.param('videoId')
   const body = await c.req.json<Record<string, unknown>>().catch(() => null)
-  const device = typeof body?.device === 'string' ? body.device : null
-  const liker = likerOf(await userIdOf(c.env, c.req.raw.headers), device)
-  if (
-    !isVideoId(videoId) ||
-    typeof body?.liked !== 'boolean' ||
-    liker === null
-  ) {
+  const liker = likerOf(userId)
+  if (!isVideoId(videoId) || typeof body?.liked !== 'boolean') {
     return c.json({ code: 'bad_request' }, 400)
   }
   const refused = await refusedSong(c.env, videoId)
@@ -627,8 +638,11 @@ app.route('/api/admin', admin)
 
 export default {
   fetch: app.fetch,
-  // The daily cron (wrangler.jsonc): reports the fixer left open past EXPIRE_DAYS are dropped as expired
+  // The daily cron (wrangler.jsonc): reports the fixer left open past EXPIRE_DAYS are dropped as expired, and
+  // listen rows past their hour go
   scheduled: (_controller, env, ctx) => {
-    ctx.waitUntil(expireReports(env.DB, Date.now()))
+    const now = Date.now()
+    ctx.waitUntil(expireReports(env.DB, now))
+    ctx.waitUntil(pruneListens(env.DB, now))
   },
 } satisfies ExportedHandler<AppEnv>
