@@ -1856,8 +1856,10 @@
       transition: translate 300ms var(--ease-out);
     }
 
+    /* Back in only once its icon has moved up out of its way (about 100ms into the 300ms), so the two never
+       overlap; out (below) faster than the icon comes down over it */
     & [data-tab-label] {
-      transition: opacity 150ms var(--ease-out);
+      transition: opacity 150ms var(--ease-out) 100ms;
     }
   }
 
@@ -1868,6 +1870,8 @@
   html[data-topbar-state='hidden'] [data-tabbar-root]:not(:focus-within) {
     & [data-tab-label] {
       opacity: 0;
+      transition-duration: 75ms;
+      transition-delay: 0s;
     }
 
     @media (prefers-reduced-motion: no-preference) {
