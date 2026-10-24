@@ -5,7 +5,7 @@
 
 import { z } from 'zod'
 
-import { withSecurityHeaders } from '../security-headers'
+import { withSecurityHeaders } from '../security-headers.ts'
 
 const VIDEO_PATH = /^\/v\/(?<videoId>[\w-]{11})\/?$/u
 const LOOKUP_TIMEOUT_MS = 1500
