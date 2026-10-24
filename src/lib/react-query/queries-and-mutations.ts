@@ -86,11 +86,13 @@ export const setLibrarySong = (
 const karaokeIds = (songs: LibraryListSong[]) =>
   new Set(songs.flatMap((song) => (song.karaoke ? [song.videoId] : [])))
 
+// The songs that play with the karaoke fill (the mic badge), by the library list; no data until it loads
+export const useKaraokeIds = () =>
+  useQuery({ ...librarySongs, select: karaokeIds })
+
 // The song plays with the karaoke fill, by the library list; false until it loads (or offline)
-export const useHasKaraoke = (videoId: string) => {
-  const { data } = useQuery({ ...librarySongs, select: karaokeIds })
-  return data?.has(videoId) ?? false
-}
+export const useHasKaraoke = (videoId: string) =>
+  useKaraokeIds().data?.has(videoId) ?? false
 
 export const useGetSongInfoBySongId = (songId: string) =>
   useQuery({
