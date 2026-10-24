@@ -11,10 +11,11 @@ const PLAYLISTS = new Set(['PL4fGSI1pDJn4-UIb6RKHdxam-oAUULIGB'])
 const VIDEO_ID = /^[\w-]{11}$/u
 const PAGE_TOKEN = /^[\w-]{1,64}$/u
 
-// The CDN keeps answers so most visits cost no quota; browsers keep them briefly
+// The CDN keeps answers so most visits cost no quota; browsers keep them briefly. Durable: one copy for every
+// edge node, or each node asks YouTube again (about 2 s for the chart)
 const cacheHeaders = (cdnSeconds: number) => ({
   'Cache-Control': 'public, max-age=300',
-  'Netlify-CDN-Cache-Control': `public, s-maxage=${cdnSeconds}, stale-while-revalidate=86400`,
+  'Netlify-CDN-Cache-Control': `public, durable, s-maxage=${cdnSeconds}, stale-while-revalidate=86400`,
 })
 
 const json = (status: number, body: unknown, headers: HeadersInit = {}) =>
