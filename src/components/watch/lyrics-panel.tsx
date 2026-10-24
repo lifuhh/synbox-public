@@ -1,5 +1,10 @@
 import { useAtomValue, useSetAtom } from 'jotai'
-import { LocateFixedIcon } from 'lucide-react'
+import {
+  LocateFixedIcon,
+  Maximize2Icon,
+  Minimize2Icon,
+  PaletteIcon,
+} from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 
 import type { KaraokeLineHandle } from '@/components/lyrics-display/karaoke-line'
@@ -79,11 +84,10 @@ const useSongLines = (videoId: string, version: number | null) => {
   }
 }
 
-// A tap on the band opens Lyrics Style; a press held longer is the start of a look around the song. Only over
-// lines (`on`): with none there is nothing to style, and a press on a disabled Generate Lyrics (which takes no
-// pointer events) would fall through to it
-const useStyleTap = (on: boolean) => {
-  const setStylePanel = useSetAtom(lyricsStylePanelAtom)
+// A tap on the small band expands it, as Spotify's and Apple Music's lyrics cards do; a press held longer is not a
+// tap. Only over lines (`on`): with none there is nothing to expand, and a press on a disabled Generate Lyrics
+// (which takes no pointer events) would fall through to it
+const useExpandTap = (on: boolean, expand: () => void) => {
   const pressedAt = useRef(0)
   if (!on) {
     return {}
@@ -91,7 +95,7 @@ const useStyleTap = (on: boolean) => {
   return {
     onClick: () => {
       if (performance.now() - pressedAt.current < TAP_MAX_MS) {
-        setStylePanel('pinned')
+        expand()
       }
     },
     onPointerDown: () => {
@@ -103,20 +107,69 @@ const useStyleTap = (on: boolean) => {
 // The line before the sung one fades out at the top edge instead of being cut through; the fade's height is
 // padding too, so the first line (its furigana included) starts below it. Under the last line, only room to
 // clear Current Line (12px off the foot, 36px tall) and a gap. Scrolling on past either end moves the page, so
-// the wheel never goes dead over the panel. The band fades at both edges (watch-lyrics-band-scroller)
-const scrollerLook = (band: boolean, empty: boolean) => {
+// the wheel never goes dead over the panel. The band fades at both edges (watch-lyrics-band-scroller), and
+// scrolls under a finger only expanded: small, it sits in the page's own scroll, and a drag on it scrolls the page
+const scrollerLook = (band: boolean, expanded: boolean, empty: boolean) => {
   if (!band) {
-    return '[mask-image:linear-gradient(to_bottom,transparent,#000_1.25rem)] pt-5 pb-16'
+    return 'overflow-y-auto [mask-image:linear-gradient(to_bottom,transparent,#000_1.25rem)] pt-5 pb-16'
   }
-  return empty ? 'grid place-items-center' : 'watch-lyrics-band-scroller'
+  if (empty) {
+    return 'grid place-items-center'
+  }
+  return cn(
+    'watch-lyrics-band-scroller',
+    expanded ? 'overflow-y-auto' : 'overflow-hidden'
+  )
+}
+
+// The band's own corner: Expand while small; Lyrics Style and Minimize while expanded, when the rail's
+// Lyrics Style is out of sight under it
+const BandCorner = ({
+  expanded,
+  onExpandedChange,
+}: {
+  expanded: boolean
+  onExpandedChange: (expanded: boolean) => void
+}) => {
+  const setStylePanel = useSetAtom(lyricsStylePanelAtom)
+  return (
+    <div className='absolute top-1.5 right-1.5 z-10 flex gap-1'>
+      {expanded && (
+        <Button
+          variant='surface-icon'
+          size='icon'
+          aria-label='Lyrics Style'
+          onClick={() => {
+            setStylePanel('pinned')
+          }}>
+          <PaletteIcon className='size-5' />
+        </Button>
+      )}
+      <Button
+        variant='surface-icon'
+        size='icon'
+        aria-label={expanded ? 'Minimize Lyrics' : 'Expand Lyrics'}
+        aria-expanded={expanded}
+        onClick={() => {
+          onExpandedChange(!expanded)
+        }}>
+        {expanded ? (
+          <Minimize2Icon className='size-5' />
+        ) : (
+          <Maximize2Icon className='size-5' />
+        )}
+      </Button>
+    </div>
+  )
 }
 
 // The whole song beside or under the video: the line being sung lights up and fills as it is sung, the panel
 // follows it until the viewer scrolls, and a tap on a line plays from there. The same toggles as the
 // player's rail choose the rows.
 // As a band (under the video on a phone held upright) it is a karaoke window instead: the sung line centred at
-// the Lyrics Style size, the lines either side fading out at its edges, and a tap opens Lyrics Style, never a
-// seek. Holding and scrolling reads elsewhere until Current Line or a seek, while the song plays on
+// the Lyrics Style size, the lines either side fading out at its edges, and a tap expands it to fill the screen
+// under the video, never a seek. Expanded, holding and scrolling reads elsewhere until Current Line or a seek,
+// while the song plays on
 // What the panel says instead of lines: '' while they load, null when it has lines to show
 const emptyText = ({
   anyShown,
@@ -168,12 +221,58 @@ const EmptyLyrics = ({
   )
 }
 
+// The band's size: small in the page, or expanded to fill the screen under the video. Small, it only follows the
+// song (a drag on it scrolls the page) and a tap expands it; back to small, it follows the song again
+const useBandSize = ({
+  band,
+  expanded,
+  follow,
+  handlers,
+  hasLines,
+  onExpandedChange,
+}: {
+  band: boolean
+  expanded: boolean
+  follow: () => void
+  // The follow hook's own presses and scrolls on the lyrics
+  handlers: object
+  hasLines: boolean
+  onExpandedChange: ((expanded: boolean) => void) | undefined
+}) => {
+  const resize = (next: boolean) => {
+    onExpandedChange?.(next)
+    if (!next) {
+      follow()
+    }
+  }
+  const sizable = band && hasLines && onExpandedChange !== undefined
+  const expandTap = useExpandTap(sizable && !expanded, () => {
+    resize(true)
+  })
+  const scrolls = !band || expanded
+  return {
+    corner: sizable ? (
+      <BandCorner expanded={expanded} onExpandedChange={resize} />
+    ) : null,
+    // Small, a drag on the band is the page's: it must not stop the band following the song. A scrolling box
+    // with nothing focusable inside takes focus itself, or a keyboard can't scroll it (WCAG 2.1.1)
+    scrollerProps: {
+      ...(scrolls ? handlers : {}),
+      ...expandTap,
+      tabIndex: scrolls ? 0 : undefined,
+    },
+    scrolls,
+  }
+}
+
 export const LyricsPanel = ({
   videoId,
   version,
   heading = true,
   followAt = 0.3,
   band = false,
+  expanded = false,
+  onExpandedChange,
   className,
 }: {
   videoId: string
@@ -183,6 +282,9 @@ export const LyricsPanel = ({
   // Under a Lyrics tab the panel needs no title of its own
   heading?: boolean
   band?: boolean
+  // The band filling the screen under the video (NarrowBelow owns it)
+  expanded?: boolean
+  onExpandedChange?: (expanded: boolean) => void
   className?: string
 }) => {
   const { limited, lines, loading } = useSongLines(videoId, version)
@@ -254,7 +356,14 @@ export const LyricsPanel = ({
     limited,
     loading,
   })
-  const styleTap = useStyleTap(band && empty === null)
+  const { corner, scrolls, scrollerProps } = useBandSize({
+    band,
+    expanded,
+    follow,
+    handlers,
+    hasLines: empty === null,
+    onExpandedChange,
+  })
   const seek = (to: number) => {
     clock?.seek(to)
     follow()
@@ -265,6 +374,7 @@ export const LyricsPanel = ({
       aria-labelledby={heading ? 'lyrics-panel-title' : undefined}
       aria-label={heading ? undefined : 'Lyrics'}
       style={sheetVars}
+      data-expanded={expanded || undefined}
       className={cn(
         'relative page-ruby flex min-h-0 flex-col overflow-hidden rounded-2xl bg-card text-(--reader-fg) lyrics-sheet',
         band ? 'watch-lyrics-band text-center' : !heading && 'pt-3',
@@ -277,8 +387,9 @@ export const LyricsPanel = ({
           </h2>
         </header>
       )}
+      {corner}
       {/* Over the panel's foot, in thumb reach, while the viewer reads elsewhere in the song */}
-      {!following && empty === null && (
+      {!following && scrolls && empty === null && (
         <div className='pointer-events-none absolute inset-x-0 bottom-3 z-10 flex justify-center'>
           <span className='pointer-events-auto rounded-full shadow-lg'>
             <Button size='pill' gap='sm' onClick={follow}>
@@ -288,17 +399,13 @@ export const LyricsPanel = ({
           </span>
         </div>
       )}
-      {/* oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- a tap is a shortcut to Lyrics Style, whose own button takes the keyboard */}
+      {/* oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- a tap is a shortcut to Expand Lyrics, whose own button takes the keyboard */}
       <div
         ref={scroller}
-        {...handlers}
-        {...styleTap}
-        // A scrolling box with nothing focusable inside takes focus itself, or a keyboard can't scroll it (WCAG 2.1.1)
-        // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex
-        tabIndex={0}
+        {...scrollerProps}
         className={cn(
-          'min-h-0 flex-1 overflow-y-auto px-4 font-reader [overflow-anchor:none] focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden focus-visible:ring-inset',
-          scrollerLook(band, empty !== null)
+          'min-h-0 flex-1 px-4 font-reader [overflow-anchor:none] focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden focus-visible:ring-inset',
+          scrollerLook(band, expanded, empty !== null)
         )}>
         <div ref={content}>
           {empty === null ? (

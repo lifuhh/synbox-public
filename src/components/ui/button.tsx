@@ -67,6 +67,10 @@ const buttonVariants = cva(
           'rounded-full text-muted-foreground hover:bg-accent hover:text-foreground',
         secondary:
           'bg-secondary text-secondary-foreground hover:bg-secondary/80',
+        // A round icon button over content (the watch page's lyrics), filled so the lines under it don't show
+        // through
+        'surface-icon':
+          'rounded-full bg-secondary hover:bg-accent hover:text-accent-foreground',
         // The top bar's icon buttons
         // A button that stays on (aria-pressed), as a playlist's Shuffle: on, it takes the brand colour
         toggle:

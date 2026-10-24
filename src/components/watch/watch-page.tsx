@@ -1,6 +1,6 @@
 import { useAtomValue } from 'jotai'
 import type { ReactNode } from 'react'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 import PlayerRail from '@/components/lyrics-display/player-rail'
 import { DocScroll } from '@/components/shared/doc-scroll'
@@ -9,6 +9,7 @@ import { currentVideoAtom } from '@/context/atoms'
 import { useMediaQuery } from '@/hooks/use-media-query'
 import { useNextList } from '@/lib/listening/recommendations'
 import { isInstalledPhone } from '@/lib/pwa'
+import { reducedMotion } from '@/lib/reduced-motion'
 import { bracketStart } from '@/utils'
 import { cn } from '@/utils/cn'
 
@@ -92,6 +93,28 @@ const useMoreLikeThis = (videoId: string) => {
 
 // A phone or a narrow window: the lyrics straight under the video, where the eye already is, following the song;
 // the song, its buttons, Up Next and the rows scroll in their own box under the lyrics
+// How long the page glides back to its top as the lyrics expand: the band's own growth (watch-lyrics-band)
+const GLIDE_MS = 420
+
+// The page under the video back to its top, stepped by hand: the box stops scrolling as the lyrics expand, and
+// WebKit drops a smooth scroll the moment its box stops scrolling
+const glideToTop = (box: HTMLElement) => {
+  const from = box.scrollTop
+  if (reducedMotion() || from === 0) {
+    box.scrollTo({ behavior: 'instant', top: 0 })
+    return
+  }
+  const start = performance.now()
+  const step = (now: number) => {
+    const left = 1 - Math.min((now - start) / GLIDE_MS, 1)
+    box.scrollTo({ behavior: 'instant', top: from * left ** 4 })
+    if (left > 0) {
+      requestAnimationFrame(step)
+    }
+  }
+  requestAnimationFrame(step)
+}
+
 const NarrowBelow = ({
   videoId,
   version,
@@ -109,23 +132,41 @@ const NarrowBelow = ({
       scroller.current?.scrollTo({ behavior: 'instant', top: 0 })
     }
   }, [videoId])
-  // A phone held upright gets the lyrics as a karaoke window; a narrow window the panel, read from the top
+  // A phone held upright gets the lyrics as a karaoke window, the first thing in the page under the video, so
+  // they scroll away with it; a narrow window the panel, fixed under the video and read from the top
   const upright = useMediaQuery('(pointer: coarse) and (orientation: portrait)')
+  // Expanded, the window fills the screen under the video, the page held still under it
+  const [expanded, setExpanded] = useState(false)
+  const expand = (next: boolean) => {
+    setExpanded(next)
+    if (next && scroller.current !== null) {
+      glideToTop(scroller.current)
+    }
+  }
+  const lyrics = (
+    <LyricsPanel
+      videoId={videoId}
+      version={version}
+      heading={false}
+      band={upright}
+      expanded={upright && expanded}
+      onExpandedChange={expand}
+      // The line being sung right under the video, with a sliver of the line before it
+      followAt={0.08}
+      className={cn('mx-4 mt-2 shrink-0', !upright && 'watch-lyrics-under')}
+    />
+  )
   return (
     <div className='watch-below flex min-h-0 flex-1 flex-col'>
-      <LyricsPanel
-        videoId={videoId}
-        version={version}
-        heading={false}
-        band={upright}
-        // The line being sung right under the video, with a sliver of the line before it
-        followAt={0.08}
-        className={cn('mx-4 mt-2 shrink-0', !upright && 'watch-lyrics-under')}
-      />
+      {!upright && lyrics}
       <div
         ref={scroller}
         data-scroll-top
-        className='min-h-0 flex-1 overflow-y-auto overscroll-contain'>
+        className={cn(
+          'min-h-0 flex-1 overscroll-contain',
+          upright && expanded ? 'overflow-hidden' : 'overflow-y-auto'
+        )}>
+        {upright && lyrics}
         <div className='flex flex-col gap-4 px-4 pt-4 pb-(--safe-bottom)'>
           <SongInfo compact />
           <div className='pb-6'>
