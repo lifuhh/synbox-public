@@ -194,6 +194,15 @@ const PlayerPage = () => {
   // until now is the one just left: it goes on Previous's trail, unless Previous is what left it
   const [resumeSong, setResumeSong] = useAtom(resumeSongAtom)
   const setPlayed = useSetAtom(playedAtom)
+  // Back from the mini bar, the page fades in around the video flying up into it (globals.css)
+  const resumed = by === 'resume'
+  useLayoutEffect(() => {
+    const root = document.documentElement
+    root.toggleAttribute('data-player-enter', resumed)
+    return () => {
+      delete root.dataset.playerEnter
+    }
+  }, [resumed])
   useEffect(() => {
     if (currentVideo !== null && currentVideo.videoId === videoId) {
       if (

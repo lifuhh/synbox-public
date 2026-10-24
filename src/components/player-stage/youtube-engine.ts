@@ -1,4 +1,5 @@
 import { pageFlipped, pageTurned } from '@/lib/page-turn'
+import { reducedMotion } from '@/lib/reduced-motion'
 import type { YTPlayer, YTStateCode } from '@/lib/youtube/iframe-api'
 import { loadYouTubeIframeApi, YTState } from '@/lib/youtube/iframe-api'
 
@@ -57,6 +58,8 @@ const ensureLayer = () => {
     overflow: 'hidden',
     pointerEvents: 'none',
     position: 'absolute',
+    // Scaled from its top left: floating onto the mini bar, and flying between placements
+    transformOrigin: '0 0',
     visibility: 'hidden',
   })
   frame = document.createElement('div')
@@ -221,11 +224,56 @@ export const followEngine = () => {
   placed?.()
 }
 
+// Where the video showed when its last placement ended, so the next one flies it from there: the player's stage
+// down into the mini bar, and back. A placement left hidden counts only briefly (the next one is the same hand-over);
+// one left shown (the bar handing back to a page still loading) counts until the next
+interface Flight {
+  rect: DOMRect
+  radius: number
+  until: number
+}
+let flight: Flight | null = null
+const HAND_OVER_MS = 600
+const FLY_MS = 320
+
+// Animates the video from the last placement's box to where it now is, by a transform from the layer's own top
+// left: `final` is the transform the placement settled on
+const fly = (video: HTMLDivElement, final: string, finalRadius: string) => {
+  const from = flight
+  flight = null
+  if (from === null || performance.now() > from.until || reducedMotion()) {
+    return
+  }
+  const to = video.getBoundingClientRect()
+  const width = video.offsetWidth
+  const height = video.offsetHeight
+  if (to.width === 0 || width === 0 || height === 0) {
+    return
+  }
+  const sx = from.rect.width / width
+  const sy = from.rect.height / height
+  video.animate(
+    [
+      {
+        borderRadius: `${from.radius / sx}px / ${from.radius / sy}px`,
+        transform: `translate(${from.rect.left - to.left}px, ${from.rect.top - to.top}px) scale(${sx}, ${sy})`,
+      },
+      { borderRadius: finalRadius || '0px', transform: final || 'none' },
+    ],
+    { duration: FLY_MS, easing: 'cubic-bezier(0.2, 0, 0, 1)' }
+  )
+}
+
 // Places the video now and again whenever a watched element resizes, until the cleanup. `keepShown`: the video stays
 // where it is until the next placement (the mini bar handing it back to a page still loading)
-const keepPlaced = (place: () => void, watched: HTMLElement[]) => {
+const keepPlaced = (
+  place: () => void,
+  watched: HTMLElement[],
+  radiusPx = 0
+) => {
   const parts = ensureLayer()
   place()
+  fly(parts.layer, parts.layer.style.transform, parts.layer.style.borderRadius)
   placed = place
   const observer = new ResizeObserver(place)
   for (const element of watched) {
@@ -238,6 +286,15 @@ const keepPlaced = (place: () => void, watched: HTMLElement[]) => {
     }
     observer.disconnect()
     window.removeEventListener('resize', place)
+    if (parts.layer.style.visibility === 'visible') {
+      flight = {
+        radius: radiusPx,
+        rect: parts.layer.getBoundingClientRect(),
+        until: keepShown
+          ? Number.POSITIVE_INFINITY
+          : performance.now() + HAND_OVER_MS,
+      }
+    }
     if (keepShown) {
       return
     }
@@ -323,7 +380,6 @@ export const floatEngine = (target: HTMLElement, radiusPx: number) => {
       left: `${box.left + scroll.left}px`,
       top: `${box.top + scroll.top}px`,
       transform: `scale(${sx}, ${sy})`,
-      transformOrigin: '0 0',
       visibility: 'visible',
       width: `${width}px`,
     })
@@ -332,5 +388,5 @@ export const floatEngine = (target: HTMLElement, radiusPx: number) => {
   parts.layer.inert = true
   // Over the tab bar (z-40)
   parts.layer.style.zIndex = '41'
-  return keepPlaced(place, [target])
+  return keepPlaced(place, [target], radiusPx)
 }
