@@ -28,8 +28,14 @@ const librarySongs = async (request: Request, context: Context) => {
 export default librarySongs
 
 // Netlify answers past this many requests a minute from one address with 429 (a code-based rule: every plan
-// allows two). A home visit asks once, and the CDN answers most
+// allows two). It counts the requests the CDN answers too (rate limiting runs before the edge cache), and a
+// phone carrier puts many people behind one address, so the limit is set for a crowd, not one visitor. A query
+// is refused with 400, so the one cached list is all a flood can ask for
 export const config = {
   path: '/api/library/songs',
-  rateLimit: { aggregateBy: ['ip', 'domain'], windowLimit: 30, windowSize: 60 },
+  rateLimit: {
+    aggregateBy: ['ip', 'domain'],
+    windowLimit: 300,
+    windowSize: 60,
+  },
 }

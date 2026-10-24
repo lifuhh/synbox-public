@@ -76,13 +76,50 @@ export interface LibraryListSong extends GallerySong {
   karaoke: boolean
 }
 
+// A failed list read, with how long the server asked us to wait (its Retry-After), if it said
+export class LibrarySongsError extends Error {
+  readonly retryAfterMs: number | null
+  readonly status: number
+
+  constructor(status: number, retryAfter: string | null) {
+    super(`The gallery failed to load (HTTP ${status})`)
+    this.name = 'LibrarySongsError'
+    this.status = status
+    const seconds = retryAfter === null ? Number.NaN : Number(retryAfter)
+    this.retryAfterMs = seconds >= 0 ? seconds * 1000 : null
+  }
+}
+
+export const LIBRARY_SONGS_RETRIES = 5
+const COLD_RETRY_MS = 3000
+const LIMITED_FIRST_MS = 5000
+const LIMITED_MAX_MS = 30_000
+
+// How long the gallery waits before asking again. A cold lookup service (503) answers in seconds. A rate limit
+// (429, Netlify's per-address rule on the function, counted over 60 s) lifts only when the window passes, so
+// back off 5, 10, 20, 30, 30 s: the retries span 95 s, past the window, before the gallery shows an error
+export const libraryRetryDelay = (failures: number, error: Error) => {
+  if (!(error instanceof LibrarySongsError)) {
+    return COLD_RETRY_MS
+  }
+  if (error.retryAfterMs !== null) {
+    return Math.min(error.retryAfterMs, LIMITED_MAX_MS)
+  }
+  return error.status === 429
+    ? Math.min(LIMITED_FIRST_MS * 2 ** failures, LIMITED_MAX_MS)
+    : COLD_RETRY_MS
+}
+
 // Every song in the library, in a fresh order each visit. Same-origin: a Netlify function asks the lookup
 // service and answers its last good list when that service is cold (netlify/library-songs.ts), so the home page
 // costs no Appwrite reads and doesn't wait on a cold start. 503 only before any list was ever kept
 export const getLibrarySongs = async (): Promise<LibraryListSong[]> => {
   const response = await fetch('/api/library/songs')
   if (!response.ok) {
-    throw new Error(`The gallery failed to load (HTTP ${response.status})`)
+    throw new LibrarySongsError(
+      response.status,
+      response.headers.get('Retry-After')
+    )
   }
   const { songs } = gallerySongsSchema.parse(await response.json())
   return shuffleArray(

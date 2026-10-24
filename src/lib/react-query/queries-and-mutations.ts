@@ -8,6 +8,8 @@ import type { LibraryListSong } from '../synbox-flask/discovery'
 import {
   getLibrarySongs,
   getSimilarSongs,
+  LIBRARY_SONGS_RETRIES,
+  libraryRetryDelay,
   searchLibrary,
   searchVideos,
 } from '../synbox-flask/discovery'
@@ -45,12 +47,11 @@ export const useGetChartsPlaylist = (enabled = true) =>
 
 // A day, so the shuffled order holds while the user browses and a tab left open still gets other people's new
 // songs (this tab's own new songs go in at once: setLibrarySong)
-const librarySongs = queryOptions({
+export const librarySongs = queryOptions({
   queryFn: getLibrarySongs,
   queryKey: [QUERY_KEYS.GET_GALLERY_SONGS],
-  // A cold lookup service answers 503 while it loads the library, which takes seconds
-  retry: 5,
-  retryDelay: 3000,
+  retry: LIBRARY_SONGS_RETRIES,
+  retryDelay: libraryRetryDelay,
   staleTime: DAY_MS,
 })
 
