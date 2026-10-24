@@ -1,4 +1,5 @@
 import { reloadPage } from '@/lib/pwa'
+import { scrollMotion } from '@/lib/reduced-motion'
 
 // Within this many pixels of the top counts as at the top (iOS reports a pull past the top as negative)
 const TOP_SLACK_PX = 2
@@ -17,7 +18,7 @@ export const topTap = () => {
     return reloadPage() ? 'reload' : 'none'
   }
   for (const box of scrolled) {
-    box.scrollTo({ behavior: 'smooth', top: 0 })
+    box.scrollTo({ behavior: scrollMotion(), top: 0 })
   }
   return 'scroll'
 }

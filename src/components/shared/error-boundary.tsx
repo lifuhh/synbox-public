@@ -13,6 +13,10 @@ interface State {
   error: Error | null
 }
 
+const handleReload = () => {
+  window.location.reload()
+}
+
 const handleReturnHome = () => {
   window.location.href = '/'
 }
@@ -37,20 +41,23 @@ class ErrorBoundary extends Component<Props, State> {
           <TopBar />
           <div className='relative -my-14 flex min-h-(--app-h) flex-col items-center justify-center bg-background px-4 py-12 sm:px-6 lg:px-8'>
             <div className='mx-auto max-w-md text-center'>
-              <div className='mx-auto h-12 w-12 text-primary-text' />
-              <h1 className='mt-4 text-3xl font-bold tracking-tight text-foreground sm:text-4xl'>
-                Something Went Wrong
+              <h1 className='text-3xl font-bold tracking-tight text-balance text-foreground sm:text-4xl'>
+                This Page Crashed
               </h1>
-              <p className='mt-4 text-muted-foreground'>
-                We&apos;re sorry — an unexpected error has occurred:
+              <p className='mt-4 leading-normal text-muted-foreground'>
+                Reload to try again.
               </p>
+              {/* Quieter than the way out, for a report */}
               {this.state.error && (
-                <p className='mt-2 text-muted-foreground'>
+                <p className='mt-2 text-xs leading-normal break-words text-faint'>
                   {this.state.error.toString()}
                 </p>
               )}
-              <div className='mt-6'>
-                <Button onClick={handleReturnHome}>Return To Home</Button>
+              <div className='mt-6 flex justify-center gap-3'>
+                <Button onClick={handleReload}>Reload</Button>
+                <Button variant='outline' onClick={handleReturnHome}>
+                  Go Home
+                </Button>
               </div>
             </div>
           </div>

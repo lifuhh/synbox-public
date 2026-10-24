@@ -12,6 +12,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { SongMenu } from '@/components/watch/song-menu'
 import { useMediaQuery } from '@/hooks/use-media-query'
 import { useGallerySongs } from '@/lib/react-query/queries-and-mutations'
+import { scrollMotion } from '@/lib/reduced-motion'
 import { markStuck } from '@/lib/stuck-row'
 import type { LibraryListSong } from '@/lib/synbox-flask/discovery'
 import type { CssVars } from '@/types'
@@ -238,7 +239,7 @@ const SongGallery = () => {
       return
     }
     scroller.scrollTo({
-      behavior: 'smooth',
+      behavior: scrollMotion(),
       top:
         scroller.scrollTop +
         section.getBoundingClientRect().top -

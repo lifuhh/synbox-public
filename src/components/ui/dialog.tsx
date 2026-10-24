@@ -69,13 +69,13 @@ const DialogContentRender: React.ForwardRefRenderFunction<
         }
       }}
       className={cn(
-        'fixed top-[50%] left-[50%] z-50 grid max-h-[calc(var(--app-h)-2rem)] w-[calc(100%-2rem)] max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 overflow-y-auto rounded-2xl bg-popover p-6 shadow-panel duration-200 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95',
+        'fixed top-[50%] left-[50%] z-50 grid max-h-[calc(var(--app-h)-2rem)] w-[calc(100%-2rem)] max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 overflow-y-auto overscroll-contain rounded-2xl bg-popover p-6 shadow-panel duration-200 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95',
         dialogContentVariants({ variant }),
         className
       )}
       {...props}>
       {children}
-      <DialogPrimitive.Close className='absolute top-5 right-3 rounded-xs p-1 opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground touch:top-3.5 touch:right-2 touch:p-2.5'>
+      <DialogPrimitive.Close className='absolute top-5 right-3 rounded-xs p-1 opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-hidden disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground touch:top-3.5 touch:right-2 touch:p-2.5'>
         <X className='h-4 w-4' />
         <span className='sr-only'>Close</span>
       </DialogPrimitive.Close>

@@ -3,7 +3,6 @@ import { Navigate, Route, Routes, useParams } from 'react-router'
 
 import AppNotices from '@/components/shared/app-notices'
 import { Toaster } from '@/components/ui/toaster'
-import useKeyboardNavigation from '@/hooks/use-keyboard-navigation'
 import { LibrarySync } from '@/lib/library/sync'
 import { OfflineSync } from '@/lib/offline/sync'
 import { PrefsSync } from '@/lib/prefs/sync'
@@ -62,7 +61,6 @@ const prefetchPages = () => {
 }
 
 const App = () => {
-  useKeyboardNavigation()
   // After the first screen has loaded, so the prefetch never competes with it
   useEffect(() => {
     const id = setTimeout(prefetchPages, PREFETCH_DELAY_MS)

@@ -14,6 +14,7 @@ import { Link, useLocation } from 'react-router'
 
 import { resumeSongAtom, songPath } from '@/lib/listening/store'
 import { applyWaitingUpdate, isInstalledPhone } from '@/lib/pwa'
+import { scrollMotion } from '@/lib/reduced-motion'
 import { tabTap } from '@/lib/tab-tap'
 import { cn } from '@/utils/cn'
 
@@ -134,7 +135,7 @@ const TabBar = () => {
     if (action === 'update' && applyWaitingUpdate()) {
       return
     }
-    scroller?.scrollTo({ behavior: 'smooth', top: 0 })
+    scroller?.scrollTo({ behavior: scrollMotion(), top: 0 })
   }
 
   return (

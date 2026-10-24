@@ -154,6 +154,8 @@ const toast = ({ ...props }: Toast) => {
 
   dispatch({
     toast: {
+      // An error stays until it is dismissed: it may say what to do next, and a timer would take that away
+      duration: props.variant === 'destructive' ? Infinity : undefined,
       ...props,
       id,
       onOpenChange: (open) => {

@@ -1356,13 +1356,6 @@
   --tw-ring-offset-color: rgba(0, 0, 0, 0);
 }
 
-@layer components {
-  body.user-is-tabbing *:focus {
-    outline: 2px solid #7aacfe !important;
-    outline: 5px auto -webkit-focus-ring-color !important;
-  }
-}
-
 /* MarqueeText: one line, clipped. Too long (data-marquee), it fades at its end; while its row is hovered or holds
    the keyboard's focus it sweeps to its end and back by the hidden distance (--marquee-shift), pausing at each
    end. The text keeps 1.5rem of room after it, so its last letters stop clear of the fade */
@@ -1699,7 +1692,7 @@
   }
 
   * {
-    @apply m-0 box-border list-none scroll-smooth p-0 antialiased;
+    @apply m-0 box-border list-none p-0 antialiased motion-safe:scroll-smooth;
   }
 
   :root {
@@ -1913,8 +1906,10 @@
     display: none;
   }
 
-  html {
-    scroll-behavior: smooth;
+  @media (prefers-reduced-motion: no-preference) {
+    html {
+      scroll-behavior: smooth;
+    }
   }
 
   /* Every page scrolls inside its own box, so the document never moves: a press and drag anywhere must not
@@ -2004,16 +1999,13 @@
   p {
     line-height: 1.2;
     vertical-align: middle;
-    font-feature-settings:
-      'pnum' 1,
-      'lnum' 1;
   }
-}
 
-@layer components {
-  button:focus,
-  select:focus {
-    outline: none;
+  /* Keyboard focus, on whatever draws no ring of its own (the primitives' focus-visible:ring-* hide this with
+     outline-hidden). A press with a mouse or a finger shows nothing */
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
   }
 }
 
