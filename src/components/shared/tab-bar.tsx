@@ -75,6 +75,58 @@ const pageScroller = () =>
 // Within this many pixels of the top counts as at the top (iOS reports a pull past the top as negative)
 const TOP_SLACK_PX = 2
 
+// The tabs and the mini bar above them float over the home indicator, 0.5rem in from the screen's sides as Spotify's bar
+export const DOCK =
+  'fixed inset-x-0 bottom-[calc(var(--safe-bottom)+0.5rem)] z-40 mx-auto flex w-[min(28rem,calc(100%-1rem))] flex-col gap-2'
+
+export const TabNav = ({
+  pathname,
+  onTabClick,
+}: {
+  pathname: string
+  onTabClick?: (event: MouseEvent<HTMLAnchorElement>, to: string) => void
+}) => (
+  <nav
+    aria-label='App'
+    data-tab-nav
+    className='grid h-16 grid-cols-4 gap-1 rounded-full bg-popover/85 p-1 shadow-lg ring-1 ring-white/10 backdrop-blur-xl'>
+    {TABS.map(({ to, label, icon: Icon, also }) => {
+      const active = pathname === to || also?.test(pathname) === true
+      return (
+        <Link
+          key={to}
+          to={to}
+          onClick={(event) => {
+            onTabClick?.(event, to)
+          }}
+          aria-current={active ? 'page' : undefined}
+          className={cn(
+            'flex flex-col items-center justify-center gap-0.5 rounded-full text-xs font-medium transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden',
+            active
+              ? 'bg-primary-subtle text-primary-text'
+              : 'text-muted-foreground'
+          )}>
+          <Icon data-tab-icon className='size-6' aria-hidden />
+          <span data-tab-label>{label}</span>
+        </Link>
+      )
+    })}
+  </nav>
+)
+
+// The tab page shown last and its place in the history (React Router's `idx`), which minimising the player goes back to
+let lastTab: { path: string; idx: number } | null = null
+export const returnTab = () => lastTab
+export const historyIdx = () => {
+  const state: unknown = window.history.state
+  return typeof state === 'object' &&
+    state !== null &&
+    'idx' in state &&
+    typeof state.idx === 'number'
+    ? state.idx
+    : 0
+}
+
 // The installed app on a phone moves its navigation to the thumb: four tabs in a floating pill over the
 // home indicator, with the mini player above them. The website (and the app on a computer) keeps the top bar.
 // While the page scrolls down the pill shrinks and drops its labels, and comes back on the way up (globals.css)
@@ -86,6 +138,12 @@ const TabBar = () => {
   const MiniBar = useMiniBar(isInstalledPhone() && song !== null)
   // The last tap on a tab whose page showed, for double taps
   const lastTap = useRef<{ to: string; at: number } | null>(null)
+
+  useEffect(() => {
+    if (shown) {
+      lastTab = { idx: historyIdx(), path: pathname }
+    }
+  }, [shown, pathname])
 
   useEffect(() => {
     const root = document.documentElement
@@ -125,37 +183,10 @@ const TabBar = () => {
   }
 
   return (
-    <div
-      data-tabbar-root
-      className='fixed inset-x-0 bottom-[calc(var(--safe-bottom)+0.5rem)] z-40 mx-auto flex w-[min(28rem,calc(100%-2rem))] flex-col gap-2'>
+    <div data-tabbar-root className={DOCK}>
       {/* oxlint-disable-next-line react/static-components -- mini-bar.tsx's default export, loaded once, never made here */}
       {MiniBar !== null && <MiniBar />}
-      <nav
-        aria-label='App'
-        data-tab-nav
-        className='grid h-16 grid-cols-4 gap-1 rounded-full bg-popover/85 p-1 shadow-lg ring-1 ring-white/10 backdrop-blur-xl'>
-        {TABS.map(({ to, label, icon: Icon, also }) => {
-          const active = pathname === to || also?.test(pathname) === true
-          return (
-            <Link
-              key={to}
-              to={to}
-              onClick={(event) => {
-                onTabClick(event, to)
-              }}
-              aria-current={active ? 'page' : undefined}
-              className={cn(
-                'flex flex-col items-center justify-center gap-0.5 rounded-full text-xs font-medium transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden',
-                active
-                  ? 'bg-primary-subtle text-primary-text'
-                  : 'text-muted-foreground'
-              )}>
-              <Icon data-tab-icon className='size-6' aria-hidden />
-              <span data-tab-label>{label}</span>
-            </Link>
-          )
-        })}
-      </nav>
+      <TabNav pathname={pathname} onTabClick={onTabClick} />
     </div>
   )
 }

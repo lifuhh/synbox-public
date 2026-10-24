@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react'
 
 import PlayerRail from '@/components/lyrics-display/player-rail'
 import { DocScroll } from '@/components/shared/doc-scroll'
+import { MinimiseGhost } from '@/components/shared/minimise-ghost'
 import { currentVideoAtom } from '@/context/atoms'
 import { useMediaQuery } from '@/hooks/use-media-query'
 import { useNextList } from '@/lib/listening/recommendations'
@@ -222,22 +223,27 @@ export const WatchPage = ({
   }, [watch])
   // The installed app held upright: drag the video down to minimise it
   const stageBox = useRef<HTMLDivElement>(null)
-  useDragToMinimise(stageBox, watch && !wide && isInstalledPhone())
+  const minimisable = watch && !wide && isInstalledPhone()
+  useDragToMinimise(stageBox, minimisable)
   const below = wide ? (
     <WideBelow videoId={videoId} version={version} theater={theater} />
   ) : (
     <NarrowBelow videoId={videoId} version={version} />
   )
 
+  // Outside the page, which fades as the drag goes on
   return (
-    <div
-      data-theater={watch && wide && theater ? '' : undefined}
-      className={watch ? 'watch-page' : 'size-full'}>
-      <div ref={stageBox} className={watch ? 'watch-stage' : 'size-full'}>
-        {stage}
+    <>
+      <div
+        data-theater={watch && wide && theater ? '' : undefined}
+        className={watch ? 'watch-page' : 'size-full'}>
+        <div ref={stageBox} className={watch ? 'watch-stage' : 'size-full'}>
+          {stage}
+        </div>
+        {watch && below}
+        {watch && <DocScroll />}
       </div>
-      {watch && below}
-      {watch && <DocScroll />}
-    </div>
+      {minimisable && <MinimiseGhost />}
+    </>
   )
 }

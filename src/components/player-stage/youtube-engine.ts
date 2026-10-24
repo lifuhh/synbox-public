@@ -233,6 +233,8 @@ interface Flight {
   until: number
 }
 let flight: Flight | null = null
+// The layer's stacking before the drag to minimise raised it (dragEngine); a placement ending ends the drag
+let zBeforeDrag: string | null = null
 const HAND_OVER_MS = 600
 const FLY_MS = 320
 
@@ -286,6 +288,7 @@ const keepPlaced = (
     }
     observer.disconnect()
     window.removeEventListener('resize', place)
+    zBeforeDrag = null
     if (parts.layer.style.visibility === 'visible') {
       flight = {
         radius: radiusPx,
@@ -302,6 +305,7 @@ const keepPlaced = (
       borderRadius: '',
       transform: '',
       visibility: 'hidden',
+      willChange: '',
       zIndex: '',
     })
     parts.layer.inert = true
@@ -357,23 +361,49 @@ export const placeEngine = (
   return keepPlaced(place, [stage, box])
 }
 
-const SETTLE_MS = 250
+export interface ScreenBox {
+  left: number
+  top: number
+  width: number
+  height: number
+}
 
-// The video moved by a finger dragging its stage down (the drag to minimise): a transform on top of its placement,
-// cleared with `null`. `settle` eases it back from where the finger left it
+// The video's box on screen where its placement put it, or null while it isn't shown
+export const engineBox = (): DOMRect | null => {
+  const { layer: video } = ensureLayer()
+  return video.style.visibility === 'visible'
+    ? video.getBoundingClientRect()
+    : null
+}
+
+// The video drawn into `to` by a finger dragging the player down (the drag to minimise), from `from`, its box as
+// placed: a transform, never a resize, raised over the app so the mini bar's stand-in shows under it. `null` puts it
+// back as placed
 export const dragEngine = (
-  transform: string | null,
-  { settle = false } = {}
+  move: { from: ScreenBox; to: ScreenBox; radiusPx: number } | null
 ) => {
   const { layer: video } = ensureLayer()
-  const from = video.style.transform
-  video.style.transform = transform ?? ''
-  if (settle && from !== '' && !reducedMotion()) {
-    video.animate([{ transform: from }, { transform: 'none' }], {
-      duration: SETTLE_MS,
-      easing: 'cubic-bezier(0.2, 0, 0, 1)',
+  if (move === null) {
+    Object.assign(video.style, {
+      borderRadius: '',
+      transform: '',
+      willChange: '',
+      zIndex: zBeforeDrag ?? video.style.zIndex,
     })
+    zBeforeDrag = null
+    return
   }
+  const { from, to, radiusPx } = move
+  zBeforeDrag ??= video.style.zIndex
+  const sx = to.width / from.width
+  const sy = to.height / from.height
+  Object.assign(video.style, {
+    borderRadius: `${radiusPx / sx}px / ${radiusPx / sy}px`,
+    transform: `translate(${to.left - from.left}px, ${to.top - from.top}px) scale(${sx}, ${sy})`,
+    willChange: 'transform',
+    // Over the tab bar (z-40), as the mini bar's video is
+    zIndex: '41',
+  })
 }
 // Shrinks the video onto a small box over the app (the mini bar's thumbnail), rounded. Scaled, never resized: YouTube
 // pauses an embed grown back from a tiny size, and a transform costs no layout, so the video keeps the size its stage
