@@ -172,7 +172,12 @@ export const serveBuild = (opts: {
 }): BenchServer => {
   const proxies = proxiesFrom(opts.repoTop)
   precompress(opts.distDir)
-  const counts: Record<string, number> = { live: 0, recorded: 0, replayed: 0 }
+  const counts: Record<string, number> = {
+    absorbed: 0,
+    live: 0,
+    recorded: 0,
+    replayed: 0,
+  }
 
   const fixtureFile = (method: string, url: string) =>
     path.join(
@@ -181,6 +186,12 @@ export const serveBuild = (opts: {
     )
 
   const api = async (req: Request, upstream: string): Promise<Response> => {
+    // A bench run never writes to production: every listen it played went to the real Worker, and one test song
+    // showed 1,914 listens (2026-10-24). The app ignores what a write answers, so an empty success does
+    if (req.method !== 'GET' && req.method !== 'HEAD') {
+      counts.absorbed += 1
+      return new Response(null, { status: 204 })
+    }
     const file = fixtureFile(req.method, upstream)
     if (opts.mode === 'replay' && req.method === 'GET' && existsSync(file)) {
       counts.replayed += 1
@@ -188,10 +199,6 @@ export const serveBuild = (opts: {
       return respond(req, f.body, f.contentType, f.status)
     }
     const res = await fetch(upstream, {
-      body:
-        req.method === 'GET' || req.method === 'HEAD'
-          ? undefined
-          : await req.arrayBuffer(),
       // The YouTube function passes the page's referrer on to Google; give it the production one
       headers: {
         accept: req.headers.get('accept') ?? '*/*',
