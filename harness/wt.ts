@@ -53,11 +53,12 @@ const stop: (message: string) => never = (message) => {
   process.exit(1)
 }
 
-// The main checkout, wherever in the repo this runs
+// The main checkout of this script's own repo, from wherever it is run: from another repo's directory (the
+// backend's, by absolute path) it once made a worktree of that repo instead
 const mainCheckout = () =>
   path.dirname(
     git(
-      process.cwd(),
+      import.meta.dirname,
       'rev-parse',
       '--path-format=absolute',
       '--git-common-dir'
