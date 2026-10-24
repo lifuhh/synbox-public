@@ -6,7 +6,7 @@ import {
   SearchIcon,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
-import { useEffect, useRef } from 'react'
+import { lazy, Suspense, useEffect, useRef } from 'react'
 import type { MouseEvent } from 'react'
 import { Link, useLocation } from 'react-router'
 
@@ -16,7 +16,8 @@ import { scrollMotion } from '@/lib/reduced-motion'
 import { tabTap } from '@/lib/tab-tap'
 import { cn } from '@/utils/cn'
 
-import MiniBar from './mini-bar'
+// Only the installed app shows it, and only once a song has played, so it loads then (the player engine with it)
+const MiniBar = lazy(async () => import('./mini-bar'))
 
 // `also`: other pages the tab is the home of (playlists open from the Library)
 // A tab is current on its own page, and on the pages it is the home of; NavLink's own aria-current would leave
@@ -101,7 +102,11 @@ const TabBar = () => {
     <div
       data-tabbar-root
       className='fixed inset-x-0 bottom-[calc(var(--safe-bottom)+0.5rem)] z-40 mx-auto flex w-[min(28rem,calc(100%-2rem))] flex-col gap-2'>
-      <MiniBar />
+      {song !== null && (
+        <Suspense>
+          <MiniBar />
+        </Suspense>
+      )}
       <nav
         aria-label='App'
         data-tab-nav
