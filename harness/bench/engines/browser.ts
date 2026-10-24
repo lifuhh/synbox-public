@@ -177,10 +177,14 @@ export interface Opened {
   close: () => Promise<void>
 }
 
-/** CPU slowdown for Chromium surfaces; WebKit has no equivalent and runs at full speed */
+/**
+ * `cpu`: slowdown for Chromium surfaces; WebKit has no equivalent and runs at full speed. `serviceWorkers: 'block'`
+ * for a caller that must see every request: a route never sees what a service worker fetches (Playwright docs,
+ * BrowserContext.route)
+ */
 export const open = async (
   surface: Surface,
-  opts: { cpu?: number } = {}
+  opts: { cpu?: number; serviceWorkers?: 'allow' | 'block' } = {}
 ): Promise<Opened> => {
   const browser = await launch(surface.engine)
   const phone = surface.kind === 'phone'
@@ -189,7 +193,7 @@ export const open = async (
     deviceScaleFactor: phone ? 3 : 1,
     hasTouch: phone,
     isMobile: phone,
-    serviceWorkers: 'allow',
+    serviceWorkers: opts.serviceWorkers ?? 'allow',
     viewport,
   })
   await context.route(/sentry\.io/u, async (route) => {
