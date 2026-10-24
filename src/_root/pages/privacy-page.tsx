@@ -12,7 +12,8 @@ const SECTIONS = [
       'Songs you generated and when, with a one-way code made from your network and your browser name, for the limits.',
       'Your history, saved songs, playlists and settings, so they follow you to other devices.',
       'Lyrics reports you send.',
-      'Without an account: a one-way code made from your network counts your free song, and a random id in your browser counts your likes.',
+      'Songs you played in the last day, by account or by a random id in your browser, so each counts one listen an hour.',
+      'Without an account: a one-way code made from your network counts your free song.',
     ],
     title: 'What We Store',
   },
@@ -59,7 +60,7 @@ const PrivacyPage = () => {
         <header className='flex flex-col gap-3 text-center'>
           <h1 className='text-3xl font-bold'>Privacy</h1>
           <p className='text-sm text-muted-foreground'>
-            Updated 23 October 2026
+            Updated 24 October 2026
           </p>
         </header>
 

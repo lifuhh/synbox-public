@@ -45,7 +45,7 @@ import {
 } from '@/context/atoms'
 import { useArmed } from '@/hooks/use-armed'
 import { useMediaQuery, usePortrait } from '@/hooks/use-media-query'
-import { useAccess } from '@/lib/auth'
+import { signInWithGoogle, useAccess } from '@/lib/auth'
 import {
   addFavoriteAtom,
   isFavoriteAtom,
@@ -148,10 +148,22 @@ interface SongAction {
   pressed?: boolean
 }
 
-// Like: a toggle, one per account (or device, for a guest); the thumb fills while it is on
+// Like: a toggle, one per account; the thumb fills while it is on. Likes are for accounts, as reports are: a
+// guest's press signs in instead
 const useLikeAction = (videoId: string): SongAction => {
+  const guest = useAccess().kind === 'guest'
   const liked = useSongStats(videoId).data?.liked === true
   const { mutate: like } = useLikeSong(videoId)
+  if (guest) {
+    return {
+      disabled: videoId === '',
+      handleSelect: () => {
+        void signInWithGoogle()
+      },
+      icon: <ThumbsUpIcon className='size-5 shrink-0' />,
+      label: 'Sign In to Like',
+    }
+  }
   return {
     disabled: videoId === '',
     handleSelect: () => {

@@ -49,8 +49,9 @@ const sendPrefs = async (ops: PrefOp[]) => {
       headers: { 'Content-Type': 'application/json' },
       method: 'POST',
     })
-    // A refused batch can never succeed; the next sync sends the same settings again if they're still newer
-    if (response.status === 400) {
+    // A refused batch (malformed, or past the account's limits) can never succeed; the next sync sends the same
+    // settings again if they're still newer
+    if (response.status === 400 || response.status === 413) {
       console.warn('The account refused settings', batch)
     } else if (!response.ok) {
       throw new Error(`/api/me/prefs answered ${response.status}`)

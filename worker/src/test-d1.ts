@@ -76,3 +76,39 @@ export const migratedD1 = () => {
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- a stand-in for the parts of D1 the Worker calls
   return { db: db as unknown as D1Database, sqlite }
 }
+
+// A signed-in browser's cookie for `userId` (who must exist), as Better Auth signs it with `secret` over http
+export const sessionCookie = async (
+  db: D1Database,
+  secret: string,
+  userId: string
+) => {
+  const token = `token-${userId}`
+  const now = new Date()
+  await db
+    .prepare(
+      `insert into "session" ("id", "expiresAt", "token", "createdAt", "updatedAt", "userId")
+       values (?1, ?2, ?1, ?3, ?3, ?4)`
+    )
+    .bind(
+      token,
+      new Date(now.getTime() + 86_400_000).toISOString(),
+      now.toISOString(),
+      userId
+    )
+    .run()
+  const key = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(secret),
+    { hash: 'SHA-256', name: 'HMAC' },
+    false,
+    ['sign']
+  )
+  const mac = await crypto.subtle.sign(
+    'HMAC',
+    key,
+    new TextEncoder().encode(token)
+  )
+  const signature = btoa(String.fromCodePoint(...new Uint8Array(mac)))
+  return `better-auth.session_token=${encodeURIComponent(`${token}.${signature}`)}`
+}
