@@ -11,7 +11,7 @@
 // (2026-10-24): the three views run side by side. The songs are picked from the live data at run time; `--song`
 // names the library song instead. What each flow checks: harness/README.md › "On a deployed copy".
 
-import { mkdirSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { parseArgs } from 'node:util'
 
@@ -733,12 +733,24 @@ const notASong = async (ctx: FlowContext): Promise<string> => {
   return `${id}: "Not on Synbox", 0 iframes, 0 writes`
 }
 
+// The lookup service, asked directly for a song's versions list below (netlify.toml sets it for the build)
+const LOOKUP_ORIGIN = new URL(
+  /VITE_SYNBOX_LOOKUP_URL\s*=\s*"(?<url>[^"]+)"/u.exec(
+    readFileSync(new URL('../netlify.toml', import.meta.url), 'utf-8')
+  )?.groups?.url ?? 'https://invalid.example'
+).origin
+
 const readerVersions = async (ctx: FlowContext): Promise<string> => {
   const { page, origin } = ctx
   const song = need(ctx.picks.library, 'a library song with karaoke')
-  // The reader times the song's karaoke from the lookup service, the host the versions list is asked of below
+  // The reader times the song's karaoke through the Worker (api.synbox.io/api/karaoke), or from the lookup service
+  // itself on a build that doesn't read through the Worker
   const timing = page.waitForResponse(
-    (r) => /\.run\.app\/karaoke\//u.test(r.url()),
+    (r) =>
+      new RegExp(
+        `(?:/api/karaoke/|\\.run\\.app/karaoke/)${song.id}(?:\\?|$)`,
+        'u'
+      ).test(r.url()),
     { timeout: 30_000 }
   )
   await page.goto(`${origin}/lyrics/${song.id}`, { waitUntil: 'commit' })
@@ -747,16 +759,14 @@ const readerVersions = async (ctx: FlowContext): Promise<string> => {
   if (lines < 5) {
     fail(`the reader shows ${lines} lines`)
   }
-  const lookup = await timing.catch(() =>
-    fail('the reader never asked the lookup service for karaoke timing')
-  )
+  await timing.catch(() => fail('the reader never asked for karaoke timing'))
   // Versions are an admin tool: a guest gets the 403 page, and the lookup service refuses the list
   await page.goto(`${origin}/v/${song.id}/versions`, { waitUntil: 'commit' })
   await page
     .getByRole('heading', { name: 'Access Forbidden' })
     .waitFor({ timeout: 20_000 })
     .catch(() => fail('versions: no "Access Forbidden" for a guest'))
-  const host = new URL(lookup.url()).origin
+  const host = LOOKUP_ORIGIN
   const answer = await fetch(`${host}/lyrics/${song.id}/versions`).catch(
     () => null
   )
