@@ -1942,6 +1942,14 @@
     }
   }
 
+  /* The video flies between the player and the mini bar (youtube-engine › fly); what is around it fades in on the
+     same curve: the bar when the player is left, the player's page when the bar is tapped (data-player-enter, set
+     by player-page.tsx). A fade only: a move would shift the box the video is laid over mid-flight */
+  [data-resume-box],
+  html[data-player-enter] .watch-page {
+    animation: appear 320ms cubic-bezier(0.2, 0, 0, 1) backwards;
+  }
+
   /* The resume bar zooms with the pill as one group, about the pill's centre: below its own bottom edge by the
      gap and half the pill's 4rem */
   [data-resume-box] {
