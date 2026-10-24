@@ -43,6 +43,7 @@ A new route with parameters needs a sample URL in `harness/routes.json`, in the 
 
 - an icon beside a label or a number (a tab, a pill, a count) is centred on the control's vertical centre and on the text's centre line, within 1px; a lone icon is centred in its button both ways;
 - items in a row share one centre line (or one baseline for text), and a list's rows start at one left edge;
+- a dropdown is `src/components/ui/select.tsx` › `Select`, never a bare `<select>`: the browser's own arrow ignores padding and radius and sits in a pill's curve;
 - report the measured offsets with the screenshots. An off-centre glyph that is optically right (a play triangle) is the only exception, and says so.
 
 ## Shipping a change

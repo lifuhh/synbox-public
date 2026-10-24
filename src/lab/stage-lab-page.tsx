@@ -5,6 +5,7 @@ import { PlayerStage } from '@/components/player-stage/player-stage'
 import { StageLyrics } from '@/components/player-stage/stage-lyrics'
 import type { YouTubeQuirks } from '@/components/player-stage/youtube-quirks'
 import { DEFAULT_YOUTUBE_QUIRKS } from '@/components/player-stage/youtube-quirks'
+import { Select } from '@/components/ui/select'
 import { useGetLyricsVersions } from '@/lib/react-query/queries-and-mutations'
 
 const DEFAULT_VIDEO_ID = '6rG_irmOQsM'
@@ -101,7 +102,8 @@ const StageLabPage = () => {
 
         <label className='flex flex-col gap-1'>
           <span className='font-semibold text-white'>Lyrics Version</span>
-          <select
+          <Select
+            size='sm'
             value={versionParam ?? 'active'}
             onChange={(event) => {
               const next = event.target.value
@@ -111,7 +113,7 @@ const StageLabPage = () => {
                   : { v: videoId, version: next }
               )
             }}
-            className='rounded-md border border-white/15 bg-black px-2 py-1'>
+            className='w-full'>
             <option value='active'>
               Active
               {versions?.active === null || versions?.active === undefined
@@ -123,7 +125,7 @@ const StageLabPage = () => {
                 v{entry.version}: {entry.source}, {entry.summary.lines} lines
               </option>
             ))}
-          </select>
+          </Select>
         </label>
 
         <section className='flex flex-col gap-2'>

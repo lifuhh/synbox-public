@@ -36,6 +36,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
+import { Select } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useToast } from '@/components/ui/use-toast'
@@ -824,12 +825,12 @@ const SongsFilter = ({
   return (
     <label className='flex items-center gap-2 self-start text-sm text-muted-foreground'>
       By
-      <select
+      <Select
         value={by ?? ''}
         onChange={(event) => {
           onChange(event.target.value === '' ? null : event.target.value)
         }}
-        className='h-9 max-w-[min(20rem,calc(100vw-5rem))] truncate rounded-full border border-border bg-card px-3 text-foreground'>
+        className='max-w-[min(20rem,calc(100vw-5rem))]'>
         <option value=''>Everyone</option>
         <option value={GUESTS}>Guests</option>
         {unknown && <option value={by}>{by}</option>}
@@ -838,7 +839,7 @@ const SongsFilter = ({
             {user.name} · {user.email}
           </option>
         ))}
-      </select>
+      </Select>
     </label>
   )
 }
