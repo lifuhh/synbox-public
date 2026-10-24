@@ -76,9 +76,9 @@ export interface LibraryListSong extends GallerySong {
   karaoke: boolean
 }
 
-// Every song in the library, in a fresh order each visit. Same-origin: Netlify proxies it to the lookup
-// service and keeps a copy at its edge (netlify.toml), so the home page costs no Appwrite reads and doesn't
-// wait on a cold start. It answers 503 for the few seconds a fresh lookup service loads the library
+// Every song in the library, in a fresh order each visit. Same-origin: a Netlify function asks the lookup
+// service and answers its last good list when that service is cold (netlify/library-songs.ts), so the home page
+// costs no Appwrite reads and doesn't wait on a cold start. 503 only before any list was ever kept
 export const getLibrarySongs = async (): Promise<LibraryListSong[]> => {
   const response = await fetch('/api/library/songs')
   if (!response.ok) {

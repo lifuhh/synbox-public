@@ -274,7 +274,7 @@ export default defineConfig({
       telemetry: false,
     }),
   ]),
-  // The gallery's song list, as in dev
+  // The gallery's song list, straight from the lookup service (deployed, netlify/functions/library-songs.ts)
   preview: { proxy: { '/api/library/songs': LIBRARY_SONGS_PROXY } },
   resolve: {
     alias: {
@@ -282,7 +282,7 @@ export default defineConfig({
     },
   },
   // Netlify sends these to the auth Worker; locally that is `wrangler dev --env dev` in worker/. The gallery's
-  // song list goes to the lookup service, as netlify.toml sends it
+  // song list goes straight to the lookup service
   server: {
     proxy: {
       '/api/admin': 'http://localhost:8787',
