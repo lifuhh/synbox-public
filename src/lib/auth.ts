@@ -4,6 +4,7 @@ import { createAuthClient } from 'better-auth/react'
 import { useSyncExternalStore } from 'react'
 import { z } from 'zod'
 
+import { toast } from '@/components/ui/use-toast'
 import { QUERY_KEYS } from '@/lib/react-query/query-keys'
 
 // Same origin: Netlify (and the dev server) pass /api/auth/* and /api/me to the auth Worker, so its
@@ -171,11 +172,30 @@ export const noSongReason = (quota: Quota) =>
     ? 'Generating songs is invite-only for now.'
     : `You've generated ${quota.limit} songs in the last 24 hours. More at ${new Date(quota.resetsAt).toLocaleString([], { hour: 'numeric', minute: '2-digit', weekday: 'short' })}.`
 
-export const signInWithGoogle = async () =>
-  await authClient.signIn.social({
-    callbackURL: location.href,
-    provider: 'google',
+const signInFailed = () => {
+  toast({
+    description: 'Check your connection and try again',
+    title: "Couldn't Sign In",
+    variant: 'destructive',
   })
+}
+
+// On its way to Google the page leaves; a failure says so wherever Sign In was pressed. Null when it threw
+export const signInWithGoogle = async () => {
+  try {
+    const result = await authClient.signIn.social({
+      callbackURL: location.href,
+      provider: 'google',
+    })
+    if (result.error !== null) {
+      signInFailed()
+    }
+    return result
+  } catch {
+    signInFailed()
+    return null
+  }
+}
 
 // The JWT lasts 15 minutes; one is reused until a minute before it expires
 let cachedToken: { token: string; expiresAt: number } | null = null

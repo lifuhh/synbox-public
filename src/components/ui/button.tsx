@@ -29,6 +29,9 @@ const buttonVariants = cva(
         lg: 'h-11 rounded-md px-8',
         // A short labelled pill that sits among the top bar's icon buttons
         pill: 'h-9 rounded-full px-3 sm:px-4',
+        // A labelled pill that keeps only its icon under 360px wide, where the top bar has no room for the word
+        'pill-collapse':
+          'h-9 rounded-full px-3 max-[359px]:w-9 max-[359px]:px-0 sm:px-4',
         // A slim labelled action at the end of a list row, as the notifications panel's Play. A leading icon's
         // drawing starts inside its box, so that side's padding is 2px less
         row: 'h-7 gap-1 rounded-md pr-2.5 pl-2',

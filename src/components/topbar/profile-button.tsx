@@ -97,12 +97,8 @@ const SignInButton = () => {
   const [pending, setPending] = useState(false)
   // On its way to Google the page leaves; anything else lets the pill be pressed again
   const signIn = async () => {
-    try {
-      const { error } = await signInWithGoogle()
-      if (error !== null) {
-        setPending(false)
-      }
-    } catch {
+    const result = await signInWithGoogle()
+    if (result === null || result.error !== null) {
       setPending(false)
     }
   }
@@ -111,7 +107,8 @@ const SignInButton = () => {
       <Tooltip>
         <TooltipTrigger asChild>
           <Button
-            size='pill'
+            // Under 360px wide the G alone, a round button still named Sign In
+            size='pill-collapse'
             gap='md'
             aria-busy={pending || undefined}
             onClick={() => {
@@ -124,12 +121,12 @@ const SignInButton = () => {
             {pending ? (
               <LoaderCircleIcon
                 aria-hidden
-                className='-ml-1 size-[18px] shrink-0 animate-spin motion-reduce:animate-none sm:-ml-2'
+                className='-ml-1 size-[18px] shrink-0 animate-spin motion-reduce:animate-none max-[359px]:ml-0 sm:-ml-2'
               />
             ) : (
-              <GoogleMark className='-ml-1 sm:-ml-2' />
+              <GoogleMark className='-ml-1 max-[359px]:ml-0 sm:-ml-2' />
             )}
-            Sign In
+            <span className='max-[359px]:sr-only'>Sign In</span>
           </Button>
         </TooltipTrigger>
         <TooltipContent side='bottom' align='end' sideOffset={10}>

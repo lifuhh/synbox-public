@@ -147,7 +147,7 @@ const rowTransition = (reduced: boolean, dragging: boolean) => {
 
 const rowDetail = (view: StepView, stopped: boolean) => {
   if (stopped) {
-    return 'Stopped here'
+    return 'Stopped Here'
   }
   if (view.state === 'done') {
     return 'Done'

@@ -214,9 +214,15 @@ export const TopbarSearch = ({ variant }: { variant: 'inline' | 'button' }) => {
           }
         }}
         onKeyDown={(event) => {
+          // The phone's panel closes and hands focus back to its button; in the bar the field empties and keeps
+          // focus, as a combobox does
           if (event.key === 'Escape') {
             event.preventDefault()
-            close()
+            if (panel) {
+              close()
+            } else {
+              clear()
+            }
             return
           }
           if (!open) {
@@ -275,7 +281,7 @@ export const TopbarSearch = ({ variant }: { variant: 'inline' | 'button' }) => {
         {field}
         {results(
           // Above the keyboard on a phone on its side, where the field sits in the bar
-          'absolute inset-x-0 top-full z-10 mt-1 max-h-[min(30rem,calc(var(--vv-h,var(--app-h))-var(--safe-top)-4rem))] rounded-xl border border-border bg-popover py-2 shadow-lg'
+          'absolute inset-x-0 top-full z-10 mt-1 max-h-[min(30rem,calc(var(--vv-h,var(--app-h))-var(--safe-top)-4rem),calc(var(--app-h)-var(--safe-top)-var(--safe-bottom)-4rem))] rounded-xl border border-border bg-popover py-2 shadow-lg'
         )}
       </div>
     )

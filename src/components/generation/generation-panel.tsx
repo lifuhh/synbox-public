@@ -49,13 +49,13 @@ const PENDING_TITLE = 'Fetching Song Details…'
 
 const timeLeft = (seconds: number) => {
   if (seconds < 20) {
-    return 'Almost there'
+    return 'Almost There'
   }
   if (seconds < 60) {
-    return 'Less than a minute left'
+    return 'Under a Minute Left'
   }
   const minutes = Math.round(seconds / 60)
-  return `About ${minutes} min left`
+  return `About ${minutes} Min Left`
 }
 
 const generatingLabel = (job: Job, running: boolean) => {
@@ -97,7 +97,7 @@ const SongHeader = ({ job }: { job: Job }) => {
           variant='overlay-icon'
           size='icon'
           className='size-8 shrink-0 touch:size-10'
-          aria-label='Dismiss'
+          aria-label={`Dismiss ${title}`}
           onClick={() => {
             dismissGeneration(job.id)
           }}>
@@ -585,7 +585,7 @@ const SongDetail = ({ job, view }: { job: Job; view: Presentation }) => {
             <div
               // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- a styled bar with progressbar semantics; <progress> cannot be styled the same in every browser
               role='progressbar'
-              aria-label='Overall progress'
+              aria-label='Overall Progress'
               aria-valuemin={0}
               aria-valuemax={100}
               aria-valuenow={percent}
@@ -605,9 +605,8 @@ const SongDetail = ({ job, view }: { job: Job; view: Presentation }) => {
             />
             {status.kind === 'failed' ? (
               <div className='flex flex-col gap-3'>
-                <p
-                  role='alert'
-                  className='rounded-lg bg-error-strong/10 px-3 py-2 text-sm text-error-soft'>
+                {/* Announced once, by GenerationHost's polite line */}
+                <p className='rounded-lg bg-error-strong/10 px-3 py-2 text-sm text-error-soft'>
                   {status.message}
                 </p>
                 <div className='flex gap-2'>

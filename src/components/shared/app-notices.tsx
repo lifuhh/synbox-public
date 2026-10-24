@@ -74,29 +74,44 @@ const AppNotices = () => {
     }
   }, [])
 
+  const said = onReader
+    ? []
+    : [
+        updated && 'App Updated',
+        notice === 'offline' && 'Lost Connection',
+        notice === 'online' && 'Reconnected',
+      ].filter((text) => text !== false)
+
   return (
-    <div
-      ref={publishHeight}
-      className='pointer-events-none fixed inset-x-0 top-(--topbar-h) z-100 flex flex-col items-center gap-2 px-4 empty:hidden [&:not(:empty)]:pt-2'>
-      {!onReader && updated && (
-        <output className={cn(pill, 'bg-primary-subtle')}>
-          <CheckIcon className='size-3.5 shrink-0 text-primary-text' />
-          App Updated
-        </output>
-      )}
-      {!onReader && notice === 'offline' && (
-        <output className={pill}>
-          <CloudOffIcon className='size-3.5 shrink-0 text-primary-text' />
-          Lost Connection
-        </output>
-      )}
-      {!onReader && notice === 'online' && (
-        <output className={pill}>
-          <WifiIcon className='size-3.5 shrink-0 text-primary-text' />
-          Reconnected
-        </output>
-      )}
-    </div>
+    <>
+      {/* Mounted empty, so a screen reader hears each notice as its text arrives; the pills are what is seen */}
+      <p className='sr-only' aria-live='polite'>
+        {said.join('. ')}
+      </p>
+      <div
+        ref={publishHeight}
+        aria-hidden
+        className='pointer-events-none fixed inset-x-0 top-(--topbar-h) z-100 flex flex-col items-center gap-2 px-4 empty:hidden [&:not(:empty)]:pt-2'>
+        {!onReader && updated && (
+          <div className={cn(pill, 'bg-primary-subtle')}>
+            <CheckIcon className='size-3.5 shrink-0 text-primary-text' />
+            App Updated
+          </div>
+        )}
+        {!onReader && notice === 'offline' && (
+          <div className={pill}>
+            <CloudOffIcon className='size-3.5 shrink-0 text-primary-text' />
+            Lost Connection
+          </div>
+        )}
+        {!onReader && notice === 'online' && (
+          <div className={pill}>
+            <WifiIcon className='size-3.5 shrink-0 text-primary-text' />
+            Reconnected
+          </div>
+        )}
+      </div>
+    </>
   )
 }
 
