@@ -133,6 +133,8 @@ export const OPENED_STATES: Record<string, OpenedState[]> = {
         { press: { name: 'Text Style', role: 'button' } },
         { shows: { name: 'Larger Text', role: 'button' } },
       ],
+      // Where the bar is most cramped
+      views: ['pwa-landscape', 'safari-narrow'],
     },
   ],
   '/privacy': [

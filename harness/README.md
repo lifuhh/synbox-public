@@ -2,7 +2,7 @@
 
 The checks that judge a change before it ships, so an agent's "done" comes with evidence. Three commands:
 
-- **`bun harness/bench/cli.ts check`**: exact checks, about 35 seconds. Every PR into `staging` needs it to pass on its committed tree, and every release runs it again on staging's combined tree.
+- **`bun harness/bench/cli.ts check`**: exact checks, about a minute (45 s before the 320px view and the accessibility counts, 2026-10-24). Every PR into `staging` needs it to pass on its committed tree, and every release runs it again on staging's combined tree.
 - **`bun harness/views.ts <path-or-url>`**: one page in all views, audited and shot side by side, for looking at a UI change.
 - **`bun harness/bench/cli.ts trend`**: timing benchmarks, minutes to an hour, off the release path. It writes what it finds to a queue for a person to read; it never blocks anything.
 
