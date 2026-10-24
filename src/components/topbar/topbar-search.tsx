@@ -133,6 +133,15 @@ export const TopbarSearch = ({ variant }: { variant: 'inline' | 'button' }) => {
   const open = focused && query.trim() !== ''
   const optionId = (index: number) => `${listId}-${index}`
   const panel = variant === 'button'
+  // The row the arrow keys reach scrolls into view: the list is a box of its own, shorter than its results on a
+  // phone on its side, and focus stays in the field (aria-activedescendant), so nothing else would scroll it
+  useEffect(() => {
+    if (open && active >= 0) {
+      document
+        .querySelector(`#${CSS.escape(`${listId}-${active}`)}`)
+        ?.scrollIntoView({ block: 'nearest' })
+    }
+  }, [open, active, listId])
   useVisibleViewport(panel ? dialogRef : boxRef, panel ? overlay : focused)
 
   const reset = () => {
