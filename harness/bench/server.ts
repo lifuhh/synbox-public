@@ -51,6 +51,8 @@ export const proxiesFrom = (repoTop: string): Proxy[] => {
     ...declared,
     // netlify/functions/youtube.ts answers this path in production
     { from: '/api/youtube/*', to: 'https://synbox.io/api/youtube/:splat' },
+    // netlify/functions/library-songs.ts answers this one, from the lookup service; recorded under that address
+    { from: '/api/library/songs', to: `${lookup}/library/songs` },
     // Bench builds point the lookup service here (VITE_SYNBOX_LOOKUP_URL=/__lookup), so its reads replay too
     { from: '/__lookup/*', to: `${lookup}/:splat` },
   ]
