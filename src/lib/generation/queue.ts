@@ -131,22 +131,6 @@ export const applyCommand = (
 }
 
 export const STORAGE_KEY = 'synbox:generations'
-// A finished song stays listed (and counted on the bell) this long after it finished: a day until it was on
-// screen, then an hour. Songs still running or waiting stay until they finish
-const UNSEEN_KEEP_MS = 24 * 60 * 60_000
-const SEEN_KEEP_MS = 60 * 60_000
-
-const isFresh = (job: Job, now: number) => {
-  if (isActive(job)) {
-    return true
-  }
-  const at =
-    job.status.kind === 'complete' || job.status.kind === 'failed'
-      ? job.status.at
-      : 0
-  return now - at < (job.seen ? SEEN_KEEP_MS : UNSEEN_KEEP_MS)
-}
-
 export const encodeJobs = (jobs: readonly Job[]) =>
   JSON.stringify({
     jobs: jobs.map((job) =>
@@ -210,8 +194,8 @@ const isJob = (value: unknown): value is Job =>
     (isRecord(value.video) && typeof value.video.title === 'string')) &&
   isStatus(value.status)
 
-// The stored list as of `now`: unreadable storage reads as no songs, and finished songs past their time drop
-export const decodeJobs = (raw: string | null, now: number): Job[] => {
+// The stored list: unreadable storage reads as no songs. A finished song stays until the listener dismisses it
+export const decodeJobs = (raw: string | null): Job[] => {
   if (raw === null) {
     return []
   }
@@ -224,5 +208,5 @@ export const decodeJobs = (raw: string | null, now: number): Job[] => {
   if (!isRecord(content) || content.v !== 1 || !Array.isArray(content.jobs)) {
     return []
   }
-  return content.jobs.filter(isJob).filter((job) => isFresh(job, now))
+  return content.jobs.filter(isJob)
 }

@@ -34,34 +34,35 @@ const done = (hoursAgo: number): JobStatus => ({
   outcome: { kind: 'created' },
 })
 
-test('a stored queue keeps every song in progress and only fresh finished ones', () => {
+test('a stored queue keeps every song, finished ones however long ago until dismissed', () => {
   const jobs = [
     job('a', 'v1', { kind: 'running', phase: 'transcribe' }),
     job('b', 'v2', { kind: 'waiting' }),
-    // Unseen: kept for a day; seen: for an hour
     job('c', 'v3', done(20)),
-    job('d', 'v4', done(30)),
+    job('d', 'v4', done(24 * 400)),
     job('e', 'v5', done(0.5), true),
-    job('f', 'v6', done(2), true),
+    job('f', 'v6', done(24 * 400), true),
   ]
-  expect(decodeJobs(encodeJobs(jobs), NOW).map(({ id }) => id)).toEqual([
+  expect(decodeJobs(encodeJobs(jobs)).map(({ id }) => id)).toEqual([
     'a',
     'b',
     'c',
+    'd',
     'e',
+    'f',
   ])
 
   // Another build's or a broken copy reads as an empty queue, and a bad entry is left out
-  expect(decodeJobs('{"v":2,"jobs":[]}', NOW)).toEqual([])
-  expect(decodeJobs('not json', NOW)).toEqual([])
+  expect(decodeJobs('{"v":2,"jobs":[]}')).toEqual([])
+  expect(decodeJobs('not json')).toEqual([])
   const unknownPhase = {
     ...jobs[0],
     id: 'g',
     status: { kind: 'running', phase: 'sing' },
   }
   expect(
-    decodeJobs(JSON.stringify({ jobs: [...jobs, unknownPhase], v: 1 }), NOW)
-  ).toHaveLength(4)
+    decodeJobs(JSON.stringify({ jobs: [...jobs, unknownPhase], v: 1 }))
+  ).toHaveLength(6)
 })
 
 test('a song added from two tabs at once runs once, behind the songs already in line', () => {

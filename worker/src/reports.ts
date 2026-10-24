@@ -318,29 +318,24 @@ export const expireReports = async (db: D1Database, now: number) => {
   return meta.changes
 }
 
-// A fix stays in the reporter's notifications this long after it was resolved, read or not
-export const FIX_DAYS = 30
+// A fix stays in the reporter's notifications until they dismiss it; the newest this many are listed
 const FIX_MAX = 50
 
 // A signed-in reporter's report that was resolved with other lyrics than the ones they reported. Guests' old reports
 // get none (their key was a network's), and a dropped report never tells anyone
-const FIXED = `"userId" = ?1 and "resolvedAt" > ?2 and "resolvedVersion" is not null
+const FIXED = `"userId" = ?1 and "resolvedVersion" is not null
   and ("version" is null or "resolvedVersion" <> "version") and "droppedAt" is null`
 
 // The caller's fixed songs not dismissed, newest fix first: several reports of one song are one notification,
 // seen once all of them are
-export const listFixes = async (
-  db: D1Database,
-  userId: string,
-  now: number
-) => {
+export const listFixes = async (db: D1Database, userId: string) => {
   const { results } = await db
     .prepare(
       `select "videoId", max("resolvedAt") as "fixedAt", min("seenAt" is not null) as "seen" from "report"
        where ${FIXED} and "dismissedAt" is null
        group by "videoId" order by "fixedAt" desc limit ${FIX_MAX}`
     )
-    .bind(userId, now - FIX_DAYS * DAY_MS)
+    .bind(userId)
     .all<{ videoId: string; fixedAt: number; seen: number }>()
   return results.map(({ videoId, fixedAt, seen }) => ({
     fixedAt,
@@ -386,13 +381,13 @@ export const markFixes = async (
   mark: 'seen' | 'dismissed',
   now: number
 ) => {
-  const dismissedAt = mark === 'dismissed' ? '?3' : '"dismissedAt"'
+  const dismissedAt = mark === 'dismissed' ? '?2' : '"dismissedAt"'
   await db
     .prepare(
-      `update "report" set "seenAt" = coalesce("seenAt", ?3), "dismissedAt" = ${dismissedAt}
-       where ${FIXED} and "resolvedAt" <= ?4 and "dismissedAt" is null
-         and "videoId" in (select "value" from json_each(?5))`
+      `update "report" set "seenAt" = coalesce("seenAt", ?2), "dismissedAt" = ${dismissedAt}
+       where ${FIXED} and "resolvedAt" <= ?3 and "dismissedAt" is null
+         and "videoId" in (select "value" from json_each(?4))`
     )
-    .bind(userId, now - FIX_DAYS * DAY_MS, now, upTo, JSON.stringify(videoIds))
+    .bind(userId, now, upTo, JSON.stringify(videoIds))
     .run()
 }

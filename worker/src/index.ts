@@ -220,7 +220,7 @@ app.post('/api/reports', async (c) => {
 app.get('/api/me/fixes', async (c) => {
   const userId = await userIdOf(c.env, c.req.raw.headers)
   return c.json({
-    fixes: userId === null ? [] : await listFixes(c.env.DB, userId, Date.now()),
+    fixes: userId === null ? [] : await listFixes(c.env.DB, userId),
   })
 })
 
