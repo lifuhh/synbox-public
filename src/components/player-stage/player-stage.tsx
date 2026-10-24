@@ -6,14 +6,8 @@ import {
   RotateCwIcon,
   VolumeXIcon,
 } from 'lucide-react'
-import type { ReactNode, RefObject } from 'react'
-import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-} from 'react'
+import type { ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 
 import {
   playerChromeOpenAtom,
@@ -30,6 +24,7 @@ import { cn } from '@/utils/cn'
 import { CenterPlayButton, useYouTubeCenterShowing } from './center-play-button'
 import { clampSeek, HOLD_JUMP_MS, holdStep } from './seek-steps'
 import { StageControls } from './stage-controls'
+import { useIdle } from './use-idle'
 import type { SeekFlash } from './use-stage-taps'
 import { useStageTaps } from './use-stage-taps'
 import type {
@@ -130,107 +125,6 @@ const markImmersive = () => {
   return () => {
     delete root.dataset.immersive
   }
-}
-
-// Anything marked data-player-chrome holds the floating UI open while a menu from it is open, and with a
-// mouse also while the pointer rests on it or keyboard focus is inside it. A touch screen counts menus
-// only: iOS keeps the last tapped element in :hover, and a dragged slider keeps its thumb focused, so
-// either would hold the UI open for good
-const chromeBusy = ({ hover = true } = {}) => {
-  const canHover = matchMedia('(hover: hover)').matches
-  return [...document.querySelectorAll('[data-player-chrome]')].some(
-    (element) =>
-      // aria-expanded rather than data-state, which a tooltip on the same trigger overwrites
-      element.querySelector('[aria-expanded=true]') !== null ||
-      (canHover &&
-        ((hover && element.matches(':hover')) ||
-          element.querySelector(':focus-visible') !== null))
-  )
-}
-
-// Idle `ms` after the last pointer or key input, and not while the UI is busy. Any pointer in the window
-// counts while the stage is the whole screen; on the watch page only one over the video does, so scrolling
-// the page under it doesn't bring up its controls. A mouse leaving the player (the stage on the watch page,
-// the window when the stage is the whole screen) idles it at once and marks it `outside`, as on YouTube: the
-// controls fade the moment the mouse goes, playing or paused, unless one of their menus or keyboard focus
-// holds them, or the mouse went onto the floating UI that lies outside the stage (the top bar)
-const useIdle = (ms: number, stageRef: RefObject<HTMLElement | null>) => {
-  const [idle, setIdle] = useState(false)
-  const [outside, setOutside] = useState(false)
-  const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
-
-  const wake = useCallback(() => {
-    setIdle(false)
-    clearTimeout(timerRef.current)
-    const check = () => {
-      if (chromeBusy()) {
-        timerRef.current = setTimeout(check, ms)
-      } else {
-        setIdle(true)
-      }
-    }
-    timerRef.current = setTimeout(check, ms)
-  }, [ms])
-  const sleep = () => {
-    clearTimeout(timerRef.current)
-    setIdle(true)
-  }
-
-  useEffect(() => {
-    // oxlint-disable-next-line react/set-state-in-effect -- arriving on the stage counts as activity: show the controls and start the idle timer
-    wake()
-    const wakeFromPointer = (event: PointerEvent) => {
-      const stage = stageRef.current
-      if (
-        !('watch' in document.documentElement.dataset) ||
-        (stage !== null &&
-          event.target instanceof Node &&
-          stage.contains(event.target))
-      ) {
-        setOutside(false)
-        wake()
-      }
-    }
-    const leave = (event: PointerEvent) => {
-      const onto = event.relatedTarget
-      if (
-        event.pointerType !== 'mouse' ||
-        (onto instanceof Element && onto.closest('[data-player-chrome]'))
-      ) {
-        return
-      }
-      setOutside(true)
-      if (!chromeBusy({ hover: false })) {
-        clearTimeout(timerRef.current)
-        setIdle(true)
-      }
-    }
-    const stage = stageRef.current
-    const leaveStage = (event: PointerEvent) => {
-      if ('watch' in document.documentElement.dataset) {
-        leave(event)
-      }
-    }
-    const leaveWindow = (event: PointerEvent) => {
-      if (!('watch' in document.documentElement.dataset)) {
-        leave(event)
-      }
-    }
-    window.addEventListener('pointermove', wakeFromPointer)
-    window.addEventListener('pointerdown', wakeFromPointer)
-    window.addEventListener('keydown', wake)
-    stage?.addEventListener('pointerleave', leaveStage)
-    document.documentElement.addEventListener('pointerleave', leaveWindow)
-    return () => {
-      clearTimeout(timerRef.current)
-      window.removeEventListener('pointermove', wakeFromPointer)
-      window.removeEventListener('pointerdown', wakeFromPointer)
-      window.removeEventListener('keydown', wake)
-      stage?.removeEventListener('pointerleave', leaveStage)
-      document.documentElement.removeEventListener('pointerleave', leaveWindow)
-    }
-  }, [wake, stageRef])
-  return { idle, outside, sleep, wake }
 }
 
 // The floating UI shows after input until idle, never while locked or dragging. Paused, it stays while the

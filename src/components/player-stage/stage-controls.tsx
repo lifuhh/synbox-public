@@ -139,6 +139,7 @@ const Clock = ({
   className: string
 }) => (
   <span
+    data-press
     className={cn(
       'min-w-0 truncate text-sm whitespace-nowrap text-white tabular-nums',
       className
@@ -150,6 +151,11 @@ const Clock = ({
 export const CONTROLS_FADE_MS = 300
 const FADE_VARS: CssVars = { '--controls-fade': `${CONTROLS_FADE_MS}ms` }
 const OBSTRUCTION_GAP_PX = 8
+// With a mouse the bar takes presses only on its controls and the glass they sit on (`data-press`): its top padding
+// and the gaps between its groups pass them on to the stage, and to lyrics dragged down under the bar. A touch
+// screen keeps the whole bar, so a finger that just misses a button doesn't hide the controls
+const PRESS_THROUGH = 'mouse:pointer-events-none'
+const PRESSABLE = 'mouse:[&_:is(button,[data-press])]:pointer-events-auto'
 const VOLUME_WHEEL_STEP = 0.05
 // The clock counts a seek as landed within this of its target
 const SEEK_SETTLED_SEC = 1
@@ -403,7 +409,8 @@ export const StageControls = ({
         className={cn(
           'absolute inset-x-0 bottom-0 z-30 bg-linear-to-t from-black/80 via-black/40 to-transparent pt-10 pr-controls-right pb-controls-bottom pl-controls-left transition-opacity duration-(--controls-fade) watch-narrow:pt-6 watch-narrow:pr-2 watch-narrow:pb-1 watch-narrow:pl-2 pills:from-black/60 pills:via-black/20 short:pl-controls-rail',
           visible ? 'opacity-100' : 'opacity-0',
-          !armed && 'pointer-events-none'
+          PRESS_THROUGH,
+          armed ? PRESSABLE : 'pointer-events-none'
         )}>
         {/* On a phone on its side the seek bar joins the buttons' row: two rows would cover a third of the
           screen and push the lyrics to its middle. In the small video of a narrow watch page it runs the whole
@@ -415,6 +422,7 @@ export const StageControls = ({
           {/* On a touch screen the clock sits at the end of the seek bar, so the buttons' row fits at 320px */}
           <div className='mb-2 flex items-center gap-3 watch-narrow:contents short:contents'>
             <Slider
+              data-press
               look='seek'
               aria-label='Seek'
               hoverLabel={formatClock}
@@ -454,7 +462,9 @@ export const StageControls = ({
           <div className='flex items-center gap-1 watch-narrow:contents touch:gap-0.5 pills:gap-2 short:contents'>
             {/* Bottom left, where every player has it, between Previous and Next; the small video of a narrow watch
               page has them mid-stage instead (CenterPlayButton) */}
-            <div className={cn('contents watch-narrow:hidden', PILL)}>
+            <div
+              data-press
+              className={cn('contents watch-narrow:hidden', PILL)}>
               <IconButton
                 label='Previous'
                 className='watch-narrow:hidden'
@@ -481,7 +491,7 @@ export const StageControls = ({
                 <SkipForwardIcon className='size-5 fill-current' />
               </IconButton>
             </div>
-            <div className={cn('contents', PILL)}>
+            <div data-press className={cn('contents', PILL)}>
               <IconButton
                 label={`Back ${TAP_SEEK_SEC} Seconds`}
                 className='watch-narrow:hidden'
@@ -502,6 +512,7 @@ export const StageControls = ({
             {/* The slider only opens while the volume button is hovered or focused, so touch screens
               keep just the mute button and the device's own volume */}
             <div
+              data-press
               className={cn('group/volume flex items-center', PILL)}
               onWheel={(event) => {
                 const step =
@@ -547,6 +558,7 @@ export const StageControls = ({
               )}
             />
             <div
+              data-press
               className={cn(
                 'ml-auto flex shrink-0 items-center gap-1 watch-narrow:order-3 touch:gap-0.5 pills:gap-0.5 pills:px-1 short:order-3 short:ml-1',
                 PILL
