@@ -210,9 +210,6 @@ const OPENING_MS = 4000
 
 const useTitleFonts = (songs: LibraryListSong[]) => {
   useEffect(() => {
-    if (songs.length === 0) {
-      return
-    }
     let timer: ReturnType<typeof setTimeout> | undefined
     const later = () => {
       timer = setTimeout(
@@ -222,10 +219,12 @@ const useTitleFonts = (songs: LibraryListSong[]) => {
         Math.max(0, OPENING_MS - performance.now())
       )
     }
-    if (document.readyState === 'complete') {
-      later()
-    } else {
-      window.addEventListener('load', later, { once: true })
+    if (songs.length > 0) {
+      if (document.readyState === 'complete') {
+        later()
+      } else {
+        window.addEventListener('load', later, { once: true })
+      }
     }
     return () => {
       window.removeEventListener('load', later)
