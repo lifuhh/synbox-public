@@ -17,7 +17,7 @@ import {
   lyricsFontSizeTwoLinesAtom,
   lyricsStylePanelAtom,
   lyricsThemeIdAtom,
-  lyricsTranslationDockedAtom,
+  translationDockedAtom,
   lyricsTwoLinesAtom,
   playerSurfaceAtom,
 } from '@/context/atoms'
@@ -196,7 +196,7 @@ export const LyricsThemePicker = ({
     lyricsFontSizeTwoLinesAtom
   )
   const [twoLines, setTwoLines] = useAtom(lyricsTwoLinesAtom)
-  const [docked, setDocked] = useAtom(lyricsTranslationDockedAtom)
+  const [docked, setDocked] = useAtom(translationDockedAtom)
   // The slider sizes the layout on screen: two lines keep their own size; each screen allows its own range. An
   // upright phone's watch page has no slider: its lyrics under the video keep one size
   const surface = useLyricsSurface()

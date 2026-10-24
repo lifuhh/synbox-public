@@ -30,8 +30,6 @@ export interface LyricsStyle {
   anchorPortrait: number
   // Two Lines' translation, in its own room at the top of the stage: 0 its top, 1 its bottom
   translationAnchor: number
-  // Two Lines' translation docked under the karaoke rows, centred, moving with them, instead of in its own room
-  translationDocked: boolean
   // The karaoke two-row layout, as a karaoke machine shows it: the top row's line starts at the left and the
   // next row's, waiting unfilled, ends at the right, with the sung line's translation alone at the top.
   // Desktop and phone landscape
@@ -111,7 +109,6 @@ export const DEFAULT_LYRICS_STYLE: LyricsStyle = {
   screenSizes: { desktop: 0.85, landscape: 1, portrait: 1 },
   themeId: DEFAULT_LYRICS_THEME_ID,
   translationAnchor: 0,
-  translationDocked: false,
   twoLines: false,
 }
 
@@ -150,7 +147,6 @@ const styleFieldsSchema = z
     screenSizes: screenSizesSchema,
     themeId: lyricsThemeIdSchema,
     translationAnchor: unit,
-    translationDocked: z.boolean(),
     twoLines: z.boolean(),
   })
   .partial()
@@ -316,7 +312,7 @@ const sharedStyleSchema = z
 // predate it, where Two Lines' translation sits)
 export type SharedLyricsStyle = Omit<
   LyricsStyle,
-  'screenSizes' | 'translationAnchor' | 'translationDocked'
+  'screenSizes' | 'translationAnchor'
 >
 
 export const decodeSharedStyle = (

@@ -1,5 +1,5 @@
 import { useAtom, useAtomValue, useSetAtom } from 'jotai'
-import type { ReactNode, RefObject } from 'react'
+import type { ReactNode } from 'react'
 import {
   useCallback,
   useEffect,
@@ -26,7 +26,7 @@ import {
   translationIsEnglishAtom,
   translationVisibilityAtom,
   lyricsTranslationAnchorAtom,
-  lyricsTranslationDockedAtom,
+  translationDockedAtom,
   lyricsStylePanelAtom,
 } from '@/context/atoms'
 import { useLyricsSurface } from '@/hooks/use-media-query'
@@ -289,7 +289,8 @@ const FIT_STEPS = 9
 // Between two tries on the copy while nothing waits for the answer: each lays out every line of the song
 const FIT_IDLE_MS = 50
 
-// One size for both rows, for the whole song: each row gets half the room under the translation, and when the
+// One size for both rows, for the whole song: each row gets half the room under the translation (less, with the
+// translation docked under them, its tallest line: `reserve`, every translation laid out unseen as it docks), and when the
 // song's tallest line (`lines`, every line laid out unseen at a row's width) wraps taller than that,
 // both rows shrink by as much. So the two lines on screen are always the same size, the rows never climb over the
 // translation, and no row changes size while its line is sung. The room is the layer's, less the room kept
@@ -299,7 +300,11 @@ const FIT_IDLE_MS = 50
 // song. `measure` runs when the stage, the song's lines or the fonts change. The rows need only one try when the
 // current size fits; the rest of the search runs one try at a time while nothing waits, or at once for a larger
 // size that needs it
-const fitSong = (grid: HTMLElement, lines: HTMLElement) => {
+const fitSong = (
+  grid: HTMLElement,
+  lines: HTMLElement,
+  reserve: HTMLElement
+) => {
   const block = grid.closest<HTMLElement>('.player-lyrics-overlay')
   const layer = block?.parentElement
   const lift = block?.nextElementSibling
@@ -374,7 +379,8 @@ const fitSong = (grid: HTMLElement, lines: HTMLElement) => {
       layer.clientHeight -
       pixels(getComputedStyle(lift).minHeight) -
       pixels(pad.paddingTop) -
-      pixels(pad.paddingBottom)
+      pixels(pad.paddingBottom) -
+      tallestOf(reserve)
     if (fits(scale)) {
       fitting = scale
       failing = Number.POSITIVE_INFINITY
@@ -396,6 +402,7 @@ const fitSong = (grid: HTMLElement, lines: HTMLElement) => {
     childList: true,
     subtree: true,
   })
+  lineChanges.observe(reserve, { childList: true, subtree: true })
   const observer = new ResizeObserver(() => {
     if (layer && `${layer.clientWidth}x${layer.clientHeight}` !== measuredFor) {
       measure()
@@ -408,6 +415,10 @@ const fitSong = (grid: HTMLElement, lines: HTMLElement) => {
   return {
     setScale: (next: number) => {
       scale = next
+      // A docked translation's room grows and shrinks with the size
+      if (reserve.childElementCount > 0) {
+        measure()
+      }
       if (next > fitting && steps > 0) {
         settle()
       }
@@ -449,21 +460,25 @@ const TwoRows = ({
   view,
   rowsOf,
   songLines,
+  songTranslations,
   scale,
 }: {
   view: TwoLineView
   rowsOf: (index: number) => ReactNode
   // Every line of the song, each at a row's width, for fitSong
   songLines: ReactNode
+  // Every translation of the song as it docks under the rows, while it does; the rows leave room for the tallest
+  songTranslations: ReactNode
   scale: number
 }) => {
   const gridRef = useRef<HTMLDivElement>(null)
   const linesRef = useRef<HTMLDivElement>(null)
+  const reserveRef = useRef<HTMLDivElement>(null)
   const fitRef = useRef<ReturnType<typeof fitSong> | null>(null)
   useLayoutEffect(() => {
     const fit =
-      gridRef.current && linesRef.current
-        ? fitSong(gridRef.current, linesRef.current)
+      gridRef.current && linesRef.current && reserveRef.current
+        ? fitSong(gridRef.current, linesRef.current, reserveRef.current)
         : null
     fitRef.current = fit
     return () => {
@@ -502,6 +517,11 @@ const TwoRows = ({
           {songLines}
         </div>
       </div>
+      <div
+        aria-hidden
+        className='pointer-events-none invisible absolute inset-x-0 top-0 h-0 overflow-hidden [--row-fit:1]'>
+        <div ref={reserveRef}>{songTranslations}</div>
+      </div>
     </div>
   )
 }
@@ -536,14 +556,33 @@ const StaggerTranslation = ({
   </div>
 )
 
-// How far the docked translation must be pulled up off the rows to come away: past it the pull lets go, short of
-// it the translation springs back
-const TEAR_PX = 56
+// How far the docked translation must be pulled up off the rows to come away: a share of the stage's height, never
+// less than a fingertip's travel. Short of it the translation springs back
+const pullToTear = (stageHeight: number) => Math.max(40, 0.1 * stageHeight)
 const TAP_SLOP_PX = { mouse: 4, touch: 10 }
 
-// Karaoke Style's translation docked under the rows, centred: part of their block, so it moves when they are
-// dragged. Its own drag pulls it upward off them (the rows stay); let go past TEAR_PX it goes back to its room at
-// the top, where it was let go. `ghost`: the place it would dock, shown while it is pulled down over the rows
+// An element's top within an ancestor, in layout: the page's own axes, which a page turned by Lock Landscape keeps
+const offsetIn = (element: HTMLElement, ancestor: HTMLElement) => {
+  let top = 0
+  let at: Element | null = element
+  while (at instanceof HTMLElement && at !== ancestor) {
+    top += at.offsetTop
+    at = at.offsetParent
+  }
+  return top
+}
+
+interface Press {
+  y: number
+  slop: number
+  tearAt: number
+  moved: boolean
+}
+
+// Karaoke Style's translation docked under the rows, centred on them: part of their block, so it moves when they are
+// dragged. Its own drag pulls it upward off them (the rows stay); let go past pullToTear it goes back to its room at
+// the top, where it was let go (`onTear`: its top there, within the lyrics' layer). `ghost`: the place it would dock,
+// shown while it is pulled down to the rows
 const DockedTranslation = ({
   children,
   layout,
@@ -553,20 +592,22 @@ const DockedTranslation = ({
   children: ReactNode
   layout: StageLayout
   ghost?: boolean
-  onTear?: (pointerY: number, height: number) => void
+  onTear?: (top: number, layer: HTMLElement) => void
 }) => {
-  const [pull, setPull] = useState(0)
-  const press = useRef<{ y: number; slop: number; moved: boolean } | null>(null)
+  const [pull, setPull] = useState({ at: 0, px: 0 })
+  const press = useRef<Press | null>(null)
   const setStylePanel = useSetAtom(lyricsStylePanelAtom)
-  const torn = pull > TEAR_PX
+  const torn = pull.at > 0 && pull.px > pull.at
   const handleDown = (event: React.PointerEvent<HTMLDivElement>) => {
     // Its own drag, not the rows'
     event.stopPropagation()
     event.currentTarget.setPointerCapture(event.pointerId)
+    const stage = event.currentTarget.closest('[data-player-stage]')
     press.current = {
       moved: false,
       slop:
         event.pointerType === 'mouse' ? TAP_SLOP_PX.mouse : TAP_SLOP_PX.touch,
+      tearAt: pullToTear(stage?.clientHeight ?? 0),
       y: pagePoint(event).y,
     }
   }
@@ -584,7 +625,7 @@ const DockedTranslation = ({
       start.moved = true
       layout.onDragChange(true)
     }
-    setPull(Math.max(0, -delta))
+    setPull({ at: start.tearAt, px: Math.max(0, -delta) })
   }
   const handleUp = (event: React.PointerEvent<HTMLDivElement>) => {
     event.stopPropagation()
@@ -596,17 +637,19 @@ const DockedTranslation = ({
     if (start.moved) {
       layout.onDragChange(false)
       swallowNextClick()
-      if (torn) {
-        onTear?.(pagePoint(event).y, event.currentTarget.offsetHeight)
+      const element = event.currentTarget
+      const layer = element.closest<HTMLElement>('[data-lyric-layer]')
+      if (torn && layer !== null) {
+        onTear?.(offsetIn(element, layer) - pull.px, layer)
       }
-      setPull(0)
+      setPull({ at: 0, px: 0 })
     } else if (event.pointerType === 'mouse') {
       setStylePanel('pinned')
     } else {
       layout.tapStage()
     }
   }
-  const vars: CssVars = { '--dock-pull': `${-pull}px` }
+  const vars: CssVars = { '--dock-pull': `${-pull.px}px` }
   return (
     <div
       data-docked-translation={ghost ? 'ghost' : 'docked'}
@@ -618,7 +661,7 @@ const DockedTranslation = ({
           ghost
             ? 'pointer-events-none'
             : 'lyrics-hit-text cursor-grab touch-none transition-fade-translate duration-200 ease-out motion-reduce:transition-none',
-          pull > 0 && 'cursor-grabbing transition-none',
+          pull.px > 0 && 'cursor-grabbing transition-none',
           torn && 'opacity-60'
         )}
         onPointerDown={ghost ? undefined : handleDown}
@@ -648,24 +691,41 @@ const translationOf = (
     />
   ) : undefined
 
-// Whether Karaoke Style's translation is docked under the rows (saved with the style), whether a pull down offers
+// Whether Karaoke Style's translation is docked under the rows (one choice for every song), whether a pull down offers
 // to dock it right now, and pulling it off again: back to its room at the top, where it was let go
-const useTranslationDock = (layer: RefObject<HTMLDivElement | null>) => {
-  const [docked, setDocked] = useAtom(lyricsTranslationDockedAtom)
+const useTranslationDock = () => {
+  const [docked, setDocked] = useAtom(translationDockedAtom)
   const setAnchor = useSetAtom(lyricsTranslationAnchorAtom)
   const [offered, setOffered] = useState(false)
-  const handleTear = (pointerY: number, height: number) => {
-    const room = layer.current
-      ?.querySelector('[data-lyric-translation]')
-      ?.getBoundingClientRect()
-    if (room !== undefined) {
-      const free = Math.max(1, room.height - height)
-      setAnchor(
-        Math.min(1, Math.max(0, (pointerY - height / 2 - room.top) / free))
-      )
-    }
+  // Pulled off, it lands in its room with its top where it was let go: placed once it is back there, before
+  // paint, as its room wraps it differently from the rows' width. In layout units, which a page turned by Lock
+  // Landscape keeps
+  const drop = useRef<{ top: number; layer: HTMLElement } | null>(null)
+  const handleTear = (top: number, layer: HTMLElement) => {
+    drop.current = { layer, top }
     setDocked(false)
   }
+  useLayoutEffect(() => {
+    const dropped = drop.current
+    if (docked || dropped === null) {
+      return
+    }
+    drop.current = null
+    const room = dropped.layer.querySelector<HTMLElement>(
+      '[data-lyric-translation]'
+    )
+    const block = room?.querySelector<HTMLElement>('.player-lyrics-overlay')
+    const handle = block?.querySelector<HTMLElement>(
+      '[data-lyrics-style-toggle]'
+    )
+    const area = block?.parentElement
+    if (room && block && handle && area) {
+      // As DraggableLyrics reads its anchor: the block's top over the room it can move in
+      const free = Math.max(1, area.clientHeight - block.offsetHeight)
+      const top = dropped.top - room.offsetTop - handle.offsetTop
+      setAnchor(Math.min(1, Math.max(0, top / free)))
+    }
+  }, [docked, setAnchor])
   const pull = {
     onDock: () => {
       setDocked(true)
@@ -695,10 +755,15 @@ const UnderRows = ({
       </DockedTranslation>
     )
   }
+  // Over the stage under the rows, taking no room: the rows stay put until it is let go
   return dock.offered ? (
-    <DockedTranslation layout={layout} ghost>
-      {children}
-    </DockedTranslation>
+    <div className='relative h-0'>
+      <div className='absolute inset-x-0 top-0'>
+        <DockedTranslation layout={layout} ghost>
+          {children}
+        </DockedTranslation>
+      </div>
+    </div>
   ) : null
 }
 
@@ -916,6 +981,41 @@ export const StageLyrics = ({
       }),
     [twoLines, lineCount, lyrics, karaokeLines, english, showLyrics, showRomaji]
   )
+  const docked = useAtomValue(translationDockedAtom)
+  const songTranslations = useMemo(
+    () =>
+      Array.from(
+        { length: twoLines && showTranslation && docked ? lineCount : 0 },
+        (_, index) => {
+          const translation = translationOf(
+            lineAt(lyrics, karaokeLines, index, english, undefined),
+            index
+          )
+          return (
+            translation !== undefined && (
+              // Lines are positional and never reorder
+              // oxlint-disable-next-line no-array-index-key
+              <div
+                key={index}
+                className='flex justify-center docked-translation'>
+                <div className='max-w-[85%] px-cqw text-center'>
+                  {translation}
+                </div>
+              </div>
+            )
+          )
+        }
+      ),
+    [
+      twoLines,
+      showTranslation,
+      docked,
+      lineCount,
+      lyrics,
+      karaokeLines,
+      english,
+    ]
+  )
   const layerVars: CssVars = {
     '--lyric-glow': colors.glow,
     '--lyric-scale': scale,
@@ -926,8 +1026,7 @@ export const StageLyrics = ({
     lineAt(lyrics, karaokeLines, view.active, english, placeholder),
     view.active
   )
-  const layerRef = useRef<HTMLDivElement>(null)
-  const dock = useTranslationDock(layerRef)
+  const dock = useTranslationDock()
   const underRows = translated && (
     <UnderRows dock={dock} layout={layout}>
       {translationLine}
@@ -935,7 +1034,7 @@ export const StageLyrics = ({
   )
   return (
     <div
-      ref={layerRef}
+      data-lyric-layer
       className='absolute inset-0 lyric-stagger-layer'
       style={layerVars}>
       {translated && (
@@ -966,6 +1065,7 @@ export const StageLyrics = ({
                 view={view}
                 rowsOf={rowsOf}
                 songLines={songLines}
+                songTranslations={songTranslations}
                 scale={scale}
               />
               {underRows}

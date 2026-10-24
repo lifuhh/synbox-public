@@ -45,6 +45,14 @@ export const translationVisibilityAtom = atomWithStorage(
   syncedStorage(),
   shownOptions
 )
+// Karaoke Style's translation docked under the rows instead of in its own room at the top: one choice for every
+// song, not part of a song's style (nor of a shared link)
+export const translationDockedAtom = atomWithStorage(
+  'lyricsTranslationDocked',
+  false,
+  syncedStorage(),
+  shownOptions
+)
 export const translationIsEnglishAtom = atomWithStorage(
   'lyricsTranslationEnglish',
   true,
@@ -144,12 +152,7 @@ const defaultLyricsStyleAtoms: {
     syncedStorage(),
     initOptions
   ),
-  translationDocked: atomWithStorage(
-    'lyricsTranslationDocked',
-    DEFAULT_LYRICS_STYLE.translationDocked,
-    syncedStorage(),
-    initOptions
-  ),
+
   twoLines: atom(
     (get) => {
       const layout = shownLayout(get)
@@ -182,7 +185,6 @@ const readDefaults = (get: Getter): LyricsStyle => {
       : DEFAULT_LYRICS_STYLE.screenSizes,
     themeId: themeId.success ? themeId.data : DEFAULT_LYRICS_STYLE.themeId,
     translationAnchor: get(defaultLyricsStyleAtoms.translationAnchor),
-    translationDocked: get(defaultLyricsStyleAtoms.translationDocked),
     twoLines: get(defaultLyricsStyleAtoms.twoLines),
   }
 }
@@ -196,7 +198,6 @@ const LYRICS_STYLE_KEYS = [
   'screenSizes',
   'themeId',
   'translationAnchor',
-  'translationDocked',
   'twoLines',
 ] as const satisfies readonly (keyof LyricsStyle)[]
 
@@ -345,7 +346,6 @@ export const lyricsCustomHueAtom = lyricsStyleField('customHue')
 export const lyricsAnchorAtom = lyricsStyleField('anchor')
 export const lyricsAnchorPortraitAtom = lyricsStyleField('anchorPortrait')
 export const lyricsTranslationAnchorAtom = lyricsStyleField('translationAnchor')
-export const lyricsTranslationDockedAtom = lyricsStyleField('translationDocked')
 export const lyricsTwoLinesAtom = lyricsStyleField('twoLines')
 export const lyricsFontSizeTwoLinesAtom = lyricsStyleField('fontSizeTwoLines')
 export const lyricsScreenSizesAtom = lyricsStyleField('screenSizes')
