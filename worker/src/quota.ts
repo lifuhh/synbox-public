@@ -54,7 +54,7 @@ interface GenerationRow {
 
 const utcDay = (now: Date) => now.toISOString().slice(0, 10)
 
-const DAY_MS = 86_400_000
+export const DAY_MS = 86_400_000
 // A generation the backend hasn't reported on for this long has stopped: the app gave up, was put away, or the
 // instance running it died. The backend reports every stage and every tenth of one, so a live one never gets here
 const STALL_MS = 15 * 60_000
@@ -156,7 +156,7 @@ interface OwnLimits {
   capped: boolean
 }
 
-const ownLimits = async (
+export const ownLimits = async (
   db: D1Database,
   owner: Owner,
   limits: Limits

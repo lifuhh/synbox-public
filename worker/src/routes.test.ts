@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test'
+import { timingSafeEqual } from 'node:crypto'
 
 import worker from './index'
 import { EXPIRE_DAYS, listReports, saveReport } from './reports'
@@ -30,6 +31,9 @@ const setup = async () => {
     REPORTS_FIXER_TOKEN: TOKEN,
     TRUSTED_ORIGINS: 'http://localhost:5173',
     USER_DAILY_LIMIT: '10',
+    VALIDATION_GUEST_DAILY_LIMIT: '10',
+    VALIDATION_NETWORK_DAILY_LIMIT: '150',
+    VALIDATION_USER_DAILY_LIMIT: '1',
   }
   const waits: Promise<unknown>[] = []
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the one method the handlers call
@@ -170,4 +174,48 @@ test('the daily cron expires reports open past 3 days', async () => {
   await Promise.all(waits)
   const rows = await listReports(db)
   expect(rows.map((row) => row.dropReason)).toEqual([null, 'expired'])
+})
+
+// Workers' crypto.subtle has timingSafeEqual (the internal routes' secret check); Bun's doesn't
+const bytes = (value: ArrayBuffer | ArrayBufferView) =>
+  ArrayBuffer.isView(value)
+    ? new Uint8Array(value.buffer, value.byteOffset, value.byteLength)
+    : new Uint8Array(value)
+Object.assign(crypto.subtle, {
+  timingSafeEqual: (
+    a: ArrayBuffer | ArrayBufferView,
+    b: ArrayBuffer | ArrayBufferView
+  ) => timingSafeEqual(bytes(a), bytes(b)),
+})
+
+test("the backend's song-check count needs the internal secret, counts an id once and refuses past the cap", async () => {
+  const { call } = await setup()
+  const count = async (body: unknown, auth = 'Bearer internal') => {
+    const response = await call('/internal/validations', {
+      body: JSON.stringify(body),
+      headers: { Authorization: auth, 'content-type': 'application/json' },
+      method: 'POST',
+    })
+    return [response.status, await response.json()]
+  }
+  const check = {
+    id: 'c1',
+    networkKey: 'n1',
+    userId: 'me',
+    videoId: 'abcdefghijk',
+  }
+  expect(await count(check, 'Bearer nope')).toEqual([
+    403,
+    { code: 'forbidden' },
+  ])
+  expect(await count({ ...check, videoId: '../x' })).toEqual([
+    400,
+    { code: 'bad_request' },
+  ])
+  expect(await count(check)).toEqual([201, { outcome: 'counted' }])
+  expect(await count(check)).toEqual([200, { outcome: 'replay' }])
+  expect(await count({ ...check, id: 'c2' })).toEqual([
+    429,
+    { code: 'validation_limit', outcome: 'validation_limit' },
+  ])
 })

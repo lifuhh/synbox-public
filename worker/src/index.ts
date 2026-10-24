@@ -59,6 +59,8 @@ import {
   readStats,
   setLike,
 } from './songs'
+import { countValidation, pruneValidations } from './validations'
+import type { Counted, ValidationLimits } from './validations'
 
 type AppEnv = Env &
   LibraryEnv &
@@ -68,6 +70,9 @@ type AppEnv = Env &
     GUEST_DAILY_LIMIT: string
     GUEST_DAILY_TOTAL: string
     NETWORK_DAILY_LIMIT: string
+    VALIDATION_USER_DAILY_LIMIT: string
+    VALIDATION_GUEST_DAILY_LIMIT: string
+    VALIDATION_NETWORK_DAILY_LIMIT: string
     REPORTS_FIXER_TOKEN?: string
   }
 
@@ -84,6 +89,12 @@ const limitsOf = (env: AppEnv): Limits => ({
   guestTotal: count(env.GUEST_DAILY_TOTAL),
   network: count(env.NETWORK_DAILY_LIMIT),
   user: count(env.USER_DAILY_LIMIT),
+})
+
+const validationLimitsOf = (env: AppEnv): ValidationLimits => ({
+  guest: count(env.VALIDATION_GUEST_DAILY_LIMIT),
+  network: count(env.VALIDATION_NETWORK_DAILY_LIMIT),
+  user: count(env.VALIDATION_USER_DAILY_LIMIT),
 })
 
 const userIdOf = async (env: AppEnv, headers: Headers) => {
@@ -475,6 +486,39 @@ internal.patch('/generations/:id', async (c) => {
   return updated ? c.body(null, 204) : c.json({ code: 'not_found' }, 404)
 })
 
+const COUNTED_STATUS: Record<Counted['outcome'], 200 | 201 | 403 | 429> = {
+  counted: 201,
+  forbidden: 403,
+  replay: 200,
+  validation_limit: 429,
+}
+
+// One song check (the backend's /validate, which downloads the song), counted against the caller's and the
+// network's caps; the id makes asking again after a dropped connection count once
+internal.post('/validations', async (c) => {
+  const body = await c.req.json<Record<string, unknown>>()
+  const { id, videoId } = body
+  const owner = ownerOf(body)
+  if (
+    !isText(id) ||
+    owner === null ||
+    !isText(videoId) ||
+    !isVideoId(videoId)
+  ) {
+    return c.json({ code: 'bad_request' }, 400)
+  }
+  const counted = await countValidation(
+    c.env.DB,
+    { id, owner, videoId, ...originOf(body) },
+    limitsOf(c.env),
+    validationLimitsOf(c.env)
+  )
+  const status = COUNTED_STATUS[counted.outcome]
+  return status < 400
+    ? c.json(counted, status)
+    : c.json({ ...counted, code: counted.outcome }, status)
+})
+
 app.route('/internal', internal)
 
 app.route('/api/fixer', fixer)
@@ -673,11 +717,12 @@ app.route('/api/admin', admin)
 export default {
   fetch: app.fetch,
   // The daily cron (wrangler.jsonc): reports the fixer left open past EXPIRE_DAYS are dropped as expired, and
-  // listen rows past their hour and lyrics hits past their 30 days go
+  // listen rows past their hour, song checks past their 24 hours and lyrics hits past their 30 days go
   scheduled: (_controller, env, ctx) => {
     const now = Date.now()
     ctx.waitUntil(expireReports(env.DB, now))
     ctx.waitUntil(pruneListens(env.DB, now))
+    ctx.waitUntil(pruneValidations(env.DB, now))
     ctx.waitUntil(pruneHits(env.DB, now))
   },
 } satisfies ExportedHandler<AppEnv>
