@@ -1,13 +1,7 @@
 import type { QueryClient } from '@tanstack/react-query'
 import { queryOptions, useMutation, useQuery } from '@tanstack/react-query'
 
-import type { CurrentPlayingInfo } from '@/types'
-
-import {
-  addSongInfoBySongId,
-  getSongInfoBySongId,
-  getSongLyricsById,
-} from '../appwrite/api'
+import { getSongInfoBySongId, getSongLyricsById } from '../appwrite/api'
 import { getLandingPagePlaylist } from '../recommendations'
 import { getKaraoke } from '../synbox-flask/api'
 import type { LibraryListSong } from '../synbox-flask/discovery'
@@ -105,15 +99,25 @@ export const useGetSongInfoBySongId = (songId: string) =>
     staleTime: 1000 * 60 * 60,
   })
 
-export const useGetYoutubeVideoInfo = (videoId: string) => {
-  const { isError } = useGetSongInfoBySongId(videoId)
-
-  return useQuery({
-    enabled: !!videoId && isError,
+const youtubeVideoInfo = (videoId: string, enabled: boolean) =>
+  queryOptions({
+    enabled: videoId !== '' && enabled,
     queryFn: async () => await getYoutubeVideoInfo(videoId),
     queryKey: [QUERY_KEYS.GET_YOUTUBE_VIDEO_INFO, videoId],
+    // Our proxy keeps a video's details a day; a video that's gone stays gone for this visit
+    retry: 1,
+    staleTime: DAY_MS,
   })
+
+// YouTube's details for a song with no song_info row
+export const useGetYoutubeVideoInfo = (videoId: string) => {
+  const { isError } = useGetSongInfoBySongId(videoId)
+  return useQuery(youtubeVideoInfo(videoId, isError))
 }
+
+// YouTube's details for a video, whatever Synbox knows of it
+export const useYoutubeVideo = (videoId: string) =>
+  useQuery(youtubeVideoInfo(videoId, true))
 
 export const useGetLyricsBySongId = (songId: string) =>
   useQuery({
@@ -151,12 +155,6 @@ export const useGetKaraokeById = (
     retry: 7,
     retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 20_000),
     staleTime: 1000 * 60 * 60,
-  })
-
-export const useAddSongInfoBySongId = () =>
-  useMutation({
-    mutationFn: async (songInfo: CurrentPlayingInfo) =>
-      await addSongInfoBySongId(songInfo),
   })
 
 export const useSearchVideos = (query: string) =>

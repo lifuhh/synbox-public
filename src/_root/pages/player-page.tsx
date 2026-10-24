@@ -15,6 +15,7 @@ import VersionPreviewBanner, {
 import { PlayerStage } from '@/components/player-stage/player-stage'
 import { StageLyrics } from '@/components/player-stage/stage-lyrics'
 import { DEFAULT_YOUTUBE_QUIRKS } from '@/components/player-stage/youtube-quirks'
+import { NotInLibrary } from '@/components/watch/not-in-library'
 import { WatchPage } from '@/components/watch/watch-page'
 import {
   currentVideoAtom,
@@ -30,6 +31,7 @@ import { useLyricsReady } from '@/hooks/use-lyrics-ready'
 import { useMediaQuery } from '@/hooks/use-media-query'
 import { useSongVisit } from '@/hooks/use-song-visit'
 import { useAccess } from '@/lib/auth'
+import { useSongPresence } from '@/lib/library/presence'
 import { historyAtom } from '@/lib/library/store'
 import type { ListSong } from '@/lib/listening/model'
 import {
@@ -55,14 +57,16 @@ import { countListen } from '@/lib/song-stats'
 import { handleVideoRoute } from '@/utils/route-handler.ts'
 
 // The stage alone fills the screen in fullscreen (or iPhone's stand-in), on a phone on its side and under
-// Lock Landscape; otherwise the page is the watch page around it
-const usePlayerSurface = () => {
+// Lock Landscape; otherwise the page is the watch page around it. A video not in the library has no stage: its
+// page is an ordinary one
+const usePlayerSurface = (inLibrary: boolean) => {
   const fullscreen = useAtomValue(stageFullscreenAtom)
   const short = useMediaQuery(
     '(orientation: landscape) and (max-height: 500px)'
   )
   const turned = usePageTurned()
-  const surface = fullscreen || short || turned ? 'stage' : 'watch'
+  const surface =
+    inLibrary && (fullscreen || short || turned) ? 'stage' : 'watch'
   const setSurface = useSetAtom(playerSurfaceAtom)
   useEffect(() => {
     setSurface(surface)
@@ -144,14 +148,17 @@ const PlayerPage = () => {
   const [error, setError] = useState<string | null>(null)
   const [stageVideoId, setStageVideoId] = useState<string | null>(null)
 
-  useSongVisit(videoId)
+  // Only a song in the library is played, counted and kept in history; any other video gets NotInLibrary
+  const presence = useSongPresence(videoId)
+  const inLibrary = presence === 'in-library'
+  useSongVisit(videoId, inLibrary)
   // Every visit to a song's player page is one more listen. A layout effect, so the listen is on its way before
   // any part of the page asks for the song's stats (those wait for it)
   useLayoutEffect(() => {
-    if (videoId !== '') {
+    if (videoId !== '' && inLibrary) {
       countListen(videoId)
     }
-  }, [videoId])
+  }, [videoId, inLibrary])
   const currentVideo = useAtomValue(currentVideoAtom)
   // The installed app's resume bar takes the listener back to this song from the other tabs. The song it held
   // until now is the one just left: it goes on Previous's trail, unless Previous is what left it
@@ -237,7 +244,7 @@ const PlayerPage = () => {
     }
   }, [videoId, navigate])
 
-  const surface = usePlayerSurface()
+  const surface = usePlayerSurface(inLibrary)
   const wide = useMediaQuery('(min-width: 1000px)')
   const [layout, setLayout] = useAtom(watchLayoutAtom)
   const toggleTheater =
@@ -277,7 +284,11 @@ const PlayerPage = () => {
     )
   }
 
-  if (isLoading || stageVideoId === null) {
+  if (presence === 'not-in-library') {
+    return <NotInLibrary videoId={videoId} />
+  }
+
+  if (isLoading || stageVideoId === null || presence === 'checking') {
     return (
       <div className='flex h-(--app-h) w-full items-center justify-center'>
         Loading...

@@ -4,15 +4,15 @@ import { useEffect } from 'react'
 import { currentVideoAtom } from '@/context/atoms'
 import { addToHistoryAtom } from '@/lib/library/store'
 import {
-  useAddSongInfoBySongId,
   useGetSongInfoBySongId,
   useGetYoutubeVideoInfo,
 } from '@/lib/react-query/queries-and-mutations'
+import type { CurrentPlayingInfo } from '@/types'
 
-// Publishes the song being watched (currentVideoAtom: title, bookmarks) and
-// records it in watch history. A song with no song_info row yet gets one from
-// its YouTube metadata.
-export const useSongVisit = (videoId: string) => {
+// Publishes the song being watched (currentVideoAtom: title, bookmarks) and records it in watch history, once
+// the song is known to be in the library (`inLibrary`): a video that isn't leaves no trace. A song whose
+// song_info row can't be read is named from YouTube's details; only the backend writes song_info
+export const useSongVisit = (videoId: string, inLibrary: boolean) => {
   const setCurrentVideo = useSetAtom(currentVideoAtom)
   const addToHistory = useSetAtom(addToHistoryAtom)
   const {
@@ -22,7 +22,6 @@ export const useSongVisit = (videoId: string) => {
   } = useGetSongInfoBySongId(videoId)
   const { data: youtubeInfo, isLoading: isLoadingYoutubeInfo } =
     useGetYoutubeVideoInfo(videoId)
-  const { mutate: addSongInfo } = useAddSongInfoBySongId()
 
   useEffect(() => {
     setCurrentVideo(null)
@@ -33,41 +32,37 @@ export const useSongVisit = (videoId: string) => {
   }, [videoId, setCurrentVideo])
 
   useEffect(() => {
-    if (!videoId || isLoadingYoutubeInfo || isLoadingSongInfo) {
+    if (!videoId || !inLibrary || isLoadingYoutubeInfo || isLoadingSongInfo) {
       return
     }
-    if (isSongInfoMissing && youtubeInfo) {
-      const info = {
+    let info: CurrentPlayingInfo | null = null
+    if (songInfo) {
+      info = {
+        author: songInfo.author,
+        thumbnailUrl: songInfo.thumbnailUrl,
+        title: songInfo.title,
+        videoId: songInfo.videoId,
+      }
+    } else if (isSongInfoMissing && youtubeInfo) {
+      info = {
         author: youtubeInfo.channelTitle,
         thumbnailUrl: youtubeInfo.thumbnail,
         title: youtubeInfo.title,
         videoId,
       }
-      addSongInfo(info, {
-        onSuccess: () => {
-          setCurrentVideo(info)
-          addToHistory(info)
-        },
-      })
-      return
     }
-    if (songInfo) {
-      setCurrentVideo(songInfo)
-      addToHistory({
-        author: songInfo.author,
-        thumbnailUrl: songInfo.thumbnailUrl,
-        title: songInfo.title,
-        videoId: songInfo.videoId,
-      })
+    if (info !== null) {
+      setCurrentVideo(songInfo ?? info)
+      addToHistory(info)
     }
   }, [
     videoId,
+    inLibrary,
     songInfo,
     youtubeInfo,
     isSongInfoMissing,
     isLoadingSongInfo,
     isLoadingYoutubeInfo,
-    addSongInfo,
     addToHistory,
     setCurrentVideo,
   ])
