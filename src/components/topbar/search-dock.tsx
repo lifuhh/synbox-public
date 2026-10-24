@@ -1,6 +1,4 @@
 import { useAtomValue } from 'jotai'
-import { animate, motionValue } from 'motion/react'
-import type { AnimationPlaybackControls } from 'motion/react'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { RefObject } from 'react'
 import { flushSync } from 'react-dom'
@@ -14,8 +12,31 @@ import { reducedMotion } from '@/lib/reduced-motion'
 // page's field and 1 in the bar, drives a ghost drawn between the two live boxes, so a flight turned around
 // midway keeps its speed, and a flight home lands on the field wherever the scroll has taken it
 
-// No bounce, settled in about 0.45 s: the feel of iOS's own transitions
-const SPRING = { bounce: 0, type: 'spring', visualDuration: 0.45 } as const
+// A critically damped spring: no bounce, settled in about 0.45 s, the feel of iOS's own transitions (motion's
+// `visualDuration: 0.45, bounce: 0`). Hand-rolled: motion's animate() would bring its whole animation engine into
+// the first load, where the top bar sits
+const OMEGA = (2 * Math.PI) / 0.45
+// A frame longer than this (a hidden tab, a stall) counts as this long, so the ghost never leaps
+const MAX_STEP_S = 1 / 30
+
+interface Spring {
+  value: number
+  velocity: number
+  goal: number
+}
+
+// The spring's exact motion over `dt` seconds, so a long frame can't make it overshoot
+const step = (spring: Spring, dt: number) => {
+  const offset = spring.value - spring.goal
+  const lead = spring.velocity + OMEGA * offset
+  const decay = Math.exp(-OMEGA * dt)
+  spring.value = spring.goal + (offset + lead * dt) * decay
+  spring.velocity = (spring.velocity - OMEGA * lead * dt) * decay
+}
+
+const resting = (spring: Spring) =>
+  Math.abs(spring.value - spring.goal) < 1e-3 &&
+  Math.abs(spring.velocity) < 1e-2
 // How far below the bar the page's field must come back before the search leaves the bar, so a scroll resting
 // at the edge doesn't send it back and forth
 const RETURN_PX = 16
@@ -123,11 +144,11 @@ const dock = (
   setStage: (stage: DockStage) => void,
   slotShown: RefObject<(() => void) | null>
 ) => {
-  const t = motionValue(0)
+  const t: Spring = { goal: 0, value: 0, velocity: 0 }
+  let frame = 0
   let docked = false
   let waiting = false
   let flight: Flight | null = null
-  let run: AnimationPlaybackControls | null = null
   let shown: DockStage = 'page'
   // A handover between the ghost and the real search lands in one frame. Never flushed from React's own effects:
   // the stage there is already the one asked for
@@ -167,7 +188,7 @@ const dock = (
     if (flight === null) {
       return
     }
-    const at = t.get()
+    const at = t.value
     const origin = header.getBoundingClientRect()
     const from = field.getBoundingClientRect()
     const to = flight.shell.getBoundingClientRect()
@@ -184,9 +205,6 @@ const dock = (
   }
 
   const settle = () => {
-    if (t.get() !== (docked ? 1 : 0)) {
-      return
-    }
     // The real search shows in the same frame the ghost goes
     show(docked ? 'bar' : 'page')
     flight = null
@@ -217,15 +235,35 @@ const dock = (
     // The ghost carries the search from here, in the frame the real one hides
     field.style.opacity = '0'
     show('flying')
-    const goal = docked ? 1 : 0
+    t.goal = docked ? 1 : 0
     if (reducedMotion()) {
-      run?.stop()
-      t.jump(goal)
+      cancelAnimationFrame(frame)
+      frame = 0
+      t.value = t.goal
+      t.velocity = 0
       settle()
       return
     }
     draw()
-    run = animate(t, goal, { ...SPRING, onComplete: settle })
+    // A flight under way just turns: its frames already run, and its speed carries over
+    if (frame === 0) {
+      let last = performance.now()
+      const tick = () => {
+        const now = performance.now()
+        step(t, Math.min((now - last) / 1000, MAX_STEP_S))
+        last = now
+        if (resting(t)) {
+          t.value = t.goal
+          t.velocity = 0
+          frame = 0
+          settle()
+          return
+        }
+        draw()
+        frame = requestAnimationFrame(tick)
+      }
+      frame = requestAnimationFrame(tick)
+    }
   }
 
   const steer = () => {
@@ -253,13 +291,13 @@ const dock = (
   // A page that opens already scrolled starts with the search in the bar
   docked = wants()
   if (docked) {
-    t.jump(1)
+    t.value = 1
+    t.goal = 1
     field.style.opacity = '0'
   }
   shown = docked ? 'bar' : 'page'
   setStage(shown)
 
-  const stopDrawing = t.on('change', draw)
   // Focus leaving the bar's field can send the search home; read once focus has landed
   let refocus = 0
   const onFocusOut = () => {
@@ -270,8 +308,7 @@ const dock = (
   globalThis.addEventListener('resize', steer)
   header.addEventListener('focusout', onFocusOut)
   return () => {
-    run?.stop()
-    stopDrawing()
+    cancelAnimationFrame(frame)
     cancelAnimationFrame(refocus)
     document.removeEventListener('scroll', steer, { capture: true })
     globalThis.removeEventListener('resize', steer)
