@@ -63,6 +63,9 @@ export interface KaraokeToken {
   ruby: KaraokeRubySegment[]
   morae: KaraokeMora[]
   is_latin: boolean
+  // A verb ending or auxiliary: its romaji runs on from the word before (kawat|te|ta shows kawatteta). Absent in
+  // docs made before 2026-10-24
+  joins?: boolean
 }
 
 // A degraded line's morae are an even spread across the line window

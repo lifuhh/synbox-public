@@ -171,6 +171,32 @@ describe('romajiFillParts', () => {
     expect(fillProgress(parts[0].spans, 10.2 - L)).toBe(0.5)
     expect(fillProgress(parts[1].spans, 11.5)).toBeCloseTo(0.5)
   })
+
+  test('a verb ending fills as part of its word', () => {
+    // ShbfYtAPXuI showed "kawat te ta" word by word
+    const parts = romajiFillParts(
+      line([
+        token(
+          '変わっ',
+          [{ base: '変', rt: 'か' }],
+          [
+            mora('か', 10, 10.2, 'ka'),
+            mora('わ', 10.2, 10.4, 'wa'),
+            mora('っ', 10.4, 10.5, 't'),
+          ]
+        ),
+        { ...token('て', [], [mora('て', 10.5, 10.7, 'te')]), joins: true },
+        { ...token('た', [], [mora('た', 10.7, 10.9, 'ta')]), joins: true },
+        token(
+          '雨',
+          [{ base: '雨', rt: 'あめ' }],
+          [mora('あ', 11, 11.2, 'a'), mora('め', 11.2, 11.4, 'me')]
+        ),
+      ])
+    )
+    expect(parts.map((p) => p.base)).toEqual(['kawatteta', 'ame'])
+    expect(parts[0].spans).toHaveLength(5)
+  })
 })
 
 describe('currentLineIndex', () => {
