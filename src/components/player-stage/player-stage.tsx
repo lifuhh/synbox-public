@@ -431,16 +431,20 @@ export const PlayerStage = ({
   }, [autoplay, isReady, play])
 
   // While the song is muted only because the browser refused sound, the next tap or key anywhere turns it
-  // on: that press is the permission the browser waits for, and it lasts the visit (see youtube-engine)
+  // on: that press is the permission the browser waits for, and it lasts the visit (see youtube-engine). A listener
+  // who muted the player keeps it muted: the press only ends the refusal
+  const savedMute = storedVolume.muted
   useEffect(
     () =>
       autoplayMuted
         ? onNextPress(() => {
-            unlockSound()
+            if (!savedMute) {
+              unlockSound()
+            }
             setAutoplayMuted(false)
           })
         : undefined,
-    [autoplayMuted, unlockSound]
+    [autoplayMuted, savedMute, unlockSound]
   )
 
   const { idle, outside, sleep, wake } = useIdle(IDLE_MS, stageRef)
