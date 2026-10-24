@@ -4,10 +4,12 @@ import { beginStage, reportFraction } from './progress'
 import type { Job } from './store'
 import {
   cancelGeneration,
+  generationPhase,
   getGenerationState,
   leadJob,
   MAX_RUNNING,
   opensPanel,
+  requestGeneration,
   startGeneration,
 } from './store'
 
@@ -208,4 +210,42 @@ test('a start opens the panel only for the first song in progress, or a press on
   // The listener moved on while the backend answered
   expect(opensPanel([], 'a', false)).toBe(false)
   expect(opensPanel([running], running.videoId, false)).toBe(false)
+})
+
+test('a second press while the song is being checked asks the backend once and starts one job', async () => {
+  const videoId = 'k'.repeat(11)
+  let answer = (_body: unknown) => {}
+  const checks = vi.fn(
+    async () =>
+      // oxlint-disable-next-line promise/avoid-new -- the check answers when the test says
+      await new Promise<Response>((resolve) => {
+        answer = (body) => {
+          resolve(Response.json(body))
+        }
+      })
+  )
+  vi.stubGlobal('fetch', async (url: string, init: RequestInit) =>
+    url.endsWith('/generation-check')
+      ? await checks()
+      : // oxlint-disable-next-line promise/avoid-new -- a stream that only ends when aborted
+        await new Promise((_resolve, reject) => {
+          init.signal?.addEventListener('abort', () => {
+            reject(new DOMException('Aborted', 'AbortError'))
+          })
+        })
+  )
+  const first = requestGeneration({ mode: 'new', videoId })
+  await vi.waitFor(() => {
+    expect(checks).toHaveBeenCalledTimes(1)
+  })
+  expect(generationPhase(getGenerationState(), videoId)).toBe('checking')
+  expect(await requestGeneration({ mode: 'new', videoId })).toBe('checking')
+  expect(checks).toHaveBeenCalledTimes(1)
+
+  answer({ ok: true })
+  expect(await first).toBeNull()
+  expect(generationPhase(getGenerationState(), videoId)).toBe('generating')
+  const jobs = getGenerationState().jobs.filter((job) => job.videoId === videoId)
+  expect(jobs).toHaveLength(1)
+  cancelGeneration(jobs[0].id)
 })

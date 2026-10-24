@@ -246,7 +246,9 @@ export const LyricsPanel = ({
       <div
         ref={scroller}
         {...handlers}
-        {...(band ? styleTap : {})}
+        // Only over lines: with none there is nothing to style, and a press on a disabled Generate Lyrics (which
+        // takes no pointer events) would fall through to it
+        {...(band && empty === null ? styleTap : {})}
         // A scrolling box with nothing focusable inside takes focus itself, or a keyboard can't scroll it (WCAG 2.1.1)
         // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex
         tabIndex={0}
