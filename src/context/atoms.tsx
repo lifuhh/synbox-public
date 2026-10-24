@@ -45,6 +45,14 @@ export const translationVisibilityAtom = atomWithStorage(
   syncedStorage(),
   shownOptions
 )
+// Karaoke Style's translation docked under the rows instead of in its own room at the top: one choice for every
+// song, not part of a song's style (nor of a shared link)
+export const translationDockedAtom = atomWithStorage(
+  'lyricsTranslationDocked',
+  false,
+  syncedStorage(),
+  shownOptions
+)
 export const translationIsEnglishAtom = atomWithStorage(
   'lyricsTranslationEnglish',
   true,
@@ -144,6 +152,7 @@ const defaultLyricsStyleAtoms: {
     syncedStorage(),
     initOptions
   ),
+
   twoLines: atom(
     (get) => {
       const layout = shownLayout(get)

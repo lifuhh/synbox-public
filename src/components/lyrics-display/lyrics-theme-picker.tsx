@@ -17,6 +17,7 @@ import {
   lyricsFontSizeTwoLinesAtom,
   lyricsStylePanelAtom,
   lyricsThemeIdAtom,
+  translationDockedAtom,
   lyricsTwoLinesAtom,
   playerSurfaceAtom,
 } from '@/context/atoms'
@@ -195,6 +196,7 @@ export const LyricsThemePicker = ({
     lyricsFontSizeTwoLinesAtom
   )
   const [twoLines, setTwoLines] = useAtom(lyricsTwoLinesAtom)
+  const [docked, setDocked] = useAtom(translationDockedAtom)
   // The slider sizes the layout on screen: two lines keep their own size; each screen allows its own range. An
   // upright phone's watch page has no slider: its lyrics under the video keep one size
   const surface = useLyricsSurface()
@@ -269,6 +271,14 @@ export const LyricsThemePicker = ({
           onChange={setTwoLines}
           hint={portrait ? 'Landscape only' : undefined}
         />
+        {/* The same as pulling the translation down onto the rows, or up off them */}
+        {twoLines && !portrait && (
+          <StyleSwitch
+            label='Translation Under Lyrics'
+            checked={docked}
+            onChange={setDocked}
+          />
+        )}
       </div>
 
       <section className='flex flex-col gap-2'>
