@@ -286,7 +286,7 @@ const FullScreenChrome = ({
           label='Lock Landscape'
           active={landscape.locked}
           onClick={() => {
-            void landscape.toggle()
+            void landscape.toggleLock()
           }}
           className='rounded-full short:size-8 short:rounded-lg'>
           <SmartphoneIcon className='size-5 rotate-90' />

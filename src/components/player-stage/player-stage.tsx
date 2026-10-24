@@ -15,6 +15,8 @@ import {
   stageClockAtom,
   stageFullscreenAtom,
 } from '@/context/atoms'
+import { PHONE_QUERY, useLandscapeLock } from '@/hooks/use-landscape-lock'
+import { useMediaQuery } from '@/hooks/use-media-query'
 import { useThemeColor } from '@/hooks/use-theme-color'
 import { useWakeLock } from '@/hooks/use-wake-lock'
 import { transitionLayout } from '@/lib/view-transition'
@@ -124,6 +126,55 @@ const markImmersive = () => {
   root.dataset.immersive = ''
   return () => {
     delete root.dataset.immersive
+  }
+}
+
+// Full Screen. The whole page goes fullscreen, not just the stage, so the rail and the controls stay in reach;
+// iPhone Safari has no fullscreen for a page, so there it hides the app's own top bar instead (`immersive`). A
+// phone has no upright full screen: there it holds the player on its side until the phone, turned on its side,
+// is turned upright again (use-landscape-lock). `shown`: whether the button reads Exit Fullscreen
+const useFullscreen = () => {
+  const [fullscreen, setFullscreen] = useState(false)
+  const [immersive, setImmersive] = useState(false)
+  const landscape = useLandscapeLock()
+  const phone = useMediaQuery(PHONE_QUERY)
+  const toggleFullscreen = () => {
+    if (matchMedia(PHONE_QUERY).matches) {
+      void landscape.toggleFullscreen()
+      return
+    }
+    if (!document.fullscreenEnabled) {
+      transitionLayout('zoom', () => {
+        setImmersive(!immersive)
+      })
+      return
+    }
+    if (document.fullscreenElement) {
+      void document.exitFullscreen()
+    } else {
+      void document.documentElement.requestFullscreen()
+    }
+  }
+
+  // Before paint, so the zoom's view transition snapshots the full-screen layout
+  useLayoutEffect(() => (immersive ? markImmersive() : undefined), [immersive])
+
+  useEffect(() => {
+    const sync = () => {
+      setFullscreen(document.fullscreenElement !== null)
+    }
+    document.addEventListener('fullscreenchange', sync)
+    return () => {
+      document.removeEventListener('fullscreenchange', sync)
+    }
+  }, [])
+
+  return {
+    fullscreen,
+    immersive,
+    setImmersive,
+    shown: fullscreen || immersive || (phone && landscape.held),
+    toggleFullscreen,
   }
 }
 
@@ -295,9 +346,8 @@ export const PlayerStage = ({
     setStoredVolume(next)
   }
   const [loop, setLoop] = useState(false)
-  const [fullscreen, setFullscreen] = useState(false)
-  // iPhone Safari has no fullscreen for a page; there the button hides the app's own top bar instead
-  const [immersive, setImmersive] = useState(false)
+  const { fullscreen, immersive, setImmersive, shown, toggleFullscreen } =
+    useFullscreen()
   const player = useYouTubePlayer({
     loop,
     onBlocked: () => {
@@ -383,22 +433,6 @@ export const PlayerStage = ({
     },
     [setChromeOpen]
   )
-  // The whole page goes fullscreen, not just the stage, so the rail and the controls stay in reach.
-  // The player turns with the phone either way round, unless Lock Landscape holds it on its side
-  const toggleFullscreen = () => {
-    if (!document.fullscreenEnabled) {
-      transitionLayout('zoom', () => {
-        setImmersive(!immersive)
-      })
-      return
-    }
-    if (document.fullscreenElement) {
-      void document.exitFullscreen()
-    } else {
-      void document.documentElement.requestFullscreen()
-    }
-  }
-
   const seekBy = (seconds: number) => {
     player.seek(player.getTime() + seconds)
   }
@@ -429,20 +463,7 @@ export const PlayerStage = ({
     tapStage: taps.forward,
   }
 
-  // Before paint, so the zoom's view transition snapshots the full-screen layout
-  useLayoutEffect(() => (immersive ? markImmersive() : undefined), [immersive])
-
   usePublishStage(player, fullscreen, immersive, onEnded)
-
-  useEffect(() => {
-    const sync = () => {
-      setFullscreen(document.fullscreenElement !== null)
-    }
-    document.addEventListener('fullscreenchange', sync)
-    return () => {
-      document.removeEventListener('fullscreenchange', sync)
-    }
-  }, [])
 
   // The arrow key being held: how many jumps it has made, when the last one was, and where it aimed. A
   // held key's jumps build on that aim, since the player's own time lags a seek it has not finished
@@ -633,7 +654,7 @@ export const PlayerStage = ({
         visible={controlsVisible}
         loop={loop}
         onLoopChange={setLoop}
-        fullscreen={fullscreen || immersive}
+        fullscreen={shown}
         onToggleFullscreen={toggleFullscreen}
         theater={theater}
         onToggleTheater={onToggleTheater}

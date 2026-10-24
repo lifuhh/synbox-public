@@ -27,7 +27,11 @@ import {
   theaterShownAtom,
   watchLayoutAtom,
 } from '@/context/atoms'
-import { usePageTurned } from '@/hooks/use-landscape-lock'
+import {
+  PHONE_QUERY,
+  useLandscapeHeld,
+  useLandscapeHold,
+} from '@/hooks/use-landscape-lock'
 import { useLyricsReady } from '@/hooks/use-lyrics-ready'
 import { useMediaQuery } from '@/hooks/use-media-query'
 import { useSongVisit } from '@/hooks/use-song-visit'
@@ -59,17 +63,21 @@ import { decodeSharedStyle } from '@/lib/lyrics-style'
 import { countListen } from '@/lib/song-stats'
 import { handleVideoRoute } from '@/utils/route-handler.ts'
 
-// The stage alone fills the screen in fullscreen (or iPhone's stand-in), on a phone on its side and under
-// Lock Landscape; otherwise the page is the watch page around it. A video that doesn't play has no stage: its
-// page is an ordinary one
-const usePlayerSurface = (playable: boolean) => {
+// The stage alone fills the screen in fullscreen (or iPhone's stand-in), on a phone on its side, and while Lock
+// Landscape or a phone's Full Screen holds it on its side; otherwise the page is the watch page around it. A
+// phone is in fullscreen only through that hold, so the watch page is back the moment the hold ends, not when
+// the browser has finished leaving fullscreen. A video that doesn't play has no stage: its page is an ordinary
+// one. `loaded`: the stage is on the page (nothing turns while the player loads)
+const usePlayerSurface = (playable: boolean, loaded: boolean) => {
+  useLandscapeHold(playable && loaded)
   const fullscreen = useAtomValue(stageFullscreenAtom)
+  const phone = useMediaQuery(PHONE_QUERY)
   const short = useMediaQuery(
     '(orientation: landscape) and (max-height: 500px)'
   )
-  const turned = usePageTurned()
+  const held = useLandscapeHeld()
   const surface =
-    playable && (fullscreen || short || turned) ? 'stage' : 'watch'
+    playable && ((fullscreen && !phone) || short || held) ? 'stage' : 'watch'
   const setSurface = useSetAtom(playerSurfaceAtom)
   useEffect(() => {
     setSurface(surface)
@@ -282,7 +290,7 @@ const PlayerPage = () => {
     }
   }, [videoId, navigate])
 
-  const surface = usePlayerSurface(playable)
+  const surface = usePlayerSurface(playable, stageVideoId !== null)
   const wide = useMediaQuery('(min-width: 1000px)')
   const [layout, setLayout] = useAtom(watchLayoutAtom)
   const toggleTheater =
