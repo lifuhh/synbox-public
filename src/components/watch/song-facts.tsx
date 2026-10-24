@@ -2,7 +2,7 @@ import { useAtomValue } from 'jotai'
 import { ArrowUpRightIcon } from 'lucide-react'
 
 import { YouTubeIcon } from '@/components/svgicons'
-import { stageClockAtom } from '@/context/atoms'
+import { chartSongAtom, stageClockAtom } from '@/context/atoms'
 import { useGetSongInfoBySongId } from '@/lib/react-query/queries-and-mutations'
 import { listensText, useSongStats } from '@/lib/song-stats'
 
@@ -12,12 +12,34 @@ const ADDED = new Intl.DateTimeFormat('en-GB', {
   year: '2-digit',
 })
 
+// The way to the video on YouTube. The song here stops while it plays there
+const YouTubeLink = ({ videoId }: { videoId: string }) => {
+  const clock = useAtomValue(stageClockAtom)
+  return (
+    <a
+      href={`https://www.youtube.com/watch?v=${videoId}`}
+      target='_blank'
+      rel='noreferrer'
+      aria-label='Open on YouTube'
+      onClick={() => {
+        clock?.pause()
+      }}
+      className='flex h-10 shrink-0 items-center gap-2 rounded-full px-3.5 text-sm font-medium text-foreground transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none'>
+      <YouTubeIcon aria-hidden className='h-3.5 w-auto shrink-0' />
+      YouTube
+      <ArrowUpRightIcon
+        aria-hidden
+        className='size-4 shrink-0 text-muted-foreground'
+      />
+    </a>
+  )
+}
+
 // Under the song's title and channel, as YouTube's description box without the description: how often it was
 // played, when it came to Synbox, and the way to the video on YouTube
-export const SongFacts = ({ videoId }: { videoId: string }) => {
+const LibraryFacts = ({ videoId }: { videoId: string }) => {
   const { data: stats, isPending } = useSongStats(videoId)
   const { data: info } = useGetSongInfoBySongId(videoId)
-  const clock = useAtomValue(stageClockAtom)
   const addedAt = info?.addedAt === undefined ? null : new Date(info.addedAt)
   const added =
     addedAt !== null && !Number.isNaN(addedAt.getTime())
@@ -37,23 +59,29 @@ export const SongFacts = ({ videoId }: { videoId: string }) => {
           </span>
         )}
       </p>
-      <a
-        href={`https://www.youtube.com/watch?v=${videoId}`}
-        target='_blank'
-        rel='noreferrer'
-        aria-label='Open on YouTube'
-        // The song here stops while it plays there
-        onClick={() => {
-          clock?.pause()
-        }}
-        className='flex h-10 shrink-0 items-center gap-2 rounded-full px-3.5 text-sm font-medium text-foreground transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none'>
-        <YouTubeIcon aria-hidden className='h-3.5 w-auto shrink-0' />
-        YouTube
-        <ArrowUpRightIcon
-          aria-hidden
-          className='size-4 shrink-0 text-muted-foreground'
-        />
-      </a>
+      <YouTubeLink videoId={videoId} />
     </div>
+  )
+}
+
+// A chart song (in YouTube's Top 100 Japan, not yet in Synbox) has no listens or date here: where it came from
+const ChartFacts = ({ videoId, rank }: { videoId: string; rank: number }) => (
+  <div className='flex min-h-14 items-center justify-between gap-3 rounded-xl bg-card py-2 pr-2 pl-4'>
+    <p className='min-w-0 text-sm font-semibold text-pretty text-foreground tabular-nums'>
+      <span className='whitespace-nowrap'>#{rank}</span>
+      <span className='font-normal text-muted-foreground'>
+        {' · YouTube Top 100 Japan'}
+      </span>
+    </p>
+    <YouTubeLink videoId={videoId} />
+  </div>
+)
+
+export const SongFacts = ({ videoId }: { videoId: string }) => {
+  const chart = useAtomValue(chartSongAtom)
+  return chart?.videoId === videoId ? (
+    <ChartFacts videoId={videoId} rank={chart.rank} />
+  ) : (
+    <LibraryFacts videoId={videoId} />
   )
 }

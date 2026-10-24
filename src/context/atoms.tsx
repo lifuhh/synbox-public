@@ -480,6 +480,11 @@ export const watchLayoutAtom = atomWithStorage<WatchLayout>(
 // How the player page shows right now: the watch page, or the stage alone (fullscreen, a phone on its side,
 // Lock Landscape). PlayerPage sets it; the top bar reads it. null away from the player
 export const playerSurfaceAtom = atom<'stage' | 'watch' | null>(null)
+// The song on the player when it is a chart song (in YouTube's Top 100 Japan, not in the library: presence.ts),
+// with its rank. PlayerPage sets it; the song facts, the lyrics panel and the rail read it. null otherwise
+export const chartSongAtom = atom<{ videoId: string; rank: number } | null>(
+  null
+)
 // Whether the stage is the whole screen right now: browser fullscreen, or iPhone's stand-in for it.
 // PlayerStage owns it
 export const stageFullscreenAtom = atom(false)

@@ -13,6 +13,8 @@ import { lineReached } from '@/components/offline/use-silent-playback'
 import { parseLyricsText } from '@/components/player-stage/stage-lyrics'
 import { Button } from '@/components/ui/button'
 import {
+  chartSongAtom,
+  currentVideoAtom,
   lyricsCustomHueAtom,
   lyricsStylePanelAtom,
   lyricsThemeIdAtom,
@@ -34,6 +36,8 @@ import {
 } from '@/lib/react-query/queries-and-mutations'
 import type { CssVars } from '@/types'
 import { cn } from '@/utils/cn'
+
+import { GenerateLyricsButton } from './generate-lyrics-button'
 
 // The overlay's lead over the player's clock (stage-lyrics), so the panel and the video agree
 const LEAD_SEC = 0.15
@@ -101,6 +105,23 @@ const scrollerLook = (band: boolean, empty: boolean) => {
 // As a band (under the video on a phone held upright) it is a karaoke window instead: the sung line centred at
 // the Lyrics Style size, the lines either side fading out at its edges, and a tap opens Lyrics Style, never a
 // seek. Holding and scrolling reads elsewhere until Current Line or a seek, while the song plays on
+// Why the panel has no lines. A chart song (Top 100 Japan, not in Synbox yet) offers its lyrics where they
+// would be
+const EmptyLyrics = ({ videoId, text }: { videoId: string; text: string }) => {
+  const chart = useAtomValue(chartSongAtom)?.videoId === videoId
+  const title = useAtomValue(currentVideoAtom)?.title
+  if (!chart) {
+    return <p className='py-6 text-sm text-muted-foreground'>{text}</p>
+  }
+  // Nothing while the lyrics are still being asked for
+  return text === '' ? null : (
+    <div className='flex flex-col items-center gap-3 py-16 text-center'>
+      <p className='text-sm text-muted-foreground'>No Lyrics Yet</p>
+      <GenerateLyricsButton videoId={videoId} title={title} />
+    </div>
+  )
+}
+
 export const LyricsPanel = ({
   videoId,
   version,
@@ -257,7 +278,7 @@ export const LyricsPanel = ({
               />
             ))
           ) : (
-            <p className='py-6 text-sm text-muted-foreground'>{empty}</p>
+            <EmptyLyrics videoId={videoId} text={empty} />
           )}
         </div>
       </div>
