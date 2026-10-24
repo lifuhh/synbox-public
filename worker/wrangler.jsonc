@@ -22,8 +22,10 @@
   // Secrets (wrangler secret put): BETTER_AUTH_SECRET, GOOGLE_CLIENT_SECRET, INTERNAL_SECRET, ADMIN_EMAILS,
   // REPORTS_FIXER_TOKEN (the backend's report fixer holds the same value), and APPWRITE_PROJECT_ID,
   // APPWRITE_DATABASE_ID, APPWRITE_LYRICS_TABLE_ID (the app's VITE_APPWRITE_ values; without them every listen and
-  // like is refused: src/library-songs.ts)
+  // like is refused: src/library-songs.ts), and GENERATION_INVOKER_KEY (the key of the one account allowed to invoke
+  // the generating service; without it generation answers 503: src/generation.ts)
   "vars": {
+    "GENERATION_URL": "https://synbox-flask-cloud-run-dtitfmn76a-as.a.run.app",
     "BETTER_AUTH_URL": "https://synbox.io",
     "GOOGLE_CLIENT_ID": "1045990822048-sr16qerq3qlv56131g7veuh2nak6vbk8.apps.googleusercontent.com",
     "USER_DAILY_LIMIT": "10",
