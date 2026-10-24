@@ -63,6 +63,7 @@ export const handleLibrarySongs = async (
   waitUntil(keep(kept, live))
   const fresh = await Promise.race([
     live,
+    // oxlint-disable-next-line promise/avoid-new -- turns setTimeout into a promise
     new Promise<undefined>((resolve) => {
       setTimeout(resolve, WAIT_MS)
     }),

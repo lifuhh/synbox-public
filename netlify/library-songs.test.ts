@@ -77,6 +77,7 @@ describe('library songs', () => {
       'fetch',
       vi.fn(
         async () =>
+          // oxlint-disable-next-line promise/avoid-new -- a fetch that answers only when the test wakes it
           await new Promise<Response>((resolve) => {
             wake = resolve
           })
@@ -88,7 +89,8 @@ describe('library songs', () => {
       work.push(w)
     })
     await vi.advanceTimersByTimeAsync(2500)
-    expect(await (await answer).text()).toBe(OLD)
+    const response = await answer
+    expect(await response.text()).toBe(OLD)
     wake(new Response(LIST))
     await settle(work)
     expect(kept.read()).toBe(LIST)
