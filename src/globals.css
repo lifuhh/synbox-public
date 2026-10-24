@@ -1950,6 +1950,13 @@
     animation: appear 320ms cubic-bezier(0.2, 0, 0, 1) backwards;
   }
 
+  /* The installed app's player held upright: the stage takes a finger's vertical drag itself (watch-page.tsx ›
+     useDragToMinimise), shrinking from its top left as the video does */
+  html[data-installed] .watch-stage {
+    touch-action: none;
+    transform-origin: 0 0;
+  }
+
   /* The resume bar zooms with the pill as one group, about the pill's centre: below its own bottom edge by the
      gap and half the pill's 4rem */
   [data-resume-box] {
