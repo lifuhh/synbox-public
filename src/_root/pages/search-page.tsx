@@ -304,8 +304,10 @@ const SimilarSongs = ({
   )
 }
 
-// Two queries a tap away, which show that a mood or a description works too
-const EXAMPLES = ['Calm songs about the night', 'Ado songs that feel angry']
+// Two queries a tap away, which show that a mood works too. Each names one of the two broadest moods the backend
+// filters by (sad takes bittersweet songs too, happy takes hopeful ones) and nothing narrower, so both keep finding
+// songs as the library changes: a mood plus a theme or an artist ("calm songs about the night") can find none
+const EXAMPLES = ['Songs for a good cry', 'Songs to cheer you up']
 
 const Examples = ({ onSearch }: { onSearch: (query: string) => void }) => (
   <ul aria-label='Examples' className='flex flex-wrap gap-2'>
