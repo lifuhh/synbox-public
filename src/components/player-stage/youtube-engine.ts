@@ -357,6 +357,24 @@ export const placeEngine = (
   return keepPlaced(place, [stage, box])
 }
 
+const SETTLE_MS = 250
+
+// The video moved by a finger dragging its stage down (the drag to minimise): a transform on top of its placement,
+// cleared with `null`. `settle` eases it back from where the finger left it
+export const dragEngine = (
+  transform: string | null,
+  { settle = false } = {}
+) => {
+  const { layer: video } = ensureLayer()
+  const from = video.style.transform
+  video.style.transform = transform ?? ''
+  if (settle && from !== '' && !reducedMotion()) {
+    video.animate([{ transform: from }, { transform: 'none' }], {
+      duration: SETTLE_MS,
+      easing: 'cubic-bezier(0.2, 0, 0, 1)',
+    })
+  }
+}
 // Shrinks the video onto a small box over the app (the mini bar's thumbnail), rounded. Scaled, never resized: YouTube
 // pauses an embed grown back from a tiny size, and a transform costs no layout, so the video keeps the size its stage
 // gave it

@@ -7,6 +7,7 @@ import { DocScroll } from '@/components/shared/doc-scroll'
 import { currentVideoAtom } from '@/context/atoms'
 import { useMediaQuery } from '@/hooks/use-media-query'
 import { useNextList } from '@/lib/listening/recommendations'
+import { isInstalledPhone } from '@/lib/pwa'
 import { bracketStart } from '@/utils'
 import { cn } from '@/utils/cn'
 
@@ -15,6 +16,7 @@ import { PlaylistPanel } from './playlist-panel'
 import { Shelves } from './shelves'
 import { SongFacts } from './song-facts'
 import { UP_NEXT_COUNT, UpNext } from './up-next'
+import { useDragToMinimise } from './use-drag-to-minimise'
 
 const WIDE = '(min-width: 1000px)'
 
@@ -218,6 +220,9 @@ export const WatchPage = ({
       delete document.documentElement.dataset.watch
     }
   }, [watch])
+  // The installed app held upright: drag the video down to minimise it
+  const stageBox = useRef<HTMLDivElement>(null)
+  useDragToMinimise(stageBox, watch && !wide && isInstalledPhone())
   const below = wide ? (
     <WideBelow videoId={videoId} version={version} theater={theater} />
   ) : (
@@ -228,7 +233,9 @@ export const WatchPage = ({
     <div
       data-theater={watch && wide && theater ? '' : undefined}
       className={watch ? 'watch-page' : 'size-full'}>
-      <div className={watch ? 'watch-stage' : 'size-full'}>{stage}</div>
+      <div ref={stageBox} className={watch ? 'watch-stage' : 'size-full'}>
+        {stage}
+      </div>
       {watch && below}
       {watch && <DocScroll />}
     </div>
