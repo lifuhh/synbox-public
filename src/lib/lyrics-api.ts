@@ -1,5 +1,10 @@
 import { toast } from '@/components/ui/use-toast'
 import { backendToken, lastAccount } from '@/lib/auth'
+import {
+  directKaraokeJson,
+  directLyricsDates,
+  directLyricsRow,
+} from '@/lib/lyrics-direct'
 import { deviceId } from '@/lib/song-stats'
 
 // Lyrics and karaoke timing come from the auth Worker, one song at a time (worker/src/lyrics.ts), never from the
@@ -27,7 +32,50 @@ const noteRateLimited = () => {
   }
 }
 
-// The response, or null for a 404; a refusal throws
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null
+
+// Until the owner deploys the Worker's lyrics routes, a Worker that doesn't answer them (unreachable, no CORS, a 404
+// that isn't its own "no lyrics", 405, 5xx) hands the read to the ones the app made before (src/lib/lyrics-direct.ts).
+// A refusal (429) stays a refusal. The outcome is kept for RETRY_WORKER_MS, so later reads don't each pay a failing
+// request. Removed, with lyrics-direct.ts, once the Worker is live
+// Thrown by a read the Worker doesn't serve, so viaWorker can tell it from any other failure
+const workerMissing = (message: string) =>
+  Object.assign(new Error(message), { workerMissing: true })
+const isWorkerMissing = (error: unknown) =>
+  error instanceof Error && 'workerMissing' in error
+const RETRY_WORKER_MS = 5 * 60_000
+let workerMissingUntil = 0
+
+const viaWorker = async <T>(
+  worker: () => Promise<T>,
+  direct: () => Promise<T>
+): Promise<T> => {
+  if (Date.now() < workerMissingUntil) {
+    return await direct()
+  }
+  try {
+    return await worker()
+  } catch (error) {
+    if (!isWorkerMissing(error)) {
+      throw error
+    }
+    workerMissingUntil = Date.now() + RETRY_WORKER_MS
+    return await direct()
+  }
+}
+
+// The Worker's own "no lyrics" answer (worker/src/lyrics.ts), unlike a 404 for a route it doesn't have
+const isNotFoundAnswer = async (response: Response) => {
+  try {
+    const body: unknown = await response.json()
+    return isRecord(body) && body.code === 'not_found'
+  } catch {
+    return false
+  }
+}
+
+// The response, or null for the Worker's own 404; a refusal throws
 const get = async (path: string, signal?: AbortSignal) => {
   const headers = new Headers({ Accept: 'application/json' })
   // An account is counted by its token; a guest by this browser's id, so guests sharing a network (an office, a
@@ -39,26 +87,37 @@ const get = async (path: string, signal?: AbortSignal) => {
   } else if (device !== null) {
     headers.set('X-Synbox-Device', device)
   }
-  const response = await fetch(`${API}${path}`, {
-    credentials: API === '' ? 'same-origin' : 'omit',
-    headers,
-    signal,
-  })
+  let response: Response
+  try {
+    response = await fetch(`${API}${path}`, {
+      credentials: API === '' ? 'same-origin' : 'omit',
+      headers,
+      signal,
+    })
+  } catch (error) {
+    if (signal?.aborted === true) {
+      throw error
+    }
+    throw workerMissing('Lyrics routes unreachable')
+  }
   if (response.status === 429) {
     noteRateLimited()
     throw new RateLimitedError()
   }
   if (response.status === 404) {
-    return null
+    if (await isNotFoundAnswer(response)) {
+      return null
+    }
+    throw workerMissing('No lyrics route')
+  }
+  if (response.status === 405 || response.status >= 500) {
+    throw workerMissing(`Lyrics routes answered ${response.status}`)
   }
   if (!response.ok) {
     throw new Error(`Lyrics request failed with status ${response.status}`)
   }
   return response
 }
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null
 
 export interface LyricsRow {
   videoId: string
@@ -70,7 +129,7 @@ export interface LyricsRow {
 }
 
 // A song's lyrics, or null when it has none
-export const fetchLyricsRow = async (
+const workerLyricsRow = async (
   videoId: string,
   signal?: AbortSignal
 ): Promise<LyricsRow | null> => {
@@ -93,8 +152,17 @@ export const fetchLyricsRow = async (
   }
 }
 
+export const fetchLyricsRow = async (
+  videoId: string,
+  signal?: AbortSignal
+): Promise<LyricsRow | null> =>
+  await viaWorker(
+    async () => await workerLyricsRow(videoId, signal),
+    async () => await directLyricsRow(videoId)
+  )
+
 // When each song's lyrics were last written, no text: up to 50 songs; a song without lyrics is left out
-export const fetchLyricsDates = async (
+const workerLyricsDates = async (
   videoIds: string[]
 ): Promise<Map<string, { updatedAt: number }>> => {
   const found = new Map<string, { updatedAt: number }>()
@@ -118,8 +186,18 @@ export const fetchLyricsDates = async (
   return found
 }
 
+export const fetchLyricsDates = async (
+  videoIds: string[]
+): Promise<Map<string, { updatedAt: number }>> =>
+  videoIds.length === 0
+    ? new Map()
+    : await viaWorker(
+        async () => await workerLyricsDates(videoIds),
+        async () => await directLyricsDates(videoIds)
+      )
+
 // The karaoke timing document as sent (src/lib/synbox-flask/api.ts checks its shape), or null when there is none
-export const fetchKaraokeJson = async (
+const workerKaraokeJson = async (
   videoId: string,
   version: number | null,
   signal?: AbortSignal
@@ -131,6 +209,16 @@ export const fetchKaraokeJson = async (
   )
   return response === null ? null : await response.json()
 }
+
+export const fetchKaraokeJson = async (
+  videoId: string,
+  version: number | null,
+  signal?: AbortSignal
+): Promise<unknown> =>
+  await viaWorker(
+    async () => await workerKaraokeJson(videoId, version, signal),
+    async () => await directKaraokeJson(videoId, version, signal)
+  )
 
 // The translations carry an invisible mark (worker/src/lyrics.ts › traceMark); text the app compares or searches
 // goes without it
