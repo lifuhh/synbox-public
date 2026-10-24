@@ -76,7 +76,7 @@ const AboutPage = () => {
       ref={setBox}
       data-scroll-top
       className='relative flex custom-scrollbar flex-1 flex-col overflow-y-auto pt-(--topbar-h) page-x pb-page-bottom-sm'>
-      <title>About | Synbox</title>
+      <title>About · Synbox</title>
 
       <div className='mx-auto flex w-full max-w-3xl flex-col gap-8 pt-8'>
         <header className='flex flex-col gap-3 text-center'>

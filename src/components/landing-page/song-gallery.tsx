@@ -8,6 +8,7 @@ import {
   KaraokePictureBadge,
 } from '@/components/shared/karaoke-badge'
 import { ListenCount } from '@/components/shared/listen-count'
+import LoadError from '@/components/shared/load-error'
 import { Skeleton } from '@/components/ui/skeleton'
 import { SongMenu } from '@/components/watch/song-menu'
 import { useMediaQuery } from '@/hooks/use-media-query'
@@ -216,7 +217,8 @@ const watchStuck = (
 }
 
 const SongGallery = () => {
-  const { isLoading, isSuccess, songs } = useGallerySongs()
+  const { isError, isFetching, isLoading, isSuccess, refetch, songs } =
+    useGallerySongs()
   // State, not refs: the virtualizer needs both once they exist
   const [section, setSection] = useState<HTMLElement | null>(null)
   const [list, setList] = useState<HTMLDivElement | null>(null)
@@ -268,14 +270,24 @@ const SongGallery = () => {
       {/* The padding sits outside the measured box: a row's height follows from its content width */}
       <div className='px-4 md:px-0'>
         <div ref={setList}>
-          {isLoading ? (
+          {isError && (
+            <LoadError
+              message="Couldn't load the gallery."
+              retrying={isFetching}
+              onRetry={() => {
+                void refetch()
+              }}
+            />
+          )}
+          {!isError && isLoading && (
             <output aria-label='Loading gallery' className={`${GRID} py-4`}>
               {Array.from({ length: SKELETON_CARDS }, (_, index) => (
                 // oxlint-disable-next-line no-array-index-key
                 <CardSkeleton key={index} />
               ))}
             </output>
-          ) : (
+          )}
+          {!isError && !isLoading && (
             <VirtualRows list={list} scroller={scroller} />
           )}
         </div>

@@ -79,7 +79,7 @@ export const LayersPanel = () => {
               )}>
               <span
                 className={cn(
-                  'size-4 rounded-full bg-(--reader-bg) transition-transform',
+                  'size-4 rounded-full bg-(--reader-bg) transition-transform motion-reduce:transition-none',
                   on && 'translate-x-4'
                 )}
               />

@@ -54,6 +54,7 @@ const ReaderHeader = ({
   onTogglePanel,
   onToggleMode,
   onBack,
+  onReveal,
 }: {
   song: OfflineSong | null
   shown: boolean
@@ -63,13 +64,17 @@ const ReaderHeader = ({
   onTogglePanel: (panel: Panel) => void
   onToggleMode: () => void
   onBack: () => void
+  // Keyboard focus landing in the bar while it is slid away brings it back
+  onReveal: () => void
 }) => {
   const [prefs, setPrefs] = useAtom(readerPrefsAtom)
   return (
     <header
+      onFocus={onReveal}
       className={cn(
-        'absolute inset-x-0 top-0 z-40 border-b border-(--reader-line) bg-(--reader-bg) pt-safe-top pr-(--safe-right) pl-(--safe-left) transition-transform duration-200 ease-out',
-        !shown && '-translate-y-full'
+        'absolute inset-x-0 top-0 z-40 border-b border-(--reader-line) bg-(--reader-bg) pt-safe-top pr-(--safe-right) pl-(--safe-left) transition-fade-translate duration-200 ease-out',
+        !shown &&
+          '-translate-y-full motion-reduce:translate-y-0 motion-reduce:opacity-0'
       )}>
       <div className='relative mx-auto flex h-13 max-w-3xl items-center gap-0.5 px-1.5 sm:px-3'>
         <ReaderButton label='Back' onClick={onBack}>
@@ -339,7 +344,9 @@ const ReaderPage = () => {
       data-theme={prefs.theme}
       style={readerVars}
       className='fixed inset-0 z-60 page-ruby flex flex-col bg-(--reader-bg) text-(--reader-fg) reader-paper'>
-      <title>{song ? `${song.title} · Lyrics` : 'Lyrics · Synbox'}</title>
+      <title>
+        {song ? `${song.title} · Lyrics · Synbox` : 'Lyrics · Synbox'}
+      </title>
       <div
         aria-hidden='true'
         className='status-scrim absolute inset-x-0 top-0 z-30 bg-(--reader-status)'
@@ -353,6 +360,9 @@ const ReaderPage = () => {
         onTogglePanel={togglePanel}
         onToggleMode={toggleMode}
         onBack={goBack}
+        onReveal={() => {
+          setBarsShown(true)
+        }}
       />
 
       <div
