@@ -12,8 +12,9 @@ import { cn } from '@/utils/cn'
 
 const MAX_SONGS = 8
 
-// What the dropdown lists while the field has text: the library's songs whose title or channel holds every word,
-// then the full search for the words. Mounted only while open, so a page that never searches never loads the list
+// What the dropdown lists while the field has text: the karaoke songs (the mic badge) whose title or channel holds
+// every word, then the full search for the words. Mounted only while open, so a page that never searches never
+// loads the list
 const Results = ({
   query,
   active,
@@ -33,7 +34,11 @@ const Results = ({
   inset: boolean
 }) => {
   const { songs } = useGallerySongs()
-  const matches = matchTitles(songs, query, MAX_SONGS)
+  const matches = matchTitles(
+    songs.filter((song) => song.karaoke),
+    query,
+    MAX_SONGS
+  )
   const rows: { target: string; song?: LibraryListSong }[] = [
     ...matches.map((song) => ({ song, target: `/v/${song.videoId}` })),
     { target: `/search?q=${encodeURIComponent(query.trim())}` },

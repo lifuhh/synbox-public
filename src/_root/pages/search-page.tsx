@@ -15,6 +15,7 @@ import { Input, InputField } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   useGetSimilarSongs,
+  useKaraokeIds,
   useSearchLibrary,
   useSearchVideos,
 } from '@/lib/react-query/queries-and-mutations'
@@ -73,6 +74,20 @@ const useContentHeight = () => {
 }
 
 const SKELETON_CARDS = [0, 1, 2, 3] as const
+
+// Search lists only songs with the mic badge: lyrics timed word by word, from the library list. Until that list
+// is in, nothing is known to qualify, so results wait rather than show and then drop songs
+const useKaraokeFilter = () => {
+  const karaoke = useKaraokeIds()
+  return {
+    error: karaoke.error,
+    has: (videoId: string) => karaoke.data?.has(videoId) === true,
+    retry: () => {
+      void karaoke.refetch()
+    },
+    waiting: karaoke.data === undefined && karaoke.error === null,
+  }
+}
 
 // A pasted YouTube link, not a search: the video it names, or null
 const linkedVideoId = (query: string) =>
@@ -146,9 +161,9 @@ const LibraryStatus = ({
   ) : null
 }
 
-// Only songs already in Synbox, so every result plays with lyrics: the library's matches, then any the
-// YouTube search found that the library search missed (an English title, or the library still loading).
-// The one exception is a pasted YouTube link: its video shows even when it is new, and picking it generates it
+// Only karaoke songs (the mic badge): the library's matches, then any the YouTube search found that the library
+// search missed (an English title, or the library still loading). The one exception is a pasted YouTube link: its
+// video shows whatever it is, and picking a new one generates it
 const SearchResults = ({
   query,
   onSelect,
@@ -160,17 +175,23 @@ const SearchResults = ({
 }) => {
   const library = useSearchLibrary(query)
   const videos = useSearchVideos(query)
+  const karaoke = useKaraokeFilter()
   const linkId = linkedVideoId(query)
-  const libraryIds = new Set(library.data?.results.map((s) => s.video_id))
-  const extra = (videos.data?.results ?? []).filter(
-    (r) => (r.processed || r.video_id === linkId) && !libraryIds.has(r.video_id)
+  const libraryResults = (library.data?.results ?? []).filter((s) =>
+    karaoke.has(s.video_id)
   )
-  const libraryResults = library.data?.results ?? []
+  const libraryIds = new Set(libraryResults.map((s) => s.video_id))
+  const extra = (videos.data?.results ?? []).filter(
+    (r) =>
+      (karaoke.has(r.video_id) || r.video_id === linkId) &&
+      !libraryIds.has(r.video_id)
+  )
   // A retry after the library gave up has data already, so isLoading stays false while it waits again
   const notReady = library.data?.ready === false
   const searching =
     library.isLoading ||
     (notReady && library.isFetching) ||
+    karaoke.waiting ||
     (libraryResults.length === 0 && extra.length === 0 && videos.isLoading)
   const [inner, height] = useContentHeight()
   const heightVars: CssVars | undefined =
@@ -180,6 +201,9 @@ const SearchResults = ({
       <div ref={inner} className='flex flex-col gap-6'>
         <div className='flex flex-col gap-3 empty:hidden'>
           <LibraryStatus library={library} searching={searching} />
+          {karaoke.error && (
+            <Failed what="Couldn't load the songs." retry={karaoke.retry} />
+          )}
           {/* A pasted link's video comes only from the YouTube search */}
           {linkId !== null && videos.error && (
             <Failed
@@ -219,6 +243,7 @@ const SearchResults = ({
           none={
             !searching &&
             library.error === null &&
+            karaoke.error === null &&
             libraryResults.length + extra.length === 0
           }
         />
@@ -237,6 +262,10 @@ const SimilarSongs = ({
   onMoreLikeThis: (videoId: string) => void
 }) => {
   const { data, error, isLoading, refetch } = useGetSimilarSongs(videoId)
+  const karaoke = useKaraokeFilter()
+  const songs = karaoke.waiting
+    ? undefined
+    : data?.results.filter((song) => karaoke.has(song.video_id))
   return (
     <div className='flex flex-col gap-3'>
       <div className='flex items-center justify-between gap-4'>
@@ -247,7 +276,10 @@ const SimilarSongs = ({
           Back to Results
         </Button>
       </div>
-      {isLoading && <DotsLoader />}
+      {(isLoading || (data !== undefined && karaoke.waiting)) && <DotsLoader />}
+      {karaoke.error && (
+        <Failed what="Couldn't load the songs." retry={karaoke.retry} />
+      )}
       {error && (
         <Failed
           what="Couldn't load similar songs."
@@ -256,9 +288,11 @@ const SimilarSongs = ({
           }}
         />
       )}
-      {data?.results.length === 0 && <Notice>No similar songs yet.</Notice>}
+      {songs?.length === 0 && karaoke.error === null && (
+        <Notice>No similar songs yet.</Notice>
+      )}
       <ResultGrid>
-        {data?.results.map((song) => (
+        {songs?.map((song) => (
           <LibrarySongCard
             key={song.video_id}
             song={song}
