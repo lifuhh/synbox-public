@@ -59,8 +59,17 @@ const main = async () => {
             ? ' (uncommitted changes: no verdict; commit, then run again)'
             : ' (--only: no verdict)'
         }
+        // A retried audit is what makes a slow run slow (a stuck one waits out its time limit first): said on the last
+        // line, so a run read through \`tail -1\` still shows it
+        const retried = r.steps.filter((st) =>
+          st.detail.includes('retried after')
+        )
+        const retries =
+          retried.length === 0
+            ? ''
+            : ` (retried: ${retried.map((st) => `${st.name}, ${st.detail.split('retried after: ')[1] ?? ''}`).join('; ')})`
         process.stdout.write(
-          `\ncheck ${r.status.toUpperCase()} in ${Math.round(r.wallMs / 1000)}s${stamp}\n`
+          `\ncheck ${r.status.toUpperCase()} in ${Math.round(r.wallMs / 1000)}s${retries}${stamp}\n`
         )
         process.exitCode = r.status === 'fail' ? 3 : 0
       } finally {
