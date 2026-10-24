@@ -235,59 +235,60 @@ export const requesterOf = async (
   }
 }
 
-// The seconds until a budget's hour turns, or null when the song is already counted in it or still fits
-const budgetWait = async (
+interface BudgetNow {
+  requester: string
+  n: number
+  seen: number
+}
+
+// One read for all of a request's budgets (a second round trip to the database per request was most of a song's
+// wait): how many songs each counts this hour, and whether it already counts this one
+const budgetsNow = async (
   db: D1Database,
-  { key, limit }: Budget,
+  budgets: Budget[],
   videoId: string,
-  hour: number,
-  now: number
-): Promise<number | null> => {
-  const seen = await db
+  hour: number
+) => {
+  const keys = budgets.map(({ key }) => key)
+  const listed = keys.map((_, index) => `?${index + 3}`).join(', ')
+  const { results } = await db
     .prepare(
-      `select 1 from "lyrics_hit" where "requester" = ?1 and "hour" = ?2 and "videoId" = ?3`
+      `select "requester", count(*) as "n", max("videoId" = ?1) as "seen" from "lyrics_hit" where "hour" = ?2 and "requester" in (${listed}) group by "requester"`
     )
-    .bind(key, hour, videoId)
-    .first()
-  if (seen !== null) {
-    return null
-  }
-  const counted = await db
-    .prepare(
-      `select count(*) as "n" from "lyrics_hit" where "requester" = ?1 and "hour" = ?2`
-    )
-    .bind(key, hour)
-    .first<{ n: number }>()
-  return (counted?.n ?? 0) >= limit
-    ? Math.max(1, Math.ceil(((hour + 1) * HOUR - now) / 1000))
-    : null
+    .bind(videoId, hour, ...keys)
+    .all<BudgetNow>()
+  return new Map(results.map((row) => [row.requester, row]))
 }
 
 // Counts a song against every budget of the requester's hour; a song already counted in a budget is free there. The
-// seconds to wait when any budget is spent (nothing is counted then), or null when it may be read
+// seconds to wait when any budget is spent (nothing is counted then), or null when it may be read. The count is
+// written by `defer` (the Worker's waitUntil), after the answer: two requests landing in the same instant may both
+// fit a budget with one place left, which an hourly budget can afford
 export const takeSong = async (
   db: D1Database,
   budgets: Budget[],
   videoId: string,
-  now: number
+  now: number,
+  defer: (work: Promise<unknown>) => void
 ): Promise<number | null> => {
   const hour = Math.floor(now / HOUR)
-  const waits = await Promise.all(
-    budgets.map(
-      async (budget) => await budgetWait(db, budget, videoId, hour, now)
-    )
-  )
-  const wait = Math.max(...waits.map((w) => w ?? 0))
-  if (wait > 0) {
-    return wait
+  const counts = await budgetsNow(db, budgets, videoId, hour)
+  const spent = budgets.some(({ key, limit }) => {
+    const row = counts.get(key)
+    return row?.seen !== 1 && (row?.n ?? 0) >= limit
+  })
+  if (spent) {
+    return Math.max(1, Math.ceil(((hour + 1) * HOUR - now) / 1000))
   }
-  await db.batch(
-    budgets.map(({ key }) =>
-      db
-        .prepare(
-          `insert or ignore into "lyrics_hit" ("requester", "hour", "videoId") values (?1, ?2, ?3)`
-        )
-        .bind(key, hour, videoId)
+  defer(
+    db.batch(
+      budgets.map(({ key }) =>
+        db
+          .prepare(
+            `insert or ignore into "lyrics_hit" ("requester", "hour", "videoId") values (?1, ?2, ?3)`
+          )
+          .bind(key, hour, videoId)
+      )
     )
   )
   return null
@@ -434,7 +435,15 @@ lyrics.get('/lyrics-dates', async (c) => {
 // Counts the song before anything is read, cached or not: the 429, or whom the mark names
 const admit = async (c: Ctx, videoId: string) => {
   const { mark, budgets } = await requesterOf(c)
-  const wait = await takeSong(c.env.DB, budgets, videoId, Date.now())
+  const wait = await takeSong(
+    c.env.DB,
+    budgets,
+    videoId,
+    Date.now(),
+    (work) => {
+      c.executionCtx.waitUntil(work)
+    }
+  )
   return { requester: mark, wait }
 }
 

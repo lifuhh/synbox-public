@@ -82,16 +82,25 @@ const setup = async (guestPerHour = '60', networkPerHour = '300') => {
     TRACE_KEY: TRACE,
     TRUSTED_ORIGINS: 'http://localhost:5173',
   }
+  // The work a handler leaves for after its answer (the song's count), done before the next call, as a Worker does
+  const deferred: Promise<unknown>[] = []
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the one method the handlers call
-  const ctx = { waitUntil: () => null } as unknown as ExecutionContext
-  const call = async (path: string, headers: Record<string, string> = {}) =>
-    await worker.fetch(
+  const ctx = {
+    waitUntil: (work: Promise<unknown>) => {
+      deferred.push(work)
+    },
+  } as unknown as ExecutionContext
+  const call = async (path: string, headers: Record<string, string> = {}) => {
+    const response = await worker.fetch(
       new Request(`http://localhost${path}`, {
         headers: { 'cf-connecting-ip': '203.0.113.7', ...headers },
       }),
       env,
       ctx
     )
+    await Promise.all(deferred.splice(0))
+    return response
+  }
   const statusOf = async (
     path: string,
     headers: Record<string, string> = {}
