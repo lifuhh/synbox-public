@@ -39,6 +39,7 @@
 @custom-variant tabbar (&:where(html[data-tabbar] *));
 /* Finger-driven screens: bigger hit areas, no hover-only affordances */
 @custom-variant touch (@media (pointer: coarse));
+@custom-variant mouse (@media (pointer: fine));
 /* A mouse on a wide screen: the player's control bar groups its buttons into pills on dark glass, as YouTube's
    does. Phones keep their own bar, ordered for the thumb */
 @custom-variant pills (@media (pointer: fine) and (min-width: 1000px));
@@ -910,7 +911,8 @@
 
 /* Only the drawn text takes a press: the gaps beside and between wrapped lines pass it to the stage
    below, so a tap there still shows the controls or double-tap seeks. Blocks pass presses through;
-   inline text takes them */
+   inline text takes them. A box that shows a hover outline takes presses over all of it with a mouse
+   (`mouse:pointer-events-auto`), where the outline promises it */
 @utility lyrics-hit-text {
   pointer-events: none;
 

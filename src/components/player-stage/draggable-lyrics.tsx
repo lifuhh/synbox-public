@@ -246,7 +246,7 @@ export const DraggableLyrics = ({
           data-testid='lyrics-handle'
           data-lyrics-style-toggle
           className={cn(
-            'lyrics-hit-text mx-auto max-w-full cursor-grab touch-none rounded-xl px-cqw ring-white/25 transition-surface hover:bg-white/5 hover:ring-1',
+            'lyrics-hit-text mx-auto max-w-full cursor-grab touch-none rounded-xl px-cqw ring-white/25 transition-surface mouse:pointer-events-auto hover:bg-white/5 hover:ring-1',
             wide ? 'w-full' : 'w-fit',
             dragging && 'cursor-grabbing bg-white/5 ring-1'
           )}
