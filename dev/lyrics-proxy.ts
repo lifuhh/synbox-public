@@ -122,15 +122,22 @@ const karaokeOf = async (
   videoId: string,
   search: string
 ) => {
-  const base = env.VITE_SYNBOX_LOOKUP_URL ?? env.VITE_SYNBOX_BE_URL ?? ''
+  // As the app picks it (src/lib/synbox-flask/address.ts): the lookup service, else the backend itself
+  const lookup = env.VITE_SYNBOX_LOOKUP_URL ?? ''
+  const base = lookup === '' ? (env.VITE_SYNBOX_BE_URL ?? '') : lookup
   const headers: Record<string, string> = { Accept: 'application/json' }
   if ((env.LOOKUP_KEY ?? '') !== '') {
     headers['X-Synbox-Lookup-Key'] = env.LOOKUP_KEY ?? ''
   }
+  // A local backend that isn't running answers as the Worker does when the lookup service is down, not with the dev
+  // server's error page
   const upstream = await fetch(
     `${base}/karaoke/${encodeURIComponent(videoId)}${search}`,
     { headers }
-  )
+  ).catch(() => null)
+  if (upstream === null) {
+    return Response.json({ code: 'unreachable' }, { status: 502 })
+  }
   return new Response(await upstream.text(), {
     headers: { 'Content-Type': 'application/json' },
     status: upstream.status,
