@@ -1,9 +1,7 @@
 import { Link } from 'react-router'
 
-import { Ext, LegalPage } from '@/components/shared/legal-page'
+import { Ext, INLINE_LINK, LegalPage } from '@/components/shared/legal-page'
 import type { LegalSection } from '@/components/shared/legal-page'
-
-const inline = 'underline underline-offset-2 hover:text-foreground'
 
 // What using Synbox commits a person to. Every promise here is one the code keeps: limits (worker/src/quota.ts),
 // reports (worker/src/reports.ts), Google sign-in only. Change it when they change, and keep Privacy in step
@@ -12,7 +10,7 @@ const SECTIONS: LegalSection[] = [
     items: [
       <>
         Using Synbox means agreeing to these Terms, the{' '}
-        <Link to='/privacy' className={inline}>
+        <Link to='/privacy' className={INLINE_LINK}>
           Privacy Policy
         </Link>{' '}
         and <Ext href='https://www.youtube.com/t/terms'>YouTube’s Terms</Ext>.

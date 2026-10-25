@@ -1,6 +1,6 @@
 import { Link } from 'react-router'
 
-import { Ext, LegalPage } from '@/components/shared/legal-page'
+import { Ext, INLINE_LINK, LegalPage } from '@/components/shared/legal-page'
 import type { LegalSection } from '@/components/shared/legal-page'
 
 // What the code keeps about a person and why: the Worker's D1 tables (worker/migrations), Google sign-in
@@ -97,9 +97,7 @@ const SECTIONS: LegalSection[] = [
       <>
         Changes show here with a new date. Using Synbox also means agreeing to
         the{' '}
-        <Link
-          to='/terms'
-          className='underline underline-offset-2 hover:text-foreground'>
+        <Link to='/terms' className={INLINE_LINK}>
           Terms
         </Link>
         .
