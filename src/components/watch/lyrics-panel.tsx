@@ -84,10 +84,11 @@ const useSongLines = (videoId: string, version: number | null) => {
   }
 }
 
-// A tap on the small band expands it, as Spotify's and Apple Music's lyrics cards do; a press held longer is not a
-// tap. Only over lines (`on`): with none there is nothing to expand, and a press on a disabled Generate Lyrics
-// (which takes no pointer events) would fall through to it
-const useExpandTap = (on: boolean, expand: () => void) => {
+// A tap on the band toggles its size: small, it expands, as Spotify's and Apple Music's lyrics cards do; expanded, it
+// goes back to small (the band's lines don't seek, so a tap has nothing else to do). A press held longer is not a
+// tap, nor is a swipe through the lines. Only over lines (`on`): with none there is nothing to resize, and a press on
+// a disabled Generate Lyrics (which takes no pointer events) would fall through to it
+const useExpandTap = (on: boolean, toggle: () => void) => {
   const pressedAt = useRef(0)
   if (!on) {
     return {}
@@ -95,7 +96,7 @@ const useExpandTap = (on: boolean, expand: () => void) => {
   return {
     onClick: () => {
       if (performance.now() - pressedAt.current < TAP_MAX_MS) {
-        expand()
+        toggle()
       }
     },
     onPointerDown: () => {
@@ -239,8 +240,8 @@ const useBandSize = ({
     }
   }
   const sizable = band && hasLines && onExpandedChange !== undefined
-  const expandTap = useExpandTap(sizable && !expanded, () => {
-    resize(true)
+  const expandTap = useExpandTap(sizable, () => {
+    resize(!expanded)
   })
   return {
     corner: sizable ? (
