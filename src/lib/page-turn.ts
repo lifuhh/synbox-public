@@ -19,8 +19,12 @@ interface Point {
   y: number
 }
 
+// Where the turned page ends down the screen: the screen's bottom edge, which in the installed app on iOS 26
+// lies past innerHeight (the page runs into the band the viewport leaves out; see globals.css)
+export const turnedPageEnd = () => document.body.getBoundingClientRect().bottom
+
 // Turned clockwise, the page's x runs down the screen and its y from the screen's right edge to its left;
-// flipped, its x runs up the screen and its y from the left edge to the right
+// flipped, its x runs up the screen from where the page ends and its y from the left edge to the right
 export const pagePoint = ({
   clientX,
   clientY,
@@ -32,7 +36,7 @@ export const pagePoint = ({
     return { x: clientX, y: clientY }
   }
   return pageFlipped()
-    ? { x: window.innerHeight - clientY, y: clientX }
+    ? { x: turnedPageEnd() - clientY, y: clientX }
     : { x: clientY, y: window.innerWidth - clientX }
 }
 
@@ -53,7 +57,7 @@ export const fractionAcross = (
 // Radix's dialogs and menus lock the page's scroll with react-remove-scroll, which judges a finger's drag in the
 // screen's axes: on the turned page a drag along the page reads as sideways, and it cancels a drag the panel can't
 // scroll that way, so nothing in the panel scrolled. Stopped inside the panel, the drag never reaches that lock
-// (it listens on the document); the turned page is fixed, so nothing under the panel scrolls anyway
+// (it listens on the document); the turned page fills the document, so nothing under the panel scrolls anyway
 export const keepScrollWhenTurned = (event: {
   stopPropagation: () => void
 }) => {

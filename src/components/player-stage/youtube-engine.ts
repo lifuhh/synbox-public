@@ -1,4 +1,4 @@
-import { pageFlipped, pageTurned } from '@/lib/page-turn'
+import { pageFlipped, pageTurned, turnedPageEnd } from '@/lib/page-turn'
 import { reducedMotion } from '@/lib/reduced-motion'
 import type { YTPlayer, YTStateCode } from '@/lib/youtube/iframe-api'
 import { loadYouTubeIframeApi, YTState } from '@/lib/youtube/iframe-api'
@@ -275,7 +275,7 @@ const pageRect = (element: HTMLElement) => {
   return pageFlipped()
     ? {
         height: box.width,
-        left: window.innerHeight - box.bottom,
+        left: turnedPageEnd() - box.bottom,
         top: box.left,
         width: box.height,
       }
