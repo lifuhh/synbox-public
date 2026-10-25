@@ -243,8 +243,8 @@ let dragged: { borderRadius: string; transform: string } | null = null
 // Told once, right after the next placement is drawn, in the same update: the drag to minimise growing the video
 // back out of the bar takes it before any frame shows the placement's own flight
 let placedListener: (() => void) | null = null
-export const whenPlaced = (listener: (() => void) | null) => {
-  placedListener = listener
+export const whenPlaced = (next: (() => void) | null) => {
+  placedListener = next
 }
 const HAND_OVER_MS = 600
 const FLY_MS = 320
@@ -288,9 +288,9 @@ const keepPlaced = (
   place()
   fly(parts.layer, parts.layer.style.transform, parts.layer.style.borderRadius)
   placed = place
-  const listener = placedListener
+  const told = placedListener
   placedListener = null
-  listener?.()
+  told?.()
   const observer = new ResizeObserver(place)
   for (const element of watched) {
     observer.observe(element)
