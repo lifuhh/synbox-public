@@ -266,16 +266,19 @@ const ROW_FIT_FLOOR = 0.6
 // oxlint-disable-next-line unicorn/prefer-number-coercion -- the value ends in px, which Number() rejects
 const pixels = (value: string) => Number.parseFloat(value) || 0
 
-// The song's tallest line, as laid out now
-const tallestOf = (lines: HTMLElement) => {
-  let tallest = 0
-  for (const line of lines.children) {
-    if (line instanceof HTMLElement) {
-      tallest = Math.max(tallest, line.offsetHeight)
+// The song's tallest line, as laid out now, and which it is
+const tallestLineOf = (lines: HTMLElement) => {
+  let height = 0
+  let index = -1
+  for (const [at, line] of [...lines.children].entries()) {
+    if (line instanceof HTMLElement && line.offsetHeight > height) {
+      height = line.offsetHeight
+      index = at
     }
   }
-  return tallest
+  return { height, index }
 }
+const tallestOf = (lines: HTMLElement) => tallestLineOf(lines).height
 
 // The sizes fitSong tries, as the lyrics' scale times the row fit: every Two Lines size times every screen's tweak,
 // down to the floor
@@ -303,7 +306,9 @@ const FIT_IDLE_MS = 50
 const fitSong = (
   grid: HTMLElement,
   lines: HTMLElement,
-  reserve: HTMLElement
+  reserve: HTMLElement,
+  // The song's tallest line at the size the rows get, which each row holds room for (TwoLineRow)
+  onTallest: (index: number) => void
 ) => {
   const block = grid.closest<HTMLElement>('.player-lyrics-overlay')
   const layer = block?.parentElement
@@ -315,21 +320,28 @@ const fitSong = (
   let steps = 0
   let height = 0
   let measuredFor = ''
+  let tallestFitting = -1
   let idle: ReturnType<typeof setTimeout> | undefined
   const apply = () => {
     grid.style.setProperty(
       '--row-fit',
       String(Math.min(1, Math.max(ROW_FIT_FLOOR, fitting / scale)))
     )
+    onTallest(tallestFitting)
   }
   // Smaller type also wraps less, so the height doesn't scale with the size: try sizes on the copy, halving the
   // gap each time. The gap between the rows is in em, so it is read at each size too
   const fits = (size: number) => {
     lines.style.setProperty('--row-fit', String(size))
-    return (
-      tallestOf(lines) <=
+    const tallest = tallestLineOf(lines)
+    const fit =
+      tallest.height <=
       (height - pixels(getComputedStyle(lines).rowGap)) / 2 + 1
-    )
+    // Which line is tallest barely moves between nearby sizes: the last size tried that fits, or any while none does
+    if (fit || tallestFitting < 0) {
+      tallestFitting = tallest.index
+    }
+    return fit
   }
   const step = () => {
     if (steps <= 0) {
@@ -433,23 +445,31 @@ const fitSong = (
   }
 }
 
+// A row keeps the height of the song's tallest line (`room`, laid out unseen in the same cell), and its line sits
+// on the row's floor: a line that wraps taller grows upward, and neither row ever moves the other or the block
+// (owner, 2026-10-25), as a karaoke screen's two lines keep their baselines
 const TwoLineRow = ({
   sung,
   start,
+  room,
   children,
 }: {
   sung: boolean
   start: boolean
+  room: ReactNode
   children: ReactNode
 }) => (
   <div
     data-lyric-row={sung ? 'sung' : 'next'}
     className={cn(
-      'transition-opacity duration-200',
+      'grid transition-opacity duration-200',
       !sung && 'opacity-75',
       start ? 'lyric-stagger-start' : 'lyric-stagger-end'
     )}>
-    {children}
+    <div className='col-start-1 row-start-1 self-end'>{children}</div>
+    <div aria-hidden className='invisible col-start-1 row-start-1'>
+      {room}
+    </div>
   </div>
 )
 
@@ -459,12 +479,14 @@ const TwoLineRow = ({
 const TwoRows = ({
   view,
   rowsOf,
+  roomOf,
   songLines,
   songTranslations,
   scale,
 }: {
   view: TwoLineView
   rowsOf: (index: number) => ReactNode
+  roomOf: (index: number) => ReactNode
   // Every line of the song, each at a row's width, for fitSong
   songLines: ReactNode
   // Every translation of the song as it docks under the rows, while it does; the rows leave room for the tallest
@@ -475,10 +497,16 @@ const TwoRows = ({
   const linesRef = useRef<HTMLDivElement>(null)
   const reserveRef = useRef<HTMLDivElement>(null)
   const fitRef = useRef<ReturnType<typeof fitSong> | null>(null)
+  const [tallest, setTallest] = useState(-1)
   useLayoutEffect(() => {
     const fit =
       gridRef.current && linesRef.current && reserveRef.current
-        ? fitSong(gridRef.current, linesRef.current, reserveRef.current)
+        ? fitSong(
+            gridRef.current,
+            linesRef.current,
+            reserveRef.current,
+            setTallest
+          )
         : null
     fitRef.current = fit
     return () => {
@@ -502,7 +530,8 @@ const TwoRows = ({
           // oxlint-disable-next-line no-array-index-key
           key={row}
           sung={index === view.active}
-          start={row === 0}>
+          start={row === 0}
+          room={tallest >= 0 && roomOf(tallest)}>
           {index >= 0 && rowsOf(index)}
         </TwoLineRow>
       ))}
@@ -955,31 +984,38 @@ export const StageLyrics = ({
   }
   // Two lines size both rows to the song's tallest line: every line, laid out once per song and look
   const lineCount = karaokeLines?.length ?? lyrics?.lines.length ?? 0
+  // A line as Two Lines lays it out, untimed: for measuring, and for the room each row keeps
+  const quietRowsOf = useCallback(
+    (index: number) => {
+      const line = lineAt(lyrics, karaokeLines, index, english, undefined)
+      return (
+        line.text !== undefined && (
+          <LineRows
+            line={{ ...line, text: line.text }}
+            lineKey={index}
+            shown={{
+              lyrics: showLyrics,
+              romaji: showRomaji,
+              translation: false,
+            }}
+            sizes={STAGGER_SIZE}
+            measured
+          />
+        )
+      )
+    },
+    [lyrics, karaokeLines, english, showLyrics, showRomaji]
+  )
   const songLines = useMemo(
     () =>
-      Array.from({ length: twoLines ? lineCount : 0 }, (_, index) => {
-        const line = lineAt(lyrics, karaokeLines, index, english, undefined)
-        return (
-          // Lines are positional and never reorder
-          // oxlint-disable-next-line no-array-index-key
-          <div key={index} className='lyric-stagger-start'>
-            {line.text !== undefined && (
-              <LineRows
-                line={{ ...line, text: line.text }}
-                lineKey={index}
-                shown={{
-                  lyrics: showLyrics,
-                  romaji: showRomaji,
-                  translation: false,
-                }}
-                sizes={STAGGER_SIZE}
-                measured
-              />
-            )}
-          </div>
-        )
-      }),
-    [twoLines, lineCount, lyrics, karaokeLines, english, showLyrics, showRomaji]
+      Array.from({ length: twoLines ? lineCount : 0 }, (_, index) => (
+        // Lines are positional and never reorder
+        // oxlint-disable-next-line no-array-index-key
+        <div key={index} className='lyric-stagger-start'>
+          {quietRowsOf(index)}
+        </div>
+      )),
+    [twoLines, lineCount, quietRowsOf]
   )
   const docked = useAtomValue(translationDockedAtom)
   const songTranslations = useMemo(
@@ -1064,6 +1100,7 @@ export const StageLyrics = ({
               <TwoRows
                 view={view}
                 rowsOf={rowsOf}
+                roomOf={quietRowsOf}
                 songLines={songLines}
                 songTranslations={songTranslations}
                 scale={scale}
