@@ -861,7 +861,7 @@
 @utility lyric-stagger-area {
   --stagger-area-top: 50%;
   --stagger-area-side: calc(
-    min(var(--safe-left), var(--safe-right)) + 1rem -
+    max(var(--safe-left), var(--safe-right)) + 1rem -
       var(--spacing-controls-rail)
   );
   top: var(--stagger-area-top);
@@ -2457,5 +2457,37 @@ html[data-transition='flip']::view-transition-new(root) {
 
   &[data-shown] {
     opacity: 1;
+  }
+}
+
+/* Safe areas are plain black on the player, as YouTube's (owner, 2026-10-26). Unlayered, so they beat the scrim's own
+   utilities (top-scrim, bg-background, page-glow).
+   Upright in the installed app (no top bar on the player): the status bar's band is black, not the page's colour or
+   glow, and has no fade under it */
+@media (orientation: portrait) and (max-width: 999px) {
+  html[data-installed][data-watch]:not([data-landscape-lock])
+    [data-status-scrim] {
+    height: var(--safe-top);
+    padding-bottom: 0;
+    background: #000;
+    mask-image: none;
+  }
+}
+
+/* Full screen, Fit: the video and its lyrics stay inside the side safe areas, the same distance in from both edges (the
+   larger inset, so neither the notch nor the home indicator covers anything), with black in the margins, as
+   YouTube's landscape player. Lock Landscape's turn has already swapped --safe-left/--safe-right to the turned
+   screen's sides. Inside, the stage counts no side insets of its own. Zoom still fills edge to edge */
+html:has([data-player-stage]):not([data-watch])
+  [data-player-stage][data-fit='fit'] {
+  --stage-side-inset: max(var(--safe-left), var(--safe-right));
+  margin-inline: var(--stage-side-inset);
+  width: calc(100% - 2 * var(--stage-side-inset));
+  --spacing-controls-left: 1rem;
+  --spacing-controls-right: 1rem;
+  --spacing-controls-rail: 3.5rem;
+  & * {
+    --safe-left: 0px;
+    --safe-right: 0px;
   }
 }
