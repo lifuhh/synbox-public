@@ -46,6 +46,74 @@ let generation = 0
 // The video's size on the stage it was last laid over, kept while it floats; before any stage, YouTube's usual size
 let frameSize = { height: 270, width: 480 }
 
+// YouTube picks an embed's quality from the size it is drawn at, in device pixels; setPlaybackQuality has done nothing
+// since 2019. Measured: a 16:9 player gets 1080p from about 1700 device pixels wide, 720p below, so an upright phone or
+// a small window got 720p. A smaller player is drawn as wide as a 1080p frame and scaled down. Its adaptive bitrate
+// still drops lower on a slow connection (700 kbit/s: 480p at either size), so this only lifts the ceiling
+const FULL_HD_WIDTH = 1920
+const MAX_SCALE = 2
+// Drawn at its own size where data is short: Data Saver, a slow connection (Chromium reports both; Safari and
+// Firefox nothing), or STALLS_TO_SAVE stalls this visit, each a wait of STALL_MS or more mid-song
+const SLOW_NETWORKS = new Set(['slow-2g', '2g', '3g'])
+const STALL_MS = 2000
+const STALLS_TO_SAVE = 2
+let stalls = 0
+let bufferingSince = 0
+let lastState: YTStateCode | null = null
+const noteState = (state: YTStateCode) => {
+  const now = performance.now()
+  if (state === YTState.Buffering && lastState === YTState.Playing) {
+    bufferingSince = now
+  } else if (state !== YTState.Buffering && bufferingSince > 0) {
+    if (now - bufferingSince >= STALL_MS) {
+      stalls += 1
+    }
+    bufferingSince = 0
+  }
+  lastState = state
+}
+const savingData = () => {
+  const connection: unknown = Reflect.get(navigator, 'connection')
+  const saveData: unknown =
+    connection instanceof EventTarget
+      ? Reflect.get(connection, 'saveData')
+      : undefined
+  const effectiveType: unknown =
+    connection instanceof EventTarget
+      ? Reflect.get(connection, 'effectiveType')
+      : undefined
+  return (
+    saveData === true ||
+    (typeof effectiveType === 'string' && SLOW_NETWORKS.has(effectiveType)) ||
+    stalls >= STALLS_TO_SAVE
+  )
+}
+// How much larger than the frame the iframe is drawn: the video's shown width up to a 1080p frame's, ×1 to ×2
+const videoScale = (width: number, height: number) => {
+  const shown = Math.min(width, (height * 16) / 9) * window.devicePixelRatio
+  return shown <= 0 || savingData()
+    ? 1
+    : Math.min(MAX_SCALE, Math.max(1, FULL_HD_WIDTH / shown))
+}
+// The iframe over a frame `width` × `height`, `cropPx` taller above and below (YouTube's title bar out of sight), laid
+// out `scale` times larger and shrunk back from its top left, so it covers the same box
+const sizeHost = (
+  iframeBox: HTMLDivElement,
+  { width, height }: { width: number; height: number },
+  cropPx: number,
+  scale: number
+) => {
+  Object.assign(iframeBox.style, {
+    bottom: '',
+    height: `${(height + 2 * cropPx) * scale}px`,
+    right: '',
+    top: `${-cropPx}px`,
+    transform: scale === 1 ? '' : `scale(${1 / scale})`,
+    transformOrigin: '0 0',
+    width: `${width * scale}px`,
+  })
+}
+
 const ensureLayer = () => {
   if (layer && frame && host) {
     return { frame, host, layer }
@@ -118,6 +186,7 @@ const create = async () => {
         }
       },
       onStateChange: ({ data }) => {
+        noteState(data)
         if (mine === generation) {
           listener?.onStateChange(data)
         }
@@ -361,13 +430,15 @@ export const placeEngine = (
       width: `${inner.width}px`,
     })
     frameSize = { height: inner.height, width: inner.width }
+    // YouTube's own screens (errors, sign-in) are read and pressed: at their own size
+    sizeHost(
+      parts.host,
+      frameSize,
+      cropPx,
+      blockInput ? videoScale(inner.width, inner.height) : 1
+    )
   }
-  // Extra iframe height above and below the frame keeps YouTube's title bar out of sight
-  Object.assign(parts.host.style, {
-    bottom: `${-cropPx}px`,
-    pointerEvents: blockInput ? 'none' : 'auto',
-    top: `${-cropPx}px`,
-  })
+  parts.host.style.pointerEvents = blockInput ? 'none' : 'auto'
   // Taking input, the video rises over the stage's own surface, still under its cover (z-10), lyrics and
   // controls, as when it sat inside the stage
   parts.layer.style.zIndex = blockInput ? '' : '5'
