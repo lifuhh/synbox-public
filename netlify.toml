@@ -114,6 +114,19 @@ to = "https://api.synbox.io/api/songs/:splat"
 status = 200
 force = true
 
+# The app's usage events (src/lib/usage.ts) and the Contact Us form (src/lib/contact.ts), kept by the auth Worker
+[[redirects]]
+from = "/api/events"
+to = "https://api.synbox.io/api/events"
+status = 200
+force = true
+
+[[redirects]]
+from = "/api/contact"
+to = "https://api.synbox.io/api/contact"
+status = 200
+force = true
+
 # A script or style from an earlier deploy is gone: say so, instead of index.html under the bundles' one-year
 # immutable header, which a browser would keep as that script
 [[redirects]]
