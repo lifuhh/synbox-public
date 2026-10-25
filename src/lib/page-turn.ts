@@ -71,3 +71,15 @@ export const pageWidth = (element: Element) => {
   const box = element.getBoundingClientRect()
   return pageTurned() ? box.height : box.width
 }
+
+// A box from the browser (the screen's axes) in the page's axes
+export const pageBox = (box: DOMRect) => {
+  const a = pagePoint({ clientX: box.left, clientY: box.top })
+  const b = pagePoint({ clientX: box.right, clientY: box.bottom })
+  return {
+    bottom: Math.max(a.y, b.y),
+    left: Math.min(a.x, b.x),
+    right: Math.max(a.x, b.x),
+    top: Math.min(a.y, b.y),
+  }
+}
