@@ -4,6 +4,7 @@ import {
   EllipsisVerticalIcon,
   LoaderCircleIcon,
   LockIcon,
+  ScrollTextIcon,
   ShieldIcon,
   LogOutIcon,
   MonitorDownIcon,
@@ -208,6 +209,12 @@ const ProfileButtonDropdown = () => {
               <Link to='/privacy'>
                 <LockIcon className='mr-2 size-5 shrink-0' />
                 <span>Privacy Policy</span>
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild className='cursor-pointer'>
+              <Link to='/terms'>
+                <ScrollTextIcon className='mr-2 size-5 shrink-0' />
+                <span>Terms of Use</span>
               </Link>
             </DropdownMenuItem>
             {install.kind !== 'installed' && (

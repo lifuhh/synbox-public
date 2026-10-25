@@ -30,6 +30,7 @@ const pageImports = {
   privacy: async () => await import('./_root/pages/privacy-page'),
   reader: async () => await import('./_root/pages/reader-page'),
   search: async () => await import('./_root/pages/search-page'),
+  terms: async () => await import('./_root/pages/terms-page'),
   versions: async () => await import('./_root/pages/versions-page'),
   you: async () => await import('./_root/pages/you-page'),
 }
@@ -42,6 +43,7 @@ const PlaylistsPage = lazy(pageImports.playlists)
 const YouPage = lazy(pageImports.you)
 const ReaderPage = lazy(pageImports.reader)
 const SearchPage = lazy(pageImports.search)
+const TermsPage = lazy(pageImports.terms)
 const VersionsPage = lazy(pageImports.versions)
 // Not prefetched: only admins open it
 const AdminPage = lazy(async () => await import('./_root/pages/admin-page'))
@@ -121,6 +123,14 @@ const App = () => {
             element={
               <Suspense>
                 <PrivacyPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path='/terms'
+            element={
+              <Suspense>
+                <TermsPage />
               </Suspense>
             }
           />
