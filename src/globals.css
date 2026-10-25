@@ -849,14 +849,22 @@
 }
 
 /* On a phone on its side the lyrics' layer keeps clear of the rail on both sides (one line stays centred), but
-   the rows are a left and a right line, and only the left has the rail beside it: the rows' box runs on to the
-   right safe area plus a gap, and drops the block's own side padding, so both lines get more of the width */
+   the rows are a left and a right line: the rows' box runs on to the smaller side's safe area plus a gap, the
+   same on both, and drops the block's own side padding, so both lines get more of the width. The same on both
+   (owner, 2026-10-25): the rail's clearance on the left, and on a turned page the notch's inset being larger
+   than the home indicator's, made it lopsided. The gap still clears a Dynamic Island (48px down; home inset 34 +
+   16) */
 @utility lyric-stagger-area {
   --stagger-area-top: 50%;
+  --stagger-area-side: calc(
+    min(var(--safe-left), var(--safe-right)) + 1rem -
+      var(--spacing-controls-rail)
+  );
   top: var(--stagger-area-top);
 
   @variant short {
-    right: calc(var(--safe-right) + 1rem - var(--spacing-controls-rail));
+    left: var(--stagger-area-side);
+    right: var(--stagger-area-side);
 
     & .player-lyrics-overlay {
       padding-inline: 0;
