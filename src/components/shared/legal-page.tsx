@@ -10,7 +10,7 @@ export interface LegalSection {
 }
 
 // A link inside the lists' text. Its vertical padding makes the press area at least 24px tall (WCAG 2.2's minimum) without
-// moving the line
+// moving the line; one line each, so a wrapped link never covers the next
 export const INLINE_LINK =
   'py-1 underline underline-offset-2 hover:text-foreground'
 
