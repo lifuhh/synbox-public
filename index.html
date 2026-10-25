@@ -43,6 +43,13 @@
       href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400..800&family=Noto+Sans:wght@900&family=Noto+Sans+JP:wght@100..900&family=Noto+Sans+SC:wght@400..900&display=swap"
       rel="stylesheet" />
     <title>Synbox</title>
+    <!-- The page's colour from the first paint, before the stylesheet arrives (globals.css › --graphite-1), so a slow
+         first load is the app's dark page, never a white one -->
+    <style>
+      html {
+        background: oklch(0.155 0.012 350);
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>
