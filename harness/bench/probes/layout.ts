@@ -63,7 +63,7 @@ export interface OpenedState {
   steps: Step[]
 }
 
-const PLAYER_SONG = '6rG_irmOQsM'
+export const PLAYER_SONG = '6rG_irmOQsM'
 
 /** Waits for the layout to rest (recorder.ts › settle); a page that never rests is audited as it is, with a note */
 const settle = async (page: Page): Promise<string | null> =>
