@@ -1,5 +1,6 @@
 import { useAtom, useAtomValue } from 'jotai'
 import {
+  ChevronDownIcon,
   ExpandIcon,
   LockIcon,
   MaximizeIcon,
@@ -23,6 +24,7 @@ import { useEffect, useRef, useState } from 'react'
 import { STAGE_DISC } from '@/components/lyrics-display/rail-button'
 import { TheaterIcon } from '@/components/svgicons'
 import { Slider } from '@/components/ui/slider'
+import { minimisePlayer } from '@/components/watch/use-drag-to-minimise'
 import { playerSurfaceAtom } from '@/context/atoms'
 import { useArmed } from '@/hooks/use-armed'
 import { useLandscapeLock } from '@/hooks/use-landscape-lock'
@@ -325,6 +327,34 @@ const FullScreenChrome = ({
   )
 }
 
+// The installed app's player held upright has no top bar (globals.css, as YouTube's): this takes the listener back to
+// the tabs the way the drag down does (use-drag-to-minimise.ts › minimisePlayer), from the video's top left. On the
+// glass the corner discs use, so it reads over any frame; it comes and goes with the rest of the floating UI
+const MinimiseButton = ({ visible }: Pick<StageControlsProps, 'visible'>) => {
+  const armed = useArmed(visible)
+  const watch = useAtomValue(playerSurfaceAtom) === 'watch'
+  if (!watch) {
+    return null
+  }
+  return (
+    <button
+      type='button'
+      data-press
+      aria-label='Minimize Player'
+      title='Minimize Player'
+      onClick={minimisePlayer}
+      style={FADE_VARS}
+      className={cn(
+        STAGE_DISC,
+        'hidden absolute top-2 left-2 z-30 transition-opacity duration-(--controls-fade) installed:portrait:watch-narrow:grid',
+        visible ? 'opacity-100' : 'opacity-0',
+        !armed && 'pointer-events-none'
+      )}>
+      <ChevronDownIcon className='size-6' aria-hidden />
+    </button>
+  )
+}
+
 export const StageControls = ({
   player,
   visible,
@@ -405,6 +435,7 @@ export const StageControls = ({
         locked={locked}
         onLockedChange={onLockedChange}
       />
+      <MinimiseButton visible={visible} />
       <div
         ref={barRef}
         style={FADE_VARS}
