@@ -129,6 +129,24 @@ const NOT_THE_OWNER = [
 const dir =
   process.env.SYNBOX_ASKS_DIR ??
   path.join(homedir(), 'github-workspace', 'synbox', 'docs', 'private', 'asks')
+// Steps only the owner can do (a portal setting, a phone check), one checklist beside the asks (AGENTS.md › "Owner
+// steps"); the report lists the open ones
+const ownerSteps = path.join(dir, '..', 'owner-steps.md')
+const OPEN_STEP = /^- \[ \] \*\*(?<title>[^*]+)\*\*/u
+
+const openOwnerSteps = (): string[] => {
+  if (!existsSync(ownerSteps)) {
+    return []
+  }
+  const text = readFileSync(ownerSteps, 'utf-8')
+  const open =
+    text.split(/^## /mu).find((part) => part.startsWith('Open')) ?? ''
+  return open
+    .split('\n')
+    .map((line) => OPEN_STEP.exec(line)?.groups?.title)
+    .filter((title): title is string => title !== undefined)
+}
+
 const files = {
   inbox: path.join(dir, 'inbox.jsonl'),
   ledger: path.join(dir, 'ledger.json'),
@@ -651,6 +669,15 @@ const commands: Record<string, () => void> = {
       console.log(`${title}:`)
       for (const ask of asks) {
         console.log(`- ${describe(ask)}`)
+      }
+    }
+    const steps = openOwnerSteps()
+    if (steps.length > 0) {
+      console.log(
+        `Owner steps, for you to do (${steps.length} open; portal, where and what in docs/private/owner-steps.md):`
+      )
+      for (const step of steps) {
+        console.log(`- ${step}`)
       }
     }
   },

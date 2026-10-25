@@ -59,6 +59,10 @@ Every message the owner types in `~/github-workspace`, mid-task ones included, l
 - **As work lands:** `bun harness/asks.ts set <id> in_progress|done --pr fe#<n>` (`be#<n>` for the backend). Work that must wait is `set <id> deferred --blocker "<what holds it>" --unblocked-by <condition>`. When a condition comes true (a release, a Worker deploy), run `bun harness/asks.ts cleared <condition>`: its asks reopen and it prints them.
 - **Every final report ends with `bun harness/asks.ts report`'s output**, so deferred and open asks stay in front of the owner.
 
+## Owner steps
+
+Anything only the owner can do (a setting in a web portal, a check on their phone, a payment) goes into `docs/private/owner-steps.md` in the main checkout the moment it's found, never only into a chat reply. It's private because portal paths name project ids. Each step has the same shape: **when** (what must happen first), **portal** (the URL and which project or account), **where** (the menu path), **set** (exact values), **check** (how to see it worked), and the ask it belongs to. The owner shouldn't have to ask for steps; asks.ts's `report` lists the open ones in every final report, and the step-by-step goes in the reply too when a step becomes doable. When the owner confirms one, move it to Done with the date. Something an agent can run itself (a deploy, a migration, a secret it was given) is not an owner step: ask, then run it.
+
 ## Shipping a change
 
 Finished work collects in one long-lived branch, `staging`, and reaches production only through `bun harness/release.ts`, one merge to `main` for everything in staging. Every merge to `main` is a Netlify build, which spends the account's monthly build minutes; staging costs none. The global PR hook enforces this: it blocks a PR into `main`, a merge into `main` and a push to `main` from anything but the release script.
