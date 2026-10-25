@@ -76,6 +76,10 @@ const buttonVariants = cva(
         toggle:
           'rounded-full hover:bg-accent hover:text-accent-foreground aria-pressed:bg-primary-subtle aria-pressed:text-primary-text aria-pressed:hover:bg-primary-subtle-hover',
         toolbar: 'rounded-full hover:bg-accent hover:text-accent-foreground',
+        // A labelled top-bar button among the icon buttons, outlined: Sign In with Google, whose branding keeps a
+        // visible boundary (its dark theme: a 1px line on a dark fill)
+        'toolbar-outline':
+          'rounded-full border border-input hover:bg-accent hover:text-accent-foreground',
       },
     },
   }

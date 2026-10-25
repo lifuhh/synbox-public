@@ -70,11 +70,10 @@ const SignInButton = () => {
         <TooltipTrigger asChild>
           <Button
             // Under 360px wide the G alone, a round button still named Sign In. A ghost like the icon buttons beside
-            // it, outlined: Google's sign-in button keeps a visible boundary (its dark theme: a 1px line on a dark fill)
-            variant='toolbar'
+            // it, outlined (button.tsx › toolbar-outline)
+            variant='toolbar-outline'
             size='pill-collapse'
             gap='md'
-            className='border border-input'
             aria-busy={pending || undefined}
             onClick={() => {
               if (!pending) {
