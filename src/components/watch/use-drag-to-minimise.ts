@@ -1,12 +1,17 @@
-import { useEffect } from 'react'
+import { useLayoutEffect } from 'react'
 import type { RefObject } from 'react'
 import { useLocation, useNavigate } from 'react-router'
 import type { NavigateFunction } from 'react-router'
 
-import { dragEngine, engineBox } from '@/components/player-stage/youtube-engine'
+import {
+  dragEngine,
+  engineBox,
+  stopFlight,
+} from '@/components/player-stage/youtube-engine'
 import type { ScreenBox } from '@/components/player-stage/youtube-engine'
 import { THUMB_RADIUS_PX } from '@/components/shared/mini-bar-view'
 import { historyIdx, returnTab } from '@/components/shared/tab-bar'
+import { openedBy } from '@/lib/listening/store'
 import { reducedMotion } from '@/lib/reduced-motion'
 
 // A finger moving this far, mostly downwards, starts the drag; sideways first, it is left to the stage
@@ -20,8 +25,12 @@ const FLICK_WINDOW_MS = 80
 const SETTLE_MS = 280
 // The click a finger lifting from a drag still sends, which the stage would take as a tap
 const SWALLOW_CLICK_MS = 400
-// The mini bar fades in when it mounts; landing from a drag it is already showing (globals.css › data-minimised)
+// The mini bar fades in when it mounts; landing from a drag it is already showing (mini-bar.tsx › data-landed)
 const LANDED_MS = 500
+// Back from the mini bar, the drag's way in reverse at one pace, once the stage has the video; a stage that
+// hasn't placed it by GROW_WAIT_MS gets the page shown as it is
+const GROW_MS = 280
+const GROW_WAIT_MS = 1000
 
 interface Drag {
   id: number
@@ -46,6 +55,15 @@ const easeOut = (t: number) => 1 - (1 - t) ** 3
 // The mini bar's stand-in on the player (minimise-ghost.tsx › MinimiseGhost)
 const ghost = () => document.querySelector<HTMLElement>('[data-minimise-ghost]')
 
+// Where the video goes: from the stage to the thumbnail of the mini bar's stand-in
+const pathOf = (bar: HTMLElement): Drag['path'] => {
+  const from = engineBox()
+  const to = bar.querySelector('[data-mini-thumb]')?.getBoundingClientRect()
+  return from === null || to === undefined || to.top <= from.top
+    ? null
+    : { from, to }
+}
+
 const swallow = (event: MouseEvent) => {
   event.stopPropagation()
   event.preventDefault()
@@ -57,8 +75,13 @@ const swallowNextClick = () => {
   }, SWALLOW_CLICK_MS)
 }
 
-// The drag on one stage element, until the cleanup; `minimise` once the video has landed on the mini bar
-const followDrags = (stage: HTMLDivElement, minimise: () => void) => {
+// The drag on one stage element, until the cleanup; `minimise` once the video has landed on the mini bar. `grow`:
+// the page was opened from the mini bar, so it first runs the drag backwards, from the bar to the stage
+const followDrags = (
+  stage: HTMLDivElement,
+  minimise: () => void,
+  grow: boolean
+) => {
   let drag: Drag | null = null
   // How far the video is on its way to the mini bar, 0 to 1, drawn once per frame
   let shown = 0
@@ -109,17 +132,16 @@ const followDrags = (stage: HTMLDivElement, minimise: () => void) => {
     })
   }
 
-  // The rest of the way to `end` (1, the mini bar; 0, back on the stage), then `done`
+  // The rest of the way to `end` (1, the mini bar; 0, back on the stage) over `ms`, then `done`
   const settle = (
     path: { from: ScreenBox; to: ScreenBox },
     end: number,
-    done: () => void
+    done: () => void,
+    ms = SETTLE_MS * Math.max(0.4, Math.abs(end - shown))
   ) => {
     cancelAnimationFrame(frame)
     const start = shown
-    const duration = reducedMotion()
-      ? 0
-      : SETTLE_MS * Math.max(0.4, Math.abs(end - start))
+    const duration = reducedMotion() ? 0 : ms
     const began = performance.now()
     const step = (now: number) => {
       const t = duration === 0 ? 1 : Math.min(1, (now - began) / duration)
@@ -134,25 +156,52 @@ const followDrags = (stage: HTMLDivElement, minimise: () => void) => {
     frame = requestAnimationFrame(step)
   }
 
-  // Where the video goes: the thumbnail of the mini bar's stand-in (minimise-ghost.tsx › MinimiseGhost)
-  const begin = (): Drag['path'] => {
-    const from = engineBox()
-    const bar = ghost()
-    const to = bar?.querySelector('[data-mini-thumb]')?.getBoundingClientRect()
-    if (
-      from === null ||
-      bar === null ||
-      to === undefined ||
-      to.top <= from.top
-    ) {
-      return null
-    }
-    bar.style.opacity = '0'
+  const showGhost = (bar: HTMLElement, opacity: number) => {
+    bar.style.opacity = String(opacity)
     bar.style.visibility = 'visible'
     if (page !== null) {
       page.style.willChange = 'opacity'
     }
-    return { from, to }
+  }
+  const begin = (): Drag['path'] => {
+    const bar = ghost()
+    const path = bar === null ? null : pathOf(bar)
+    if (bar !== null && path !== null) {
+      showGhost(bar, 0)
+    }
+    return path
+  }
+
+  // The page and the bar's stand-in as the drag leaves them on the bar, held until the stage places the video, which
+  // then grows back out of the thumbnail (the flight the engine starts is dropped)
+  const growFromBar = () => {
+    const bar = ghost()
+    if (bar === null) {
+      return
+    }
+    showGhost(bar, 1)
+    if (page !== null) {
+      page.style.opacity = '0'
+    }
+    const began = performance.now()
+    const start = () => {
+      // Measured where the stage placed it, not mid-flight
+      stopFlight()
+      const path = pathOf(bar)
+      if (path === null) {
+        frame =
+          performance.now() - began < GROW_WAIT_MS
+            ? requestAnimationFrame(start)
+            : 0
+        if (frame === 0) {
+          reset()
+        }
+        return
+      }
+      paint(path, 1)
+      settle(path, 0, reset, GROW_MS)
+    }
+    start()
   }
 
   const onDown = (event: PointerEvent) => {
@@ -231,6 +280,9 @@ const followDrags = (stage: HTMLDivElement, minimise: () => void) => {
   stage.addEventListener('pointermove', onMove)
   stage.addEventListener('pointerup', onUp)
   stage.addEventListener('pointercancel', onUp)
+  if (grow) {
+    growFromBar()
+  }
   return () => {
     stage.removeEventListener('pointerdown', onDown)
     stage.removeEventListener('pointermove', onMove)
@@ -260,20 +312,27 @@ const minimiseTo = (navigate: NavigateFunction) => {
 // The installed app's player held upright: dragging the video down carries it to the mini bar's thumbnail, its top
 // edge under the finger, while the player fades and the tabs with the mini bar fade in where they will be. Let go
 // far or fast enough and it lands there and the player minimises (back to the tab it came from, where the real
-// mini bar takes the video from the same box), else it springs back. A finger only: a mouse keeps the stage's
-// clicks. The stage's own taps still work, as a drag swallows only its own click. Any navigation puts the page back
+// mini bar takes the video from the same box), else it springs back. Opened from the mini bar, the page plays the
+// same way back up, untouched. A finger only: a mouse keeps the stage's clicks. The stage's own taps still work, as
+// a drag swallows only its own click. Any navigation puts the page back. Before paint, so a page opened from the
+// bar never shows a frame of itself in full first
 export const useDragToMinimise = (
   stageRef: RefObject<HTMLDivElement | null>,
   enabled: boolean
 ) => {
   const navigate = useNavigate()
   const { key } = useLocation()
-  useEffect(() => {
+  const grow = openedBy(useLocation().state) === 'resume'
+  useLayoutEffect(() => {
     const stage = stageRef.current
     return enabled && stage !== null && key !== ''
-      ? followDrags(stage, () => {
-          minimiseTo(navigate)
-        })
+      ? followDrags(
+          stage,
+          () => {
+            minimiseTo(navigate)
+          },
+          grow
+        )
       : undefined
-  }, [stageRef, enabled, navigate, key])
+  }, [stageRef, enabled, navigate, key, grow])
 }

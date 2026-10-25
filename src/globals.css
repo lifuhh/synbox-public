@@ -1965,15 +1965,12 @@
 
   /* The video flies between the player and the mini bar (youtube-engine › fly); what is around it fades in on the
      same curve: the bar when the player is left, the player's page when the bar is tapped (data-player-enter, set
-     by player-page.tsx). A fade only: a move would shift the box the video is laid over mid-flight */
-  [data-resume-box],
-  html[data-player-enter] .watch-page {
+     by player-page.tsx). A fade only: a move would shift the box the video is laid over mid-flight. Not where
+     the drag to minimise draws both ways itself (use-drag-to-minimise.ts): the bar it lands on (mini-bar.tsx ›
+     data-landed), and the player it grows back into (data-minimisable) */
+  [data-resume-box]:not([data-landed]),
+  html[data-player-enter] .watch-page:not([data-minimisable]) {
     animation: appear 320ms cubic-bezier(0.2, 0, 0, 1) backwards;
-  }
-
-  /* Landing from the drag to minimise, the bar's stand-in was already showing in its place */
-  html[data-minimised] [data-resume-box] {
-    animation: none;
   }
 
   /* The installed app's player held upright: the stage takes a finger's vertical drag itself (watch-page.tsx ›

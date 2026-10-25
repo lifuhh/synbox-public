@@ -136,6 +136,17 @@ const MiniPlayer = ({
   const restoring = useRef(false)
   const thumb = useRef<HTMLSpanElement>(null)
   const line = useRef<HTMLSpanElement>(null)
+  // Landing from the drag to minimise, the bar's stand-in was already showing in its place: no fade in. Marked once,
+  // before paint, so the flag clearing later doesn't start the fade then (globals.css)
+  const box = useRef<HTMLDivElement>(null)
+  useLayoutEffect(() => {
+    if (
+      box.current !== null &&
+      'minimised' in document.documentElement.dataset
+    ) {
+      box.current.dataset.landed = ''
+    }
+  }, [])
 
   const advance = useAdvance(song)
   useListenHere(song, startedHere)
@@ -261,7 +272,7 @@ const MiniPlayer = ({
   }
 
   return (
-    <div data-resume-box>
+    <div ref={box} data-resume-box>
       <MiniBarView
         song={song}
         playing={playing}
