@@ -176,7 +176,8 @@ test('the fixer hands a report it cannot fix to a human: off its list, still ope
     })
   ).toBe(204)
   expect(await listed()).toEqual([])
-  expect((await listReports(db))[0]).toMatchObject({
+  const [held] = await listReports(db)
+  expect(held).toMatchObject({
     droppedAt: null,
     resolvedAt: null,
     reviewNote: 'Audit clean',

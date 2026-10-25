@@ -428,10 +428,8 @@ test('expiry leaves a report the fixer handed to a human', async () => {
   )
   expect(await expireReports(db, NOW)).toBe(0)
   expect(await listOpenReports(db)).toEqual([])
-  expect((await listReports(db))[0]).toMatchObject({
-    droppedAt: null,
-    reviewAt: NOW - 4 * DAY,
-  })
+  const [after] = await listReports(db)
+  expect(after).toMatchObject({ droppedAt: null, reviewAt: NOW - 4 * DAY })
 })
 
 test('a review note is optional and short', () => {
