@@ -4,6 +4,7 @@ import {
   EllipsisVerticalIcon,
   LoaderCircleIcon,
   LockIcon,
+  MailIcon,
   ScrollTextIcon,
   ShieldIcon,
   LogOutIcon,
@@ -42,6 +43,10 @@ import { Button } from '../ui/button'
 // Its own chunk: only a browser without an install prompt opens it
 const InstallGuideDialog = lazy(
   async () => await import('./install-guide-dialog')
+)
+// Its own chunk too: loaded on the first press of Contact Us
+const ContactDialog = lazy(
+  async () => await import('@/components/shared/contact-dialog')
 )
 
 export const quotaText = ({ limit, used }: Quota) => {
@@ -159,6 +164,7 @@ const ProfileButtonDropdown = () => {
   const install = useInstallMethod()
   // Mounted from its first opening on, so it can animate closed
   const [guide, setGuide] = useState<'closed' | 'open' | null>(null)
+  const [contact, setContact] = useState<'closed' | 'open' | null>(null)
   const queryClient = useQueryClient()
   const { data: me, isPending } = useMe()
   const user = me?.user ?? null
@@ -217,6 +223,14 @@ const ProfileButtonDropdown = () => {
                 <span>Terms of Use</span>
               </Link>
             </DropdownMenuItem>
+            <DropdownMenuItem
+              className='cursor-pointer'
+              onClick={() => {
+                setContact('open')
+              }}>
+              <MailIcon className='mr-2 size-5 shrink-0' />
+              <span>Contact Us</span>
+            </DropdownMenuItem>
             {install.kind !== 'installed' && (
               <DropdownMenuItem
                 className='cursor-pointer'
@@ -250,6 +264,16 @@ const ProfileButtonDropdown = () => {
           </p>
         </DropdownMenuContent>
       </DropdownMenu>
+      {contact !== null && (
+        <Suspense>
+          <ContactDialog
+            open={contact === 'open'}
+            onOpenChange={(open) => {
+              setContact(open ? 'open' : 'closed')
+            }}
+          />
+        </Suspense>
+      )}
       {guide !== null && (
         <Suspense>
           <InstallGuideDialog

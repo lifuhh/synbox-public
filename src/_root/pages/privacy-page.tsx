@@ -14,6 +14,7 @@ const SECTIONS: LegalSection[] = [
       'Songs you generated and checked, and when, with a one-way code made from your network and your browser name, for the limits.',
       'Your history, saved songs, likes, playlists and settings, so they follow you to other devices.',
       'Lyrics reports you send.',
+      'Messages you send through Contact: the subject, the message, the email you give for a reply, your account or browser id, and a one-way code made from your network, for the daily limit. Each is emailed to us.',
       'Songs you played in the last hour, by account or by a random id in your browser, so a reload isn’t counted twice. Signed in, every visit to a song counts; as a guest, once per song an hour.',
       'With an account: how many songs you’ve played, when you last played one, and when you last used the app (to within 10 minutes).',
       'Without an account: a one-way code made from your network counts your free song.',
@@ -80,7 +81,7 @@ const SECTIONS: LegalSection[] = [
     items: [
       'Plays and song checks: up to a day.',
       'Usage events: 90 days.',
-      'Your account, its activity, library, reports and the songs you generated: until you delete them or ask us to.',
+      'Your account, its activity, library, reports, the songs you generated and your Contact messages: until you delete them or ask us to.',
       'Sign-in sessions: until you sign out or they expire.',
       'Error reports: Sentry keeps them for a limited time.',
     ],
@@ -97,7 +98,7 @@ const SECTIONS: LegalSection[] = [
         </Ext>
         .
       </>,
-      'To see, correct or delete your data, or to ask anything about it, message us on LinkedIn (below). Deleting removes your account and everything tied to it. We aim to reply within 30 days.',
+      'To see, correct or delete your data, or to ask anything about it, use Contact (below) or email me@edwardhuang.dev. Deleting removes your account and everything tied to it. We aim to reply within 30 days.',
     ],
     title: 'Your Choices',
   },

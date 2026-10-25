@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import type { ReactNode } from 'react'
-import { Link } from 'react-router'
 
 import { BoxScrollbar } from '@/components/shared/doc-scroll'
+import { SiteLinks } from '@/components/shared/site-links'
 
 export interface LegalSection {
   title: string
@@ -69,23 +69,7 @@ export const LegalPage = ({
         </div>
       </div>
 
-      <nav
-        aria-label='Links'
-        className='mx-auto flex gap-6 pt-8 text-sm text-muted-foreground'>
-        <a
-          href='https://www.linkedin.com/in/lifuhh/'
-          target='_blank'
-          rel='noreferrer'
-          className='py-0.5 hover:text-foreground'>
-          LinkedIn
-        </a>
-        <Link to='/privacy' className='py-0.5 hover:text-foreground'>
-          Privacy
-        </Link>
-        <Link to='/terms' className='py-0.5 hover:text-foreground'>
-          Terms
-        </Link>
-      </nav>
+      <SiteLinks />
       <BoxScrollbar box={box} />
     </section>
   )

@@ -4,6 +4,15 @@ import type { Context } from 'hono'
 import { touchActive } from './activity'
 import { createAuth } from './auth'
 import type { Env } from './auth'
+import {
+  contactAllowed,
+  emailContact,
+  listContacts,
+  networkOf,
+  parseContact,
+  saveContact,
+} from './contact'
+import type { ContactEnv } from './contact'
 import { parseEvents, pruneEvents, readUsage, saveEvents } from './events'
 import { fixer } from './fixer'
 import { generation } from './generation'
@@ -67,7 +76,8 @@ import type { Counted, ValidationLimits } from './validations'
 type AppEnv = Env &
   LibraryEnv &
   LyricsEnv &
-  GenerationEnv & {
+  GenerationEnv &
+  ContactEnv & {
     USER_DAILY_LIMIT: string
     GUEST_DAILY_LIMIT: string
     GUEST_DAILY_TOTAL: string
@@ -335,6 +345,33 @@ app.post('/api/events', async (c) => {
     await saveEvents(c.env.DB, actor, events, now)
   }
   return c.body(null, 204)
+})
+
+// A message from the Contact form (contact.ts), from anyone: kept for /admin and emailed to the owner after the
+// answer. A filled hidden field (a bot) is answered as sent and kept nowhere
+app.post('/api/contact', async (c) => {
+  const body = await c.req.json<Record<string, unknown>>().catch(() => null)
+  const parsed = parseContact(body)
+  if (!parsed.ok) {
+    return parsed.code === 'trap'
+      ? c.body(null, 201)
+      : c.json({ code: parsed.code }, 400)
+  }
+  const now = Date.now()
+  const device = typeof body?.device === 'string' ? body.device : null
+  const sender = listenerOf(await userIdOf(c.env, c.req.raw.headers), device)
+  const network = await networkOf(c.req.header('cf-connecting-ip') ?? '')
+  if (!(await contactAllowed(c.env.DB, sender, network, now))) {
+    return c.json({ code: 'too_many' }, 429)
+  }
+  const id = await saveContact(c.env.DB, parsed.contact, sender, network, now)
+  if (id === null) {
+    return c.json({ code: 'failed' }, 500)
+  }
+  c.executionCtx.waitUntil(
+    emailContact(c.env.DB, c.env, id, parsed.contact, sender, Date.now)
+  )
+  return c.body(null, 201)
 })
 
 // The songs anyone played most recently, latest first. Public; browsers keep it a minute
@@ -746,6 +783,11 @@ admin.post('/reports/:id/reopen', async (c) => {
 
 // How the app is used: active people a day and a week, each event's count, the most listened songs (events.ts)
 admin.get('/usage', async (c) => c.json(await readUsage(c.env.DB, Date.now())))
+
+// Contact form messages, newest first (contact.ts)
+admin.get('/messages', async (c) =>
+  c.json({ messages: await listContacts(c.env.DB) })
+)
 
 // Leads on someone working around the song limit (worker/src/signals.ts)
 admin.get('/signals', async (c) =>

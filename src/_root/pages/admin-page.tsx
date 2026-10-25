@@ -48,6 +48,7 @@ import {
   dropReasonLabel,
   reportState,
   useAdminGenerations,
+  useAdminMessages,
   useAdminReports,
   useAdminSettings,
   useAdminSignals,
@@ -60,6 +61,7 @@ import {
 } from '@/lib/admin-console'
 import type {
   AdminGeneration,
+  AdminMessage,
   AdminReport,
   ReportChange,
   ReportState,
@@ -1449,6 +1451,68 @@ const UsagePanel = () => {
   )
 }
 
+// Who wrote: their reply address, else their account, else a guest
+const messageFrom = (message: AdminMessage) =>
+  message.replyTo ??
+  message.accountEmail ??
+  (message.sender === null || message.sender.startsWith('d:')
+    ? 'Guest'
+    : message.sender)
+
+// Contact form messages, newest first (worker/src/contact.ts): each was also emailed, unless it says why not
+const MessagesPanel = () => {
+  const { data, error } = useAdminMessages()
+  if (error !== null) {
+    return error.message.includes('404') ? (
+      <p className='text-sm text-error'>Needs the Worker update.</p>
+    ) : (
+      <LoadError error={error} />
+    )
+  }
+  if (data === undefined) {
+    return <Skeleton className='h-40 w-full' />
+  }
+  if (data.messages.length === 0) {
+    return <p className='text-sm text-muted-foreground'>No messages yet.</p>
+  }
+  return (
+    <ol className='flex flex-col'>
+      {data.messages.map((message) => (
+        <li
+          key={message.id}
+          className='flex flex-col gap-1 border-t border-border py-3 text-sm'>
+          <div className='flex flex-wrap items-baseline justify-between gap-x-3'>
+            <p className='font-semibold text-foreground'>{message.subject}</p>
+            <p className='text-xs text-muted-foreground'>
+              <When value={message.createdAt} />
+            </p>
+          </div>
+          <p className='wrap-break-word whitespace-pre-wrap text-foreground'>
+            {message.message}
+          </p>
+          <p className='text-xs text-muted-foreground'>
+            {message.replyTo === null ? (
+              messageFrom(message)
+            ) : (
+              <a
+                href={`mailto:${message.replyTo}`}
+                className='underline underline-offset-2 hover:text-foreground'>
+                {message.replyTo}
+              </a>
+            )}
+            {message.emailError !== null && (
+              <span className='text-error'>
+                {' '}
+                · Not Emailed: {message.emailError}
+              </span>
+            )}
+          </p>
+        </li>
+      ))}
+    </ol>
+  )
+}
+
 const TABS = [
   'songs',
   'reports',
@@ -1456,6 +1520,7 @@ const TABS = [
   'accounts',
   'signals',
   'usage',
+  'messages',
 ] as const
 type Tab = (typeof TABS)[number]
 const isTab = (value: string | null): value is Tab =>
@@ -1502,6 +1567,9 @@ const AdminTabs = () => {
           <TabsTrigger value='usage' className='h-full'>
             Usage
           </TabsTrigger>
+          <TabsTrigger value='messages' className='h-full'>
+            Messages
+          </TabsTrigger>
         </TabsList>
       </div>
       <TabsContent value='songs' className='mt-4'>
@@ -1541,6 +1609,9 @@ const AdminTabs = () => {
       </TabsContent>
       <TabsContent value='usage' className='mt-4'>
         <UsagePanel />
+      </TabsContent>
+      <TabsContent value='messages' className='mt-4'>
+        <MessagesPanel />
       </TabsContent>
     </Tabs>
   )

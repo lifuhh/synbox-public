@@ -26,8 +26,15 @@
   // like is refused: src/library-songs.ts), and GENERATION_INVOKER_KEY (the key of the one account allowed to invoke
   // the generating service; without it generation answers 503: src/generation.ts), and APPWRITE_API_KEY (reads the
   // lyrics table for src/lyrics.ts and src/library-songs.ts), LOOKUP_KEY (the lookup service holds the same value)
-  // and TRACE_KEY (signs the translations' invisible mark: src/lyrics.ts, scripts/trace-decode.ts)
+  // and TRACE_KEY (signs the translations' invisible mark: src/lyrics.ts, scripts/trace-decode.ts), and CONTACT_TO
+  // (where the Contact form is emailed: a verified Email Routing destination of the account; without it messages
+  // are only kept for /admin: src/contact.ts)
+  // The Contact form's email (src/contact.ts). No restriction attribute, so no address is written here: the binding
+  // may mail any verified destination of the account, and CONTACT_TO picks it. The sender must be on one of the
+  // account's Email Routing domains
+  "send_email": [{ "name": "EMAIL" }],
   "vars": {
+    "CONTACT_FROM": "synbox@edwardhuang.dev",
     "GENERATION_URL": "https://synbox-flask-cloud-run-dtitfmn76a-as.a.run.app",
     "LOOKUP_BASE": "https://synbox-lookup-1045990822048.asia-southeast1.run.app",
     "LYRICS_GUEST_PER_HOUR": "60",

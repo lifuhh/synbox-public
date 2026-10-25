@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { Link } from 'react-router'
 
 import { BoxScrollbar } from '@/components/shared/doc-scroll'
+import { SiteLinks } from '@/components/shared/site-links'
 import {
   Accordion,
   AccordionContent,
@@ -68,9 +68,12 @@ const BUILT_WITH = [
   'pyopenjtalk',
 ]
 
-// One screen on a desktop, down to a 720px-high window (1440×900 at 125%): what Synbox does, how, the questions
-// people ask, and the fine print. From lg the questions share a row with Built With and the fine print
-// A window-high box that scrolls under the top bar, as home and the lists do, so it gets their scrollbar
+const HEADING = 'text-sm font-semibold tracking-wide text-muted-foreground'
+
+// One reading column at every width (42rem, about 70 characters a line): what Synbox does, the three steps in
+// order, the questions people ask (one below another, so opening one never leaves a gap beside it), what it's built
+// with, the fine print and the links. A window-high box that scrolls under the top bar, as home and the lists do,
+// so it gets their scrollbar
 const AboutPage = () => {
   const [box, setBox] = useState<HTMLElement | null>(null)
   return (
@@ -80,88 +83,90 @@ const AboutPage = () => {
       className='relative flex flex-1 flex-col overflow-y-auto pt-(--topbar-h) page-x pb-page-bottom-sm'>
       <title>About · Synbox</title>
 
-      <div className='mx-auto flex w-full max-w-3xl flex-col gap-8 pt-8 lg:max-w-5xl lg:gap-5 lg:pt-4'>
-        <header className='flex flex-col gap-3 text-center lg:gap-2'>
-          <h1 className='text-3xl font-bold'>About</h1>
-          <p className='mx-auto max-w-3xl text-lg text-pretty text-muted-foreground'>
+      <div className='mx-auto flex w-full max-w-2xl flex-col gap-10 pt-8 sm:pt-12'>
+        <header className='flex flex-col gap-3'>
+          <h1 className='text-3xl font-bold tracking-tight'>About Synbox</h1>
+          <p className='text-lg text-pretty text-muted-foreground'>
             Synbox turns a Japanese song on YouTube into karaoke: timed lyrics
             with furigana, romaji and translations over the original video.
           </p>
         </header>
 
-        <ol className='grid gap-3 sm:grid-cols-3'>
-          {STEPS.map((step, index) => (
-            <li
-              key={step.title}
-              className='flex flex-col gap-1 rounded-xl bg-card p-4 lg:py-3'>
-              <div className='flex items-baseline gap-2'>
-                <span className='text-sm font-semibold text-primary-text tabular-nums'>
-                  {index + 1}
-                </span>
-                <h2 className='font-semibold'>{step.title}</h2>
-              </div>
-              <p className='text-sm text-pretty text-muted-foreground'>
-                {step.text}
-              </p>
-            </li>
-          ))}
-        </ol>
+        <section aria-labelledby='how-it-works' className='flex flex-col gap-4'>
+          <h2 id='how-it-works' className={HEADING}>
+            How It Works
+          </h2>
+          <ol className='flex flex-col'>
+            {STEPS.map((step, index) => (
+              <li key={step.title} className='flex gap-4'>
+                {/* The number, and below it the line to the next one, so the steps read as one sequence */}
+                <div className='flex flex-col items-center'>
+                  <span className='grid size-8 shrink-0 place-items-center rounded-full bg-primary-subtle text-sm font-semibold text-primary-text tabular-nums'>
+                    {index + 1}
+                  </span>
+                  {index < STEPS.length - 1 && (
+                    <span aria-hidden className='w-px flex-1 bg-border' />
+                  )}
+                </div>
+                <div
+                  className={
+                    index < STEPS.length - 1
+                      ? 'flex flex-col pb-6'
+                      : 'flex flex-col'
+                  }>
+                  <h3 className='flex min-h-8 items-center font-semibold'>
+                    {step.title}
+                  </h3>
+                  <p className='text-pretty text-muted-foreground'>
+                    {step.text}
+                  </p>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </section>
 
-        <div className='flex flex-col gap-8 lg:grid lg:grid-cols-2 lg:items-start lg:gap-x-10'>
+        <section aria-labelledby='questions' className='flex flex-col gap-4'>
+          <h2 id='questions' className={HEADING}>
+            Questions
+          </h2>
           <Accordion type='multiple' className='w-full'>
             {FAQS.map((faq) => (
               <AccordionItem key={faq.question} value={faq.question}>
                 <AccordionTrigger>{faq.question}</AccordionTrigger>
-                <AccordionContent>{faq.answer}</AccordionContent>
+                <AccordionContent>
+                  <p className='text-pretty text-muted-foreground'>
+                    {faq.answer}
+                  </p>
+                </AccordionContent>
               </AccordionItem>
             ))}
           </Accordion>
+        </section>
 
-          <div className='flex flex-col gap-8 lg:gap-5'>
-            <section
-              aria-labelledby='built-with'
-              className='flex flex-col gap-3'>
-              <h2 id='built-with' className='text-sm font-semibold'>
-                Built With
-              </h2>
-              <ul className='flex flex-wrap gap-1.5'>
-                {BUILT_WITH.map((name) => (
-                  <li
-                    key={name}
-                    className='rounded-full bg-card px-2.5 py-1 text-xs text-muted-foreground'>
-                    {name}
-                  </li>
-                ))}
-              </ul>
-            </section>
+        <section aria-labelledby='built-with' className='flex flex-col gap-4'>
+          <h2 id='built-with' className={HEADING}>
+            Built With
+          </h2>
+          <ul className='flex flex-wrap gap-2'>
+            {BUILT_WITH.map((name) => (
+              <li
+                key={name}
+                className='rounded-full bg-card px-3 py-1 text-sm text-muted-foreground'>
+                {name}
+              </li>
+            ))}
+          </ul>
+        </section>
 
-            <p className='text-xs text-pretty text-muted-foreground'>
-              A non-commercial personal project with no ads. Songs, videos and
-              lyrics belong to their owners and are shown for learning and
-              singing along; rights holders can ask for removal through the link
-              below.
-            </p>
-          </div>
-        </div>
+        <p className='border-t border-border pt-6 text-xs text-pretty text-muted-foreground'>
+          A non-commercial personal project with no ads. Songs, videos and
+          lyrics belong to their owners and are shown for learning and singing
+          along; rights holders can ask for removal through Contact below.
+        </p>
       </div>
 
-      <nav
-        aria-label='Links'
-        className='mx-auto flex gap-6 pt-4 text-sm text-muted-foreground'>
-        <a
-          href='https://www.linkedin.com/in/lifuhh/'
-          target='_blank'
-          rel='noreferrer'
-          className='py-0.5 hover:text-foreground'>
-          LinkedIn
-        </a>
-        <Link to='/privacy' className='py-0.5 hover:text-foreground'>
-          Privacy
-        </Link>
-        <Link to='/terms' className='py-0.5 hover:text-foreground'>
-          Terms
-        </Link>
-      </nav>
+      <SiteLinks />
       <BoxScrollbar box={box} />
     </section>
   )
