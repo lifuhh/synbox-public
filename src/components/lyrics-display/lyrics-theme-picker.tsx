@@ -271,7 +271,7 @@ export const LyricsThemePicker = ({
           onChange={setTwoLines}
           hint={portrait ? 'Landscape only' : undefined}
         />
-        {/* The same as pulling the translation down onto the rows, or up off them */}
+        {/* The same as dropping the translation onto the rows, or pulling it off them */}
         {twoLines && !portrait && (
           <StyleSwitch
             label='Translation Under Lyrics'
