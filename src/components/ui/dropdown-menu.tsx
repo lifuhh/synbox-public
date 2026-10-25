@@ -5,6 +5,7 @@ import { cva } from 'class-variance-authority'
 import type { VariantProps } from 'class-variance-authority'
 import * as React from 'react'
 
+import '@/lib/turned-popper'
 import { cn } from '@/utils/cn'
 
 const DropdownMenu = DropdownMenuPrimitive.Root
