@@ -431,10 +431,19 @@ const RowThumbnail = ({ src }: { src: string }) => (
   </span>
 )
 
-// One song in the queue
-const SongRow = ({ job, picked }: { job: Job; picked: boolean }) => {
+// One song in the queue. Picked, its details open right under it and say how it is going, so it shows no status;
+// `actionBelow`: they carry its Play or Dismiss as well (a failed song's, or a finished one's once revealed)
+const SongRow = ({
+  job,
+  picked,
+  actionBelow = false,
+}: {
+  job: Job
+  picked: boolean
+  actionBelow?: boolean
+}) => {
   const title = titleOf(job)
-  const status = rowStatus(job)
+  const status = picked ? null : rowStatus(job)
   const name = title === '' ? 'this song' : title
   const at = finishedAt(job)
   const unread = useUnread(job.id)
@@ -448,7 +457,7 @@ const SongRow = ({ job, picked }: { job: Job; picked: boolean }) => {
         dismissGeneration(job.id)
       }}
       picked={picked}
-      action={<RowAction job={job} title={title} />}
+      action={actionBelow ? null : <RowAction job={job} title={title} />}
       main={
         <button
           type='button'
@@ -573,25 +582,58 @@ const FixList = ({
   </section>
 )
 
-// Every song in the queue, shared by all tabs, oldest first; picking one shows it in the panel
+// Every song in the queue, shared by all tabs, oldest first; picking one opens its details under its row, which
+// is their header: the song isn't drawn a second time. Not a list item of its own (role none), so the list still
+// counts songs
 const SongQueue = ({
   jobs,
   focusedId,
+  detail,
+  actionBelow,
 }: {
   jobs: readonly Job[]
   focusedId: string
+  detail: ReactNode
+  actionBelow: boolean
 }) => (
   <ul aria-label='Songs' className='-mr-1.5 -ml-4 flex flex-col gap-0.5'>
     <AnimatePresence initial={false}>
-      {jobs.map((job) => (
-        <SongRow key={job.id} job={job} picked={job.id === focusedId} />
-      ))}
+      {jobs.flatMap((job) => {
+        const picked = job.id === focusedId
+        const row = (
+          <SongRow
+            key={job.id}
+            job={job}
+            picked={picked}
+            actionBelow={picked && actionBelow}
+          />
+        )
+        return picked
+          ? [
+              row,
+              <li
+                key={`${job.id}:detail`}
+                role='none'
+                className='flex flex-col gap-4 pt-2 pr-1 pb-6 pl-4'>
+                {detail}
+              </li>,
+            ]
+          : [row]
+      })}
     </AnimatePresence>
   </ul>
 )
 
-// The picked song's header and steps, under the list
-const SongDetail = ({ job, view }: { job: Job; view: Presentation }) => {
+// The picked song's progress and steps; `header`: the song's own header above them, when no list row stands for it
+const SongDetail = ({
+  job,
+  view,
+  header,
+}: {
+  job: Job
+  view: Presentation
+  header: boolean
+}) => {
   const { status } = job
   const active = isActive(job)
   const percent = Math.floor(view.overall * 100)
@@ -614,7 +656,7 @@ const SongDetail = ({ job, view }: { job: Job; view: Presentation }) => {
 
   return (
     <>
-      <SongHeader job={job} />
+      {header && <SongHeader job={job} />}
 
       <AnimatePresence mode='wait' initial={false}>
         {view.revealed ? (
@@ -715,7 +757,8 @@ interface GenerationPanelProps {
   onDismissFixes: (fixes: readonly Fix[]) => void
 }
 
-// The top bar panel's body: every song in the queue, the steps of the one picked, then the reported songs fixed
+// The top bar panel's body: every song in the queue with the picked one's steps under its row (one song: its
+// header and steps), then the reported songs fixed
 const GenerationPanel = ({
   job,
   jobs,
@@ -723,13 +766,27 @@ const GenerationPanel = ({
   onDismissFixes,
 }: GenerationPanelProps) => {
   const view = usePresentation(job)
+  const listed = job !== null && jobs.length > 1
+  const detail =
+    job !== null && view !== null ? (
+      <SongDetail job={job} view={view} header={!listed} />
+    ) : null
   return (
     <div className='flex flex-col gap-4 p-4'>
       <DismissAll jobs={jobs} fixes={fixes} onDismissFixes={onDismissFixes} />
-      {job !== null && jobs.length > 1 && (
-        <SongQueue jobs={jobs} focusedId={job.id} />
+      {listed ? (
+        <SongQueue
+          jobs={jobs}
+          focusedId={job.id}
+          detail={detail}
+          actionBelow={
+            job.status.kind === 'failed' ||
+            (view?.revealed === true && outcomeOf(job) !== null)
+          }
+        />
+      ) : (
+        detail
       )}
-      {job !== null && view !== null && <SongDetail job={job} view={view} />}
       {fixes.length > 0 && <FixList fixes={fixes} onDismiss={onDismissFixes} />}
     </div>
   )
