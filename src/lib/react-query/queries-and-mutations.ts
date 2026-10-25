@@ -23,6 +23,9 @@ import { getChartsPlaylist, getYoutubeVideoInfo } from '../youtube/api'
 import { QUERY_KEYS } from './query-keys'
 
 const DAY_MS = 1000 * 60 * 60 * 24
+const HOUR_MS = 1000 * 60 * 60
+// How long a "not yet" answer (no lyrics, no timing) is trusted
+const NOT_YET_MS = 1000 * 30
 
 export const useGetLandingPagePlaylist = () =>
   useQuery({
@@ -132,14 +135,15 @@ export const useGetLyricsBySongId = (songId: string) =>
       return found === null ? null : { ...found.row, videoId: songId }
     },
     queryKey: [QUERY_KEYS.GET_LYRICS_BY_SONG_ID, songId],
-    // "No lyrics yet" is asked again on every visit: anyone's generation can finish in the meantime, and only the
-    // listener's own clears the cache (generation-host.tsx)
-    refetchOnMount: (query) => (query.state.data === null ? 'always' : false),
+    // "No lyrics yet" is asked again on a visit once it is NOT_YET_MS old: anyone's generation can finish in the
+    // meantime, and only the listener's own clears the cache (generation-host.tsx). Not on every mount: the page
+    // remounts its readers while it checks, and each would ask again
+    refetchOnMount: true,
     refetchOnReconnect: false,
     refetchOnWindowFocus: false,
     // A 404 is the normal "no lyrics yet" answer, so retrying only adds delay
     retry: false,
-    staleTime: 1000 * 60 * 60,
+    staleTime: (query) => (query.state.data === null ? NOT_YET_MS : HOUR_MS),
   })
 
 // data is null when the song has no karaoke timing yet. A previewed version
@@ -158,15 +162,14 @@ export const useGetKaraokeById = (
         : ((await getKaraoke(videoId, version, signal)) ??
           (await getKaraoke(videoId, null, signal))),
     queryKey: [QUERY_KEYS.GET_KARAOKE_BY_ID, videoId, version],
-    // No timing yet is asked again on every visit, as with the lyrics
-    refetchOnMount: (query) => (query.state.data === null ? 'always' : true),
     refetchOnWindowFocus: false,
     // A busy server turns requests away for up to a minute while a lyrics job
     // runs; giving up sooner leaves plain lyrics until something remounts
     retry: (failures, error) =>
       !(error instanceof RateLimitedError) && failures < 7,
     retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 20_000),
-    staleTime: 1000 * 60 * 60,
+    // No timing yet goes stale as the lyrics' "not yet" does
+    staleTime: (query) => (query.state.data === null ? NOT_YET_MS : HOUR_MS),
   })
 
 export const useSearchVideos = (query: string) =>
