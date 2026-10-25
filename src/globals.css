@@ -1050,7 +1050,12 @@
    container itself: a size container that changes height every frame has every element in it styled and laid out
    again, about 2,200 boxes per frame for a song's characters, and the growth stuttered */
 @utility watch-lyrics-band {
-  height: clamp(11rem, 46cqh, 17rem);
+  /* Its share of the area under the video, plus all of a top bar's row the page doesn't show (--topbar-freed) */
+  height: clamp(
+    calc(11rem + var(--topbar-freed, 0px)),
+    calc(46cqh + 0.54 * var(--topbar-freed, 0px)),
+    calc(17rem + var(--topbar-freed, 0px))
+  );
   --band-full: calc(100cqh - 1rem - var(--safe-bottom));
   /* Expanded (Expand Lyrics, or a tap on it), it grows to fill the screen under the video, on iOS's sheet curve;
      the sung line stays centred all the way (use-lyrics-follow follows the box's size) */
@@ -1893,6 +1898,22 @@ html[data-installed] *::-webkit-scrollbar {
   /* Without the top bar the video moves up under the status bar */
   html[data-immersive] {
     --topbar-h: var(--safe-top);
+  }
+
+  /* The installed app's player held upright has no top bar, as YouTube's: the video starts under the status bar,
+     full width at 16:9, and its Minimize (stage-controls.tsx) or the drag down goes back to the tabs, where search,
+     notifications and the account are. The bar's row goes to the lyrics window under the video
+     (watch-lyrics-band: --topbar-freed). A phone on its side keeps its floating bar; the website keeps its own */
+  @media (orientation: portrait) and (max-width: 999px) {
+    html[data-installed][data-watch]:not([data-landscape-lock]) {
+      --topbar-h: var(--safe-top);
+      --topbar-shown-h: var(--topbar-h);
+      --topbar-freed: 3.5rem;
+
+      & [data-topbar] {
+        display: none;
+      }
+    }
   }
 
   /* The version preview banner and the player's Tap to Unmute both hang under the top bar (in portrait, both

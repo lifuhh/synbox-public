@@ -81,6 +81,13 @@ const swallowNextClick = () => {
   }, SWALLOW_CLICK_MS)
 }
 
+// The player's own Minimize (stage-controls.tsx › MinimiseButton): the drag's way down, run to the bar at its settling
+// pace. Set while a minimisable player shows
+let collapseActive: (() => void) | null = null
+export const minimisePlayer = () => {
+  collapseActive?.()
+}
+
 // The drag on one stage element, until the cleanup; `minimise` once the video has landed on the mini bar. `grow`:
 // the page was opened from the mini bar, so it first runs the drag backwards, from the bar to the stage
 const followDrags = (
@@ -333,6 +340,21 @@ const followDrags = (
     }
   }
 
+  const collapse = () => {
+    if (drag !== null || frame !== 0 || growing) {
+      return
+    }
+    const path = begin()
+    if (path === null) {
+      return
+    }
+    settle(path, 1, () => {
+      landed = true
+      minimise()
+    })
+  }
+  collapseActive = collapse
+
   stage.addEventListener('pointerdown', onDown)
   stage.addEventListener('pointermove', onMove)
   stage.addEventListener('pointerup', onUp)
@@ -341,6 +363,9 @@ const followDrags = (
     growFromBar()
   }
   return () => {
+    if (collapseActive === collapse) {
+      collapseActive = null
+    }
     if (grow) {
       whenPlaced(null)
     }
