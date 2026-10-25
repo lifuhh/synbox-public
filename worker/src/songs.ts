@@ -25,10 +25,10 @@ export const likerOf = (userId: string) => `u:${userId}`
 // (the app's countListen)
 export const REPEAT_LISTEN_MS = 60_000
 // A guest's device id is made by the browser, so a new one costs nothing: past this many guest devices listening to
-// one song within GUEST_WINDOW_MS, further guests' listens don't count (the most played real song had 22 listens
-// in all on 2026-10-24)
+// one song within GUEST_WINDOW_MS, further guests' listens don't count. A ceiling on scripted inflation, far above
+// real traffic (it was 30 when every listener counted once an hour and the top song had 22 listens in all)
 export const GUEST_WINDOW_MS = 3_600_000
-export const GUEST_LISTENS_PER_HOUR = 30
+export const GUEST_LISTENS_PER_HOUR = 300
 
 // Whether this listen counts (?1 song, ?2 listener, ?3 now, ?4 1 for a guest): the listener's last counted listen of
 // the song is over REPEAT_LISTEN_MS old, and a guest is under the song's hourly guest limit
