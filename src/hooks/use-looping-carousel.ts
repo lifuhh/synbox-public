@@ -60,7 +60,7 @@ const onDragStart = (event: DragEvent) => {
 // once a scroller under it starts panning with the finger gone up or down at all, which a real swipe always has
 // (WebKit › ScrollingTreeScrollingNodeDelegateIOS.mm and WKWebViewIOS.mm ›
 // axesToPreventScrollingForPanGestureInScrollView), and the flick then lost its speed and moved one slide.
-// A sideways drag also cancels its touchmoves, so the page doesn't pan under it
+// A sideways drag also prevents its touchmoves' default, so iOS pans nothing under it where it still can
 const driveCarousel = (
   track: HTMLElement,
   count: number,
