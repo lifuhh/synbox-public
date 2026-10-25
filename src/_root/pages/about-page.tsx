@@ -158,6 +158,9 @@ const AboutPage = () => {
         <Link to='/privacy' className='py-0.5 hover:text-foreground'>
           Privacy
         </Link>
+        <Link to='/terms' className='py-0.5 hover:text-foreground'>
+          Terms
+        </Link>
       </nav>
       <BoxScrollbar box={box} />
     </section>
