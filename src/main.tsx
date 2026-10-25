@@ -1,3 +1,4 @@
+import './polyfills'
 import './instrument'
 import { reactErrorHandler } from '@sentry/react'
 import { MotionConfig } from 'motion/react'
