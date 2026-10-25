@@ -1411,6 +1411,19 @@
   display: none;
 }
 
+/* The installed phone app shows no scrollbar anywhere, as a native app doesn't: iOS's own indicator ran under the
+   top bar and the tab bar, so it was hidden for the first scrolls of every page anyway. Scrolling, momentum and the
+   bounce at a box's ends are untouched. Outside any layer, as above */
+html[data-installed],
+html[data-installed] * {
+  scrollbar-width: none;
+}
+
+html[data-installed]::-webkit-scrollbar,
+html[data-installed] *::-webkit-scrollbar {
+  display: none;
+}
+
 /* The drawn scrollbar's thumb (OverlayScrollbar) moves with the scroll itself: a scroll-driven animation the
    compositor runs, so no script or style work happens per frame and the thumb never trails the page. A page's box
    names its scroll (--overlay-scroll, visible from the thumb, which sits in the body); the document is scroll(root).
