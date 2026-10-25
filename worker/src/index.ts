@@ -63,7 +63,9 @@ import {
   addListen,
   isVideoId,
   likerOf,
+  LISTENS_IDS_MAX,
   listListenCounts,
+  listListensOf,
   listRecentListens,
   listenerOf,
   pruneListens,
@@ -383,6 +385,16 @@ app.get('/api/songs/recent', async (c) => {
 // The counts on song cards: { videoId: listens } for every song past the cards' threshold. Public; browsers keep
 // it five minutes
 app.get('/api/songs/listens', async (c) => {
+  // ?ids=a,b,c: those songs' exact counts (a list showing its own songs' listens); without it, the cards' counts
+  const ids = c.req.query('ids')
+  if (ids !== undefined) {
+    const videoIds = [...new Set(ids.split(','))]
+    if (videoIds.length > LISTENS_IDS_MAX || !videoIds.every(isVideoId)) {
+      return c.json({ code: 'bad_request' }, 400)
+    }
+    c.header('Cache-Control', 'public, max-age=300')
+    return c.json({ listens: await listListensOf(c.env.DB, videoIds) })
+  }
   c.header('Cache-Control', 'public, max-age=300')
   return c.json({ listens: await listListenCounts(c.env.DB) })
 })
