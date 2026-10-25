@@ -28,8 +28,11 @@ interface Glide {
 }
 
 interface Drag {
-  pointerId: number
+  // A touch's identifier for a finger (touch events), a pointer's id for a mouse or a pen
+  id: number
+  touch: boolean
   startX: number
+  startY: number
   startScroll: number
   from: number
   dragging: boolean
@@ -52,7 +55,12 @@ const onDragStart = (event: DragEvent) => {
 // Trackpads, wheels and keyboard scrolling stay native. Touch and a mouse's drag are driven here: iOS gives
 // any scroller with snap points its fast deceleration, which stops a flick after about one slide, and a mouse
 // can't scroll a row by dragging at all. A release glides as far as the page itself would, then lands on the
-// slide nearest to that point
+// slide nearest to that point.
+// A finger is followed through touch events, not pointer events: iOS ends a finger's pointer events (pointercancel)
+// once a scroller under it starts panning with the finger gone up or down at all, which a real swipe always has
+// (WebKit › ScrollingTreeScrollingNodeDelegateIOS.mm and WKWebViewIOS.mm ›
+// axesToPreventScrollingForPanGestureInScrollView), and the flick then lost its speed and moved one slide.
+// A sideways drag also cancels its touchmoves, so the page doesn't pan under it
 const driveCarousel = (
   track: HTMLElement,
   count: number,
@@ -197,9 +205,8 @@ const driveCarousel = (
     }
   }
 
-  const onPointerDown = (event: PointerEvent) => {
-    // A mouse drags with its main button only
-    if (drag || (event.pointerType === 'mouse' && event.button !== 0)) {
+  const grab = (id: number, touch: boolean, x: number, y: number) => {
+    if (drag) {
       return
     }
     suppressClick = false
@@ -210,48 +217,48 @@ const driveCarousel = (
     drag = {
       dragging: caught,
       from: Math.round(position()),
-      pointerId: event.pointerId,
+      id,
       samples: [],
       startScroll: track.scrollLeft,
-      startX: event.clientX,
+      startX: x,
+      startY: y,
+      touch,
     }
     if (caught) {
       snap(false)
     }
   }
 
-  const onPointerMove = (event: PointerEvent) => {
-    if (drag?.pointerId !== event.pointerId) {
-      return
-    }
-    const dx = event.clientX - drag.startX
-    if (!drag.dragging) {
-      if (Math.abs(dx) < DRAG_SLOP_PX) {
-        return
+  // The row under the drag; true while it is the row's (a drag that went up or down first is the page's scroll)
+  const follow = (current: Drag, x: number, y: number, t: number) => {
+    if (!current.dragging) {
+      const dx = Math.abs(x - current.startX)
+      const dy = Math.abs(y - current.startY)
+      if (dx < DRAG_SLOP_PX && dy < DRAG_SLOP_PX) {
+        return false
       }
-      drag.dragging = true
-      drag.startX = event.clientX
-      drag.startScroll = track.scrollLeft
+      if (dy >= dx) {
+        drag = null
+        return false
+      }
+      current.dragging = true
+      current.startX = x
+      current.startScroll = track.scrollLeft
       snap(false)
-      // A mouse that leaves the row keeps dragging it, and selects no text on the way
-      if (event.pointerType === 'mouse') {
-        track.setPointerCapture(event.pointerId)
-        getSelection()?.removeAllRanges()
-      }
     }
-    jump(drag.startScroll - (event.clientX - drag.startX))
-    const t = event.timeStamp
-    drag.samples.push({ t, x: event.clientX })
+    jump(current.startScroll - (x - current.startX))
+    current.samples.push({ t, x })
     while (
-      drag.samples.length > 2 &&
-      t - drag.samples[0].t > VELOCITY_WINDOW_MS
+      current.samples.length > 2 &&
+      t - current.samples[0].t > VELOCITY_WINDOW_MS
     ) {
-      drag.samples.shift()
+      current.samples.shift()
     }
+    return true
   }
 
-  const release = (event: PointerEvent, cancelled: boolean) => {
-    if (drag?.pointerId !== event.pointerId) {
+  const release = (at: number, cancelled: boolean) => {
+    if (!drag) {
       return
     }
     const { dragging, from, samples } = drag
@@ -267,7 +274,7 @@ const driveCarousel = (
       cancelled ||
       last === undefined ||
       last.t === first.t ||
-      event.timeStamp - last.t > STILL_MS
+      at - last.t > STILL_MS
         ? 0
         : -(last.x - first.x) / (last.t - first.t)
     const to = releaseTarget({
@@ -279,11 +286,73 @@ const driveCarousel = (
     })
     glideTo(to, glideMs(xOf(to) - track.scrollLeft, velocityPx))
   }
+
+  // A mouse or a pen; a finger comes through the touch events below
+  const ours = (event: PointerEvent) =>
+    drag?.touch === false && drag.id === event.pointerId
+  const onPointerDown = (event: PointerEvent) => {
+    // A mouse drags with its main button only
+    if (
+      event.pointerType === 'touch' ||
+      (event.pointerType === 'mouse' && event.button !== 0)
+    ) {
+      return
+    }
+    grab(event.pointerId, false, event.clientX, event.clientY)
+  }
+  const onPointerMove = (event: PointerEvent) => {
+    const current = drag
+    if (current === null || !ours(event)) {
+      return
+    }
+    const began = current.dragging
+    if (
+      follow(current, event.clientX, event.clientY, event.timeStamp) &&
+      !began &&
+      event.pointerType === 'mouse'
+    ) {
+      // A mouse that leaves the row keeps dragging it, and selects no text on the way
+      track.setPointerCapture(event.pointerId)
+      getSelection()?.removeAllRanges()
+    }
+  }
   const onPointerUp = (event: PointerEvent) => {
-    release(event, false)
+    if (ours(event)) {
+      release(event.timeStamp, false)
+    }
   }
   const onPointerCancel = (event: PointerEvent) => {
-    release(event, true)
+    if (ours(event)) {
+      release(event.timeStamp, true)
+    }
+  }
+
+  const touchOf = (event: TouchEvent) =>
+    drag?.touch === true
+      ? [...event.changedTouches].find((touch) => touch.identifier === drag?.id)
+      : undefined
+  const onTouchStart = (event: TouchEvent) => {
+    const [touch] = event.changedTouches
+    if (event.touches.length === 1 && touch !== undefined) {
+      grab(touch.identifier, true, touch.clientX, touch.clientY)
+    }
+  }
+  const onTouchMove = (event: TouchEvent) => {
+    const current = drag
+    const touch = touchOf(event)
+    if (
+      current !== null &&
+      touch !== undefined &&
+      follow(current, touch.clientX, touch.clientY, event.timeStamp) &&
+      event.cancelable
+    ) {
+      event.preventDefault()
+    }
+  }
+  const onTouchEnd = (event: TouchEvent) => {
+    if (touchOf(event) !== undefined) {
+      release(event.timeStamp, event.type === 'touchcancel')
+    }
   }
 
   // A drag that ends over a slide's link must not open it
@@ -326,6 +395,10 @@ const driveCarousel = (
   track.addEventListener('pointermove', onPointerMove)
   track.addEventListener('pointerup', onPointerUp)
   track.addEventListener('pointercancel', onPointerCancel)
+  track.addEventListener('touchstart', onTouchStart, { passive: true })
+  track.addEventListener('touchmove', onTouchMove, { passive: false })
+  track.addEventListener('touchend', onTouchEnd)
+  track.addEventListener('touchcancel', onTouchEnd)
   track.addEventListener('click', onClick, { capture: true })
   track.addEventListener('keydown', onKeyDown)
   track.addEventListener('dragstart', onDragStart)
@@ -338,6 +411,10 @@ const driveCarousel = (
     track.removeEventListener('pointermove', onPointerMove)
     track.removeEventListener('pointerup', onPointerUp)
     track.removeEventListener('pointercancel', onPointerCancel)
+    track.removeEventListener('touchstart', onTouchStart)
+    track.removeEventListener('touchmove', onTouchMove)
+    track.removeEventListener('touchend', onTouchEnd)
+    track.removeEventListener('touchcancel', onTouchEnd)
     track.removeEventListener('click', onClick, { capture: true })
     track.removeEventListener('keydown', onKeyDown)
     track.removeEventListener('dragstart', onDragStart)
