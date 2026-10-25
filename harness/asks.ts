@@ -138,7 +138,7 @@ const openOwnerSteps = (): string[] => {
   if (!existsSync(ownerSteps)) {
     return []
   }
-  const text = readFileSync(ownerSteps, 'utf8')
+  const text = readFileSync(ownerSteps, 'utf-8')
   const open =
     text.split(/^## /mu).find((part) => part.startsWith('Open')) ?? ''
   return open
