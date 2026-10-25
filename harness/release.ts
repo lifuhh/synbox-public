@@ -3,8 +3,13 @@
 //
 //   bun harness/release.ts --dry-run    what would ship; changes nothing
 //   bun harness/release.ts --preview    a deploy preview of staging, smoke-tested, for a phone check; merges nothing
-//   bun harness/release.ts              check staging's tree, PR staging → main, a deploy preview smoke-tested
-//                                       (harness/smoke.ts), merge, wait for live, smoke-test https://synbox.io
+//   bun harness/release.ts              check staging's tree, smoke-test a local production build of it (no build
+//                                       minutes), PR staging → main, a deploy preview smoke-tested, merge, wait for
+//                                       live, smoke-test https://synbox.io: 2 Netlify builds
+//   bun harness/release.ts --no-preview the same without the deploy preview, once the local smoke passed: 1 build
+//
+// Netlify build minutes are scarce: the local smoke (harness/local-site.ts, Netlify's own runtime on this machine)
+// runs first, so a broken staging stops the release with no build spent.
 //
 // One release at a time on this machine: a lock in the main checkout's .harness/ names the process holding it.
 
@@ -37,6 +42,7 @@ const NOT_APP = [
 const { values: flags } = parseArgs({
   options: {
     'dry-run': { type: 'boolean' },
+    'no-preview': { type: 'boolean' },
     preview: { type: 'boolean' },
   },
 })
@@ -252,6 +258,19 @@ const smoke = (dir: string, url: string): boolean => {
   )
 }
 
+/** `harness/smoke.ts --local` from staging's tree: a production build served by Netlify's runtime here, no build minutes */
+const smokeLocal = (dir: string): boolean => {
+  say(
+    "smoke: a local production build of staging (Netlify's runtime on this machine; no Netlify build)"
+  )
+  return (
+    spawnSync('bun', ['harness/smoke.ts', '--local'], {
+      cwd: dir,
+      stdio: 'inherit',
+    }).status === 0
+  )
+}
+
 /** Builds a deploy preview of staging's tip (a [preview] commit) and smoke-tests it; false when the smoke fails */
 const smokePreview = (dir: string, number: string): boolean => {
   run(
@@ -300,6 +319,29 @@ const waitForLive = (sha: string) => {
   )
 }
 
+/** The local smoke, before anything is built on Netlify; says how many builds the rest will spend */
+const smokeBeforeBuilding = (dir: string) => {
+  if (flags.preview === true && flags['no-preview'] === true) {
+    throw new Error(
+      '--preview and --no-preview ask for opposite things; pick one'
+    )
+  }
+  if (!smokeLocal(dir)) {
+    throw new Error(
+      'smoke FAIL on a local production build of staging: no PR opened, no Netlify build spent. Fix it in a PR into staging, then release again'
+    )
+  }
+  if (flags.preview === true) {
+    say('builds: 1 (the deploy preview); nothing is merged')
+  } else if (flags['no-preview'] === true) {
+    say(
+      'builds: 1 (main only: --no-preview; the local smoke stands in for the preview)'
+    )
+  } else {
+    say('builds: 2 (the deploy preview, then main)')
+  }
+}
+
 const release = () => {
   git('fetch', '--quiet', 'origin')
   const ahead = git('rev-list', '--count', `origin/main..origin/${STAGING}`)
@@ -316,10 +358,11 @@ const release = () => {
   checkStaging(dir)
   if (flags['dry-run'] === true) {
     say(
-      'smoke: a release builds a deploy preview of staging and runs harness/smoke.ts on it before merging, then on the live site'
+      'smoke: a release smoke-tests a local production build of staging first (no build minutes), then a deploy preview (1 Netlify build; skipped with --no-preview), then the live site after the merge (1 build)'
     )
     return
   }
+  smokeBeforeBuilding(dir)
   const open = gh(
     'pr',
     'list',
@@ -356,7 +399,7 @@ const release = () => {
           )
         )?.groups?.n ?? '')
       : open
-  const smoked = smokePreview(dir, number)
+  const smoked = flags['no-preview'] === true || smokePreview(dir, number)
   if (flags.preview === true) {
     say(
       smoked

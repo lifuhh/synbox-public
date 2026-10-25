@@ -4,6 +4,7 @@ The checks that judge a change before it ships, so an agent's "done" comes with 
 
 - **`bun harness/bench/cli.ts check`**: exact checks, about 90 seconds (a minute before the lyric-shift audits, 2026-10-26; 45 s before the 320px view and the accessibility counts, 2026-10-24). Every PR into `staging` needs it to pass on its committed tree, and every release runs it again on staging's combined tree.
 - **`bun harness/views.ts <path-or-url>`**: one page in all views, audited and shot side by side, for looking at a UI change.
+- **`bun harness/smoke.ts --local`**: the same flows on a production build of this checkout served by Netlify's own runtime on this machine (`harness/local-site.ts`): no Netlify build minutes, about 45 seconds with the build. Run it before anything that builds on Netlify.
 - **`bun harness/smoke.ts <url>`**: the main user flows on a real deployed copy (a deploy preview, or https://synbox.io) against the real backends, read-only, about 40 seconds. `check` judges code and layout on recorded data; this is the check that the site still works.
 - **`bun harness/bench/cli.ts trend`**: timing benchmarks, minutes to an hour, off the release path. It writes what it finds to a queue for a person to read; it never blocks anything.
 
@@ -63,7 +64,10 @@ Each view gets the same audit `check` runs (`probes/layout.ts` › `auditPage`, 
 bun harness/smoke.ts https://deploy-preview-335--synbox.netlify.app   # a deploy preview of staging
 bun harness/smoke.ts https://synbox.io                                 # production
 bun harness/smoke.ts https://synbox.io --song impSuIygMiQ              # a chosen library song instead of the first with karaoke
+bun harness/smoke.ts --local                                          # this checkout, built and served here: no build minutes
 ```
+
+**`--local`** (`harness/local-site.ts`) builds the checkout for production (`bun run build`, with netlify.toml's `[build.environment]` and the main checkout's env file, and never `SENTRY_AUTH_TOKEN`), copies what Netlify deploys (`dist/`, `netlify/`, `netlify.toml`) to a temporary folder and serves it with `netlify-cli dev` (pinned `27.14.2`, `--dir dist`, `#static`): the Netlify functions, the `/v/*` Edge Function, netlify.toml's redirects (the `/api` proxies to the live Worker, the SPA fallback) and headers, exactly as configured. A small proxy in front finishes any request a browser drops, because netlify-cli exits on an aborted request. The copy is outside `~/github-workspace`, whose stray `package.json` makes netlify-cli serve the wrong folder. Not covered locally, so only a deploy preview shows them: variables set in Netlify's UI, the CDN cache, and HTTPS (HSTS is checked as a header only). `bun harness/local-site.ts` serves this checkout the same way until Ctrl-C; its output goes to `$TMPDIR/synbox-local-site.log`.
 
 Each flow runs in all views (web, PWA portrait, PWA landscape; the views side by side, flows one after another in each, a fresh browser context per flow), against the site's real backends. Songs are picked from the live data when the run starts: the first `karaoke: true` song in `/api/library/songs`, a word of its title (Japanese first, `【…】` tags and words like "feat" or "cover" skipped), the first song of the YouTube Top 100 Japan chart that is not in the library, and the first of two public non-song videos (`jNQXAC9IVRw`, `aqz-KE-bpKQ`) in neither. A pick that can't be made fails its flows with `precondition: …`.
 
@@ -80,7 +84,7 @@ Each flow runs in all views (web, PWA portrait, PWA landscape; the views side by
 | `csp` | no `securitypolicyviolation` event and no CSP console message from the site's own documents, in any flow or view |
 | `no-writes` | no write reached Synbox's services unanswered |
 
-**Read-only, enforced at the network layer.** Every POST, PUT, PATCH and DELETE to the site's origin (the auth Worker behind `/api`), `*.synbox.io`, Appwrite, Sentry and the Cloud Run services is caught by a Playwright route before it leaves. Five are expected and answered in place (`smoke.ts` › `WRITE_RULES`): the listen, Sentry's envelopes, `/generation-check`, `/validate` and the Google sign-in start. Anything else is blocked and fails `no-writes` with its method, URL, view and flow; add a rule only with what that write would have changed. Service workers are blocked, since a route never sees what one fetches. A deploy preview's Netlify Drawer (`/.netlify/scripts/`) is blocked as Netlify's, not the app's. Google Fonts come from the bench's local copy, as in `check`.
+**Read-only, enforced at the network layer.** Every POST, PUT, PATCH and DELETE to the site's origin (the auth Worker behind `/api`), `*.synbox.io`, Appwrite, Sentry and the Cloud Run services is caught by a Playwright route before it leaves. Six are expected and answered in place (`smoke.ts` › `WRITE_RULES`): the listen, the usage events, Sentry's envelopes, `/generation-check`, `/validate` and the Google sign-in start. Anything else is blocked and fails `no-writes` with its method, URL, view and flow; add a rule only with what that write would have changed. Service workers are blocked, since a route never sees what one fetches. A deploy preview's Netlify Drawer (`/.netlify/scripts/`) is blocked as Netlify's, not the app's. Google Fonts come from the bench's local copy, as in `check`.
 
 It never covers: a real sign-in (the Google round trip and the session it makes), a counted listen (the Worker's write), a paid generation (anything past `/validate`), an admin's versions list, and anything a signed-in user sees. A flow that fails because this machine lost its connection (`ERR_INTERNET_DISCONNECTED` and the like) runs once more, and its line says so. Each run writes `.reports/YYYY-MM-DD-smoke-<host>/` in the main checkout: `index.html` (every flow and view with its evidence, every answered write, every violation, a screenshot of each failure) and `result.json`.
 
@@ -91,20 +95,23 @@ Finished work is merged into `staging`, never into `main`. `bun harness/release.
 ```sh
 bun harness/release.ts --dry-run   # what staging would ship
 bun harness/release.ts --preview   # one deploy preview of staging, smoke-tested, for a phone check; merges nothing
-bun harness/release.ts             # check, PR staging → main, deploy preview + smoke, merge, wait until live, smoke the live site
+bun harness/release.ts             # check, local smoke, PR staging → main, deploy preview + smoke, merge, live, smoke live: 2 builds
+bun harness/release.ts --no-preview  # the same without the deploy preview, once the local smoke passed: 1 build
+bun harness/smoke.ts --local       # the smoke alone, on a local production build: no builds
 bun harness/smoke.ts <url>         # the smoke alone, on any deployed copy
 ```
 
 A release, in order, each step stopping it on a failure (fix it in a PR into staging and release again):
 
 1. `check` on staging's tree, every time (per-PR verdicts judged other trees), unless nothing in `harness/gate.json` › `paths` differs from `main`. About a minute.
-2. The PR staging → main, opened or reused.
-3. A deploy preview of staging's tip: an empty `[preview]` commit pushed to staging (`scripts/netlify-ignore.sh` builds previews only for those), then the PR's commit status from Netlify is polled until the preview is ready, up to 15 minutes. A failed build stops the release with its log link; `bunx netlify-cli build --offline --context deploy-preview` in a copy of staging reproduces it (this is how #336's Edge Function import was found).
-4. `harness/smoke.ts` from staging's tree on the preview (about 40 seconds; "On a deployed copy" above). A FAIL stops the release before anything is merged. The preview uses the production backend: a failure caused only by backend changes not yet released means releasing the backend first.
-5. The merge, then the wait until https://synbox.io serves it.
-6. `harness/smoke.ts` on https://synbox.io. The release is already live, so a FAIL can't stop it: it prints a loud warning with the way back (Netlify › Deploys › the previous production deploy › Publish deploy, instant; then `git revert -m 1 <merge>` in a PR into staging and a release) and exits 1.
+2. `harness/smoke.ts --local` on staging's tree: a production build served by Netlify's runtime here (about 45 seconds). A FAIL stops the release before any PR or build: no build minutes spent. It caught the 2026-10-25 #414 chart-song failure and the missing `/api/events` and `/api/contact` proxies (#458) with no build.
+3. The PR staging → main, opened or reused.
+4. A deploy preview of staging's tip (skipped with `--no-preview`, which saves one build): an empty `[preview]` commit pushed to staging (`scripts/netlify-ignore.sh` builds previews only for those), then the PR's commit status from Netlify is polled until the preview is ready, up to 15 minutes. A failed build stops the release with its log link; `bunx netlify-cli build --offline --context deploy-preview` in a copy of staging reproduces it (this is how #336's Edge Function import was found).
+5. `harness/smoke.ts` from staging's tree on the preview (about 40 seconds; "On a deployed copy" above). A FAIL stops the release before anything is merged. The preview uses the production backend: a failure caused only by backend changes not yet released means releasing the backend first.
+6. The merge, then the wait until https://synbox.io serves it.
+7. `harness/smoke.ts` on https://synbox.io. The release is already live, so a FAIL can't stop it: it prints a loud warning with the way back (Netlify › Deploys › the previous production deploy › Publish deploy, instant; then `git revert -m 1 <merge>` in a PR into staging and a release) and exits 1.
 
-`--preview` runs steps 1 to 4 and prints the smoke verdict with the link. One release runs at a time on a machine (a lock in `.harness/release/`). A release that changes only docs, the harness, scripts or Markdown costs no Netlify build (`scripts/netlify-ignore.sh`).
+`--preview` runs steps 1 to 5 and prints the smoke verdict with the link. Each run prints how many Netlify builds it will spend after the local smoke. One release runs at a time on a machine (a lock in `.harness/release/`). A release that changes only docs, the harness, scripts or Markdown costs no Netlify build (`scripts/netlify-ignore.sh`).
 
 ## Timing: `trend`
 
