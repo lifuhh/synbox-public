@@ -20,6 +20,7 @@ import {
 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 
+import { STAGE_DISC } from '@/components/lyrics-display/rail-button'
 import { TheaterIcon } from '@/components/svgicons'
 import { Slider } from '@/components/ui/slider'
 import { playerSurfaceAtom } from '@/context/atoms'
@@ -273,10 +274,11 @@ const FullScreenChrome = ({
       <div
         data-player-chrome
         className={cn(
-          'hidden absolute top-(--stage-corner-top) right-[calc(var(--safe-right)+0.625rem)] z-30 flex-col items-center gap-1 rounded-full bg-black/55 p-1 shadow-rail backdrop-blur-md transition-translate-fade duration-300 ease-out sm:right-[calc(var(--safe-right)+1.125rem)] touch:flex',
-          // On its side, on the control bar's right-hand axis: the bar's 44px buttons sit inside its
-          // max(1rem, safe area) padding, this 40px column 2px further in
-          'short:top-[calc(var(--topbar-h)+0.25rem)] short:right-[calc(var(--spacing-controls-right)+2px)] short:rounded-xl',
+          'hidden absolute top-(--stage-corner-top) right-[calc(var(--safe-right)+0.125rem)] z-30 flex-col items-center gap-2 p-2 transition-translate-fade duration-300 ease-out sm:right-[calc(var(--safe-right)+0.625rem)] touch:flex',
+          // On its side, vertically centred, mirroring the rail on the left, on the control bar's right-hand
+          // axis: the bar's 44px buttons sit inside its max(1rem, safe area) padding, these 36px discs 4px
+          // further in
+          'short:top-1/2 short:right-[calc(var(--spacing-controls-right)-0.25rem)] short:-translate-y-1/2 short:gap-1.5',
           visible
             ? 'translate-x-0'
             : 'translate-x-[calc(100%+var(--spacing-controls-right)+1.125rem)] motion-reduce:translate-x-0 motion-reduce:opacity-0',
@@ -288,7 +290,7 @@ const FullScreenChrome = ({
           onClick={() => {
             void landscape.toggleLock()
           }}
-          className='rounded-full short:size-8 short:rounded-lg'>
+          className={STAGE_DISC}>
           <SmartphoneIcon className='size-5 rotate-90' />
         </IconButton>
         {/* The system turns a phone held either way only while its rotation lock is off; with it on, the
@@ -299,7 +301,7 @@ const FullScreenChrome = ({
             onClick={() => {
               landscape.flip()
             }}
-            className='rounded-full short:size-8 short:rounded-lg'>
+            className={STAGE_DISC}>
             <RefreshCwIcon className='size-5' />
           </IconButton>
         )}
@@ -308,7 +310,7 @@ const FullScreenChrome = ({
           onClick={() => {
             onLockedChange(true)
           }}
-          className='rounded-full short:size-8 short:rounded-lg'>
+          className={STAGE_DISC}>
           <LockIcon className='size-5' />
         </IconButton>
       </div>

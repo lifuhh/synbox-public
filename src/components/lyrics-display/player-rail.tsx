@@ -240,7 +240,7 @@ const SongActionsMenu = ({
           label='More Actions'
           className={cn(
             'hidden portrait:grid short:grid',
-            open && 'bg-white/10'
+            open && 'bg-black/75'
           )}>
           <EllipsisIcon className='size-5 shrink-0' />
         </RailButton>
@@ -282,18 +282,16 @@ const actionsClass = (inline: boolean, chart: boolean) =>
     : cn(groupClass(inline), 'short:hidden', !inline && 'portrait:hidden')
 const lyricsGroupClass = (inline: boolean, chart: boolean) =>
   chart ? 'hidden' : groupClass(inline)
-const dividerClass = (chart: boolean) =>
-  chart
-    ? 'hidden'
-    : 'my-0.5 h-px w-6 shrink-0 bg-white/15 portrait:my-0 portrait:h-6 portrait:w-px'
+// A gap between the lyrics' buttons and the song's, the discs' own spacing again
+const dividerClass = (chart: boolean) => (chart ? 'hidden' : 'size-1 shrink-0')
 
 const railClass = (inline: boolean, interactive: boolean, open: boolean) =>
   inline
     ? 'flex w-fit max-w-full flex-wrap items-center gap-x-5 gap-y-2 watch-narrow:w-full watch-narrow:flex-col watch-narrow:items-stretch'
     : cn(
-        // Its corners are the buttons' 8px radius plus the 4px padding around them, in every layout
-        'flex flex-col items-center gap-1 rounded-r-xl bg-black/55 p-1 shadow-rail backdrop-blur-md transition-translate-fade duration-300 ease-out',
-        'portrait:no-scrollbar portrait:max-w-[calc(100vw-0.5rem)] portrait:flex-row portrait:gap-1 portrait:overflow-x-auto portrait:rounded-xl',
+        // Discs on the video, no panel: padded so their shadows and focus rings aren't clipped
+        'flex flex-col items-center gap-2 p-2 transition-translate-fade duration-300 ease-out short:gap-1.5',
+        'portrait:no-scrollbar portrait:max-w-[calc(100vw-0.5rem)] portrait:flex-row portrait:overflow-x-auto',
         interactive && 'pointer-events-auto',
         // Past the notch inset too, or a phone on its side shows the rail's edge beside it
         open
@@ -491,13 +489,13 @@ const PlayerRail = ({ inline = false }: { inline?: boolean }) => {
     <TooltipProvider delayDuration={190} disableHoverableContent>
       <RailInline value={inline}>
         <RailTooltipsOff value={peek.panelOpen}>
-          {/* Left edge, vertically centred; in portrait a row on the control bar, in thumb reach; on a phone
-            on its side a compact column under the top bar, with the control bar starting to its right */}
+          {/* Left edge, vertically centred, a phone on its side too (owner, 2026-10-25), with the control bar
+            starting to its right there; in portrait a row on the control bar, in thumb reach */}
           <div
             className={
               inline
                 ? 'min-w-0'
-                : 'pointer-events-none fixed top-1/2 left-(--safe-left) z-50 -translate-y-1/2 portrait:top-auto portrait:bottom-[var(--stage-controls-h,5rem)] portrait:left-1/2 portrait:-translate-x-1/2 portrait:translate-y-0 short:top-[calc(var(--topbar-h)+0.25rem)] short:translate-y-0'
+                : 'pointer-events-none fixed top-1/2 left-(--safe-left) z-50 -translate-y-1/2 portrait:top-auto portrait:bottom-[var(--stage-controls-h,5rem)] portrait:left-1/2 portrait:-translate-x-1/2 portrait:translate-y-0'
             }>
             <nav
               ref={panelRef}
