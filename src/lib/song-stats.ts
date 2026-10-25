@@ -36,7 +36,7 @@ export const countListen = (videoId: string) => {
   lastListen = { at: now, videoId }
   const send = async () => {
     try {
-      // The Worker counts every visit, but not one within a minute of the same listener's last (worker/src/songs.ts)
+      // The Worker counts an account's every visit (not a reload within a minute) and a guest's once per song an hour (worker/src/songs.ts)
       await fetch(`/api/songs/${videoId}/listen`, {
         body: JSON.stringify({ device: deviceId() }),
         credentials: 'same-origin',

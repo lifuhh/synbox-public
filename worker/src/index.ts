@@ -291,8 +291,8 @@ const refusedSong = async (env: AppEnv, videoId: string) => {
     : ({ body: { code: 'library_unavailable' }, status: 503 } as const)
 }
 
-// A visit to a song's player page ({ device } for a guest): one more listen, unless the same account or device counted
-// one of the song in the last minute
+// A visit to a song's player page ({ device } for a guest): one more listen, unless the same account counted one of
+// the song in the last minute, or the same guest device in the last hour (songs.ts)
 // (songs.ts › addListen). A listen that doesn't count still answers 204
 app.post('/api/songs/:videoId/listen', async (c) => {
   const videoId = c.req.param('videoId')

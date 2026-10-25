@@ -20,20 +20,23 @@ export const listenerOf = (userId: string | null, device: string | null) => {
 // stored and count for nothing
 export const likerOf = (userId: string) => `u:${userId}`
 
-// Every visit to a song counts, leaving and coming back included; a listen this soon after the listener's last
+// An account's every visit to a song counts, leaving and coming back included; a listen this soon after its last
 // counted one of the song is the same visit (a reload, a page mounted twice). Replays within a visit send nothing
 // (the app's countListen)
 export const REPEAT_LISTEN_MS = 60_000
+// A guest's device counts one listen per song an hour: guests' plays only feed the numbers
+export const GUEST_WINDOW_MS = 3_600_000
 // A guest's device id is made by the browser, so a new one costs nothing: past this many guest devices listening to
 // one song within GUEST_WINDOW_MS, further guests' listens don't count. A ceiling on scripted inflation, far above
-// real traffic (it was 30 when every listener counted once an hour and the top song had 22 listens in all)
-export const GUEST_WINDOW_MS = 3_600_000
+// real traffic (it was 30 when the top song had 22 listens in all, 2026-10-24)
 export const GUEST_LISTENS_PER_HOUR = 300
 
 // Whether this listen counts (?1 song, ?2 listener, ?3 now, ?4 1 for a guest): the listener's last counted listen of
-// the song is over REPEAT_LISTEN_MS old, and a guest is under the song's hourly guest limit
+// the song is over REPEAT_LISTEN_MS old (GUEST_WINDOW_MS for a guest), and a guest is under the song's hourly guest
+// limit
 const COUNTS = `
-  not exists (select 1 from "songListen" where "videoId" = ?1 and "listener" = ?2 and "at" > ?3 - ${REPEAT_LISTEN_MS})
+  not exists (select 1 from "songListen" where "videoId" = ?1 and "listener" = ?2
+    and "at" > ?3 - (case when ?4 = 1 then ${GUEST_WINDOW_MS} else ${REPEAT_LISTEN_MS} end))
   and (?4 = 0 or (select count(*) from "songListen" where "videoId" = ?1 and "listener" like 'd:%'
     and "at" > ?3 - ${GUEST_WINDOW_MS}) < ${GUEST_LISTENS_PER_HOUR})`
 

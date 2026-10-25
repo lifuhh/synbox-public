@@ -35,7 +35,7 @@ const listensBy = async (
   }
 }
 
-test('every visit counts, but a reload within a minute is the same visit', async () => {
+test("an account's every visit counts, but a reload within a minute is the same visit", async () => {
   const { db } = migratedD1()
   const before = await readStats(db, SONG, null)
   await addListen(db, SONG, 'u:me', 1)
@@ -51,6 +51,16 @@ test('every visit counts, but a reload within a minute is the same visit', async
   await addListen(db, 'aaaaaaaaaaa', 'u:me', 3)
   const after = await readStats(db, SONG, null)
   expect([before.listens, sameVisit.listens, after.listens]).toEqual([0, 1, 4])
+})
+
+test("a guest's device counts one listen per song an hour", async () => {
+  const { db } = migratedD1()
+  await addListen(db, SONG, guest(1), 1)
+  await addListen(db, SONG, guest(1), 5 * 60_000)
+  const withinHour = await readStats(db, SONG, null)
+  await addListen(db, SONG, guest(1), GUEST_WINDOW_MS + 2)
+  const later = await readStats(db, SONG, null)
+  expect([withinHour.listens, later.listens]).toEqual([1, 2])
 })
 
 test("past the song's hourly guest limit a new device's listen doesn't count; an account's still does", async () => {
