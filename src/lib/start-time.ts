@@ -1,21 +1,21 @@
 // Where a song's link asks it to start, as YouTube writes it: `?t=250`, `250s`, `4m10s`, `1h2m3s`, or `4:10`.
 // Null when there is none or it can't be read, so the song starts from the top
-const UNITS = /^(?:(\d+)h)?(?:(\d+)m)?(?:(\d+(?:\.\d+)?)s?)?$/u
-const CLOCK = /^(?:(\d+):)?(\d{1,2}):(\d{2}(?:\.\d+)?)$/u
+const UNITS =
+  /^(?:(?<hours>\d+)h)?(?:(?<minutes>\d+)m)?(?:(?<seconds>\d+(?:\.\d+)?)s?)?$/u
+const CLOCK =
+  /^(?:(?<hours>\d+):)?(?<minutes>\d{1,2}):(?<seconds>\d{2}(?:\.\d+)?)$/u
 
 export const parseStartTime = (value: string | null): number | null => {
   const text = value?.trim().toLowerCase() ?? ''
-  if (text === '') {
-    return null
-  }
-  const clock = CLOCK.exec(text)
-  const units = clock === null ? UNITS.exec(text) : null
-  const [hours, minutes, seconds] = (clock ?? units)?.slice(1) ?? []
-  if (clock === null && units === null) {
+  const parts =
+    text === '' ? undefined : (CLOCK.exec(text) ?? UNITS.exec(text))?.groups
+  if (parts === undefined) {
     return null
   }
   const total =
-    Number(hours ?? 0) * 3600 + Number(minutes ?? 0) * 60 + Number(seconds ?? 0)
+    Number(parts.hours ?? 0) * 3600 +
+    Number(parts.minutes ?? 0) * 60 +
+    Number(parts.seconds ?? 0)
   return Number.isFinite(total) && total > 0 ? total : null
 }
 
