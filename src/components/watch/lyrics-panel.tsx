@@ -107,19 +107,15 @@ const useExpandTap = (on: boolean, expand: () => void) => {
 // The line before the sung one fades out at the top edge instead of being cut through; the fade's height is
 // padding too, so the first line (its furigana included) starts below it. Under the last line, only room to
 // clear Current Line (12px off the foot, 36px tall) and a gap. Scrolling on past either end moves the page, so
-// the wheel never goes dead over the panel. The band fades at both edges (watch-lyrics-band-scroller), and
-// scrolls under a finger only expanded: small, it sits in the page's own scroll, and a drag on it scrolls the page
-const scrollerLook = (band: boolean, expanded: boolean, empty: boolean) => {
+// the wheel never goes dead over the panel. The band fades at both edges (watch-lyrics-band-scroller)
+const scrollerLook = (band: boolean, empty: boolean) => {
   if (!band) {
     return 'overflow-y-auto [mask-image:linear-gradient(to_bottom,transparent,#000_1.25rem)] pt-5 pb-16'
   }
   if (empty) {
     return 'grid place-items-center'
   }
-  return cn(
-    'watch-lyrics-band-scroller',
-    expanded ? 'overflow-y-auto' : 'overflow-hidden'
-  )
+  return 'watch-lyrics-band-scroller overflow-y-auto'
 }
 
 // The band's own corner: Expand while small; Lyrics Style and Minimize while expanded, when the rail's
@@ -221,21 +217,18 @@ const EmptyLyrics = ({
   )
 }
 
-// The band's size: small in the page, or expanded to fill the screen under the video. Small, it only follows the
-// song (a drag on it scrolls the page) and a tap expands it; back to small, it follows the song again
+// The band's size: small in the page, or expanded to fill the screen under the video. Either size scrolls to read
+// around the song, until Current Line; small, a tap expands it; back to small, it follows the song again
 const useBandSize = ({
   band,
   expanded,
   follow,
-  handlers,
   hasLines,
   onExpandedChange,
 }: {
   band: boolean
   expanded: boolean
   follow: () => void
-  // The follow hook's own presses and scrolls on the lyrics
-  handlers: object
   hasLines: boolean
   onExpandedChange: ((expanded: boolean) => void) | undefined
 }) => {
@@ -249,19 +242,11 @@ const useBandSize = ({
   const expandTap = useExpandTap(sizable && !expanded, () => {
     resize(true)
   })
-  const scrolls = !band || expanded
   return {
     corner: sizable ? (
       <BandCorner expanded={expanded} onExpandedChange={resize} />
     ) : null,
-    // Small, a drag on the band is the page's: it must not stop the band following the song. A scrolling box
-    // with nothing focusable inside takes focus itself, or a keyboard can't scroll it (WCAG 2.1.1)
-    scrollerProps: {
-      ...(scrolls ? handlers : {}),
-      ...expandTap,
-      tabIndex: scrolls ? 0 : undefined,
-    },
-    scrolls,
+    expandTap,
   }
 }
 
@@ -356,11 +341,10 @@ export const LyricsPanel = ({
     limited,
     loading,
   })
-  const { corner, scrolls, scrollerProps } = useBandSize({
+  const { corner, expandTap } = useBandSize({
     band,
     expanded,
     follow,
-    handlers,
     hasLines: empty === null,
     onExpandedChange,
   })
@@ -389,7 +373,7 @@ export const LyricsPanel = ({
       )}
       {corner}
       {/* Over the panel's foot, in thumb reach, while the viewer reads elsewhere in the song */}
-      {!following && scrolls && empty === null && (
+      {!following && empty === null && (
         <div className='pointer-events-none absolute inset-x-0 bottom-3 z-10 flex justify-center'>
           <span className='pointer-events-auto rounded-full shadow-lg'>
             <Button size='pill' gap='sm' onClick={follow}>
@@ -402,10 +386,14 @@ export const LyricsPanel = ({
       {/* oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- a tap is a shortcut to Expand Lyrics, whose own button takes the keyboard */}
       <div
         ref={scroller}
-        {...scrollerProps}
+        {...handlers}
+        {...expandTap}
+        // A scrolling box with nothing focusable inside takes focus itself, or a keyboard can't scroll it (WCAG 2.1.1)
+        // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- the scroll box itself is what the keys move
+        tabIndex={0}
         className={cn(
           'min-h-0 flex-1 px-4 font-reader [overflow-anchor:none] focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden focus-visible:ring-inset',
-          scrollerLook(band, expanded, empty !== null)
+          scrollerLook(band, empty !== null)
         )}>
         <div ref={content}>
           {empty === null ? (
