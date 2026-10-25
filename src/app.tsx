@@ -2,6 +2,11 @@ import { lazy, Suspense, useEffect } from 'react'
 import { Navigate, Route, Routes, useParams } from 'react-router'
 
 import AppNotices from '@/components/shared/app-notices'
+import {
+  ListPageSkeleton,
+  PlayerSkeleton,
+  TextPageSkeleton,
+} from '@/components/shared/route-skeletons'
 import { Toaster } from '@/components/ui/toaster'
 import { LibrarySync } from '@/lib/library/sync'
 import { OfflineSync } from '@/lib/offline/sync'
@@ -50,6 +55,34 @@ const AdminPage = lazy(async () => await import('./_root/pages/admin-page'))
 
 const PREFETCH_DELAY_MS = 4000
 
+// A page's code starts loading the moment a pointer rests on, a finger lands on, or the keyboard reaches a link to it,
+// ahead of the click: the time between the two is often all the download needs. Each import loads once
+const PAGE_OF_PATH: [RegExp, keyof typeof pageImports][] = [
+  [/^\/v\/[^/]+\/versions/u, 'versions'],
+  [/^\/v\//u, 'player'],
+  [/^\/lyrics\//u, 'reader'],
+  [/^\/search/u, 'search'],
+  [/^\/library/u, 'library'],
+  [/^\/you/u, 'you'],
+  [/^\/about/u, 'about'],
+  [/^\/privacy/u, 'privacy'],
+  [/^\/terms/u, 'terms'],
+  [/^\/playlists\/./u, 'playlist'],
+  [/^\/playlists/u, 'playlists'],
+]
+const prefetchLinked = (event: Event) => {
+  const link =
+    event.target instanceof Element
+      ? event.target.closest<HTMLAnchorElement>('a[href^="/"]')
+      : null
+  const path = link?.getAttribute('href') ?? ''
+  const page = PAGE_OF_PATH.find(([pattern]) => pattern.test(path))?.[1]
+  if (page !== undefined) {
+    void pageImports[page]()
+  }
+}
+const INTENT_EVENTS = ['pointerover', 'pointerdown', 'focusin'] as const
+
 // The lyrics pages lived under /offline until they worked online too
 const OldReaderLink = () => {
   const { videoId = '' } = useParams()
@@ -68,6 +101,16 @@ const App = () => {
     const id = setTimeout(prefetchPages, PREFETCH_DELAY_MS)
     return () => {
       clearTimeout(id)
+    }
+  }, [])
+  useEffect(() => {
+    for (const type of INTENT_EVENTS) {
+      document.addEventListener(type, prefetchLinked, { passive: true })
+    }
+    return () => {
+      for (const type of INTENT_EVENTS) {
+        document.removeEventListener(type, prefetchLinked)
+      }
     }
   }, [])
 
@@ -89,7 +132,7 @@ const App = () => {
           <Route
             path='/v/:videoId'
             element={
-              <Suspense>
+              <Suspense fallback={<PlayerSkeleton />}>
                 <PlayerPage />
               </Suspense>
             }
@@ -97,7 +140,7 @@ const App = () => {
           <Route
             path='/v/:videoId/versions'
             element={
-              <Suspense>
+              <Suspense fallback={<ListPageSkeleton docScroll />}>
                 <VersionsPage />
               </Suspense>
             }
@@ -105,7 +148,7 @@ const App = () => {
           <Route
             path='/admin'
             element={
-              <Suspense>
+              <Suspense fallback={<ListPageSkeleton docScroll />}>
                 <AdminPage />
               </Suspense>
             }
@@ -113,7 +156,7 @@ const App = () => {
           <Route
             path='/about'
             element={
-              <Suspense>
+              <Suspense fallback={<TextPageSkeleton docScroll />}>
                 <AboutPage />
               </Suspense>
             }
@@ -121,7 +164,7 @@ const App = () => {
           <Route
             path='/privacy'
             element={
-              <Suspense>
+              <Suspense fallback={<TextPageSkeleton docScroll />}>
                 <PrivacyPage />
               </Suspense>
             }
@@ -129,7 +172,7 @@ const App = () => {
           <Route
             path='/terms'
             element={
-              <Suspense>
+              <Suspense fallback={<TextPageSkeleton docScroll />}>
                 <TermsPage />
               </Suspense>
             }
@@ -141,7 +184,7 @@ const App = () => {
           <Route
             path='/library'
             element={
-              <Suspense>
+              <Suspense fallback={<ListPageSkeleton docScroll={false} />}>
                 <LibraryPage />
               </Suspense>
             }
@@ -149,7 +192,7 @@ const App = () => {
           <Route
             path='/lyrics/:videoId'
             element={
-              <Suspense>
+              <Suspense fallback={<TextPageSkeleton docScroll={false} />}>
                 <ReaderPage />
               </Suspense>
             }
@@ -157,7 +200,7 @@ const App = () => {
           <Route
             path='/playlists'
             element={
-              <Suspense>
+              <Suspense fallback={<ListPageSkeleton docScroll />}>
                 <PlaylistsPage />
               </Suspense>
             }
@@ -165,7 +208,7 @@ const App = () => {
           <Route
             path='/playlists/:playlistId'
             element={
-              <Suspense>
+              <Suspense fallback={<ListPageSkeleton docScroll={false} />}>
                 <PlaylistPage />
               </Suspense>
             }
@@ -173,7 +216,7 @@ const App = () => {
           <Route
             path='/you'
             element={
-              <Suspense>
+              <Suspense fallback={<ListPageSkeleton docScroll />}>
                 <YouPage />
               </Suspense>
             }
@@ -181,7 +224,7 @@ const App = () => {
           <Route
             path='/search'
             element={
-              <Suspense>
+              <Suspense fallback={<ListPageSkeleton docScroll />}>
                 <SearchPage />
               </Suspense>
             }
