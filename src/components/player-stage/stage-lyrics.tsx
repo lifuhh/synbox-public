@@ -1,5 +1,5 @@
 import { useAtom, useAtomValue, useSetAtom } from 'jotai'
-import type { ReactNode } from 'react'
+import type { ReactNode, Ref } from 'react'
 import {
   useCallback,
   useEffect,
@@ -63,6 +63,7 @@ import { cn } from '@/utils/cn'
 
 import { DraggableLyrics, swallowNextClick } from './draggable-lyrics'
 import type { StageLayout } from './player-stage'
+import { textSpansOf, upperLineFloor } from './two-line-layout'
 import type { StagePlayer } from './use-you-tube-player'
 
 // Fields read before (or without) a full parse; a missing or malformed field
@@ -266,19 +267,49 @@ const ROW_FIT_FLOOR = 0.6
 // oxlint-disable-next-line unicorn/prefer-number-coercion -- the value ends in px, which Number() rejects
 const pixels = (value: string) => Number.parseFloat(value) || 0
 
-// The song's tallest line, as laid out now, and which it is
+// The song's tallest line, as laid out now, and which it is; and which is the shortest with any text
 const tallestLineOf = (lines: HTMLElement) => {
   let height = 0
   let index = -1
+  let shortestHeight = Number.POSITIVE_INFINITY
+  let shortest = -1
   for (const [at, line] of [...lines.children].entries()) {
-    if (line instanceof HTMLElement && line.offsetHeight > height) {
+    if (!(line instanceof HTMLElement)) {
+      continue
+    }
+    if (line.offsetHeight > height) {
       height = line.offsetHeight
       index = at
     }
+    if (line.offsetHeight > 0 && line.offsetHeight < shortestHeight) {
+      shortestHeight = line.offsetHeight
+      shortest = at
+    }
   }
-  return { height, index }
+  return { height, index, shortest }
 }
 const tallestOf = (lines: HTMLElement) => tallestLineOf(lines).height
+
+// The docked translation's place under Two Lines' rows: room for its song's tallest, up to two rows of text (owner,
+// 2026-10-25: never seen in three), so it never pushes the rows up; a longer one shrinks into it (DockedTranslation)
+const DOCKED_ROWS = 2
+const dockedSlotOf = (reserve: HTMLElement) => {
+  const first = reserve.firstElementChild
+  const text = first?.querySelector('p')
+  if (!(first instanceof HTMLElement && text)) {
+    return 0
+  }
+  const rows =
+    pixels(getComputedStyle(first).paddingTop) +
+    DOCKED_ROWS * pixels(getComputedStyle(text).lineHeight)
+  return Math.min(tallestOf(reserve), rows)
+}
+
+// Which of the song's lines are tallest and shortest (-1 before they are measured)
+interface SongLineSizes {
+  tallest: number
+  shortest: number
+}
 
 // The sizes fitSong tries, as the lyrics' scale times the row fit: every Two Lines size times every screen's tweak,
 // down to the floor
@@ -307,8 +338,9 @@ const fitSong = (
   grid: HTMLElement,
   lines: HTMLElement,
   reserve: HTMLElement,
-  // The song's tallest line at the size the rows get, which each row holds room for (TwoLineRow)
-  onTallest: (index: number) => void
+  // The song's tallest and shortest lines at the size the rows get: the block holds two of the tallest, and the
+  // upper line's home is a shortest line above the lower one (TwoRows)
+  onLines: (lines: SongLineSizes) => void
 ) => {
   const block = grid.closest<HTMLElement>('.player-lyrics-overlay')
   const layer = block?.parentElement
@@ -320,14 +352,14 @@ const fitSong = (
   let steps = 0
   let height = 0
   let measuredFor = ''
-  let tallestFitting = -1
+  let sizes: SongLineSizes = { shortest: -1, tallest: -1 }
   let idle: ReturnType<typeof setTimeout> | undefined
   const apply = () => {
     grid.style.setProperty(
       '--row-fit',
       String(Math.min(1, Math.max(ROW_FIT_FLOOR, fitting / scale)))
     )
-    onTallest(tallestFitting)
+    onLines(sizes)
   }
   // Smaller type also wraps less, so the height doesn't scale with the size: try sizes on the copy, halving the
   // gap each time. The gap between the rows is in em, so it is read at each size too
@@ -337,9 +369,10 @@ const fitSong = (
     const fit =
       tallest.height <=
       (height - pixels(getComputedStyle(lines).rowGap)) / 2 + 1
-    // Which line is tallest barely moves between nearby sizes: the last size tried that fits, or any while none does
-    if (fit || tallestFitting < 0) {
-      tallestFitting = tallest.index
+    // Which lines are tallest and shortest barely moves between nearby sizes: the last size tried that fits, or any
+    // while none does
+    if (fit || sizes.tallest < 0) {
+      sizes = { shortest: tallest.shortest, tallest: tallest.index }
     }
     return fit
   }
@@ -387,12 +420,15 @@ const fitSong = (
     clearTimeout(idle)
     measuredFor = `${layer.clientWidth}x${layer.clientHeight}`
     const pad = getComputedStyle(block)
+    const slot = dockedSlotOf(reserve)
     height =
       layer.clientHeight -
       pixels(getComputedStyle(lift).minHeight) -
       pixels(pad.paddingTop) -
       pixels(pad.paddingBottom) -
-      tallestOf(reserve)
+      slot
+    // The docked translation's place under the rows, kept whatever it says: a longer one never moves what is above
+    block.style.setProperty('--docked-h', `${slot}px`)
     if (fits(scale)) {
       fitting = scale
       failing = Number.POSITIVE_INFINITY
@@ -445,37 +481,39 @@ const fitSong = (
   }
 }
 
-// A row keeps the height of the song's tallest line (`room`, laid out unseen in the same cell), and its line sits
-// on the row's floor: a line that wraps taller grows upward, and neither row ever moves the other or the block
-// (owner, 2026-10-25), as a karaoke screen's two lines keep their baselines
+// One of Two Lines' lines, standing on its floor (`floorRef` places the upper one), so a line that wraps taller grows
+// upward
 const TwoLineRow = ({
   sung,
   start,
-  room,
+  lineRef,
   children,
 }: {
   sung: boolean
   start: boolean
-  room: ReactNode
+  lineRef: Ref<HTMLDivElement>
   children: ReactNode
 }) => (
   <div
+    ref={lineRef}
     data-lyric-row={sung ? 'sung' : 'next'}
     className={cn(
-      'grid transition-opacity duration-200',
+      'absolute bottom-0 transition-opacity duration-200',
       !sung && 'opacity-75',
-      start ? 'lyric-stagger-start' : 'lyric-stagger-end'
+      start
+        ? 'left-0 lyric-stagger-start translate-y-[calc(-1*var(--upper-floor,0px))]'
+        : 'right-0 lyric-stagger-end'
     )}>
-    <div className='col-start-1 row-start-1 self-end'>{children}</div>
-    <div aria-hidden className='invisible col-start-1 row-start-1'>
-      {room}
-    </div>
+    {children}
   </div>
 )
 
-// Two Lines, the two-way karaoke screen: equal rows, so a longer line in one row never moves the other, set
-// apart so each line's own rows read as its own; the top row's line at the left and the bottom row's at the
-// right, the waiting line dimmed
+// Two Lines, the two-way karaoke screen, built up from the floor so a line change moves as little as it can (owner,
+// 2026-10-25): the lower line (at the right) stands on the rows' floor, which the docked translation's place keeps
+// fixed, so its romaji never moves. The upper line (at the left) stands a one-row pair and the rows' gap above it,
+// and rises only by as much as the lower line's text reaches into its own (upperLineFloor); it stays risen until
+// its own line changes. The block is two of the song's tallest lines high whatever is on screen, so placing it
+// moves nothing either
 const TwoRows = ({
   view,
   rowsOf,
@@ -496,8 +534,22 @@ const TwoRows = ({
   const gridRef = useRef<HTMLDivElement>(null)
   const linesRef = useRef<HTMLDivElement>(null)
   const reserveRef = useRef<HTMLDivElement>(null)
+  const floorRef = useRef<HTMLDivElement>(null)
+  const homeRef = useRef<HTMLDivElement>(null)
+  const upperRef = useRef<HTMLDivElement>(null)
+  const lowerRef = useRef<HTMLDivElement>(null)
   const fitRef = useRef<ReturnType<typeof fitSong> | null>(null)
-  const [tallest, setTallest] = useState(-1)
+  const [sizes, setSizes] = useState<SongLineSizes>({
+    shortest: -1,
+    tallest: -1,
+  })
+  const onLines = useCallback((next: SongLineSizes) => {
+    setSizes((current) =>
+      current.shortest === next.shortest && current.tallest === next.tallest
+        ? current
+        : next
+    )
+  }, [])
   useLayoutEffect(() => {
     const fit =
       gridRef.current && linesRef.current && reserveRef.current
@@ -505,7 +557,7 @@ const TwoRows = ({
             gridRef.current,
             linesRef.current,
             reserveRef.current,
-            setTallest
+            onLines
           )
         : null
     fitRef.current = fit
@@ -513,28 +565,105 @@ const TwoRows = ({
       fit?.stop()
       fitRef.current = null
     }
-  }, [])
+  }, [onLines])
   useLayoutEffect(() => {
     fitRef.current?.setScale(scale)
   }, [scale])
+
+  // The upper line's floor, kept while its line stays: a rise for one lower line isn't undone by the next
+  const placed = useRef<{ line: number; floor: number } | null>(null)
+  const [upperLine] = view.rows
+  const place = useRef<((keep: boolean) => void) | null>(null)
+  useLayoutEffect(() => {
+    place.current = (keep: boolean) => {
+      const grid = gridRef.current
+      const floor = floorRef.current
+      const home = homeRef.current
+      const upper = upperRef.current
+      const lower = lowerRef.current
+      if (!(grid && floor && home && upper && lower)) {
+        return
+      }
+      const gap = pixels(getComputedStyle(grid).rowGap)
+      const next = upperLineFloor({
+        gap,
+        home: home.offsetHeight + gap,
+        lower: textSpansOf(lower, floor),
+        upper: textSpansOf(upper, upper),
+      })
+      const held =
+        keep && placed.current?.line === upperLine
+          ? Math.max(placed.current.floor, next)
+          : next
+      placed.current = { floor: held, line: upperLine }
+      grid.style.setProperty('--upper-floor', `${held}px`)
+    }
+    place.current(true)
+  })
+  // A new width or size wraps every line anew: placed afresh. The block's width and a one-row pair's height say so
+  useLayoutEffect(() => {
+    const observe = (floor: HTMLElement, home: HTMLElement) => {
+      let seen = ''
+      const resized = new ResizeObserver(() => {
+        const now = `${floor.offsetWidth}x${home.offsetHeight}`
+        if (now !== seen) {
+          const first = seen === ''
+          seen = now
+          place.current?.(first)
+        }
+      })
+      resized.observe(floor)
+      resized.observe(home)
+      return () => {
+        resized.disconnect()
+      }
+    }
+    const floor = floorRef.current
+    const home = homeRef.current
+    return floor && home ? observe(floor, home) : undefined
+  }, [])
+
+  // Before fitSong has measured, the lines on screen stand in for the song's
+  const tallest = sizes.tallest >= 0 ? sizes.tallest : Math.max(...view.rows)
+  const shortest = sizes.shortest >= 0 ? sizes.shortest : tallest
   return (
     <div
       ref={gridRef}
       className={cn(
-        'relative grid auto-rows-fr lyric-rows-gap lyric-stagger-rows',
+        'relative grid lyric-rows-gap lyric-stagger-rows',
         STAGGER_SIZE.japanese
       )}>
-      {view.rows.map((index, row) => (
-        <TwoLineRow
-          // The rows are fixed places; only the lines in them change
-          // oxlint-disable-next-line no-array-index-key
-          key={row}
-          sung={index === view.active}
-          start={row === 0}
-          room={tallest >= 0 && roomOf(tallest)}>
-          {index >= 0 && rowsOf(index)}
-        </TwoLineRow>
-      ))}
+      {/* Unseen, it sets the block's height: two of the song's tallest lines and the gap between them */}
+      <div
+        aria-hidden
+        className='invisible col-start-1 row-start-1 flex flex-col lyric-rows-gap'>
+        <div className='lyric-stagger-start'>
+          {tallest >= 0 && roomOf(tallest)}
+        </div>
+        <div className='lyric-stagger-start'>
+          {tallest >= 0 && roomOf(tallest)}
+        </div>
+      </div>
+      <div ref={floorRef} className='relative col-start-1 row-start-1'>
+        {/* Unseen, a one-row pair: the upper line's home over the lower one */}
+        <div
+          ref={homeRef}
+          aria-hidden
+          className='invisible absolute bottom-0 left-0 lyric-stagger-start'>
+          {shortest >= 0 && roomOf(shortest)}
+        </div>
+        {view.rows.map((index, row) => (
+          <TwoLineRow
+            // The rows are fixed places; only the lines in them change
+            // oxlint-disable-next-line no-array-index-key
+            key={row}
+            sung={index === view.active}
+            start={row === 0}
+            lineRef={row === 0 ? upperRef : lowerRef}>
+            {index >= 0 && rowsOf(index)}
+          </TwoLineRow>
+        ))}
+      </div>
       {/* Laid out at the rows' width, never seen and taking no room; fitSong tries its sizes on it, at its own
           scale. The rows' size and gap, so the gap reads at the size tried */}
       <div
@@ -679,10 +808,29 @@ const DockedTranslation = ({
     }
   }
   const vars: CssVars = { '--dock-pull': `${-pull.px}px` }
+  // A translation longer than its place shrinks into it, from its top, rather than pushing the rows up
+  const placeRef = useRef<HTMLDivElement>(null)
+  const textRef = useRef<HTMLDivElement>(null)
+  useLayoutEffect(() => {
+    const place = placeRef.current
+    const text = textRef.current
+    if (!(place && text)) {
+      return
+    }
+    text.style.scale = ''
+    const room =
+      pixels(getComputedStyle(place).getPropertyValue('--docked-h')) -
+      pixels(getComputedStyle(place).paddingTop)
+    const tall = text.offsetHeight
+    if (room > 0 && tall > room + 1) {
+      text.style.scale = String(room / tall)
+    }
+  })
   return (
     <div
+      ref={placeRef}
       data-docked-translation={ghost ? 'ghost' : 'docked'}
-      className='flex justify-center docked-translation'>
+      className='flex h-(--docked-h) items-start justify-center docked-translation'>
       <div
         style={vars}
         className={cn(
@@ -697,7 +845,9 @@ const DockedTranslation = ({
         onPointerMove={ghost ? undefined : handleMove}
         onPointerUp={ghost ? undefined : handleUp}
         onPointerCancel={ghost ? undefined : handleUp}>
-        {children}
+        <div ref={textRef} className='origin-top'>
+          {children}
+        </div>
       </div>
     </div>
   )
