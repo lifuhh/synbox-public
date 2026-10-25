@@ -132,7 +132,6 @@ export const useAdminGenerations = (by: SongsBy) =>
       return generations.filter((generation) => isBy(generation, by))
     },
     queryKey: [QUERY_KEYS.GET_ADMIN_GENERATIONS, by],
-    retry,
     // Follows songs still running
     refetchInterval: (query) =>
       query.state.data?.some(
@@ -141,6 +140,7 @@ export const useAdminGenerations = (by: SongsBy) =>
       ) === true
         ? RUNNING_REFRESH_MS
         : false,
+    retry,
   })
 
 // A listener's report of a song's lyrics (worker/src/reports.ts)
