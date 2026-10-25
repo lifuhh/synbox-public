@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
 import type { Context } from 'hono'
 
+import { touchActive } from './activity'
 import { createAuth } from './auth'
 import type { Env } from './auth'
 import { fixer } from './fixer'
@@ -116,6 +117,8 @@ app.get('/api/me', async (c) => {
     return c.json({ user: null })
   }
   const { id, name, email, image, role } = session.user
+  // The app asks on every open, so this is when the account last used it (activity.ts)
+  await touchActive(c.env.DB, id, Date.now())
   return c.json({
     quota: await getQuota(c.env.DB, id, limitsOf(c.env)),
     user: { email, id, image, name, role: role ?? 'user' },
@@ -288,13 +291,15 @@ const refusedSong = async (env: AppEnv, videoId: string) => {
     : ({ body: { code: 'library_unavailable' }, status: 503 } as const)
 }
 
-// A visit to a song's player page ({ device } for a guest): one more listen, once an hour per account or device
+// A visit to a song's player page ({ device } for a guest): one more listen, unless the same account or device counted
+// one of the song in the last minute
 // (songs.ts › addListen). A listen that doesn't count still answers 204
 app.post('/api/songs/:videoId/listen', async (c) => {
   const videoId = c.req.param('videoId')
   const body = await c.req.json<Record<string, unknown>>().catch(() => null)
   const device = typeof body?.device === 'string' ? body.device : null
-  const listener = listenerOf(await userIdOf(c.env, c.req.raw.headers), device)
+  const userId = await userIdOf(c.env, c.req.raw.headers)
+  const listener = listenerOf(userId, device)
   if (!isVideoId(videoId) || listener === null) {
     return c.json({ code: 'bad_request' }, 400)
   }
@@ -302,7 +307,11 @@ app.post('/api/songs/:videoId/listen', async (c) => {
   if (refused !== null) {
     return c.json(refused.body, refused.status)
   }
-  await addListen(c.env.DB, videoId, listener, Date.now())
+  const now = Date.now()
+  await addListen(c.env.DB, videoId, listener, now)
+  if (userId !== null) {
+    await touchActive(c.env.DB, userId, now)
+  }
   return c.body(null, 204)
 })
 
@@ -545,13 +554,18 @@ admin.use(async (c, next) => {
   return c.res
 })
 
-// Everyone who has signed in, most recently seen first, with their songs in the last 24 hours and overall
+// Everyone who has signed in, most recently active first, with their songs in the last 24 hours and overall, and
+// their counted plays (accountStats). Last active is the app opened or a song played (activity.ts); an account
+// not seen since accountStats began falls back to its last sign-in or session refresh (better-auth refreshes a
+// session at most daily)
 admin.get('/users', async (c) => {
   await expireStalled(c.env.DB)
   const since = Date.now() - 86_400_000
   const { results } = await c.env.DB.prepare(
     `select u."id", u."email", u."name", u."image", u."role", u."banned", u."banReason", u."createdAt",
-       (select max(s."updatedAt") from "session" s where s."userId" = u."id") as "lastSeenAt",
+       coalesce(a."lastActiveAt", (select max(s."updatedAt") from "session" s where s."userId" = u."id"))
+         as "lastActiveAt",
+       coalesce(a."plays", 0) as "plays", a."lastPlayAt",
        case when q."userId" is null then 'default' when q."dailyLimit" is null then 'unlimited'
          else q."dailyLimit" end as "dailyLimit",
        (select count(*) from "generation" g where g."userId" = u."id" and g."createdAt" > ?1
@@ -559,7 +573,8 @@ admin.get('/users', async (c) => {
        (select count(*) from "generation" g where g."userId" = u."id" and g."status" = 'succeeded')
           as "songsTotal"
      from "user" u left join "quotaOverride" q on q."userId" = u."id"
-     order by "lastSeenAt" desc nulls last, u."createdAt" desc`
+       left join "accountStats" a on a."userId" = u."id"
+     order by "lastActiveAt" desc nulls last, u."createdAt" desc`
   )
     .bind(since)
     .all()

@@ -2,7 +2,8 @@ import { expect, test } from 'bun:test'
 
 import {
   GUEST_LISTENS_PER_HOUR,
-  LISTEN_GAP_MS,
+  GUEST_WINDOW_MS,
+  REPEAT_LISTEN_MS,
   addListen,
   likerOf,
   listListenCounts,
@@ -34,19 +35,22 @@ const listensBy = async (
   }
 }
 
-test('a listener counts one listen per song an hour, however often the page is opened', async () => {
+test('every visit counts, but a reload within a minute is the same visit', async () => {
   const { db } = migratedD1()
   const before = await readStats(db, SONG, null)
   await addListen(db, SONG, 'u:me', 1)
+  // A reload, and the page mounted twice
   await addListen(db, SONG, 'u:me', 2)
-  await addListen(db, SONG, 'u:me', LISTEN_GAP_MS)
-  const withinHour = await readStats(db, SONG, null)
-  await addListen(db, SONG, 'u:me', LISTEN_GAP_MS + 2)
+  await addListen(db, SONG, 'u:me', REPEAT_LISTEN_MS)
+  const sameVisit = await readStats(db, SONG, null)
+  // Back to the song five minutes later, and again five after that
+  await addListen(db, SONG, 'u:me', 5 * 60_000)
+  await addListen(db, SONG, 'u:me', 10 * 60_000)
   // Another listener, and another song, count on their own
   await addListen(db, SONG, guest(1), 3)
   await addListen(db, 'aaaaaaaaaaa', 'u:me', 3)
   const after = await readStats(db, SONG, null)
-  expect([before.listens, withinHour.listens, after.listens]).toEqual([0, 1, 3])
+  expect([before.listens, sameVisit.listens, after.listens]).toEqual([0, 1, 4])
 })
 
 test("past the song's hourly guest limit a new device's listen doesn't count; an account's still does", async () => {
@@ -55,7 +59,7 @@ test("past the song's hourly guest limit a new device's listen doesn't count; an
   await addListen(db, SONG, 'u:me', 10)
   const capped = await readStats(db, SONG, null)
   // An hour on, guests count again
-  await addListen(db, SONG, guest(999), 10 + LISTEN_GAP_MS + 1)
+  await addListen(db, SONG, guest(999), 10 + GUEST_WINDOW_MS + 1)
   const later = await readStats(db, SONG, null)
   expect([capped.listens, later.listens]).toEqual([
     GUEST_LISTENS_PER_HOUR + 1,
@@ -66,8 +70,8 @@ test("past the song's hourly guest limit a new device's listen doesn't count; an
 test('the daily prune keeps only listens inside the hour', async () => {
   const { db, sqlite } = migratedD1()
   await addListen(db, SONG, guest(1), 1)
-  await addListen(db, SONG, guest(2), LISTEN_GAP_MS)
-  await pruneListens(db, LISTEN_GAP_MS + 1)
+  await addListen(db, SONG, guest(2), GUEST_WINDOW_MS)
+  await pruneListens(db, GUEST_WINDOW_MS + 1)
   expect(sqlite.query('select "listener" from "songListen"').all()).toEqual([
     { listener: guest(2) },
   ])
@@ -120,4 +124,32 @@ test('card counts: only songs played more than ten times', async () => {
   await listensBy(db, 'bbbbbbbbbbb', 10, account, 1)
   await listensBy(db, 'ccccccccccc', 1, account, 1)
   expect(await listListenCounts(db)).toEqual({ aaaaaaaaaaa: 11 })
+})
+
+test("an account's plays are its counted listens, never a guest's", async () => {
+  const { db } = migratedD1()
+  const plays = async () =>
+    await db
+      .prepare(
+        `select "plays", "lastPlayAt" from "accountStats" where "userId" = ?1`
+      )
+      .bind('me')
+      .first<{ plays: number; lastPlayAt: number }>()
+  await addListen(db, SONG, 'u:me', 1)
+  await addListen(db, SONG, 'u:me', 2)
+  await addListen(db, 'aaaaaaaaaaa', 'u:me', 3)
+  const sameVisit = await plays()
+  await addListen(db, SONG, 'u:me', 5 * 60_000)
+  await addListen(db, SONG, `d:${DEVICE}`, 5 * 60_000 + 1)
+  const later = await plays()
+  const guestRows = await db
+    .prepare(
+      `select count(*) as "n" from "accountStats" where "userId" <> 'me'`
+    )
+    .first<{ n: number }>()
+  expect([sameVisit, later, guestRows?.n]).toEqual([
+    { lastPlayAt: 3, plays: 2 },
+    { lastPlayAt: 5 * 60_000, plays: 3 },
+    0,
+  ])
 })

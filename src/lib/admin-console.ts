@@ -22,6 +22,10 @@ const adminUserSchema = z.preprocess(
     typeof row === 'object' && row !== null
       ? {
           dailyLimit: 'hourlyLimit' in row ? row.hourlyLimit : undefined,
+          // A Worker from before accountStats: its last session refresh, and no plays kept
+          lastActiveAt: 'lastSeenAt' in row ? row.lastSeenAt : undefined,
+          lastPlayAt: null,
+          plays: 0,
           songsLastDay: 'songsLastHour' in row ? row.songsLastHour : undefined,
           ...row,
         }
@@ -33,8 +37,11 @@ const adminUserSchema = z.preprocess(
     email: z.string(),
     id: z.string(),
     image: z.string().nullable(),
-    lastSeenAt: when.nullable(),
+    lastActiveAt: when.nullable(),
+    lastPlayAt: when.nullable(),
     name: z.string(),
+    // Counted plays: every visit to a song, a reload within a minute excepted, as songs are counted (worker songs.ts › addListen)
+    plays: z.number(),
     role: z.string().nullable(),
     songsLastDay: z.number(),
     songsTotal: z.number(),
