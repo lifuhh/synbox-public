@@ -9,10 +9,10 @@ export interface LegalSection {
   items: ReactNode[]
 }
 
-// A link inside the lists' text. Its vertical padding makes the press area at least 24px tall (WCAG 2.2's minimum) without
-// moving the line; one line each, so a wrapped link never covers the next
+// A link inside the lists' text. Its vertical padding makes the press area at least 24px tall (WCAG 2.2's minimum)
+// without moving the line; kept on one line, so a wrapped link never covers the next
 export const INLINE_LINK =
-  'py-1 underline underline-offset-2 hover:text-foreground'
+  'py-1 whitespace-nowrap underline underline-offset-2 hover:text-foreground'
 
 // A link out of the app, in the lists' own text
 export const Ext = ({
