@@ -102,6 +102,16 @@ test('on the watch page, a mouse leaving the video for the top bar idles the con
   expect(state).toEqual({ idle: true, outside: true })
 })
 
+test('on the watch page, a mouse moving on the page that never crossed the video idles the controls at once', () => {
+  const { app, pageBody, stage } = page()
+  mount(stage, app)
+  expect(state.idle).toBe(false)
+
+  pointer('pointermove', pageBody)
+
+  expect(state).toEqual({ idle: true, outside: true })
+})
+
 test('an open menu holds the controls after the mouse leaves, and they go as soon as it closes', () => {
   const { app, mute, pageBody, stage } = page()
   mount(stage, app)

@@ -39,7 +39,10 @@ import type { VideoFit } from './video-fit'
 import { useVideoAspect, useVideoFit } from './video-fit'
 import type { YouTubeQuirks } from './youtube-quirks'
 
+// The floating UI goes this long after the last input: with a finger, and 40% sooner with a mouse (owner,
+// 2026-10-25), whose controls are a hover away
 const IDLE_MS = 1800
+const MOUSE_IDLE_MS = 1080
 const VOLUME_STEP = 0.05
 
 const COVERED_PHASES = new Set<StagePhase['kind']>([
@@ -179,20 +182,23 @@ const useFullscreen = () => {
 }
 
 // The floating UI shows after input until idle, never while locked or dragging. Paused, it stays while the
-// mouse is over the player and goes with it. It also stays while YouTube's own centre button shows under ours,
-// so the centre button never outlives the rest of the UI and YouTube's never shows alone
+// mouse is over the player and goes with it. With a finger it also stays while YouTube's own centre button shows
+// under ours, so the centre button never outlives the rest of the UI and YouTube's never shows alone. With a
+// mouse it doesn't wait for that: the rest goes on idle or the moment the mouse leaves, and the centre button
+// alone stays over YouTube's until it goes (CenterPlayButton)
 const showsControls = (state: {
   locked: boolean
   dragging: boolean
   idle: boolean
   outside: boolean
   playing: boolean
+  mouse: boolean
   youTubeCenterShowing: boolean
 }) =>
   !state.locked &&
   !state.dragging &&
   (!state.idle ||
-    state.youTubeCenterShowing ||
+    (state.youTubeCenterShowing && !state.mouse) ||
     (!state.playing && !state.outside))
 
 const SeekFlashBadge = ({ flash }: { flash: SeekFlash }) => (
@@ -391,17 +397,25 @@ export const PlayerStage = ({
     [autoplayMuted, savedMute, unlockSound]
   )
 
-  const { idle, outside, sleep, wake } = useIdle(IDLE_MS, stageRef)
-  // A song that starts playing shows its controls for the idle time, wherever the mouse is, as on YouTube:
-  // the time it took to load doesn't count
+  const mouse = useMediaQuery('(pointer: fine)')
+  const { idle, outside, sleep, wake } = useIdle(
+    mouse ? MOUSE_IDLE_MS : IDLE_MS,
+    stageRef
+  )
+  // A song that starts playing shows its controls for the idle time, as on YouTube: the time it took to load
+  // doesn't count. Not to a mouse that has left the player
   const lastPhase = useRef(phase.kind)
   // Before paint, so the controls never blink off as playback starts
   useLayoutEffect(() => {
-    if (phase.kind === 'playing' && lastPhase.current === 'starting') {
+    if (
+      phase.kind === 'playing' &&
+      lastPhase.current === 'starting' &&
+      !outside
+    ) {
       wake()
     }
     lastPhase.current = phase.kind
-  }, [phase.kind, wake])
+  }, [phase.kind, wake, outside])
   const [dragging, setDragging] = useState(false)
   const [locked, setLocked] = useState(false)
   useWakeLock(phase.kind === 'playing' || phase.kind === 'buffering')
@@ -418,6 +432,7 @@ export const PlayerStage = ({
     dragging,
     idle,
     locked,
+    mouse,
     outside,
     playing: phase.kind === 'playing',
     youTubeCenterShowing,
