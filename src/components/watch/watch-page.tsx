@@ -272,6 +272,7 @@ export const WatchPage = ({
     <>
       <div
         data-theater={watch && wide && theater ? '' : undefined}
+        data-minimisable={minimisable ? '' : undefined}
         className={watch ? 'watch-page' : 'size-full'}>
         <div ref={stageBox} className={watch ? 'watch-stage' : 'size-full'}>
           {stage}

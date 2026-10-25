@@ -220,6 +220,8 @@ const pageRect = (element: HTMLElement) => {
 
 // The placement in force, for a box that moves without resizing (a transform: the mini bar's zoom)
 let placed: (() => void) | null = null
+// The stage's placement (placeEngine), the one in force while `placed` is it
+let staged: (() => void) | null = null
 export const followEngine = () => {
   placed?.()
 }
@@ -233,8 +235,11 @@ interface Flight {
   until: number
 }
 let flight: Flight | null = null
-// The layer's stacking before the drag to minimise raised it (dragEngine); a placement ending ends the drag
+// The layer's stacking before the drag to minimise raised it (dragEngine), and the drag's own drawing, which a
+// placement redone mid-drag (a resize, and the first report of every ResizeObserver) keeps; a placement ending
+// ends the drag
 let zBeforeDrag: string | null = null
+let dragged: { borderRadius: string; transform: string } | null = null
 const HAND_OVER_MS = 600
 const FLY_MS = 320
 
@@ -289,6 +294,7 @@ const keepPlaced = (
     observer.disconnect()
     window.removeEventListener('resize', place)
     zBeforeDrag = null
+    dragged = null
     if (parts.layer.style.visibility === 'visible') {
       flight = {
         radius: radiusPx,
@@ -331,11 +337,11 @@ export const placeEngine = (
     const inner = pageRect(box)
     const scroll = scrolled()
     Object.assign(parts.layer.style, {
-      borderRadius: '',
+      borderRadius: dragged?.borderRadius ?? '',
       height: `${outer.height}px`,
       left: `${outer.left + scroll.left}px`,
       top: `${outer.top + scroll.top}px`,
-      transform: '',
+      transform: dragged?.transform ?? '',
       visibility: 'visible',
       width: `${outer.width}px`,
     })
@@ -358,6 +364,7 @@ export const placeEngine = (
   parts.layer.style.zIndex = blockInput ? '' : '5'
   // Out of the tab order and the accessibility tree unless YouTube's own screen is the thing to use
   parts.layer.inert = blockInput
+  staged = place
   return keepPlaced(place, [stage, box])
 }
 
@@ -368,12 +375,21 @@ export interface ScreenBox {
   height: number
 }
 
-// The video's box on screen where its placement put it, or null while it isn't shown
+// The video's box on screen where the stage placed it, or null while it isn't shown there
 export const engineBox = (): DOMRect | null => {
   const { layer: video } = ensureLayer()
-  return video.style.visibility === 'visible'
+  return placed !== null &&
+    placed === staged &&
+    video.style.visibility === 'visible'
     ? video.getBoundingClientRect()
     : null
+}
+
+// Ends the flight into the current placement (fly) at once, for the drag to minimise to draw the way back itself
+export const stopFlight = () => {
+  for (const animation of ensureLayer().layer.getAnimations()) {
+    animation.cancel()
+  }
 }
 
 // The video drawn into `to` by a finger dragging the player down (the drag to minimise), from `from`, its box as
@@ -391,15 +407,19 @@ export const dragEngine = (
       zIndex: zBeforeDrag ?? video.style.zIndex,
     })
     zBeforeDrag = null
+    dragged = null
     return
   }
   const { from, to, radiusPx } = move
   zBeforeDrag ??= video.style.zIndex
   const sx = to.width / from.width
   const sy = to.height / from.height
-  Object.assign(video.style, {
+  dragged = {
     borderRadius: `${radiusPx / sx}px / ${radiusPx / sy}px`,
     transform: `translate(${to.left - from.left}px, ${to.top - from.top}px) scale(${sx}, ${sy})`,
+  }
+  Object.assign(video.style, {
+    ...dragged,
     willChange: 'transform',
     // Over the tab bar (z-40), as the mini bar's video is
     zIndex: '41',
