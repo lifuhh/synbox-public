@@ -28,23 +28,17 @@ export const isInstalledPhone = () =>
     localStorage.getItem('synboxInstalledPreview') === '1')
 document.documentElement.toggleAttribute('data-installed', isInstalledPhone())
 
-// iPadOS reports itself as a Mac; a touch screen gives it away
-const isIos =
-  /iPhone|iPad|iPod/u.test(navigator.userAgent) ||
-  (navigator.userAgent.includes('Macintosh') && navigator.maxTouchPoints > 1)
-
-// How this browser can install the app: its own prompt (Chromium), Share › Add to Home Screen (iOS
-// Safari), already installed, or not at all
+// How this browser can install the app: its own prompt (Chromium), already installed, or by steps in its own menus
+// (or by opening another browser) shown in a guide (install-guide.ts)
 export type InstallMethod =
   | { kind: 'prompt'; prompt: () => Promise<void> }
-  | { kind: 'ios' }
+  | { kind: 'guide' }
   | { kind: 'installed' }
-  | { kind: 'unavailable' }
 
 let deferredPrompt: BeforeInstallPromptEvent | null = null
 const listeners = new Set<() => void>()
 // Read once per change, so useSyncExternalStore sees a stable snapshot between them
-let installMethod: InstallMethod = { kind: 'unavailable' }
+let installMethod: InstallMethod = { kind: 'guide' }
 
 const publish = (next: InstallMethod) => {
   installMethod = next
@@ -67,7 +61,7 @@ const readInstallMethod = (): InstallMethod => {
     }
     return { kind: 'prompt', prompt }
   }
-  return isIos ? { kind: 'ios' } : { kind: 'unavailable' }
+  return { kind: 'guide' }
 }
 installMethod = readInstallMethod()
 

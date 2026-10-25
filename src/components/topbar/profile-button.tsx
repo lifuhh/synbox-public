@@ -7,22 +7,13 @@ import {
   ShieldIcon,
   LogOutIcon,
   MonitorDownIcon,
-  ShareIcon,
-  SquarePlusIcon,
   UserIcon,
 } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { lazy, Suspense, useMemo, useState } from 'react'
 import { Link } from 'react-router'
 
 import { GoogleMark } from '@/components/shared/google-mark'
 import { UserAvatar } from '@/components/shared/user-avatar'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -47,38 +38,9 @@ import { cn } from '@/utils/cn'
 
 import { Button } from '../ui/button'
 
-// iOS has no install prompt; Safari installs from its Share sheet
-const IosInstallDialog = ({
-  open,
-  onOpenChange,
-}: {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-}) => (
-  <Dialog open={open} onOpenChange={onOpenChange}>
-    <DialogContent>
-      <DialogHeader>
-        <DialogTitle>Install Synbox</DialogTitle>
-        <DialogDescription>
-          Add Synbox to your Home Screen to open it full screen, like an app.
-        </DialogDescription>
-      </DialogHeader>
-      <ol className='flex flex-col gap-3 text-base'>
-        <li className='flex items-center gap-3'>
-          <ShareIcon className='size-5 shrink-0 text-primary-text' />
-          <span>
-            Tap <strong>Share</strong> in Safari&apos;s toolbar
-          </span>
-        </li>
-        <li className='flex items-center gap-3'>
-          <SquarePlusIcon className='size-5 shrink-0 text-primary-text' />
-          <span>
-            Choose <strong>Add to Home Screen</strong>
-          </span>
-        </li>
-      </ol>
-    </DialogContent>
-  </Dialog>
+// Its own chunk: only a browser without an install prompt opens it
+const InstallGuideDialog = lazy(
+  async () => await import('./install-guide-dialog')
 )
 
 export const quotaText = ({ limit, used }: Quota) => {
@@ -192,7 +154,8 @@ const ProfileTrigger = ({
 
 const ProfileButtonDropdown = () => {
   const install = useInstallMethod()
-  const [iosHelpOpen, setIosHelpOpen] = useState(false)
+  // Mounted from its first opening on, so it can animate closed
+  const [guide, setGuide] = useState<'closed' | 'open' | null>(null)
   const queryClient = useQueryClient()
   const { data: me, isPending } = useMe()
   const user = me?.user ?? null
@@ -245,14 +208,14 @@ const ProfileButtonDropdown = () => {
                 <span>Privacy Policy</span>
               </Link>
             </DropdownMenuItem>
-            {(install.kind === 'prompt' || install.kind === 'ios') && (
+            {install.kind !== 'installed' && (
               <DropdownMenuItem
                 className='cursor-pointer'
                 onClick={() => {
                   if (install.kind === 'prompt') {
                     void install.prompt()
                   } else {
-                    setIosHelpOpen(true)
+                    setGuide('open')
                   }
                 }}>
                 <MonitorDownIcon className='mr-2 size-5 shrink-0' />
@@ -278,7 +241,16 @@ const ProfileButtonDropdown = () => {
           </p>
         </DropdownMenuContent>
       </DropdownMenu>
-      <IosInstallDialog open={iosHelpOpen} onOpenChange={setIosHelpOpen} />
+      {guide !== null && (
+        <Suspense>
+          <InstallGuideDialog
+            open={guide === 'open'}
+            onOpenChange={(open) => {
+              setGuide(open ? 'open' : 'closed')
+            }}
+          />
+        </Suspense>
+      )}
     </>
   )
 }
