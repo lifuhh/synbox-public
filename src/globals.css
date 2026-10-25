@@ -311,22 +311,22 @@
      reader: the romaji, read with the Japanese, 0.8 of it (floor 14px); the translation 0.7 (floor 12px). The
      viewer's scale applies after those floors, so the romaji and the translation also keep 12px after it: at
      1024px wide the default desktop 85% had put the translation at 10px. With rows hidden, the rows still shown
-     grow by --lyric-rows-boost (lyrics-style.ts › rowsBoost, held to the room by use-rows-boost.ts) */
+     grow by --lyric-line-boost (lyrics-style.ts › rowsBoost, held to the room by use-rows-boost.ts) */
   --text-lyric: calc(
     max(min(3cqw, 6.4cqh), 1.0625rem) * var(--lyric-scale) *
-      var(--lyric-rows-boost, 1)
+      var(--lyric-line-boost, 1)
   );
   --text-lyric-romaji: max(
     calc(
       max(min(2.4cqw, 5.12cqh), 0.875rem) * var(--lyric-scale) *
-        var(--lyric-rows-boost, 1)
+        var(--lyric-line-boost, 1)
     ),
     0.75rem
   );
   --text-lyric-secondary: max(
     calc(
       max(min(2.1cqw, 4.48cqh), 0.75rem) * var(--lyric-scale) *
-        var(--lyric-rows-boost, 1)
+        var(--lyric-line-boost, 1)
     ),
     0.75rem
   );

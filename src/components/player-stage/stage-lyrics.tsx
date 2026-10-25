@@ -107,6 +107,29 @@ const plainText = (html: string) =>
     .replaceAll(/<(?<tag>rt|rp)>.*?<\/\k<tag>>/gu, '')
     .replaceAll(/<[^>]*>/gu, '')
 
+// Every line's text per row, for useRowsBoost
+const rowTextsOf = (
+  lyrics: TimedLyrics | null,
+  karaokeLines: KaraokeDocLine[] | null,
+  english: boolean,
+  count: number
+) => {
+  const translations = (english ? lyrics?.eng : lyrics?.chi) ?? []
+  return {
+    japanese: Array.from({ length: count }, (_, index) =>
+      plainText(karaokeLines?.[index]?.text ?? lyrics?.lines[index]?.text ?? '')
+    ),
+    romaji: Array.from(
+      { length: count },
+      (_, index) => karaokeLines?.[index]?.romaji ?? lyrics?.romaji[index] ?? ''
+    ),
+    translation: Array.from(
+      { length: count },
+      (_, index) => translations[index] ?? ''
+    ),
+  }
+}
+
 const sameText = (a: string, b: string) =>
   a.trim().toLowerCase() === b.trim().toLowerCase()
 
@@ -1224,35 +1247,19 @@ export const StageLyrics = ({
   // rows take (useRowsBoost); two lines' as far as fitSong finds room for them
   const layerRef = useRef<HTMLDivElement>(null)
   const rowTexts = useMemo(
-    () => ({
-      japanese: Array.from({ length: lineCount }, (_, index) =>
-        plainText(
-          karaokeLines?.[index]?.text ?? lyrics?.lines[index]?.text ?? ''
-        )
-      ),
-      romaji: Array.from(
-        { length: lineCount },
-        (_, index) =>
-          karaokeLines?.[index]?.romaji ?? lyrics?.romaji[index] ?? ''
-      ),
-      translation: Array.from(
-        { length: lineCount },
-        (_, index) => (english ? lyrics?.eng : lyrics?.chi)?.[index] ?? ''
-      ),
-    }),
-    [lineCount, karaokeLines, lyrics, english]
+    () => rowTextsOf(lyrics, karaokeLines, english, lineCount),
+    [lyrics, karaokeLines, english, lineCount]
   )
   useRowsBoost(layerRef, {
     enabled: !twoLines,
-    scale,
     shown,
     texts: rowTexts,
     wanted: rowsBoost(shown, false),
   })
   const layerVars: CssVars = {
     '--lyric-glow': colors.glow,
-    // One line's is set by useRowsBoost
-    ...(twoLines && { '--lyric-rows-boost': rowsBoost(shown, true) }),
+    // Two lines' rows; one line's is --lyric-line-boost, which useRowsBoost sets
+    '--lyric-rows-boost': rowsBoost(shown, true),
     '--lyric-scale': scale,
   }
   // Karaoke Style's translation: in its room at the top, or docked under the rows

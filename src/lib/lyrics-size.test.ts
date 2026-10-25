@@ -31,8 +31,12 @@ describe('rowsBoost', () => {
   test('hiding a row never shrinks the rows still shown', () => {
     for (const twoLines of [false, true]) {
       for (const shown of everyShown) {
-        for (const row of ['lyrics', 'romaji', 'translation'] as const) {
-          if (shown[row] && Object.values(shown).filter(Boolean).length > 1) {
+        // Two lines' rows are the Japanese and the romaji; their translation hangs apart
+        const rows = twoLines
+          ? (['lyrics', 'romaji'] as const)
+          : (['lyrics', 'romaji', 'translation'] as const)
+        for (const row of rows) {
+          if (shown[row] && rows.filter((other) => shown[other]).length > 1) {
             expect(
               rowsBoost({ ...shown, [row]: false }, twoLines)
             ).toBeGreaterThanOrEqual(rowsBoost(shown, twoLines))
