@@ -43,6 +43,7 @@ import type { TimedLyrics } from '@/lib/lyrics-document'
 import { parseLyricsDocument } from '@/lib/lyrics-document'
 import {
   lyricsScaleOn,
+  rowsBoost,
   SCREEN_SIZE_MAX,
   SCREEN_SIZE_MIN,
   TWO_LINES_SIZE_RANGE,
@@ -64,6 +65,7 @@ import { cn } from '@/utils/cn'
 import { DraggableLyrics, swallowNextClick } from './draggable-lyrics'
 import type { StageLayout } from './player-stage'
 import { textSpansOf, upperLineFloor } from './two-line-layout'
+import { useRowsBoost } from './use-rows-boost'
 import type { StagePlayer } from './use-you-tube-player'
 
 // Fields read before (or without) a full parse; a missing or malformed field
@@ -97,6 +99,35 @@ const LATIN = /[a-zA-Z]/u
 const isLatinOnly = (html: string) => {
   const text = html.replaceAll(/<[^>]*>/gu, '')
   return LATIN.test(text) && !JAPANESE.test(text)
+}
+
+// A line's text without its markup and furigana, as wide as it draws
+const plainText = (html: string) =>
+  html
+    .replaceAll(/<(?<tag>rt|rp)>.*?<\/\k<tag>>/gu, '')
+    .replaceAll(/<[^>]*>/gu, '')
+
+// Every line's text per row, for useRowsBoost
+const rowTextsOf = (
+  lyrics: TimedLyrics | null,
+  karaokeLines: KaraokeDocLine[] | null,
+  english: boolean,
+  count: number
+) => {
+  const translations = (english ? lyrics?.eng : lyrics?.chi) ?? []
+  return {
+    japanese: Array.from({ length: count }, (_, index) =>
+      plainText(karaokeLines?.[index]?.text ?? lyrics?.lines[index]?.text ?? '')
+    ),
+    romaji: Array.from(
+      { length: count },
+      (_, index) => karaokeLines?.[index]?.romaji ?? lyrics?.romaji[index] ?? ''
+    ),
+    translation: Array.from(
+      { length: count },
+      (_, index) => translations[index] ?? ''
+    ),
+  }
 }
 
 const sameText = (a: string, b: string) =>
@@ -345,6 +376,8 @@ const fitSong = (
   const block = grid.closest<HTMLElement>('.player-lyrics-overlay')
   const layer = block?.parentElement
   const lift = block?.nextElementSibling
+  // The spacer over the block keeps its least height too (DraggableLyrics' EDGE), at the top of the room
+  const spacer = block?.previousElementSibling
   let scale = 1
   // The largest size known to fit and the smallest known not to; `steps` halvings of the gap remain
   let fitting = Number.POSITIVE_INFINITY
@@ -414,7 +447,14 @@ const fitSong = (
     }, FIT_IDLE_MS)
   }
   const measure = () => {
-    if (!(block && layer && lift instanceof HTMLElement)) {
+    if (
+      !(
+        block &&
+        layer &&
+        lift instanceof HTMLElement &&
+        spacer instanceof HTMLElement
+      )
+    ) {
       return
     }
     clearTimeout(idle)
@@ -424,6 +464,7 @@ const fitSong = (
     height =
       layer.clientHeight -
       pixels(getComputedStyle(lift).minHeight) -
+      pixels(getComputedStyle(spacer).minHeight) -
       pixels(pad.paddingTop) -
       pixels(pad.paddingBottom) -
       slot
@@ -1202,8 +1243,23 @@ export const StageLyrics = ({
       english,
     ]
   )
+  // Rows hidden, the rows still shown grow: one line's only as far as the song's lines stay within what all three
+  // rows take (useRowsBoost); two lines' as far as fitSong finds room for them
+  const layerRef = useRef<HTMLDivElement>(null)
+  const rowTexts = useMemo(
+    () => rowTextsOf(lyrics, karaokeLines, english, lineCount),
+    [lyrics, karaokeLines, english, lineCount]
+  )
+  useRowsBoost(layerRef, {
+    enabled: !twoLines,
+    shown,
+    texts: rowTexts,
+    wanted: rowsBoost(shown, false),
+  })
   const layerVars: CssVars = {
     '--lyric-glow': colors.glow,
+    // Two lines' rows; one line's is --lyric-line-boost, which useRowsBoost sets
+    '--lyric-rows-boost': rowsBoost(shown, true),
     '--lyric-scale': scale,
   }
   // Karaoke Style's translation: in its room at the top, or docked under the rows
@@ -1220,6 +1276,7 @@ export const StageLyrics = ({
   )
   return (
     <div
+      ref={layerRef}
       data-lyric-layer
       className='absolute inset-0 lyric-stagger-layer'
       style={layerVars}>

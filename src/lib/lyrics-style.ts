@@ -84,6 +84,43 @@ export const sizeRangeOn = (
   return twoLines ? range.twoLines : range.oneLine
 }
 
+// The rows a lyric line shows with it: the Japanese (Lyrics), its romaji and its translation
+export interface ShownLyricRows {
+  lyrics: boolean
+  romaji: boolean
+  translation: boolean
+}
+
+// Hiding rows frees room the size slider can't reach, as its top end is set for all three rows. The rows still
+// shown grow by a step per row hidden, keeping their sizes' ratios, so a lone row reads as the lead: romaji alone
+// at about the Japanese's size (0.8 x 1.25), a translation alone just under it (0.7 x 1.3). Measured to stay within
+// what all three rows take at the same size, so nothing grows past what the slider already allows. Two lines
+// share the boost of their rows (Japanese and romaji); their translation hangs apart and keeps its size. Keyed
+// Japanese, romaji, translation
+const ROWS_BOOST: Record<`${0 | 1}${0 | 1}${0 | 1}`, number> = {
+  '000': 1,
+  '001': 1.3,
+  '010': 1.25,
+  '011': 1.15,
+  '100': 1.2,
+  '101': 1.1,
+  '110': 1.1,
+  '111': 1,
+}
+const TWO_LINES_ROWS_BOOST: Record<`${0 | 1}${0 | 1}`, number> = {
+  '00': 1,
+  '01': 1.25,
+  '10': 1.15,
+  '11': 1,
+}
+const bit = (shown: boolean) => (shown ? '1' : '0')
+export const rowsBoost = (shown: ShownLyricRows, twoLines: boolean) =>
+  twoLines
+    ? TWO_LINES_ROWS_BOOST[`${bit(shown.lyrics)}${bit(shown.romaji)}`]
+    : ROWS_BOOST[
+        `${bit(shown.lyrics)}${bit(shown.romaji)}${bit(shown.translation)}`
+      ]
+
 // The lyrics' scale on a screen: the saved size times that screen's own tweak, held to what the screen allows
 export const lyricsScaleOn = (
   surface: LyricsSurface,
