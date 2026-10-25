@@ -108,7 +108,12 @@ const AboutPage = () => {
                     <span aria-hidden className='w-px flex-1 bg-border' />
                   )}
                 </div>
-                <div className='flex flex-col gap-1 pb-6 not-last:pb-6 last:pb-0'>
+                <div
+                  className={
+                    index < STEPS.length - 1
+                      ? 'flex flex-col pb-6'
+                      : 'flex flex-col'
+                  }>
                   <h3 className='flex min-h-8 items-center font-semibold'>
                     {step.title}
                   </h3>
