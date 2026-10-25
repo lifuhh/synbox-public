@@ -33,7 +33,11 @@ const NETLIFY_CLI = 'netlify-cli@27.14.2'
 const READY_TIMEOUT_MS = 120_000
 const FIRST_PORT = 8890
 // The runtime's own output, for when it stops answering mid-run
-export const LOCAL_SITE_LOG = path.join(tmpdir(), 'synbox-local-site.log')
+// One log per run (by process), so two local sites never write over each other's
+export const LOCAL_SITE_LOG = path.join(
+  tmpdir(),
+  `synbox-local-site-${process.pid}.log`
+)
 
 export interface LocalSite {
   url: string
@@ -65,21 +69,33 @@ const buildEnvironment = (dir: string): Record<string, string> => {
   )
 }
 
+// Free on one host: binding it works, then it's let go
+const bindable = async (port: number, host?: string) => {
+  const { promise, resolve } = Promise.withResolvers<boolean>()
+  const server = createServer()
+  server.once('error', () => {
+    resolve(false)
+  })
+  server.listen(port, host, () => {
+    server.close(() => {
+      resolve(true)
+    })
+  })
+  return await promise
+}
+
+// Free on every address and on each loopback one, tried one by one: netlify-cli binds 127.0.0.1 and ::1 separately,
+// a proxy binds the wildcard, and any one of these binds can succeed beside a process holding another, so a second local site (another agent's) took a port
+// the first held on ::1 and its requests went to the other site
 const freePort = async (from: number): Promise<number> => {
   for (let port = from; port < from + 100; port += 1) {
-    const { promise, resolve } = Promise.withResolvers<boolean>()
-    const server = createServer()
-    server.once('error', () => {
-      resolve(false)
-    })
-    // Every address, IPv6 included: netlify-cli listens on ::1, which a 127.0.0.1-only test misses
-    server.listen(port, () => {
-      server.close(() => {
-        resolve(true)
-      })
-    })
     // oxlint-disable-next-line eslint/no-await-in-loop -- one port at a time, the first free one wins
-    const free = await promise
+    const hosts = await Promise.all([
+      bindable(port),
+      bindable(port, '127.0.0.1'),
+      bindable(port, '::1'),
+    ])
+    const free = hosts.every(Boolean)
     if (free) {
       return port
     }
