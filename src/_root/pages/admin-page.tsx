@@ -979,7 +979,7 @@ const ReportAction = ({ report }: { report: AdminReport }) => {
       }
     )
   }
-  if (state !== 'open') {
+  if (state === 'resolved' || state === 'dropped') {
     const status = [
       state === 'resolved' ? 'Resolved' : 'Dropped',
       state === 'resolved' && typeof report.resolvedVersion === 'number'
@@ -1055,6 +1055,7 @@ const ReportAction = ({ report }: { report: AdminReport }) => {
 
 const ReportItem = ({ report }: { report: AdminReport }) => {
   const { data: songInfo } = useGetSongInfoBySongId(report.videoId)
+  const state = reportState(report)
   const by = isGuest(report) ? 'Guest' : (report.name ?? 'Deleted Account')
   const where = [
     report.atSeconds === null ? null : formatClock(report.atSeconds),
@@ -1077,12 +1078,17 @@ const ReportItem = ({ report }: { report: AdminReport }) => {
       <p
         className={cn(
           'text-pretty whitespace-pre-wrap',
-          reportState(report) === 'open'
+          state === 'open' || state === 'review'
             ? 'text-foreground'
             : 'text-muted-foreground'
         )}>
         {report.message}
       </p>
+      {state === 'review' && (
+        <p className='text-xs text-muted-foreground'>
+          Fixer · {report.reviewNote ?? 'Nothing to fix'}
+        </p>
+      )}
       <div className='flex items-center justify-between gap-3'>
         <p className='min-w-0 truncate text-xs text-muted-foreground'>
           {[by, clientLabel(report.client)].filter(Boolean).join(' · ')} ·{' '}
@@ -1096,12 +1102,14 @@ const ReportItem = ({ report }: { report: AdminReport }) => {
 
 const REPORT_STATES: { id: ReportState; name: string; empty: string }[] = [
   { empty: 'No open reports.', id: 'open', name: 'Open' },
+  { empty: 'Nothing waiting.', id: 'review', name: 'Needs Review' },
   { empty: 'No resolved reports.', id: 'resolved', name: 'Resolved' },
   { empty: 'No dropped reports.', id: 'dropped', name: 'Dropped' },
 ]
 
 // What listeners reported, newest first: the song, where in it, and what was wrong. One state at a time, open
-// first; dropped ones (by an admin, the backend's fixer, or after 3 days open) show why
+// first; Needs Review holds what the backend's fixer couldn't fix, with its note; dropped ones (by an admin, the
+// fixer's junk filter, or after 3 days open) show why
 const ReportsList = () => {
   const { data: reports, error } = useAdminReports()
   const [shownState, setShownState] = useState<ReportState>('open')
@@ -1124,7 +1132,7 @@ const ReportsList = () => {
       <div
         role='radiogroup'
         aria-label='Report State'
-        className='inline-flex gap-1 self-start rounded-lg bg-secondary p-1'>
+        className='no-scrollbar inline-flex max-w-full gap-1 self-start overflow-x-auto rounded-lg bg-secondary p-1'>
         {REPORT_STATES.map((option) => (
           <button
             key={option.id}
@@ -1136,7 +1144,7 @@ const ReportsList = () => {
               setShownState(option.id)
             }}
             className={cn(
-              'h-7 rounded-md px-3 text-sm font-medium transition-colors focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-hidden touch:h-9',
+              'h-7 shrink-0 rounded-md px-2 text-sm font-medium whitespace-nowrap transition-colors focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-hidden sm:px-3 touch:h-9',
               shownState === option.id
                 ? 'bg-background text-foreground shadow-sm'
                 : 'text-muted-foreground hover:text-foreground'

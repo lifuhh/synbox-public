@@ -5,11 +5,13 @@ import {
   listOpenReports,
   parseDrop,
   parseResolution,
+  parseReview,
   resolveReport,
+  reviewReport,
 } from './reports'
 
-// The backend's report fixer (every 12 hours): it reads the open reports, fixes the songs, and resolves or drops
-// each one. A machine, so no session: a bearer token, the Worker secret REPORTS_FIXER_TOKEN, which the backend
+// The backend's report fixer (every 12 hours): it reads the open reports, fixes the songs, and resolves, drops or
+// hands to a human each one. A machine, so no session: a bearer token, the Worker secret REPORTS_FIXER_TOKEN, which the backend
 // holds too
 export interface FixerEnv {
   DB: D1Database
@@ -57,7 +59,7 @@ fixer.use(async (c, next) => {
   return c.res
 })
 
-// Open reports (neither resolved nor dropped), oldest first
+// Open reports not handed to a human, oldest first
 fixer.get('/reports', async (c) =>
   c.json({ reports: await listOpenReports(c.env.DB) })
 )
@@ -88,5 +90,21 @@ fixer.post('/reports/:id/drop', async (c) => {
     return c.json({ code: 'bad_request' }, 400)
   }
   const found = await dropReport(c.env.DB, c.req.param('id'), drop, Date.now())
+  return found ? c.body(null, 204) : c.json({ code: 'not_found' }, 404)
+})
+
+// { note? }: the fixer couldn't fix it (nothing found, or no fix good enough). It stays open for a human, and the
+// fixer's next runs skip it
+fixer.post('/reports/:id/review', async (c) => {
+  const review = parseReview(await c.req.json<unknown>().catch(() => null))
+  if (review === null) {
+    return c.json({ code: 'bad_request' }, 400)
+  }
+  const found = await reviewReport(
+    c.env.DB,
+    c.req.param('id'),
+    review.note,
+    Date.now()
+  )
   return found ? c.body(null, 204) : c.json({ code: 'not_found' }, 404)
 })

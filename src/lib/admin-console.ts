@@ -156,6 +156,9 @@ const reportSchema = z.object({
   resolution: z.string().nullable().optional(),
   resolvedAt: z.number().nullable().optional(),
   resolvedVersion: z.number().nullable().optional(),
+  // Set when the backend's fixer couldn't fix it and left it for a human, with why; absent before migration 0025
+  reviewAt: z.number().nullable().optional(),
+  reviewNote: z.string().nullable().optional(),
   version: z.number().nullable(),
   videoId: z.string(),
 })
@@ -164,15 +167,19 @@ export type AdminReport = z.infer<typeof reportSchema>
 export const isResolved = (report: AdminReport) =>
   report.resolvedAt !== null && report.resolvedAt !== undefined
 
-export type ReportState = 'open' | 'resolved' | 'dropped'
+export type ReportState = 'open' | 'review' | 'resolved' | 'dropped'
 
+// Review is still open for its reporter: only the fixer has given up on it
 export const reportState = (report: AdminReport): ReportState => {
   if (isResolved(report)) {
     return 'resolved'
   }
-  return report.droppedAt === null || report.droppedAt === undefined
+  if (report.droppedAt !== null && report.droppedAt !== undefined) {
+    return 'dropped'
+  }
+  return report.reviewAt === null || report.reviewAt === undefined
     ? 'open'
-    : 'dropped'
+    : 'review'
 }
 
 // Why a report was closed without a fix (worker/src/reports.ts › DROP_REASONS). Expired is the daily cron's alone
