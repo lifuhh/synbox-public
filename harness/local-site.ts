@@ -114,8 +114,10 @@ export const serveLocalSite = async (
   }
   symlinkSync(path.join(dir, 'node_modules'), path.join(site, 'node_modules'))
   const chosen = port ?? (await freePort(FIRST_PORT))
-  // Its own ports for the static server and the functions too, so two runs (or another session's) never collide
-  const staticPort = await freePort(chosen + 1)
+  // Its own ports for the runtime, its static server and the functions too, so two runs (or another session's)
+  // never collide
+  const runtimePort = await freePort(chosen + 1)
+  const staticPort = await freePort(runtimePort + 1)
   const functionsPort = await freePort(staticPort + 1)
   const child = spawn(
     'bunx',
@@ -127,7 +129,7 @@ export const serveLocalSite = async (
       '--framework',
       '#static',
       '--port',
-      String(chosen),
+      String(runtimePort),
       '--staticServerPort',
       String(staticPort),
       '--functions-port',
@@ -147,7 +149,9 @@ export const serveLocalSite = async (
       stdio: ['ignore', 'pipe', 'pipe'],
     }
   )
+  const front: { server?: ReturnType<typeof Bun.serve> } = {}
   const stop = () => {
+    void front.server?.stop(true)
     if (child.pid !== undefined) {
       try {
         // The whole group: netlify-cli runs its static server, functions and Deno as children
@@ -175,7 +179,10 @@ export const serveLocalSite = async (
   const read = (chunk: Buffer) => {
     appendFileSync(LOCAL_SITE_LOG, chunk)
     output = `${output}${String(chunk)}`.slice(-4000)
-    if (output.includes(`localhost:${chosen}`) && output.includes('ready')) {
+    if (
+      output.includes(`localhost:${runtimePort}`) &&
+      output.includes('ready')
+    ) {
       started.resolve(true)
     }
   }
@@ -189,9 +196,32 @@ export const serveLocalSite = async (
   if (!ready) {
     stop()
     throw new Error(
-      `Netlify's local runtime didn't start on port ${chosen}: ${output.slice(-600)}`
+      `Netlify's local runtime didn't start on port ${runtimePort}: ${output.slice(-600)}`
     )
   }
+  // In front of the runtime: netlify-cli 27 exits ("Error: aborted") when a browser drops a request it is still
+  // answering, which a page navigating away does all the time. Here a dropped request is finished upstream and
+  // thrown away, so the runtime never sees the abort. Bytes pass through as they are (no decompression)
+  front.server = Bun.serve({
+    fetch: async (request) => {
+      const url = new URL(request.url)
+      const headers = new Headers(request.headers)
+      headers.delete('connection')
+      const hasBody = request.method !== 'GET' && request.method !== 'HEAD'
+      return await fetch(
+        `http://localhost:${runtimePort}${url.pathname}${url.search}`,
+        {
+          body: hasBody ? await request.arrayBuffer() : undefined,
+          decompress: false,
+          headers,
+          method: request.method,
+          redirect: 'manual',
+        }
+      )
+    },
+    idleTimeout: 120,
+    port: chosen,
+  })
   return { stop, url: `http://localhost:${chosen}` }
 }
 
