@@ -32,11 +32,14 @@ export const toRecommendation = (song: CurrentPlayingInfo): Recommendation => ({
   videoId: song.videoId,
 })
 
-// `fresh` skips the browser's one-minute copy, so the admin page shows what was saved
+// `fresh` reads what was saved, for the admin's edits. The browser and Netlify's edge each keep a one-minute
+// copy, and the edge ignores the browser's no-cache, so a fresh read asks for a URL neither has stored. Read from a
+// copy, an edit made within the minute is missing, and the next edit, built on that list, undoes it
 export const fetchRecommendations = async ({ fresh = false } = {}) => {
-  const response = await fetch('/api/recommendations', {
-    cache: fresh ? 'no-cache' : 'default',
-  })
+  const response = await fetch(
+    fresh ? `/api/recommendations?at=${Date.now()}` : '/api/recommendations',
+    { cache: fresh ? 'no-store' : 'default' }
+  )
   if (!response.ok) {
     throw new Error(`/api/recommendations answered ${response.status}`)
   }
