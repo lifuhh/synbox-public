@@ -13,8 +13,9 @@ export const useGenerationPhase = (videoId: string) =>
 export const useGenerating = (videoId: string) =>
   useGenerationPhase(videoId) !== null
 
+// The button shows Checking Song itself, so no notice repeats it; a refusal still shows as one
 export const startGenerating = (videoId: string, title: string | undefined) => {
-  void startFromButton({ mode: 'new', title, videoId })
+  void startFromButton({ mode: 'new', title, videoId }, { announce: false })
 }
 
 export const GENERATE_LABELS = {

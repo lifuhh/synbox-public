@@ -12,10 +12,14 @@ import { playsOutsideYouTube } from '@/lib/youtube/embed-check'
 
 import { GenerationError } from './failure'
 import type { Phase } from './plan'
+import { checkVideo } from './preflight'
 import {
   beginStage,
+  closeQuickCheck,
   completePhase,
+  openQuickCheck,
   overallValue,
+  QUICK_CHECK_MS,
   reportFraction,
   startPhase,
 } from './progress'
@@ -174,6 +178,9 @@ const listenersFor = (id: string): Listeners => ({
   onProgress: (event: ProgressEvent) => {
     const now = Date.now()
     updateJob(id, (job) => {
+      if (event.stage === 'check' && job.runs.check?.quick === true) {
+        return job
+      }
       let runs = beginStage(job.runs, event.stage, now, {
         expectedS: event.expectedS,
         label: event.label,
@@ -343,6 +350,23 @@ const run = async (job: Job, signal: AbortSignal) => {
   }
   // Asked once per job: a reconnect does not load a player again
   let embeds: Promise<boolean> | null = null
+  // A new job's Song Check runs on its own short clock: the button's check already passed (openQuickCheck)
+  let quickCheck: ReturnType<typeof setTimeout> | undefined
+  if (from === 'validate' && job.runs.check === undefined) {
+    const ms =
+      QUICK_CHECK_MS.min +
+      Math.random() * (QUICK_CHECK_MS.max - QUICK_CHECK_MS.min)
+    updateJob(id, (current) => ({
+      ...current,
+      runs: openQuickCheck(current.runs, Date.now(), ms),
+    }))
+    quickCheck = setTimeout(() => {
+      updateJob(id, (current) => ({
+        ...current,
+        runs: closeQuickCheck(current.runs, Date.now()),
+      }))
+    }, ms)
+  }
   try {
     if (from === 'validate') {
       const video = await runPhase(id, 'validate', signal, async () => {
@@ -412,6 +436,7 @@ const run = async (job: Job, signal: AbortSignal) => {
       },
     }))
   } finally {
+    clearTimeout(quickCheck)
     heardAt.delete(id)
   }
 }
@@ -593,10 +618,12 @@ export const startGeneration = (
   return true
 }
 
-// What a button calls: asks the backend first, so a refused song never opens the panel. Resolves to the
-// refusal, or null once the generation started (or its running job was picked). `stayed` is read once the
-// backend answered, which can take seconds while it starts up. A press on a song already being checked does
-// nothing (`'checking'`): the first press's answer starts it
+// What a button calls: asks first, so a song that would be refused never opens the panel. The backend says
+// whether it takes the caller's song (quota, sign-in), and a new song's video is checked as the backend would
+// (preflight.ts: it exists, its length, it plays outside YouTube); a video refusal comes first, as signing in
+// wouldn't help it. Resolves to the refusal, or null once the generation started (or its running job was
+// picked). `stayed` is read once the answers are in, which can take seconds while the backend starts up. A
+// press on a song already being checked does nothing (`'checking'`): the first press's answer starts it
 export const requestGeneration = async (
   request: GenerationRequest,
   stayed: () => boolean = () => true
@@ -610,12 +637,23 @@ export const requestGeneration = async (
   )
   if (!running) {
     set({ ...state, checking: [...state.checking, videoId] })
-    const refusal = await checkGeneration(videoId, request.mode).finally(() => {
+    const [account, video] = await Promise.all([
+      checkGeneration(videoId, request.mode),
+      request.mode === 'new'
+        ? checkVideo(videoId)
+        : Promise.resolve({ refusal: null, title: null }),
+    ]).finally(() => {
       set({ ...state, checking: state.checking.filter((id) => id !== videoId) })
     })
+    const refusal = video.refusal ?? account
     if (refusal !== null) {
       return refusal
     }
+    startGeneration(
+      { ...request, title: request.title ?? video.title ?? undefined },
+      { stayed: stayed() }
+    )
+    return null
   }
   startGeneration(request, { stayed: stayed() })
   return null
@@ -655,6 +693,17 @@ export const focusGeneration = (id: string) => {
   if (state.jobs.some((job) => job.id === id)) {
     set({ ...state, expanded: true, focusedId: id })
   }
+}
+
+// Opens the panel on this video's generation, the one going or else the newest; false when it has none
+export const focusSong = (videoId: string) => {
+  const ofSong = state.jobs.filter((job) => job.videoId === videoId)
+  const job = ofSong.findLast(isActive) ?? ofSong.at(-1)
+  if (job === undefined) {
+    return false
+  }
+  focusGeneration(job.id)
+  return true
 }
 
 export const setGenerationExpanded = (expanded: boolean) => {

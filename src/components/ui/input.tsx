@@ -18,8 +18,9 @@ const inputVariants = cva('', {
       valid: 'border-success hover:border-foreground focus:border-success',
     },
     variant: {
-      // Borderless inside an InputField, which draws the edge and its state
-      bare: 'h-12 min-w-0 flex-1 border-0 bg-transparent px-0 py-0 text-base text-foreground invisible-ring sm:text-base',
+      // Borderless inside an InputField, which draws the edge and its state. `data-clearing`: its text fades out
+      // before the field empties (the hero's link once its song started)
+      bare: 'h-12 min-w-0 flex-1 border-0 bg-transparent px-0 py-0 text-base text-foreground invisible-ring transition-opacity duration-150 ease-out data-clearing:opacity-0 sm:text-base',
       default: '',
     },
   },

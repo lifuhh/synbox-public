@@ -38,6 +38,9 @@ export interface StageRun {
   // The backend began it. Until then the bar creeps towards PENDING_CAP
   confirmed: boolean
   doneAt: number | null
+  // Song Check after the button's own check passed (openQuickCheck): it keeps its own short clock, and the
+  // backend's reports for it are not applied
+  quick?: boolean
 }
 
 export type Runs = Partial<Record<StageId, StageRun>>
@@ -187,6 +190,38 @@ const phaseEnd = (phase: Phase) => {
 // A phase's stream ended well: every stage up to the phase's last is done
 export const completePhase = (runs: Runs, phase: Phase, now: number): Runs =>
   finishBefore(runs, phaseEnd(phase), now)
+
+// The panel's first step, once the Generate Lyrics button's check passed (preflight.ts): it fills over `ms`,
+// QUICK_CHECK_MS apart, and closes then (closeQuickCheck), however long the backend's own check takes. Song
+// Analysis then shows as begun, creeping until the backend reports it
+export const QUICK_CHECK_MS = { max: 2000, min: 1300 } as const
+// The share of `ms` the bar takes to cover 80 % of its way: about 88 % full when the step closes
+const QUICK_PACE = 0.6
+
+export const openQuickCheck = (runs: Runs, now: number, ms: number): Runs => ({
+  ...runs,
+  check: {
+    base: 0,
+    baseAt: now,
+    confirmed: true,
+    doneAt: null,
+    expectedS: ms / 1000,
+    label: spec('check').label,
+    pace: QUICK_PACE,
+    quick: true,
+    reported: false,
+    startedAt: now,
+  },
+})
+
+export const closeQuickCheck = (runs: Runs, now: number): Runs => {
+  const { check } = runs
+  if (check?.doneAt !== null || check.quick !== true) {
+    return runs
+  }
+  const next: Runs = { ...runs, check: close(check, now) }
+  return next.download ? next : openStage(next, 'download', now, {}, false)
+}
 
 // The first stage of a phase whose request just went out, so its bar moves before the backend's first report
 export const startPhase = (runs: Runs, phase: Phase, now: number): Runs => {

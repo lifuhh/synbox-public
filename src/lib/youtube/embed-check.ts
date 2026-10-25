@@ -11,10 +11,7 @@ const TIMEOUT_MS = 10_000
 
 // False only when the player said so. A check that cannot finish (no network, blocked script, timeout)
 // answers true: generating is what happened before this check existed.
-export const playsOutsideYouTube = async (
-  videoId: string,
-  signal: AbortSignal
-): Promise<boolean> => {
+const ask = async (videoId: string, signal: AbortSignal): Promise<boolean> => {
   const cleanup: (() => void)[] = []
   try {
     const YT = await loadYouTubeIframeApi()
@@ -70,4 +67,22 @@ export const playsOutsideYouTube = async (
       step()
     }
   }
+}
+
+// A video that played is asked once: the Generate Lyrics button asks before the generation starts, and the
+// generation's own check then takes that answer instead of loading a second player
+const playable = new Set<string>()
+
+export const playsOutsideYouTube = async (
+  videoId: string,
+  signal: AbortSignal
+): Promise<boolean> => {
+  if (playable.has(videoId)) {
+    return true
+  }
+  const plays = await ask(videoId, signal)
+  if (plays) {
+    playable.add(videoId)
+  }
+  return plays
 }

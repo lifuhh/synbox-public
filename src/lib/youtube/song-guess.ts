@@ -6,9 +6,10 @@ import type { YoutubeSearchResultInfo } from '@/types'
 
 // Kana, or kanji (Chinese titles pass too; the backend tells them apart)
 const JAPANESE_TEXT = /[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}]/u
-// The backend takes songs of 1 to 8 minutes
-const SHORTEST_S = 60
-const LONGEST_S = 8 * 60
+// The backend takes songs of 1 to 8 minutes (synbox-transcribe-whisper › services/video_validation.py ›
+// longer_than_eight_mins)
+export const SHORTEST_S = 60
+export const LONGEST_S = 8 * 60
 
 // "PT4M13S" → 253; null for anything else (a live stream's "P0D" is 0)
 export const isoSeconds = (duration: string) => {

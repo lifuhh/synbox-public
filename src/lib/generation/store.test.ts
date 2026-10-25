@@ -52,6 +52,16 @@ vi.mock('@/lib/auth', () => ({
   backendToken: async () => await Promise.resolve(null),
 }))
 
+// YouTube's details for the video checks at the button (preflight.ts): this id is a 10-minute video
+const TOO_LONG = 'L'.repeat(11)
+vi.mock('@/lib/youtube/api', () => ({
+  getVideoFacts: async (videoId: string) =>
+    await Promise.resolve({
+      duration: videoId === TOO_LONG ? 'PT10M' : 'PT4M',
+      title: 'A Song',
+    }),
+}))
+
 // The player answers 150 for this id, as YouTube does for age-restricted videos
 const YOUTUBE_ONLY = 'x8VYWazR5mE'
 vi.mock('@/lib/youtube/embed-check', () => ({
@@ -243,4 +253,50 @@ test('a second press while the song is being checked asks the backend once and s
     (job) => job.videoId === videoId
   )
   expect(jobs).toHaveLength(1)
+})
+
+test('a video the backend would refuse is refused at the button and never becomes a job', async () => {
+  vi.stubGlobal(
+    'fetch',
+    async () => await Promise.resolve(Response.json({ ok: true }))
+  )
+  const refusal = await requestGeneration({ mode: 'new', videoId: TOO_LONG })
+  expect(refusal).toMatchObject({ code: 'too_long' })
+  expect(
+    getGenerationState().jobs.some((job) => job.videoId === TOO_LONG)
+  ).toBe(false)
+  expect(generationPhase(getGenerationState(), TOO_LONG)).toBeNull()
+})
+
+test('a check that cannot reach the backend refuses at the button instead of starting a job that fails', async () => {
+  const videoId = 'u'.repeat(11)
+  vi.stubGlobal(
+    'fetch',
+    async () => await Promise.reject(new TypeError('Failed to fetch'))
+  )
+  expect(await requestGeneration({ mode: 'new', videoId })).toMatchObject({
+    code: 'unreachable',
+  })
+  expect(getGenerationState().jobs.some((job) => job.videoId === videoId)).toBe(
+    false
+  )
+})
+
+test("a started song carries YouTube's title before the backend sends its own", async () => {
+  const videoId = 't'.repeat(11)
+  vi.stubGlobal('fetch', async (url: string, init: RequestInit) =>
+    url.endsWith('/generation-check')
+      ? Response.json({ ok: true })
+      : // oxlint-disable-next-line promise/avoid-new -- a stream that only ends when aborted
+        await new Promise((_resolve, reject) => {
+          init.signal?.addEventListener('abort', () => {
+            reject(new DOMException('Aborted', 'AbortError'))
+          })
+        })
+  )
+  expect(await requestGeneration({ mode: 'new', videoId })).toBeNull()
+  const job = getGenerationState().jobs.find(
+    (current) => current.videoId === videoId
+  )
+  expect(job?.title).toBe('A Song')
 })

@@ -301,8 +301,14 @@ export interface Refusal {
   message: string
 }
 
+// The check couldn't reach the backend: a generation started now would fail its first step the same way
+export const UNREACHABLE: Refusal = {
+  code: 'unreachable',
+  message: "Couldn't reach Synbox. Check your connection and try again.",
+}
+
 // Whether the backend would refuse this generation, asked when its button is pressed so the refusal shows
-// there. null when it would go ahead, or when the backend can't answer: the pipeline checks again anyway
+// there. null when it would go ahead
 export const checkGeneration = async (
   videoId: string,
   kind: 'new' | 'regenerate'
@@ -320,14 +326,17 @@ export const checkGeneration = async (
       signal: AbortSignal.timeout(20_000),
     })
     const body: unknown = await response.json()
-    return isRecord(body) &&
+    if (
+      isRecord(body) &&
       body.ok === false &&
       typeof body.code === 'string' &&
       typeof body.message === 'string'
-      ? { code: body.code, message: body.message }
-      : null
+    ) {
+      return { code: body.code, message: body.message }
+    }
+    return response.ok ? null : UNREACHABLE
   } catch {
-    return null
+    return UNREACHABLE
   }
 }
 

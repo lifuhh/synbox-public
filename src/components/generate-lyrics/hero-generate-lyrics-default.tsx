@@ -9,7 +9,11 @@ import {
 import { useId, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router'
 
-import { startFromButton } from '@/components/generation/start-generation'
+import {
+  GenerateLabel,
+  SubmissionStatus,
+  useFieldGeneration,
+} from '@/components/generate-lyrics/field-generation'
 import { GoogleMark } from '@/components/shared/google-mark'
 import { Button } from '@/components/ui/button'
 import { Input, InputField } from '@/components/ui/input'
@@ -79,8 +83,13 @@ const HeroGenerateLyricsDefault = ({
   const statusId = useId()
   const roomy = useMediaQuery('(min-width: 22.5rem)')
   const [validationSuccess, setValidationSuccess] = useState(false)
-  // Asking the backend whether it would take the song, before the panel opens
-  const [checking, setChecking] = useState(false)
+  // Generate Lyrics' check, its answer, and the field emptying once the song started
+  const { busy, checking, clearing, edited, generate, refused, submission } =
+    useFieldGeneration(() => {
+      setInputValue('')
+      setValidationSuccess(false)
+      setErrorMessage('')
+    })
   // A tooltip only opens on hover or keyboard focus, so a tap toggles it too
   const [infoOpen, setInfoOpen] = useState(false)
   const navigate = useNavigate()
@@ -115,6 +124,7 @@ const HeroGenerateLyricsDefault = ({
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { value } = e.target
     setInputValue(value)
+    edited()
 
     if (!value || ownSongPath(value) !== null || !looksLikeYoutubeLink(value)) {
       setErrorMessage('')
@@ -169,14 +179,7 @@ const HeroGenerateLyricsDefault = ({
       } else if (blocked) {
         void signInWithGoogle()
       } else {
-        setChecking(true)
-        void (async () => {
-          await startFromButton(
-            { mode: 'new', videoId: extractedVideoId },
-            { announce: false }
-          )
-          setChecking(false)
-        })()
+        void generate(extractedVideoId)
       }
     }
   }
@@ -210,7 +213,7 @@ const HeroGenerateLyricsDefault = ({
       return 'Searching…'
     }
     if (checking) {
-      return 'Starting…'
+      return 'Checking…'
     }
     if (blocked) {
       return 'Sign In to Generate'
@@ -239,12 +242,55 @@ const HeroGenerateLyricsDefault = ({
   }
 
   const showAction = !(blocked && access.kind === 'user')
-  const actionDisabled = errorMessage !== '' || isCheckingLyrics || checking
+  // While its check runs the button stays focusable (aria-disabled) and a press does nothing
+  const actionDisabled = errorMessage !== '' || isCheckingLyrics
   const submit = () => {
-    if (inputValue.length === 0 || actionDisabled) {
+    if (inputValue.length === 0 || actionDisabled || busy()) {
       return
     }
     handleOpenLandingPageDialog()
+  }
+  const busyAttr = checking || undefined
+  // The pill's content: Generate Lyrics while that is the action or its check runs, sharing one width
+  const pillContent = () => {
+    const generating =
+      checking ||
+      (validationSuccess &&
+        !isSearch &&
+        ownPath === null &&
+        !isCheckingLyrics &&
+        !existingLyrics &&
+        !blocked)
+    if (generating) {
+      return <GenerateLabel checking={checking} />
+    }
+    return (
+      <>
+        {/* Google's mark leads its label, as its sign-in branding asks; the other icons trail */}
+        {blocked ? buttonIcon() : null}
+        <span className='text-label'>{buttonLabel()}</span>
+        {blocked ? null : buttonIcon()}
+      </>
+    )
+  }
+  // What the line under the field says while no press is being answered
+  const fieldStatus = () => {
+    if (inputMode === 'search') {
+      return <p className='text-search'>Search by title, artist or mood</p>
+    }
+    if (inputValue.length === 0 || isSearch) {
+      return null
+    }
+    return (
+      <p
+        className={cn(
+          'text-success',
+          blocked && 'text-muted-foreground',
+          errorMessage !== '' && 'text-error-strong'
+        )}>
+        {statusMessage()}
+      </p>
+    )
   }
   return (
     <div className='mx-auto flex w-full max-w-3xl flex-col gap-5 pt-12 pb-10 md:items-center md:pt-20 md:pb-14 installed:pt-4 installed:pb-6 short:gap-3 short:pt-4 short:pb-6'>
@@ -297,21 +343,27 @@ const HeroGenerateLyricsDefault = ({
             round icon on phones, where the label would squeeze the text */}
         {/* A form, so Enter or the keyboard's Go key does what the button does, for a link as for a search */}
         <form
+          aria-busy={busyAttr}
           onSubmit={(event) => {
             event.preventDefault()
             submit()
           }}>
-          <InputField ref={setDockField} state={inputMode} className='relative'>
+          <InputField
+            ref={setDockField}
+            state={refused ? 'invalid' : inputMode}
+            className='relative'>
             <Input
               value={inputValue}
               onChange={handleInputChange}
+              readOnly={checking}
+              data-clearing={clearing || undefined}
               aria-label='Search songs or paste a YouTube link'
               enterKeyHint={isSearch ? 'search' : 'go'}
               autoCapitalize='off'
               autoCorrect='off'
               spellCheck={false}
               placeholder={heroPlaceholder(roomy)}
-              aria-invalid={errorMessage !== ''}
+              aria-invalid={errorMessage !== '' || refused}
               aria-describedby={statusId}
               data-bench='hero-input'
               variant='bare'
@@ -321,10 +373,11 @@ const HeroGenerateLyricsDefault = ({
                 <Button
                   type='submit'
                   disabled={actionDisabled}
+                  aria-disabled={busyAttr}
                   variant='hero'
                   size='icon'
                   aria-label={buttonLabel()}
-                  className='shrink-0 sm:hidden'>
+                  className='shrink-0 aria-disabled:cursor-progress sm:hidden'>
                   {buttonIcon() ?? (
                     <LoaderCircleIcon className='size-5 shrink-0 motion-safe:animate-spin' />
                   )}
@@ -332,32 +385,22 @@ const HeroGenerateLyricsDefault = ({
                 <Button
                   type='submit'
                   disabled={actionDisabled}
+                  aria-disabled={busyAttr}
                   variant='hero'
                   size='inset'
                   gap='sm'
-                  className='hidden shrink-0 sm:inline-flex'>
-                  {/* Google's mark leads its label, as its sign-in branding asks; the other icons trail */}
-                  {blocked ? buttonIcon() : null}
-                  <span className='text-label'>{buttonLabel()}</span>
-                  {blocked ? null : buttonIcon()}
+                  className='hidden shrink-0 aria-disabled:cursor-progress sm:inline-flex'>
+                  {pillContent()}
                 </Button>
               </>
             )}
           </InputField>
         </form>
         <div id={statusId} className='min-h-6 px-5 text-sm' aria-live='polite'>
-          {inputMode === 'search' && (
-            <p className='text-search'>Search by title, artist or mood</p>
-          )}
-          {inputValue.length > 0 && !isSearch && (
-            <p
-              className={cn(
-                'text-success',
-                blocked && 'text-muted-foreground',
-                errorMessage !== '' && 'text-error-strong'
-              )}>
-              {statusMessage()}
-            </p>
+          {submission.kind === 'idle' ? (
+            fieldStatus()
+          ) : (
+            <SubmissionStatus submission={submission} />
           )}
         </div>
       </div>
