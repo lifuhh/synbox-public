@@ -22,6 +22,15 @@ const SECTIONS: LegalSection[] = [
   },
   {
     items: [
+      'To see which parts of Synbox get used, the app records a few events: the app opened (installed or in a browser; phone, tablet or computer), a song page opened (the song’s id), lyrics, romaji or translation turned on or off, the translation language, a song shared or its link copied, and Install App pressed or the app installed.',
+      'Each carries its time and your account, or without one, a random id kept in your browser. No IP address, email or browser details.',
+      'Kept 90 days, then deleted. Only the admin sees them.',
+      'If your browser sends Global Privacy Control or Do Not Track, none are sent.',
+    ],
+    title: 'Usage Events',
+  },
+  {
+    items: [
       'To sign you in and sync your library.',
       'To keep limits fair: every new song costs money to make.',
       'To fix the lyrics you report and the errors the app hits.',
@@ -32,7 +41,7 @@ const SECTIONS: LegalSection[] = [
   },
   {
     items: [
-      'Accounts and libraries: Cloudflare.',
+      'Accounts, libraries and usage events: Cloudflare.',
       'Lyrics are made on Google Cloud, which gets your account id only, not your name or email.',
       'Songs and lyrics: Appwrite. No personal data.',
       'Making lyrics sends the song’s audio and text, not your data, to OpenAI and ElevenLabs.',
@@ -63,13 +72,14 @@ const SECTIONS: LegalSection[] = [
     items: [
       'A sign-in cookie keeps you signed in.',
       'Your browser keeps your settings and offline lyrics. Clearing site data removes them.',
-      'No advertising or analytics cookies.',
+      'No advertising cookies, and no third-party analytics.',
     ],
     title: 'Cookies and Storage',
   },
   {
     items: [
       'Plays and song checks: up to a day.',
+      'Usage events: 90 days.',
       'Your account, its activity, library, reports and the songs you generated: until you delete them or ask us to.',
       'Sign-in sessions: until you sign out or they expire.',
       'Error reports: Sentry keeps them for a limited time.',
