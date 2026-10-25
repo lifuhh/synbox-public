@@ -50,6 +50,18 @@ export const fractionAcross = (
     : (point.clientY - box.top) / box.height
 }
 
+// Radix's dialogs and menus lock the page's scroll with react-remove-scroll, which judges a finger's drag in the
+// screen's axes: on the turned page a drag along the page reads as sideways, and it cancels a drag the panel can't
+// scroll that way, so nothing in the panel scrolled. Stopped inside the panel, the drag never reaches that lock
+// (it listens on the document); the turned page is fixed, so nothing under the panel scrolls anyway
+export const keepScrollWhenTurned = (event: {
+  stopPropagation: () => void
+}) => {
+  if (pageTurned()) {
+    event.stopPropagation()
+  }
+}
+
 // An element's fractional width along the page (offsetWidth rounds)
 export const pageWidth = (element: Element) => {
   const box = element.getBoundingClientRect()

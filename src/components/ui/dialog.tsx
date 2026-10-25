@@ -6,6 +6,7 @@ import type { VariantProps } from 'class-variance-authority'
 import { X } from 'lucide-react'
 import * as React from 'react'
 
+import { keepScrollWhenTurned } from '@/lib/page-turn'
 import { cn } from '@/utils/cn'
 
 const Dialog = DialogPrimitive.Root
@@ -47,7 +48,10 @@ const DialogContentRender: React.ForwardRefRenderFunction<
   React.ComponentRef<typeof DialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> &
     VariantProps<typeof dialogContentVariants>
-> = ({ className, children, variant, onOpenAutoFocus, ...props }, ref) => (
+> = (
+  { className, children, variant, onOpenAutoFocus, onTouchMove, ...props },
+  ref
+) => (
   <DialogPortal>
     <DialogOverlay />
     {/* Opens in place: it grows a little from its own centre and never starts off the screen (shadcn's slide-ins
@@ -67,6 +71,10 @@ const DialogContentRender: React.ForwardRefRenderFunction<
             event.currentTarget.focus({ preventScroll: true })
           }
         }
+      }}
+      onTouchMove={(event) => {
+        onTouchMove?.(event)
+        keepScrollWhenTurned(event)
       }}
       className={cn(
         'fixed top-[50%] left-[50%] z-50 grid max-h-[calc(var(--app-h)-2rem-var(--safe-top)-var(--safe-bottom))] w-[calc(100%-2rem)] max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 overflow-y-auto overscroll-contain rounded-2xl bg-popover p-6 shadow-panel duration-200 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95',
