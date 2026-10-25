@@ -5,6 +5,8 @@
 // network layer, and one that isn't on the list below is blocked and fails the run.
 //
 //   bun harness/smoke.ts <url> [--song <id>]   e.g. https://deploy-preview-335--synbox.netlify.app or https://synbox.io
+//   bun harness/smoke.ts --local [--song <id>] a production build of this checkout, served by Netlify's own local
+//                                              runtime (harness/local-site.ts): the same flows, no build minutes
 //
 // One line per flow, `smoke PASS|FAIL`, exit 0 or 1, and a report in the main checkout's
 // .reports/YYYY-MM-DD-smoke-<host>/ (index.html, result.json, a screenshot of each failed flow). About 40 seconds
@@ -28,6 +30,7 @@ import {
 import type { View } from './bench/engines/browser'
 import { isRecord } from './bench/json'
 import { repoAt, storeDir } from './bench/store'
+import { serveLocalSite } from './local-site'
 
 // The YouTube Top 100 Songs Japan chart, the one the home page and chart songs read (src/lib/youtube/api.ts)
 const CHART = 'PL4fGSI1pDJn4-UIb6RKHdxam-oAUULIGB'
@@ -299,6 +302,15 @@ const WRITE_RULES: WriteRule[] = [
       url.origin === origin &&
       /^\/api\/songs\/[\w-]{11}\/listen$/u.test(url.pathname),
     name: 'listen',
+  },
+  {
+    // The app's first-party usage events, batched (src/lib/usage.ts): counts only, answered so a smoke run adds none
+    answer: async (route) => {
+      await route.fulfill({ status: 204 })
+    },
+    matches: (url, origin) =>
+      url.origin === origin && url.pathname === '/api/events',
+    name: 'usage-events',
   },
   {
     // Sentry's error and replay ingest: an event from a smoke run is noise in the real project. Answered rather than
@@ -1163,12 +1175,30 @@ declare global {
 if (import.meta.main) {
   const { positionals, values } = parseArgs({
     allowPositionals: true,
-    options: { song: { type: 'string' } },
+    options: { local: { type: 'boolean' }, song: { type: 'string' } },
   })
   const [url] = positionals
+  if (values.local === true) {
+    console.log(
+      'local: building this checkout and serving it with netlify-cli (no Netlify build)'
+    )
+    const site = await serveLocalSite(process.cwd())
+    let pass = false
+    try {
+      const outcome = await smoke(site.url, values.song)
+      ;({ pass } = outcome)
+    } finally {
+      site.stop()
+    }
+    // What only a deployed copy shows (harness/local-site.ts)
+    console.log(
+      "local: not covered here, preview-only: variables set in Netlify's UI (the build read the main checkout's env file), the CDN cache, HTTPS"
+    )
+    process.exit(pass ? 0 : 1)
+  }
   if (url === undefined || !url.startsWith('https://')) {
     console.error(
-      'usage: bun harness/smoke.ts <https://deployed-copy> [--song <library video id>], e.g. https://synbox.io'
+      'usage: bun harness/smoke.ts <https://deployed-copy> | --local [--song <library video id>], e.g. https://synbox.io'
     )
     process.exit(2)
   }
