@@ -132,7 +132,9 @@ export const useGetLyricsBySongId = (songId: string) =>
       return found === null ? null : { ...found.row, videoId: songId }
     },
     queryKey: [QUERY_KEYS.GET_LYRICS_BY_SONG_ID, songId],
-    refetchOnMount: false,
+    // "No lyrics yet" is asked again on every visit: anyone's generation can finish in the meantime, and only the
+    // listener's own clears the cache (generation-host.tsx)
+    refetchOnMount: (query) => (query.state.data === null ? 'always' : false),
     refetchOnReconnect: false,
     refetchOnWindowFocus: false,
     // A 404 is the normal "no lyrics yet" answer, so retrying only adds delay
@@ -156,6 +158,8 @@ export const useGetKaraokeById = (
         : ((await getKaraoke(videoId, version, signal)) ??
           (await getKaraoke(videoId, null, signal))),
     queryKey: [QUERY_KEYS.GET_KARAOKE_BY_ID, videoId, version],
+    // No timing yet is asked again on every visit, as with the lyrics
+    refetchOnMount: (query) => (query.state.data === null ? 'always' : true),
     refetchOnWindowFocus: false,
     // A busy server turns requests away for up to a minute while a lyrics job
     // runs; giving up sooner leaves plain lyrics until something remounts

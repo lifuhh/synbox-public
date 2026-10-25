@@ -32,6 +32,12 @@ export const useSongPresence = (videoId: string): SongPresence => {
   if (lyrics.data !== null) {
     return { kind: 'in-library' }
   }
+  // A cached "not yet" being asked again: the song may have arrived since
+  if (lyrics.isFetching) {
+    return songs.some((song) => song.videoId === videoId)
+      ? { kind: 'in-library' }
+      : { kind: 'checking' }
+  }
   if (chart.isPending) {
     return { kind: 'checking' }
   }
