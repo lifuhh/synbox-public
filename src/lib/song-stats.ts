@@ -3,6 +3,8 @@ import { z } from 'zod'
 
 import { QUERY_KEYS } from '@/lib/react-query/query-keys'
 
+import { trackLater } from './usage-later'
+
 // Each song's listens and likes, kept by the auth Worker (worker/src/songs.ts)
 
 // A guest's listens are counted by this browser: a random id kept here, never synced to an account
@@ -34,6 +36,8 @@ export const countListen = (videoId: string) => {
     return
   }
   lastListen = { at: now, videoId }
+  // The same visit, as a usage event (lib/usage.ts), loaded on first use
+  trackLater({ name: 'song_open', videoId })
   const send = async () => {
     try {
       // The Worker counts an account's every visit (not a reload within a minute) and a guest's once per song an hour (worker/src/songs.ts)

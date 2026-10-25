@@ -51,6 +51,7 @@ import {
   useAdminReports,
   useAdminSettings,
   useAdminSignals,
+  useAdminUsage,
   useAdminUsers,
   useSetBlocked,
   useSetGenerationEnabled,
@@ -1300,12 +1301,161 @@ const SignalsPanel = () => {
   )
 }
 
+// Each usage event's name, as a column reads (worker/src/events.ts)
+const EVENT_LABELS: Record<string, string> = {
+  app_open: 'App Opens',
+  install_prompt: 'Install App Pressed',
+  installed: 'Installs',
+  lyrics_feature: 'Lyrics Toggles',
+  share: 'Shares',
+  song_open: 'Song Opens',
+}
+
+const UsageCell = ({ children }: { children: number | string }) => (
+  <td className='px-3 py-2 text-right whitespace-nowrap tabular-nums'>
+    {children}
+  </td>
+)
+
+// How the app is used: people active, what they open and press, and what the server records anyway
+// (worker/src/events.ts › readUsage). Counting began with the usage events, so earlier days read 0 people
+const UsagePanel = () => {
+  const { data, error } = useAdminUsage()
+  if (error !== null) {
+    return error.message.includes('404') ? (
+      <p className='text-sm text-error'>Needs the Worker update.</p>
+    ) : (
+      <LoadError error={error} />
+    )
+  }
+  if (data === undefined) {
+    return <Skeleton className='h-40 w-full' />
+  }
+  return (
+    <div className='flex flex-col gap-8 text-sm'>
+      <p className='text-base text-foreground'>
+        <span className='font-semibold tabular-nums'>{data.week.active}</span>{' '}
+        people in the last 7 days ·{' '}
+        <span className='tabular-nums'>{data.week.signedIn}</span> signed in
+      </p>
+      <section className='flex flex-col gap-2'>
+        <h2 className='text-base font-semibold text-foreground'>
+          By Day (UTC)
+        </h2>
+        <div className='overflow-x-auto'>
+          <table className='w-full min-w-xl border-collapse'>
+            <thead className='text-xs text-muted-foreground'>
+              <tr>
+                <th className='px-3 py-2 text-left font-medium whitespace-nowrap'>
+                  Day
+                </th>
+                <th className='px-3 py-2 text-right font-medium whitespace-nowrap'>
+                  People
+                </th>
+                <th className='px-3 py-2 text-right font-medium whitespace-nowrap'>
+                  Signed In
+                </th>
+                <th className='px-3 py-2 text-right font-medium whitespace-nowrap'>
+                  Song Opens
+                </th>
+                <th className='px-3 py-2 text-right font-medium whitespace-nowrap'>
+                  New Accounts
+                </th>
+                <th className='px-3 py-2 text-right font-medium whitespace-nowrap'>
+                  Generations
+                </th>
+                <th className='px-3 py-2 text-right font-medium whitespace-nowrap'>
+                  Failed
+                </th>
+                <th className='px-3 py-2 text-right font-medium whitespace-nowrap'>
+                  Reports
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.days.map((day) => (
+                <tr key={day.day} className='border-t border-border'>
+                  <td className='px-3 py-2 text-left whitespace-nowrap tabular-nums'>
+                    {day.day}
+                  </td>
+                  <UsageCell>{day.active}</UsageCell>
+                  <UsageCell>{day.signedIn}</UsageCell>
+                  <UsageCell>{day.songOpens}</UsageCell>
+                  <UsageCell>{day.newAccounts}</UsageCell>
+                  <UsageCell>{day.generations}</UsageCell>
+                  <UsageCell>{day.generationsFailed}</UsageCell>
+                  <UsageCell>{day.reports}</UsageCell>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+      <section className='flex flex-col gap-2'>
+        <h2 className='text-base font-semibold text-foreground'>Last 7 Days</h2>
+        {data.events.length === 0 ? (
+          <p className='text-muted-foreground'>No events yet.</p>
+        ) : (
+          <table className='w-full border-collapse'>
+            <thead className='text-xs text-muted-foreground'>
+              <tr>
+                <th className='px-3 py-2 text-left font-medium whitespace-nowrap'>
+                  Event
+                </th>
+                <th className='px-3 py-2 text-right font-medium whitespace-nowrap'>
+                  Times
+                </th>
+                <th className='px-3 py-2 text-right font-medium whitespace-nowrap'>
+                  People
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.events.map((event) => (
+                <tr key={event.name} className='border-t border-border'>
+                  <td className='px-3 py-2 text-left'>
+                    {EVENT_LABELS[event.name] ?? event.name}
+                  </td>
+                  <UsageCell>{event.count}</UsageCell>
+                  <UsageCell>{event.actors}</UsageCell>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </section>
+      <section className='flex flex-col gap-2'>
+        <h2 className='text-base font-semibold text-foreground'>
+          Most Listened
+        </h2>
+        <ol>
+          {data.songs.map((song) => (
+            <li
+              key={song.videoId}
+              className='flex items-center justify-between gap-3 border-t border-border px-3 py-2'>
+              <Link
+                to={`/v/${song.videoId}`}
+                className='font-mono text-foreground hover:underline'>
+                {song.videoId}
+              </Link>
+              <span className='text-muted-foreground tabular-nums'>
+                {song.listens} listens
+              </span>
+            </li>
+          ))}
+        </ol>
+      </section>
+    </div>
+  )
+}
+
 const TABS = [
   'songs',
   'reports',
   'recommendations',
   'accounts',
   'signals',
+  'usage',
 ] as const
 type Tab = (typeof TABS)[number]
 const isTab = (value: string | null): value is Tab =>
@@ -1349,6 +1499,9 @@ const AdminTabs = () => {
           <TabsTrigger value='signals' className='h-full'>
             Signals
           </TabsTrigger>
+          <TabsTrigger value='usage' className='h-full'>
+            Usage
+          </TabsTrigger>
         </TabsList>
       </div>
       <TabsContent value='songs' className='mt-4'>
@@ -1385,6 +1538,9 @@ const AdminTabs = () => {
       </TabsContent>
       <TabsContent value='signals' className='mt-4'>
         <SignalsPanel />
+      </TabsContent>
+      <TabsContent value='usage' className='mt-4'>
+        <UsagePanel />
       </TabsContent>
     </Tabs>
   )

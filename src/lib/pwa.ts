@@ -3,6 +3,8 @@ import { registerSW } from 'virtual:pwa-register'
 
 import { anyActive, getGenerationState } from '@/lib/generation/store'
 
+import { trackLater } from './usage-later'
+
 // Chromium's install prompt event; not in the DOM typings
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>
@@ -57,6 +59,7 @@ const readInstallMethod = (): InstallMethod => {
       // A prompt can be shown once; Chromium fires a fresh event if it is dismissed
       deferredPrompt = null
       publish(readInstallMethod())
+      trackLater({ name: 'install_prompt', props: { method: 'prompt' } })
       await event.prompt()
     }
     return { kind: 'prompt', prompt }
@@ -80,6 +83,7 @@ window.addEventListener('beforeinstallprompt', (event) => {
 window.addEventListener('appinstalled', () => {
   deferredPrompt = null
   refresh()
+  trackLater({ name: 'installed' })
 })
 standaloneQuery.addEventListener('change', refresh)
 
