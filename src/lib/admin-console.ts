@@ -83,6 +83,10 @@ const fetchParsed = async <T>(schema: z.ZodType<T>, path: string) => {
   return result.data
 }
 
+// Asking again gets the same answer, so Reload shows at once. Other failures keep React Query's 3 retries
+const retry = (failures: number, error: Error) =>
+  !(error instanceof AdminOutdatedError) && failures < 3
+
 export type DailyLimit = z.infer<typeof dailyLimitSchema>
 export type AdminUser = z.infer<typeof adminUserSchema>
 export type AdminGeneration = z.infer<typeof generationSchema>
@@ -99,6 +103,7 @@ export const useAdminUsers = () =>
       return users
     },
     queryKey: [QUERY_KEYS.GET_ADMIN_USERS],
+    retry,
   })
 
 // Whose songs the Songs list shows: everyone (null), guests, or one account by email
@@ -135,6 +140,7 @@ export const useAdminGenerations = (by: SongsBy) =>
       ) === true
         ? RUNNING_REFRESH_MS
         : false,
+    retry,
   })
 
 // A listener's report of a song's lyrics (worker/src/reports.ts)
@@ -214,6 +220,7 @@ export const useAdminReports = () =>
       return reports
     },
     queryKey: [QUERY_KEYS.GET_ADMIN_REPORTS],
+    retry,
   })
 
 const LIVE_VERSION_WAIT_MS = 4000
@@ -329,12 +336,14 @@ export const useAdminSignals = () =>
   useQuery({
     queryFn: async () => await fetchParsed(signalsSchema, '/signals'),
     queryKey: [QUERY_KEYS.GET_ADMIN_SIGNALS],
+    retry,
   })
 
 export const useAdminSettings = () =>
   useQuery({
     queryFn: async () => await fetchParsed(settingsSchema, '/settings'),
     queryKey: [QUERY_KEYS.GET_ADMIN_SETTINGS],
+    retry,
   })
 
 const useRefreshing = <T>(run: (input: T) => Promise<unknown>) => {
