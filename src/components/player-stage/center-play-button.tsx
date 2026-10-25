@@ -81,8 +81,9 @@ const StepButton = ({
 }
 
 // The play/pause control in the middle of the video, between Previous and Next. Its disc is dark enough to hide
-// YouTube's own button under it, which sits on the same spot and is 56px wide. The floating UI stays up while
-// YouTube's button shows (PlayerStage), so this goes with it; only a lock or a drag hides the rest without it
+// YouTube's own button under it, which sits on the same spot and is 56px wide, so it stays while YouTube's shows
+// even when the rest of the floating UI has gone (a mouse idling, a tap hiding it, a lock or a drag). Alone it only
+// covers: it takes presses only with the rest of the UI, so a tap on it then shows the controls instead of pausing
 export const CenterPlayButton = ({
   phase,
   controlsVisible,
@@ -103,7 +104,7 @@ export const CenterPlayButton = ({
   // lyrics reach the middle of the screen: there the bar's own play button is
   // enough, and this one shows only while it covers YouTube's
   const onlyForControls = !youTubeCenterShowing
-  const armed = useArmed(visible)
+  const armed = useArmed(controlsVisible)
   return (
     <>
       <StepButton

@@ -183,13 +183,15 @@ const useFullscreen = () => {
 
 // The floating UI shows after input until idle, never while locked or dragging. Paused, it stays while the
 // mouse is over the player and goes with it. With a finger it also stays while YouTube's own centre button shows
-// under ours, so the centre button never outlives the rest of the UI and YouTube's never shows alone. With a
-// mouse it doesn't wait for that: the rest goes on idle or the moment the mouse leaves, and the centre button
-// alone stays over YouTube's until it goes (CenterPlayButton)
+// under ours, so the centre button never outlives the rest of the UI on its own. With a mouse it doesn't wait for
+// that: the rest goes on idle or the moment the mouse leaves. A tap that hides the controls (`dismissed`) hides
+// them whatever holds them, paused or not (owner, 2026-10-25). Either way the centre button alone stays over
+// YouTube's until it goes (CenterPlayButton)
 const showsControls = (state: {
   locked: boolean
   dragging: boolean
   idle: boolean
+  dismissed: boolean
   outside: boolean
   playing: boolean
   mouse: boolean
@@ -198,8 +200,9 @@ const showsControls = (state: {
   !state.locked &&
   !state.dragging &&
   (!state.idle ||
-    (state.youTubeCenterShowing && !state.mouse) ||
-    (!state.playing && !state.outside))
+    (!state.dismissed &&
+      ((state.youTubeCenterShowing && !state.mouse) ||
+        (!state.playing && !state.outside))))
 
 const SeekFlashBadge = ({ flash }: { flash: SeekFlash }) => (
   <div
@@ -408,7 +411,7 @@ export const PlayerStage = ({
   )
 
   const mouse = useMediaQuery('(pointer: fine)')
-  const { idle, outside, sleep, wake } = useIdle(
+  const { dismissed, idle, outside, sleep, wake } = useIdle(
     mouse ? MOUSE_IDLE_MS : IDLE_MS,
     stageRef
   )
@@ -439,6 +442,7 @@ export const PlayerStage = ({
   const youTubeCenterShowing =
     useYouTubeCenterShowing(phase) && !showCover && !handsOff
   const controlsVisible = showsControls({
+    dismissed,
     dragging,
     idle,
     locked,
@@ -522,7 +526,8 @@ export const PlayerStage = ({
   const keyDownRef = useRef<((event: KeyboardEvent) => void) | null>(null)
   useLayoutEffect(() => {
     keyDownRef.current = (event: KeyboardEvent) => {
-      if (!playerOwnsKey(event)) {
+      // Lock Screen leaves only Unlock working
+      if (locked || !playerOwnsKey(event)) {
         return
       }
       const onSlider =
