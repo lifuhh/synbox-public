@@ -13,13 +13,8 @@ const FORWARDED_CLICK_MS = 100
 
 type Side = 'back' | 'forward'
 
-// The left and right thirds of the stage skip; the middle only shows and hides the controls
-const sideAt = (x: number): Side | null => {
-  if (x < 1 / 3) {
-    return 'back'
-  }
-  return x > 2 / 3 ? 'forward' : null
-}
+// A double tap on the left half skips back, on the right half forward (owner, 2026-10-25)
+const sideAt = (x: number): Side => (x < 1 / 2 ? 'back' : 'forward')
 // What a single tap does, decided as it lands, while the controls still show what was there before it
 type TapIntent = 'toggle' | 'hide' | 'reveal'
 
@@ -42,7 +37,7 @@ interface StageTapOptions {
 
 // A click toggles playback and a double click toggles fullscreen. On a touch screen a tap shows the
 // controls, or hides them when they are already up, and plays from a paused song's cover; a double tap
-// on the left or right third skips back or forward, and each further quick tap there skips again, as in
+// on the left or right half skips back or forward, and each further quick tap there skips again, as in
 // YouTube's own app. A tap on a side waits a moment for its second tap, so a double tap never also
 // flashes the controls
 export const useStageTaps = ({

@@ -40,6 +40,8 @@ export const useIdle = (
   stageRef: RefObject<HTMLElement | null>
 ) => {
   const [idle, setIdle] = useState(false)
+  // Put to sleep on purpose (a tap that hides the controls), not by the idle time: nothing holds them then
+  const [dismissed, setDismissed] = useState(false)
   const [outside, setOutside] = useState(false)
   const outsideRef = useRef(false)
   const pressFocusRef = useRef(false)
@@ -58,6 +60,7 @@ export const useIdle = (
 
   const wake = useCallback(() => {
     setIdle(false)
+    setDismissed(false)
     clearTimeout(timerRef.current)
     const check = () => {
       if (busy(true)) {
@@ -71,6 +74,7 @@ export const useIdle = (
   const sleep = () => {
     clearTimeout(timerRef.current)
     setIdle(true)
+    setDismissed(true)
   }
 
   useEffect(() => {
@@ -146,5 +150,5 @@ export const useIdle = (
       document.documentElement.removeEventListener('pointerleave', leaveWindow)
     }
   }, [wake, busy, stageRef])
-  return { idle, outside, sleep, wake }
+  return { dismissed, idle, outside, sleep, wake }
 }
