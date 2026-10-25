@@ -60,3 +60,19 @@ export const textSpansOf = (line: HTMLElement, box: HTMLElement) => {
     ]
   })
 }
+
+// The translation placed on its own never rests over the rows: put down overlapping them, it goes past them on the
+// side its centre is on. In layout units within the lyrics' layer
+export const clearOfRows = (
+  top: number,
+  height: number,
+  rows: { top: number; bottom: number },
+  gap: number
+) => {
+  if (top >= rows.bottom || top + height <= rows.top) {
+    return top
+  }
+  return top + height / 2 >= (rows.top + rows.bottom) / 2
+    ? rows.bottom + gap
+    : rows.top - gap - height
+}

@@ -1,5 +1,5 @@
 import { useAtom, useAtomValue, useSetAtom } from 'jotai'
-import type { ReactNode, Ref } from 'react'
+import type { ReactNode, Ref, RefObject } from 'react'
 import {
   useCallback,
   useEffect,
@@ -26,10 +26,12 @@ import {
   translationIsEnglishAtom,
   translationVisibilityAtom,
   lyricsTranslationAnchorAtom,
+  lyricsAnchorAtom,
+  lyricsAnchorPortraitAtom,
   translationDockedAtom,
   lyricsStylePanelAtom,
 } from '@/context/atoms'
-import { useLyricsSurface } from '@/hooks/use-media-query'
+import { useLyricsSurface, usePortrait } from '@/hooks/use-media-query'
 import { balanceWrap } from '@/lib/balance-wrap'
 import { parseRubyHtml } from '@/lib/furigana'
 import type { PlaybackClock, TwoLineView } from '@/lib/karaoke'
@@ -62,9 +64,16 @@ import type { CssVars, KaraokeDocLine } from '@/types'
 import { spaceDashes } from '@/utils'
 import { cn } from '@/utils/cn'
 
-import { DraggableLyrics, swallowNextClick } from './draggable-lyrics'
+import type { Dock } from './draggable-lyrics'
+import {
+  clamp01,
+  DraggableLyrics,
+  handleTrack,
+  offsetIn,
+  swallowNextClick,
+} from './draggable-lyrics'
 import type { StageLayout } from './player-stage'
-import { textSpansOf, upperLineFloor } from './two-line-layout'
+import { clearOfRows, textSpansOf, upperLineFloor } from './two-line-layout'
 import { useRowsBoost } from './use-rows-boost'
 import type { StagePlayer } from './use-you-tube-player'
 
@@ -725,10 +734,10 @@ const TwoRows = ({
   )
 }
 
-// Two Lines' one translation, for the line being sung, centred in its own room at the top of the video, where
-// the viewer can drag it (its place saved apart from the rows'). Pulled down past the room's floor it docks under the
-// rows instead (DockedTranslation); while docked the room stays, empty, for its place when it comes back. With no
-// translation to show the block stays mounted, so a drag survives a gap
+// Two Lines' one translation, for the line being sung, centred, at the top of the video unless the viewer drags it
+// anywhere down the stage (its place saved apart from the rows'), below the rows included. Let go over the rows it
+// docks under them instead (DockedTranslation); while docked the room stays, empty, for its place when it comes
+// back. With no translation to show the block stays mounted, so a drag survives a gap
 const StaggerTranslation = ({
   children,
   layout,
@@ -740,7 +749,7 @@ const StaggerTranslation = ({
   layout: StageLayout
   scale: number
   colors: LyricsThemeColors
-  dock: { onPull: (over: boolean) => void; onDock: () => void }
+  dock: Dock
 }) => (
   <div data-lyric-translation className='lyric-stagger-translation-area'>
     <DraggableLyrics
@@ -748,28 +757,16 @@ const StaggerTranslation = ({
       scale={scale}
       colors={colors}
       anchorAtom={lyricsTranslationAnchorAtom}
-      lifts={false}
       dock={dock}>
       {children}
     </DraggableLyrics>
   </div>
 )
 
-// How far the docked translation must be pulled up off the rows to come away: a share of the stage's height, never
-// less than a fingertip's travel. Short of it the translation springs back
+// How far the docked translation must be pulled off the rows, up or down, to come away: a share of the stage's
+// height, never less than a fingertip's travel. Short of it the translation springs back
 const pullToTear = (stageHeight: number) => Math.max(40, 0.1 * stageHeight)
 const TAP_SLOP_PX = { mouse: 4, touch: 10 }
-
-// An element's top within an ancestor, in layout: the page's own axes, which a page turned by Lock Landscape keeps
-const offsetIn = (element: HTMLElement, ancestor: HTMLElement) => {
-  let top = 0
-  let at: Element | null = element
-  while (at instanceof HTMLElement && at !== ancestor) {
-    top += at.offsetTop
-    at = at.offsetParent
-  }
-  return top
-}
 
 interface Press {
   y: number
@@ -779,9 +776,9 @@ interface Press {
 }
 
 // Karaoke Style's translation docked under the rows, centred on them: part of their block, so it moves when they are
-// dragged. Its own drag pulls it upward off them (the rows stay); let go past pullToTear it goes back to its room at
-// the top, where it was let go (`onTear`: its top there, within the lyrics' layer). `ghost`: the place it would dock,
-// shown while it is pulled down to the rows
+// dragged. Its own drag pulls it off them, up or down (the rows stay); let go past pullToTear it is placed on its
+// own where it was let go (`onTear`: its top there, within the lyrics' layer). `ghost`: the place it would dock,
+// shown while the translation is dragged over the rows
 const DockedTranslation = ({
   children,
   layout,
@@ -791,12 +788,13 @@ const DockedTranslation = ({
   children: ReactNode
   layout: StageLayout
   ghost?: boolean
-  onTear?: (top: number, layer: HTMLElement) => void
+  onTear?: (top: number) => void
 }) => {
+  // How far the pointer has moved it, down positive
   const [pull, setPull] = useState({ at: 0, px: 0 })
   const press = useRef<Press | null>(null)
   const setStylePanel = useSetAtom(lyricsStylePanelAtom)
-  const torn = pull.at > 0 && pull.px > pull.at
+  const torn = pull.at > 0 && Math.abs(pull.px) > pull.at
   const handleDown = (event: React.PointerEvent<HTMLDivElement>) => {
     // Its own drag, not the rows'
     event.stopPropagation()
@@ -824,7 +822,7 @@ const DockedTranslation = ({
       start.moved = true
       layout.onDragChange(true)
     }
-    setPull({ at: start.tearAt, px: Math.max(0, -delta) })
+    setPull({ at: start.tearAt, px: delta })
   }
   const handleUp = (event: React.PointerEvent<HTMLDivElement>) => {
     event.stopPropagation()
@@ -839,7 +837,7 @@ const DockedTranslation = ({
       const element = event.currentTarget
       const layer = element.closest<HTMLElement>('[data-lyric-layer]')
       if (torn && layer !== null) {
-        onTear?.(offsetIn(element, layer) - pull.px, layer)
+        onTear?.(offsetIn(element, layer) + pull.px)
       }
       setPull({ at: 0, px: 0 })
     } else if (event.pointerType === 'mouse') {
@@ -848,7 +846,7 @@ const DockedTranslation = ({
       layout.tapStage()
     }
   }
-  const vars: CssVars = { '--dock-pull': `${-pull.px}px` }
+  const vars: CssVars = { '--dock-pull': `${pull.px}px` }
   // A translation longer than its place shrinks into it, from its top, rather than pushing the rows up
   const placeRef = useRef<HTMLDivElement>(null)
   const textRef = useRef<HTMLDivElement>(null)
@@ -879,7 +877,7 @@ const DockedTranslation = ({
           ghost
             ? 'pointer-events-none'
             : 'lyrics-hit-text cursor-grab touch-none transition-fade-translate duration-200 ease-out motion-reduce:transition-none',
-          pull.px > 0 && 'cursor-grabbing transition-none',
+          pull.px !== 0 && 'cursor-grabbing transition-none',
           torn && 'opacity-60'
         )}
         onPointerDown={ghost ? undefined : handleDown}
@@ -911,51 +909,118 @@ const translationOf = (
     />
   ) : undefined
 
-// Whether Karaoke Style's translation is docked under the rows (one choice for every song), whether a pull down offers
-// to dock it right now, and pulling it off again: back to its room at the top, where it was let go
-const useTranslationDock = () => {
+// The least gap kept between the translation placed on its own and the rows: like DraggableLyrics' EDGE, a share of
+// the stage with a floor
+const clearGap = (stageHeight: number) => Math.max(8, 0.02 * stageHeight)
+
+// The rows' handle (their drawn block, the docked translation included), and the translation's in its room
+const rowsHandleOf = (layer: HTMLElement) =>
+  layer.querySelector<HTMLElement>(
+    '[data-lyric-rows-area] [data-lyrics-style-toggle]'
+  )
+const translationHandleOf = (layer: HTMLElement) =>
+  layer.querySelector<HTMLElement>(
+    '[data-lyric-translation] [data-lyrics-style-toggle]'
+  )
+
+// Whether Karaoke Style's translation is docked under the rows (one choice for every song), whether a drag has it
+// over the rows right now (where letting go docks it), and placing it on its own again. Docked, the rows' room is the
+// whole stage; on its own, the translation can go anywhere on the stage and the rows keep the room under its home
+// at the top. Docking or undocking, by a drag, the switch or another device, leaves the rows where they were
+const useTranslationDock = (layerRef: RefObject<HTMLDivElement | null>) => {
   const [docked, setDocked] = useAtom(translationDockedAtom)
   const setAnchor = useSetAtom(lyricsTranslationAnchorAtom)
+  const setRowsAnchor = useSetAtom(
+    usePortrait() ? lyricsAnchorPortraitAtom : lyricsAnchorAtom
+  )
   const [offered, setOffered] = useState(false)
-  // Pulled off, it lands in its room with its top where it was let go: placed once it is back there, before
-  // paint, as its room wraps it differently from the rows' width. In layout units, which a page turned by Lock
-  // Landscape keeps
-  const drop = useRef<{ top: number; layer: HTMLElement } | null>(null)
-  const handleTear = (top: number, layer: HTMLElement) => {
-    drop.current = { layer, top }
-    setDocked(false)
-  }
+  // The rows' handle's top at the last render, in layout units, which a page turned by Lock Landscape keeps
+  const rowsAt = useRef<number | null>(null)
+  // Pulled off, where the translation was let go: placed once it is back in its room, before paint, as its room
+  // wraps it differently from the rows' width
+  const drop = useRef<number | null>(null)
+  const was = useRef(docked)
   useLayoutEffect(() => {
-    const dropped = drop.current
-    if (docked || dropped === null) {
+    const layer = layerRef.current
+    const rows = layer && rowsHandleOf(layer)
+    if (was.current === docked || !(layer && rows)) {
+      was.current = docked
       return
     }
-    drop.current = null
-    const room = dropped.layer.querySelector<HTMLElement>(
-      '[data-lyric-translation]'
-    )
-    const block = room?.querySelector<HTMLElement>('.player-lyrics-overlay')
-    const handle = block?.querySelector<HTMLElement>(
-      '[data-lyrics-style-toggle]'
-    )
-    const area = block?.parentElement
-    if (room && block && handle && area) {
-      // As DraggableLyrics reads its anchor: the block's top over the room it can move in
-      const free = Math.max(1, area.clientHeight - block.offsetHeight)
-      const top = dropped.top - room.offsetTop - handle.offsetTop
-      setAnchor(Math.min(1, Math.max(0, top / free)))
+    was.current = docked
+    const rowsTrack = handleTrack(rows, layer)
+    let rowsTop = offsetIn(rows, layer)
+    if (rowsTrack && rowsAt.current !== null) {
+      const anchor = clamp01((rowsAt.current - rowsTrack.base) / rowsTrack.free)
+      setRowsAnchor(anchor)
+      rowsTop = rowsTrack.base + anchor * rowsTrack.free
     }
-  }, [docked, setAnchor])
-  const pull = {
-    onDock: () => {
-      setDocked(true)
+    const dropped = drop.current
+    drop.current = null
+    const handle = translationHandleOf(layer)
+    const track = handle && handleTrack(handle, layer)
+    if (docked || dropped === null || !(handle && track)) {
+      return
+    }
+    const top = clearOfRows(
+      dropped,
+      handle.offsetHeight,
+      { bottom: rowsTop + rows.offsetHeight, top: rowsTop },
+      clearGap(layer.clientHeight)
+    )
+    setAnchor(clamp01((top - track.base) / track.free))
+  }, [docked, layerRef, setAnchor, setRowsAnchor])
+  // After the effect above, so that one reads where the rows were before a dock or undock
+  useLayoutEffect(() => {
+    const layer = layerRef.current
+    const rows = layer && rowsHandleOf(layer)
+    rowsAt.current = layer && rows ? offsetIn(rows, layer) : null
+  })
+  const handleTear = (top: number) => {
+    drop.current = top
+    setDocked(false)
+  }
+  const rowsBox = () => {
+    const layer = layerRef.current
+    const rows = layer && rowsHandleOf(layer)
+    if (!(layer && rows)) {
+      return null
+    }
+    const top = offsetIn(rows, layer)
+    return { bottom: top + rows.offsetHeight, layer, top }
+  }
+  const pull: Dock = {
+    onDrop: (over, handle) => {
+      if (over) {
+        setDocked(true)
+        return
+      }
+      const box = rowsBox()
+      const track = box && handleTrack(handle, box.layer)
+      if (!(box && track)) {
+        return
+      }
+      const top = offsetIn(handle, box.layer)
+      const clear = clearOfRows(
+        top,
+        handle.offsetHeight,
+        box,
+        clearGap(box.layer.clientHeight)
+      )
+      if (clear !== top) {
+        setAnchor(clamp01((clear - track.base) / track.free))
+      }
     },
-    onPull: setOffered,
+    onOver: setOffered,
+    over: (centre) => {
+      const box = rowsBox()
+      return box !== null && centre >= box.top && centre <= box.bottom
+    },
   }
   return { docked, handleTear, offered, pull }
 }
 
-// Under the rows: the docked translation, or while it is pulled down to dock, its place there
+// Under the rows: the docked translation, or while a drag has it over the rows, its place there
 const UnderRows = ({
   dock,
   layout,
@@ -986,6 +1051,13 @@ const UnderRows = ({
     </div>
   ) : null
 }
+
+// Which room Two Lines' rows move in (globals.css › lyric-stagger-area): under the translation's home at the top, or
+// the whole stage with the translation docked under them
+const rowsRoomOf = (translated: boolean, docked: boolean) => ({
+  'data-docked': (translated && docked) || undefined,
+  'data-translation': (translated && !docked) || undefined,
+})
 
 const NO_VIEW: TwoLineView = { active: -1, rows: [-1, -1] }
 const sameView = (a: TwoLineView, b: TwoLineView) =>
@@ -1268,7 +1340,7 @@ export const StageLyrics = ({
     lineAt(lyrics, karaokeLines, view.active, english, placeholder),
     view.active
   )
-  const dock = useTranslationDock()
+  const dock = useTranslationDock(layerRef)
   const underRows = translated && (
     <UnderRows dock={dock} layout={layout}>
       {translationLine}
@@ -1292,7 +1364,8 @@ export const StageLyrics = ({
       {/* Always this box, so the lyrics stay mounted when two lines turn on or off; two lines move only in
           the stage's lower part, under their translation */}
       <div
-        data-translation={(translated && !dock.docked) || undefined}
+        data-lyric-rows-area
+        {...rowsRoomOf(translated, dock.docked)}
         className={cn(
           'absolute inset-x-0 bottom-0',
           twoLines ? 'lyric-stagger-area' : 'top-0'
@@ -1301,7 +1374,8 @@ export const StageLyrics = ({
           layout={layout}
           scale={scale}
           colors={colors}
-          wide={twoLines}>
+          wide={twoLines}
+          targeted={dock.offered}>
           {twoLines && view.active >= 0 ? (
             <>
               <TwoRows

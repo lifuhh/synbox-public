@@ -810,21 +810,22 @@
   }
 }
 
-/* Two Lines' two rooms, which never meet, so a drag in one can't put its text over the other's:
-   - The translation's, at the top: from just under the top edge (or the top bar, or Tap to Unmute) down to the
-     split, less half the gap. Its text is centred and narrower than the stage, clear of the corner buttons.
-   - The rows', from the split, plus half the gap, down to the floor. Rows that wrap too tall for it shrink to fit
-     (stage-lyrics' fitSong), so they never reach up into the translation.
-   The half gaps are the blocks' own spacers (DraggableLyrics' EDGE elsewhere), not the rooms' edges, so a size
-   change resizes neither room: the rows' fit re-measures only when its room does */
+/* Two Lines' rooms:
+   - The translation's: from just under the top edge (or the top bar, or Tap to Unmute) down to the floor. It
+     rests at the top, its home, unless dragged down the stage, below the rows included (let go over the rows it
+     docks under them: stage-lyrics › useTranslationDock). Its text is centred and narrower than the stage, clear of
+     the corner buttons.
+   - The rows', from the split under the translation's home, plus half the gap, down to the floor. Rows that wrap
+     too tall for it shrink to fit (stage-lyrics' fitSong), so they never reach up into that home. With the
+     translation docked under them (data-docked), the whole stage, as the translation's.
+   The half gap is the rows' own spacer (DraggableLyrics' EDGE elsewhere), not the room's edge, so a size change
+   doesn't resize the room: the rows' fit re-measures only when its room does */
 @utility lyric-stagger-translation-area {
   position: absolute;
   top: var(--lyric-translation-top);
   inset-inline: 0;
-  height: calc(var(--stagger-split) - var(--lyric-translation-top));
-  transition:
-    top 200ms ease,
-    height 200ms ease;
+  bottom: 0;
+  transition: top 200ms ease;
 
   @media (prefers-reduced-motion: reduce) {
     transition: none;
@@ -837,18 +838,10 @@
   & .anchor-spacer {
     min-height: 0;
   }
-
-  & .player-lyrics-overlay {
-    padding-bottom: 0;
-  }
-
-  & .lyrics-lift {
-    min-height: calc(var(--stagger-gap) / 2);
-  }
 }
 
 /* Karaoke Style's translation docked under the rows (stage-lyrics › DockedTranslation), a little under them; while
-   the translation is pulled down to dock, its place there shows faint and outlined */
+   the translation is dragged over the rows, its place there shows faint and outlined */
 @utility docked-translation {
   padding-top: 0.4em;
 
@@ -880,6 +873,10 @@
     & .player-lyrics-overlay {
       padding-inline: 0;
     }
+  }
+
+  &[data-docked] {
+    top: var(--lyric-translation-top);
   }
 
   &[data-translation] {
