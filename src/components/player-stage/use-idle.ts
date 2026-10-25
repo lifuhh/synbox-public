@@ -31,7 +31,8 @@ const chromeBusy = (
 // nothing. Any pointer in the player counts as input; on the watch page one elsewhere doesn't, so scrolling the
 // page under it doesn't bring up its controls. A mouse leaving the player idles it at once and marks it
 // `outside`, as on YouTube: the controls fade the moment the mouse goes, playing or paused, unless one of their
-// menus is open (then they go the moment it closes).
+// menus is open (then they go the moment it closes). A mouse moving on the page away from the player counts as
+// leaving it too: one that never crossed it (the page opened under a mouse resting elsewhere) sends no leave.
 // Keyboard focus in the controls holds them only when Tab put it there: a click focuses the button it lands on,
 // and a key pressed after it (Space, an arrow) makes that button :focus-visible, which held the UI for good
 export const useIdle = (
@@ -82,23 +83,6 @@ export const useIdle = (
         (stage !== null && target instanceof Node && stage.contains(target))
       )
     }
-    const wakeFromPointer = (event: PointerEvent) => {
-      if (inPlayer(event.target)) {
-        outsideRef.current = false
-        setOutside(false)
-        wake()
-      }
-    }
-    const press = (event: PointerEvent) => {
-      pressFocusRef.current = true
-      wakeFromPointer(event)
-    }
-    const key = (event: KeyboardEvent) => {
-      if (event.key === 'Tab') {
-        pressFocusRef.current = false
-      }
-      wake()
-    }
     const leave = (event: PointerEvent) => {
       if (event.pointerType !== 'mouse') {
         return
@@ -117,6 +101,25 @@ export const useIdle = (
         }
       }
       check()
+    }
+    const wakeFromPointer = (event: PointerEvent) => {
+      if (inPlayer(event.target)) {
+        outsideRef.current = false
+        setOutside(false)
+        wake()
+      } else if (!outsideRef.current) {
+        leave(event)
+      }
+    }
+    const press = (event: PointerEvent) => {
+      pressFocusRef.current = true
+      wakeFromPointer(event)
+    }
+    const key = (event: KeyboardEvent) => {
+      if (event.key === 'Tab') {
+        pressFocusRef.current = false
+      }
+      wake()
     }
     const stage = stageRef.current
     const leaveStage = (event: PointerEvent) => {
