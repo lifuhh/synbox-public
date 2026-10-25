@@ -58,7 +58,7 @@ const SECTIONS: LegalSection[] = [
   {
     items: [
       'Songs, lyrics and translations belong to their rights holders. Synbox shows them for personal learning and singing along.',
-      'Rights holders: message us on LinkedIn (below) and we’ll remove the song.',
+      'Rights holders: use Contact (below) or email me@edwardhuang.dev and we’ll remove the song.',
       'The app’s design and code are ours.',
     ],
     title: 'Songs and Lyrics',
@@ -76,7 +76,7 @@ const SECTIONS: LegalSection[] = [
       'We can end or suspend access, most of all for breaking these Terms.',
       'Changes show here with a new date; using Synbox after them means agreeing.',
       'Singapore law applies, and Singapore’s courts decide disputes.',
-      'Questions: message us on LinkedIn (below).',
+      'Questions: use Contact (below) or email me@edwardhuang.dev.',
     ],
     title: 'Ending, Changes and Law',
   },

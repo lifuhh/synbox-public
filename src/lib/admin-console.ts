@@ -376,6 +376,32 @@ export const useAdminUsage = () =>
     retry,
   })
 
+// Contact form messages, newest first (worker/src/contact.ts). emailError says why one wasn't emailed
+const messagesSchema = z.object({
+  messages: z.array(
+    z.object({
+      accountEmail: z.string().nullable(),
+      accountName: z.string().nullable(),
+      createdAt: z.number(),
+      emailError: z.string().nullable(),
+      emailedAt: z.number().nullable(),
+      id: z.number(),
+      message: z.string(),
+      replyTo: z.string().nullable(),
+      sender: z.string().nullable(),
+      subject: z.string(),
+    })
+  ),
+})
+export type AdminMessage = z.infer<typeof messagesSchema>['messages'][number]
+
+export const useAdminMessages = () =>
+  useQuery({
+    queryFn: async () => await fetchParsed(messagesSchema, '/messages'),
+    queryKey: [QUERY_KEYS.GET_ADMIN_MESSAGES],
+    retry,
+  })
+
 export const useAdminSettings = () =>
   useQuery({
     queryFn: async () => await fetchParsed(settingsSchema, '/settings'),

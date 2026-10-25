@@ -2,11 +2,12 @@ import { useQueryClient } from '@tanstack/react-query'
 import {
   ChevronRightIcon,
   CircleQuestionMarkIcon,
+  MailIcon,
   UserIcon,
   LogOutIcon,
   ShieldIcon,
 } from 'lucide-react'
-import { useState } from 'react'
+import { lazy, Suspense, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Link } from 'react-router'
 
@@ -19,6 +20,14 @@ import { signInWithGoogle, signOut, useMe } from '@/lib/auth'
 import { forgetMySongs } from '@/lib/offline/sync'
 import { QUERY_KEYS } from '@/lib/react-query/query-keys'
 
+// Its own chunk: loaded on the first press of Contact Us
+const ContactDialog = lazy(
+  async () => await import('@/components/shared/contact-dialog')
+)
+
+const ROW =
+  'flex min-h-12 items-center gap-3 rounded-xl px-3 text-left transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden'
+
 // A row that opens a page: its icon, its label, a chevron
 const LinkRow = ({
   to,
@@ -29,9 +38,7 @@ const LinkRow = ({
   icon: ReactNode
   label: string
 }) => (
-  <Link
-    to={to}
-    className='flex min-h-12 items-center gap-3 rounded-xl px-3 transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden'>
+  <Link to={to} className={ROW}>
     <span className='grid size-6 shrink-0 place-items-center text-muted-foreground'>
       {icon}
     </span>
@@ -46,6 +53,8 @@ const LinkRow = ({
 // The installed app's You tab: the account and the app's own pages. The songs are in the Library tab
 const YouPage = () => {
   const [box, setBox] = useState<HTMLElement | null>(null)
+  // Mounted from its first opening on, so it can animate closed
+  const [contact, setContact] = useState<'closed' | 'open' | null>(null)
   const queryClient = useQueryClient()
   const { data: me } = useMe()
   const user = me?.user ?? null
@@ -130,12 +139,35 @@ const YouPage = () => {
             icon={<CircleQuestionMarkIcon className='size-5' />}
             label='About Synbox'
           />
+          <button
+            type='button'
+            className={ROW}
+            onClick={() => {
+              setContact('open')
+            }}>
+            <span className='grid size-6 shrink-0 place-items-center text-muted-foreground'>
+              <MailIcon className='size-5' />
+            </span>
+            <span className='min-w-0 flex-1 truncate text-foreground'>
+              Contact Us
+            </span>
+          </button>
         </div>
         <p className='px-3 text-xs text-muted-foreground'>
           Version {__BUILD_ID__}
         </p>
       </div>
       <BoxScrollbar box={box} />
+      {contact !== null && (
+        <Suspense>
+          <ContactDialog
+            open={contact === 'open'}
+            onOpenChange={(open) => {
+              setContact(open ? 'open' : 'closed')
+            }}
+          />
+        </Suspense>
+      )}
     </section>
   )
 }
