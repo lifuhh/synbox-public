@@ -11,22 +11,22 @@ import { useMediaQuery } from '@/hooks/use-media-query'
 import { useNextList } from '@/lib/listening/recommendations'
 import { isInstalledPhone } from '@/lib/pwa'
 import { reducedMotion } from '@/lib/reduced-motion'
-import { bracketStart } from '@/utils'
 import { cn } from '@/utils/cn'
 
 import { LyricsPanel } from './lyrics-panel'
 import { PlaylistPanel } from './playlist-panel'
 import { Shelves } from './shelves'
-import { SongFacts } from './song-facts'
+import { SongMeta } from './song-facts'
 import { SongTitle } from './song-title'
 import { UP_NEXT_COUNT, UpNext } from './up-next'
 import { useDragToMinimise } from './use-drag-to-minimise'
 
 const WIDE = '(min-width: 1000px)'
 
-// The song under the video: its title and channel, then the player's own buttons as a row. Wide, as on
-// YouTube: the title with room above it, then the channel on the left and the buttons on the right. `inset`
-// (Theater, the lyrics panel right under it) takes the panel's px-4, so the title starts where its lyrics do
+// The song under the video: its title, then one line with the channel, the song's facts and its YouTube link
+// (SongMeta), then the player's own buttons as a row. Wide, as on YouTube: the title with room above it, then
+// that line on the left and the buttons on the right. `inset` (Theater, the lyrics panel right under it) takes the
+// panel's px-4, so the title starts where its lyrics do
 const SongInfo = ({
   compact,
   inset = false,
@@ -39,28 +39,19 @@ const SongInfo = ({
   if (compact) {
     return (
       <div className='flex min-w-0 flex-col gap-2'>
-        <div className='min-w-0'>
+        <div className='flex min-w-0 flex-col gap-0.5'>
           <SongTitle
             title={video?.title ?? ''}
-            className='text-base leading-snug font-bold'
+            className='text-lg leading-snug font-bold'
           />
-          <p
-            className={cn(
-              'truncate text-sm text-muted-foreground',
-              bracketStart(video?.author)
-            )}>
-            {video?.author ?? ''}
-          </p>
+          <SongMeta videoId={videoId} author={video?.author ?? ''} />
         </div>
         <PlayerRail inline />
-        <SongFacts videoId={videoId} />
       </div>
     )
   }
   return (
-    <div className='flex min-w-0 flex-col gap-3 pt-2'>
-      {/* Only the words take the inset: the facts card is a card like the lyrics panel, so it keeps the
-          panel's edges, and its own padding puts its text on the same line as the title's */}
+    <div className='flex min-w-0 flex-col pt-2'>
       <div className={cn('flex min-w-0 flex-col gap-1', inset && 'px-4')}>
         <SongTitle
           title={video?.title ?? ''}
@@ -68,17 +59,12 @@ const SongInfo = ({
         />
         {/* The buttons on the channel's line, as on YouTube: a long title keeps the full width */}
         <div className='flex flex-wrap items-center justify-between gap-x-6 gap-y-2'>
-          <p
-            className={cn(
-              'min-w-0 truncate text-sm font-medium text-muted-foreground',
-              bracketStart(video?.author)
-            )}>
-            {video?.author ?? ''}
-          </p>
+          <div className='min-w-0 flex-1 basis-60'>
+            <SongMeta videoId={videoId} author={video?.author ?? ''} />
+          </div>
           <PlayerRail inline />
         </div>
       </div>
-      <SongFacts videoId={videoId} />
     </div>
   )
 }
