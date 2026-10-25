@@ -15,12 +15,17 @@ interface RailButtonProps extends ComponentProps<'button'> {
   pressed?: boolean
 }
 
+// A button floating on the stage: the rail's and the corner column's, one size and look everywhere
+export const STAGE_DISC =
+  'grid size-10 shrink-0 place-items-center rounded-full bg-black/55 text-white/90 shadow-rail backdrop-blur-md transition-colors hover:bg-black/70 hover:text-white focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:pointer-events-none disabled:opacity-30 touch:size-11 short:size-9'
+
 // Set when the rail is a row under the video on the watch page: its labels and panels open above or below
 // it instead of to its side
 export const RailInline = createContext(false)
 
-// Floating on the stage, a square on the rail's dark glass. Inline under the video, a round button of its own,
-// spaced from the next, as YouTube's row under a video is
+// Floating on the stage, a dark glass disc of its own, as the stage's centre and Previous/Next buttons are (no
+// panel behind the rail: owner, 2026-10-25). Inline under the video, a round button of its own, spaced from the
+// next, as YouTube's row under a video is
 const railButtonClass = (inline: boolean, pressed: boolean | undefined) =>
   inline
     ? cn(
@@ -30,10 +35,10 @@ const railButtonClass = (inline: boolean, pressed: boolean | undefined) =>
         pressed === false && 'text-muted-foreground'
       )
     : cn(
-        'grid size-9 shrink-0 place-items-center rounded-lg text-white/85 transition-colors hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:pointer-events-none disabled:opacity-30 touch:size-10 portrait:touch:size-9.5 short:size-8',
+        STAGE_DISC,
         pressed === true &&
           'bg-primary-subtle text-primary-text hover:bg-primary-subtle-hover',
-        // 3.2:1 on the glass over a white frame, the brightest video
+        // On the disc's glass over a white frame, the brightest video
         pressed === false && 'text-white/70'
       )
 
