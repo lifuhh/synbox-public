@@ -14,6 +14,10 @@
 - **Build the tool, not a one-off script.** When an investigation needs a script to read or change production data (a song's rows and versions, the library, logs, Appwrite, D1), and the same question will come up again, make it a harness or repo tool with arguments named for that job, documented here, instead of leaving it in a scratchpad (the owner's rule, 2026-10-24; examples: `services.lyrics.inspect`, `relabel`, `recommended --discovery`). Read-only by default; writes behind an explicit flag.
 - Local reports and visual write-ups (HTML summaries, before/after screenshots, measurements) go in `.reports/YYYY-MM-DD-<slug>/`, one folder per report: an `index.html` with its images beside it, referenced by relative path so it opens offline. `.reports/` is gitignored; never commit a report. Anything worth keeping about why a change was made goes in the change log instead.
 
+## UI and UX work: the better-* skills, every time
+
+Any UI or UX change (a screen, component, dialog, layout, copy, colour, icon, motion or interaction) runs the `better-interface` skill and the `better-*` skills it routes to, alongside poteto-mode: once before designing and once as a review before the PR (the owner's rule, 2026-10-26; they should never have to ask). A subagent given UI work is told so in its prompt. The alignment rules below are part of that review.
+
 ## Phones, the installed app and desktop
 
 The installed app (PWA) and the website are the same build: there is no phone code path to keep in sync. When they look different, the cause is one of two things, and every UI change must account for both:
