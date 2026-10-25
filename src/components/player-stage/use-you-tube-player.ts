@@ -7,6 +7,7 @@ import {
 } from 'react'
 import { flushSync } from 'react-dom'
 
+import { linkStartTime } from '@/lib/start-time'
 import type { YTPlayer, YTStateCode } from '@/lib/youtube/iframe-api'
 import { YTState } from '@/lib/youtube/iframe-api'
 
@@ -388,7 +389,8 @@ export const useYouTubePlayer = ({
         }
       },
     })
-    loadSong(videoId)
+    // A link with `?t=` starts the song there, as YouTube's do
+    loadSong(videoId, linkStartTime() ?? 0)
     return () => {
       clearTimeout(settleTimer)
       clearTimeout(startCheckRef.current)
