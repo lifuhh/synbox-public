@@ -614,7 +614,7 @@ const SongQueue = ({
               <li
                 key={`${job.id}:detail`}
                 role='none'
-                className='flex flex-col gap-4 pt-2 pr-1.5 pb-6 pl-4'>
+                className='flex flex-col gap-4 pt-2 pr-1 pb-6 pl-4'>
                 {detail}
               </li>,
             ]
