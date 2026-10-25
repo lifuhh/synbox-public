@@ -6,12 +6,15 @@ import type { NavigateFunction } from 'react-router'
 import {
   dragEngine,
   engineBox,
+  growEngine,
   stopFlight,
   whenPlaced,
 } from '@/components/player-stage/youtube-engine'
 import type { ScreenBox } from '@/components/player-stage/youtube-engine'
+import { releaseGrowPage, takeGrow } from '@/components/shared/grow-from-bar'
 import { THUMB_RADIUS_PX } from '@/components/shared/mini-bar-view'
 import { historyIdx, returnTab } from '@/components/shared/tab-bar'
+import { GROW_MS, runGrow } from '@/lib/grow'
 import { openedBy } from '@/lib/listening/store'
 import { reducedMotion } from '@/lib/reduced-motion'
 
@@ -28,10 +31,12 @@ const SETTLE_MS = 280
 const SWALLOW_CLICK_MS = 400
 // The mini bar fades in when it mounts; landing from a drag it is already showing (mini-bar.tsx › data-landed)
 const LANDED_MS = 500
-// Back from the mini bar, the drag's way in reverse at one pace, once the stage has the video; a stage that
-// hasn't placed it by GROW_WAIT_MS gets the page shown as it is
-const GROW_MS = 280
+// Back from the mini bar, the drag's way in reverse (lib/grow.ts); a stage that hasn't placed the video by GROW_WAIT_MS
+// gets the page shown as it is
 const GROW_WAIT_MS = 1000
+// The grow's share of time before the page starts to show (its opacity is max(0, 1 - 2t), t at 1/2): a page that came
+// after the tap's grow had ended fades in from there, not all at once
+const PAGE_SHOWS_AT = 1 - Math.cbrt(0.5)
 
 interface Drag {
   id: number
@@ -107,17 +112,27 @@ const followDrags = (
     }
   }
 
+  let growing = false
+  let grewFor = 0
   const reset = () => {
     cancelAnimationFrame(frame)
     frame = 0
+    clearTimeout(grewFor)
+    growing = false
     if (!landed) {
+      stopFlight()
       dragEngine(null)
+    }
+    const bar = ghost()
+    for (const element of [page, bar]) {
+      for (const animation of element?.getAnimations() ?? []) {
+        animation.cancel()
+      }
     }
     if (page !== null) {
       page.style.opacity = ''
       page.style.willChange = ''
     }
-    const bar = ghost()
     if (bar !== null) {
       bar.style.opacity = ''
       bar.style.visibility = ''
@@ -173,16 +188,31 @@ const followDrags = (
     return path
   }
 
-  // The page and the bar's stand-in as the drag leaves them on the bar, held until the stage places the video, which
-  // then grows back out of the thumbnail (the flight the engine starts is dropped)
+  // Opened from the mini bar: the grow its tap started (shared/grow-from-bar.ts) joins here where it has got to, as
+  // compositor animations: the bar's stand-in fading, the page fading in over the second half, and, once the stage
+  // has placed the video, the video's own part rebuilt from that box. A page that came after the tap's grow had ended
+  // fades in from where it starts to show; a resume with no tap (Back, a link) grows from now
   const growFromBar = () => {
+    const tapped = takeGrow()
+    releaseGrowPage()
     const bar = ghost()
-    if (bar === null) {
+    if (bar === null || reducedMotion()) {
       return
     }
-    showGhost(bar, 1)
+    growing = true
+    const now = performance.now()
+    const late = tapped === null || now - tapped.startedAt >= GROW_MS
+    const pageFrom = late ? now - PAGE_SHOWS_AT * GROW_MS : tapped.startedAt
+    // A video the tap couldn't move (paused, or no stage known yet) grows the whole way once it is placed
+    const videoFrom = tapped?.moved === true ? tapped.startedAt : null
+    bar.style.visibility = 'visible'
+    if (late) {
+      bar.style.opacity = '0'
+    } else {
+      runGrow(bar, (t) => ({ opacity: t }), pageFrom)
+    }
     if (page !== null) {
-      page.style.opacity = '0'
+      runGrow(page, (t) => ({ opacity: Math.max(0, 1 - t * 2) }), pageFrom)
     }
     const began = performance.now()
     let grown = false
@@ -208,14 +238,31 @@ const followDrags = (
       }
       grown = true
       whenPlaced(null)
-      paint(path, 1)
-      settle(path, 0, reset, GROW_MS)
+      const from = videoFrom ?? performance.now()
+      growEngine(
+        { from: path.from, to: tapped?.to ?? path.to },
+        from,
+        THUMB_RADIUS_PX
+      )
+      grewFor = window.setTimeout(
+        reset,
+        Math.max(
+          0,
+          from + GROW_MS - performance.now(),
+          pageFrom + GROW_MS - performance.now()
+        )
+      )
     }
     start()
   }
 
   const onDown = (event: PointerEvent) => {
-    if (event.pointerType === 'mouse' || drag !== null || frame !== 0) {
+    if (
+      event.pointerType === 'mouse' ||
+      drag !== null ||
+      frame !== 0 ||
+      growing
+    ) {
       return
     }
     drag = {

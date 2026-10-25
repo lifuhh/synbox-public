@@ -1,6 +1,7 @@
 import { useAtomValue } from 'jotai'
 import type { ReactNode } from 'react'
 import { useEffect, useRef, useState } from 'react'
+import { useLocation } from 'react-router'
 
 import PlayerRail from '@/components/lyrics-display/player-rail'
 import { DocScroll } from '@/components/shared/doc-scroll'
@@ -8,7 +9,9 @@ import { MinimiseGhost } from '@/components/shared/minimise-ghost'
 import { Skeleton } from '@/components/ui/skeleton'
 import { currentVideoAtom } from '@/context/atoms'
 import { useMediaQuery } from '@/hooks/use-media-query'
+import { GROW_MS } from '@/lib/grow'
 import { useNextList } from '@/lib/listening/recommendations'
+import { openedBy } from '@/lib/listening/store'
 import { isInstalledPhone } from '@/lib/pwa'
 import { reducedMotion } from '@/lib/reduced-motion'
 import { cn } from '@/utils/cn'
@@ -102,6 +105,24 @@ const glideToTop = (box: HTMLElement) => {
   requestAnimationFrame(step)
 }
 
+// Opened from the mini bar, the rows under the song (Up Next, the shelves: about half the page) wait for the grow
+// out of the bar: the page's first layout, which the grow runs through, has that much less to lay out
+const useAfterGrow = () => {
+  const resumed = openedBy(useLocation().state) === 'resume'
+  const [ready, setReady] = useState(!resumed)
+  useEffect(() => {
+    const id = ready
+      ? 0
+      : window.setTimeout(() => {
+          setReady(true)
+        }, GROW_MS)
+    return () => {
+      clearTimeout(id)
+    }
+  }, [ready])
+  return ready
+}
+
 const NarrowBelow = ({
   videoId,
   version,
@@ -110,6 +131,7 @@ const NarrowBelow = ({
   version: number | null
 }) => {
   const more = useMoreLikeThis(videoId)
+  const rows = useAfterGrow()
   // A new song starts at the top of the list under the video, as on YouTube
   const scroller = useRef<HTMLDivElement>(null)
   const scrolledFor = useRef(videoId)
@@ -156,15 +178,19 @@ const NarrowBelow = ({
         {upright && lyrics}
         <div className='flex flex-col gap-4 px-4 pt-4 pb-(--safe-bottom)'>
           <SongInfo compact />
-          <div className='pb-6'>
-            <PlaylistPanel videoId={videoId} foldable className='mb-4' />
-            <UpNext videoId={videoId} autoplaySwitch />
-            {/* The rows run to the screen's edges: this box's px-2 plus the page's px-4 */}
-            <Shelves
-              videoId={videoId}
-              similar={more}
-              className='mt-6 px-2 [--shelf-bleed:1.5rem]'
-            />
+          <div className={cn('pb-6', rows && 'appear')}>
+            {rows && (
+              <>
+                <PlaylistPanel videoId={videoId} foldable className='mb-4' />
+                <UpNext videoId={videoId} autoplaySwitch />
+                {/* The rows run to the screen's edges: this box's px-2 plus the page's px-4 */}
+                <Shelves
+                  videoId={videoId}
+                  similar={more}
+                  className='mt-6 px-2 [--shelf-bleed:1.5rem]'
+                />
+              </>
+            )}
           </div>
         </div>
       </div>

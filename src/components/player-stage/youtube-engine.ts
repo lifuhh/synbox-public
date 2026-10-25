@@ -1,3 +1,4 @@
+import { runGrow } from '@/lib/grow'
 import { pageFlipped, pageTurned, turnedPageEnd } from '@/lib/page-turn'
 import { reducedMotion } from '@/lib/reduced-motion'
 import type { YTPlayer, YTStateCode } from '@/lib/youtube/iframe-api'
@@ -403,6 +404,16 @@ const scrolled = () => ({
   top: document.scrollingElement?.scrollTop ?? 0,
 })
 
+// Where the stage last laid the video, on a screen of this size: where the tap on the mini bar grows it back to
+// before the player page exists (growEngine)
+let lastStage: { box: ScreenBox; width: number; height: number } | null = null
+export const predictedStage = (): ScreenBox | null =>
+  lastStage !== null &&
+  lastStage.width === window.innerWidth &&
+  lastStage.height === window.innerHeight
+    ? lastStage.box
+    : null
+
 // Lays the video over a stage and its video box, following both as they resize, until the cleanup
 export const placeEngine = (
   stage: HTMLElement,
@@ -430,6 +441,16 @@ export const placeEngine = (
       width: `${inner.width}px`,
     })
     frameSize = { height: inner.height, width: inner.width }
+    lastStage = {
+      box: {
+        height: outer.height,
+        left: outer.left,
+        top: outer.top,
+        width: outer.width,
+      },
+      height: window.innerHeight,
+      width: window.innerWidth,
+    }
     // YouTube's own screens (errors, sign-in) are read and pressed: at their own size
     sizeHost(
       parts.host,
@@ -505,6 +526,65 @@ export const dragEngine = (
     zIndex: '41',
   })
 }
+// The video grown from `path.to` (the mini bar's thumbnail) to `path.from` (the stage) along the drag to minimise's
+// path, as a Web Animation from the layer's own box, joined `startedAt` (performance.now()) into its GROW_MS: the
+// compositor runs it while the player page renders. Called on the tap, from wherever the layer is, and again once
+// the stage has placed it, the same path from its new box. Null while the video isn't showing
+export const growEngine = (
+  path: { from: ScreenBox; to: ScreenBox },
+  startedAt: number,
+  radiusPx: number
+): Animation | null => {
+  const { layer: video } = ensureLayer()
+  if (video.style.visibility !== 'visible' || video.offsetWidth === 0) {
+    return null
+  }
+  stopFlight()
+  const scroll = scrolled()
+  const base = {
+    height: video.offsetHeight,
+    left: video.offsetLeft - scroll.left,
+    top: video.offsetTop - scroll.top,
+    width: video.offsetWidth,
+  }
+  zBeforeDrag = video.style.zIndex
+  dragged = null
+  // Over the tab bar (z-40), as the mini bar's video is
+  video.style.zIndex = '41'
+  const { from, to } = path
+  const scaleAt = (t: number) => {
+    const box = {
+      height: from.height + (to.height - from.height) * t,
+      left: from.left + (to.left - from.left) * t,
+      top: from.top + (to.top - from.top) * t,
+      width: from.width + (to.width - from.width) * t,
+    }
+    return { box, sx: box.width / base.width, sy: box.height / base.height }
+  }
+  // The rounding apart from the move: WebKit hands an animation to the compositor only when every property in it is
+  // one it can run there (transform, opacity), and the move must keep going while the page renders
+  runGrow(
+    video,
+    (t) => {
+      const { sx, sy } = scaleAt(t)
+      return {
+        borderRadius: `${(radiusPx * t) / sx}px / ${(radiusPx * t) / sy}px`,
+      }
+    },
+    startedAt
+  )
+  return runGrow(
+    video,
+    (t) => {
+      const { box, sx, sy } = scaleAt(t)
+      return {
+        transform: `translate(${box.left - base.left}px, ${box.top - base.top}px) scale(${sx}, ${sy})`,
+      }
+    },
+    startedAt
+  )
+}
+
 // Shrinks the video onto a small box over the app (the mini bar's thumbnail), rounded. Scaled, never resized: YouTube
 // pauses an embed grown back from a tiny size, and a transform costs no layout, so the video keeps the size its stage
 // gave it
