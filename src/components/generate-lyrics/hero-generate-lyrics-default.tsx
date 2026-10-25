@@ -1,10 +1,10 @@
 import { useSetAtom } from 'jotai'
 import {
-  ArrowRightIcon,
   Info,
   LoaderCircleIcon,
   PlayIcon,
   SearchIcon,
+  SparklesIcon,
 } from 'lucide-react'
 import { useId, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router'
@@ -215,7 +215,7 @@ const HeroGenerateLyricsDefault = ({
     if (blocked) {
       return 'Sign In to Generate'
     }
-    return existingLyrics ? 'Play Video' : 'Try Now'
+    return existingLyrics ? 'Play Video' : 'Generate Lyrics'
   }
 
   const buttonIcon = () => {
@@ -234,7 +234,7 @@ const HeroGenerateLyricsDefault = ({
     return existingLyrics ? (
       <PlayIcon className='size-5 shrink-0 fill-current' />
     ) : (
-      <ArrowRightIcon className='size-5 shrink-0' />
+      <SparklesIcon className='size-5 shrink-0' />
     )
   }
 
