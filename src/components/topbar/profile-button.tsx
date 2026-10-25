@@ -69,9 +69,12 @@ const SignInButton = () => {
       <Tooltip>
         <TooltipTrigger asChild>
           <Button
-            // Under 360px wide the G alone, a round button still named Sign In
+            // Under 360px wide the G alone, a round button still named Sign In. A ghost like the icon buttons beside
+            // it, outlined: Google's sign-in button keeps a visible boundary (its dark theme: a 1px line on a dark fill)
+            variant='toolbar'
             size='pill-collapse'
             gap='md'
+            className='border border-input'
             aria-busy={pending || undefined}
             onClick={() => {
               if (!pending) {
@@ -86,7 +89,7 @@ const SignInButton = () => {
                 className='-ml-1 size-[18px] shrink-0 animate-spin motion-reduce:animate-none max-[359px]:ml-0 sm:-ml-2'
               />
             ) : (
-              <GoogleMark className='-ml-1 max-[359px]:ml-0 sm:-ml-2' />
+              <GoogleMark bare className='-ml-1 max-[359px]:ml-0 sm:-ml-2' />
             )}
             <span className='max-[359px]:sr-only'>Sign In</span>
           </Button>

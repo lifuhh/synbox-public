@@ -1,16 +1,24 @@
 // oxlint-disable shadcn/no-raw-colors -- Google's mark keeps its own colours (its branding rules forbid recolouring)
 import { cn } from '@/utils/cn'
 
-// Google's "G" for buttons that sign in with Google: the standard four-colour mark, unaltered, on a white disc
-// so it stays legible on the brand's pink and red fills (Google's sign-in branding allows a white background)
-export const GoogleMark = ({ className }: { className?: string }) => (
+// Google's "G" for buttons that sign in with Google: the standard four-colour mark, unaltered, never monochrome
+// (developers.google.com/identity/branding-guidelines). On a white disc it stays legible on the brand's pink and red
+// fills; `bare`, it sits straight on a dark button, as Google's own dark theme draws it
+export const GoogleMark = ({
+  className,
+  bare = false,
+}: {
+  className?: string
+  bare?: boolean
+}) => (
   <span
     aria-hidden
     className={cn(
-      'grid size-5 shrink-0 place-items-center rounded-full bg-white',
+      'grid shrink-0 place-items-center',
+      bare ? 'size-[18px]' : 'size-5 rounded-full bg-white',
       className
     )}>
-    <svg viewBox='0 0 48 48' className='size-[70%]'>
+    <svg viewBox='0 0 48 48' className={bare ? 'size-full' : 'size-[70%]'}>
       <path
         fill='#EA4335'
         d='M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z'
