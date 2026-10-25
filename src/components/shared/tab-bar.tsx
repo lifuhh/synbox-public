@@ -10,6 +10,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { ComponentType, MouseEvent } from 'react'
 import { Link, useLocation } from 'react-router'
 
+import { requestHomeRefresh } from '@/lib/home-refresh'
 import { resumeSongAtom } from '@/lib/listening/store'
 import { applyWaitingUpdate, isInstalledPhone } from '@/lib/pwa'
 import { scrollMotion } from '@/lib/reduced-motion'
@@ -165,8 +166,9 @@ const TabBar = () => {
     const current = pathname === to
     lastTap.current = current ? { at: now, to } : null
     const scroller = pageScroller()
+    const atTop = (scroller?.scrollTop ?? 0) <= TOP_SLACK_PX
     const action = tabTap({
-      atTop: (scroller?.scrollTop ?? 0) <= TOP_SLACK_PX,
+      atTop,
       current,
       home: to === '/',
       sinceLastTapMs:
@@ -177,6 +179,10 @@ const TabBar = () => {
     }
     event.preventDefault()
     if (action === 'update' && applyWaitingUpdate()) {
+      return
+    }
+    // Nothing to swap in: Home already at the top refreshes its lists instead (home-refresh.tsx)
+    if (action === 'update' && atTop && requestHomeRefresh()) {
       return
     }
     scroller?.scrollTo({ behavior: scrollMotion(), top: 0 })

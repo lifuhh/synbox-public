@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 
 import HeroGenerateLyricsSection from '@/components/generate-lyrics/hero-generate-lyrics-section'
+import { HomeRefresh } from '@/components/landing-page/home-refresh'
 import LandingPageCharts from '@/components/landing-page/popular-songs-table'
 import SongGallery from '@/components/landing-page/song-gallery'
 import SongHighlightCarousel from '@/components/landing-page/song-highlight-carousel'
@@ -21,6 +22,7 @@ const LandingPage = () => {
     <section
       ref={setBox}
       data-scroll-top
+      data-home-page
       data-rise={rise || undefined}
       className='flex flex-1 flex-col overflow-x-hidden overflow-y-scroll page-x-md'>
       <title>Synbox</title>
@@ -31,6 +33,7 @@ const LandingPage = () => {
       </section>
       <SongGallery />
       <BoxScrollbar box={box} />
+      <HomeRefresh page={box} />
     </section>
   )
 }

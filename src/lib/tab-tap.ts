@@ -1,5 +1,6 @@
 // What a tap on a tab-bar tab does. Another page's tab opens it. The current page's tab takes it back to the top,
-// as iOS apps do; Home, tapped again at the top (or twice in a row), also swaps in a downloaded update
+// as iOS apps do; Home, tapped again at the top (or twice in a row), also swaps in a downloaded update, or with none
+// waiting refreshes its lists (tab-bar.tsx)
 export type TabTap = 'navigate' | 'scroll' | 'update'
 
 // Two taps closer than this are one double tap
