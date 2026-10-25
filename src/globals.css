@@ -1025,19 +1025,20 @@
 
 /* The lyrics under the video on a phone held upright (LyricsPanel as a band): a karaoke window over the song,
    the sung line in the middle and a part of the lines either side fading out at its edges (a sung line with
-   its romaji and translation wrapping takes ~220px at 390px wide, so it is about that tall on an iPhone). Half
-   its height of room above the first line and under the last lets each of them reach the middle. Holding a line
-   to look around the song selects nothing. The type is the reader's a size up, fixed: Lyrics Style offers no
-   size on an upright phone */
+   its romaji and translation wrapping takes ~220px at 390px wide, so it is about that tall on an iPhone). Holding
+   a line to look around the song selects nothing. The type is the reader's a size up, fixed: Lyrics Style offers
+   no size on an upright phone. Its heights are shares of the area under the video (watch-below). The band is no
+   container itself: a size container that changes height every frame has every element in it styled and laid out
+   again, about 2,200 boxes per frame for a song's characters, and the growth stuttered */
 @utility watch-lyrics-band {
-  container-type: size;
   height: clamp(11rem, 46cqh, 17rem);
+  --band-full: calc(100cqh - 1rem - var(--safe-bottom));
   /* Expanded (Expand Lyrics, or a tap on it), it grows to fill the screen under the video, on iOS's sheet curve;
      the sung line stays centred all the way (use-lyrics-follow follows the box's size) */
   transition: height 420ms cubic-bezier(0.32, 0.72, 0, 1);
 
   &[data-expanded] {
-    height: calc(100cqh - 1rem - var(--safe-bottom));
+    height: var(--band-full);
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -1045,9 +1046,10 @@
   }
 }
 
+/* Room above the first line and under the last, so each can reach the middle at either size: half the expanded
+   band, on the lines rather than the box, as a box can't be shorter than its own padding */
 @utility watch-lyrics-band-scroller {
   --reader-scale: 1.1;
-  padding-block: 50cqh;
   mask-image: linear-gradient(
     to bottom,
     transparent,
@@ -1057,6 +1059,10 @@
   );
   user-select: none;
   -webkit-touch-callout: none;
+
+  & > * {
+    padding-block: calc(var(--band-full) / 2);
+  }
 }
 
 /* A page's side gutters plus the screen's side safe areas, as the top bar has them: on a phone on its side the
