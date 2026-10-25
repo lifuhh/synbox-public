@@ -2,10 +2,11 @@ import {
   CheckIcon,
   ListPlusIcon,
   PlusIcon,
+  ShieldIcon,
   SparklesIcon,
   XIcon,
 } from 'lucide-react'
-import type { RefObject } from 'react'
+import type { ReactNode, RefObject } from 'react'
 import { useState } from 'react'
 
 import { Button } from '@/components/ui/button'
@@ -29,13 +30,27 @@ import { useAccess } from '@/lib/auth'
 import type { ListSong } from '@/lib/listening/model'
 import { useListening, usePlaylists } from '@/lib/listening/store'
 import { toRecommendation } from '@/lib/recommendations'
-import { cn } from '@/utils/cn'
 
 const ROW =
-  'flex min-h-11 w-full items-center gap-3 rounded-lg px-2 text-start transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden aria-disabled:cursor-default aria-disabled:hover:bg-transparent'
+  'group/row flex min-h-11 w-full items-center gap-3 rounded-lg px-2 text-start transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden aria-disabled:cursor-default aria-disabled:hover:bg-transparent'
 
-// For admins: the landing page's Recommendations as one more list, ticked when the song is in it. A tap adds it
-// to the end, or takes it out when it is ticked (the tick turns to an X under the pointer)
+// A row's leading icon: a tick when the song is in the list, which turns to an X under the pointer, as a tap
+// takes it out
+const Mark = ({ saved, idle }: { saved: boolean; idle: ReactNode }) => (
+  <span className='grid size-5 shrink-0 place-items-center text-muted-foreground'>
+    {saved ? (
+      <>
+        <CheckIcon className='size-5 text-primary-text group-hover/row:hidden' />
+        <XIcon className='hidden size-5 text-foreground group-hover/row:block' />
+      </>
+    ) : (
+      idle
+    )}
+  </span>
+)
+
+// For admins: the landing page's Recommendations as one more list, marked admin only. A tap adds the song to
+// the end, or takes it out when it is in
 const RecommendedRow = ({
   song,
   onDone,
@@ -100,18 +115,16 @@ const RecommendedRow = ({
             },
           })
         }}
-        className={cn(ROW, 'group/rec')}>
-        <span className='grid size-5 shrink-0 place-items-center text-muted-foreground'>
-          {saved ? (
-            <>
-              <CheckIcon className='size-5 text-primary-text group-hover/rec:hidden' />
-              <XIcon className='hidden size-5 text-foreground group-hover/rec:block' />
-            </>
-          ) : (
-            <SparklesIcon className='size-5' />
-          )}
+        className={ROW}>
+        <Mark saved={saved} idle={<SparklesIcon className='size-5' />} />
+        <span className='flex min-w-0 flex-1 items-center gap-1.5'>
+          <span className='truncate'>Recommended</span>
+          <ShieldIcon
+            aria-hidden
+            className='size-4 shrink-0 text-muted-foreground'
+          />
+          <span className='sr-only'>, Admin Only</span>
         </span>
-        <span className='min-w-0 flex-1 truncate'>Recommended</span>
         <span className='text-sm text-muted-foreground tabular-nums'>
           {songs?.length}
           <span className='sr-only'> songs</span>
@@ -121,7 +134,8 @@ const RecommendedRow = ({
   )
 }
 
-// Every playlist with a tick on those that have the song; a tap adds it. A new playlist starts with the song
+// Every playlist with a tick on those that have the song; a tap adds it, or takes it out when ticked. A new
+// playlist starts with the song
 export const SaveToPlaylist = ({
   song,
   open,
@@ -136,7 +150,7 @@ export const SaveToPlaylist = ({
 }) => {
   const playlists = usePlaylists()
   const { admin } = useAccess()
-  const { addToPlaylist, createPlaylist } = useListening()
+  const { addToPlaylist, createPlaylist, removeFromPlaylist } = useListening()
   const [name, setName] = useState('')
 
   const create = () => {
@@ -180,26 +194,21 @@ export const SaveToPlaylist = ({
                 <li key={list.id}>
                   <button
                     type='button'
-                    aria-disabled={saved}
+                    aria-pressed={saved}
                     onClick={() => {
                       if (saved) {
-                        return
+                        removeFromPlaylist(list.id, song.videoId)
+                      } else {
+                        addToPlaylist(list.id, song)
                       }
-                      addToPlaylist(list.id, song)
                       onOpenChange(false)
                     }}
                     className={ROW}>
-                    <span className='grid size-5 shrink-0 place-items-center text-muted-foreground'>
-                      {saved ? (
-                        <CheckIcon className='size-5 text-primary-text' />
-                      ) : (
-                        <ListPlusIcon className='size-5' />
-                      )}
-                    </span>
-                    <span className='min-w-0 flex-1 truncate'>
-                      {list.name}
-                      {saved && <span className='sr-only'>, Saved</span>}
-                    </span>
+                    <Mark
+                      saved={saved}
+                      idle={<ListPlusIcon className='size-5' />}
+                    />
+                    <span className='min-w-0 flex-1 truncate'>{list.name}</span>
                     <span className='text-sm text-muted-foreground tabular-nums'>
                       {list.songs.length}
                       <span className='sr-only'> songs</span>
