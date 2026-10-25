@@ -6,6 +6,7 @@ import { toast } from '@/components/ui/use-toast'
 import { signInWithGoogle, SIGN_IN_CODES } from '@/lib/auth'
 import type { GenerationRequest } from '@/lib/generation/store'
 import { requestGeneration } from '@/lib/generation/store'
+import type { Refusal } from '@/lib/generation/stream'
 
 // A check answered this fast needs no notice; one that waits on a backend starting up (up to 20 s) does
 const STARTING_NOTICE_DELAY_MS = 400
@@ -33,12 +34,22 @@ const watchStay = () => {
   }
 }
 
-// Starts a generation from a button, or says at once why it can't start. Until the backend answers, a notice
-// says the press was taken, unless the button shows that itself (`announce: false`)
+// How a press ended: the generation started, the check refused it, or the song was already being checked
+export type StartOutcome =
+  | { kind: 'started' }
+  | { kind: 'refused'; refusal: Refusal }
+  | { kind: 'busy' }
+
+// Starts a generation from a button, or says at once why it can't start. Until the checks answer, a notice
+// says the press was taken, unless the button shows that itself (`announce: false`). A refusal shows as a notice
+// unless the caller shows it where it was pressed (`quiet: true`)
 export const startFromButton = async (
   request: GenerationRequest,
-  { announce = true }: { announce?: boolean } = {}
-) => {
+  {
+    announce = true,
+    quiet = false,
+  }: { announce?: boolean; quiet?: boolean } = {}
+): Promise<StartOutcome> => {
   let notice: ReturnType<typeof toast> | undefined
   const timer = announce
     ? setTimeout(() => {
@@ -64,7 +75,11 @@ export const startFromButton = async (
   // Started, or a second press while the first is still being checked
   if (refusal === null || refusal === 'checking') {
     notice?.dismiss()
-    return
+    return refusal === null ? { kind: 'started' } : { kind: 'busy' }
+  }
+  if (quiet) {
+    notice?.dismiss()
+    return { kind: 'refused', refusal }
   }
   const refused = {
     action: SIGN_IN_CODES.has(refusal.code) ? (
@@ -88,4 +103,5 @@ export const startFromButton = async (
   } else {
     notice.update({ ...refused, id: notice.id, open: true })
   }
+  return { kind: 'refused', refusal }
 }

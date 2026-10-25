@@ -4,9 +4,11 @@ import { STEPS } from './plan'
 import {
   beginStage,
   CAP,
+  closeQuickCheck,
   completePhase,
   FINISH_MS,
   MEASURED_SHARE,
+  openQuickCheck,
   OVERALL_CAP,
   overallValue,
   PENDING_CAP,
@@ -191,5 +193,45 @@ describe('a step', () => {
       detail: 'Reading subtitles and song details',
       state: 'active',
     })
+  })
+})
+
+describe('the quick Song Check, after the button checked the song', () => {
+  const [check, fetch] = STEPS
+  const ms = 1600
+
+  test('fills on its own clock and closes when it is due, with Song Analysis begun', () => {
+    const open = openQuickCheck({}, 0, ms)
+    expect(stepView(open, check, ms / 2).state).toBe('active')
+    // Most of the way when it closes, so the last fill is short
+    expect(stageValue(open.check, ms)).toBeGreaterThan(0.85)
+    const closed = closeQuickCheck(open, ms)
+    expect(stepView(closed, check, ms).state).toBe('done')
+    expect(stepView(closed, fetch, ms).state).toBe('active')
+    // Song Analysis creeps until the backend begins it
+    expect(stageValue(closed.download, ms + 60 * S)).toBeLessThan(
+      PENDING_CAP + 1e-9
+    )
+  })
+
+  test('the backend later beginning or finishing its own check changes nothing shown', () => {
+    const closed = closeQuickCheck(openQuickCheck({}, 0, ms), ms)
+    const later = reportFraction(
+      beginStage(closed, 'check', ms + S, { expectedS: 6 }),
+      'check',
+      0.5,
+      ms + S
+    )
+    expect(stageValue(later.check, ms + 2 * S)).toBe(
+      stageValue(closed.check, ms + 2 * S)
+    )
+    expect(stepView(later, check, ms + 2 * S).state).toBe('done')
+  })
+
+  test('closing leaves a check the backend drives, or one already closed, alone', () => {
+    const driven = beginStage({}, 'check', 0)
+    expect(closeQuickCheck(driven, ms)).toBe(driven)
+    const closed = closeQuickCheck(openQuickCheck({}, 0, ms), ms)
+    expect(closeQuickCheck(closed, ms + S)).toBe(closed)
   })
 })

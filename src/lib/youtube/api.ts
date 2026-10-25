@@ -127,6 +127,24 @@ export const getChartsPlaylist = async (): Promise<ChartSong[]> => {
   return songs
 }
 
+// What the check at a Generate Lyrics button needs: the title for its confirmation and the length. null when
+// YouTube has no such video (private, deleted, a mistyped id); throws when YouTube couldn't be asked
+export const getVideoFacts = async (
+  videoId: string
+): Promise<{ title: string; duration: string | null } | null> => {
+  const video = await getYoutube(
+    videoSchema,
+    `/api/youtube/video/${encodeURIComponent(videoId)}`
+  )
+  const [item] = video.items
+  return item === undefined
+    ? null
+    : {
+        duration: item.contentDetails?.duration ?? null,
+        title: item.snippet.title,
+      }
+}
+
 export const getYoutubeVideoInfo = async (
   videoId: string
 ): Promise<YoutubeSearchResultInfo> => {
