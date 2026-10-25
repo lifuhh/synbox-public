@@ -1,4 +1,4 @@
-// Each song's listens (a visit to its player page counts one, once an hour per listener) and likes (one per
+// Each song's listens (every visit to its player page counts one; a reload within a minute doesn't) and likes (one per
 // account). Listens are public: anyone may add one to a library song (index.ts › refusedSong), so the count is a
 // signal, not an audit
 
@@ -20,21 +20,29 @@ export const listenerOf = (userId: string | null, device: string | null) => {
 // stored and count for nothing
 export const likerOf = (userId: string) => `u:${userId}`
 
-// A listener counts one listen per song an hour
-export const LISTEN_GAP_MS = 3_600_000
-// A guest's device id is made by the browser, so a new one costs nothing: past this many guest listens of one
-// song in an hour, further guests' listens don't count (the most played real song had 22 listens in all on
-// 2026-10-24)
-export const GUEST_LISTENS_PER_HOUR = 30
+// An account's every visit to a song counts, leaving and coming back included; a listen this soon after its last
+// counted one of the song is the same visit (a reload, a page mounted twice). Replays within a visit send nothing
+// (the app's countListen)
+export const REPEAT_LISTEN_MS = 60_000
+// A guest's device counts one listen per song an hour: guests' plays only feed the numbers
+export const GUEST_WINDOW_MS = 3_600_000
+// A guest's device id is made by the browser, so a new one costs nothing: past this many guest devices listening to
+// one song within GUEST_WINDOW_MS, further guests' listens don't count. A ceiling on scripted inflation, far above
+// real traffic (it was 30 when the top song had 22 listens in all, 2026-10-24)
+export const GUEST_LISTENS_PER_HOUR = 300
 
 // Whether this listen counts (?1 song, ?2 listener, ?3 now, ?4 1 for a guest): the listener's last counted listen of
-// the song is over an hour old, and a guest is under the song's hourly guest limit
+// the song is over REPEAT_LISTEN_MS old (GUEST_WINDOW_MS for a guest), and a guest is under the song's hourly guest
+// limit
 const COUNTS = `
-  not exists (select 1 from "songListen" where "videoId" = ?1 and "listener" = ?2 and "at" > ?3 - ${LISTEN_GAP_MS})
+  not exists (select 1 from "songListen" where "videoId" = ?1 and "listener" = ?2
+    and "at" > ?3 - (case when ?4 = 1 then ${GUEST_WINDOW_MS} else ${REPEAT_LISTEN_MS} end))
   and (?4 = 0 or (select count(*) from "songListen" where "videoId" = ?1 and "listener" like 'd:%'
-    and "at" > ?3 - ${LISTEN_GAP_MS}) < ${GUEST_LISTENS_PER_HOUR})`
+    and "at" > ?3 - ${GUEST_WINDOW_MS}) < ${GUEST_LISTENS_PER_HOUR})`
 
-// One batch, so D1 runs both as one transaction: the count goes up only with the listener's row
+// One batch, so D1 runs it as one transaction: the counts go up only with the listener's row, which is written last
+// so the statements before it still see the listen as counting. An account's own play count (accountStats) goes up
+// with the song's
 export const addListen = async (
   db: D1Database,
   videoId: string,
@@ -42,27 +50,40 @@ export const addListen = async (
   now: number
 ) => {
   const guest = listener.startsWith('d:') ? 1 : 0
-  await db.batch([
+  const statements = [
     db
       .prepare(
         `insert into "songStat" ("videoId", "listens", "lastListenedAt") select ?1, 1, ?3 where ${COUNTS}
          on conflict ("videoId") do update set "listens" = "listens" + 1, "lastListenedAt" = ?3`
       )
       .bind(videoId, listener, now, guest),
+  ]
+  if (listener.startsWith('u:')) {
+    statements.push(
+      db
+        .prepare(
+          `insert into "accountStats" ("userId", "plays", "lastPlayAt") select ?5, 1, ?3 where ${COUNTS}
+           on conflict ("userId") do update set "plays" = "plays" + 1, "lastPlayAt" = ?3`
+        )
+        .bind(videoId, listener, now, guest, listener.slice(2))
+    )
+  }
+  statements.push(
     db
       .prepare(
         `insert into "songListen" ("videoId", "listener", "at") select ?1, ?2, ?3 where ${COUNTS}
          on conflict ("videoId", "listener") do update set "at" = excluded."at"`
       )
-      .bind(videoId, listener, now, guest),
-  ])
+      .bind(videoId, listener, now, guest)
+  )
+  await db.batch(statements)
 }
 
-// The daily cron: rows past the hour decide nothing
+// The daily cron: rows older than the guests' hour decide nothing (the repeat guard needs only a minute)
 export const pruneListens = async (db: D1Database, now: number) => {
   await db
     .prepare(`delete from "songListen" where "at" <= ?1`)
-    .bind(now - LISTEN_GAP_MS)
+    .bind(now - GUEST_WINDOW_MS)
     .run()
 }
 

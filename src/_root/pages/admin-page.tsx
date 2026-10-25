@@ -525,13 +525,26 @@ const AccountActions = ({ user, isSelf }: AccountProps) =>
     <RowActions user={user} blocked={isBlocked(user)} />
   )
 
+// Counted plays (every visit to a song), with the last one under the count
+const Plays = ({ user }: { user: AdminUser }) => (
+  <div className='flex flex-col'>
+    <span className='tabular-nums'>{user.plays}</span>
+    <span className='text-xs text-muted-foreground'>
+      <When value={user.lastPlayAt} />
+    </span>
+  </div>
+)
+
 const UserRow = (props: AccountProps) => (
   <tr className='h-16 border-t border-border align-middle'>
     <th scope='row' className='pr-4 text-left font-normal'>
       <Account {...props} />
     </th>
     <td className='px-4 text-muted-foreground'>
-      <When value={props.user.lastSeenAt} />
+      <When value={props.user.lastActiveAt} />
+    </td>
+    <td className='px-4'>
+      <Plays user={props.user} />
     </td>
     <td className='px-4'>
       <AccountUsage {...props} />
@@ -554,7 +567,9 @@ const UserCard = (props: AccountProps) => (
       <AccountActions {...props} />
     </div>
     <p className='text-xs text-muted-foreground'>
-      Seen <When value={props.user.lastSeenAt} /> ·{' '}
+      Active <When value={props.user.lastActiveAt} /> ·{' '}
+      <span className='tabular-nums'>{props.user.plays}</span> plays, last{' '}
+      <When value={props.user.lastPlayAt} /> ·{' '}
       <span className='tabular-nums'>{props.user.songsTotal}</span> songs in
       total
     </p>
@@ -626,13 +641,15 @@ const UsersTable = () => {
           <col className='w-36' />
           <col className='w-28' />
           <col className='w-28' />
+          <col className='w-28' />
           <col className='w-44' />
           <col className='w-14' />
         </colgroup>
         <thead className='text-xs text-muted-foreground'>
           <tr>
             <th className='pr-4 pb-2 font-medium'>Account</th>
-            <th className='px-4 pb-2 font-medium'>Last Seen</th>
+            <th className='px-4 pb-2 font-medium'>Last Active</th>
+            <th className='px-4 pb-2 font-medium'>Plays</th>
             <th className='px-4 pb-2 font-medium'>Last 24 Hours</th>
             <th className='px-4 pb-2 text-right font-medium whitespace-nowrap'>
               Total Songs
