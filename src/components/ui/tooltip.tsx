@@ -6,6 +6,7 @@ import type { VariantProps } from 'class-variance-authority'
 import * as React from 'react'
 
 import { useMediaQuery } from '@/hooks/use-media-query'
+import '@/lib/turned-popper'
 import { cn } from '@/utils/cn'
 
 const TooltipProvider = TooltipPrimitive.Provider
