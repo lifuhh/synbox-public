@@ -59,6 +59,7 @@ import {
   sameLyricsStyle,
 } from '@/lib/lyrics-style'
 import { useLikeSong, useSongStats } from '@/lib/song-stats'
+import { track, trackLyricsFeature } from '@/lib/usage'
 import { cn } from '@/utils/cn'
 
 import { LyricsThemePicker } from './lyrics-theme-picker'
@@ -353,6 +354,7 @@ const PlayerRail = ({ inline = false }: { inline?: boolean }) => {
 
   const handleShare = async () => {
     const url = shareUrl(lyricsStyle)
+    track({ name: 'share', props: { method: nativeShare ? 'sheet' : 'copy' } })
     // Phones share through the system sheet; an installed app has no address bar to copy from
     if (nativeShare) {
       try {
@@ -509,6 +511,7 @@ const PlayerRail = ({ inline = false }: { inline?: boolean }) => {
                     pressed={showLyrics}
                     onClick={() => {
                       setShowLyrics(!showLyrics)
+                      trackLyricsFeature('lyrics', !showLyrics)
                     }}>
                     <MessageSquareTextIcon className='size-5 shrink-0' />
                   </RailButton>
@@ -519,6 +522,7 @@ const PlayerRail = ({ inline = false }: { inline?: boolean }) => {
                     pressed={showRomaji}
                     onClick={() => {
                       setShowRomaji(!showRomaji)
+                      trackLyricsFeature('romaji', !showRomaji)
                     }}>
                     <span className='text-base leading-none font-bold'>R</span>
                   </RailButton>
@@ -532,6 +536,7 @@ const PlayerRail = ({ inline = false }: { inline?: boolean }) => {
                     pressed={showTranslation}
                     onClick={() => {
                       setShowTranslation(!showTranslation)
+                      trackLyricsFeature('translation', !showTranslation)
                     }}>
                     <LanguagesIcon className='size-5 shrink-0' />
                   </RailButton>
@@ -550,6 +555,7 @@ const PlayerRail = ({ inline = false }: { inline?: boolean }) => {
                     }
                     onClick={() => {
                       setEnglish(!english)
+                      trackLyricsFeature('language', !english)
                     }}>
                     <span className='text-sm leading-none font-bold'>
                       {english ? 'EN' : '中'}

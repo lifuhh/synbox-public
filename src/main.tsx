@@ -7,6 +7,7 @@ import { BrowserRouter } from 'react-router'
 import App from './app'
 import ErrorBoundary from './components/shared/error-boundary'
 import { QueryProvider } from './lib/react-query/query-provider'
+import { trackAppOpenLater } from './lib/usage-later'
 
 const rootElement = document.querySelector('#root')
 if (rootElement === null) {
@@ -31,3 +32,7 @@ ReactDOM.createRoot(rootElement, {
     </QueryProvider>
   </BrowserRouter>
 )
+
+// How the app was opened, for its owner (lib/usage.ts); loaded after the first render, so the first load doesn't
+// carry it
+trackAppOpenLater()

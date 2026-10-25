@@ -6,7 +6,7 @@ import {
   SquarePlusIcon,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 
 import {
   Dialog,
@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/dialog'
 import { installGuide } from '@/lib/install-guide'
 import type { StepIcon } from '@/lib/install-guide'
+import { track } from '@/lib/usage'
 
 const ICONS: Record<StepIcon, LucideIcon> = {
   'add-square': SquarePlusIcon,
@@ -39,6 +40,11 @@ const InstallGuideDialog = ({
     () => installGuide(navigator.userAgent, navigator.maxTouchPoints),
     []
   )
+  useEffect(() => {
+    if (open) {
+      track({ name: 'install_prompt', props: { method: 'guide' } })
+    }
+  }, [open])
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>

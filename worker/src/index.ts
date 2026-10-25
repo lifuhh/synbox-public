@@ -3,6 +3,7 @@ import type { Context } from 'hono'
 
 import { createAuth } from './auth'
 import type { Env } from './auth'
+import { parseEvents, pruneEvents, readUsage, saveEvents } from './events'
 import { fixer } from './fixer'
 import { generation } from './generation'
 import type { GenerationEnv } from './generation'
@@ -303,6 +304,27 @@ app.post('/api/songs/:videoId/listen', async (c) => {
     return c.json(refused.body, refused.status)
   }
   await addListen(c.env.DB, videoId, listener, Date.now())
+  return c.body(null, 204)
+})
+
+// Usage events from the app (events.ts), batched: an account's, or a guest's with { device }. Whatever is
+// unknown, malformed or past the daily cap is dropped; the answer is 204 either way, so the app never retries
+app.post('/api/events', async (c) => {
+  const now = Date.now()
+  // MAX_BATCH events with their props fit well within this
+  if (Number(c.req.header('content-length') ?? 0) > 16_384) {
+    return c.json({ code: 'too_large' }, 413)
+  }
+  const body = await c.req.json<Record<string, unknown>>().catch(() => null)
+  const device = typeof body?.device === 'string' ? body.device : null
+  const events = parseEvents(body, now)
+  if (events === null) {
+    return c.json({ code: 'bad_request' }, 400)
+  }
+  const actor = listenerOf(await userIdOf(c.env, c.req.raw.headers), device)
+  if (actor !== null && events.length > 0) {
+    await saveEvents(c.env.DB, actor, events, now)
+  }
   return c.body(null, 204)
 })
 
@@ -707,6 +729,9 @@ admin.post('/reports/:id/reopen', async (c) => {
     : c.json({ code: 'not_found' }, 404)
 })
 
+// How the app is used: active people a day and a week, each event's count, the most listened songs (events.ts)
+admin.get('/usage', async (c) => c.json(await readUsage(c.env.DB, Date.now())))
+
 // Leads on someone working around the song limit (worker/src/signals.ts)
 admin.get('/signals', async (c) =>
   c.json(await readSignals(c.env.DB, limitsOf(c.env).user))
@@ -717,12 +742,14 @@ app.route('/api/admin', admin)
 export default {
   fetch: app.fetch,
   // The daily cron (wrangler.jsonc): reports the fixer left open past EXPIRE_DAYS are dropped as expired, and
-  // listen rows past their hour, song checks past their 24 hours and lyrics hits past their 30 days go
+  // listen rows past their hour, song checks past their 24 hours, lyrics hits past their 30 days and usage events
+  // past their 90 go
   scheduled: (_controller, env, ctx) => {
     const now = Date.now()
     ctx.waitUntil(expireReports(env.DB, now))
     ctx.waitUntil(pruneListens(env.DB, now))
     ctx.waitUntil(pruneValidations(env.DB, now))
     ctx.waitUntil(pruneHits(env.DB, now))
+    ctx.waitUntil(pruneEvents(env.DB, now))
   },
 } satisfies ExportedHandler<AppEnv>

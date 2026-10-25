@@ -339,6 +339,36 @@ export const useAdminSignals = () =>
     retry,
   })
 
+// How the app is used: the last 14 UTC days, the past 7 days' totals and events, the most listened songs
+// (worker/src/events.ts › readUsage)
+const usageSchema = z.object({
+  days: z.array(
+    z.object({
+      active: z.number(),
+      day: z.string(),
+      generations: z.number(),
+      generationsFailed: z.number(),
+      newAccounts: z.number(),
+      reports: z.number(),
+      signedIn: z.number(),
+      songOpens: z.number(),
+    })
+  ),
+  events: z.array(
+    z.object({ actors: z.number(), count: z.number(), name: z.string() })
+  ),
+  songs: z.array(z.object({ listens: z.number(), videoId: z.string() })),
+  week: z.object({ active: z.number(), signedIn: z.number() }),
+})
+export type AdminUsage = z.infer<typeof usageSchema>
+
+export const useAdminUsage = () =>
+  useQuery({
+    queryFn: async () => await fetchParsed(usageSchema, '/usage'),
+    queryKey: [QUERY_KEYS.GET_ADMIN_USAGE],
+    retry,
+  })
+
 export const useAdminSettings = () =>
   useQuery({
     queryFn: async () => await fetchParsed(settingsSchema, '/settings'),
