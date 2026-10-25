@@ -1,5 +1,5 @@
 import { platform } from '@floating-ui/dom'
-import type { Platform, Rect } from '@floating-ui/dom'
+import type { ClientRectObject, Platform, Rect } from '@floating-ui/dom'
 
 import { pagePoint, pageTurned } from '@/lib/page-turn'
 
@@ -9,7 +9,7 @@ import { pagePoint, pageTurned } from '@/lib/page-turn'
 // screen: it opened a third of the page away from its button. While the page is turned, Floating UI gets the
 // page's axes instead: the trigger's box turned into them, the page as the viewport, no scale. It reads this
 // object on every placement, so the change also reaches Radix's own copy of it
-const pageRect = (box: DOMRect): Rect => {
+const pageRect = (box: ClientRectObject): Rect => {
   const a = pagePoint({ clientX: box.left, clientY: box.top })
   const b = pagePoint({ clientX: box.right, clientY: box.bottom })
   return {
@@ -23,15 +23,15 @@ const pageRect = (box: DOMRect): Rect => {
 const screen = { ...platform }
 
 const turnedPlatform: Partial<Platform> = {
-  convertOffsetParentRelativeRectToViewportRelativeRect(args) {
+  async convertOffsetParentRelativeRectToViewportRelativeRect(args) {
     return pageTurned()
       ? args.rect
-      : screen.convertOffsetParentRelativeRectToViewportRelativeRect?.call(
+      : await screen.convertOffsetParentRelativeRectToViewportRelativeRect?.call(
           this,
           args
         )
   },
-  getClippingRect(args) {
+  async getClippingRect(args) {
     return pageTurned()
       ? {
           height: document.body.clientHeight,
@@ -39,7 +39,7 @@ const turnedPlatform: Partial<Platform> = {
           x: 0,
           y: 0,
         }
-      : screen.getClippingRect.call(this, args)
+      : await screen.getClippingRect.call(this, args)
   },
   async getElementRects(args) {
     if (!pageTurned()) {
@@ -54,10 +54,10 @@ const turnedPlatform: Partial<Platform> = {
       reference: pageRect(args.reference.getBoundingClientRect()),
     }
   },
-  getScale(element) {
+  async getScale(element) {
     return pageTurned()
       ? { x: 1, y: 1 }
-      : (screen.getScale?.call(this, element) ?? { x: 1, y: 1 })
+      : ((await screen.getScale?.call(this, element)) ?? { x: 1, y: 1 })
   },
 }
 
