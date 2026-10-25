@@ -1,4 +1,4 @@
-import { MicVocalIcon, PlayIcon } from 'lucide-react'
+import { MicIcon, PlayIcon } from 'lucide-react'
 import type React from 'react'
 import { Link } from 'react-router'
 
@@ -33,15 +33,16 @@ const SKELETON_TITLES = [
 // Lyrics), so only it marks the karaoke ones: a mic at the end of the meta line, drawn like the text beside it (its
 // size and a stroke as light as the text's weight), with Synbox's own listens after it, since only karaoke songs
 // have them. Last on the line, so a count that arrives later only lengthens it: the rank and views never move. The
-// glyph's drawing sits half a pixel low in its box, so it is lifted onto the text's centre line. Under 12.5rem (a
+// mic is upright (a diagonal one's handle pulls its weight down and left) and as tall in ink as the text's figures,
+// centred on them, not a size larger. Under 12.5rem (a
 // 320px phone) the line can't hold "#100 · 142M views · 2.1K listens", so the word goes, for the eye only
 const KaraokeMeta = ({ listens }: { listens: number | undefined }) => (
   <span className='inline-flex min-w-0 items-center gap-1 text-primary-text'>
-    <MicVocalIcon
+    <MicIcon
       aria-hidden
       data-karaoke-badge
-      strokeWidth={1.75}
-      className='size-3.5 shrink-0 -translate-y-[0.5px]'
+      strokeWidth={2}
+      className='size-[11px] shrink-0'
     />
     <span className='sr-only'>Karaoke</span>
     {listens !== undefined && listens > 0 && (
