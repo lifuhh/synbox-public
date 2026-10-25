@@ -17,9 +17,11 @@ import {
   parseFixMarks,
   parseReport,
   parseResolution,
+  parseReview,
   reopenReport,
   reportAllowed,
   resolveReport,
+  reviewReport,
   saveReport,
 } from './reports'
 import type { Report } from './reports'
@@ -415,6 +417,30 @@ test('expiry drops a report open for 3 days and keeps a 2-day-old one; closed re
   })
   const open = await listOpenReports(db)
   expect(open.map((row) => row.videoId)).toEqual(['bbbbbbbbbbb'])
+})
+
+test('expiry leaves a report the fixer handed to a human', async () => {
+  const { db } = await fixture()
+  await saveReport(db, 'me', REPORT, '', NOW - 5 * DAY)
+  const [row] = await listReports(db)
+  expect(await reviewReport(db, String(row?.id), null, NOW - 4 * DAY)).toBe(
+    true
+  )
+  expect(await expireReports(db, NOW)).toBe(0)
+  expect(await listOpenReports(db)).toEqual([])
+  expect((await listReports(db))[0]).toMatchObject({
+    droppedAt: null,
+    reviewAt: NOW - 4 * DAY,
+  })
+})
+
+test('a review note is optional and short', () => {
+  expect(parseReview({})).toEqual({ note: null })
+  expect(parseReview({ note: '  Audit clean ' })).toEqual({
+    note: 'Audit clean',
+  })
+  expect(parseReview({ note: 'x'.repeat(RESOLUTION_MAX + 1) })).toBeNull()
+  expect(parseReview(null)).toBeNull()
 })
 
 test('a drop names a known reason; the note is optional and short', () => {

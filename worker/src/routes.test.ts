@@ -2,7 +2,13 @@ import { expect, test } from 'bun:test'
 import { timingSafeEqual } from 'node:crypto'
 
 import worker from './index'
-import { EXPIRE_DAYS, listReports, saveReport } from './reports'
+import {
+  EXPIRE_DAYS,
+  listReports,
+  openReportOf,
+  reopenReport,
+  saveReport,
+} from './reports'
 import { migratedD1 } from './test-d1'
 
 // The Worker as Cloudflare runs it: its fetch and scheduled handlers, over a migrated database
@@ -155,6 +161,36 @@ test('the fixer lists open reports oldest first, then resolves one and drops ano
     dropReason: 'nothing_found',
     resolvedAt: null,
   })
+})
+
+test('the fixer hands a report it cannot fix to a human: off its list, still open, and back to it on Reopen', async () => {
+  const { db, listed, status } = await setup()
+  await saveReport(db, 'me', REPORT, '', 1000)
+  const [first] = (await listed()).map((row) => String(row.id))
+  expect(await status(`/reports/${first}/review`, { body: { note: 7 } })).toBe(
+    400
+  )
+  expect(
+    await status(`/reports/${first}/review`, {
+      body: { note: 'Audit clean' },
+    })
+  ).toBe(204)
+  expect(await listed()).toEqual([])
+  expect((await listReports(db))[0]).toMatchObject({
+    droppedAt: null,
+    resolvedAt: null,
+    reviewNote: 'Audit clean',
+  })
+  // Still the reporter's one open report on the song
+  expect(await openReportOf(db, 'me', REPORT.videoId)).not.toBeNull()
+  expect(await status('/reports/no-such-id/review', { body: {} })).toBe(404)
+  // A closed report can't be handed over
+  expect(
+    await status(`/reports/${first}/resolve`, { body: { version: 3 } })
+  ).toBe(204)
+  expect(await status(`/reports/${first}/review`, { body: {} })).toBe(404)
+  expect(await reopenReport(db, first ?? '')).toBe('reopened')
+  expect((await listed()).map((row) => row.id)).toEqual([first])
 })
 
 test('the daily cron expires reports open past 3 days', async () => {

@@ -195,6 +195,8 @@ export const saveReport = async (
 
 // Neither resolved nor dropped
 const OPEN = `"resolvedAt" is null and "droppedAt" is null`
+// Open and not handed to a human: what the fixer works through and the daily expiry may drop
+const FOR_FIXER = `${OPEN} and "reviewAt" is null`
 
 // The latest reports with who sent them (an account, or a guest before 2026-10-23): open ones first, so closed ones
 // never push an open one out of the 200, then newest first
@@ -202,8 +204,8 @@ export const listReports = async (db: D1Database) => {
   const { results } = await db
     .prepare(
       `select r."id", r."videoId", r."atSeconds", r."version", r."message", r."client", r."build", r."createdAt",
-         r."resolvedAt", r."resolvedVersion", r."resolution", r."droppedAt", r."dropReason",
-         u."email", u."name", r."guestKey" is not null as "guest"
+         r."resolvedAt", r."resolvedVersion", r."resolution", r."droppedAt", r."dropReason", r."reviewAt",
+         r."reviewNote", u."email", u."name", r."guestKey" is not null as "guest"
        from "report" r left join "user" u on u."id" = r."userId"
        order by not (${OPEN}), r."createdAt" desc limit 200`
     )
@@ -211,11 +213,12 @@ export const listReports = async (db: D1Database) => {
   return results
 }
 
-// What the backend's fixer works through: open reports, oldest first. None stays open past EXPIRE_DAYS
+// What the backend's fixer works through: open reports it hasn't handed to a human, oldest first. None of them stays
+// open past EXPIRE_DAYS
 export const listOpenReports = async (db: D1Database) => {
   const { results } = await db
     .prepare(
-      `select "id", "videoId", "atSeconds", "version", "message", "createdAt" from "report" where ${OPEN}
+      `select "id", "videoId", "atSeconds", "version", "message", "createdAt" from "report" where ${FOR_FIXER}
        order by "createdAt" limit 500`
     )
     .all()
@@ -286,7 +289,8 @@ export const reopenReport = async (
     const { meta } = await db
       .prepare(
         `update "report" set "resolvedAt" = null, "resolvedVersion" = null, "resolution" = null, "seenAt" = null,
-           "dismissedAt" = null, "droppedAt" = null, "dropReason" = null where "id" = ?1`
+           "dismissedAt" = null, "droppedAt" = null, "dropReason" = null, "reviewAt" = null, "reviewNote" = null
+         where "id" = ?1`
       )
       .bind(id)
       .run()
@@ -354,14 +358,48 @@ export const dropReport = async (
   return meta.changes > 0
 }
 
-// The safety net under the 12-hourly fixer: a report still open after this long is dropped as expired
+// The body of POST /api/fixer/reports/:id/review ({ note? }): why the fixer gave up, or null when it is off
+export const parseReview = (body: unknown): { note: string | null } | null => {
+  if (typeof body !== 'object' || body === null) {
+    return null
+  }
+  const note = field(body, 'note') ?? null
+  if (note !== null && typeof note !== 'string') {
+    return null
+  }
+  const text = note?.trim() ?? ''
+  return text.length > RESOLUTION_MAX
+    ? null
+    : { note: text === '' ? null : text }
+}
+
+// Hands an open report to a human: it stays open, unseen by the fixer and the expiry, until an admin resolves or
+// drops it (or reopens it, which gives it back to the fixer). The reporter is told nothing. False when no open
+// report has the id
+export const reviewReport = async (
+  db: D1Database,
+  id: string,
+  note: string | null,
+  now: number
+) => {
+  const { meta } = await db
+    .prepare(
+      `update "report" set "reviewAt" = ?2, "reviewNote" = ?3 where "id" = ?1 and ${OPEN}`
+    )
+    .bind(id, now, note)
+    .run()
+  return meta.changes > 0
+}
+
+// The safety net under the 12-hourly fixer: a report still open after this long is dropped as expired, unless the
+// fixer handed it to a human
 export const EXPIRE_DAYS = 3
 
 // Drops every report open for EXPIRE_DAYS or more; answers how many. Running it again changes nothing
 export const expireReports = async (db: D1Database, now: number) => {
   const { meta } = await db
     .prepare(
-      `update "report" set "droppedAt" = ?1, "dropReason" = 'expired' where ${OPEN} and "createdAt" <= ?2`
+      `update "report" set "droppedAt" = ?1, "dropReason" = 'expired' where ${FOR_FIXER} and "createdAt" <= ?2`
     )
     .bind(now, now - EXPIRE_DAYS * DAY_MS)
     .run()
