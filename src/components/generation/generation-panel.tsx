@@ -303,6 +303,7 @@ const DISMISS_SHARE = 0.5
 const FLICK_SPEED = 600
 // How far an open row stands aside: the X's 44px target and a gap either side
 const REVEAL_PX = 60
+const SPRING_BACK = { bounce: 0, duration: 0.25, type: 'spring' } as const
 
 // A row of the panel's list. A finished one is dismissed on touch by a swipe left, or by the X a shorter swipe
 // leaves showing; a tap anywhere else, or a swipe right, closes it again. A mouse finds an X on hover (and the
@@ -340,7 +341,7 @@ const SwipeRow = ({
   const close = () => {
     setOpen(false)
     void slide.start({
-      transition: { bounce: 0, duration: 0.25, type: 'spring' },
+      transition: SPRING_BACK,
       x: 0,
     })
   }
@@ -362,7 +363,7 @@ const SwipeRow = ({
     } else if (at < -REVEAL_PX / 2 && velocity < FLICK_SPEED / 2) {
       setOpen(true)
       void slide.start({
-        transition: { bounce: 0, duration: 0.25, type: 'spring' },
+        transition: SPRING_BACK,
         x: -REVEAL_PX,
       })
     } else {
@@ -370,27 +371,23 @@ const SwipeRow = ({
     }
   }
   // Open, a press anywhere but this row (it closes on its own click) and its X closes it, so one row is open at most
-  const closeRef = useRef(close)
-  closeRef.current = close
   const reveal = useRef<HTMLButtonElement>(null)
   useEffect(() => {
-    if (!open) {
-      return
-    }
-    const onPress = (event: PointerEvent) => {
-      const target = event.target as Node
-      if (
-        !(row.current?.contains(target) ?? false) &&
-        !(reveal.current?.contains(target) ?? false)
-      ) {
-        closeRef.current()
+    const onPress = ({ target }: PointerEvent) => {
+      const inside = (element: HTMLElement | null) =>
+        target instanceof Node && (element?.contains(target) ?? false)
+      if (!inside(row.current) && !inside(reveal.current)) {
+        setOpen(false)
+        void slide.start({ transition: SPRING_BACK, x: 0 })
       }
     }
-    document.addEventListener('pointerdown', onPress, { capture: true })
+    if (open) {
+      document.addEventListener('pointerdown', onPress, { capture: true })
+    }
     return () => {
       document.removeEventListener('pointerdown', onPress, { capture: true })
     }
-  }, [open])
+  }, [open, slide])
   return (
     <motion.li
       data-marquee-host
