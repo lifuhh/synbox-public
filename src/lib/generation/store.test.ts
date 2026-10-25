@@ -3,7 +3,6 @@ import { beforeEach, expect, test, vi } from 'vite-plus/test'
 import { beginStage, reportFraction } from './progress'
 import type { Job } from './store'
 import {
-  cancelGeneration,
   generationPhase,
   getGenerationState,
   leadJob,
@@ -47,11 +46,6 @@ test('songs past the running limit wait, and start when a slot frees', () => {
 
   const { focusedId, jobs } = getGenerationState()
   expect(focusedId).toBe(jobs[1].id)
-
-  // Cancelling the song on screen frees its slot for the waiting one and shows the newest song still going
-  cancelGeneration(jobs[1].id)
-  expect(kinds()).toEqual(['running', 'running', 'running'])
-  expect(getGenerationState().focusedId).toBe(jobs[3].id)
 })
 
 vi.mock('@/lib/auth', () => ({
@@ -249,5 +243,4 @@ test('a second press while the song is being checked asks the backend once and s
     (job) => job.videoId === videoId
   )
   expect(jobs).toHaveLength(1)
-  cancelGeneration(jobs[0].id)
 })

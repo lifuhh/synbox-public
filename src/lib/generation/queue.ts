@@ -69,8 +69,6 @@ export const isActive = (job: Job | null) =>
 export type Command =
   // `replaces`: the failed job a retry takes the place of
   | { type: 'add'; job: Job; replaces: string | null }
-  // Stops listening to a song, running or not
-  | { type: 'cancel'; id: string }
   // Clears a finished song
   | { type: 'dismiss'; id: string }
   // Clears every finished song
@@ -103,11 +101,6 @@ export const applyCommand = (
         ),
         job,
       ]
-    }
-    case 'cancel': {
-      return jobs.some((job) => job.id === command.id)
-        ? jobs.filter((job) => job.id !== command.id)
-        : jobs
     }
     case 'dismiss': {
       return jobs.some((job) => job.id === command.id && !isActive(job))

@@ -456,11 +456,6 @@ const pump = () => {
 
 // What the leading tab does with a command, from any tab
 const apply = (command: Command) => {
-  if (command.type === 'cancel') {
-    // Stops listening. A backend job already running finishes on its own and saves what it made.
-    controllers.get(command.id)?.abort()
-    controllers.delete(command.id)
-  }
   set(withJobs(applyCommand(state.jobs, command)))
   pump()
 }
@@ -648,10 +643,6 @@ export const retryGeneration = (id: string) => {
 }
 
 // Stops listening. A backend job already running finishes on its own and saves what it made.
-export const cancelGeneration = (id: string) => {
-  send({ id, type: 'cancel' })
-}
-
 export const dismissGeneration = (id: string) => {
   send({ id, type: 'dismiss' })
 }

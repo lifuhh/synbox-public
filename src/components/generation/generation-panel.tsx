@@ -15,18 +15,17 @@ import { AdminMark } from '@/components/shared/admin-mark'
 import { GoogleMark } from '@/components/shared/google-mark'
 import { MarqueeText } from '@/components/shared/marquee-text'
 import { Button } from '@/components/ui/button'
-import { toast } from '@/components/ui/use-toast'
 import { SIGN_IN_CODES, signInWithGoogle, useAccess } from '@/lib/auth'
 import { overallValue } from '@/lib/generation/progress'
 import type { Job } from '@/lib/generation/store'
 import {
-  cancelGeneration,
   dismissFinishedGenerations,
   dismissGeneration,
   fixKey,
   focusGeneration,
   isActive,
   retryGeneration,
+  setGenerationExpanded,
   useGeneration,
 } from '@/lib/generation/store'
 import { useGetSongInfoBySongId } from '@/lib/react-query/queries-and-mutations'
@@ -691,16 +690,12 @@ const SongDetail = ({ job, view }: { job: Job; view: Presentation }) => {
                   <Button
                     variant='overlay-muted'
                     size='sm'
+                    className='touch:h-11'
                     onClick={() => {
-                      cancelGeneration(job.id)
-                      // Nothing can stop the server's job once it runs: this only stops showing it
-                      toast({
-                        description:
-                          'The server may still finish it and add it to the library.',
-                        title: 'Stopped Watching This Song',
-                      })
+                      // As a tap outside: the panel closes, the song goes on in the top bar's ring
+                      setGenerationExpanded(false)
                     }}>
-                    Stop Watching
+                    Hide
                   </Button>
                 </div>
               )
