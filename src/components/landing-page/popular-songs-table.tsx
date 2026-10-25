@@ -2,22 +2,20 @@ import { MicVocalIcon, PlayIcon } from 'lucide-react'
 import type React from 'react'
 import { Link } from 'react-router'
 
-import { ListenCount } from '@/components/shared/listen-count'
 import LoadError from '@/components/shared/load-error'
 import { MarqueeText } from '@/components/shared/marquee-text'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   useGetChartsPlaylist,
-  useHasKaraoke,
+  useKaraokeIds,
 } from '@/lib/react-query/queries-and-mutations'
-import { compactCount } from '@/lib/song-stats'
+import { compactCount, useListensOf } from '@/lib/song-stats'
 import type { ChartSong, CssVars } from '@/types'
 
 // A row: a 72×41 thumbnail (16:9), then the title on one 20px line over the rank, YouTube views and Synbox listens on one 16px
 // line.
 // 12 px apart inside a row; rows are 4 px padded top and bottom and 2 px apart, so six fit beside the
-// recommendations. The play cue ends 16px from the edge. The list starts 2 px down so the first row's karaoke mic,
-// floating over its thumbnail's corner, isn't cut off
+// recommendations. The play cue ends 16px from the edge
 const ROW_PITCH_PX = 41 + 8 + 2
 
 // Placeholder rows, varied in title width so the column doesn't read as a block
@@ -32,31 +30,44 @@ const SKELETON_TITLES = [
 ]
 
 // Only this list mixes songs with karaoke and songs without (a chart song outside the library plays with Generate
-// Lyrics), so only it marks the karaoke ones: the bare mic tucked into the thumbnail's bottom-left corner, with a dark
-// halo so it reads on any picture; a tighter, lighter one on a phone, where the halo would swamp so small a mark. The
-// glyph's box is a tenth of its size emptier on the left than at the bottom, so the left offset is smaller and the
-// drawn mic sits the same distance from both edges. A screen reader hears it after the title
-const KaraokeMark = ({ videoId }: { videoId: string }) =>
-  useHasKaraoke(videoId) ? (
+// Lyrics), so only it marks the karaoke ones: a mic at the end of the meta line, drawn like the text beside it (its
+// size and a stroke as light as the text's weight), with Synbox's own listens after it, since only karaoke songs
+// have them. Last on the line, so a count that arrives later only lengthens it: the rank and views never move. The
+// glyph's drawing sits half a pixel low in its box, so it is lifted onto the text's centre line. Under 12.5rem (a
+// 320px phone) the line can't hold "#100 · 142M views · 2.1K listens", so the word goes, for the eye only
+const KaraokeMeta = ({ listens }: { listens: number | undefined }) => (
+  <span className='inline-flex min-w-0 items-center gap-1 text-primary-text'>
     <MicVocalIcon
       aria-hidden
       data-karaoke-badge
-      strokeWidth={2.5}
-      className='pointer-events-none absolute bottom-1 left-0.5 size-4 text-primary-text drop-shadow-sm drop-shadow-black/90 touch:drop-shadow-xs touch:drop-shadow-black/60'
+      strokeWidth={1.75}
+      className='size-3.5 shrink-0 -translate-y-[0.5px]'
     />
-  ) : null
+    <span className='sr-only'>Karaoke</span>
+    {listens !== undefined && listens > 0 && (
+      <span className='appear truncate text-muted-foreground'>
+        <span className='sr-only'>, </span>
+        {compactCount(listens)}
+        <span className='@max-[12.5rem]:sr-only'>
+          {listens === 1 ? ' listen' : ' listens'}
+        </span>
+      </span>
+    )}
+  </span>
+)
 
-// Never inside the scrolling title: WebKit counts its hidden text and clips a title that fits with an ellipsis
-const KaraokeLabel = ({ videoId }: { videoId: string }) =>
-  useHasKaraoke(videoId) ? (
-    <span className='sr-only'>, Karaoke Lyrics</span>
-  ) : null
-
-// The whole row opens the song, so the rank and counts are plain text, not chips that look pressable (listens as on
-// the song cards). The picture
+// The whole row opens the song, so the rank and counts are plain text, not chips that look pressable. The picture
 // leads, as many titles are in Japanese; the title takes one line, scrolling on hover when cut, and the song's
 // page shows it whole
-const SongRow = ({ song }: { song: ChartSong }) => (
+const SongRow = ({
+  song,
+  karaoke,
+  listens,
+}: {
+  song: ChartSong
+  karaoke: boolean
+  listens: number | undefined
+}) => (
   <li>
     <Link
       data-bench='charts-row'
@@ -73,21 +84,19 @@ const SongRow = ({ song }: { song: ChartSong }) => (
           decoding='async'
           className='size-full rounded-sm object-cover'
         />
-        <KaraokeMark videoId={song.id} />
       </span>
-      <span className='flex min-w-0 flex-1 flex-col gap-0.5'>
+      <span className='@container flex min-w-0 flex-1 flex-col gap-0.5'>
         <MarqueeText className='text-sm leading-5'>{song.title}</MarqueeText>
-        <span className='flex items-center gap-2.5 text-xs leading-4 text-muted-foreground tabular-nums'>
-          <span className='font-semibold text-foreground'>
+        <span className='flex min-w-0 items-center gap-2.5 text-xs leading-4 whitespace-nowrap text-muted-foreground tabular-nums'>
+          <span className='shrink-0 font-semibold text-foreground'>
             <span className='sr-only'>Rank </span>#{song.rank}
           </span>
           {song.views !== undefined && (
-            <span>{compactCount(song.views)} views</span>
+            <span className='shrink-0'>{compactCount(song.views)} views</span>
           )}
-          <ListenCount videoId={song.id} />
+          {karaoke && <KaraokeMeta listens={listens} />}
         </span>
       </span>
-      <KaraokeLabel videoId={song.id} />
       {/* A pointer's cue that the row plays; on touch the title gets the room */}
       <PlayIcon
         aria-hidden
@@ -112,6 +121,13 @@ const LandingPageCharts: React.FC = () => {
     isFetching,
     refetch,
   } = useGetChartsPlaylist()
+  const { data: karaokeIds } = useKaraokeIds()
+  const karaokeSongs =
+    chartsData
+      ?.filter((song) => karaokeIds?.has(song.id) === true)
+      .map((song) => song.id) ?? []
+  // One request for every karaoke song on the chart
+  const { data: listens } = useListensOf(karaokeSongs)
 
   return (
     <section
@@ -156,7 +172,12 @@ const LandingPageCharts: React.FC = () => {
           {!isError && !isLoading && (
             <ul className='flex appear flex-col gap-0.5 pt-0.5 pb-8'>
               {chartsData?.map((song) => (
-                <SongRow key={song.rank} song={song} />
+                <SongRow
+                  key={song.rank}
+                  song={song}
+                  karaoke={karaokeIds?.has(song.id) === true}
+                  listens={listens?.[song.id]}
+                />
               ))}
             </ul>
           )}

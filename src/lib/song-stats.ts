@@ -158,6 +158,32 @@ export const useListenCounts = () =>
     staleTime: 300_000,
   })
 
+// The exact listens of a list's own songs (the chart's karaoke ones), in one request; songs never played are left
+// out. A Worker without `?ids=` answers with the cards' counts (over ten listens), which are right for the songs
+// they hold
+export const LISTENS_IDS_MAX = 100
+export const useListensOf = (videoIds: readonly string[]) => {
+  const ids = [...new Set(videoIds)]
+    .toSorted()
+    .slice(0, LISTENS_IDS_MAX)
+    .join(',')
+  return useQuery({
+    enabled: ids !== '',
+    queryFn: async () => {
+      const response = await fetch(
+        `/api/songs/listens?ids=${encodeURIComponent(ids)}`
+      )
+      if (!response.ok) {
+        throw new Error(`Listen counts answered ${response.status}`)
+      }
+      return countsSchema.parse(await response.json()).listens
+    },
+    queryKey: [QUERY_KEYS.GET_LISTEN_COUNTS, ids],
+    // The Worker's answer is cached for five minutes anyway
+    staleTime: 300_000,
+  })
+}
+
 const compact = new Intl.NumberFormat('en', { notation: 'compact' })
 export const compactCount = (count: number) => compact.format(count)
 // "1 listen", "980 listens", "1.2K listens"

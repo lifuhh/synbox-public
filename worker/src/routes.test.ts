@@ -258,3 +258,18 @@ test("the backend's song-check count needs the internal secret, counts an id onc
     { code: 'validation_limit', outcome: 'validation_limit' },
   ])
 })
+
+test("a list's listens by id refuses a malformed id or more than the cap, and answers the ids asked", async () => {
+  const { call } = await setup()
+  const malformed = await call('/api/songs/listens?ids=not-an-id')
+  expect(malformed.status).toBe(400)
+  const many = Array.from(
+    { length: 101 },
+    (_, index) => `aaaaaaaa${index.toString().padStart(3, '0')}`
+  ).join(',')
+  const tooMany = await call(`/api/songs/listens?ids=${many}`)
+  expect(tooMany.status).toBe(400)
+  const response = await call('/api/songs/listens?ids=6rG_irmOQsM')
+  expect(response.status).toBe(200)
+  expect(await response.json()).toEqual({ listens: {} })
+})

@@ -112,6 +112,23 @@ export const listListenCounts = async (db: D1Database) => {
   return Object.fromEntries(results.map((row) => [row.videoId, row.listens]))
 }
 
+// The listens of the songs asked for, by id, played at least once (a list's own songs, e.g. the chart's karaoke
+// ones): one query, at most LISTENS_IDS_MAX ids, D1's limit on bound values
+export const LISTENS_IDS_MAX = 100
+export const listListensOf = async (db: D1Database, videoIds: string[]) => {
+  if (videoIds.length === 0) {
+    return {}
+  }
+  const marks = videoIds.map((_, index) => `?${index + 1}`).join(', ')
+  const { results } = await db
+    .prepare(
+      `select "videoId", "listens" from "songStat" where "listens" > 0 and "videoId" in (${marks})`
+    )
+    .bind(...videoIds)
+    .all<{ videoId: string; listens: number }>()
+  return Object.fromEntries(results.map((row) => [row.videoId, row.listens]))
+}
+
 export interface SongStats {
   listens: number
   likes: number

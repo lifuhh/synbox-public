@@ -7,6 +7,7 @@ import {
   addListen,
   likerOf,
   listListenCounts,
+  listListensOf,
   listRecentListens,
   listenerOf,
   pruneListens,
@@ -134,6 +135,16 @@ test('card counts: only songs played more than ten times', async () => {
   await listensBy(db, 'bbbbbbbbbbb', 10, account, 1)
   await listensBy(db, 'ccccccccccc', 1, account, 1)
   expect(await listListenCounts(db)).toEqual({ aaaaaaaaaaa: 11 })
+})
+
+test("a list's own songs: exact counts, any played at least once, nothing for the rest", async () => {
+  const { db } = migratedD1()
+  await listensBy(db, 'aaaaaaaaaaa', 11, account, 1)
+  await listensBy(db, 'ccccccccccc', 1, account, 1)
+  expect(
+    await listListensOf(db, ['ccccccccccc', 'ddddddddddd', 'aaaaaaaaaaa'])
+  ).toEqual({ aaaaaaaaaaa: 11, ccccccccccc: 1 })
+  expect(await listListensOf(db, [])).toEqual({})
 })
 
 test("an account's plays are its counted listens, never a guest's", async () => {
