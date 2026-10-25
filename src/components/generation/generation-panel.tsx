@@ -6,7 +6,7 @@ import {
   useDragControls,
   useReducedMotion,
 } from 'motion/react'
-import { useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Link } from 'react-router'
 
@@ -297,12 +297,16 @@ const DismissAll = ({
   )
 }
 
-// A finished row swiped left past this share of its width, or flicked left this fast (px/s), is dismissed
-const SWIPE_SHARE = 0.35
-const FLICK_SPEED = 500
+// A finished row let go past half its width, or flicked left this fast (px/s) past the X, is dismissed. A slower or
+// shorter swipe past half the X leaves the row open on it (owner, 2026-10-25: a full swipe can't be the only way)
+const DISMISS_SHARE = 0.5
+const FLICK_SPEED = 600
+// How far an open row stands aside: the X's 44px target and a gap either side
+const REVEAL_PX = 60
 
-// A row of the panel's list. A finished one is dismissed by a swipe left on touch, or by the X a mouse finds on
-// hover (and the keyboard on focus); the rows below close the gap
+// A row of the panel's list. A finished one is dismissed on touch by a swipe left, or by the X a shorter swipe
+// leaves showing; a tap anywhere else, or a swipe right, closes it again. A mouse finds an X on hover (and the
+// keyboard on focus); the rows below close the gap
 const SwipeRow = ({
   name,
   unread,
@@ -314,7 +318,7 @@ const SwipeRow = ({
   action,
 }: {
   name: string
-  // Unread when the panel opened: a dot in the gutter at its left
+  // Unread when the panel opened: a dot left of the thumbnail
   unread: boolean
   // Swipes away on touch
   finished: boolean
@@ -330,38 +334,88 @@ const SwipeRow = ({
   const drag = useDragControls()
   const slide = useAnimationControls()
   const row = useRef<HTMLDivElement>(null)
-  // A swipe ends with the finger lifted over a button: that press isn't a tap
-  const swiped = useRef(false)
-  // Past the line, or flicked, the row slides out and goes; short of it, it springs back
-  const settle = async (offset: number, velocity: number) => {
-    const width = row.current?.offsetWidth ?? 0
-    if (offset < -width * SWIPE_SHARE || velocity < -FLICK_SPEED) {
-      await slide.start({
-        transition: { duration: 0.15, ease: 'easeOut' },
-        x: -width,
-      })
-      dismiss()
-      return
-    }
-    await slide.start({
+  const [open, setOpen] = useState(false)
+  // A swipe ends with the finger lifted over a button, and a tap on an open row only closes it: neither presses
+  const swallowClick = useRef(false)
+  const close = () => {
+    setOpen(false)
+    void slide.start({
       transition: { bounce: 0, duration: 0.25, type: 'spring' },
       x: 0,
     })
   }
+  const slideOut = async () => {
+    await slide.start({
+      transition: { duration: 0.15, ease: 'easeOut' },
+      x: -(row.current?.offsetWidth ?? 0),
+    })
+    dismiss()
+  }
+  const settle = (offset: number, velocity: number) => {
+    const width = row.current?.offsetWidth ?? 0
+    const at = (open ? -REVEAL_PX : 0) + offset
+    if (
+      at < -width * DISMISS_SHARE ||
+      (velocity < -FLICK_SPEED && at < -REVEAL_PX)
+    ) {
+      void slideOut()
+    } else if (at < -REVEAL_PX / 2 && velocity < FLICK_SPEED / 2) {
+      setOpen(true)
+      void slide.start({
+        transition: { bounce: 0, duration: 0.25, type: 'spring' },
+        x: -REVEAL_PX,
+      })
+    } else {
+      close()
+    }
+  }
+  // Open, a press anywhere but this row (it closes on its own click) and its X closes it, so one row is open at most
+  const closeRef = useRef(close)
+  closeRef.current = close
+  const reveal = useRef<HTMLButtonElement>(null)
+  useEffect(() => {
+    if (!open) {
+      return
+    }
+    const onPress = (event: PointerEvent) => {
+      const target = event.target as Node
+      if (
+        !(row.current?.contains(target) ?? false) &&
+        !(reveal.current?.contains(target) ?? false)
+      ) {
+        closeRef.current()
+      }
+    }
+    document.addEventListener('pointerdown', onPress, { capture: true })
+    return () => {
+      document.removeEventListener('pointerdown', onPress, { capture: true })
+    }
+  }, [open])
   return (
     <motion.li
       data-marquee-host
       exit={reduced ? { opacity: 0 } : { height: 0, opacity: 0 }}
       transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
-      className='relative overflow-hidden rounded-lg pl-2.5'>
-      {unread && <UnreadDot className='top-1/2 left-1 -translate-y-1/2' />}
-      {/* Under the row, which covers it until it moves aside */}
+      className='relative overflow-hidden rounded-lg'>
+      {/* Under the row, which covers it until it moves aside; pressable once a swipe leaves it showing */}
       {finished && (
-        <span
-          aria-hidden
-          className='absolute inset-y-0 right-0 flex items-center pr-4 text-muted-foreground'>
-          <X className='size-4' />
-        </span>
+        <button
+          ref={reveal}
+          type='button'
+          tabIndex={-1}
+          aria-hidden={!open}
+          aria-label={`Dismiss ${name}`}
+          onClick={() => {
+            void slideOut()
+          }}
+          className={cn(
+            'absolute inset-y-0 right-0 flex w-15 items-center justify-center text-muted-foreground outline-none',
+            !open && 'pointer-events-none'
+          )}>
+          <span className='flex size-9 items-center justify-center rounded-full bg-secondary text-white/80'>
+            <X className='size-4' aria-hidden />
+          </span>
+        </button>
       )}
       <motion.div
         ref={row}
@@ -374,29 +428,33 @@ const SwipeRow = ({
         dragElastic={0.2}
         animate={slide}
         onPointerDown={(event) => {
-          swiped.current = false
+          swallowClick.current = open
           if (finished && event.pointerType !== 'mouse') {
             drag.start(event)
           }
         }}
         onDragStart={() => {
-          swiped.current = true
+          swallowClick.current = true
         }}
         onDragEnd={(_, info) => {
-          void settle(info.offset.x, info.velocity.x)
+          settle(info.offset.x, info.velocity.x)
         }}
         onClickCapture={(event) => {
-          if (swiped.current) {
+          if (swallowClick.current) {
             event.preventDefault()
             event.stopPropagation()
-            swiped.current = false
+            swallowClick.current = false
+            if (open) {
+              close()
+            }
           }
         }}
         className={cn(
-          'group relative flex items-center gap-1 rounded-lg bg-popover pr-1 hover:bg-accent',
+          'group relative flex items-center gap-1 rounded-lg bg-popover pr-3 pl-1.5 hover:bg-accent',
           finished && 'touch-pan-y',
           picked && 'bg-accent'
         )}>
+        {unread && <UnreadDot className='top-1/2 left-0.5 -translate-y-1/2' />}
         <div className='relative flex min-w-0 flex-1 self-stretch'>
           {main}
           {/* Over the end of the title, not in the row's flow: it comes in from the right without moving anything */}
@@ -570,9 +628,7 @@ const FixList = ({
       className='text-xs font-medium tracking-wide text-muted-foreground uppercase'>
       Lyrics Fixed
     </h3>
-    <ul
-      aria-label='Lyrics Fixed'
-      className='-mr-1.5 -ml-4 flex flex-col gap-0.5'>
+    <ul aria-label='Lyrics Fixed' className='-mx-3 flex flex-col gap-0.5'>
       <AnimatePresence initial={false}>
         {fixes.map((fix) => (
           <FixRow key={fix.videoId} fix={fix} onDismiss={onDismiss} />
@@ -596,7 +652,7 @@ const SongQueue = ({
   detail: ReactNode
   actionBelow: boolean
 }) => (
-  <ul aria-label='Songs' className='-mr-1.5 -ml-4 flex flex-col gap-0.5'>
+  <ul aria-label='Songs' className='-mx-3 flex flex-col gap-0.5'>
     <AnimatePresence initial={false}>
       {jobs.flatMap((job) => {
         const picked = job.id === focusedId
@@ -614,7 +670,7 @@ const SongQueue = ({
               <li
                 key={`${job.id}:detail`}
                 role='none'
-                className='flex flex-col gap-4 pt-2 pr-1 pb-6 pl-4'>
+                className='flex flex-col gap-4 px-3 pt-2 pb-6'>
                 {detail}
               </li>,
             ]
