@@ -29,4 +29,4 @@ export const REFETCH_AFTER_MS = 5 * 60 * 1000
 
 // `fetchedAt`: when a list was last fetched (0 if it never was)
 export const shouldRefetch = (now: number, fetchedAt: number) =>
-  now - fetchedAt >= REFETCH_AFTER_MS
+  fetchedAt === 0 || now - fetchedAt >= REFETCH_AFTER_MS
