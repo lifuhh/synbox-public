@@ -15,8 +15,8 @@ const STEPS = [
     title: 'Paste a Link',
   },
   {
-    text: 'The vocals are separated and transcribed, then matched to the published lyrics where they exist.',
-    title: 'Lyrics Are Built',
+    text: 'The song is transcribed and aligned to its lyrics, word by word.',
+    title: 'Lyrics Are Timed',
   },
   {
     text: 'Each word fills as it is sung, with furigana, romaji and an English or Chinese translation.',
@@ -63,7 +63,8 @@ const BUILT_WITH = [
   'Google Cloud Run',
   'Appwrite',
   'ElevenLabs Scribe',
-  'OpenAI',
+  'OpenAI Whisper',
+  'OpenAI GPT',
   'pyopenjtalk',
 ]
 
