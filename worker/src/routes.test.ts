@@ -166,7 +166,8 @@ test('the fixer lists open reports oldest first, then resolves one and drops ano
 test('the fixer hands a report it cannot fix to a human: off its list, still open, and back to it on Reopen', async () => {
   const { db, listed, status } = await setup()
   await saveReport(db, 'me', REPORT, '', 1000)
-  const [first] = (await listed()).map((row) => String(row.id))
+  const [listedFirst] = await listed()
+  const first = String(listedFirst?.id)
   expect(await status(`/reports/${first}/review`, { body: { note: 7 } })).toBe(
     400
   )
@@ -190,8 +191,9 @@ test('the fixer hands a report it cannot fix to a human: off its list, still ope
     await status(`/reports/${first}/resolve`, { body: { version: 3 } })
   ).toBe(204)
   expect(await status(`/reports/${first}/review`, { body: {} })).toBe(404)
-  expect(await reopenReport(db, first ?? '')).toBe('reopened')
-  expect((await listed()).map((row) => row.id)).toEqual([first])
+  expect(await reopenReport(db, first)).toBe('reopened')
+  const back = await listed()
+  expect(back.map((row) => row.id)).toEqual([first])
 })
 
 test('the daily cron expires reports open past 3 days', async () => {
