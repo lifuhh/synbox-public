@@ -34,7 +34,9 @@ import {
 } from '@/context/atoms'
 import {
   PHONE_QUERY,
+  UPRIGHT_SETTLE_MS,
   useLandscapeHeld,
+  useSideWatch,
   useLandscapeHold,
 } from '@/hooks/use-landscape-lock'
 import { useLyricsReady } from '@/hooks/use-lyrics-ready'
@@ -75,6 +77,27 @@ import { handleVideoRoute } from '@/utils/route-handler.ts'
 // one. `loaded`: the stage is on the page (nothing turns while the player loads). `checking`: whether it plays isn't
 // known yet, so the page is laid out as if it does (the stage's placeholder where the stage will be), and nothing
 // turns until it is known
+// A phone on its side, as the stage follows it: at once when it turns on its side, but only once the screen has
+// stayed upright (UPRIGHT_SETTLE_MS) when it turns back, so a phone set down on a dock doesn't swap the page twice
+const useSettledShort = (short: boolean) => {
+  const [settled, setSettled] = useState(short)
+  if (short && !settled) {
+    setSettled(true)
+  }
+  useEffect(() => {
+    const settle = () => {
+      const timer = setTimeout(() => {
+        setSettled(false)
+      }, UPRIGHT_SETTLE_MS)
+      return () => {
+        clearTimeout(timer)
+      }
+    }
+    return short ? undefined : settle()
+  }, [short])
+  return settled
+}
+
 const usePlayerSurface = (
   playable: boolean,
   loaded: boolean,
@@ -87,8 +110,11 @@ const usePlayerSurface = (
     '(orientation: landscape) and (max-height: 500px)'
   )
   const held = useLandscapeHeld()
+  const sideWatch = useSideWatch()
+  const onItsSide = useSettledShort(short)
   const surface =
-    (playable || checking) && ((fullscreen && !phone) || short || held)
+    (playable || checking) &&
+    ((fullscreen && !phone) || (onItsSide && !sideWatch) || held)
       ? 'stage'
       : 'watch'
   const setSurface = useSetAtom(playerSurfaceAtom)

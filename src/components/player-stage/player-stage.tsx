@@ -141,6 +141,7 @@ const useFullscreen = () => {
   const [immersive, setImmersive] = useState(false)
   const landscape = useLandscapeLock()
   const phone = useMediaQuery(PHONE_QUERY)
+  const onItsSide = useMediaQuery('(orientation: landscape)')
   const toggleFullscreen = () => {
     if (matchMedia(PHONE_QUERY).matches) {
       void landscape.toggleFullscreen()
@@ -176,7 +177,11 @@ const useFullscreen = () => {
     fullscreen,
     immersive,
     setImmersive,
-    shown: fullscreen || immersive || (phone && landscape.held),
+    // On a phone on its side the player is full screen unless the watch page was asked for there
+    shown:
+      fullscreen ||
+      immersive ||
+      (phone && (landscape.held || (onItsSide && !landscape.sideWatch))),
     toggleFullscreen,
   }
 }
