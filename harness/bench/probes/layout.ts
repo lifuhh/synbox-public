@@ -122,7 +122,8 @@ const SEARCH_BUTTON: OpenedState = {
 /**
  * The UI states a user opens, by route, each audited as its own run (`layout-<page>-<view>+<state>`). The top bar is
  * the same on every page, so its menus are opened on one ordinary page (not a tab page: the installed app's tab
- * bar takes their place there), and its search also on the player, whose watch page has the bar too.
+ * bar takes their place there), and its search also on the player, whose watch page has the bar too (in a browser; the
+ * installed app's upright player has none).
  */
 export const OPENED_STATES: Record<string, OpenedState[]> = {
   '/lyrics/:videoId': [
@@ -174,7 +175,9 @@ export const OPENED_STATES: Record<string, OpenedState[]> = {
   ],
   '/v/:videoId': [
     { ...SEARCH_FIELD, views: ['web'] },
-    SEARCH_BUTTON,
+    // Safari only: the installed app's player held upright has no top bar (its Minimize Player and the drag down go
+    // back to the tabs, where Search is)
+    { ...SEARCH_BUTTON, views: ['safari-portrait'] },
     {
       // The floating UI over the lyrics, brought back by the pointer as by a tap; it hides again when idle. The
       // pointer stays off the video's centre, where the YouTube frame would take its moves
