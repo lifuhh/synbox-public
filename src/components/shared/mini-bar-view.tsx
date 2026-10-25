@@ -1,5 +1,5 @@
 import { PauseIcon, PlayIcon, VolumeXIcon, XIcon } from 'lucide-react'
-import type { Ref } from 'react'
+import type { MouseEvent, Ref } from 'react'
 import { Link } from 'react-router'
 
 import type { ListSong } from '@/lib/listening/model'
@@ -29,7 +29,7 @@ export const MiniBarView = ({
   muted?: boolean
   thumbRef?: Ref<HTMLSpanElement>
   lineRef?: Ref<HTMLSpanElement>
-  onOpen?: () => void
+  onOpen?: (event: MouseEvent<HTMLAnchorElement>) => void
   onToggle?: () => void
   onUnmute?: () => void
   onClose?: () => void

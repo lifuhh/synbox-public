@@ -22,7 +22,9 @@ const RootLayout: React.FC = () => (
         className='top-scrim fixed inset-x-0 top-0 z-40 bg-background page-glow'
       />
       <TopBar />
-      <section className='flex h-full flex-1 doc-scroll:h-auto'>
+      <section
+        data-page-content
+        className='flex h-full flex-1 doc-scroll:h-auto'>
         <Outlet />
       </section>
       <TabBar />

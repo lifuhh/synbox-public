@@ -1,6 +1,13 @@
 import { useAtom, useAtomValue, useSetAtom } from 'jotai'
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import {
+  startTransition,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react'
 import type { RefObject } from 'react'
+import { useNavigate } from 'react-router'
 
 import {
   connectEngine,
@@ -22,14 +29,20 @@ import {
   playedAtom,
   queueAtom,
   resumeSongAtom,
+  songPath,
+  songState,
 } from '@/lib/listening/store'
 import { countListen } from '@/lib/song-stats'
 import type { YTPlayer } from '@/lib/youtube/iframe-api'
 import { YTState } from '@/lib/youtube/iframe-api'
 
+import { growFromBar } from './grow-from-bar'
 import { MiniBarView, THUMB_RADIUS_PX } from './mini-bar-view'
 
 type Phase = 'playing' | 'paused' | 'ended'
+
+// The player's wide layout (watch-page.tsx), which has no drag to minimise to grow back along
+const WIDE = '(min-width: 1000px)'
 
 // How long YouTube takes to report an unmute it was asked for
 const MUTE_READ_BACK_MS = 500
@@ -124,6 +137,7 @@ const MiniPlayer = ({
   onClose: () => void
 }) => {
   const setSong = useSetAtom(resumeSongAtom)
+  const navigate = useNavigate()
   const held = heldSong()
   const [phase, setPhase] = useState<Phase>(
     held?.videoId === song.videoId && held.state !== YTState.Paused
@@ -280,8 +294,29 @@ const MiniPlayer = ({
         muted={muted}
         thumbRef={thumb}
         lineRef={line}
-        onOpen={() => {
+        onOpen={(event) => {
           restoring.current = heldSong()?.videoId === song.videoId
+          // The player the drag to minimise works on (watch-page.tsx: not wide) grows back out of this bar, starting
+          // on the tap; a new tab or window opens the link as it is
+          const el = thumb.current
+          if (
+            el === null ||
+            event.metaKey ||
+            event.ctrlKey ||
+            event.shiftKey ||
+            matchMedia(WIDE).matches
+          ) {
+            return
+          }
+          event.preventDefault()
+          // In a transition, so React renders the player page in slices between the grow's frames
+          growFromBar(el, () => {
+            startTransition(() => {
+              void navigate(songPath(song.videoId), {
+                state: songState(song.videoId, 'resume'),
+              })
+            })
+          })
         }}
         onToggle={toggle}
         onUnmute={unmute}
