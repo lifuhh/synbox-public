@@ -297,6 +297,16 @@ const StageCover = ({
   )
 }
 
+// The stage while the page still checks what the video is (player-page.tsx): the cover the stage itself opens with,
+// in the video's 16:9 box, so the stage taking over changes nothing on screen
+export const StagePlaceholder = ({ videoId }: { videoId: string }) => (
+  <div className='grid size-full place-items-center' aria-busy>
+    <div className='relative aspect-video h-full max-w-full'>
+      <StageCover videoId={videoId} phase={{ kind: 'loading' }} />
+    </div>
+  </div>
+)
+
 export interface StageLayout {
   // Controls stay hidden while dragging, so the drop position is the real one
   onDragChange: (dragging: boolean) => void

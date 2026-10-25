@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from 'react'
 import PlayerRail from '@/components/lyrics-display/player-rail'
 import { DocScroll } from '@/components/shared/doc-scroll'
 import { MinimiseGhost } from '@/components/shared/minimise-ghost'
+import { Skeleton } from '@/components/ui/skeleton'
 import { currentVideoAtom } from '@/context/atoms'
 import { useMediaQuery } from '@/hooks/use-media-query'
 import { useNextList } from '@/lib/listening/recommendations'
@@ -223,21 +224,54 @@ const WideBelow = ({
   )
 }
 
+// What goes under (and beside) the video, by the page's width
+const Below = ({
+  wide,
+  ...props
+}: {
+  wide: boolean
+  videoId: string
+  version: number | null
+  theater: boolean
+}) => (wide ? <WideBelow {...props} /> : <NarrowBelow {...props} />)
+
+// Under the stage while the page still checks what the video is: the title's place, so the song's own fills it
+const BelowLoading = ({ wide }: { wide: boolean }) =>
+  wide ? (
+    <>
+      <div className='watch-side'>
+        <Skeleton shape='card' className='absolute inset-0' />
+      </div>
+      <div className='flex watch-main flex-col gap-2 pt-2'>
+        <Skeleton className='h-7 w-2/3' />
+        <Skeleton className='h-4 w-1/4' />
+      </div>
+    </>
+  ) : (
+    <div className='flex flex-col gap-2 px-4 pt-4'>
+      <Skeleton className='h-5 w-3/4' />
+      <Skeleton className='h-4 w-1/3' />
+    </div>
+  )
+
 // The player page around its stage. `surface` 'stage' is the stage alone, the whole screen, as the player
 // always was; 'watch' lays the page out around it. The stage keeps its place in the tree either way, so
-// switching never remounts it (and with it the song)
+// switching never remounts it (and with it the song). `loading`: the page's layout, the stage's place holding its
+// placeholder, while the player page checks what the video is
 export const WatchPage = ({
   surface,
   theater,
   videoId,
   version,
   stage,
+  loading = false,
 }: {
   surface: 'stage' | 'watch'
   theater: boolean
   videoId: string
   version: number | null
   stage: ReactNode
+  loading?: boolean
 }) => {
   const wide = useMediaQuery(WIDE)
   const watch = surface === 'watch'
@@ -261,10 +295,10 @@ export const WatchPage = ({
   const stageBox = useRef<HTMLDivElement>(null)
   const minimisable = watch && !wide && isInstalledPhone()
   useDragToMinimise(stageBox, minimisable)
-  const below = wide ? (
-    <WideBelow videoId={videoId} version={version} theater={theater} />
+  const below = loading ? (
+    <BelowLoading wide={wide} />
   ) : (
-    <NarrowBelow videoId={videoId} version={version} />
+    <Below wide={wide} videoId={videoId} version={version} theater={theater} />
   )
 
   // Outside the page, which fades as the drag goes on

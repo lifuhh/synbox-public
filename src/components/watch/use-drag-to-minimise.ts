@@ -7,6 +7,7 @@ import {
   dragEngine,
   engineBox,
   stopFlight,
+  whenPlaced,
 } from '@/components/player-stage/youtube-engine'
 import type { ScreenBox } from '@/components/player-stage/youtube-engine'
 import { THUMB_RADIUS_PX } from '@/components/shared/mini-bar-view'
@@ -184,20 +185,29 @@ const followDrags = (
       page.style.opacity = '0'
     }
     const began = performance.now()
+    let grown = false
+    // On the stage's placement itself (the page shows before its stage), else on each frame until it comes
     const start = () => {
+      if (grown) {
+        return
+      }
       // Measured where the stage placed it, not mid-flight
       stopFlight()
       const path = pathOf(bar)
       if (path === null) {
+        whenPlaced(start)
         frame =
           performance.now() - began < GROW_WAIT_MS
             ? requestAnimationFrame(start)
             : 0
         if (frame === 0) {
+          whenPlaced(null)
           reset()
         }
         return
       }
+      grown = true
+      whenPlaced(null)
       paint(path, 1)
       settle(path, 0, reset, GROW_MS)
     }
@@ -284,6 +294,9 @@ const followDrags = (
     growFromBar()
   }
   return () => {
+    if (grow) {
+      whenPlaced(null)
+    }
     stage.removeEventListener('pointerdown', onDown)
     stage.removeEventListener('pointermove', onMove)
     stage.removeEventListener('pointerup', onUp)
