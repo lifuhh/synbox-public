@@ -80,10 +80,13 @@ const StepButton = ({
   )
 }
 
-// The play/pause control in the middle of the video, between Previous and Next. Its disc is dark enough to hide
-// YouTube's own button under it, which sits on the same spot and is 56px wide, so it stays while YouTube's shows
-// even when the rest of the floating UI has gone (a mouse idling, a tap hiding it, a lock or a drag). Alone it only
-// covers: it takes presses only with the rest of the UI, so a tap on it then shows the controls instead of pausing
+// The play/pause control in the middle of the video, between Previous and Next, where a finger plays or the video
+// is small (a narrow watch page). Its disc is dark enough to hide YouTube's own button under it, which sits on the
+// same spot and is 56px wide, so it stays while YouTube's shows even when the rest of the floating UI has gone (a
+// tap hiding it, a lock or a drag). Alone it only covers: it takes presses only with the rest of the UI, so a tap on
+// it then shows the controls instead of pausing. A mouse on a wide page gets no disc of ours: the bar has play,
+// a press flashes what it did (play-flash.tsx), and YouTube's own button shows for its ~4.5s after a play
+// (2026-10-26: it can't be turned off, and a cover is only another disc)
 export const CenterPlayButton = ({
   phase,
   controlsVisible,
@@ -128,7 +131,7 @@ export const CenterPlayButton = ({
         aria-hidden={!visible}
         onClick={onToggle}
         className={cn(
-          'absolute top-(--video-cy) left-1/2 z-26 grid size-16 -translate-1/2 place-items-center rounded-full bg-black/60 text-white shadow-stage backdrop-blur-md transition-opacity duration-300',
+          'absolute top-(--video-cy) left-1/2 z-26 grid size-16 -translate-1/2 place-items-center rounded-full bg-black/60 text-white shadow-stage backdrop-blur-md transition-opacity duration-300 mouse:hidden mouse:watch-narrow:grid',
           visible ? 'opacity-100' : 'opacity-0',
           !armed && 'pointer-events-none',
           onlyForControls && 'short:pointer-events-none short:opacity-0'
