@@ -12,40 +12,39 @@ const SITE = 'https://synbox.io'
 const LOOKUP = 'https://synbox-lookup-1045990822048.asia-southeast1.run.app'
 const SHOWN = 6
 
-interface LibrarySong {
-  video_id: string
-  karaoke: boolean
-}
-interface SearchResult {
-  video_id: string
-  title: string
-}
+const isRecord = (v: unknown): v is Record<string, unknown> =>
+  typeof v === 'object' && v !== null
+
+// The rows of `key` in a JSON body that carry a string video_id
+const rows = (body: unknown, key: string): Record<string, unknown>[] =>
+  isRecord(body) && Array.isArray(body[key])
+    ? body[key].filter(
+        (row): row is Record<string, unknown> =>
+          isRecord(row) && typeof row.video_id === 'string'
+      )
+    : []
 
 const karaokeIds = async () => {
   const response = await fetch(`${SITE}/api/library/songs`)
-  const { songs } = (await response.json()) as { songs: LibrarySong[] }
+  const songs = rows(await response.json(), 'songs')
   return new Set(
-    songs.filter((song) => song.karaoke).map((song) => song.video_id)
+    songs.filter((song) => song.karaoke === true).map((song) => song.video_id)
   )
 }
 
-const probe = async (query: string, karaoke: Set<string>) => {
+const probe = async (query: string, karaoke: Set<unknown>) => {
   const response = await fetch(
     `${LOOKUP}/library/search?q=${encodeURIComponent(query)}`
   )
-  const body = (await response.json()) as {
-    mode?: string
-    results?: SearchResult[]
-  }
-  const found = (body.results ?? []).filter((song) =>
+  const body: unknown = await response.json()
+  const mode = isRecord(body) && typeof body.mode === 'string' ? body.mode : '?'
+  const found = rows(body, 'results').filter((song) =>
     karaoke.has(song.video_id)
   )
-  console.log(
-    `${String(found.length).padStart(3)}  ${query}  (${body.mode ?? '?'})`
-  )
-  for (const song of found.slice(0, SHOWN)) {
-    console.log(`       ${song.title}`)
-  }
+  return [
+    `${String(found.length).padStart(3)}  ${query}  (${mode})`,
+    ...found.slice(0, SHOWN).map((song) => `       ${String(song.title)}`),
+  ].join('\n')
 }
 
 const args = process.argv.slice(2)
@@ -57,6 +56,8 @@ if (queries.length === 0) {
   process.exit(1)
 }
 const karaoke = await karaokeIds()
-for (const query of queries) {
-  await probe(query, karaoke)
+for (const report of await Promise.all(
+  queries.map(async (query) => await probe(query, karaoke))
+)) {
+  console.log(report)
 }
