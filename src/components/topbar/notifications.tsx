@@ -28,6 +28,7 @@ import {
   unseenCount,
   useGeneration,
 } from '@/lib/generation/store'
+import { MENU_GAP, menuOffset } from '@/lib/menu-offset'
 import type { Fix } from '@/lib/report-fixes'
 import { unseenFixCount, useReportFixes } from '@/lib/report-fixes'
 import { cn } from '@/utils/cn'
@@ -211,6 +212,13 @@ const Notifications = () => {
       aimAtButton(panel.current, trigger.current)
     }
   }, [expanded])
+  // Opened (by a press, or by a song starting elsewhere), the panel sits MENU_GAP under what the button draws
+  const [offset, setOffset] = useState(MENU_GAP)
+  useLayoutEffect(() => {
+    if (expanded && trigger.current !== null) {
+      setOffset(menuOffset(trigger.current, 'bottom'))
+    }
+  }, [expanded])
   // Whatever finished is seen once the panel is open on it, including songs that finish and fixes that arrive
   // while it is open
   useEffect(() => {
@@ -299,7 +307,7 @@ const Notifications = () => {
       <PopoverContent
         ref={panel}
         align='end'
-        sideOffset={10}
+        sideOffset={offset}
         collisionPadding={8}
         variant='floating-tucked'
         aria-label='Notifications'
