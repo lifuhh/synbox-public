@@ -21,6 +21,10 @@ import type { LayoutPage, OpenedState } from './probes/layout'
 import { lyricDockAudit } from './probes/lyric-dock'
 import { lyricShiftAudit } from './probes/lyric-shift'
 import { playerSession } from './probes/player'
+import {
+  PRESS_RELEASE_FINDINGS,
+  pressReleaseAudit,
+} from './probes/press-release'
 import { buildSize } from './probes/size'
 import type { Benchmark, MetricSpec } from './types'
 
@@ -140,6 +144,7 @@ const layout = (
   metrics: [
     ...LAYOUT_FINDINGS.map((key) => count(key)),
     count('targets', false),
+    count('pressTested', false),
   ],
   run: layoutAudit(page, surface, state),
   runs: 1,
@@ -198,6 +203,20 @@ const controlShade = (
   runs: 1,
   surface: view.surface,
   title: `The player's controls in ${name} (${view.label}${turned ? ', turned by Lock Landscape' : ''}), shown: controls sitting in a shade band many times their size`,
+})
+
+/**
+ * Real presses on the top bar (probes/press-release.ts): a tab, the account menu and a dialog button act when they
+ * should, and a press taken back does nothing. The scan in every layout audit covers every control; this proves
+ * activation still works and the mouse's press-drag-release menu pick
+ */
+const pressRelease = (view: View): Benchmark => ({
+  id: `press-release-${view.name}`,
+  metrics: PRESS_RELEASE_FINDINGS.map((key) => count(key)),
+  run: pressReleaseAudit(view.surface),
+  runs: 1,
+  surface: view.surface,
+  title: `Real presses on the top bar in ${view.name} (${view.label}): tabs, the account menu and a dialog button act on release, and a press taken back does nothing`,
 })
 
 /** A page's audits in its views: at rest, then each state it opens in that view */
@@ -310,6 +329,7 @@ export const SUITE: Benchmark[] = [
       SAFARI_NARROW,
     ])
   ),
+  ...ALL_VIEWS.map(pressRelease),
   lyricShift('pwa-landscape', PWA_LANDSCAPE, false),
   lyricDock('web', WEB),
   lyricDock('pwa-landscape', PWA_LANDSCAPE),

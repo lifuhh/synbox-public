@@ -20,6 +20,7 @@ import {
 import type { Audit } from '../engines/recorder'
 import { isRecord, parseJson } from '../json'
 import type { BenchContext, Sample, Surface } from '../types'
+import { pressNotes, pressScanIn, pressValues } from './press'
 
 export interface LayoutPage {
   name: string
@@ -522,6 +523,9 @@ export const LAYOUT_FINDINGS = [
   'unscrollableRegions',
   'smoothScrollReduced',
   'detachedMenus',
+  'actsOnPress',
+  'actsOnReleaseOutside',
+  'badPressOk',
 ] as const
 
 /** How far an open menu may sit from what can be seen of its button before the audit counts it detached */
@@ -547,6 +551,13 @@ export const pageAt = (url: URL): LayoutPage => {
 }
 
 const STEP_TIMEOUT_MS = 10_000
+
+/** A page's errors as notes; those after the first `counted` came during the press scan, and aren't counted */
+const errorNotes = (kind: string, all: string[], counted: number): string[] =>
+  all.map(
+    (m, i) =>
+      `${kind}${i >= counted ? ' (during the press scan, not counted)' : ''}: ${m}`
+  )
 
 const controlName = (c: Control): string => {
   if ('bench' in c) {
@@ -908,6 +919,13 @@ const auditOnce = async (
         document.querySelector<HTMLElement>('[data-player-stage]')?.dataset
           .phase
     )
+    // Errors the page made on its own: the press scan below may make the page throw (a synthetic touch has no real
+    // pointer to capture), which is the scan's doing, noted but not counted
+    const pageErrors = thrown.length
+    const consoleErrors = logged.length
+    // Last, as it presses things: when each control acts, in the website and the installed app (press.ts)
+    at.step = 'pressing each control (press timing)'
+    const press = await pressScanIn(page, surface)
     const notes = [
       ...audit.small.map(
         (t) =>
@@ -949,8 +967,9 @@ const auditOnce = async (
       ...(audit.pan.px > 0
         ? [`page panned sideways by ${audit.pan.px}px (${audit.pan.detail})`]
         : []),
-      ...thrown.map((m) => `page error: ${m}`),
-      ...logged.map((m) => `console error: ${m}`),
+      ...pressNotes(press),
+      ...errorNotes('page error', thrown, pageErrors),
+      ...errorNotes('console error', logged, consoleErrors),
       ...(unsettled === null ? [] : [`not settled: ${unsettled}`]),
       ...(phase !== undefined && phase !== ''
         ? [`player phase at audit: ${phase}`]
@@ -962,14 +981,15 @@ const auditOnce = async (
         {
           notes,
           values: {
+            ...pressValues(press),
             clippedText: audit.clipped.length,
-            consoleErrors: logged.length,
+            consoleErrors,
             detachedMenus: detached.length,
             insetSurfaces: audit.insetSurfaces.length,
             occludedTargets: audit.occluded.length,
             offscreenTargets: audit.offscreen.length,
             overflowXPx: audit.overflowX,
-            pageErrors: thrown.length,
+            pageErrors,
             panXPx: audit.pan.px,
             smallTargets: audit.small.length,
             smoothScrollReduced: smooth.length,
