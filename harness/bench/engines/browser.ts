@@ -20,6 +20,9 @@ import type { Surface } from '../types'
 import { RECORDER } from './recorder'
 
 const GOOGLE_FONTS = /^https:\/\/fonts\.(?:googleapis|gstatic)\.com\//u
+// The writes a plain visit makes to the site's counters, on any origin (a local build proxies /api to the live
+// Worker): a song's listen (src/lib/song-stats.ts › countListen) and the usage events (src/lib/usage.ts)
+const SITE_COUNTERS = /\/api\/(?:songs\/[\w-]{11}\/listen|events)(?:\?|$)/u
 let fontDir: string | null = null
 
 /**
@@ -198,6 +201,14 @@ export const open = async (
   })
   await context.route(/sentry\.io/u, async (route) => {
     await route.abort()
+  })
+  // A page visit counts a listen and sends usage events to the live auth Worker. Every run is a fresh browser, so a
+  // new guest device: before this, the bench's player song (6rG_irmOQsM) gained ~2,200 listens (2026-10-27). Answered
+  // here, as harness/smoke.ts › WRITE_RULES does, so no run adds to the numbers
+  await context.route(SITE_COUNTERS, async (route) => {
+    await (route.request().method() === 'POST'
+      ? route.fulfill({ json: { ok: true } })
+      : route.fallback())
   })
   if (fontDir !== null) {
     const dir = fontDir
