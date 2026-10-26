@@ -2425,7 +2425,10 @@ html[data-input-modality='keyboard']
   outline-offset: 2px;
 }
 
-html[data-input-modality='keyboard'] [data-focus-field]:has(:focus-visible) {
+/* `input` named inside the :has(): a :has() of a bare pseudo-class restyles the whole page on every insertion
+   (style-invalidation.test.ts) */
+html[data-input-modality='keyboard']
+  [data-focus-field]:has(input:focus-visible) {
   outline: 3px solid var(--focus-ring);
   outline-offset: 2px;
 }
