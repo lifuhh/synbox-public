@@ -2,7 +2,6 @@ import { useAtom, useAtomValue } from 'jotai'
 import {
   ChevronDownIcon,
   ExpandIcon,
-  GaugeIcon,
   LockIcon,
   MaximizeIcon,
   MinimizeIcon,
@@ -33,12 +32,20 @@ import type { ReactNode } from 'react'
 
 import { STAGE_DISC } from '@/components/lyrics-display/rail-button'
 import { TheaterIcon } from '@/components/svgicons'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { Slider } from '@/components/ui/slider'
 import { minimisePlayer } from '@/components/watch/use-drag-to-minimise'
 import { playbackRateAtom, playerSurfaceAtom } from '@/context/atoms'
 import { useArmed } from '@/hooks/use-armed'
 import { useLandscapeLock } from '@/hooks/use-landscape-lock'
 import { autoplayAtom } from '@/lib/listening/store'
+import { useMenuOffset } from '@/lib/menu-offset'
 import type { CssVars } from '@/types'
 import { formatClock } from '@/utils'
 import { cn } from '@/utils/cn'
@@ -120,42 +127,72 @@ const IconButton = ({
   </button>
 )
 
-// Slower playback for learning a song: each press steps down a speed, and the slowest steps back to normal. Only the
-// speeds the video allows (YouTube's list is empty until its player is ready); with fewer than two, no button
-const SPEEDS = [1, 0.75, 0.5]
+// YouTube's own speeds, for a player that hasn't said which the video allows yet
+const YOUTUBE_SPEEDS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2]
+const speedName = (rate: number) => (rate === 1 ? 'Normal' : `${rate}×`)
 
-// At normal speed a gauge, like the bar's other icons; slowed, the speed itself, lit as Loop is when on
-const SpeedButton = ({ className }: { className?: string }) => {
+// The speed as plain text on the bar's glass, as video players show it now ("1×", "0.75×"): the label is the control.
+// As tall as the icon buttons beside it and as wide as its text, never narrower than square
+const SPEED_IN_BAR =
+  'grid h-9 min-w-9 shrink-0 place-items-center rounded-md px-1.5 text-sm leading-none font-semibold whitespace-nowrap text-white/85 tabular-nums transition-colors hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none touch:h-11 touch:min-w-11 touch:watch-narrow:h-10 touch:watch-narrow:min-w-10 pills:h-10 pills:min-w-10 pills:rounded-full'
+// In the right-hand column: the discs' glass and height, stretched into a pill so "0.75×" fits
+const SPEED_IN_COLUMN =
+  'grid h-10 min-w-10 shrink-0 place-items-center rounded-full bg-black/55 px-2 text-sm leading-none font-semibold whitespace-nowrap text-white/90 tabular-nums shadow-rail backdrop-blur-md transition-colors hover:bg-black/70 hover:text-white focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none touch:h-11 touch:min-w-11 short:h-9 short:min-w-9'
+
+// Every speed the video allows, in a menu, the current one checked; a choice applies it and closes the menu. In the
+// bar the menu opens above its button; in the right-hand column, to its left. Its open menu holds the controls up
+// (use-idle.ts › chromeBusy)
+const SpeedMenu = ({
+  side,
+  className,
+}: {
+  side: 'top' | 'left'
+  className: string
+}) => {
   const [rate, setRate] = useAtom(playbackRateAtom)
-  const allowed = engineRates()
-  const speeds =
-    allowed.length === 0
-      ? SPEEDS
-      : SPEEDS.filter((speed) => allowed.includes(speed))
+  const { measure, offset, triggerRef } = useMenuOffset<HTMLButtonElement>(side)
+  const reported = engineRates()
+  const speeds = reported.length > 0 ? reported : YOUTUBE_SPEEDS
   if (speeds.length < 2) {
     return null
   }
-  const shown = `${rate}×`
   return (
-    <IconButton
-      label={`Playback Speed ${shown}`}
-      active={rate !== 1}
-      className={className}
-      onClick={() => {
-        const next = speeds[(speeds.indexOf(rate) + 1) % speeds.length] ?? 1
-        setRate(next)
-        setEngineRate(next)
+    <DropdownMenu
+      modal={false}
+      onOpenChange={(open) => {
+        if (open) {
+          measure()
+        }
       }}>
-      {rate === 1 ? (
-        <GaugeIcon className='size-5' />
-      ) : (
-        // The × smaller, so 0.75× fits inside the right-hand column's round disc
-        <span className='text-xs leading-none font-semibold tabular-nums'>
-          {rate}
-          <span className='text-micro'>×</span>
-        </span>
-      )}
-    </IconButton>
+      <DropdownMenuTrigger asChild>
+        <button
+          ref={triggerRef}
+          type='button'
+          aria-label={`Playback Speed ${rate}×`}
+          className={className}>
+          {rate}×
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        side={side}
+        align={side === 'top' ? 'end' : 'center'}
+        sideOffset={offset}
+        collisionPadding={8}>
+        <DropdownMenuRadioGroup
+          value={String(rate)}
+          onValueChange={(value) => {
+            const next = Number(value)
+            setRate(next)
+            setEngineRate(next)
+          }}>
+          {speeds.map((speed) => (
+            <DropdownMenuRadioItem key={speed} value={String(speed)}>
+              {speedName(speed)}
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }
 
@@ -443,7 +480,7 @@ const FullScreenChrome = ({
             : 'translate-x-[calc(100%+var(--spacing-controls-right)+1.125rem)] motion-reduce:translate-x-0 motion-reduce:opacity-0',
           !armed && 'pointer-events-none'
         )}>
-        <SpeedButton className={STAGE_DISC} />
+        <SpeedMenu side='left' className={SPEED_IN_COLUMN} />
         <IconButton
           label='Lock Landscape'
           active={landscape.locked}
@@ -700,7 +737,10 @@ export const StageControls = ({
                 PILL
               )}>
               <AutoplaySwitch />
-              <SpeedButton className={watch ? undefined : 'touch:hidden'} />
+              <SpeedMenu
+                side='top'
+                className={cn(SPEED_IN_BAR, !watch && 'touch:hidden')}
+              />
               <IconButton
                 label='Loop'
                 active={loop}

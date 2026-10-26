@@ -3,6 +3,7 @@
 import * as DropdownMenuPrimitive from '@radix-ui/react-dropdown-menu'
 import { cva } from 'class-variance-authority'
 import type { VariantProps } from 'class-variance-authority'
+import { CheckIcon } from 'lucide-react'
 import * as React from 'react'
 
 import { keepScrollWhenTurned } from '@/lib/page-turn'
@@ -57,6 +58,9 @@ const DropdownMenuContentRender: React.ForwardRefRenderFunction<
 const DropdownMenuContent = React.forwardRef(DropdownMenuContentRender)
 DropdownMenuContent.displayName = DropdownMenuPrimitive.Content.displayName
 
+const ITEM =
+  'relative flex cursor-pointer items-center rounded-lg px-2 py-1.5 text-sm outline-hidden transition-colors select-none focus:bg-accent focus:text-accent-foreground data-disabled:pointer-events-none data-disabled:opacity-50'
+
 const DropdownMenuItemRender: React.ForwardRefRenderFunction<
   React.ComponentRef<typeof DropdownMenuPrimitive.Item>,
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Item> &
@@ -68,7 +72,7 @@ const DropdownMenuItemRender: React.ForwardRefRenderFunction<
     ref={ref}
     // rounded-lg: the menu's 12px corners less its 4px padding, so a highlighted row nests in them
     className={cn(
-      'relative flex cursor-pointer items-center rounded-lg px-2 py-1.5 text-sm outline-hidden transition-colors select-none focus:bg-accent focus:text-accent-foreground data-disabled:pointer-events-none data-disabled:opacity-50',
+      ITEM,
       inset === true && 'pl-8',
       dropdownMenuItemVariants({ variant }),
       className
@@ -78,6 +82,28 @@ const DropdownMenuItemRender: React.ForwardRefRenderFunction<
 )
 const DropdownMenuItem = React.forwardRef(DropdownMenuItemRender)
 DropdownMenuItem.displayName = DropdownMenuPrimitive.Item.displayName
+
+const DropdownMenuRadioGroup = DropdownMenuPrimitive.RadioGroup
+
+// One choice of several: the chosen one carries a check in the inset the other rows keep empty
+const DropdownMenuRadioItemRender: React.ForwardRefRenderFunction<
+  React.ComponentRef<typeof DropdownMenuPrimitive.RadioItem>,
+  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.RadioItem>
+> = ({ className, children, ...props }, ref) => (
+  <DropdownMenuPrimitive.RadioItem
+    ref={ref}
+    className={cn(ITEM, 'pl-8', className)}
+    {...props}>
+    <span className='absolute left-2 flex size-4 items-center justify-center'>
+      <DropdownMenuPrimitive.ItemIndicator>
+        <CheckIcon className='size-4' />
+      </DropdownMenuPrimitive.ItemIndicator>
+    </span>
+    {children}
+  </DropdownMenuPrimitive.RadioItem>
+)
+const DropdownMenuRadioItem = React.forwardRef(DropdownMenuRadioItemRender)
+DropdownMenuRadioItem.displayName = DropdownMenuPrimitive.RadioItem.displayName
 
 const DropdownMenuSeparatorRender: React.ForwardRefRenderFunction<
   React.ComponentRef<typeof DropdownMenuPrimitive.Separator>,
@@ -97,6 +123,8 @@ export {
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuGroup,
 }

@@ -11,6 +11,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { usePortrait } from '@/hooks/use-media-query'
+import { useMenuOffset } from '@/lib/menu-offset'
 import { useGetLyricsVersions } from '@/lib/react-query/queries-and-mutations'
 import { cn } from '@/utils/cn'
 
@@ -26,11 +27,22 @@ export const LyricsVersionsMenu = ({ videoId }: { videoId: string }) => {
   const inRow = portrait || inline
   const { data } = useGetLyricsVersions(videoId)
   const count = data?.versions.length ?? 0
+  const side = railMenuSide(inline, portrait)
+  const { measure, offset, triggerRef } = useMenuOffset<HTMLButtonElement>(side)
 
   return (
-    <DropdownMenu modal={false} open={open} onOpenChange={setOpen}>
+    <DropdownMenu
+      modal={false}
+      open={open}
+      onOpenChange={(next) => {
+        if (next) {
+          measure()
+        }
+        setOpen(next)
+      }}>
       <DropdownMenuTrigger asChild>
         <RailButton
+          ref={triggerRef}
           label='Lyrics Versions'
           className={cn('relative', open && 'bg-white/10')}>
           <WandSparklesIcon className='size-5 shrink-0' />
@@ -38,9 +50,9 @@ export const LyricsVersionsMenu = ({ videoId }: { videoId: string }) => {
         </RailButton>
       </DropdownMenuTrigger>
       <DropdownMenuContent
-        side={railMenuSide(inline, portrait)}
+        side={side}
         align={inRow ? 'center' : 'start'}
-        sideOffset={8}
+        sideOffset={offset}
         collisionPadding={8}>
         <DropdownMenuItem
           onSelect={() => {
