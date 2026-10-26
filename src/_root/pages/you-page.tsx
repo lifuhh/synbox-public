@@ -11,12 +11,20 @@ import { lazy, Suspense, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Link } from 'react-router'
 
+import { BenefitList } from '@/components/account/sign-in-sheet'
 import { BoxScrollbar } from '@/components/shared/doc-scroll'
 import { GoogleMark } from '@/components/shared/google-mark'
 import { UserAvatar } from '@/components/shared/user-avatar'
-import { quotaText } from '@/components/topbar/profile-button'
 import { Button } from '@/components/ui/button'
-import { signInWithGoogle, signOut, useMe } from '@/lib/auth'
+import { openRequestMore } from '@/lib/account-prompts'
+import {
+  requestText,
+  signInWithGoogle,
+  signOut,
+  songsLeftText,
+  useMe,
+} from '@/lib/auth'
+import type { Quota } from '@/lib/auth'
 import { forgetMySongs } from '@/lib/offline/sync'
 import { QUERY_KEYS } from '@/lib/react-query/query-keys'
 
@@ -50,6 +58,40 @@ const LinkRow = ({
   </Link>
 )
 
+// Under the name: what signing in is for, the songs left today, or the email of a Worker without them
+const accountLine = (
+  user: { email: string } | null,
+  quota: Quota | undefined
+) => {
+  if (user === null) {
+    return 'Browsing stays free for everyone'
+  }
+  return quota === undefined ? user.email : songsLeftText(quota)
+}
+
+// Where the latest request stands, and Request More: a quiet second step for an account on a daily number with no
+// request waiting. Nothing at all for an admin
+const MoreSongs = ({ quota }: { quota: Quota }) => {
+  const request = requestText(quota.request)
+  const canRequest = quota.limit !== null && quota.request?.status !== 'open'
+  if (request === null && !canRequest) {
+    return null
+  }
+  return (
+    <div className='flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-sm'>
+      {request !== null && <p className='text-muted-foreground'>{request}</p>}
+      {canRequest && (
+        <Button
+          variant='ghost-subtle'
+          className='-mx-3'
+          onClick={openRequestMore}>
+          Request More
+        </Button>
+      )}
+    </div>
+  )
+}
+
 // The installed app's You tab: the account and the app's own pages. The songs are in the Library tab
 const YouPage = () => {
   const [box, setBox] = useState<HTMLElement | null>(null)
@@ -58,11 +100,7 @@ const YouPage = () => {
   const queryClient = useQueryClient()
   const { data: me } = useMe()
   const user = me?.user ?? null
-  let accountLine =
-    'Sign in to generate more songs and find them on every device'
-  if (user !== null) {
-    accountLine = me?.quota ? quotaText(me.quota) : user.email
-  }
+  const quota = me?.quota
 
   return (
     <section
@@ -91,13 +129,15 @@ const YouPage = () => {
             </span>
             <div className='min-w-0'>
               <p className='truncate font-medium text-foreground'>
-                {user ? user.name : 'Not Signed In'}
+                {user ? user.name : 'Sign In to Add Songs'}
               </p>
               <p className='text-sm text-pretty text-muted-foreground'>
-                {accountLine}
+                {accountLine(user, quota)}
               </p>
             </div>
           </div>
+          {user === null && <BenefitList />}
+          {user !== null && quota !== undefined && <MoreSongs quota={quota} />}
           {user ? (
             <Button
               variant='outline'

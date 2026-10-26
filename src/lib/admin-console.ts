@@ -50,12 +50,7 @@ const adminUserSchema = z.preprocess(
 
 const settingsSchema = z.object({
   generationEnabled: z.boolean(),
-  guestSongsToday: z.number(),
-  limits: z.object({
-    guest: z.number(),
-    guestTotal: z.number(),
-    user: z.number(),
-  }),
+  limits: z.object({ user: z.number() }),
 })
 
 const generationSchema = z.object({
@@ -401,6 +396,62 @@ export const useAdminMessages = () =>
     queryKey: [QUERY_KEYS.GET_ADMIN_MESSAGES],
     retry,
   })
+
+// Requests for more songs a day, open ones first (worker/src/requests.ts)
+const requestsSchema = z.object({
+  requests: z.array(
+    z.object({
+      createdAt: z.number(),
+      dailyLimit: dailyLimitSchema,
+      decidedAt: z.number().nullable(),
+      email: z.string(),
+      granted: z.number().nullable(),
+      id: z.number(),
+      image: z.string().nullable(),
+      name: z.string(),
+      note: z.string(),
+      status: z.enum(['open', 'approved', 'declined']),
+      userId: z.string(),
+    })
+  ),
+})
+export type AdminRequest = z.infer<typeof requestsSchema>['requests'][number]
+
+export const useAdminRequests = () =>
+  useQuery({
+    queryFn: async () => await fetchParsed(requestsSchema, '/quota-requests'),
+    queryKey: [QUERY_KEYS.GET_ADMIN_REQUESTS],
+    retry,
+  })
+
+// Approve with a number of songs a day, or decline; the request list and the accounts' limits both change
+export const useDecideRequest = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({
+      id,
+      dailyLimit,
+    }: {
+      id: number
+      dailyLimit: number | null
+    }) =>
+      await call(
+        `/quota-requests/${id}/${dailyLimit === null ? 'decline' : 'approve'}`,
+        {
+          body: JSON.stringify(dailyLimit === null ? {} : { dailyLimit }),
+          method: 'POST',
+        }
+      ),
+    onSettled: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.GET_ADMIN_REQUESTS],
+      })
+      await queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.GET_ADMIN_USERS],
+      })
+    },
+  })
+}
 
 export const useAdminSettings = () =>
   useQuery({

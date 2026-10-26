@@ -7,6 +7,7 @@ import {
   ShieldIcon,
   LogOutIcon,
   MonitorDownIcon,
+  SparklesIcon,
   UserIcon,
 } from 'lucide-react'
 import { lazy, Suspense, useMemo, useState } from 'react'
@@ -28,8 +29,14 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
-import { lastAccount, signInWithGoogle, signOut, useMe } from '@/lib/auth'
-import type { Quota } from '@/lib/auth'
+import { openRequestMore } from '@/lib/account-prompts'
+import {
+  lastAccount,
+  signInWithGoogle,
+  signOut,
+  songsLeftText,
+  useMe,
+} from '@/lib/auth'
 import { forgetMySongs } from '@/lib/offline/sync'
 import { useInstallMethod } from '@/lib/pwa'
 import { QUERY_KEYS } from '@/lib/react-query/query-keys'
@@ -46,16 +53,6 @@ const InstallGuideDialog = lazy(
 const ContactDialog = lazy(
   async () => await import('@/components/shared/contact-dialog')
 )
-
-export const quotaText = ({ limit, used }: Quota) => {
-  if (limit === null) {
-    return 'No song limit'
-  }
-  if (limit === 0) {
-    return 'Generating songs is invite-only for now'
-  }
-  return `${Math.max(limit - used, 0)} of ${limit} new songs left today`
-}
 
 // Google is the only way in, so Sign In goes straight to it: no panel to wait for. It shows it is on its way at
 // once (the round trip to the auth server comes before Google's page)
@@ -101,7 +98,12 @@ const SignInButton = () => {
           </Button>
         </TooltipTrigger>
         <TooltipContent side='bottom' align='end' sideOffset={10}>
-          Signing in accepts our Privacy Policy
+          <div className='flex flex-col gap-0.5'>
+            <span>5 new songs a day, your style on every device</span>
+            <span className='text-muted-foreground'>
+              Signing in accepts our Privacy Policy
+            </span>
+          </div>
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
@@ -196,12 +198,22 @@ const ProfileButtonDropdown = () => {
               </p>
               {me?.quota && (
                 <p className='pt-1 text-xs text-muted-foreground'>
-                  {quotaText(me.quota)}
+                  {songsLeftText(me.quota)}
                 </p>
               )}
             </div>
           ) : null}
           <DropdownMenuGroup>
+            {me?.quota !== undefined &&
+              me.quota.limit !== null &&
+              me.quota.request?.status !== 'open' && (
+                <DropdownMenuItem
+                  className='cursor-pointer'
+                  onClick={openRequestMore}>
+                  <SparklesIcon className='mr-2 size-5 shrink-0' />
+                  <span>Request More Songs</span>
+                </DropdownMenuItem>
+              )}
             {user?.role === 'admin' && (
               <DropdownMenuItem asChild className='cursor-pointer'>
                 <Link to='/admin'>

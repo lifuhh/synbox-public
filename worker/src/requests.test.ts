@@ -34,13 +34,13 @@ test('one open request at a time; approving gives the songs a day, and the accou
   expect(await sendRequest(db, 'u1', 'again', 2)).toBe(false)
   expect(await latestRequest(db, 'u1')).toMatchObject({ status: 'open' })
 
-  const id = sqlite.query(`select "id" from "quotaRequest"`).get() as {
-    id: number
-  }
+  const id = Number(
+    sqlite.query(`select "id" as "value" from "quotaRequest"`).values()[0]?.[0]
+  )
   expect(
     await decideRequest(
       db,
-      id.id,
+      id,
       { approve: true, dailyLimit: 12 },
       { adminId: 'admin', now: 3 }
     )
@@ -54,7 +54,12 @@ test('one open request at a time; approving gives the songs a day, and the accou
   expect(await getQuota(db, 'u1', LIMITS, now)).toMatchObject({ limit: 12 })
   // Decided once: deciding again changes nothing
   expect(
-    await decideRequest(db, id.id, { approve: false }, { adminId: 'admin', now: 4 })
+    await decideRequest(
+      db,
+      id,
+      { approve: false },
+      { adminId: 'admin', now: 4 }
+    )
   ).toBe(false)
   expect(await sendRequest(db, 'u1', 'a bit more please', 5)).toBe(true)
 })
@@ -75,7 +80,8 @@ test("an admin's notices: new messages, reports and requests are unread until th
     ['message', 'Mika'],
   ])
   await markNoticesSeen(db, 'admin', 30)
-  expect((await readNotices(db, 'admin')).unread).toBe(0)
+  const seen = await readNotices(db, 'admin')
+  expect(seen.unread).toBe(0)
   sqlite.run(
     `insert into "contactMessage" ("createdAt", "sender", "network", "subject", "message") values (40, 'd:guest', 'n', 'Yo', 'hey')`
   )

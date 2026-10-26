@@ -14,7 +14,6 @@ import {
   SubmissionStatus,
   useFieldGeneration,
 } from '@/components/generate-lyrics/field-generation'
-import { GoogleMark } from '@/components/shared/google-mark'
 import { Button } from '@/components/ui/button'
 import { ClearFieldButton } from '@/components/ui/clear-field-button'
 import { Input, InputField } from '@/components/ui/input'
@@ -26,7 +25,8 @@ import {
 } from '@/components/ui/tooltip'
 import { homeSearchFieldAtom } from '@/context/atoms'
 import { useMediaQuery } from '@/hooks/use-media-query'
-import { noSongReason, signInWithGoogle, useAccess } from '@/lib/auth'
+import { openRequestMore } from '@/lib/account-prompts'
+import { songsDoneText, useAccess } from '@/lib/auth'
 import { useGetLyricsBySongId } from '@/lib/react-query/queries-and-mutations'
 import { BAD_LINK, readFieldText } from '@/utils'
 import { cn } from '@/utils/cn'
@@ -97,14 +97,15 @@ const HeroGenerateLyricsDefault = ({
     edited()
   }
 
-  // A new song here would be refused, so offer what would work instead: sign-in for a guest, nothing for a
-  // signed-in user who has used today's songs
+  // An account that added today's songs is told when more come instead of offered a song that would be turned
+  // away. A guest keeps Generate Lyrics: pressing it opens the sign-in sheet (start-generation.tsx)
   const access = useAccess()
   const blocked =
     !isSearch &&
     validationSuccess &&
     !isCheckingLyrics &&
     !existingLyrics &&
+    access.kind === 'user' &&
     !access.newSong
 
   const handleOpenLandingPageDialog = () => {
@@ -123,9 +124,7 @@ const HeroGenerateLyricsDefault = ({
         void navigate(`/v/${extractedVideoId}`, {
           state: { videoId: extractedVideoId },
         })
-      } else if (blocked) {
-        void signInWithGoogle()
-      } else {
+      } else if (!blocked) {
         void generate(extractedVideoId)
       }
     }
@@ -141,10 +140,8 @@ const HeroGenerateLyricsDefault = ({
     if (existingLyrics) {
       return 'Lyrics Ready'
     }
-    if (blocked) {
-      return access.kind === 'user'
-        ? noSongReason(access.quota)
-        : "You've used today's free song. Sign in to generate more."
+    if (blocked && access.kind === 'user') {
+      return songsDoneText(access.quota)
     }
     return validationSuccess ? 'Valid YouTube URL' : ''
   }
@@ -162,9 +159,6 @@ const HeroGenerateLyricsDefault = ({
     if (checking) {
       return 'Checking…'
     }
-    if (blocked) {
-      return 'Sign In to Generate'
-    }
     return existingLyrics ? 'Play Video' : 'Generate Lyrics'
   }
 
@@ -178,9 +172,6 @@ const HeroGenerateLyricsDefault = ({
     if (isCheckingLyrics || checking) {
       return null
     }
-    if (blocked) {
-      return <GoogleMark />
-    }
     return existingLyrics ? (
       <PlayIcon className='size-5 shrink-0 fill-current' />
     ) : (
@@ -188,7 +179,7 @@ const HeroGenerateLyricsDefault = ({
     )
   }
 
-  const showAction = !(blocked && access.kind === 'user')
+  const showAction = !blocked
   // While its check runs the button stays focusable (aria-disabled) and a press does nothing
   const actionDisabled = errorMessage !== '' || isCheckingLyrics
   const submit = () => {
@@ -236,6 +227,17 @@ const HeroGenerateLyricsDefault = ({
           errorMessage !== '' && 'text-error-strong'
         )}>
         {statusMessage()}
+        {blocked && errorMessage === '' && (
+          <>
+            {' · '}
+            <button
+              type='button'
+              onClick={openRequestMore}
+              className="relative font-semibold text-foreground underline underline-offset-4 after:absolute after:-inset-x-1 after:-inset-y-2 after:content-['']">
+              Request More
+            </button>
+          </>
+        )}
       </p>
     )
   }

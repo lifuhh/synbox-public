@@ -22,6 +22,7 @@ import type { LibraryEnv } from './library-songs'
 import { libraryMembership } from './library-songs'
 import { lyrics, pruneHits } from './lyrics'
 import type { LyricsEnv } from './lyrics'
+import { markNoticesSeen, readNotices } from './notices'
 import { applyPrefOps, parsePrefOps, readPrefs } from './prefs'
 import {
   checkGeneration,
@@ -32,14 +33,6 @@ import {
   reserveGeneration,
   setTimeZone,
 } from './quota'
-import { markNoticesSeen, readNotices } from './notices'
-import {
-  decideRequest,
-  latestRequest,
-  listRequests,
-  parseRequestNote,
-  sendRequest,
-} from './requests'
 import type {
   FinishedStatus,
   GenerationKind,
@@ -68,6 +61,13 @@ import {
   resolveReport,
   saveReport,
 } from './reports'
+import {
+  decideRequest,
+  latestRequest,
+  listRequests,
+  parseRequestNote,
+  sendRequest,
+} from './requests'
 import { readSignals } from './signals'
 import {
   addListen,
@@ -174,9 +174,7 @@ app.post('/api/me/quota-request', async (c) => {
   if (userId === null) {
     return c.json({ code: 'unauthorized' }, 401)
   }
-  const note = parseRequestNote(
-    await c.req.json<unknown>().catch(() => null)
-  )
+  const note = parseRequestNote(await c.req.json<unknown>().catch(() => null))
   if (note === null) {
     return c.json({ code: 'bad_request' }, 400)
   }

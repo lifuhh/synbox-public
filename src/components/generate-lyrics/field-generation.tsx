@@ -1,8 +1,11 @@
 import { CircleAlertIcon, LoaderCircleIcon, SparklesIcon } from 'lucide-react'
 import { useRef, useState } from 'react'
 
-import { startFromButton } from '@/components/generation/start-generation'
-import { SIGN_IN_CODES, signInWithGoogle } from '@/lib/auth'
+import {
+  refusalOf,
+  startFromButton,
+} from '@/components/generation/start-generation'
+import { openRequestMore } from '@/lib/account-prompts'
 import { cn } from '@/utils/cn'
 
 // A press on a link field's Generate Lyrics (Home's field, the Search page's pasted link), from the press to its
@@ -12,7 +15,8 @@ import { cn } from '@/utils/cn'
 export type Submission =
   | { kind: 'idle' }
   | { kind: 'checking' }
-  | { kind: 'refused'; message: string; signIn: boolean }
+  // `quiet`: nothing went wrong (today's songs are added), so it reads as a note, with Request More beside it
+  | { kind: 'refused'; message: string; quiet: boolean }
 
 const IDLE: Submission = { kind: 'idle' }
 // The link fades out of the field (input.tsx › bare, data-clearing) before it empties
@@ -37,14 +41,11 @@ export const useFieldGeneration = (onStarted?: () => void) => {
     )
     pressed.current = false
     if (outcome.kind === 'refused') {
-      setSubmission({
-        kind: 'refused',
-        message: outcome.refusal.message,
-        signIn: SIGN_IN_CODES.has(outcome.refusal.code),
-      })
+      const { message, quiet } = refusalOf(outcome.refusal)
+      setSubmission({ kind: 'refused', message, quiet })
       return
     }
-    if (outcome.kind === 'busy') {
+    if (outcome.kind === 'busy' || outcome.kind === 'prompted') {
       setSubmission(IDLE)
       return
     }
@@ -113,27 +114,26 @@ export const SubmissionStatus = ({
   if (submission.kind === 'checking') {
     return <p className='text-muted-foreground'>Checking the song…</p>
   }
+  if (submission.kind === 'refused' && submission.quiet) {
+    return (
+      <p className='text-muted-foreground'>
+        {submission.message}
+        {' · '}
+        <button
+          type='button'
+          onClick={openRequestMore}
+          className={INLINE_ACTION}>
+          Request More
+        </button>
+      </p>
+    )
+  }
   if (submission.kind === 'refused') {
     return (
       <p className='flex items-start gap-1.5 text-error-strong'>
         {/* On the first line's centre, as the message can wrap */}
         <CircleAlertIcon aria-hidden className='mt-px size-4 shrink-0' />
-        <span>
-          {submission.message}
-          {submission.signIn && (
-            <>
-              {' '}
-              <button
-                type='button'
-                onClick={() => {
-                  void signInWithGoogle()
-                }}
-                className={INLINE_ACTION}>
-                Sign In
-              </button>
-            </>
-          )}
-        </span>
+        <span>{submission.message}</span>
       </p>
     )
   }

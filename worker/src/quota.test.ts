@@ -133,9 +133,9 @@ test('a guest adds no songs, even while generation is paused: signing in is what
   expect(await reserveAsGuest('g2', 'net-a')).toEqual({
     outcome: 'sign_in_required',
   })
-  expect(sqlite.query(`select count(*) as n from "generation"`).get()).toEqual(
-    { n: 0 }
-  )
+  expect(sqlite.query(`select count(*) as n from "generation"`).get()).toEqual({
+    n: 0,
+  })
 })
 
 const reserveAt = async (id: string, at: Date) =>
@@ -159,9 +159,9 @@ test("a user's day ends at their own midnight, not 24 hours after their first so
     outcome: 'quota_exceeded',
     resetsAt: '2026-10-21T16:00:00.000Z',
   })
-  expect(
-    await reserveAt('r3', new Date('2026-10-21T15:59:59Z'))
-  ).toMatchObject({ outcome: 'quota_exceeded' })
+  expect(await reserveAt('r3', new Date('2026-10-21T15:59:59Z'))).toMatchObject(
+    { outcome: 'quota_exceeded' }
+  )
   expect(await reserveAt('r3', new Date('2026-10-21T16:00:00Z'))).toEqual({
     outcome: 'reserved',
   })
@@ -172,12 +172,12 @@ test("a user's day ends at their own midnight, not 24 hours after their first so
 
 test('a local day follows daylight saving and survives an unknown zone', () => {
   // New York's day before the clocks go back (2026-11-01) is 25 hours long
-  expect(localDay('America/New_York', new Date('2026-11-01T12:00:00Z'))).toEqual(
-    {
-      end: Date.parse('2026-11-02T05:00:00Z'),
-      start: Date.parse('2026-11-01T04:00:00Z'),
-    }
-  )
+  expect(
+    localDay('America/New_York', new Date('2026-11-01T12:00:00Z'))
+  ).toEqual({
+    end: Date.parse('2026-11-02T05:00:00Z'),
+    start: Date.parse('2026-11-01T04:00:00Z'),
+  })
   expect(localDay('Not/AZone', new Date('2026-10-21T10:00:00Z'))).toEqual({
     end: Date.parse('2026-10-22T00:00:00Z'),
     start: Date.parse('2026-10-21T00:00:00Z'),

@@ -1,9 +1,11 @@
 import { useStore } from 'jotai'
 import { useRef, useState } from 'react'
 
+import GuestLibrary from '@/components/account/guest-library'
 import { LibraryView } from '@/components/library/library'
 import { BoxScrollbar } from '@/components/shared/doc-scroll'
 import { PageRefresh } from '@/components/shared/page-refresh'
+import { useAccess } from '@/lib/auth'
 import { syncLibrary } from '@/lib/library/sync'
 import { requestSync } from '@/lib/offline/sync'
 import { markStuck } from '@/lib/stuck-row'
@@ -18,6 +20,16 @@ const LibraryPage = () => {
   // as the page scrolls, so a fling never shows it see-through over the list for a render's delay
   const header = useRef<HTMLElement>(null)
   const bar = useRef<HTMLDivElement>(null)
+  const access = useAccess()
+
+  if (access.ready && access.kind === 'guest') {
+    return (
+      <section className='flex flex-1 flex-col overflow-y-auto pt-(--topbar-h) pr-(--safe-right) pb-page-bottom pl-(--safe-left)'>
+        <title>Library · Synbox</title>
+        <GuestLibrary />
+      </section>
+    )
+  }
 
   return (
     <section

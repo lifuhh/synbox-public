@@ -5,6 +5,7 @@ import { useLocation, useMatch } from 'react-router'
 import { playerChromeOpenAtom, playerSurfaceAtom } from '@/context/atoms'
 import { useArmed } from '@/hooks/use-armed'
 import { useMediaQuery } from '@/hooks/use-media-query'
+import { lastAccount, useAccess } from '@/lib/auth'
 import { onEmptyBar, topTap } from '@/lib/top-tap'
 import { cn } from '@/utils/cn'
 
@@ -118,6 +119,9 @@ const TopBar = () => {
   const chromeOpen = useAtomValue(playerChromeOpenAtom)
   const iconsShown = !isVideoPlayer || chromeOpen
   const armed = useArmed(iconsShown)
+  // Until the sign-in check answers, what this browser had last time decides, so the buttons don't blink
+  const access = useAccess()
+  const guest = access.ready ? access.kind === 'guest' : lastAccount() === null
 
   // At the top of a page the bar is clear over the page glow, so the two read as one surface. Scrolling down
   // slides it away; scrolling up brings it back over the top scrim (root-layout.tsx), which paints the page's own
@@ -258,7 +262,8 @@ const TopBar = () => {
             </span>
           )}
           <Notifications />
-          <LibraryMenu />
+          {/* Bookmarks, playlists and offline songs come with an account */}
+          {!guest && <LibraryMenu />}
           {/* The owner's portfolio link goes here, with its own icon, once that site is up (the GitHub button
               sat here until the project went closed source) */}
           {!isVideoPlayer && <ProfileButton />}
