@@ -136,13 +136,21 @@ export const lyricsScaleOn = (
   return Math.min(max, Math.max(min, scale))
 }
 
+// The size a viewer who never moved the slider starts at (the owner, 2026-10-27: at the base size one line over the
+// video read as the largest it could be, worst on a phone on its side): 65% of the base on a touch screen, 80% with
+// a mouse (0.94 × desktop's 0.85). A device's input, not its user agent; a size someone set, and a shared link's,
+// are saved values and never read this
+const FIRST_SIZE = { mouse: 0.94, touch: 0.65 } as const
+const firstSize = () =>
+  typeof matchMedia === 'function' && matchMedia('(pointer: fine)').matches
+    ? FIRST_SIZE.mouse
+    : FIRST_SIZE.touch
+
 export const DEFAULT_LYRICS_STYLE: LyricsStyle = {
   anchor: 1,
   anchorPortrait: 0,
   customHue: DEFAULT_LYRICS_CUSTOM_HUE,
-  // A new viewer starts at 65% of the screen's base size (the owner, 2026-10-27: at 100% one line over the video
-  // read as the largest it could be, worst on a phone on its side); the slider still reaches the base and past it
-  fontSize: 0.65,
+  fontSize: firstSize(),
   fontSizeTwoLines: 0.85,
   // Desktop starts a size down: at 100% one line spans most of a wide stage
   screenSizes: { desktop: 0.85, landscape: 1, portrait: 1 },
