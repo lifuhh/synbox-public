@@ -477,7 +477,7 @@ const fitSong = (
     // The reserve hanging over the room's top (TwoRows' hang) is the rows' own, not room for them
     const area = layer.closest<HTMLElement>('[data-lyric-rows-area]')
     const overhang =
-      area?.dataset.free === undefined
+      area?.dataset.docked === undefined
         ? 0
         : pixels(area.style.getPropertyValue('--rows-overhang'))
     height =
@@ -671,11 +671,11 @@ const TwoRows = ({
       hang.current?.()
     }
     // The block is two of the song's tallest lines high, so above a one-row pair it is empty: the reserve a taller
-    // line rises into. With nothing above the rows (the translation away from its home, `free`) the reserve may
-    // hang over the room's top (globals.css › lyric-stagger-area's --rows-overhang), so the lines
+    // line rises into. With nothing above the rows (the translation away from its home, or docked under them) the
+    // reserve may hang over the room's top (globals.css › lyric-stagger-area's --rows-overhang), so the lines
     // themselves reach it. A line that then rises past it pushes the pair down by as much (--pair-drop): never
-    // over the top, the one place a taller line can't go. Not docked: the pair pushed down would cover the docked
-    // translation under it
+    // over the top, the one place a taller line can't go; the docked translation under them goes down with them
+    // (both read it from the rows' area)
     hang.current = () => {
       const grid = gridRef.current
       const floor = floorRef.current
@@ -693,7 +693,7 @@ const TwoRows = ({
         grid.offsetHeight - (2 * home.offsetHeight + gap)
       )
       area.style.setProperty('--rows-overhang', `${reserve}px`)
-      const overhang = area.dataset.free === undefined ? 0 : reserve
+      const overhang = area.dataset.docked === undefined ? 0 : reserve
       // The highest the lines may stand: where a block with no reserve stops, under the room's own top
       const ceiling =
         overhang +
@@ -704,7 +704,7 @@ const TwoRows = ({
         floor.offsetHeight -
         (placed.current?.floor ?? 0) -
         upper.offsetHeight
-      grid.style.setProperty(
+      area.style.setProperty(
         '--pair-drop',
         `${Math.max(0, ceiling - upperTop)}px`
       )
@@ -958,7 +958,7 @@ const DockedTranslation = ({
       data-docked-translation={ghost ? 'ghost' : 'docked'}
       data-pulling={pulling || undefined}
       data-torn={torn || undefined}
-      className='docked-translation relative flex h-(--docked-h) items-start justify-center'>
+      className='docked-translation relative flex h-(--docked-h) translate-y-[var(--pair-drop,0px)] items-start justify-center'>
       {/* While it is pulled, where it came from: dashed and faint, so the way back reads as a place */}
       {pulling && (
         <div
@@ -1378,7 +1378,6 @@ const rowsRoomFor = (
 }
 const rowsRoomOf = (room: RowsRoom) => ({
   'data-docked': room === 'docked' || room === 'free' || undefined,
-  'data-free': room === 'free' || undefined,
   'data-translation': room === 'split' || undefined,
 })
 
