@@ -1,4 +1,5 @@
 import { execFileSync } from 'node:child_process'
+import { readdirSync } from 'node:fs'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import path from 'node:path'
 
@@ -90,6 +91,10 @@ const serveYoutube = async (
   }
 }
 
+// Maps exist only for Sentry, which deletes them after its upload. Without its token nothing would delete them
+const uploadsSourcemaps = (process.env.SENTRY_AUTH_TOKEN ?? '') !== ''
+let outDir = 'dist'
+
 const LIBRARY_SONGS_PROXY = {
   changeOrigin: true,
   rewrite: () => '/library/songs',
@@ -118,7 +123,7 @@ export default defineConfig({
       output: { banner: ZOD_JITLESS },
     },
     // Maps go to Sentry, not to the deployed site
-    sourcemap: 'hidden',
+    sourcemap: uploadsSourcemaps ? 'hidden' : false,
   },
   // Netlify's commit for the build, shown in the profile menu so a tester can tell which one is running
   define: {
@@ -320,13 +325,35 @@ export default defineConfig({
     // Uploads source maps when SENTRY_AUTH_TOKEN is set (the Netlify build)
     sentryVitePlugin({
       authToken: process.env.SENTRY_AUTH_TOKEN,
-      disable: (process.env.SENTRY_AUTH_TOKEN ?? '') === '',
+      disable: !uploadsSourcemaps,
       org: 'edward-ve',
       project: 'synbox-frontend',
       release: { name: process.env.COMMIT_REF },
       sourcemaps: { filesToDeleteAfterUpload: ['dist/**/*.map'] },
       telemetry: false,
     }),
+    // Fails the build if a map is still in the output after Sentry's upload, so it never deploys
+    {
+      apply: 'build',
+      closeBundle: {
+        handler() {
+          const left = readdirSync(outDir, { recursive: true }).filter((file) =>
+            String(file).endsWith('.map')
+          )
+          if (left.length > 0) {
+            throw new Error(
+              `Source maps left in the build, which would deploy: ${left.join(', ')}`
+            )
+          }
+        },
+        order: 'post',
+        sequential: true,
+      },
+      configResolved(config) {
+        outDir = path.resolve(config.root, config.build.outDir)
+      },
+      name: 'no-shipped-sourcemaps',
+    },
   ]),
   // The gallery's song list, straight from the lookup service (deployed, netlify/functions/library-songs.ts)
   preview: { proxy: { '/api/library/songs': LIBRARY_SONGS_PROXY } },
