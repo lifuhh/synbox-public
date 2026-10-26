@@ -23,6 +23,8 @@ import { LAYOUT_PAGES, PLAYER_SONG } from './layout'
 
 /** How far under the translation home's top the rows may stop and still count as at the top */
 const TOP_SLACK_PX = 32
+/** How far the rows' lines may move when only the translation was dragged (a line's re-wrap, rounding) */
+const KEEP_SLACK_PX = 6
 const LIMIT_MS = 150_000
 
 const ROWS = '[data-lyric-rows-area] [data-lyrics-style-toggle]'
@@ -124,6 +126,53 @@ const drag = async (page: Page, selector: string, dy: number) => {
   await page.waitForTimeout(600)
 }
 
+/**
+ * A drag by `dy` dispatched on the handle itself, as mouse pointer events, in 20 moves. For a handle the stage's input
+ * layer can sit over at the moment of the press (the translation at its home on a touch screen, under a mouse that a
+ * real finger isn't), so the drag reaches the same handlers a finger's does
+ */
+const dispatchDrag = async (page: Page, selector: string, dy: number) => {
+  const fire = async (type: string, offset: number) => {
+    await page.evaluate(
+      ({ sel, kind, by }) => {
+        const handle = document.querySelector<HTMLElement>(sel)
+        if (!handle) {
+          throw new Error(`no ${sel}`)
+        }
+        const r = handle.getBoundingClientRect()
+        // Where the press began, kept on the handle across the drag's calls
+        if (kind === 'pointerdown') {
+          handle.dataset.benchDragFrom = String(r.top + r.height / 2)
+        }
+        const from = Number(handle.dataset.benchDragFrom ?? r.top)
+        handle.dispatchEvent(
+          new PointerEvent(kind, {
+            bubbles: true,
+            buttons: kind === 'pointerup' ? 0 : 1,
+            cancelable: true,
+            clientX: r.left + r.width / 2,
+            clientY: from + by,
+            isPrimary: true,
+            pointerId: 1,
+            pointerType: 'mouse',
+          })
+        )
+      },
+      { by: offset, kind: type, sel: selector }
+    )
+  }
+  await fire('pointerdown', 0)
+  for (let step = 1; step <= 20; step += 1) {
+    // oxlint-disable-next-line eslint/no-await-in-loop -- one move a frame, as a hand drags
+    await fire('pointermove', (dy * step) / 20)
+    // oxlint-disable-next-line eslint/no-await-in-loop -- the frame between moves
+    await page.waitForTimeout(16)
+  }
+  await fire('pointerup', dy)
+  // The drop's places come to rest (the drag's end, a 200ms ease, a settle after the drop)
+  await page.waitForTimeout(900)
+}
+
 /** The player with Karaoke Style's two rows on the stage, playing paused so the lines hold */
 const karaokePage = async (
   surface: Surface,
@@ -164,6 +213,47 @@ const karaokePage = async (
 const overlap = (a: Box | null, b: Box | null) =>
   a !== null && b !== null && a.bottom > b.top && a.top < b.bottom
 
+/** One keep case (see dockAudit): the rows nudged up, the translation dragged to the foot; what went wrong, if any */
+const keepCase = async (
+  surface: Surface,
+  url: string,
+  kase: 'room' | 'tight'
+): Promise<string[]> => {
+  const found: string[] = []
+  const { page, close } = await karaokePage(
+    surface,
+    url,
+    kase === 'room' ? { ...KARAOKE, lyricsFontSizeTwoLines: '0.6' } : KARAOKE
+  )
+  try {
+    await drag(page, ROWS, kase === 'room' ? -80 : -40)
+    const nudged = await boxes(page)
+    await dispatchDrag(page, TRANSLATION, 2000)
+    const end = await boxes(page)
+    const moved =
+      nudged.rowsText && end.rowsText
+        ? Math.abs(end.rowsText.top - nudged.rowsText.top)
+        : Number.POSITIVE_INFINITY
+    if (kase === 'room' && moved > KEEP_SLACK_PX) {
+      found.push(
+        `keep (room): dragging the translation to the foot moved the rows' lines ${Math.round(moved)}px (from ${Math.round(nudged.rowsText?.top ?? -1)}px to ${Math.round(end.rowsText?.top ?? -1)}px)`
+      )
+    }
+    if (end.docked) {
+      found.push(
+        `keep (${kase}): the translation let go at the foot, below the rows, docked under them (the rows' lines moved ${Math.round(moved)}px)`
+      )
+    } else if (overlap(end.rowsText, end.translation)) {
+      found.push(
+        `keep (${kase}): the translation at the foot rests over the rows' lines (lines ${JSON.stringify(end.rowsText)}, translation ${JSON.stringify(end.translation)})`
+      )
+    }
+  } finally {
+    await close()
+  }
+  return found
+}
+
 const dockAudit = async (
   surface: Surface,
   url: string,
@@ -173,6 +263,7 @@ const dockAudit = async (
   const values = {
     rowsBelowCantReachTop: 0,
     rowsCantReachTop: 0,
+    rowsMovedByTranslation: 0,
     rowsOntoNoDock: 0,
     savedOverlapped: 0,
   }
@@ -227,6 +318,19 @@ const dockAudit = async (
       await reached(page, 'below')
     } finally {
       await close()
+    }
+  }
+
+  // keep: the rows nudged up, then the translation dragged from its home to the stage's foot, below them. It isn't
+  // dropped onto them, so it never docks, and never rests over their lines. Twice:
+  // - room: lines small enough for the translation to fit under them: the rows' lines don't move at all;
+  // - tight: the song's lines at their usual size, the rows near the foot: they make way by no more than needed
+  for (const kase of ['room', 'tight'] as const) {
+    // oxlint-disable-next-line eslint/no-await-in-loop -- one page at a time
+    const found = await keepCase(surface, url, kase)
+    if (found.length > 0) {
+      values.rowsMovedByTranslation = 1
+      notes.push(...found)
     }
   }
 
