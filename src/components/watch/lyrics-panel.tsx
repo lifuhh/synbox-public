@@ -353,7 +353,7 @@ export const LyricsPanel = ({
         // Text Style leads, at the panel's edge by the video, so its popover opens out over the video and leaves
         // the lines it changes in view. At least 6px in from the panel's clipped edges, so its focus ring (3px, 2px
         // out) shows whole
-        <header className='flex h-13 shrink-0 items-center gap-1 ps-2 pe-4'>
+        <header className='flex h-13 shrink-0 items-center gap-1 ps-1.5 pe-4'>
           <TextStyleButton />
           <h2 id='lyrics-panel-title' className='text-base font-semibold'>
             Lyrics
