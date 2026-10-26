@@ -162,7 +162,8 @@ const NarrowBelow = ({
       onExpandedChange={expand}
       // The line being sung right under the video, with a sliver of the line before it
       followAt={0.08}
-      className={cn('mx-4 mt-2 shrink-0', !upright && 'watch-lyrics-under')}
+      // As far from the video as from the screen's sides
+      className={cn('mx-4 mt-4 shrink-0', !upright && 'watch-lyrics-under')}
     />
   )
   return (
