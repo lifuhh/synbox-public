@@ -27,7 +27,7 @@ const PROBLEMS: Partial<Record<ContactResult, string>> = {
 const COPIED_MS = 2000
 
 const FIELD =
-  'w-full rounded-md border border-input bg-background px-3 py-2 text-base placeholder:text-muted-foreground focus-visible:border-foreground/80 focus-visible:outline-hidden sm:text-sm touch:text-base'
+  'w-full rounded-md border border-input bg-background px-3 py-2 text-base placeholder:text-muted-foreground focus-visible:border-foreground/80 sm:text-sm touch:text-base'
 
 // Contact Us for a signed-in account: a subject and a message, kept and emailed to the owner by the Worker, which
 // answers at the account's own email (shown above the form, not editable)

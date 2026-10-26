@@ -138,7 +138,7 @@ const SliderRender: React.ForwardRefRenderFunction<
             : undefined
         }
         className={cn(
-          'block rounded-full shadow-md ring-offset-accent-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-hidden disabled:pointer-events-none disabled:opacity-50',
+          'block rounded-full shadow-md ring-offset-accent-foreground disabled:pointer-events-none disabled:opacity-50',
           LOOKS[look].thumb
         )}
       />

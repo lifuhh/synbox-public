@@ -44,7 +44,7 @@ const Card = ({
     tabIndex={clone ? -1 : undefined}
     data-active={active}
     className={cn(
-      'group flex min-w-0 snap-center flex-col rounded-xl focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden',
+      'focus-inset group flex min-w-0 snap-center flex-col rounded-xl',
       SLIDE_SCALE
     )}>
     {/* Off-centre slides shrink, fade their picture and mute their title, so the centred one stands out
@@ -204,7 +204,7 @@ const SongHighlightCarousel = () => {
               data-bench='carousel'
               // oxlint-disable-next-line no-noninteractive-tabindex -- a scrolling region must be focusable so the arrow keys can scroll it
               tabIndex={0}
-              className='carousel-track appear rounded-xl focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden'>
+              className='focus-inset carousel-track appear rounded-xl'>
               {slides.map(({ index, item }) => (
                 <SongCard
                   // oxlint-disable-next-line no-array-index-key -- each song appears once per copy

@@ -36,7 +36,7 @@ const InputRender: React.ForwardRefRenderFunction<
   <input
     type={type}
     className={cn(
-      'flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:ring-offset-2 focus-visible:outline-hidden disabled:cursor-not-allowed disabled:opacity-50 sm:text-sm touch:text-base',
+      'flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50 sm:text-sm touch:text-base',
       inputVariants({ state, variant }),
       className
     )}
@@ -76,7 +76,12 @@ const InputField = ({
   state,
   ...props
 }: React.ComponentProps<'div'> & VariantProps<typeof inputFieldVariants>) => (
-  <div className={cn(inputFieldVariants({ state }), className)} {...props} />
+  // data-focus-field: keyboard focus on the input inside draws the shared indicator on this frame (globals.css)
+  <div
+    data-focus-field
+    className={cn(inputFieldVariants({ state }), className)}
+    {...props}
+  />
 )
 
 export { Input, InputField }

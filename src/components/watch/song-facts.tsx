@@ -34,7 +34,7 @@ const YouTubeLink = ({ videoId }: { videoId: string }) => {
       onClick={() => {
         clock?.pause()
       }}
-      className='-my-2.5 flex h-10 shrink-0 items-center gap-1 rounded-full px-2 transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none'>
+      className='-my-2.5 flex h-10 shrink-0 items-center gap-1 rounded-full px-2 transition-colors hover:bg-accent'>
       <YouTubeIcon aria-hidden className='h-3.5 w-auto shrink-0' />
       <ArrowUpRightIcon
         aria-hidden

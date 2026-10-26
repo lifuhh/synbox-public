@@ -39,7 +39,7 @@ export const MiniBarView = ({
       to={songPath(song.videoId)}
       state={songState(song.videoId, 'resume')}
       onClick={onOpen}
-      className='flex min-w-0 flex-1 items-center gap-3 rounded-xl focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden'>
+      className='flex min-w-0 flex-1 items-center gap-3 rounded-xl'>
       <span
         ref={thumbRef}
         data-mini-thumb
@@ -64,7 +64,7 @@ export const MiniBarView = ({
         type='button'
         aria-label='Unmute'
         onClick={onUnmute}
-        className='grid size-11 shrink-0 place-items-center rounded-full text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden'>
+        className='grid size-11 shrink-0 place-items-center rounded-full text-foreground'>
         <VolumeXIcon className='size-5' aria-hidden />
       </button>
     )}
@@ -72,7 +72,7 @@ export const MiniBarView = ({
       type='button'
       aria-label={playing ? 'Pause' : 'Play'}
       onClick={onToggle}
-      className='grid size-11 shrink-0 place-items-center rounded-full text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden'>
+      className='grid size-11 shrink-0 place-items-center rounded-full text-foreground'>
       {playing ? (
         <PauseIcon className='size-5 fill-current' aria-hidden />
       ) : (
@@ -83,7 +83,7 @@ export const MiniBarView = ({
       type='button'
       aria-label='Close Player'
       onClick={onClose}
-      className='grid size-11 shrink-0 place-items-center rounded-full text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden'>
+      className='grid size-11 shrink-0 place-items-center rounded-full text-muted-foreground transition-colors hover:text-foreground'>
       <XIcon className='size-5' aria-hidden />
     </button>
     <span

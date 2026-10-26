@@ -45,7 +45,7 @@ export const StageLock = ({ onUnlock }: { onUnlock: () => void }) => {
           setShown(true)
         }}
         className={cn(
-          'absolute top-[calc(var(--stage-corner-top)+3.75rem)] right-[calc(var(--safe-right)+0.625rem)] z-36 flex h-11 items-center gap-2 rounded-full bg-black/55 pr-4 pl-3.5 text-sm font-medium text-white shadow-rail backdrop-blur-md transition-opacity duration-300 ease-out focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none sm:right-[calc(var(--safe-right)+1.125rem)] short:top-1/2 short:right-[calc(var(--spacing-controls-right)+0.25rem)] short:h-9 short:-translate-y-1/2 short:pr-3 short:pl-2.5',
+          'absolute top-[calc(var(--stage-corner-top)+3.75rem)] right-[calc(var(--safe-right)+0.625rem)] z-36 flex h-11 items-center gap-2 rounded-full bg-black/55 pr-4 pl-3.5 text-sm font-medium text-white shadow-rail backdrop-blur-md transition-opacity duration-300 ease-out sm:right-[calc(var(--safe-right)+1.125rem)] short:top-1/2 short:right-[calc(var(--spacing-controls-right)+0.25rem)] short:h-9 short:-translate-y-1/2 short:pr-3 short:pl-2.5',
           shown ? 'opacity-100' : 'opacity-0',
           (!shown || !armed) && 'pointer-events-none'
         )}>

@@ -54,7 +54,7 @@ export const PlaylistPanel = ({
         <div className='min-w-0 flex-1'>
           <Link
             to={`/playlists/${context.id}`}
-            className='block truncate rounded-sm text-base font-semibold text-foreground hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden'>
+            className='block truncate rounded-sm text-base font-semibold text-foreground hover:underline'>
             {context.name}
           </Link>
           <p className='truncate text-xs text-muted-foreground tabular-nums'>

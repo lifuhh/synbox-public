@@ -166,7 +166,7 @@ export const SortableList = <T,>({
                 setDrag(null)
               }}
               onKeyDown={keyMove(index, key)}
-              className='grid h-11 w-8 shrink-0 cursor-grab touch-none place-items-center rounded-lg text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden active:cursor-grabbing'>
+              className='grid h-11 w-8 shrink-0 cursor-grab touch-none place-items-center rounded-lg text-muted-foreground transition-colors hover:text-foreground active:cursor-grabbing'>
               <GripVerticalIcon className='size-4' aria-hidden />
             </button>
           )

@@ -119,7 +119,7 @@ const IconButton = ({
     disabled={disabled}
     onClick={onClick}
     className={cn(
-      'grid size-9 shrink-0 place-items-center rounded-md text-white/85 transition-colors hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:cursor-default disabled:text-white/35 disabled:hover:bg-transparent touch:size-11 touch:watch-narrow:size-10 pills:size-10 pills:rounded-full',
+      'grid size-9 shrink-0 place-items-center rounded-md text-white/85 transition-colors hover:bg-white/10 hover:text-white disabled:cursor-default disabled:text-white/35 disabled:hover:bg-transparent touch:size-11 touch:watch-narrow:size-10 pills:size-10 pills:rounded-full',
       active === true && 'text-primary-text hover:text-primary-text',
       className
     )}>
@@ -134,10 +134,10 @@ const speedName = (rate: number) => (rate === 1 ? 'Normal' : `${rate}×`)
 // The speed as plain text on the bar's glass, as video players show it now ("1×", "0.75×"): the label is the control.
 // As tall as the icon buttons beside it and as wide as its text, never narrower than square
 const SPEED_IN_BAR =
-  'grid h-9 min-w-9 shrink-0 place-items-center rounded-md px-1.5 text-sm leading-none font-semibold whitespace-nowrap text-white/85 tabular-nums transition-colors hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none touch:h-11 touch:min-w-11 touch:watch-narrow:h-10 touch:watch-narrow:min-w-10 pills:h-10 pills:min-w-10 pills:rounded-full'
+  'grid h-9 min-w-9 shrink-0 place-items-center rounded-md px-1.5 text-sm leading-none font-semibold whitespace-nowrap text-white/85 tabular-nums transition-colors hover:bg-white/10 hover:text-white touch:h-11 touch:min-w-11 touch:watch-narrow:h-10 touch:watch-narrow:min-w-10 pills:h-10 pills:min-w-10 pills:rounded-full'
 // In the right-hand column: the discs' glass and height, stretched into a pill so "0.75×" fits
 const SPEED_IN_COLUMN =
-  'grid h-10 min-w-10 shrink-0 place-items-center rounded-full bg-black/55 px-2 text-sm leading-none font-semibold whitespace-nowrap text-white/90 tabular-nums shadow-rail backdrop-blur-md transition-colors hover:bg-black/70 hover:text-white focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none touch:h-11 touch:min-w-11 short:h-9 short:min-w-9'
+  'grid h-10 min-w-10 shrink-0 place-items-center rounded-full bg-black/55 px-2 text-sm leading-none font-semibold whitespace-nowrap text-white/90 tabular-nums shadow-rail backdrop-blur-md transition-colors hover:bg-black/70 hover:text-white touch:h-11 touch:min-w-11 short:h-9 short:min-w-9'
 
 // Every speed the video allows, in a menu, the current one checked; a choice applies it and closes the menu. In the
 // bar the menu opens above its button; in the right-hand column, to its left. Its open menu holds the controls up
@@ -382,7 +382,7 @@ const AutoplaySwitch = () => {
       onClick={() => {
         setAutoplay(!autoplay)
       }}
-      className='hidden h-10 w-13 shrink-0 place-items-center rounded-full focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none pills:grid'>
+      className='hidden h-10 w-13 shrink-0 place-items-center rounded-full pills:grid'>
       <span
         className={cn(
           'flex h-3.5 w-9 items-center rounded-full transition-colors',

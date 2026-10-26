@@ -759,9 +759,7 @@ const SongTitle = ({ generation }: { generation: AdminGeneration }) => {
   const path = `/v/${generation.videoId}`
   // The title and its address are one link, so a tap anywhere on either opens the song
   return (
-    <Link
-      to={path}
-      className='group block min-w-0 rounded-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden'>
+    <Link to={path} className='group block min-w-0 rounded-sm'>
       <span className='block truncate font-medium text-foreground group-hover:underline'>
         {songInfo?.title ?? generation.videoId}
       </span>
@@ -1171,7 +1169,7 @@ const ReportsList = () => {
               setShownState(option.id)
             }}
             className={cn(
-              'h-7 shrink-0 rounded-md px-3 text-sm font-medium whitespace-nowrap transition-colors focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-hidden touch:h-9 touch:px-4',
+              'h-7 shrink-0 rounded-md px-3 text-sm font-medium whitespace-nowrap transition-colors touch:h-9 touch:px-4',
               shownState === option.id
                 ? 'bg-background text-foreground shadow-sm'
                 : 'text-muted-foreground hover:text-foreground'

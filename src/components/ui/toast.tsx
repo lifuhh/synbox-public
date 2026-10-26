@@ -67,7 +67,7 @@ const ToastActionRender: React.ForwardRefRenderFunction<
   <ToastPrimitives.Action
     ref={ref}
     className={cn(
-      'inline-flex h-8 shrink-0 items-center justify-center rounded-md bg-white/10 px-3 text-sm font-medium ring-offset-background transition-colors hover:bg-white/15 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-hidden focus-visible:group-data-[variant=destructive]:ring-destructive disabled:pointer-events-none disabled:opacity-50 touch:h-10',
+      'inline-flex h-8 shrink-0 items-center justify-center rounded-md bg-white/10 px-3 text-sm font-medium ring-offset-background transition-colors hover:bg-white/15 focus-visible:group-data-[variant=destructive]:ring-destructive disabled:pointer-events-none disabled:opacity-50 touch:h-10',
       className
     )}
     {...props}
@@ -83,7 +83,7 @@ const ToastCloseRender: React.ForwardRefRenderFunction<
   <ToastPrimitives.Close
     ref={ref}
     className={cn(
-      'absolute top-1/2 right-2 -translate-y-1/2 rounded-md p-1 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 group-data-[variant=destructive]:text-error hover:text-foreground hover:group-data-[variant=destructive]:text-error-hover focus:opacity-100 focus-visible:ring-2 focus-visible:outline-hidden focus-visible:group-data-[variant=destructive]:ring-error-border focus-visible:group-data-[variant=destructive]:ring-offset-error-ring-offset touch:right-0 touch:p-2.5 touch:opacity-100',
+      'absolute top-1/2 right-2 -translate-y-1/2 rounded-md p-1 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 group-data-[variant=destructive]:text-error hover:text-foreground hover:group-data-[variant=destructive]:text-error-hover focus:opacity-100 focus-visible:group-data-[variant=destructive]:ring-error-border focus-visible:group-data-[variant=destructive]:ring-offset-error-ring-offset touch:right-0 touch:p-2.5 touch:opacity-100',
       className
     )}
     toast-close=''

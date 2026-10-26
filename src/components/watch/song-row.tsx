@@ -142,7 +142,7 @@ export const SongRow = ({
           }
           onClick={onOpen}
           className={cn(
-            'flex min-w-0 flex-1 items-center gap-3 rounded-xl p-2 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden',
+            'flex min-w-0 flex-1 items-center gap-3 rounded-xl p-2',
             large && 'gap-3 p-1.5'
           )}>
           {body}

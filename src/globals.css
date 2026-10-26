@@ -1886,6 +1886,9 @@ html[data-installed] *::-webkit-scrollbar {
     --border: var(--graphite-5);
     --input: var(--graphite-8);
     --ring: var(--magenta-11);
+    /* Keyboard focus (the unlayered :focus-visible rules below): near-white, the strongest contrast against the
+       dark surfaces and the video, and not one more use of the brand colour */
+    --focus-ring: var(--graphite-12);
     --radius: 0.3rem;
   }
 
@@ -2399,13 +2402,54 @@ html[data-installed] *::-webkit-scrollbar {
     line-height: 1.2;
     vertical-align: middle;
   }
+}
 
-  /* Keyboard focus, on whatever draws no ring of its own (the primitives' focus-visible:ring-* hide this with
-     outline-hidden). A press with a mouse or a finger shows nothing */
-  :focus-visible {
-    outline: 2px solid var(--ring);
-    outline-offset: 2px;
-  }
+/* Keyboard focus: one indicator for every control, drawn by these rules alone (no focus-visible:ring-* or
+   outline-hidden in components). Outside any layer, so no utility can hide it. 3px, 2px clear of the control, so a
+   remote's D-pad focus reads from across a room (WCAG 2.2 2.4.7, 2.4.11; the A121 TV work). A press with a mouse
+   or a finger shows nothing: text fields match :focus-visible on a click too, so they show it only while the last
+   input was a key (data-input-modality, src/lib/input-modality.ts), and on their field's frame
+   ([data-focus-field]) rather than the bare input inside it */
+:focus-visible:not(input, textarea, select) {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+:focus-visible:is(input, textarea, select) {
+  outline: none;
+}
+
+html[data-input-modality='keyboard']
+  :is(input, textarea, select):focus-visible:not([data-focus-field] *) {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+html[data-input-modality='keyboard'] [data-focus-field]:has(:focus-visible) {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* A control whose hit area is larger than what it draws (a switch's track, a colour tile) puts the indicator on
+   the drawn part: the control carries data-focus-proxy, the drawn part `focus-target` */
+[data-focus-proxy]:focus-visible {
+  outline: none;
+}
+
+[data-focus-proxy]:focus-visible .focus-target {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* Inside a row or carousel that clips its overflow, the indicator is drawn just inside the edge so it isn't cut */
+.focus-inset:focus-visible {
+  outline-offset: -3px;
+}
+
+/* The pages scroll in boxes that run under the fixed top bar: a control Tab scrolls into view stops below the bar,
+   not hidden behind it (WCAG 2.2 2.4.11) */
+[data-scroll-top] {
+  scroll-padding-top: calc(var(--topbar-h, 0px) + 0.5rem);
 }
 
 /* Layout changes that move (src/lib/view-transition.ts): the browser cross-fades a snapshot of the page before

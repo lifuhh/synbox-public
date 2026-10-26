@@ -562,7 +562,7 @@ export const TopbarSearch = ({ variant }: { variant: 'inline' | 'button' }) => {
             <button
               type='button'
               onClick={close}
-              className='h-11 shrink-0 rounded-xl px-3 text-base font-medium text-foreground transition-colors duration-150 hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden'>
+              className='h-11 shrink-0 rounded-xl px-3 text-base font-medium text-foreground transition-colors duration-150 hover:bg-accent'>
               Cancel
             </button>
           </div>

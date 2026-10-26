@@ -17,7 +17,7 @@ interface RailButtonProps extends ComponentProps<'button'> {
 
 // A button floating on the stage: the rail's and the corner column's, one size and look everywhere
 export const STAGE_DISC =
-  'grid size-10 shrink-0 place-items-center rounded-full bg-black/55 text-white/90 shadow-rail backdrop-blur-md transition-colors hover:bg-black/70 hover:text-white focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:pointer-events-none disabled:opacity-30 touch:size-11 short:size-9'
+  'grid size-10 shrink-0 place-items-center rounded-full bg-black/55 text-white/90 shadow-rail backdrop-blur-md transition-colors hover:bg-black/70 hover:text-white disabled:pointer-events-none disabled:opacity-30 touch:size-11 short:size-9'
 
 // Set when the rail is a row under the video on the watch page: its labels and panels open above or below
 // it instead of to its side
@@ -29,7 +29,7 @@ export const RailInline = createContext(false)
 const railButtonClass = (inline: boolean, pressed: boolean | undefined) =>
   inline
     ? cn(
-        'grid size-10 shrink-0 place-items-center rounded-full bg-card text-foreground transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:pointer-events-none disabled:opacity-30 watch-narrow:w-full',
+        'grid size-10 shrink-0 place-items-center rounded-full bg-card text-foreground transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-30 watch-narrow:w-full',
         pressed === true &&
           'bg-primary-subtle text-primary-text hover:bg-primary-subtle-hover',
         pressed === false && 'text-muted-foreground'

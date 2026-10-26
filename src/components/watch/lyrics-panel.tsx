@@ -396,7 +396,7 @@ export const LyricsPanel = ({
         // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- the scroll box itself is what the keys move
         tabIndex={0}
         className={cn(
-          'min-h-0 flex-1 px-4 font-reader [overflow-anchor:none] focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden focus-visible:ring-inset',
+          'focus-inset min-h-0 flex-1 px-4 font-reader [overflow-anchor:none]',
           scrollerLook(band, empty !== null)
         )}>
         <div ref={content}>

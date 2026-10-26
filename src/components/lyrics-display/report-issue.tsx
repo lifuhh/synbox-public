@@ -179,7 +179,7 @@ export const ReportIssue = ({
                   void send()
                 }
               }}
-              className='min-h-28 w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-base placeholder:text-muted-foreground focus-visible:border-foreground/80 focus-visible:outline-hidden sm:text-sm touch:text-base'
+              className='min-h-28 w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-base placeholder:text-muted-foreground focus-visible:border-foreground/80 sm:text-sm touch:text-base'
             />
             <p id={hintId} className='-mt-1 text-xs text-muted-foreground'>
               One report per song: list every issue

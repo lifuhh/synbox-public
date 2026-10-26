@@ -167,7 +167,7 @@ const PlaylistPage = () => {
           <>
             <Link
               to='/playlists'
-              className='-mb-3 flex w-fit items-center gap-1 rounded-md text-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden'>
+              className='-mb-3 flex w-fit items-center gap-1 rounded-md text-sm text-muted-foreground transition-colors hover:text-foreground'>
               <ChevronLeftIcon className='size-4' aria-hidden />
               All Playlists
             </Link>

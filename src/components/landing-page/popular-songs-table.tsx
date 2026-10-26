@@ -74,7 +74,7 @@ const SongRow = ({
       data-bench='charts-row'
       data-marquee-host
       to={`/v/${song.id}`}
-      className='group flex items-center gap-3 rounded-xl px-2 py-1 text-foreground transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden'>
+      className='group flex items-center gap-3 rounded-xl px-2 py-1 text-foreground transition-colors hover:bg-accent'>
       <span className='relative aspect-video w-18 shrink-0 rounded-sm bg-thumbnail-placeholder'>
         <img
           src={`https://i.ytimg.com/vi/${song.id}/mqdefault.jpg`}

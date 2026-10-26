@@ -63,7 +63,7 @@ const Title = ({ title, className }: { title: string; className: string }) => {
           onClick={() => {
             setExpanded(!expanded)
           }}
-          className='block w-full rounded-sm text-start focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring'>
+          className='block w-full rounded-sm text-start'>
           {words}
         </button>
       ) : (

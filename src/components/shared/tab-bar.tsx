@@ -102,7 +102,7 @@ export const TabNav = ({
           }}
           aria-current={active ? 'page' : undefined}
           className={cn(
-            'flex flex-col items-center justify-center gap-0.5 rounded-full text-xs font-medium transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden',
+            'flex flex-col items-center justify-center gap-0.5 rounded-full text-xs font-medium transition-colors',
             active
               ? 'bg-primary-subtle text-primary-text'
               : 'text-muted-foreground'
