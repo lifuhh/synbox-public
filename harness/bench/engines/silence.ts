@@ -2,6 +2,9 @@
 // --mute-audio, WebKit has no such flag, so this init script runs in every frame of every context, the YouTube
 // embed included (Playwright applies context init scripts to child and cross-origin frames): media elements are
 // held muted at volume 0 whatever the page sets, and Web Audio reaches the speakers only through a zero gain
+
+/* oxlint-disable unicorn/consistent-function-scoping, typescript/unbound-method -- silenceAllMedia() is serialised with toString() and injected into every frame, so its helpers live inside it, and it re-applies the browser's own media accessors with an explicit `this` */
+
 export const silenceAllMedia = (): void => {
   const media = HTMLMediaElement.prototype
   const muted = Object.getOwnPropertyDescriptor(media, 'muted')
@@ -10,28 +13,32 @@ export const silenceAllMedia = (): void => {
     muted?.set?.call(element, true)
     volume?.set?.call(element, 0)
   }
-  if (muted?.get !== undefined && muted.set !== undefined) {
-    Object.defineProperty(media, 'muted', {
-      configurable: true,
-      get: muted.get,
-      set(this: HTMLMediaElement) {
-        muted.set?.call(this, true)
-      },
-    })
+  const pin = (
+    name: 'muted' | 'volume',
+    own: PropertyDescriptor | undefined,
+    value: boolean | number
+  ) => {
+    const get = own?.get
+    const set = own?.set
+    if (get && set) {
+      Object.defineProperty(media, name, {
+        configurable: true,
+        get(this: HTMLMediaElement): unknown {
+          const current: unknown = get.call(this)
+          return current
+        },
+        set(this: HTMLMediaElement) {
+          set.call(this, value)
+        },
+      })
+    }
   }
-  if (volume?.get !== undefined && volume.set !== undefined) {
-    Object.defineProperty(media, 'volume', {
-      configurable: true,
-      get: volume.get,
-      set(this: HTMLMediaElement) {
-        volume.set?.call(this, 0)
-      },
-    })
-  }
-  const play = media.play
-  media.play = function playSilently(this: HTMLMediaElement) {
+  pin('muted', muted, true)
+  pin('volume', volume, 0)
+  const originalPlay = media.play
+  media.play = async function play(this: HTMLMediaElement) {
     hush(this)
-    return play.call(this)
+    await originalPlay.call(this)
   }
   for (const type of ['loadstart', 'play', 'playing', 'volumechange']) {
     document.addEventListener(
@@ -44,18 +51,24 @@ export const silenceAllMedia = (): void => {
       true
     )
   }
-  const connect = AudioNode.prototype.connect
-  AudioNode.prototype.connect = function connectSilently(
+  const originalConnect = AudioNode.prototype.connect
+  const connect = function connect(
     this: AudioNode,
     ...args: unknown[]
-  ) {
-    const [target] = args
-    if (target instanceof AudioDestinationNode) {
+  ): unknown {
+    if (args[0] instanceof AudioDestinationNode) {
       const zero = this.context.createGain()
       zero.gain.value = 0
-      Reflect.apply(connect, this, [zero])
-      return Reflect.apply(connect, zero, args) as AudioNode
+      Reflect.apply(originalConnect, this, [zero])
+      const silenced: unknown = Reflect.apply(originalConnect, zero, args)
+      return silenced
     }
-    return Reflect.apply(connect, this, args) as AudioNode
-  } as typeof AudioNode.prototype.connect
+    const result: unknown = Reflect.apply(originalConnect, this, args)
+    return result
+  }
+  Object.defineProperty(AudioNode.prototype, 'connect', {
+    configurable: true,
+    value: connect,
+    writable: true,
+  })
 }
