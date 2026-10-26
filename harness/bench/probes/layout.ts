@@ -304,6 +304,32 @@ export const OPENED_STATES: Record<string, OpenedState[]> = {
       views: ['pwa-portrait'],
     },
     {
+      // Lyrics Style with the song's own style (This Song, then a change): the panel grows the layout switches and
+      // what only a song's own style shows; audited beside the shared state (owner, 2026-10-26: a 2×2 of buttons
+      // there went unaudited)
+      name: 'style-own',
+      steps: [
+        { press: { name: 'Lyrics Style', role: 'button' } },
+        { shows: { name: 'Lyrics Style', role: 'dialog' } },
+        { press: { name: 'This Song', role: 'radio' } },
+        { press: { name: 'Karaoke Style', role: 'switch' } },
+      ],
+      views: ['web', 'pwa-portrait'],
+    },
+    {
+      // The same on a phone on its side, where the rail floats over the video
+      name: 'style-floating-own',
+      steps: [
+        { at: { x: 60, y: 60 }, hover: { attr: 'data-player-stage' } },
+        { shows: { name: 'Lyrics Style', role: 'button' } },
+        { press: { name: 'Lyrics Style', role: 'button' } },
+        { shows: { name: 'Lyrics Style', role: 'dialog' } },
+        { press: { name: 'This Song', role: 'radio' } },
+        { press: { name: 'Karaoke Style', role: 'switch' } },
+      ],
+      views: ['pwa-landscape'],
+    },
+    {
       // Upright, the lyrics window under the video expands to fill the screen under it (a tap on its lines, or
       // Expand Lyrics in its corner), with Lyrics Style and Minimize Lyrics in that corner
       name: 'lyrics-expanded',
