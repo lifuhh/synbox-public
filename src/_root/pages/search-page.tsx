@@ -583,7 +583,7 @@ const SearchPage = () => {
             autoCorrect='off'
             spellCheck={false}
             placeholder={
-              roomy ? 'Song, artist or YouTube link' : 'Song or YouTube link'
+              roomy ? 'Song, Artist or YouTube Link' : 'Song or YouTube Link'
             }
             // A link pasted over the whole field needs no Search press: it names one video, not words to search
             onPaste={(e) => {

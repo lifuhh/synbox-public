@@ -3,7 +3,7 @@
 // the library or the search changes. A narrow mix of mood and theme ("calm songs about the night", "Rainy day songs")
 // found none or one
 export const SEARCH_EXAMPLES = [
-  'Falling in love',
-  'Graduation goodbyes',
+  'Falling in Love',
+  'Graduation Goodbyes',
   'Anime openings to belt out',
 ] as const

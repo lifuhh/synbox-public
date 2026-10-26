@@ -72,8 +72,8 @@ const LibrarySearch = ({
         aria-label='Search Our Songs'
         placeholder={
           isPending
-            ? 'Loading our songs…'
-            : 'Search our songs by title or artist'
+            ? 'Loading Our Songs…'
+            : 'Search Our Songs by Title or Artist'
         }
         value={query}
         className='h-10'

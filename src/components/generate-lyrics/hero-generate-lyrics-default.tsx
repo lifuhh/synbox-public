@@ -37,7 +37,7 @@ interface HeroGenerateLyricsDefaultProps {
 
 // Under 360px wide the full text runs past the field
 const heroPlaceholder = (roomy: boolean) =>
-  roomy ? 'Search or paste a YouTube URL' : 'Search or paste a link'
+  roomy ? 'Search or Paste a YouTube URL' : 'Search or Paste a Link'
 
 // Search is a mode, not an error, so it gets its own colour; red is kept for a link that fails to parse.
 type InputMode = 'empty' | 'search' | 'valid' | 'invalid'
@@ -301,7 +301,7 @@ const HeroGenerateLyricsDefault = ({
               onChange={handleInputChange}
               readOnly={checking}
               data-clearing={clearing || undefined}
-              aria-label='Search songs or paste a YouTube link'
+              aria-label='Search Songs or Paste a YouTube Link'
               enterKeyHint={isSearch ? 'search' : 'go'}
               autoCapitalize='off'
               autoCorrect='off'

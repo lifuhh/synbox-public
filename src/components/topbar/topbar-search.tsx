@@ -415,7 +415,7 @@ export const TopbarSearch = ({ variant }: { variant: 'inline' | 'button' }) => {
         }
         enterKeyHint='search'
         placeholder={
-          panel ? 'Search or paste a link' : 'Search or paste a YouTube link'
+          panel ? 'Search or Paste a Link' : 'Search or Paste a YouTube Link'
         }
         value={query}
         onChange={(event) => {
