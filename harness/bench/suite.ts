@@ -15,6 +15,7 @@ import type { View } from './engines/browser'
 import { cdpPerf } from './engines/cdp'
 import { controlShadeAudit } from './probes/control-shade'
 import { homeVisit } from './probes/home'
+import { keyboardAudit } from './probes/keyboard'
 import { landscapeParityAudit } from './probes/landscape-parity'
 import { LAYOUT_FINDINGS, layoutAudit, layoutPages } from './probes/layout'
 import type { LayoutPage, OpenedState } from './probes/layout'
@@ -351,6 +352,23 @@ export const SUITE: Benchmark[] = [
     surface: PWA_LANDSCAPE.surface,
     title:
       'The full-screen player on an iPhone on its side, turned by Full Screen with rotation lock on vs rotated by iOS: element boxes within 1px, safe-area bands black',
+  },
+  {
+    // The app by keyboard alone, as a TV remote drives it (A121): Home → a song → Play/Pause → Lyrics Style → a colour
+    // → Escape → search → a result, every stop with a visible focus indicator (probes/keyboard.ts)
+    id: 'keyboard-journey',
+    metrics: [
+      count('unreachableSteps'),
+      count('invisibleFocus'),
+      count('focusLost'),
+      count('weakFocus', false),
+      count('tabs', false),
+    ],
+    run: keyboardAudit(),
+    runs: 1,
+    surface: WEB.surface,
+    title:
+      'Keyboard only at 1920×1080: every journey step reachable by Tab/Enter/Escape, a visible focus indicator at every stop, focus never lost',
   },
   player('x1FV6IrjZCY'),
   player('ZRtdQ81jPUQ'),
