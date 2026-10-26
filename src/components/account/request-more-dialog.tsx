@@ -71,14 +71,14 @@ const RequestForm = ({ onDone }: { onDone: () => void }) => {
         void send()
       }}>
       <label htmlFor={`${id}-note`} className='sr-only'>
-        About you
+        About You
       </label>
       <textarea
         id={`${id}-note`}
         value={note}
         maxLength={NOTE_MAX}
         rows={4}
-        placeholder='A few words is plenty'
+        placeholder='I learn a few songs a week for karaoke nights with friends'
         aria-invalid={problem !== null || undefined}
         aria-describedby={`${id}-problem`}
         onChange={(event) => {
