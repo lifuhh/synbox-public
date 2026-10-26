@@ -58,6 +58,7 @@ import {
   encodeSharedStyle,
   sameLyricsStyle,
 } from '@/lib/lyrics-style'
+import { useMenuOffset } from '@/lib/menu-offset'
 import { useLikeSong, useSongStats } from '@/lib/song-stats'
 import { track, trackLyricsFeature } from '@/lib/usage'
 import { cn } from '@/utils/cn'
@@ -231,13 +232,24 @@ const SongActionsMenu = ({
   const [open, setOpen] = useState(false)
   // Upright the rail lies along the bottom, so the menu opens up from it
   const portrait = usePortrait()
+  const side = portrait ? 'top' : 'right'
+  const { measure, offset, triggerRef } = useMenuOffset<HTMLButtonElement>(side)
   if (hidden) {
     return null
   }
   return (
-    <DropdownMenu modal={false} open={open} onOpenChange={setOpen}>
+    <DropdownMenu
+      modal={false}
+      open={open}
+      onOpenChange={(next) => {
+        if (next) {
+          measure()
+        }
+        setOpen(next)
+      }}>
       <DropdownMenuTrigger asChild>
         <RailButton
+          ref={triggerRef}
           label='More Actions'
           className={cn(
             'hidden portrait:grid short:grid',
@@ -247,9 +259,9 @@ const SongActionsMenu = ({
         </RailButton>
       </DropdownMenuTrigger>
       <DropdownMenuContent
-        side={portrait ? 'top' : 'right'}
+        side={side}
         align='end'
-        sideOffset={8}
+        sideOffset={offset}
         collisionPadding={8}>
         {actions.map((action) => (
           <DropdownMenuItem
