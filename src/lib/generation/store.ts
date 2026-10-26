@@ -572,26 +572,14 @@ const send = (command: Command) => {
   shared.send(command)
 }
 
-// Whether a start opens the panel by itself: only while the listener is still where they pressed, and only for the
-// first song in progress or a press on a song already going. A song added while others run shows on the ring's
-// count instead, so picking several songs in a row doesn't cover the list with the panel after each one
-export const opensPanel = (
-  jobs: readonly Job[],
-  videoId: string,
-  stayed: boolean
-) =>
-  stayed &&
-  (!jobs.some(isActive) ||
-    jobs.some((job) => isActive(job) && job.videoId === videoId))
-
-// Adds a generation, and opens the panel on it when `opensPanel` says so. A song already generating is picked
-// instead, and this returns false. `stayed`: no input elsewhere since the press that started it
+// Adds a generation and opens the panel on it, so every start shows where it went (the owner, 2026-10-26: songs
+// added while others run included). A song already generating is picked instead, and this returns false.
+// `stayed`: no input elsewhere since the press that started it; a listener who moved on gets no panel
 export const startGeneration = (
   request: GenerationRequest,
   { stayed = true }: { stayed?: boolean } = {}
 ): boolean => {
-  const expanded =
-    state.expanded || opensPanel(state.jobs, request.videoId, stayed)
+  const expanded = state.expanded || stayed
   const same = state.jobs.find(
     (job) => isActive(job) && job.videoId === request.videoId
   )
@@ -693,17 +681,6 @@ export const focusGeneration = (id: string) => {
   if (state.jobs.some((job) => job.id === id)) {
     set({ ...state, expanded: true, focusedId: id })
   }
-}
-
-// Opens the panel on this video's generation, the one going or else the newest; false when it has none
-export const focusSong = (videoId: string) => {
-  const ofSong = state.jobs.filter((job) => job.videoId === videoId)
-  const job = ofSong.findLast(isActive) ?? ofSong.at(-1)
-  if (job === undefined) {
-    return false
-  }
-  focusGeneration(job.id)
-  return true
 }
 
 export const setGenerationExpanded = (expanded: boolean) => {

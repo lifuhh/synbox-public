@@ -1,40 +1,22 @@
-import {
-  CircleAlertIcon,
-  CircleCheckIcon,
-  LoaderCircleIcon,
-  SparklesIcon,
-} from 'lucide-react'
+import { CircleAlertIcon, LoaderCircleIcon, SparklesIcon } from 'lucide-react'
 import { useRef, useState } from 'react'
 
 import { startFromButton } from '@/components/generation/start-generation'
 import { SIGN_IN_CODES, signInWithGoogle } from '@/lib/auth'
-import { focusSong, getGenerationState } from '@/lib/generation/store'
 import { cn } from '@/utils/cn'
 
 // A press on Home's Generate Lyrics, from the press to its answer. The check runs here, at the field (the backend's
 // account check and the video's, store.ts › requestGeneration), so a song that can't be made says why where its
-// link was pasted, and the field empties only once the generation started
+// link was pasted. A song that starts empties the field, and the progress panel opens on it (store.ts ›
+// startGeneration)
 export type Submission =
   | { kind: 'idle' }
   | { kind: 'checking' }
   | { kind: 'refused'; message: string; signIn: boolean }
-  | { kind: 'started'; videoId: string; title: string | null; queued: boolean }
 
 const IDLE: Submission = { kind: 'idle' }
 // The link fades out of the field (input.tsx › bare, data-clearing) before it empties
 const CLEAR_MS = 160
-
-// The song's name and whether it waits for a free slot (store.ts › MAX_RUNNING)
-const startedAs = (videoId: string) => {
-  const job = getGenerationState().jobs.findLast(
-    (current) => current.videoId === videoId
-  )
-  const title = job?.video?.title ?? job?.title ?? ''
-  return {
-    queued: job?.status.kind === 'waiting',
-    title: title === '' ? null : title,
-  }
-}
 
 // `onStarted` empties the field once its text faded
 export const useFieldGeneration = (onStarted: () => void) => {
@@ -70,13 +52,13 @@ export const useFieldGeneration = (onStarted: () => void) => {
     setTimeout(() => {
       onStarted()
       setClearing(false)
-      setSubmission({ kind: 'started', videoId, ...startedAs(videoId) })
+      setSubmission(IDLE)
     }, CLEAR_MS)
   }
 
   // Typing again puts away the last answer
   const edited = () => {
-    if (submission.kind === 'refused' || submission.kind === 'started') {
+    if (submission.kind === 'refused') {
       setSubmission(IDLE)
     }
   }
@@ -122,7 +104,7 @@ const INLINE_ACTION =
   "relative font-semibold text-foreground underline underline-offset-4 after:absolute after:-inset-x-1 after:-inset-y-2 after:content-['']"
 
 // The answer under the field, in its polite status line: what is being checked, why the song was refused (with
-// Sign In when that is the way past it), or that it started, with the way to its progress. Null when idle
+// Sign In when that is the way past it). Null otherwise
 export const SubmissionStatus = ({
   submission,
 }: {
@@ -152,30 +134,6 @@ export const SubmissionStatus = ({
             </>
           )}
         </span>
-      </p>
-    )
-  }
-  if (submission.kind === 'started') {
-    return (
-      <p className='flex min-w-0 rise-in items-center gap-1.5 text-success'>
-        <CircleCheckIcon aria-hidden className='size-4 shrink-0' />
-        <span className='min-w-0 truncate'>
-          {submission.queued ? 'Queued' : 'Generating'}
-          {submission.title !== null && (
-            <span className='text-foreground'>
-              {' · '}
-              {submission.title}
-            </span>
-          )}
-        </span>
-        <button
-          type='button'
-          onClick={() => {
-            focusSong(submission.videoId)
-          }}
-          className={cn('ml-1 shrink-0', INLINE_ACTION)}>
-          View Progress
-        </button>
       </p>
     )
   }
