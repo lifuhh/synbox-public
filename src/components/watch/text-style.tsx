@@ -341,8 +341,8 @@ export const TextStyleButton = ({
       <PopoverContent
         side={corner ? 'top' : 'left'}
         align={corner ? 'end' : 'start'}
-        // Left of the header's button, clear of the panel's own edge (the button sits 4px inside it)
-        sideOffset={corner ? MENU_GAP : MENU_GAP + 4}
+        // Left of the header's button, clear of the panel's own edge (the button sits 8px inside it)
+        sideOffset={corner ? MENU_GAP : MENU_GAP + 8}
         collisionPadding={8}
         onOpenAutoFocus={(event) => {
           if (!fromKeyboardRef.current) {
