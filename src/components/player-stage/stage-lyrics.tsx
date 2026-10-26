@@ -851,6 +851,8 @@ const pullToTear = (stageHeight: number) => Math.max(40, 0.1 * stageHeight)
 const SETTLE_HOLD_MS = 1000
 // How long a Reset Positions counts as the cause of a room change
 const RESET_WINDOW_MS = 1000
+// A drop's places come to rest: the re-render that ends the drag, then a move's 200ms ease
+const SETTLE_AFTER_DROP_MS = 320
 const TAP_SLOP_PX = { mouse: 4, touch: 10 }
 
 interface Press {
@@ -1028,6 +1030,71 @@ const translationHandleOf = (layer: HTMLElement) =>
     '[data-lyric-translation] [data-lyrics-style-toggle]'
   )
 
+// Where the rows' handle goes so their drawn lines clear the translation on its own, as drawn now, by the gap: above it
+// (`below`: the translation is under them) or under it. Null when either isn't drawn
+const rowsTopClearing = (layer: HTMLElement, below: boolean) => {
+  const rows = rowsHandleOf(layer)
+  const handle = translationHandleOf(layer)
+  const text = rowsTextOf(layer)
+  if (!(rows && handle && text) || handle.offsetHeight === 0) {
+    return null
+  }
+  const rowsTop = offsetIn(rows, layer)
+  const top = offsetIn(handle, layer)
+  const gap = clearGap(layer.clientHeight)
+  return below
+    ? rowsTop + (top - gap - text.bottom)
+    : rowsTop + (top + handle.offsetHeight + gap - text.top)
+}
+
+// The vertical move an element's `translate` and `transform` add (the upper row's --upper-floor, the pair's
+// --pair-drop: Tailwind's translate-y-* sets `translate`): layout offsets leave both out
+const shiftOf = (element: Element) => {
+  const style = getComputedStyle(element)
+  const [, y = '0'] =
+    style.translate === 'none' ? [] : style.translate.split(' ')
+  const moved = Number.parseFloat(y) || 0
+  return style.transform === 'none'
+    ? moved
+    : moved + new DOMMatrixReadOnly(style.transform).m42
+}
+
+// The rows' drawn lines within the lyrics' layer, in layout units: their block also holds an empty reserve above a
+// one-row pair (room for the song's tallest lines) and the docked translation's slot, neither of which is the rows a
+// translation can overlap or be dropped onto (measured by the block, a translation let go below the lines docked
+// onto that empty reserve and moved them)
+const rowsTextOf = (layer: HTMLElement) => {
+  const rows = [
+    ...layer.querySelectorAll<HTMLElement>(
+      '[data-lyric-rows-area] [data-lyric-row]'
+    ),
+  ].filter((row) => row.offsetHeight > 0)
+  if (rows.length === 0) {
+    return null
+  }
+  const boxes = rows.map((row) => {
+    let top = 0
+    let at: Element | null = row
+    while (at instanceof HTMLElement && at !== layer) {
+      top += at.offsetTop
+      at = at.offsetParent
+    }
+    // Every transformed box from the row up to the layer, offset parent or not
+    for (
+      let up: Element | null = row;
+      up && up !== layer;
+      up = up.parentElement
+    ) {
+      top += shiftOf(up)
+    }
+    return { bottom: top + row.offsetHeight, top }
+  })
+  return {
+    bottom: Math.max(...boxes.map((box) => box.bottom)),
+    top: Math.min(...boxes.map((box) => box.top)),
+  }
+}
+
 // The translation on its own (`handle`) watched as it wraps taller or shorter, and as it first shows: overlapping the
 // rows, it is set clear of them on the side away from them (`place`: its new anchor), or, with no room on that side
 // (a layout saved overlapped before overlaps were docked), docked (`dock`). The two never stay overlapped, so
@@ -1039,13 +1106,11 @@ const keepClearOfRows = (
   dock: () => void
 ) => {
   const observer = new ResizeObserver(() => {
-    const rows = rowsHandleOf(layer)
+    const box = rowsTextOf(layer)
     const track = handleTrack(handle, layer)
-    if (!(rows && track) || handle.offsetHeight === 0) {
+    if (!(box && track) || handle.offsetHeight === 0) {
       return
     }
-    const rowsTop = offsetIn(rows, layer)
-    const box = { bottom: rowsTop + rows.offsetHeight, top: rowsTop }
     const top = offsetIn(handle, layer)
     if (top >= box.bottom || top + handle.offsetHeight <= box.top) {
       return
@@ -1110,6 +1175,9 @@ const useTranslationDock = (
   const drop = useRef<number | null>(null)
   // While the rows settle after Karaoke Style is switched, the centre they keep
   const holdCentre = useRef<{ centre: number; until: number } | null>(null)
+  // The translation let go partly over the rows with no room past them on that side: where the rows' handle goes
+  // instead (the least move that clears it), for the room change the drop is about to make
+  const rowsMove = useRef<{ below: boolean; until: number } | null>(null)
   const holdWhileSettling = useCallback(
     (layer: HTMLElement, rows: HTMLElement) => {
       const observer = new ResizeObserver(() => {
@@ -1153,14 +1221,21 @@ const useTranslationDock = (
     const at = rowsAt.current
     // Reset Positions just set where everything goes: that wins over keeping the rows where they were
     const reset = performance.now() - resetAt < RESET_WINDOW_MS
+    const moved = rowsMove.current
+    rowsMove.current = null
     if (rowsTrack && at !== null && !reset) {
       // Switching Karaoke Style on or off swaps one line's block for two rows of another height: the block keeps its
       // centre, so the sung line stays about where it was. A room change alone keeps the rows' top, so a dock or
-      // undock adds or takes the translation under them without moving them
+      // undock adds or takes the translation under them without moving them; a translation let go against them
+      // moves them by the least that clears it (`rowsMove`)
       const switched = before.twoLines !== twoLines
+      const clearing =
+        !switched && moved !== null && performance.now() < moved.until
+          ? rowsTopClearing(layer, moved.below)
+          : null
       const target = switched
         ? at.top + at.height / 2 - rows.offsetHeight / 2
-        : at.top
+        : (clearing ?? at.top)
       const anchor = clamp01((target - rowsTrack.base) / rowsTrack.free)
       setRowsAnchor(anchor)
       rowsTop = rowsTrack.base + anchor * rowsTrack.free
@@ -1250,14 +1325,11 @@ const useTranslationDock = (
     setDocked(false)
     setDragged(true)
   }
+  // The rows' drawn lines, not their block (rowsTextOf)
   const rowsBox = () => {
     const layer = layerRef.current
-    const rows = layer && rowsHandleOf(layer)
-    if (!(layer && rows)) {
-      return null
-    }
-    const top = offsetIn(rows, layer)
-    return { bottom: top + rows.offsetHeight, layer, top }
+    const text = layer && rowsTextOf(layer)
+    return layer && text ? { ...text, layer } : null
   }
   // The translation on its own, where it is drawn
   const translationBox = () => {
@@ -1280,28 +1352,60 @@ const useTranslationDock = (
       if (!(box && track)) {
         return
       }
-      const top = offsetIn(handle, box.layer)
-      const clear = clearOfRows(
-        top,
-        handle.offsetHeight,
-        box,
-        clearGap(box.layer.clientHeight)
-      )
-      if (clear === top) {
-        return
+      const { layer } = box
+      const top = offsetIn(handle, layer)
+      const gap = clearGap(layer.clientHeight)
+      const below = top + handle.offsetHeight / 2 >= (box.top + box.bottom) / 2
+      const clear = clearOfRows(top, handle.offsetHeight, box, gap)
+      if (clear !== top) {
+        const anchor = clamp01((clear - track.base) / track.free)
+        const placed = track.base + anchor * track.free
+        if (placed >= box.bottom || placed + handle.offsetHeight <= box.top) {
+          // Room past the rows on the side it was let go: it goes there
+          setAnchor(anchor)
+        } else {
+          // None (the rows reach the stage's edge on that side): the translation stays where it was put and the
+          // rows make way, by the least that clears it, rather than docking and moving them by a whole slot: the
+          // rows stay as near where they were put as they can. The room change the drop makes (away from the
+          // translation's home) keeps them there; without one they move now
+          const rows = rowsHandleOf(layer)
+          const rowsTrack = rows && handleTrack(rows, layer)
+          const rowsTop = rowsTopClearing(layer, below)
+          if (!(rowsTrack && rowsTop !== null)) {
+            setDocked(true)
+            return
+          }
+          rowsMove.current = {
+            below,
+            until: performance.now() + RESET_WINDOW_MS,
+          }
+          setRowsAnchor(clamp01((rowsTop - rowsTrack.base) / rowsTrack.free))
+        }
       }
-      const anchor = clamp01((clear - track.base) / track.free)
-      // No room to set it clear (the rows reach the stage's edge on that side): overlapping them, it docks, as the
-      // rows let go over it do
-      const placed = track.base + anchor * track.free
-      if (placed < box.bottom && placed + handle.offsetHeight > box.top) {
-        setDocked(true)
-        return
-      }
-      setAnchor(anchor)
+      // At rest the translation stands where its resting spacers put it, a little off where the drag let it go (the
+      // safe area at the stage's foot, not the drag's smaller edge), and eases there: where it comes to rest, if it
+      // is then within the gap of the rows' lines, the rows make way by the rest
+      setTimeout(() => {
+        const rows = rowsHandleOf(layer)
+        const rowsTrack = rows && handleTrack(rows, layer)
+        const text = rowsTextOf(layer)
+        const own = translationBox()
+        const settled = rowsTopClearing(layer, below)
+        if (!(rows && rowsTrack && text && own && settled !== null)) {
+          return
+        }
+        const near = below
+          ? own.top - text.bottom < gap - 1
+          : text.top - own.bottom < gap - 1
+        const apart = below ? own.top >= text.top : own.bottom <= text.bottom
+        if (near && apart) {
+          setRowsAnchor(clamp01((settled - rowsTrack.base) / rowsTrack.free))
+        }
+      }, SETTLE_AFTER_DROP_MS)
     },
     onOver: setOffered,
-    // The translation's centre over the rows' drawn block
+    // The translation's centre well inside the rows' drawn lines: by more than half its own height from either edge,
+    // so one let go at the stage's edge, only clipping the outer line there, is put beside them, not docked
     over: () => {
       const box = rowsBox()
       const own = translationBox()
@@ -1309,7 +1413,11 @@ const useTranslationDock = (
         return false
       }
       const centre = (own.top + own.bottom) / 2
-      return centre >= box.top && centre <= box.bottom
+      const inset = Math.min(
+        (own.bottom - own.top) / 2,
+        (box.bottom - box.top) / 2
+      )
+      return centre >= box.top + inset && centre <= box.bottom - inset
     },
   }
   // The rows dragged onto the translation on its own dock it as surely as the other way round: any overlap, since
