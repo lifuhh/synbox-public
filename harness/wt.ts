@@ -14,6 +14,7 @@ import {
   cpSync,
   existsSync,
   readFileSync,
+  realpathSync,
   rmSync,
   writeFileSync,
 } from 'node:fs'
@@ -93,6 +94,40 @@ const answers = async (port: number) => {
     reaches('::1', port),
   ])
   return open.some(Boolean)
+}
+
+// Whose server listens on the port: 'mine' when a listener's working directory is inside `dir`, 'other' when
+// every listener's is elsewhere (another session took the port after this worktree's server stopped), 'unknown'
+// when lsof can't tell. Read-only: the process is never touched
+const portOwner = (port: number, dir: string): 'mine' | 'other' | 'unknown' => {
+  const listeners = spawnSync(
+    'lsof',
+    ['-nP', `-iTCP:${port}`, '-sTCP:LISTEN', '-Fp'],
+    { encoding: 'utf-8' }
+  )
+  const pids = (listeners.stdout ?? '')
+    .split('\n')
+    .filter((line) => line.startsWith('p'))
+    .map((line) => line.slice(1))
+  if (pids.length === 0) {
+    return 'unknown'
+  }
+  const root = realpathSync(dir)
+  const cwds = pids.map((pid) => {
+    const out = spawnSync('lsof', ['-a', '-p', pid, '-d', 'cwd', '-Fn'], {
+      encoding: 'utf-8',
+    }).stdout
+    const line = (out ?? '').split('\n').find((l) => l.startsWith('n'))
+    return line === undefined ? null : line.slice(1)
+  })
+  if (
+    cwds.some(
+      (cwd) => cwd !== null && (cwd === root || cwd.startsWith(`${root}/`))
+    )
+  ) {
+    return 'mine'
+  }
+  return cwds.every((cwd) => cwd !== null) ? 'other' : 'unknown'
 }
 
 const start = (branch: string | undefined) => {
@@ -191,7 +226,8 @@ const finish = async (slug: string | undefined) => {
   const file = portFile(dir)
   if (existsSync(file)) {
     const port = Number(readFileSync(file, 'utf-8').trim())
-    if (await answers(port)) {
+    // The note outlives a server that died without clearing it, and the port may since be another session's
+    if ((await answers(port)) && portOwner(port, dir) !== 'other') {
       stop(
         `Its dev server still runs on port ${port}: stop the background task running \`wt serve\`, then finish`
       )
