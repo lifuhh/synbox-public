@@ -869,6 +869,25 @@ const runFlow = async (
   })
   const flowLog: Guard = { csp: log.csp, flow: label, writes: log.writes }
   await guard(context, origin, view.name, flowLog)
+  // A local run on WebKit: its reads from the API go through Playwright's own network stack. WebKit's (macOS
+  // Network.framework) tried HTTP/3 to Cloudflare and stalled 14-35s through this machine's VPN tunnels while Chromium
+  // and curl answered in under a second, failing phone flows on code that had passed (2026-10-26). Registered after the
+  // guard, so it runs first and hands writes back to it. A deployed copy keeps WebKit's own transport
+  if (
+    view.surface.engine === 'webkit' &&
+    origin.startsWith('http://localhost')
+  ) {
+    await context.route(/^https:\/\/api\.synbox\.io\//u, async (route) => {
+      if (route.request().method() !== 'GET') {
+        await route.fallback()
+        return
+      }
+      const response = await route.fetch().catch(() => null)
+      await (response === null
+        ? route.abort('failed')
+        : route.fulfill({ response }))
+    })
+  }
   // Every frame reports its policy violations; only the app's own documents count
   await context.exposeBinding('__smokeCsp', (source, what: string) => {
     if (source.frame.url().startsWith(origin)) {
