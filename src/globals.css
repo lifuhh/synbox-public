@@ -1153,6 +1153,14 @@
   padding-right: calc(1rem + var(--safe-right));
 }
 
+/* A sideways row inside a page-x page that slides out to the gutter's edge (never into a safe-area inset), its
+   first and last items still resting on the page's edge */
+@utility page-bleed-x {
+  margin-inline: calc(-1 * var(--page-gutter));
+  padding-inline: var(--page-gutter);
+  scroll-padding-inline: var(--page-gutter);
+}
+
 /* A box that eases to its content's height (--smooth-h, measured by the search page), clipped up and down only,
    so cards' hover surfaces still reach past its sides. Instant under reduced motion */
 @utility smooth-height {

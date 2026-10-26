@@ -39,6 +39,8 @@ import type {
 import type { CssVars } from '@/types'
 import { BAD_LINK, readFieldText } from '@/utils'
 
+import { SEARCH_EXAMPLES } from './search-examples'
+
 const Notice = ({ children }: { children: React.ReactNode }) => (
   <p className='rounded-md bg-muted/60 px-3 py-2 text-sm text-muted-foreground'>
     {children}
@@ -436,15 +438,15 @@ const SimilarSongs = ({
   )
 }
 
-// Two queries a tap away, which show that a mood works too. Each names one of the two broadest moods the backend
-// filters by (sad takes bittersweet songs too, happy takes hopeful ones) and nothing narrower, so both keep finding
-// songs as the library changes: a mood plus a theme or an artist ("calm songs about the night") can find none
-const EXAMPLES = ['Songs for a good cry', 'Songs to cheer you up']
-
+// Three queries a tap away, in one row the width of the field. On a phone the row runs to the screen's edges and
+// slides sideways, so a pill past the edge reads as more to see rather than wrapping under the others. The 4px of
+// room around the pills (py-1, sm:px-1, the gutter on a phone) keeps their focus ring inside the scrolling box
 const Examples = ({ onSearch }: { onSearch: (query: string) => void }) => (
-  <ul aria-label='Examples' className='flex flex-wrap gap-2'>
-    {EXAMPLES.map((example) => (
-      <li key={example}>
+  <ul
+    aria-label='Examples'
+    className='-my-1 no-scrollbar flex gap-2 overflow-x-auto overscroll-x-contain py-1 max-sm:page-bleed-x sm:-mx-1 sm:px-1'>
+    {SEARCH_EXAMPLES.map((example) => (
+      <li key={example} className='shrink-0'>
         <Button
           variant='outline'
           size='pill'
@@ -582,7 +584,7 @@ const SearchPage = () => {
             autoCorrect='off'
             spellCheck={false}
             placeholder={
-              roomy ? 'Song, artist or YouTube link' : 'Song or YouTube link'
+              roomy ? 'Song, Artist or YouTube Link' : 'Song or YouTube Link'
             }
             // A link pasted over the whole field needs no Search press: it names one video, not words to search
             onPaste={(e) => {

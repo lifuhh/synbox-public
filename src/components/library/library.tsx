@@ -278,7 +278,7 @@ const SearchField = ({
       onChange={(event) => {
         setQuery(event.target.value)
       }}
-      placeholder='Title, artist or a lyric'
+      placeholder='Title, Artist or a Lyric'
       enterKeyHint='search'
       autoComplete='off'
       className='h-10 w-full rounded-full border border-border bg-card pr-10 pl-9 text-base text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none [&::-webkit-search-cancel-button]:hidden'
