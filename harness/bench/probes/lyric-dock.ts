@@ -132,7 +132,7 @@ const drag = async (page: Page, selector: string, dy: number) => {
  * real finger isn't), so the drag reaches the same handlers a finger's does
  */
 const dispatchDrag = async (page: Page, selector: string, dy: number) => {
-  const fire = async (type: string, offset: number) =>
+  const fire = async (type: string, offset: number) => {
     await page.evaluate(
       ({ sel, kind, by }) => {
         const handle = document.querySelector<HTMLElement>(sel)
@@ -140,17 +140,18 @@ const dispatchDrag = async (page: Page, selector: string, dy: number) => {
           throw new Error(`no ${sel}`)
         }
         const r = handle.getBoundingClientRect()
-        const store = window as unknown as { benchDragFrom?: number }
+        // Where the press began, kept on the handle across the drag's calls
         if (kind === 'pointerdown') {
-          store.benchDragFrom = r.top + r.height / 2
+          handle.dataset.benchDragFrom = String(r.top + r.height / 2)
         }
+        const from = Number(handle.dataset.benchDragFrom ?? r.top)
         handle.dispatchEvent(
           new PointerEvent(kind, {
             bubbles: true,
             buttons: kind === 'pointerup' ? 0 : 1,
             cancelable: true,
             clientX: r.left + r.width / 2,
-            clientY: (store.benchDragFrom ?? r.top) + by,
+            clientY: from + by,
             isPrimary: true,
             pointerId: 1,
             pointerType: 'mouse',
@@ -159,6 +160,7 @@ const dispatchDrag = async (page: Page, selector: string, dy: number) => {
       },
       { by: offset, kind: type, sel: selector }
     )
+  }
   await fire('pointerdown', 0)
   for (let step = 1; step <= 20; step += 1) {
     // oxlint-disable-next-line eslint/no-await-in-loop -- one move a frame, as a hand drags
@@ -210,6 +212,47 @@ const karaokePage = async (
 
 const overlap = (a: Box | null, b: Box | null) =>
   a !== null && b !== null && a.bottom > b.top && a.top < b.bottom
+
+/** One keep case (see dockAudit): the rows nudged up, the translation dragged to the foot; what went wrong, if any */
+const keepCase = async (
+  surface: Surface,
+  url: string,
+  kase: 'room' | 'tight'
+): Promise<string[]> => {
+  const found: string[] = []
+  const { page, close } = await karaokePage(
+    surface,
+    url,
+    kase === 'room' ? { ...KARAOKE, lyricsFontSizeTwoLines: '0.6' } : KARAOKE
+  )
+  try {
+    await drag(page, ROWS, kase === 'room' ? -80 : -40)
+    const nudged = await boxes(page)
+    await dispatchDrag(page, TRANSLATION, 2000)
+    const end = await boxes(page)
+    const moved =
+      nudged.rowsText && end.rowsText
+        ? Math.abs(end.rowsText.top - nudged.rowsText.top)
+        : Number.POSITIVE_INFINITY
+    if (kase === 'room' && moved > KEEP_SLACK_PX) {
+      found.push(
+        `keep (room): dragging the translation to the foot moved the rows' lines ${Math.round(moved)}px (from ${Math.round(nudged.rowsText?.top ?? -1)}px to ${Math.round(end.rowsText?.top ?? -1)}px)`
+      )
+    }
+    if (end.docked) {
+      found.push(
+        `keep (${kase}): the translation let go at the foot, below the rows, docked under them (the rows' lines moved ${Math.round(moved)}px)`
+      )
+    } else if (overlap(end.rowsText, end.translation)) {
+      found.push(
+        `keep (${kase}): the translation at the foot rests over the rows' lines (lines ${JSON.stringify(end.rowsText)}, translation ${JSON.stringify(end.translation)})`
+      )
+    }
+  } finally {
+    await close()
+  }
+  return found
+}
 
 const dockAudit = async (
   surface: Surface,
@@ -284,44 +327,10 @@ const dockAudit = async (
   // - tight: the song's lines at their usual size, the rows near the foot: they make way by no more than needed
   for (const kase of ['room', 'tight'] as const) {
     // oxlint-disable-next-line eslint/no-await-in-loop -- one page at a time
-    const { page, close } = await karaokePage(
-      surface,
-      url,
-      kase === 'room' ? { ...KARAOKE, lyricsFontSizeTwoLines: '0.6' } : KARAOKE
-    )
-    try {
-      // oxlint-disable-next-line eslint/no-await-in-loop -- one step at a time
-      await drag(page, ROWS, kase === 'room' ? -80 : -40)
-      // oxlint-disable-next-line eslint/no-await-in-loop -- one step at a time
-      const nudged = await boxes(page)
-      // oxlint-disable-next-line eslint/no-await-in-loop -- one step at a time
-      await dispatchDrag(page, TRANSLATION, 2000)
-      // oxlint-disable-next-line eslint/no-await-in-loop -- one step at a time
-      const end = await boxes(page)
-      const moved =
-        nudged.rowsText && end.rowsText
-          ? Math.abs(end.rowsText.top - nudged.rowsText.top)
-          : Number.POSITIVE_INFINITY
-      if (kase === 'room' && moved > KEEP_SLACK_PX) {
-        values.rowsMovedByTranslation = 1
-        notes.push(
-          `keep (room): dragging the translation to the foot moved the rows' lines ${Math.round(moved)}px (from ${Math.round(nudged.rowsText?.top ?? -1)}px to ${Math.round(end.rowsText?.top ?? -1)}px)`
-        )
-      }
-      if (end.docked) {
-        values.rowsMovedByTranslation = 1
-        notes.push(
-          `keep (${kase}): the translation let go at the foot, below the rows, docked under them (the rows' lines moved ${Math.round(moved)}px)`
-        )
-      } else if (overlap(end.rowsText, end.translation)) {
-        values.rowsMovedByTranslation = 1
-        notes.push(
-          `keep (${kase}): the translation at the foot rests over the rows' lines (lines ${JSON.stringify(end.rowsText)}, translation ${JSON.stringify(end.translation)})`
-        )
-      }
-    } finally {
-      // oxlint-disable-next-line eslint/no-await-in-loop -- one page at a time
-      await close()
+    const found = await keepCase(surface, url, kase)
+    if (found.length > 0) {
+      values.rowsMovedByTranslation = 1
+      notes.push(...found)
     }
   }
 
