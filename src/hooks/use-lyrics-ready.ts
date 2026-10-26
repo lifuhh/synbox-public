@@ -1,5 +1,5 @@
 import { useAtomValue } from 'jotai'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router'
 
 import { parsePreviewVersion } from '@/components/lyrics-display/version-preview-banner'
@@ -7,7 +7,7 @@ import { parseLyricsText } from '@/components/player-stage/stage-lyrics'
 import { translationIsEnglishAtom } from '@/context/atoms'
 import { withoutTrace } from '@/lib/lyrics-api'
 import { parseLyricsDocument } from '@/lib/lyrics-document'
-import { loadLyricsFont } from '@/lib/lyrics-font'
+import { distinctCharacters, loadLyricsFont } from '@/lib/lyrics-font'
 import {
   useGetKaraokeById,
   useGetLyricsBySongId,
@@ -39,13 +39,21 @@ export const useLyricsReady = (videoId: string) => {
     settled && !english
       ? withoutTrace(parseLyricsDocument(lyrics.data)?.chi.join('') ?? '')
       : ''
-  const fontText = settled
-    ? [
-        doc.labelled_full_lyrics,
-        doc.romaji,
-        karaoke.data ? JSON.stringify(karaoke.data.lines) : undefined,
-      ].join('')
-    : null
+  // Once per song's data, not per render: the timing's text is large, and only its distinct characters matter
+  const karaokeData = karaoke.data
+  const fontText = useMemo(
+    () =>
+      settled
+        ? distinctCharacters(
+            [
+              doc.labelled_full_lyrics,
+              doc.romaji,
+              karaokeData ? JSON.stringify(karaokeData.lines) : undefined,
+            ].join('')
+          )
+        : null,
+    [settled, doc.labelled_full_lyrics, doc.romaji, karaokeData]
+  )
   useEffect(() => {
     let current = true
     const load = async (text: string) => {
