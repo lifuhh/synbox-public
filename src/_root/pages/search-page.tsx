@@ -565,7 +565,7 @@ const SearchPage = () => {
             ref={field}
             name='q'
             defaultValue={query}
-            aria-label='Search songs or paste a YouTube link'
+            aria-label='Search Songs'
             enterKeyHint='search'
             autoCapitalize='off'
             autoCorrect='off'
