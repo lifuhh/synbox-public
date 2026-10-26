@@ -990,6 +990,18 @@ const keepClearOfRows = (
   }
 }
 
+// Calls `read` when the rows or the stage resize, and when a move's ease ends; returns the cleanup
+const watchRows = (layer: HTMLElement, rows: HTMLElement, read: () => void) => {
+  const observer = new ResizeObserver(read)
+  observer.observe(layer)
+  observer.observe(rows)
+  layer.addEventListener('transitionend', read)
+  return () => {
+    observer.disconnect()
+    layer.removeEventListener('transitionend', read)
+  }
+}
+
 // Whether Karaoke Style's translation is docked under the rows (one choice for every song), whether a drag has it
 // over the rows right now (where letting go docks it), and placing it on its own again. Docked, the rows' room is the
 // whole stage; on its own, the translation can go anywhere on the stage and the rows keep the room under its home
@@ -1002,8 +1014,8 @@ const useTranslationDock = (
   const [docked, setDocked] = useAtom(translationDockedAtom)
   const setAnchor = useSetAtom(lyricsTranslationAnchorAtom)
   const resetAt = useAtomValue(positionsResetAtAtom)
-  // Subscribed, not only set: a new anchor re-renders this hook, so the rows' place below is read again after they move
-  const [, setRowsAnchor] = useAtom(
+  // Subscribed, not only set: a new anchor re-reads the rows' place below after they move
+  const [rowsAnchor, setRowsAnchor] = useAtom(
     usePortrait() ? lyricsAnchorPortraitAtom : lyricsAnchorAtom
   )
   const [offered, setOffered] = useState(false)
@@ -1102,25 +1114,35 @@ const useTranslationDock = (
     const rows = layer && rowsHandleOf(layer)
     return layer && rows ? holdWhileSettling(layer, rows) : undefined
   }, [layerRef, holdWhileSettling])
-  // Where the rows are drawn: read after the effect above (so that one sees where they were before the room or the
-  // layout changed), after every move of the rows (`rowsAnchor`, which re-renders only their own block otherwise),
-  // and again when a move's 200ms ease ends, as a read straight after a move can catch them mid-way
+  // Where the rows are drawn, kept for the effect above (it needs where they were before the room or the layout
+  // changed). Read only when something moved or resized them: their anchor, the room, the layout, a resize of the rows
+  // or the stage (full screen, a line that wraps), and the end of a move's 200ms ease (a read straight after a move
+  // can catch them mid-way). At most once a frame, after paint: a read on every render forced a layout each time
+  // (~600 offsetTop reads over 12 full-screen toggles, 2026-10-26)
+  const frame = useRef(0)
   const readRows = useCallback(() => {
-    const layer = layerRef.current
-    const rows = layer && rowsHandleOf(layer)
-    rowsAt.current =
-      layer && rows
-        ? { height: rows.offsetHeight, top: offsetIn(rows, layer) }
-        : null
+    cancelAnimationFrame(frame.current)
+    frame.current = requestAnimationFrame(() => {
+      const layer = layerRef.current
+      const rows = layer && rowsHandleOf(layer)
+      rowsAt.current =
+        layer && rows
+          ? { height: rows.offsetHeight, top: offsetIn(rows, layer) }
+          : null
+    })
   }, [layerRef])
-  useLayoutEffect(readRows)
+  useEffect(readRows, [readRows, rowsAnchor, room, twoLines])
   useEffect(() => {
     const layer = layerRef.current
-    layer?.addEventListener('transitionend', readRows)
-    return () => {
-      layer?.removeEventListener('transitionend', readRows)
-    }
+    const rows = layer && rowsHandleOf(layer)
+    return layer && rows ? watchRows(layer, rows, readRows) : undefined
   }, [layerRef, readRows])
+  useEffect(
+    () => () => {
+      cancelAnimationFrame(frame.current)
+    },
+    []
+  )
   // The translation on its own wraps taller or shorter as the lines change, growing about its place: next to the rows
   // that could grow it into them. When it does, it eases back clear of them, away from them, by as much (never cut
   // off: its room is the stage)
