@@ -834,8 +834,20 @@
     transition: none;
   }
 
+  /* Two lines' height, as its home keeps (--stagger-split), with a one-line translation centred in it: a change
+     between one and two lines grows and shrinks about the middle, and nothing around it moves. As wide as
+     reads well: 85% of the stage, up to about 65 characters (34 of its sizes) */
   & [data-lyrics-style-toggle] {
-    max-width: 70%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-height: calc(3 * --theme(--text-lyric-stagger-translation));
+    max-width: min(85%, calc(34 * --theme(--text-lyric-stagger-translation)));
+  }
+
+  /* A Chinese translation's rows stand taller (leading-loose) */
+  & [data-lyrics-style-toggle]:has(.leading-loose) {
+    min-height: calc(4 * --theme(--text-lyric-stagger-translation));
   }
 
   & .anchor-spacer {
