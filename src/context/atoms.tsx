@@ -289,9 +289,7 @@ export const lyricsStyleSourceAtom = atom<LyricsStyleSource | null>((get) => {
 // Where the next change goes. Switching never discards anything: a song's own fields stay until a change to
 // that field for All Songs, Reset This Song to My Default, or Save as My Default
 export const lyricsStyleScopeAtom = atom(
-  (get): LyricsStyleScope => {
-    return get(songLyricsStyleAtom)?.scope ?? 'all'
-  },
+  (get): LyricsStyleScope => get(songLyricsStyleAtom)?.scope ?? 'all',
   (get, set, scope: LyricsStyleScope) => {
     const song = get(songLyricsStyleAtom)
     if (song !== null) {

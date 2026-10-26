@@ -33,6 +33,12 @@ beforeEach(() => {
   localStorage.clear()
 })
 
+// Everything kept on the device, to compare before and after
+const stored = () =>
+  JSON.stringify(
+    Object.keys(localStorage).map((key) => [key, localStorage.getItem(key)])
+  )
+
 test('a song keeps its own style; other songs follow the defaults', () => {
   const store = createStore()
   store.set(lyricsThemeIdAtom, 'amethyst')
@@ -111,7 +117,7 @@ test("a shared link's style shows for the visit without touching the viewer's ow
   store.sub(lyricsThemeIdAtom, () => {})
   store.set(lyricsStyleSongAtom, 'songA')
   store.set(lyricsThemeIdAtom, 'amethyst')
-  const saved = JSON.stringify({ ...localStorage })
+  const saved = stored()
 
   // Opening the link: shown, nothing stored, and the song still has no style of its own
   store.set(showSharedLyricsStyleAtom, sent)
@@ -119,7 +125,7 @@ test("a shared link's style shows for the visit without touching the viewer's ow
     fontSize: 1.25,
     themeId: 'lemon',
   })
-  expect(JSON.stringify({ ...localStorage })).toBe(saved)
+  expect(stored()).toBe(saved)
   expect(store.get(lyricsStyleSourceAtom)).toBe('default')
   expect(store.get(lyricsStyleScopeAtom)).toBe('all')
 
