@@ -8,6 +8,7 @@ import { toast } from '@/components/ui/use-toast'
 import {
   applyLyricsTemplateAtom,
   applySongLyricsStyleToAllAtom,
+  resetLyricsPositionsAtom,
   deleteLyricsTemplateAtom,
   lyricsStyleAtom,
   lyricsStyleScopeAtom,
@@ -58,6 +59,7 @@ export const LyricsStyleScopeSection = () => {
   const [scope, setScope] = useAtom(lyricsStyleScopeAtom)
   const source = useAtomValue(lyricsStyleSourceAtom)
   const saveAsDefault = useSetAtom(applySongLyricsStyleToAllAtom)
+  const resetPositions = useSetAtom(resetLyricsPositionsAtom)
   const resetSong = useSetAtom(resetSongLyricsStyleAtom)
   if (source === null) {
     return null
@@ -124,6 +126,18 @@ export const LyricsStyleScopeSection = () => {
           </button>
         </div>
       )}
+      {/* Where the lyrics and their translation sit, whatever else the style is: back to the start in one tap */}
+      <button
+        type='button'
+        onClick={() => {
+          offerUndo('Positions Reset', resetPositions())
+        }}
+        className={cn(
+          TEXT_BUTTON,
+          'bg-secondary text-foreground hover:bg-accent'
+        )}>
+        Reset Positions
+      </button>
     </section>
   )
 }

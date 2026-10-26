@@ -52,8 +52,6 @@ const liftMinHeight = (lifts: boolean, dragging: boolean) => {
 
 interface DragStart {
   pointerY: number
-  // The handle's centre from the lyrics' layer's top, in layout units (dock only)
-  centre: number
   slop: number
   anchor: number
   range: number
@@ -72,16 +70,16 @@ interface DraggableLyricsProps {
   anchorAtom?: WritableAtom<number, [number], void>
   // Whether the block keeps clear of the home indicator; a block at the top of the stage has nothing to clear
   lifts?: boolean
-  // Karaoke Style's translation, which docks under the rows when let go over them: `over` says whether a handle
-  // centred this far down the lyrics' layer is over them, `onOver` as the drag crosses onto them or off, `onDrop`
-  // when it is let go, with whether it was over them and its handle
+  // Karaoke Style's translation and rows, which dock together when one is let go over the other: `over` says
+  // whether they overlap where they are drawn now, `onOver` as the drag crosses onto the other or off, `onDrop` when
+  // it is let go, with whether it was over the other and its handle
   dock?: Dock
-  // Drawn as the drop target: the translation is dragged over this block
+  // Drawn as the drop target: the other block is dragged over this one
   targeted?: boolean
 }
 
 export interface Dock {
-  over: (centre: number) => boolean
+  over: () => boolean
   onOver: (over: boolean) => void
   onDrop: (over: boolean, handle: HTMLElement) => void
 }
@@ -174,14 +172,8 @@ export const DraggableLyrics = ({
     // Start from where the block is drawn, which the spacers' minimum
     // heights can keep off the saved anchor
     const room = layer.clientHeight - block.offsetHeight
-    const handle = event.currentTarget
-    const lyricLayer = handle.closest<HTMLElement>('[data-lyric-layer]')
     dragRef.current = {
       anchor: room > 0 ? clamp01(block.offsetTop / room) : anchor,
-      centre:
-        lyricLayer === null
-          ? 0
-          : offsetIn(handle, lyricLayer) + handle.offsetHeight / 2,
       moved: false,
       pointerY: pagePoint(event).y,
       range: Math.max(1, room),
@@ -206,7 +198,9 @@ export const DraggableLyrics = ({
     const next = clamp01(drag.anchor + delta / drag.range)
     setDragAnchor(next)
     if (dock) {
-      const now = dock.over(drag.centre + (next - drag.anchor) * drag.range)
+      // Where both are drawn now (the last move's place, a frame behind): the spacers' least heights keep a block
+      // off where its anchor alone would put it, so the anchor is no measure of it
+      const now = dock.over()
       if (now !== over) {
         setOver(now)
         dock.onOver(now)
@@ -225,9 +219,11 @@ export const DraggableLyrics = ({
       setSavedAnchor(anchor)
       setDragAnchor(null)
       if (dock) {
+        // Measured where it was let go, not as of the last move
+        const dropped = dock.over()
         setOver(false)
         dock.onOver(false)
-        dock.onDrop(over, event.currentTarget)
+        dock.onDrop(dropped, event.currentTarget)
       }
       layout.onDragChange(false)
       // A drag that ends over the video must not also count as a tap on it
