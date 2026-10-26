@@ -1,5 +1,6 @@
 import {
   ArrowUpRightIcon,
+  LinkIcon,
   LoaderCircleIcon,
   SearchIcon,
   XIcon,
@@ -16,6 +17,8 @@ import {
 } from '@/lib/react-query/queries-and-mutations'
 import type { LibraryListSong } from '@/lib/synbox-flask/discovery'
 import { matchTitles } from '@/lib/title-match'
+import { BAD_LINK, readFieldText } from '@/utils'
+import type { FieldText } from '@/utils'
 import { cn } from '@/utils/cn'
 
 const MAX_SONGS = 6
@@ -47,6 +50,8 @@ interface Row {
   target: string
   song?: { videoId: string; title: string; thumbnailUrl: string }
   label?: string
+  // A pasted link's row: it opens what the link names
+  link?: boolean
 }
 
 // One row's face: a song's picture and title, a row that leaves the app (its link opens the new tab), or an action
@@ -91,20 +96,55 @@ const RowBody = ({
       </a>
     )
   }
+  const Icon = row.link === true ? LinkIcon : SearchIcon
   return (
     <>
       <span className='grid w-14 shrink-0 place-items-center text-muted-foreground'>
-        <SearchIcon aria-hidden className='size-4' />
+        <Icon aria-hidden className='size-4' />
       </span>
       <span className='min-w-0 flex-1 truncate'>{row.label}</span>
     </>
   )
 }
 
+// A pasted link's one row: our own song opens in place, a YouTube video on the Search page (to play or generate)
+const linkRows = (text: FieldText, typed: string): Row[] => {
+  if (text.kind === 'own') {
+    return [{ label: 'Open Song', link: true, target: text.path }]
+  }
+  if (text.kind === 'video') {
+    return [
+      {
+        label: 'Open Video',
+        link: true,
+        target: `/search?q=${encodeURIComponent(typed)}`,
+      },
+    ]
+  }
+  return []
+}
+
+// What the list's polite live region says: the link's row (or why there is none), or the songs found
+const liveText = (
+  isLink: boolean,
+  rows: Row[],
+  searching: boolean,
+  found: number
+) => {
+  if (isLink) {
+    return rows[0]?.label ?? BAD_LINK
+  }
+  if (searching) {
+    return 'Searching'
+  }
+  return `${found} ${found === 1 ? 'song' : 'songs'}`
+}
+
 // What the dropdown lists while the field has text. At once: the karaoke songs (the mic badge) whose title or
 // channel holds every word. Once typing pauses: the library's ranked search too (the Search page's), karaoke songs
 // only, with a Searching… row meanwhile. Then See All Results (the Search page) and Search on YouTube (a new tab).
-// Mounted only while open, so a page that never searches never loads the list
+// A pasted link lists one row instead, which opens it (a YouTube video on the Search page, to play or generate), and
+// asks no search. Mounted only while open, so a page that never searches never loads the list
 const Results = ({
   query,
   active,
@@ -124,13 +164,15 @@ const Results = ({
   inset: boolean
 }) => {
   const typed = query.trim()
+  const text = readFieldText(typed)
+  const isLink = text.kind !== 'search' && text.kind !== 'empty'
   const settled = useSettled(typed, SEARCH_DELAY_MS)
-  const asked = settled.length >= SEARCH_MIN_CHARS ? settled : ''
+  const asked = !isLink && settled.length >= SEARCH_MIN_CHARS ? settled : ''
   const library = useSearchLibrary(asked)
   const { songs } = useGallerySongs()
   const karaoke = songs.filter((song) => song.karaoke)
   const karaokeIds = new Set(karaoke.map((song) => song.videoId))
-  const matches = matchTitles(karaoke, typed, MAX_SONGS)
+  const matches = isLink ? [] : matchTitles(karaoke, typed, MAX_SONGS)
   const seen = new Set(matches.map((song) => song.videoId))
   // The ranked answer only for the words on screen, never a stale query's
   const ranked =
@@ -154,19 +196,22 @@ const Results = ({
     })),
   ].slice(0, MAX_SONGS)
   const searching =
+    !isLink &&
     typed.length >= SEARCH_MIN_CHARS &&
     (settled !== typed || library.isFetching)
-  const rows: Row[] = [
-    ...found,
-    {
-      label: 'See All Results',
-      target: `/search?q=${encodeURIComponent(typed)}`,
-    },
-    {
-      label: 'Search on YouTube',
-      target: `${EXTERNAL}${youtubeSearchUrl(typed)}`,
-    },
-  ]
+  const rows: Row[] = isLink
+    ? linkRows(text, typed)
+    : [
+        ...found,
+        {
+          label: 'See All Results',
+          target: `/search?q=${encodeURIComponent(typed)}`,
+        },
+        {
+          label: 'Search on YouTube',
+          target: `${EXTERNAL}${youtubeSearchUrl(typed)}`,
+        },
+      ]
   const rowClass = (index: number) =>
     cn(
       'flex h-11 cursor-pointer items-center gap-3 px-3 text-sm text-foreground touch:h-12',
@@ -176,9 +221,7 @@ const Results = ({
   return (
     <div className={cn('overflow-y-auto overscroll-contain', className)}>
       <p className='sr-only' aria-live='polite'>
-        {searching
-          ? 'Searching'
-          : `${found.length} ${found.length === 1 ? 'song' : 'songs'}`}
+        {liveText(isLink, rows, searching, found.length)}
       </p>
       {searching && (
         <div
@@ -193,13 +236,13 @@ const Results = ({
           Searching…
         </div>
       )}
-      {!searching && found.length === 0 && (
+      {!searching && (isLink ? rows.length : found.length) === 0 && (
         <p
           className={cn(
             'flex h-11 items-center px-3 text-sm text-muted-foreground touch:h-12',
             inset && 'mx-2 px-3.5'
           )}>
-          No karaoke songs found
+          {text.kind === 'bad' ? BAD_LINK : 'No karaoke songs found'}
         </p>
       )}
       <ul
@@ -227,7 +270,9 @@ const Results = ({
               }}
               className={cn(
                 rowClass(index),
-                index === found.length && 'mt-1 border-t border-border pt-1'
+                !isLink &&
+                  index === found.length &&
+                  'mt-1 border-t border-border pt-1'
               )}>
               <RowBody row={row} onPick={onPick} />
             </li>
@@ -345,7 +390,10 @@ export const TopbarSearch = ({ variant }: { variant: 'inline' | 'button' }) => {
       className='relative min-w-0 flex-1'
       onSubmit={(event) => {
         event.preventDefault()
-        if (query.trim() !== '') {
+        const text = readFieldText(query)
+        if (text.kind === 'own') {
+          pick(text.path)
+        } else if (text.kind !== 'empty') {
           pick(`/search?q=${encodeURIComponent(query.trim())}`)
         }
       }}>
@@ -366,7 +414,9 @@ export const TopbarSearch = ({ variant }: { variant: 'inline' | 'button' }) => {
           open && active >= 0 ? optionId(active) : undefined
         }
         enterKeyHint='search'
-        placeholder='Search'
+        placeholder={
+          panel ? 'Search or paste a link' : 'Search or paste a YouTube link'
+        }
         value={query}
         onChange={(event) => {
           setQuery(event.target.value)
