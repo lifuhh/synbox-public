@@ -79,8 +79,8 @@ let running = false
 let again = false
 
 // Sends the queued changes, then takes the account's library with any changes still queued applied on top.
-// One run at a time; a call during a run makes it go round once more
-const syncLibrary = async (store: Store) => {
+// One run at a time; a call during a run makes it go round once more. Also run by the Library page's refresh
+export const syncLibrary = async (store: Store) => {
   if (running) {
     again = true
     return

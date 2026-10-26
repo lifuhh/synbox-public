@@ -10,7 +10,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { ComponentType, MouseEvent } from 'react'
 import { Link, useLocation } from 'react-router'
 
-import { requestHomeRefresh } from '@/lib/home-refresh'
+import { requestPageRefresh } from '@/lib/home-refresh'
 import { resumeSongAtom } from '@/lib/listening/store'
 import { applyWaitingUpdate, isInstalledPhone } from '@/lib/pwa'
 import { scrollMotion } from '@/lib/reduced-motion'
@@ -75,6 +75,8 @@ const pageScroller = () =>
 
 // Within this many pixels of the top counts as at the top (iOS reports a pull past the top as negative)
 const TOP_SLACK_PX = 2
+// The tabs whose page refreshes on a tap at its top (page-refresh.tsx)
+const REFRESHING_TABS = new Set(['/', '/library'])
 
 // The tabs and the mini bar above them float over the home indicator, 0.5rem in from the screen's sides as Spotify's bar
 export const DOCK =
@@ -171,6 +173,7 @@ const TabBar = () => {
       atTop,
       current,
       home: to === '/',
+      refreshes: REFRESHING_TABS.has(to),
       sinceLastTapMs:
         previous?.to === to ? now - previous.at : Number.POSITIVE_INFINITY,
     })
@@ -181,8 +184,12 @@ const TabBar = () => {
     if (action === 'update' && applyWaitingUpdate()) {
       return
     }
-    // Nothing to swap in: Home already at the top refreshes its lists instead (home-refresh.tsx)
-    if (action === 'update' && atTop && requestHomeRefresh()) {
+    // Nothing to swap in: the page already at its top refreshes instead (page-refresh.tsx)
+    if (
+      (action === 'update' || action === 'refresh') &&
+      atTop &&
+      requestPageRefresh(to)
+    ) {
       return
     }
     scroller?.scrollTo({ behavior: scrollMotion(), top: 0 })

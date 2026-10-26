@@ -7,6 +7,7 @@ const tap = (over: Partial<Parameters<typeof tabTap>[0]>) =>
     atTop: false,
     current: true,
     home: true,
+    refreshes: false,
     sinceLastTapMs: Number.POSITIVE_INFINITY,
     ...over,
   })
@@ -33,5 +34,12 @@ describe('tabTap', () => {
   test('other tabs never update: at the top their link keeps its old behaviour', () => {
     expect(tap({ atTop: true, home: false })).toBe('navigate')
     expect(tap({ home: false, sinceLastTapMs: 100 })).toBe('scroll')
+  })
+
+  test('Library at the top, or tapped twice, refreshes without the update swap; scrolled down it goes to the top', () => {
+    const library = { home: false, refreshes: true }
+    expect(tap({ ...library, atTop: true })).toBe('refresh')
+    expect(tap({ ...library, sinceLastTapMs: 250 })).toBe('refresh')
+    expect(tap(library)).toBe('scroll')
   })
 })

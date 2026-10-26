@@ -44,7 +44,7 @@ const LandingPage = () => {
     <section
       ref={setBox}
       data-scroll-top
-      data-home-page
+      data-refresh-page
       data-rise={rise || undefined}
       className='flex flex-1 flex-col overflow-x-hidden overflow-y-scroll page-x-md'>
       <title>Synbox</title>

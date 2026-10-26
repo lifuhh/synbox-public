@@ -54,21 +54,21 @@ export type LibraryTab = 'bookmarks' | 'playlists' | 'generated' | 'history'
 
 const TABS: { id: LibraryTab; label: string; empty: string }[] = [
   {
-    empty: 'Bookmark a song from its player.',
+    empty: 'Bookmark a song from its player',
     id: 'bookmarks',
     label: 'Bookmarks',
   },
   {
-    empty: 'Save a song to a playlist from its menu.',
+    empty: 'Save a song to a playlist from its menu',
     id: 'playlists',
     label: 'Playlists',
   },
   {
-    empty: 'Songs you generate show up here.',
+    empty: 'Songs you generate show up here',
     id: 'generated',
     label: 'Generated',
   },
-  { empty: 'Songs you play show up here.', id: 'history', label: 'History' },
+  { empty: 'Songs you play show up here', id: 'history', label: 'History' },
 ]
 
 const isLibraryTab = (value: string): value is LibraryTab =>
@@ -299,8 +299,10 @@ const SearchField = ({
   )
 }
 
+// Centred in whatever height the list leaves (the menu's panel, the page down to the dock), as Spotify's and Apple
+// Music's empty libraries
 const Empty = ({ children }: { children: ReactNode }) => (
-  <p className='px-4 py-10 text-center text-sm text-pretty text-muted-foreground'>
+  <p className='flex flex-1 items-center justify-center px-4 py-10 text-center text-sm text-pretty text-muted-foreground'>
     {children}
   </p>
 )
@@ -309,10 +311,10 @@ const Empty = ({ children }: { children: ReactNode }) => (
 const emptyText = (library: Library, tab: LibraryTab) => {
   const query = library.deferredQuery.trim()
   if (query !== '') {
-    return `No matches for “${query}”.`
+    return `No matches for “${query}”`
   }
   if (!library.online && tab !== 'playlists') {
-    return 'Nothing here is saved for offline.'
+    return 'Nothing here is saved for offline'
   }
   return TABS.find(({ id }) => id === tab)?.empty
 }
@@ -413,7 +415,7 @@ export const LibraryView = ({
   const panel = cn(
     'mt-0 flex flex-col',
     menu && 'min-h-0 [grid-area:1/1] data-[state=inactive]:invisible',
-    !menu && 'mx-auto w-full max-w-xl'
+    !menu && 'mx-auto w-full max-w-xl flex-1'
   )
   const list = menu
     ? 'min-h-0 overflow-y-auto overscroll-contain p-2'
@@ -447,23 +449,23 @@ export const LibraryView = ({
           library.setTab(value)
         }
       }}
-      className={cn('flex flex-col', menu && 'min-h-0')}>
+      className={cn('flex flex-col', menu ? 'min-h-0' : 'flex-1')}>
+      {/* The page starts with its controls, at the Search page's rhythm: the dock already says Library, so the
+          title is for screen readers only, and this header is what the page measures to tell the controls stuck */}
       {!menu && (
-        <header
-          ref={headerRef}
-          className='mx-auto w-full max-w-xl px-4 pt-page-top pb-1 text-center'>
-          <h1 className='text-base font-semibold text-foreground'>Library</h1>
-          <SyncStatusLine library={library} />
+        <header ref={headerRef} className='pt-page-top'>
+          <h1 className='sr-only'>Library</h1>
         </header>
       )}
-      <div ref={barRef} className={menu ? 'p-3 pb-1' : 'sticky-under-topbar'}>
+      <div
+        ref={barRef}
+        className={menu ? 'p-3 pb-1' : 'sticky-under-topbar -mt-2'}>
+        {/* Tabs first, then the search that filters them, then the offline copy's quiet status */}
         <div
           className={cn(
             'flex flex-col gap-2',
-            !menu && 'mx-auto w-full max-w-xl px-4 py-2'
+            !menu && 'mx-auto w-full max-w-xl px-4 pt-2'
           )}>
-          {menu && <SyncStatusLine library={library} className='pb-1' />}
-          <SearchField library={library} />
           {/* On the narrowest phones the four tabs scroll sideways rather than clip */}
           <div className='no-scrollbar overflow-x-auto rounded-full'>
             <TabsList
@@ -476,12 +478,17 @@ export const LibraryView = ({
               ))}
             </TabsList>
           </div>
+          <SearchField library={library} />
+        </div>
+        <div className={cn(!menu && 'mx-auto w-full max-w-xl px-4 pb-2')}>
+          <SyncStatusLine library={library} className='pt-2' />
         </div>
       </div>
       <div
         className={cn(
-          menu &&
-            'grid min-h-0 grid-cols-[minmax(0,1fr)] grid-rows-[minmax(0,1fr)]'
+          menu
+            ? 'grid min-h-0 grid-cols-[minmax(0,1fr)] grid-rows-[minmax(0,1fr)]'
+            : 'flex flex-1 flex-col'
         )}>
         {library.tabs.map(({ id }) => (
           <TabsContent
