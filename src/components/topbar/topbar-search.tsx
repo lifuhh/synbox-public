@@ -18,6 +18,7 @@ import {
 import type { LibraryListSong } from '@/lib/synbox-flask/discovery'
 import { matchTitles } from '@/lib/title-match'
 import { BAD_LINK, readFieldText } from '@/utils'
+import type { FieldText } from '@/utils'
 import { cn } from '@/utils/cn'
 
 const MAX_SONGS = 6
@@ -106,6 +107,39 @@ const RowBody = ({
   )
 }
 
+// A pasted link's one row: our own song opens in place, a YouTube video on the Search page (to play or generate)
+const linkRows = (text: FieldText, typed: string): Row[] => {
+  if (text.kind === 'own') {
+    return [{ label: 'Open Song', link: true, target: text.path }]
+  }
+  if (text.kind === 'video') {
+    return [
+      {
+        label: 'Open Video',
+        link: true,
+        target: `/search?q=${encodeURIComponent(typed)}`,
+      },
+    ]
+  }
+  return []
+}
+
+// What the list's polite live region says: the link's row (or why there is none), or the songs found
+const liveText = (
+  isLink: boolean,
+  rows: Row[],
+  searching: boolean,
+  found: number
+) => {
+  if (isLink) {
+    return rows[0]?.label ?? BAD_LINK
+  }
+  if (searching) {
+    return 'Searching'
+  }
+  return `${found} ${found === 1 ? 'song' : 'songs'}`
+}
+
 // What the dropdown lists while the field has text. At once: the karaoke songs (the mic badge) whose title or
 // channel holds every word. Once typing pauses: the library's ranked search too (the Search page's), karaoke songs
 // only, with a Searching… row meanwhile. Then See All Results (the Search page) and Search on YouTube (a new tab).
@@ -165,23 +199,8 @@ const Results = ({
     !isLink &&
     typed.length >= SEARCH_MIN_CHARS &&
     (settled !== typed || library.isFetching)
-  const linkRows = (): Row[] => {
-    if (text.kind === 'own') {
-      return [{ label: 'Open Song', link: true, target: text.path }]
-    }
-    if (text.kind === 'video') {
-      return [
-        {
-          label: 'Open Video',
-          link: true,
-          target: `/search?q=${encodeURIComponent(typed)}`,
-        },
-      ]
-    }
-    return []
-  }
   const rows: Row[] = isLink
-    ? linkRows()
+    ? linkRows(text, typed)
     : [
         ...found,
         {
@@ -202,9 +221,7 @@ const Results = ({
   return (
     <div className={cn('overflow-y-auto overscroll-contain', className)}>
       <p className='sr-only' aria-live='polite'>
-        {searching
-          ? 'Searching'
-          : `${found.length} ${found.length === 1 ? 'song' : 'songs'}`}
+        {liveText(isLink, rows, searching, found.length)}
       </p>
       {searching && (
         <div

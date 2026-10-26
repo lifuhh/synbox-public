@@ -176,7 +176,7 @@ const LinkedVideo = ({ videoId }: { videoId: string }) => {
   const lyrics = useGetLyricsBySongId(videoId)
   if (video.error) {
     return video.error.message.startsWith('No video found') ? (
-      <Notice>This video isn’t on YouTube.</Notice>
+      <Notice>No video at this link. Paste another one.</Notice>
     ) : (
       <Failed
         what="Couldn't look up this link."
