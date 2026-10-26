@@ -30,8 +30,6 @@ const setup = async () => {
     DB: db,
     GOOGLE_CLIENT_ID: 'x',
     GOOGLE_CLIENT_SECRET: 'x',
-    GUEST_DAILY_LIMIT: '1',
-    GUEST_DAILY_TOTAL: '20',
     INTERNAL_SECRET: 'internal',
     NETWORK_DAILY_LIMIT: '30',
     REPORTS_FIXER_TOKEN: TOKEN,

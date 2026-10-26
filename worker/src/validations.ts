@@ -1,5 +1,5 @@
-import { DAY_MS, ownLimits } from './quota'
-import type { Limits, Owner } from './quota'
+import { cappedOwner, DAY_MS } from './quota'
+import type { Owner } from './quota'
 
 // Song checks (the backend's /validate, which downloads the song) per rolling 24 hours, for the owners songs are
 // capped for: a guest, or an account under the default limit. Admins and accounts with an override have none
@@ -37,13 +37,12 @@ const slotFree = (column: string) => `(?4 = 0 or (
 export const countValidation = async (
   db: D1Database,
   request: ValidationRequest,
-  limits: Limits,
   validationLimits: ValidationLimits,
   now = new Date()
 ): Promise<Counted> => {
   const { owner } = request
-  const own = await ownLimits(db, owner, limits)
-  if (own === null) {
+  const capped = await cappedOwner(db, owner)
+  if (capped === null) {
     return { outcome: 'forbidden' }
   }
   const column = COLUMN[owner.kind]
@@ -59,7 +58,7 @@ export const countValidation = async (
       request.id,
       value,
       request.network,
-      own.capped ? 1 : 0,
+      capped ? 1 : 0,
       request.videoId,
       now.getTime(),
       now.getTime() - DAY_MS,

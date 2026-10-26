@@ -28,8 +28,18 @@ import {
   expireStalled,
   finishGeneration,
   getQuota,
+  isTimeZone,
   reserveGeneration,
+  setTimeZone,
 } from './quota'
+import { markNoticesSeen, readNotices } from './notices'
+import {
+  decideRequest,
+  latestRequest,
+  listRequests,
+  parseRequestNote,
+  sendRequest,
+} from './requests'
 import type {
   FinishedStatus,
   GenerationKind,
@@ -81,8 +91,6 @@ type AppEnv = Env &
   GenerationEnv &
   ContactEnv & {
     USER_DAILY_LIMIT: string
-    GUEST_DAILY_LIMIT: string
-    GUEST_DAILY_TOTAL: string
     NETWORK_DAILY_LIMIT: string
     VALIDATION_USER_DAILY_LIMIT: string
     VALIDATION_GUEST_DAILY_LIMIT: string
@@ -99,8 +107,6 @@ const count = (value: string | undefined) => {
 }
 
 const limitsOf = (env: AppEnv): Limits => ({
-  guest: count(env.GUEST_DAILY_LIMIT),
-  guestTotal: count(env.GUEST_DAILY_TOTAL),
   network: count(env.NETWORK_DAILY_LIMIT),
   user: count(env.USER_DAILY_LIMIT),
 })
@@ -132,10 +138,51 @@ app.get('/api/me', async (c) => {
   const { id, name, email, image, role } = session.user
   // The app asks on every open, so this is when the account last used it (activity.ts)
   await touchActive(c.env.DB, id, Date.now())
+  const timeZone = await c.env.DB.prepare(
+    `select "timeZone" from "userTimeZone" where "userId" = ?1`
+  )
+    .bind(id)
+    .first<string>('timeZone')
   return c.json({
-    quota: await getQuota(c.env.DB, id, limitsOf(c.env)),
+    quota: {
+      ...(await getQuota(c.env.DB, id, limitsOf(c.env))),
+      request: await latestRequest(c.env.DB, id),
+    },
+    timeZone,
     user: { email, id, image, name, role: role ?? 'user' },
   })
+})
+
+// The app reports the browser's time zone, so the account's day ends at its own midnight
+app.put('/api/me/time-zone', async (c) => {
+  const userId = await userIdOf(c.env, c.req.raw.headers)
+  if (userId === null) {
+    return c.json({ code: 'unauthorized' }, 401)
+  }
+  const body = await c.req.json<Record<string, unknown>>().catch(() => null)
+  const timeZone = body?.timeZone
+  if (!isTimeZone(timeZone)) {
+    return c.json({ code: 'bad_request' }, 400)
+  }
+  await setTimeZone(c.env.DB, userId, timeZone, Date.now())
+  return c.body(null, 204)
+})
+
+// "Can I add more songs a day?" with a short note; one open request at a time
+app.post('/api/me/quota-request', async (c) => {
+  const userId = await userIdOf(c.env, c.req.raw.headers)
+  if (userId === null) {
+    return c.json({ code: 'unauthorized' }, 401)
+  }
+  const note = parseRequestNote(
+    await c.req.json<unknown>().catch(() => null)
+  )
+  if (note === null) {
+    return c.json({ code: 'bad_request' }, 400)
+  }
+  return (await sendRequest(c.env.DB, userId, note, Date.now()))
+    ? c.body(null, 201)
+    : c.json({ code: 'already_open' }, 409)
 })
 
 // The songs the signed-in user generated, newest first, for their offline lyrics; a guest has none
@@ -480,12 +527,11 @@ const RESERVATION_STATUS = {
   already_finished: 409,
   forbidden: 403,
   generation_paused: 503,
-  guest_limit: 429,
-  guests_full: 429,
   network_limit: 429,
   quota_exceeded: 429,
   replay: 200,
   reserved: 201,
+  sign_in_required: 401,
 } as const
 
 // Exactly one of userId and guestKey
@@ -596,7 +642,6 @@ internal.post('/validations', async (c) => {
   const counted = await countValidation(
     c.env.DB,
     { id, owner, videoId, ...originOf(body) },
-    limitsOf(c.env),
     validationLimitsOf(c.env)
   )
   const status = COUNTED_STATUS[counted.outcome]
@@ -720,16 +765,51 @@ admin.get('/settings', async (c) => {
   const enabled = await c.env.DB.prepare(
     `select "value" from "appSetting" where "key" = 'generationEnabled'`
   ).first<string>('value')
-  const guestSongsToday = await c.env.DB.prepare(
-    `select count(*) from "generation" where "guestKey" is not null and "utcDay" = ?1 and "status" <> 'failed'`
-  )
-    .bind(new Date().toISOString().slice(0, 10))
-    .first<number>('count(*)')
-  return c.json({
-    generationEnabled: enabled === '1',
-    guestSongsToday: guestSongsToday ?? 0,
-    limits,
+  return c.json({ generationEnabled: enabled === '1', limits })
+})
+
+// Requests for more songs a day, open ones first
+admin.get('/quota-requests', async (c) =>
+  c.json({ requests: await listRequests(c.env.DB) })
+)
+
+// Approve with { dailyLimit } (songs a day, 1–1000), or decline
+admin.post('/quota-requests/:id/:decision{approve|decline}', async (c) => {
+  const id = Number(c.req.param('id'))
+  if (!Number.isInteger(id)) {
+    return c.json({ code: 'bad_request' }, 400)
+  }
+  let decision: { approve: true; dailyLimit: number } | { approve: false } = {
+    approve: false,
+  }
+  if (c.req.param('decision') === 'approve') {
+    const body = await c.req.json<Record<string, unknown>>().catch(() => null)
+    const dailyLimit = body?.dailyLimit
+    if (
+      typeof dailyLimit !== 'number' ||
+      !Number.isInteger(dailyLimit) ||
+      dailyLimit < 1 ||
+      dailyLimit > 1000
+    ) {
+      return c.json({ code: 'bad_request' }, 400)
+    }
+    decision = { approve: true, dailyLimit }
+  }
+  const decided = await decideRequest(c.env.DB, id, decision, {
+    adminId: c.get('adminId'),
+    now: Date.now(),
   })
+  return decided ? c.body(null, 204) : c.json({ code: 'not_found' }, 404)
+})
+
+// New contact messages, reports and requests since this admin last looked
+admin.get('/notices', async (c) =>
+  c.json(await readNotices(c.env.DB, c.get('adminId')))
+)
+
+admin.post('/notices/seen', async (c) => {
+  await markNoticesSeen(c.env.DB, c.get('adminId'), Date.now())
+  return c.body(null, 204)
 })
 
 admin.put('/settings', async (c) => {
