@@ -63,7 +63,8 @@ export const translationIsEnglishAtom = atomWithStorage(
 // The lyrics style has three layers, kept on the device and synced to a signed-in account (src/lib/prefs):
 // - My Default: what every song looks like until it is given its own style
 // - This Song: the fields the viewer changed for one song (`lyricsStyle:<videoId>`), which win over the default
-// - Shared: a style from a shared link, shown over the viewer's own for one visit
+// - Shared: a style from a shared link, shown over the viewer's own for one visit. It is never stored: opening a
+//   link changes nothing the viewer keeps, and a change made while it shows saves only the field changed
 // plus My Styles, named whole styles to apply in one tap. Changes on the player go to My Default or to This
 // Song, as the panel's "Changes Apply To" says: All Songs while the song follows the default, This Song once
 // it has a style of its own
@@ -222,7 +223,8 @@ export type LyricsStyleScope = 'all' | 'song'
 interface SongLyricsStyle {
   videoId: string
   overrides: LyricsStyleOverrides
-  shared: SharedLyricsStyle | null
+  // The fields still shown from a shared link, in memory only
+  shared: LyricsStyleOverrides | null
   scope: LyricsStyleScope
 }
 const songLyricsStyleAtom = atom<SongLyricsStyle | null>(null)
@@ -247,15 +249,14 @@ export const lyricsStyleSongAtom = atom(
   }
 )
 
-// Saves the song's own style, dropping any shared one: keeping or tuning a shared style makes it the
-// viewer's own
+// Saves the song's own style. A shared style showing stays shown, never saved
 const saveSongOverrides = (
   set: Setter,
   song: SongLyricsStyle,
   overrides: LyricsStyleOverrides,
   scope: LyricsStyleScope = song.scope
 ) => {
-  set(songLyricsStyleAtom, { ...song, overrides, scope, shared: null })
+  set(songLyricsStyleAtom, { ...song, overrides, scope })
   writeSongStyle(song.videoId, overrides)
 }
 
@@ -275,14 +276,12 @@ export const lyricsStyleAtom = atom((get): LyricsStyle => {
   return { ...ownLyricsStyle(get, song), ...song?.shared }
 })
 
-export type LyricsStyleSource = 'shared' | 'song' | 'default'
+// Whether this song has a style of its own; a shared style showing doesn't count, it isn't the viewer's
+export type LyricsStyleSource = 'song' | 'default'
 export const lyricsStyleSourceAtom = atom<LyricsStyleSource | null>((get) => {
   const song = get(songLyricsStyleAtom)
   if (song === null) {
     return null
-  }
-  if (song.shared !== null) {
-    return 'shared'
   }
   return hasOwnStyle(song.overrides) ? 'song' : 'default'
 })
@@ -291,12 +290,7 @@ export const lyricsStyleSourceAtom = atom<LyricsStyleSource | null>((get) => {
 // that field for All Songs, Reset This Song to My Default, or Save as My Default
 export const lyricsStyleScopeAtom = atom(
   (get): LyricsStyleScope => {
-    const song = get(songLyricsStyleAtom)
-    if (song === null) {
-      return 'all'
-    }
-    // A change to a shared style keeps it as this song's own
-    return song.shared === null ? song.scope : 'song'
+    return get(songLyricsStyleAtom)?.scope ?? 'all'
   },
   (get, set, scope: LyricsStyleScope) => {
     const song = get(songLyricsStyleAtom)
@@ -306,29 +300,40 @@ export const lyricsStyleScopeAtom = atom(
   }
 )
 
+const without = (
+  fields: LyricsStyleOverrides,
+  change: LyricsStyleOverrides
+): LyricsStyleOverrides =>
+  Object.fromEntries(Object.entries(fields).filter(([key]) => !(key in change)))
+
 // Applies a change where the scope says. For All Songs it becomes the default, and this song lets go of its
-// own value for those fields, so the change shows here too. A change to a shared style keeps it as the
-// song's own
+// own value for those fields, so the change shows here too. Over a shared style, the changed fields stop
+// coming from the link (so the change shows) and are saved by the same rules; the link's other fields stay
+// shown for this visit and are never saved
 const applyLyricsStyle = (
   get: Getter,
   set: Setter,
   change: LyricsStyleOverrides
 ) => {
-  const song = get(songLyricsStyleAtom)
-  if (song === null) {
+  const current = get(songLyricsStyleAtom)
+  if (current === null) {
     setDefaults(set, change)
     return
   }
-  if (song.shared !== null || song.scope === 'song') {
-    saveSongOverrides(set, song, { ...ownOverrides(song), ...change }, 'song')
+  const song =
+    current.shared === null
+      ? current
+      : { ...current, shared: without(current.shared, change) }
+  if (song.scope === 'song') {
+    saveSongOverrides(set, song, { ...song.overrides, ...change })
     return
   }
   setDefaults(set, change)
-  const kept = Object.fromEntries(
-    Object.entries(song.overrides).filter(([key]) => !(key in change))
-  )
+  const kept = without(song.overrides, change)
   if (Object.keys(kept).length !== Object.keys(song.overrides).length) {
     saveSongOverrides(set, song, kept)
+  } else if (song !== current) {
+    set(songLyricsStyleAtom, song)
   }
 }
 
@@ -361,20 +366,6 @@ export const showSharedLyricsStyleAtom = atom(
   }
 )
 
-export const keepSharedLyricsStyleAtom = atom(null, (get, set) => {
-  const song = get(songLyricsStyleAtom)
-  if (song?.shared) {
-    saveSongOverrides(set, song, ownOverrides(song), 'song')
-  }
-})
-
-export const dismissSharedLyricsStyleAtom = atom(null, (get, set) => {
-  const song = get(songLyricsStyleAtom)
-  if (song !== null) {
-    set(songLyricsStyleAtom, { ...song, shared: null })
-  }
-})
-
 // Puts a song's style back as it was, for Undo
 const restoreSong = (set: Setter, song: SongLyricsStyle) => {
   set(songLyricsStyleAtom, song)
@@ -387,7 +378,8 @@ export const resetSongLyricsStyleAtom = atom(null, (get, set) => {
   if (song === null) {
     return null
   }
-  saveSongOverrides(set, song, {}, 'all')
+  // Back to the viewer's own default: a shared style showing goes too
+  saveSongOverrides(set, { ...song, shared: null }, {}, 'all')
   return () => {
     restoreSong(set, song)
   }
@@ -428,7 +420,7 @@ export const applySongLyricsStyleToAllAtom = atom(null, (get, set) => {
   }
   const defaults = readDefaults(get)
   setDefaults(set, ownOverrides(song))
-  saveSongOverrides(set, song, {}, 'all')
+  saveSongOverrides(set, { ...song, shared: null }, {}, 'all')
   return () => {
     setDefaults(set, defaults)
     restoreSong(set, song)
