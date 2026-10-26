@@ -826,7 +826,8 @@ const auditOnce = async (
             rects.push(range.getBoundingClientRect())
           }
         }
-        const seen = rects.filter((r) => r.width > 0 && r.height > 0)
+        // Over 1px: screen-reader-only text is a 1px box (as src/lib/menu-offset.ts)
+        const seen = rects.filter((r) => r.width > 1 && r.height > 1)
         if (seen.length === 0) {
           return box
         }
