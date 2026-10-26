@@ -908,14 +908,10 @@
     }
   }
 
+  /* Nothing above the rows (the translation away from its home, or docked under them): their block's empty
+     reserve (two of the song's tallest lines, over a one-row pair) may hang over the top, so the lines themselves
+     reach it (stage-lyrics › TwoRows' hang sets --rows-overhang) */
   &[data-docked] {
-    top: var(--lyric-translation-top);
-  }
-
-  /* The translation away from its home, nothing above the rows: their block's empty reserve (two of the song's
-     tallest lines, over a one-row pair) may hang over the top, so the lines themselves reach it (stage-lyrics ›
-     TwoRows' hang sets --rows-overhang) */
-  &[data-free] {
     top: calc(var(--lyric-translation-top) - var(--rows-overhang, 0px));
   }
 
