@@ -18,6 +18,7 @@ import type { Browser, BrowserContext, Page, Route } from 'playwright'
 import { isRecord, parseJson } from '../json'
 import type { Surface } from '../types'
 import { RECORDER } from './recorder'
+import { silenceAllMedia } from './silence'
 
 const GOOGLE_FONTS = /^https:\/\/fonts\.(?:googleapis|gstatic)\.com\//u
 let fontDir: string | null = null
@@ -205,6 +206,8 @@ export const open = async (
       await fromFontCache(route, dir)
     })
   }
+  // Before anything else, so no frame plays a sound: WebKit has no --mute-audio
+  await context.addInitScript(silenceAllMedia)
   await context.addInitScript(RECORDER)
   const safe = phone
     ? SAFE[phoneKey(surface)]
