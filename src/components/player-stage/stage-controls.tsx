@@ -19,7 +19,16 @@ import {
   Volume2Icon,
   VolumeXIcon,
 } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import {
+  createContext,
+  use,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
+import type { ReactNode } from 'react'
 
 import { STAGE_DISC } from '@/components/lyrics-display/rail-button'
 import { TheaterIcon } from '@/components/svgicons'
@@ -163,6 +172,111 @@ const VOLUME_WHEEL_STEP = 0.05
 // The clock counts a seek as landed within this of its target
 const SEEK_SETTLED_SEC = 1
 const SEEK_HOLD_MAX_MS = 3000
+
+// The playing time and the seek bar's held value, kept here and read only by the bar and the clocks: the clock moves
+// every quarter second, and kept in StageControls it re-rendered every button of the controls with it
+interface PlaybackTime {
+  shown: number
+  duration: number
+  hold: (value: number | null) => void
+  commit: (value: number) => void
+}
+const PlaybackTimeContext = createContext<PlaybackTime | null>(null)
+
+const usePlaybackTime = () => {
+  const time = use(PlaybackTimeContext)
+  if (time === null) {
+    throw new Error('Inside PlaybackTimeProvider only')
+  }
+  return time
+}
+
+const PlaybackTimeProvider = ({
+  player,
+  children,
+}: {
+  player: StagePlayer
+  children: ReactNode
+}) => {
+  const time = usePlaybackClock(player)
+  const duration = player.getDuration()
+  // What the seek bar shows in place of the clock: the value under the pointer while dragging, then the
+  // committed target until the clock reaches it, so the thumb never drops back to the old time for the
+  // frame before the player reports the seek
+  const [held, setHeld] = useState<{
+    value: number
+    committed: boolean
+  } | null>(null)
+  if (
+    held?.committed === true &&
+    Math.abs(time - held.value) < SEEK_SETTLED_SEC
+  ) {
+    setHeld(null)
+  }
+  const releaseRef = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined
+  )
+  useEffect(
+    () => () => {
+      clearTimeout(releaseRef.current)
+    },
+    []
+  )
+  const commit = useCallback(
+    (target: number) => {
+      player.seek(target)
+      setHeld({ committed: true, value: target })
+      // A seek the player never reports lets go of the bar anyway
+      clearTimeout(releaseRef.current)
+      releaseRef.current = setTimeout(() => {
+        setHeld(null)
+      }, SEEK_HOLD_MAX_MS)
+    },
+    [player]
+  )
+  const hold = useCallback((target: number | null) => {
+    setHeld(target === null ? null : { committed: false, value: target })
+  }, [])
+  const shown = held?.value ?? time
+  const value = useMemo<PlaybackTime>(
+    () => ({ commit, duration, hold, shown }),
+    [commit, duration, hold, shown]
+  )
+  return <PlaybackTimeContext value={value}>{children}</PlaybackTimeContext>
+}
+
+const SeekSlider = ({ className }: { className: string }) => {
+  const { shown, duration, hold, commit } = usePlaybackTime()
+  return (
+    <Slider
+      data-press
+      look='seek'
+      aria-label='Seek'
+      hoverLabel={formatClock}
+      valueText={(value) => `${formatClock(value)} of ${formatClock(duration)}`}
+      min={0}
+      max={Math.max(duration, 1)}
+      step={0.1}
+      value={[shown]}
+      onValueChange={([value]) => {
+        hold(value ?? null)
+      }}
+      onValueCommit={([value]) => {
+        if (value === undefined) {
+          hold(null)
+          return
+        }
+        commit(value)
+      }}
+      className={className}
+    />
+  )
+}
+
+const LiveClock = ({ className }: { className: string }) => {
+  const { shown, duration } = usePlaybackTime()
+  return <Clock time={shown} duration={duration} className={className} />
+}
 
 // One of the control bar's pills: a light glass behind a group of buttons, on a wide screen with a mouse. Over the
 // bar's shade a dark pill vanished; a light one reads over dark and bright video alike. No backdrop blur: under the
@@ -402,36 +516,11 @@ export const StageControls = ({
     return barNode && contentNode ? observe(barNode, contentNode) : undefined
   }, [])
 
-  const time = usePlaybackClock(player)
-  const duration = player.getDuration()
-  // What the seek bar shows in place of the clock: the value under the pointer while dragging, then the
-  // committed target until the clock reaches it, so the thumb never drops back to the old time for the
-  // frame before the player reports the seek
-  const [held, setHeld] = useState<{
-    value: number
-    committed: boolean
-  } | null>(null)
-  if (
-    held?.committed === true &&
-    Math.abs(time - held.value) < SEEK_SETTLED_SEC
-  ) {
-    setHeld(null)
-  }
-  const releaseRef = useRef<ReturnType<typeof setTimeout> | undefined>(
-    undefined
-  )
-  useEffect(
-    () => () => {
-      clearTimeout(releaseRef.current)
-    },
-    []
-  )
-  const shown = held?.value ?? time
   const isPlaying =
     player.phase.kind === 'playing' || player.phase.kind === 'buffering'
 
   return (
-    <>
+    <PlaybackTimeProvider player={player}>
       <FullScreenChrome
         visible={visible}
         locked={locked}
@@ -456,43 +545,8 @@ export const StageControls = ({
           className='watch-narrow:flex watch-narrow:flex-wrap watch-narrow:items-center watch-narrow:gap-0.5 short:flex short:items-center short:gap-1'>
           {/* On a touch screen the clock sits at the end of the seek bar, so the buttons' row fits at 320px */}
           <div className='mb-2 flex items-center gap-3 watch-narrow:contents short:contents'>
-            <Slider
-              data-press
-              look='seek'
-              aria-label='Seek'
-              hoverLabel={formatClock}
-              valueText={(value) =>
-                `${formatClock(value)} of ${formatClock(duration)}`
-              }
-              min={0}
-              max={Math.max(duration, 1)}
-              step={0.1}
-              value={[shown]}
-              onValueChange={([value]) => {
-                setHeld(
-                  value === undefined ? null : { committed: false, value }
-                )
-              }}
-              onValueCommit={([value]) => {
-                if (value === undefined) {
-                  setHeld(null)
-                  return
-                }
-                player.seek(value)
-                setHeld({ committed: true, value })
-                // A seek the player never reports lets go of the bar anyway
-                clearTimeout(releaseRef.current)
-                releaseRef.current = setTimeout(() => {
-                  setHeld(null)
-                }, SEEK_HOLD_MAX_MS)
-              }}
-              className='min-w-0 flex-1 cursor-pointer watch-narrow:order-4 watch-narrow:mx-2 watch-narrow:mb-1 watch-narrow:basis-full short:order-1 short:mx-2'
-            />
-            <Clock
-              time={shown}
-              duration={duration}
-              className='hidden shrink-0 watch-narrow:order-2 touch:block short:order-2'
-            />
+            <SeekSlider className='min-w-0 flex-1 cursor-pointer watch-narrow:order-4 watch-narrow:mx-2 watch-narrow:mb-1 watch-narrow:basis-full short:order-1 short:mx-2' />
+            <LiveClock className='hidden shrink-0 watch-narrow:order-2 touch:block short:order-2' />
           </div>
           <div className='flex items-center gap-1 watch-narrow:contents touch:gap-0.5 pills:gap-2 short:contents'>
             {/* Bottom left, where every player has it, between Previous and Next; the small video of a narrow watch
@@ -584,9 +638,7 @@ export const StageControls = ({
                 </div>
               </div>
             </div>
-            <Clock
-              time={shown}
-              duration={duration}
+            <LiveClock
               className={cn(
                 'ml-2 watch-narrow:order-2 watch-narrow:ml-0 watch-narrow:shrink-0 touch:hidden pills:ml-0 pills:h-10 pills:px-4 short:order-2 short:ml-0 short:shrink-0',
                 PILL
@@ -629,6 +681,6 @@ export const StageControls = ({
           </div>
         </div>
       </div>
-    </>
+    </PlaybackTimeProvider>
   )
 }
