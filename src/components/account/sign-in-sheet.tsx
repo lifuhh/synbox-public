@@ -15,21 +15,17 @@ import { signInWithGoogle, useAccess } from '@/lib/auth'
 // What an account adds, the same three lines wherever sign-in is offered
 export const SIGN_IN_BENEFITS = [
   { icon: SparklesIcon, text: '5 new songs a day, on me' },
-  {
-    icon: BookmarkIcon,
-    text: 'Your lyric style and bookmarks on every device',
-  },
-  { icon: DownloadIcon, text: 'Your songs, ready offline' },
+  { icon: BookmarkIcon, text: 'Your style and bookmarks, everywhere' },
+  { icon: DownloadIcon, text: 'Your songs, offline' },
 ] as const
 
+// One line each: a bare icon, no disc behind it
 export const BenefitList = () => (
   <ul className='flex flex-col gap-3'>
     {SIGN_IN_BENEFITS.map(({ icon: Icon, text }) => (
       <li key={text} className='flex items-center gap-3 text-foreground'>
-        <span className='grid size-8 shrink-0 place-items-center rounded-full bg-secondary text-muted-foreground'>
-          <Icon className='size-4' aria-hidden />
-        </span>
-        <span className='text-pretty'>{text}</span>
+        <Icon className='size-4 shrink-0 text-muted-foreground' aria-hidden />
+        <span className='truncate'>{text}</span>
       </li>
     ))}
   </ul>
@@ -63,6 +59,7 @@ export const SignInSheet = ({
         <BenefitList />
         <div className='flex flex-col gap-2 pt-2'>
           <Button
+            variant='solid'
             gap='md'
             disabled={pending}
             onClick={() => {

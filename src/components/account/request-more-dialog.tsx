@@ -51,11 +51,9 @@ const RequestForm = ({ onDone }: { onDone: () => void }) => {
   if (sent) {
     return (
       <div className='flex flex-col items-center gap-3 py-4 text-center'>
-        <span className='grid size-10 place-items-center rounded-full bg-primary-subtle text-primary-text'>
-          <CheckIcon className='size-5' aria-hidden />
-        </span>
+        <CheckIcon className='size-6 text-muted-foreground' aria-hidden />
         <output className='font-medium'>Thanks, I’ll get back to you</output>
-        <Button type='button' onClick={onDone}>
+        <Button type='button' variant='solid' onClick={onDone}>
           Done
         </Button>
       </div>
@@ -97,7 +95,7 @@ const RequestForm = ({ onDone }: { onDone: () => void }) => {
         <output id={`${id}-problem`} className='text-sm text-error'>
           {problem}
         </output>
-        <Button type='submit' disabled={sending}>
+        <Button type='submit' variant='solid' disabled={sending}>
           {sending ? 'Sending…' : 'Send'}
         </Button>
       </div>
@@ -116,9 +114,7 @@ export const RequestMoreDialog = ({
     <DialogContent className='max-w-md'>
       <DialogHeader>
         <DialogTitle>Add More Songs a Day</DialogTitle>
-        <DialogDescription>
-          Tell me a bit about yourself and how you use Synbox
-        </DialogDescription>
+        <DialogDescription>Tell me a bit about yourself</DialogDescription>
       </DialogHeader>
       {open && (
         <RequestForm
