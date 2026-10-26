@@ -340,6 +340,18 @@ export const LAYOUT_PAGES: LayoutPage[] = [
     },
     route: '/search',
   },
+  // The page before a search: the field and the suggestion pills, a sideways row on a phone. Unaudited until
+  // 2026-10-26, when two pills over empty space shipped unseen. Its opened states are the searched page's
+  {
+    name: 'search-rest',
+    path: '/search',
+    ready: async (page) => {
+      await settled(page)
+      await page.getByRole('list', { name: 'Examples' }).waitFor()
+    },
+    route: '/search',
+    states: [],
+  },
   {
     name: 'reader',
     path: `/lyrics/${PLAYER_SONG}`,
@@ -399,7 +411,7 @@ export const layoutPages = (): LayoutPage[] => {
     // Lenient here (an entry whose route is gone audits nothing); `check` fails on it first (routeProblems)
     ...LAYOUT_PAGES.filter((p) => routes.includes(p.route)).map((p) => ({
       ...p,
-      states: OPENED_STATES[p.route],
+      states: p.states ?? OPENED_STATES[p.route],
     })),
     ...found.map((route) => {
       const sample = samples[route] ?? (route.includes(':') ? null : route)
