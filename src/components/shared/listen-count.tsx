@@ -2,7 +2,7 @@ import { PlayIcon } from 'lucide-react'
 
 import { compactCount, listensText, useListenCounts } from '@/lib/song-stats'
 
-// A song card's listens, before its channel ("▷ 1.2K"), as on YouTube; nothing for a song played ten times or fewer
+// A song card's listens, before its channel ("▷ 1.2K"), as on YouTube; nothing for a song never played
 export const ListenCount = ({ videoId }: { videoId: string }) => {
   const { data } = useListenCounts()
   const listens = data?.[videoId]

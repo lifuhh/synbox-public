@@ -129,12 +129,14 @@ test('a listen needs an account or a well-formed device id', () => {
   expect(listenerOf(null, 'not-a-uuid')).toBeNull()
 })
 
-test('card counts: only songs played more than ten times', async () => {
+test('card counts: every song played at least once', async () => {
   const { db } = migratedD1()
   await listensBy(db, 'aaaaaaaaaaa', 11, account, 1)
-  await listensBy(db, 'bbbbbbbbbbb', 10, account, 1)
   await listensBy(db, 'ccccccccccc', 1, account, 1)
-  expect(await listListenCounts(db)).toEqual({ aaaaaaaaaaa: 11 })
+  expect(await listListenCounts(db)).toEqual({
+    aaaaaaaaaaa: 11,
+    ccccccccccc: 1,
+  })
 })
 
 test("a list's own songs: exact counts, any played at least once, nothing for the rest", async () => {
