@@ -47,25 +47,34 @@ const FAQS = [
   },
 ]
 
+// Grouped by what each part does, in an order that leaves no chip alone on a phone's last row
 const BUILT_WITH = [
-  'React',
-  'TypeScript',
-  'Vite',
-  'Tailwind CSS',
-  'Radix UI',
-  'TanStack Query',
-  'Jotai',
-  'Cloudflare Workers',
-  'Better Auth',
-  'Netlify',
-  'Python',
-  'Flask',
-  'Google Cloud Run',
-  'Appwrite',
-  'ElevenLabs Scribe',
-  'OpenAI Whisper',
-  'OpenAI GPT',
-  'pyopenjtalk',
+  {
+    group: 'App',
+    names: [
+      'React',
+      'TypeScript',
+      'Vite',
+      'Tailwind CSS',
+      'Radix UI',
+      'TanStack Query',
+      'Jotai',
+    ],
+  },
+  {
+    group: 'Lyrics',
+    names: [
+      'ElevenLabs Scribe',
+      'OpenAI Whisper',
+      'OpenAI GPT',
+      'pyopenjtalk',
+    ],
+  },
+  {
+    group: 'Backend',
+    names: ['Cloudflare Workers', 'Better Auth', 'Python', 'Flask', 'Appwrite'],
+  },
+  { group: 'Hosting', names: ['Netlify', 'Google Cloud Run'] },
 ]
 
 const HEADING = 'text-sm font-semibold tracking-wide text-muted-foreground'
@@ -148,15 +157,24 @@ const AboutPage = () => {
           <h2 id='built-with' className={HEADING}>
             Built With
           </h2>
-          <ul className='flex flex-wrap gap-2'>
-            {BUILT_WITH.map((name) => (
-              <li
-                key={name}
-                className='rounded-full bg-card px-3 py-1 text-sm text-muted-foreground'>
-                {name}
-              </li>
+          <dl className='flex flex-col gap-4'>
+            {BUILT_WITH.map(({ group, names }) => (
+              <div key={group} className='flex flex-col gap-2'>
+                <dt className='text-xs font-medium text-muted-foreground'>
+                  {group}
+                </dt>
+                <dd className='flex flex-wrap gap-2'>
+                  {names.map((name) => (
+                    <span
+                      key={name}
+                      className='rounded-full bg-card px-3 py-1 text-sm text-muted-foreground'>
+                      {name}
+                    </span>
+                  ))}
+                </dd>
+              </div>
             ))}
-          </ul>
+          </dl>
         </section>
 
         <p className='border-t border-border pt-6 text-xs text-pretty text-muted-foreground'>
