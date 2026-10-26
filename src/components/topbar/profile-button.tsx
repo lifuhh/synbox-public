@@ -42,7 +42,7 @@ import { Button } from '../ui/button'
 const InstallGuideDialog = lazy(
   async () => await import('./install-guide-dialog')
 )
-// Its own chunk too: loaded on the first press of Contact Us
+// Its own chunk too: loaded on the first press of Contact Me
 const ContactDialog = lazy(
   async () => await import('@/components/shared/contact-dialog')
 )
@@ -219,7 +219,7 @@ const ProfileButtonDropdown = () => {
                 setContact('open')
               }}>
               <MailIcon className='mr-2 size-5 shrink-0' />
-              <span>Contact Us</span>
+              <span>Contact Me</span>
             </DropdownMenuItem>
             {install.kind !== 'installed' && (
               <DropdownMenuItem

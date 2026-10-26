@@ -152,7 +152,7 @@ const NotFound = () => {
     <div className='mx-auto flex max-w-sm flex-col items-center gap-4 px-6 pt-16 text-center'>
       <p className='text-base'>
         {online
-          ? 'This song has no lyrics yet.'
+          ? 'This song has no lyrics yet'
           : 'This song isn’t saved on this device. Saved songs can be read offline.'}
       </p>
       <Link

@@ -424,7 +424,7 @@ const SimilarSongs = ({
         />
       )}
       {songs?.length === 0 && karaoke.error === null && (
-        <Notice>No similar songs yet.</Notice>
+        <Notice>No similar songs yet</Notice>
       )}
       <ResultGrid>
         {songs?.map((song) => (

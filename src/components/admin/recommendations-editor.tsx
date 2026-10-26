@@ -151,7 +151,7 @@ const AddSong = ({
   const field = useRef<HTMLInputElement>(null)
   const full = songs.length >= MAX_RECOMMENDATIONS
   const hint = full
-    ? `The list holds at most ${MAX_RECOMMENDATIONS} songs.`
+    ? `The list holds at most ${MAX_RECOMMENDATIONS} songs`
     : 'Or any YouTube or Synbox link, or a video ID. Added to the end, saved at once.'
 
   // The field keeps focus on an error, so the fix is one keystroke away
@@ -163,7 +163,7 @@ const AddSong = ({
   const add = async () => {
     const videoId = extractVideoId(value)
     if (videoId === null) {
-      refuse('Paste a YouTube link or an 11-character video ID.')
+      refuse('Paste a YouTube link or an 11-character video ID')
       return
     }
     if (songs.some((song) => song.videoId === videoId)) {
@@ -425,7 +425,7 @@ export const RecommendationsEditor = () => {
     const next = songs.toSpliced(index, 1)
     refocus.current = next[Math.min(index, next.length - 1)]?.videoId ?? null
     commit(next, () => {
-      setAnnouncement(`Removed ${song.title}.`)
+      setAnnouncement(`Removed ${song.title}`)
       toast({
         description: song.title,
         duration: 2500,
@@ -438,7 +438,7 @@ export const RecommendationsEditor = () => {
     addSong.mutate(song, {
       onError: feedback.failed,
       onSuccess: () => {
-        setAnnouncement(`Added ${song.title}.`)
+        setAnnouncement(`Added ${song.title}`)
         feedback.added(song)
       },
     })
@@ -450,7 +450,7 @@ export const RecommendationsEditor = () => {
       <AddSong songs={songs} onAdd={add} />
       {songs.length === 0 ? (
         <p className='py-6 text-center text-sm text-muted-foreground'>
-          The list is empty.
+          The list is empty
         </p>
       ) : (
         <div ref={list}>

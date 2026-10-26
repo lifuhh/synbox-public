@@ -19,7 +19,7 @@ export const CONTACT_EMAIL = 'me@edwardhuang.dev'
 
 const PROBLEMS: Partial<Record<ContactResult, string>> = {
   failed: 'Couldn’t send. Try again.',
-  invalid: 'Add a subject and a message.',
+  invalid: 'Add a subject and a message',
   limit: `Too many today. Email ${CONTACT_EMAIL}.`,
   signed_out: 'Signed out. Sign in again.',
 }
@@ -29,7 +29,7 @@ const COPIED_MS = 2000
 const FIELD =
   'w-full rounded-md border border-input bg-background px-3 py-2 text-base placeholder:text-muted-foreground focus-visible:border-foreground/80 sm:text-sm touch:text-base'
 
-// Contact Us for a signed-in account: a subject and a message, kept and emailed to the owner by the Worker, which
+// Contact Me for a signed-in account: a subject and a message, kept and emailed to the owner by the Worker, which
 // answers at the account's own email (shown above the form, not editable)
 const ContactForm = ({ onDone }: { onDone: () => void }) => {
   const [subject, setSubject] = useState('')
@@ -186,7 +186,7 @@ const GuestContact = () => {
   )
 }
 
-// Contact Us: the form for a signed-in account, the owner's address for a guest. Nothing until the session is known,
+// Contact Me: the form for a signed-in account, the owner's address for a guest. Nothing until the session is known,
 // so a signed-in account never sees the guest's version first
 export const ContactDialog = ({
   open,
@@ -201,7 +201,7 @@ export const ContactDialog = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className='max-w-md'>
         <DialogHeader>
-          <DialogTitle>Contact Us</DialogTitle>
+          <DialogTitle>Contact Me</DialogTitle>
           {!isPending && (
             <DialogDescription>
               {email === null ? (

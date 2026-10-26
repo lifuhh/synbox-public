@@ -20,7 +20,7 @@ import { signInWithGoogle, signOut, useMe } from '@/lib/auth'
 import { forgetMySongs } from '@/lib/offline/sync'
 import { QUERY_KEYS } from '@/lib/react-query/query-keys'
 
-// Its own chunk: loaded on the first press of Contact Us
+// Its own chunk: loaded on the first press of Contact Me
 const ContactDialog = lazy(
   async () => await import('@/components/shared/contact-dialog')
 )
@@ -59,7 +59,7 @@ const YouPage = () => {
   const { data: me } = useMe()
   const user = me?.user ?? null
   let accountLine =
-    'Sign in to generate more songs and find them on every device.'
+    'Sign in to generate more songs and find them on every device'
   if (user !== null) {
     accountLine = me?.quota ? quotaText(me.quota) : user.email
   }
@@ -149,7 +149,7 @@ const YouPage = () => {
               <MailIcon className='size-5' />
             </span>
             <span className='min-w-0 flex-1 truncate text-foreground'>
-              Contact Us
+              Contact Me
             </span>
           </button>
         </div>

@@ -26,7 +26,7 @@ export const SiteLinks = () => {
           onClick={() => {
             setContact('open')
           }}>
-          Contact
+          Contact Me
         </button>
         <a href={`mailto:${CONTACT_EMAIL}`} className={LINK}>
           {CONTACT_EMAIL}

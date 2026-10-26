@@ -169,7 +169,7 @@ export const SIGN_IN_CODES = new Set([
 // Why a signed-in user can't start a new song, for the places that hide the button
 export const noSongReason = (quota: Quota) =>
   quota.limit === 0
-    ? 'Generating songs is invite-only for now.'
+    ? 'Generating songs is invite-only for now'
     : `You've generated ${quota.limit} songs in the last 24 hours. More at ${new Date(quota.resetsAt).toLocaleString([], { hour: 'numeric', minute: '2-digit', weekday: 'short' })}.`
 
 const signInFailed = () => {
