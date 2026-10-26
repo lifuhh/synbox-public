@@ -49,23 +49,23 @@ const FAQS = [
 
 // The stack in general terms: languages, kinds of AI, and the companies whose platforms it runs on. No specific
 // library or model of the lyrics pipeline (the owner, 2026-10-26: that's what someone would copy). Each order
-// leaves no chip alone on a phone's last row
+// is measured to leave no chip alone on a row at 320, 390 and 1440 wide
 const BUILT_WITH = [
   {
     group: 'Code',
     names: [
       'TypeScript',
-      'Python',
       'SQL',
       'React',
       'Vite',
+      'Python',
       'Flask',
       'Better Auth',
     ],
   },
   {
     group: 'AI',
-    names: ['LLMs', 'Speech Recognition', 'NLP', 'Evals', 'Agentic Coding'],
+    names: ['LLMs', 'Speech Recognition', 'NLP', 'Agentic Coding', 'Evals'],
   },
   {
     group: 'Platforms',
@@ -76,8 +76,8 @@ const BUILT_WITH = [
       'Google Cloud',
       'Cloudflare',
       'Netlify',
-      'YouTube Data API',
       'Appwrite',
+      'YouTube Data API',
       'Sentry',
     ],
   },
