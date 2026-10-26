@@ -223,6 +223,21 @@ export const OPENED_STATES: Record<string, OpenedState[]> = {
       views: ['pwa-landscape'],
     },
     {
+      // Lyrics Style on the Lock Landscape page: a dialog inside the page CSS turns a quarter, so its scroller's
+      // axis and any pinned part follow the turn (owner, 2026-10-26: its sticky footer floated mid-panel there)
+      name: 'lock-landscape-style',
+      steps: [
+        { at: { x: 60, y: 60 }, hover: { attr: 'data-player-stage' } },
+        { press: { name: 'Fullscreen', role: 'button' } },
+        { at: { x: 60, y: 60 }, hover: { attr: 'data-player-stage' } },
+        { press: { name: 'Lock Landscape', role: 'button' } },
+        { shows: { name: 'Exit Fullscreen', role: 'button' } },
+        { press: { name: 'Lyrics Style', role: 'button' } },
+        { shows: { name: 'Lyrics Style', role: 'dialog' } },
+      ],
+      views: ['pwa-portrait'],
+    },
+    {
       // Upright, the lyrics window under the video expands to fill the screen under it (a tap on its lines, or
       // Expand Lyrics in its corner), with Lyrics Style and Minimize Lyrics in that corner
       name: 'lyrics-expanded',
