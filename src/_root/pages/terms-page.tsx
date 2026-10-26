@@ -59,7 +59,7 @@ const SECTIONS: LegalSection[] = [
     items: [
       'Songs, lyrics and translations belong to their rights holders. Synbox shows them for personal study and singing along.',
       'Rights holders can have a song removed by writing through Contact (below) or to me@edwardhuang.dev.',
-      'The app’s design and code belong to Synbox.',
+      'We own the app’s design and code.',
     ],
     title: 'Songs and Lyrics',
   },
