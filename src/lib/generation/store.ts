@@ -183,7 +183,6 @@ const listenersFor = (id: string): Listeners => ({
       }
       let runs = beginStage(job.runs, event.stage, now, {
         expectedS: event.expectedS,
-        label: event.label,
       })
       if (event.fraction !== undefined) {
         runs = reportFraction(runs, event.stage, event.fraction, now)

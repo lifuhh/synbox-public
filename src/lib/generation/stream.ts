@@ -20,7 +20,6 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 
 export interface ProgressEvent {
   stage: StageId
-  label?: string
   fraction?: number
   expectedS?: number
 }
@@ -35,7 +34,6 @@ const parseProgress = (data: unknown): ProgressEvent | null => {
         ? data.expected_s
         : undefined,
     fraction: typeof data.fraction === 'number' ? data.fraction : undefined,
-    label: typeof data.label === 'string' ? data.label : undefined,
     stage: data.stage,
   }
 }
