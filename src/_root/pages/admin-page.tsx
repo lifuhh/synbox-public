@@ -621,7 +621,7 @@ const UsersTable = () => {
   if (users.length === 0) {
     return (
       <p className='py-6 text-center text-sm text-muted-foreground'>
-        No one has signed in yet.
+        No one has signed in yet
       </p>
     )
   }
@@ -876,7 +876,7 @@ const SongsTable = ({ by }: { by: SongsBy }) => {
   if (generations.length === 0) {
     return (
       <p className='py-6 text-center text-sm text-muted-foreground'>
-        {by === null ? 'No songs generated yet.' : 'No songs.'}
+        {by === null ? 'No songs generated yet' : 'No songs'}
       </p>
     )
   }
@@ -1126,10 +1126,10 @@ const ReportItem = ({ report }: { report: AdminReport }) => {
 }
 
 const REPORT_STATES: { id: ReportState; name: string; empty: string }[] = [
-  { empty: 'No open reports.', id: 'open', name: 'Open' },
-  { empty: 'Nothing waiting.', id: 'review', name: 'Needs Review' },
-  { empty: 'No resolved reports.', id: 'resolved', name: 'Resolved' },
-  { empty: 'No dropped reports.', id: 'dropped', name: 'Dropped' },
+  { empty: 'No open reports', id: 'open', name: 'Open' },
+  { empty: 'Nothing waiting', id: 'review', name: 'Needs Review' },
+  { empty: 'No resolved reports', id: 'resolved', name: 'Resolved' },
+  { empty: 'No dropped reports', id: 'dropped', name: 'Dropped' },
 ]
 
 // What listeners reported, newest first: the song, where in it, and what was wrong. One state at a time, open
@@ -1147,7 +1147,7 @@ const ReportsList = () => {
   if (reports.length === 0) {
     return (
       <p className='py-6 text-center text-sm text-muted-foreground'>
-        No reports yet.
+        No reports yet
       </p>
     )
   }
@@ -1214,7 +1214,7 @@ const SignalsPanel = () => {
   const { data, error } = useAdminSignals()
   if (error !== null) {
     return error.message.includes('404') ? (
-      <p className='text-sm text-error'>Needs the Worker update.</p>
+      <p className='text-sm text-error'>Needs the Worker update</p>
     ) : (
       <LoadError error={error} />
     )
@@ -1225,7 +1225,7 @@ const SignalsPanel = () => {
   if (data.accounts.length === 0 && data.networks.length === 0) {
     return (
       <p className='py-6 text-center text-sm text-muted-foreground'>
-        Nothing in the last 7 days.
+        Nothing in the last 7 days
       </p>
     )
   }
@@ -1330,7 +1330,7 @@ const UsagePanel = () => {
   const { data, error } = useAdminUsage()
   if (error !== null) {
     return error.message.includes('404') ? (
-      <p className='text-sm text-error'>Needs the Worker update.</p>
+      <p className='text-sm text-error'>Needs the Worker update</p>
     ) : (
       <LoadError error={error} />
     )
@@ -1401,7 +1401,7 @@ const UsagePanel = () => {
       <section className='flex flex-col gap-2'>
         <h2 className='text-base font-semibold text-foreground'>Last 7 Days</h2>
         {data.events.length === 0 ? (
-          <p className='text-muted-foreground'>No events yet.</p>
+          <p className='text-muted-foreground'>No events yet</p>
         ) : (
           <table className='w-full border-collapse'>
             <thead className='text-xs text-muted-foreground'>
@@ -1469,7 +1469,7 @@ const MessagesPanel = () => {
   const { data, error } = useAdminMessages()
   if (error !== null) {
     return error.message.includes('404') ? (
-      <p className='text-sm text-error'>Needs the Worker update.</p>
+      <p className='text-sm text-error'>Needs the Worker update</p>
     ) : (
       <LoadError error={error} />
     )
@@ -1478,7 +1478,7 @@ const MessagesPanel = () => {
     return <Skeleton className='h-40 w-full' />
   }
   if (data.messages.length === 0) {
-    return <p className='text-sm text-muted-foreground'>No messages yet.</p>
+    return <p className='text-sm text-muted-foreground'>No messages yet</p>
   }
   return (
     <ol className='flex flex-col'>
@@ -1604,7 +1604,7 @@ const AdminTabs = () => {
       <TabsContent value='accounts' className='mt-4'>
         <div className='flex flex-col gap-3'>
           <p className='text-sm text-muted-foreground'>
-            Everyone who has signed in, most recently seen first.
+            Everyone who has signed in, most recently seen first
           </p>
           <UsersTable />
         </div>

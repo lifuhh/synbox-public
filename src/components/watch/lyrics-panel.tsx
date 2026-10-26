@@ -182,16 +182,14 @@ const emptyText = ({
   loading: boolean
 }) => {
   if (hasLines) {
-    return anyShown
-      ? null
-      : 'Lyrics, Romaji and Translation are all turned off.'
+    return anyShown ? null : 'Lyrics, Romaji and Translation are all turned off'
   }
   if (loading) {
     return ''
   }
   return limited
     ? 'Too many songs this hour. Try again soon.'
-    : 'No lyrics for this song yet.'
+    : 'No lyrics for this song yet'
 }
 
 // Why the panel has no lines. A chart song (Top 100 Japan, not in Synbox yet) offers its lyrics where they

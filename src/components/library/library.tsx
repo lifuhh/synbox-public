@@ -54,21 +54,21 @@ export type LibraryTab = 'bookmarks' | 'playlists' | 'generated' | 'history'
 
 const TABS: { id: LibraryTab; label: string; empty: string }[] = [
   {
-    empty: 'Bookmark a song from its player.',
+    empty: 'Bookmark a song from its player',
     id: 'bookmarks',
     label: 'Bookmarks',
   },
   {
-    empty: 'Save a song to a playlist from its menu.',
+    empty: 'Save a song to a playlist from its menu',
     id: 'playlists',
     label: 'Playlists',
   },
   {
-    empty: 'Songs you generate show up here.',
+    empty: 'Songs you generate show up here',
     id: 'generated',
     label: 'Generated',
   },
-  { empty: 'Songs you play show up here.', id: 'history', label: 'History' },
+  { empty: 'Songs you play show up here', id: 'history', label: 'History' },
 ]
 
 const isLibraryTab = (value: string): value is LibraryTab =>
@@ -309,10 +309,10 @@ const Empty = ({ children }: { children: ReactNode }) => (
 const emptyText = (library: Library, tab: LibraryTab) => {
   const query = library.deferredQuery.trim()
   if (query !== '') {
-    return `No matches for “${query}”.`
+    return `No matches for “${query}”`
   }
   if (!library.online && tab !== 'playlists') {
-    return 'Nothing here is saved for offline.'
+    return 'Nothing here is saved for offline'
   }
   return TABS.find(({ id }) => id === tab)?.empty
 }

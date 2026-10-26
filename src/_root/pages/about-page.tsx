@@ -186,7 +186,7 @@ const AboutPage = () => {
         <p className='border-t border-border pt-6 text-xs text-pretty text-muted-foreground'>
           A non-commercial personal project with no ads. Songs, videos and
           lyrics belong to their owners and are shown for learning and singing
-          along; rights holders can ask for removal through Contact below.
+          along; rights holders can ask for removal through Contact Me below.
         </p>
       </div>
 

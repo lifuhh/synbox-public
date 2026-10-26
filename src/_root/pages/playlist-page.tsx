@@ -242,7 +242,7 @@ const PlaylistPage = () => {
             {playlist.songs.length === 0 ? (
               <p className='py-8 text-center text-sm text-pretty text-muted-foreground'>
                 Save songs here from their menu, or from the player&apos;s Save
-                to Playlist button.
+                to Playlist button
               </p>
             ) : (
               <SortableList

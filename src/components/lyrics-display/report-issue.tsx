@@ -139,7 +139,7 @@ export const ReportIssue = ({
         {view.mine ? (
           <div className='flex flex-col gap-3'>
             <p className='text-sm text-muted-foreground'>
-              We&apos;ll let you know when it&apos;s fixed.
+              We&apos;ll let you know when it&apos;s fixed
             </p>
             <p className='max-h-40 overflow-y-auto rounded-md bg-muted px-3 py-2 text-sm wrap-break-word whitespace-pre-wrap'>
               {view.mine.message}

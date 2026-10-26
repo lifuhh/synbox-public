@@ -45,7 +45,7 @@ class ErrorBoundary extends Component<Props, State> {
                 This Page Crashed
               </h1>
               <p className='mt-4 leading-normal text-muted-foreground'>
-                Reload to try again.
+                Reload to try again
               </p>
               {/* Quieter than the way out, for a report */}
               {this.state.error && (
