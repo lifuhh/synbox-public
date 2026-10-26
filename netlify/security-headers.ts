@@ -1,6 +1,6 @@
 // The security headers every page carries. netlify.toml's [[headers]] for "/*" sets them on files Netlify
 // serves itself; a URL an Edge Function answers gets none of those (Netlify docs, Custom headers ›
-// Limitations), so song-preview.ts sets these on /v/*. security-headers.test.ts fails when the two differ.
+// Limitations), so page-head.ts sets these on every page. security-headers.test.ts fails when the two differ.
 // What each source in the policy is for is written beside the rule in netlify.toml.
 
 export const SECURITY_HEADERS: Record<string, string> = {

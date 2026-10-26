@@ -42,13 +42,26 @@
     <link
       href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400..800&family=Noto+Sans:wght@900&family=Noto+Sans+JP:wght@100..900&family=Noto+Sans+SC:wght@400..900&display=swap"
       rel="stylesheet" />
+    <!-- The home page's. netlify/edge-functions/page-head.ts rewrites these for every other page -->
+    <link rel="canonical" href="https://synbox.io/" />
+    <meta property="og:site_name" content="Synbox" />
     <meta property="og:title" content="Synbox" />
     <meta
       property="og:description"
       content="Japanese karaoke for any YouTube video, with AI-transcribed, synced lyrics, furigana, romaji and translations." />
     <meta property="og:url" content="https://synbox.io/" />
     <meta property="og:type" content="website" />
-    <title>Synbox · Japanese Karaoke</title>
+    <title>Synbox · Japanese Karaoke for Any YouTube Video</title>
+    <!-- The site's name in Google's results (not "synbox.io"). Data, not a script: the CSP doesn't apply -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "Synbox",
+        "alternateName": ["Synbox Karaoke", "synbox.io"],
+        "url": "https://synbox.io/"
+      }
+    </script>
     <!-- The page's colour from the first paint, before the stylesheet arrives (globals.css › --graphite-1), so a slow
          first load is the app's dark page, never a white one -->
     <style>

@@ -1,5 +1,5 @@
 // A production build of a checkout, served by Netlify's own local runtime (netlify-cli `dev` over the built dist/):
-// the Netlify functions (/api/youtube/*, /api/library/songs), the /v/* Edge Function, netlify.toml's redirects (the
+// the Netlify functions (/api/youtube/*, /api/library/songs), the page-head Edge Function and the sitemap, netlify.toml's redirects (the
 // /api proxies to the live auth Worker) and its headers, as on Netlify, for no build minutes. smoke.ts --local and
 // release.ts run the smoke test on it before anything is built on Netlify.
 //
