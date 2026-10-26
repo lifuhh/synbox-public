@@ -5,10 +5,10 @@ import { startFromButton } from '@/components/generation/start-generation'
 import { SIGN_IN_CODES, signInWithGoogle } from '@/lib/auth'
 import { cn } from '@/utils/cn'
 
-// A press on Home's Generate Lyrics, from the press to its answer. The check runs here, at the field (the backend's
-// account check and the video's, store.ts › requestGeneration), so a song that can't be made says why where its
-// link was pasted. A song that starts empties the field, and the progress panel opens on it (store.ts ›
-// startGeneration)
+// A press on a link field's Generate Lyrics (Home's field, the Search page's pasted link), from the press to its
+// answer. The check runs here, at the field (the backend's account check and the video's, store.ts ›
+// requestGeneration), so a song that can't be made says why where its link was pasted, with no notice over it. A
+// song that starts opens the progress panel on it (store.ts › startGeneration)
 export type Submission =
   | { kind: 'idle' }
   | { kind: 'checking' }
@@ -18,21 +18,21 @@ const IDLE: Submission = { kind: 'idle' }
 // The link fades out of the field (input.tsx › bare, data-clearing) before it empties
 const CLEAR_MS = 160
 
-// `onStarted` empties the field once its text faded
-export const useFieldGeneration = (onStarted: () => void) => {
+// `onStarted` empties the field once its text faded (Home's; the Search page keeps its link)
+export const useFieldGeneration = (onStarted?: () => void) => {
   const [submission, setSubmission] = useState<Submission>(IDLE)
   const [clearing, setClearing] = useState(false)
   // Taken synchronously on the press, so a second click or Enter before the state renders does nothing
   const pressed = useRef(false)
 
-  const generate = async (videoId: string) => {
+  const generate = async (videoId: string, title?: string) => {
     if (pressed.current) {
       return
     }
     pressed.current = true
     setSubmission({ kind: 'checking' })
     const outcome = await startFromButton(
-      { mode: 'new', videoId },
+      { mode: 'new', title, videoId },
       { announce: false, opening: 'always', quiet: true }
     )
     pressed.current = false
@@ -50,7 +50,7 @@ export const useFieldGeneration = (onStarted: () => void) => {
     }
     setClearing(true)
     setTimeout(() => {
-      onStarted()
+      onStarted?.()
       setClearing(false)
       setSubmission(IDLE)
     }, CLEAR_MS)

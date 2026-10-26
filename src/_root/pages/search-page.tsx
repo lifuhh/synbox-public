@@ -4,11 +4,15 @@ import {
   ClipboardPasteIcon,
   PlayIcon,
   SearchIcon,
-  SparklesIcon,
 } from 'lucide-react'
 import { useLayoutEffect, useRef, useState } from 'react'
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router'
 
+import {
+  GenerateLabel,
+  SubmissionStatus,
+  useFieldGeneration,
+} from '@/components/generate-lyrics/field-generation'
 import { startFromButton } from '@/components/generation/start-generation'
 import {
   LibrarySongCard,
@@ -169,11 +173,12 @@ const AddByLink = ({
   )
 }
 
-// A pasted YouTube link: that one video, whatever it is. A song with lyrics plays; any other is generated, through
-// the same check as every Generate Lyrics button (its refusal, Sign In included, shows as a notice)
+// A pasted YouTube link: that one video, whatever it is. A song with lyrics plays; any other is generated as Home's
+// field does it (field-generation.tsx): Checking… on the button, a refusal under it, the panel on start
 const LinkedVideo = ({ videoId }: { videoId: string }) => {
   const video = useYoutubeVideo(videoId)
   const lyrics = useGetLyricsBySongId(videoId)
+  const { checking, generate, submission } = useFieldGeneration()
   if (video.error) {
     return video.error.message.startsWith('No video found') ? (
       <Notice>No video at this link. Paste another one.</Notice>
@@ -204,15 +209,12 @@ const LinkedVideo = ({ videoId }: { videoId: string }) => {
     return (
       <Button
         gap='sm'
-        className='self-start touch:h-11'
+        aria-disabled={checking || undefined}
+        className='self-start aria-disabled:cursor-progress touch:h-11'
         onClick={() => {
-          void startFromButton(
-            { mode: 'new', title, videoId },
-            { opening: 'always' }
-          )
+          void generate(videoId, title)
         }}>
-        <SparklesIcon aria-hidden className='size-4 shrink-0' />
-        Generate Lyrics
+        <GenerateLabel checking={checking} />
       </Button>
     )
   }
@@ -245,7 +247,13 @@ const LinkedVideo = ({ videoId }: { videoId: string }) => {
             </p>
           </div>
         )}
-        {action()}
+        <div className='flex flex-col'>
+          {action()}
+          {/* Mounted empty, so its first answer is announced; no space until it has one */}
+          <div aria-live='polite' className='text-sm not-empty:mt-2'>
+            <SubmissionStatus submission={submission} />
+          </div>
+        </div>
       </div>
     </div>
   )
