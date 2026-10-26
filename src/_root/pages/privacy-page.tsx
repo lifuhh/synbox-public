@@ -15,15 +15,15 @@ const SECTIONS: LegalSection[] = [
       'Your history, saved songs, likes, playlists and settings, so they follow you to other devices.',
       'Lyrics reports you send.',
       'Messages you send through Contact, when signed in: the subject, the message, your account and its email (where we reply), and a one-way code made from your network. Each is emailed to us.',
-      'Songs you played in the last hour, by account or by a random id in your browser, so a reload isn’t counted twice. Signed in, every visit to a song counts; as a guest, once per song an hour.',
-      'With an account: how many songs you’ve played, when you last played one, and when you last used the app (to within 10 minutes).',
+      'Songs you played in the last hour, by account or by a random id in your browser, so a reload is not counted twice. Signed in, every visit to a song counts; as a guest, once per song an hour.',
+      'With an account: how many songs you have played, when you last played one, and when you last used the app (to within 10 minutes).',
       'Without an account: a one-way code made from your network counts your free song.',
     ],
     title: 'What We Store',
   },
   {
     items: [
-      'To see which parts of Synbox get used, the app records a few events: the app opened (installed or in a browser; phone, tablet or computer), a song page opened (the song’s id), lyrics, romaji or translation turned on or off, the translation language, a song shared or its link copied, and Install App pressed or the app installed.',
+      'To measure which parts of Synbox are used, the app records a few events: the app opened (installed or in a browser; phone, tablet or computer), a song page opened (the song’s id), lyrics, romaji or translation turned on or off, the translation language, a song shared or its link copied, and Install App pressed or the app installed.',
       'Each carries its time and your account, or without one, a random id kept in your browser. No IP address, email or browser details.',
       'Kept 90 days, then deleted. Only the admin sees them.',
       'If your browser sends Global Privacy Control or Do Not Track, none are sent.',
@@ -33,12 +33,12 @@ const SECTIONS: LegalSection[] = [
   {
     items: [
       'To sign you in and sync your library.',
-      'To keep limits fair: every new song costs money to make.',
+      'To enforce limits, since every new song costs money to make.',
       'To fix the lyrics you report and the errors the app hits.',
       'To run and improve Synbox, and to set limits against abuse.',
-      'No ads, and nothing is sold.',
+      'No advertising, and no data is sold.',
     ],
-    title: 'Why',
+    title: 'Why It Is Kept',
   },
   {
     items: [
@@ -104,9 +104,9 @@ const SECTIONS: LegalSection[] = [
   },
   {
     items: [
-      'Synbox isn’t meant for children under 13, and we don’t knowingly keep their data. Tell us and we’ll delete it.',
+      'Synbox is not intended for children under 13, and we do not knowingly keep their data. If a child’s data reaches us, tell us and it will be deleted.',
       <>
-        Changes show here with a new date. Using Synbox also means agreeing to
+        Changes appear here with a new date. Using Synbox also means accepting
         the{' '}
         <Link to='/terms' className={INLINE_LINK}>
           Terms
@@ -114,7 +114,7 @@ const SECTIONS: LegalSection[] = [
         .
       </>,
     ],
-    title: 'Also',
+    title: 'Children and Changes',
   },
 ]
 
