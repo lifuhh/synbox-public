@@ -24,6 +24,9 @@ export interface YTPlayer {
   mute: () => void
   unMute: () => void
   isMuted: () => boolean
+  setPlaybackRate: (rate: number) => void
+  getPlaybackRate: () => number
+  getAvailablePlaybackRates: () => number[]
   getIframe: () => HTMLIFrameElement
   destroy: () => void
   // Not in the documented API; used by most custom-controls players to drop captions

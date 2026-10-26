@@ -44,6 +44,14 @@ let song: Song | null = null
 let building = false
 // Bumped on every rebuild, so a replaced player's late callbacks are dropped
 let generation = 0
+// The listener's playback speed for the visit (setEngineRate). A rebuilt player starts at 1, and YouTube doesn't say
+// whether a newly cued song keeps the speed, so every start of playback puts it back
+let rate = 1
+const keepRate = (target: YTPlayer) => {
+  if (target.getPlaybackRate() !== rate) {
+    target.setPlaybackRate(rate)
+  }
+}
 // The video's size on the stage it was last laid over, kept while it floats; before any stage, YouTube's usual size
 let frameSize = { height: 270, width: 480 }
 
@@ -175,6 +183,7 @@ const create = async () => {
         }
         building = false
         player = created
+        keepRate(created)
         listener?.onReady(created)
         // The song asked for may have changed while the player was being built
         if (song !== null && song.videoId !== videoId) {
@@ -188,6 +197,9 @@ const create = async () => {
       },
       onStateChange: ({ data }) => {
         noteState(data)
+        if (data === YTState.Playing) {
+          keepRate(created)
+        }
         if (mine === generation) {
           listener?.onStateChange(data)
         }
@@ -254,6 +266,25 @@ export const loadSong = (videoId: string, start = 0): YTStateCode | null => {
   }
   return null
 }
+
+// Plays every song this visit at `next` times its speed
+export const setEngineRate = (next: number) => {
+  rate = next
+  if (player) {
+    keepRate(player)
+  }
+}
+
+// The speed the video plays at now, as YouTube reports it: what the lyrics' clocks run on, so they keep to the video
+// even where YouTube refused a speed
+export const engineRate = (): number => {
+  const reported = player?.getPlaybackRate()
+  return typeof reported === 'number' && reported > 0 ? reported : 1
+}
+
+// The speeds the playing video allows; empty until the player is ready
+export const engineRates = (): number[] =>
+  player?.getAvailablePlaybackRates() ?? []
 
 // A last resort for an embed that stopped answering: a new player, so the next unmute is a new one too
 export const rebuildEngine = (start: number) => {
