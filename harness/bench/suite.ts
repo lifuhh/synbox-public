@@ -172,13 +172,14 @@ const lyricDock = (name: string, view: View): Benchmark => ({
   id: `lyric-dock-${name}`,
   metrics: [
     count('rowsCantReachTop'),
+    count('rowsBelowCantReachTop'),
     count('rowsOntoNoDock'),
     count('savedOverlapped'),
   ],
   run: lyricDockAudit(view.surface),
   runs: 1,
   surface: view.surface,
-  title: `Karaoke Style's rows and translation in ${name} (${view.label}): the rows reach the top with the translation moved down, the rows dropped onto the translation dock, a layout saved overlapped loads usable`,
+  title: `Karaoke Style's rows and translation in ${name} (${view.label}): the rows' text reaches the top with the translation moved down and with it below them, the rows dropped onto the translation dock, a layout saved overlapped loads usable`,
 })
 
 /**

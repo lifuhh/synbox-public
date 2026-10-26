@@ -3,6 +3,10 @@
 // quality controlled"). Three cases, each on a fresh page:
 // - reach: the translation moved down off its home, the rows dragged up as far as they go reach the top (within the
 //   translation home's top plus a little padding);
+// - below: the translation saved at the foot, below the rows, then the rows dragged up: the same reach (a translation at the
+//   bottom must not restrict how high the lyrics can move). Reach is the rows' drawn text,
+//   not their block: the block is two of the song's tallest lines high, and its empty top once stopped at the edge
+//   with the text far under it;
 // - onto: the rows dragged onto the translation on its own dock them;
 // - saved: a layout saved overlapped (rows and translation both at the foot, undocked) loads usable: docked, or the
 //   two not overlapping.
@@ -19,7 +23,7 @@ import { LAYOUT_PAGES, PLAYER_SONG } from './layout'
 
 /** How far under the translation home's top the rows may stop and still count as at the top */
 const TOP_SLACK_PX = 32
-const LIMIT_MS = 120_000
+const LIMIT_MS = 150_000
 
 const ROWS = '[data-lyric-rows-area] [data-lyrics-style-toggle]'
 const TRANSLATION = '[data-lyric-translation] [data-lyrics-style-toggle]'
@@ -38,6 +42,8 @@ interface Boxes {
   layerTop: number
   translationHome: number
   rows: Box | null
+  // The rows' drawn text (their lines' glyph boxes), within the block
+  rowsText: Box | null
   translation: Box | null
   docked: boolean
 }
@@ -55,11 +61,27 @@ const boxes = async (page: Page): Promise<Boxes> =>
       const room = document.querySelector('[data-lyric-translation]')
       const layerTop = layer?.getBoundingClientRect().top ?? 0
       const home = room ? room.getBoundingClientRect().top - layerTop : 0
+      const range = document.createRange()
+      const glyphs = [
+        ...document.querySelectorAll('[data-lyric-rows-area] [data-lyric-row]'),
+      ].flatMap((row) => {
+        range.selectNodeContents(row)
+        return [...range.getClientRects()].filter(
+          (r) => r.width > 1 && r.height > 1
+        )
+      })
       return {
         docked:
           document.querySelector('[data-docked-translation="docked"]') !== null,
         layerTop,
         rows: box(document.querySelector(rowsSel)),
+        rowsText:
+          glyphs.length > 0
+            ? {
+                bottom: Math.max(...glyphs.map((r) => r.bottom)),
+                top: Math.min(...glyphs.map((r) => r.top)),
+              }
+            : null,
         translation: box(document.querySelector(translationSel)),
         translationHome: home,
       }
@@ -148,7 +170,24 @@ const dockAudit = async (
   shot: string
 ): Promise<{ samples: Sample[]; errors: string[] }> => {
   const notes: string[] = []
-  const values = { rowsCantReachTop: 0, rowsOntoNoDock: 0, savedOverlapped: 0 }
+  const values = {
+    rowsBelowCantReachTop: 0,
+    rowsCantReachTop: 0,
+    rowsOntoNoDock: 0,
+    savedOverlapped: 0,
+  }
+  // The rows' drawn text at the top: within the translation home's top plus a little padding
+  const reached = async (page: Page, kase: 'reach' | 'below') => {
+    const end = await boxes(page)
+    const limit = end.layerTop + end.translationHome + TOP_SLACK_PX
+    if (end.rowsText === null || end.rowsText.top > limit) {
+      values[kase === 'reach' ? 'rowsCantReachTop' : 'rowsBelowCantReachTop'] =
+        1
+      notes.push(
+        `${kase}: the rows' text stopped at ${Math.round(end.rowsText?.top ?? -1)}px (their block at ${Math.round(end.rows?.top ?? -1)}px), over ${Math.round(limit)}px (the translation's home plus ${TOP_SLACK_PX}px)`
+      )
+    }
+  }
 
   // reach: the translation down off its home, then the rows to the top
   {
@@ -163,15 +202,29 @@ const dockAudit = async (
         )
       }
       await drag(page, ROWS, -2000)
-      const end = await boxes(page)
-      const limit = end.layerTop + end.translationHome + TOP_SLACK_PX
-      if (end.rows === null || end.rows.top > limit) {
-        values.rowsCantReachTop = 1
-        notes.push(
-          `reach: the rows stopped at ${Math.round(end.rows?.top ?? -1)}px, over ${Math.round(limit)}px (the translation's home plus ${TOP_SLACK_PX}px)`
+      await reached(page, 'reach')
+      await page.screenshot({ path: shot })
+    } finally {
+      await close()
+    }
+  }
+
+  // below: the translation saved at the foot on its own, the rows a third of the way down, then the rows dragged up
+  {
+    const { page, close } = await karaokePage(surface, url, {
+      ...KARAOKE,
+      lyricsAnchor: '0.3',
+      lyricsTranslationAnchor: '1',
+    })
+    try {
+      const placed = await boxes(page)
+      if (placed.docked) {
+        throw new Error(
+          'below: the translation loaded docked instead of below the rows'
         )
       }
-      await page.screenshot({ path: shot })
+      await drag(page, ROWS, -2000)
+      await reached(page, 'below')
     } finally {
       await close()
     }
