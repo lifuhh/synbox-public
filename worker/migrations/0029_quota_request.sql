@@ -24,6 +24,18 @@ create table "quotaRequest" (
 create unique index "quota_request_open_idx" on "quotaRequest" ("userId") where "status" = 'open';
 create index "quota_request_created_idx" on "quotaRequest" ("createdAt");
 
+-- guestSong: a guest's one free song, ever, by a keyed hash of their network (IPv6 by its /64) and a few traits of
+-- their device that every browser on it reports alike (worker/src/guest-song.ts). No address, nothing per browser.
+-- requestId is the generation it went to: the song stays spent unless that generation failed, or never started
+create table "guestSong" (
+  "deviceKey" text not null primary key,
+  "requestId" text not null,
+  "videoId" text not null,
+  "createdAt" integer not null,
+  "updatedAt" integer not null
+);
+create index "guest_song_request_idx" on "guestSong" ("requestId");
+
 -- adminNoticeSeen: when each admin last opened their notices, so new contact messages, reports and quota requests
 -- after it count as unread
 create table "adminNoticeSeen" (

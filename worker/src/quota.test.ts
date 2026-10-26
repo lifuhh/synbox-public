@@ -1,6 +1,7 @@
 import type { Database } from 'bun:sqlite'
 import { beforeEach, describe, expect, test } from 'bun:test'
 
+import { claimGuestSong } from './guest-song'
 import type { Owner } from './quota'
 import {
   checkGeneration,
@@ -123,18 +124,22 @@ test('an unlimited override lifts the limit, and removing it brings the default 
   })
 })
 
-test('a guest adds no songs, even while generation is paused: signing in is what they need', async () => {
+test("a guest's song is reserved only under its device's claim, and a reconnect takes nothing more", async () => {
+  // No claim: a call that skipped the proxy, or a token the backend couldn't verify
   expect(await reserveAsGuest('g1', 'net-a')).toEqual({
     outcome: 'sign_in_required',
   })
-  sqlite.run(
-    `update "appSetting" set "value" = '0' where "key" = 'generationEnabled'`
-  )
+  expect(
+    await claimGuestSong(
+      db,
+      { deviceKey: 'device', requestId: 'g1', videoId: 'v' },
+      now.getTime()
+    )
+  ).toBe(true)
+  expect(await reserveAsGuest('g1', 'net-a')).toEqual({ outcome: 'reserved' })
+  expect(await reserveAsGuest('g1', 'net-a')).toEqual({ outcome: 'replay' })
   expect(await reserveAsGuest('g2', 'net-a')).toEqual({
     outcome: 'sign_in_required',
-  })
-  expect(sqlite.query(`select count(*) as n from "generation"`).get()).toEqual({
-    n: 0,
   })
 })
 
@@ -198,7 +203,8 @@ test('a check answers what reserving would, and takes nothing', async () => {
   expect(await check({ id: 'banned', kind: 'user' })).toEqual({
     outcome: 'forbidden',
   })
-  expect(await check(guest)).toEqual({ outcome: 'sign_in_required' })
+  // A guest's claim is the generation proxy's to check (guest-song.ts)
+  expect(await check(guest)).toEqual({ outcome: 'allowed' })
   sqlite.run(
     `update "appSetting" set "value" = '0' where "key" = 'generationEnabled'`
   )

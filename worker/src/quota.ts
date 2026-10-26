@@ -1,8 +1,8 @@
 export type GenerationKind = 'new' | 'regenerate' | 'retime'
 export type FinishedStatus = 'running' | 'succeeded' | 'failed'
 
-// Who asked: a signed-in user, or a guest known only by a hash of their network. Only accounts generate songs
-// (since 2026-10-27); a guest is still an owner for song checks (validations.ts) and old rows
+// Who asked: a signed-in user, or a guest known only by a hash of their network. A guest gets one song, ever, by a
+// device claim (guest-song.ts)
 export type Owner =
   | { kind: 'user'; id: string }
   | { kind: 'guest'; key: string }
@@ -47,6 +47,7 @@ interface UserRow {
 
 interface GenerationRow {
   userId: string | null
+  guestKey: string | null
   videoId: string
   status: 'reserved' | 'running' | 'succeeded' | 'failed'
 }
@@ -56,7 +57,7 @@ const utcDay = (now: Date) => now.toISOString().slice(0, 10)
 export const DAY_MS = 86_400_000
 // A generation the backend hasn't reported on for this long has stopped: the app gave up, was put away, or the
 // instance running it died. The backend reports every stage and every tenth of one, so a live one never gets here
-const STALL_MS = 15 * 60_000
+export const STALL_MS = 15 * 60_000
 
 // How far `zone`'s wall clock is ahead of UTC at `at`, in ms; 0 for a zone Intl doesn't know
 const zoneOffset = (zone: string, at: number) => {
@@ -321,9 +322,11 @@ interface GenerationRequest {
   client?: string | null
 }
 
-// The refusals that need no free slot, then the user's limits and the statement bindings for the slot check
+// The refusals that need no free slot, then the user's limits and the statement bindings for the slot check. A
+// guest's one song has its own path (reserveGuest)
 type Admitted =
   | { refused: Reservation }
+  | { guestKey: string }
   | {
       userId: string
       bindings: (string | number | null)[]
@@ -336,11 +339,6 @@ const admit = async (
   limits: Limits,
   now: Date
 ): Promise<Admitted> => {
-  // Browsing is open to everyone; adding a song takes an account. Checked before anything else, so a guest is
-  // never told the service is paused or busy when signing in is what they need
-  if (request.owner.kind === 'guest') {
-    return { refused: { outcome: 'sign_in_required' } }
-  }
   await expireStalled(db, now)
   const enabled = await db
     .prepare(
@@ -349,6 +347,9 @@ const admit = async (
     .first<string>('value')
   if (enabled !== '1') {
     return { refused: { outcome: 'generation_paused' } }
+  }
+  if (request.owner.kind === 'guest') {
+    return { guestKey: request.owner.key }
   }
   const userId = request.owner.id
   const own = await ownLimits(db, userId, limits, now)
@@ -374,8 +375,33 @@ const admit = async (
   return { bindings, own, userId }
 }
 
+// A guest's one song (guest-song.ts): reserved only under the claim the generation proxy took for this generation,
+// and held to its network's cap. ?1 the generation, ?2 the guest, ?3 the video, ?4 the kind, ?5 the UTC day, ?6 now,
+// ?7 the network (null: unknown), ?8 the client, ?9 a day ago, ?10 the network's limit
+const GUEST_SLOT_FREE = `exists (select 1 from "guestSong" where "requestId" = ?1)
+  and (?7 is null or (select count(*) from "generation"
+    where "networkKey" = ?7 and "capped" = 1 and "createdAt" > ?9 and "status" <> 'failed') < ?10)`
+
+const guestBindings = (
+  request: GenerationRequest,
+  guestKey: string,
+  limits: Limits,
+  now: Date
+) => [
+  request.id,
+  guestKey,
+  request.videoId,
+  request.kind,
+  utcDay(now),
+  now.getTime(),
+  request.network ?? null,
+  request.client ?? null,
+  now.getTime() - DAY_MS,
+  limits.network,
+]
+
 // Whether a new song would be reserved, without taking it: the app asks before it starts a generation, so a
-// refusal shows at the button instead of partway through
+// refusal shows at the button instead of partway through. A guest's claim is the proxy's to check
 export const checkGeneration = async (
   db: D1Database,
   request: Omit<GenerationRequest, 'id'>,
@@ -385,6 +411,11 @@ export const checkGeneration = async (
   const admitted = await admit(db, { ...request, id: '' }, limits, now)
   if ('refused' in admitted) {
     return admitted.refused
+  }
+  if ('guestKey' in admitted) {
+    return (await networkFull(db, request.network ?? null, limits, now))
+      ? { outcome: 'network_limit' }
+      : { outcome: 'allowed' }
   }
   const { bindings, own, userId } = admitted
   const free = await db
@@ -396,48 +427,47 @@ export const checkGeneration = async (
     : await refusal(db, userId, request.network ?? null, own, limits, now)
 }
 
-export const reserveGeneration = async (
+interface Slot {
+  // The owner's column, its value, the statement bindings and the condition a slot must meet
+  column: '"userId"' | '"guestKey"'
+  owner: string
+  bindings: (string | number | null)[]
+  free: string
+  insertValues: string
+  turnedAway: () => Promise<Reservation>
+}
+
+// Takes a slot in one statement, so two concurrent requests can't both take the last one (D1 runs writes one at a
+// time). The same request id again is a reconnect: it takes nothing more, and a failed one tries again
+const takeSlot = async (
   db: D1Database,
   request: GenerationRequest,
-  limits: Limits,
-  now = new Date()
+  slot: Slot
 ): Promise<Reservation> => {
-  const admitted = await admit(db, request, limits, now)
-  if ('refused' in admitted) {
-    return admitted.refused
-  }
-  const { bindings, own, userId } = admitted
-  const turnedAway = async () =>
-    await recorded(
-      db,
-      request,
-      await refusal(db, userId, request.network ?? null, own, limits, now),
-      now
-    )
-  // One statement, so two concurrent requests can't both take the last slot (D1 runs writes one at a time)
   const { meta } = await db
     .prepare(
-      `insert into "generation" ("id", "userId", "videoId", "kind", "status", "utcDay", "createdAt", "updatedAt",
+      `insert into "generation" ("id", ${slot.column}, "videoId", "kind", "status", "utcDay", "createdAt", "updatedAt",
          "networkKey", "client", "capped")
-       select ?1, ?2, ?3, ?4, 'reserved', ?5, ?6, ?6, ?10, ?12, ?13 where ${SLOT_FREE}
+       select ${slot.insertValues} where ${slot.free}
        on conflict ("id") do nothing`
     )
-    .bind(...bindings)
+    .bind(...slot.bindings)
     .run()
   if (meta.changes > 0) {
     return { outcome: 'reserved' }
   }
   const existing = await db
     .prepare(
-      `select "userId", "videoId", "status" from "generation" where "id" = ?1`
+      `select "userId", "guestKey", "videoId", "status" from "generation" where "id" = ?1`
     )
     .bind(request.id)
     .first<GenerationRow>()
   if (existing === null) {
-    return await turnedAway()
+    return await slot.turnedAway()
   }
-  // A request id is one song for one user: never a key to another video, or to a second run once it worked
-  if (existing.userId !== userId || existing.videoId !== request.videoId) {
+  const owner = slot.column === '"userId"' ? existing.userId : existing.guestKey
+  // A request id is one song for one owner: never a key to another video, or to a second run once it worked
+  if (owner !== slot.owner || existing.videoId !== request.videoId) {
     return { outcome: 'forbidden' }
   }
   if (existing.status === 'succeeded') {
@@ -451,11 +481,60 @@ export const reserveGeneration = async (
     .prepare(
       `update "generation" set "status" = 'reserved', "errorCode" = null, "finishedAt" = null, "updatedAt" = ?6,
        "stage" = null, "fraction" = null
-       where "id" = ?1 and "status" = 'failed' and ${SLOT_FREE}`
+       where "id" = ?1 and "status" = 'failed' and ${slot.free}`
     )
-    .bind(...bindings)
+    .bind(...slot.bindings)
     .run()
-  return retried.meta.changes > 0 ? { outcome: 'reserved' } : await turnedAway()
+  return retried.meta.changes > 0
+    ? { outcome: 'reserved' }
+    : await slot.turnedAway()
+}
+
+export const reserveGeneration = async (
+  db: D1Database,
+  request: GenerationRequest,
+  limits: Limits,
+  now = new Date()
+): Promise<Reservation> => {
+  const admitted = await admit(db, request, limits, now)
+  if ('refused' in admitted) {
+    return admitted.refused
+  }
+  if ('guestKey' in admitted) {
+    const { guestKey } = admitted
+    return await takeSlot(db, request, {
+      bindings: guestBindings(request, guestKey, limits, now),
+      column: '"guestKey"',
+      free: GUEST_SLOT_FREE,
+      insertValues: `?1, ?2, ?3, ?4, 'reserved', ?5, ?6, ?6, ?7, ?8, 1`,
+      owner: guestKey,
+      // Without the device's claim, signing in is the way to more songs; with it, the network is full
+      turnedAway: async () => {
+        const claimed = await db
+          .prepare(`select 1 from "guestSong" where "requestId" = ?1`)
+          .bind(request.id)
+          .first()
+        return claimed === null
+          ? { outcome: 'sign_in_required' }
+          : await recorded(db, request, { outcome: 'network_limit' }, now)
+      },
+    })
+  }
+  const { bindings, own, userId } = admitted
+  return await takeSlot(db, request, {
+    bindings,
+    column: '"userId"',
+    free: SLOT_FREE,
+    insertValues: `?1, ?2, ?3, ?4, 'reserved', ?5, ?6, ?6, ?10, ?12, ?13`,
+    owner: userId,
+    turnedAway: async () =>
+      await recorded(
+        db,
+        request,
+        await refusal(db, userId, request.network ?? null, own, limits, now),
+        now
+      ),
+  })
 }
 
 // A finished generation, or a running one's progress (`running` with its stage and fraction)
