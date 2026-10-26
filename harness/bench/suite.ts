@@ -13,6 +13,7 @@ import {
 } from './engines/browser'
 import type { View } from './engines/browser'
 import { cdpPerf } from './engines/cdp'
+import { controlShadeAudit } from './probes/control-shade'
 import { homeVisit } from './probes/home'
 import { LAYOUT_FINDINGS, layoutAudit, layoutPages } from './probes/layout'
 import type { LayoutPage, OpenedState } from './probes/layout'
@@ -180,6 +181,23 @@ const lyricDock = (name: string, view: View): Benchmark => ({
   title: `Karaoke Style's rows and translation in ${name} (${view.label}): the rows reach the top with the translation moved down, the rows dropped onto the translation dock, a layout saved overlapped loads usable`,
 })
 
+/**
+ * The player's controls on a phone on its side, shown: none sits in a shade band wider than it (probes/control-shade.ts).
+ * On the installed app on its side, and upright turned by Lock Landscape
+ */
+const controlShade = (
+  name: string,
+  view: View,
+  turned: boolean
+): Benchmark => ({
+  id: `control-shade-${name}`,
+  metrics: [count('shadedControls'), count('controls', false)],
+  run: controlShadeAudit(view.surface, turned),
+  runs: 1,
+  surface: view.surface,
+  title: `The player's controls in ${name} (${view.label}${turned ? ', turned by Lock Landscape' : ''}), shown: controls sitting in a shade band many times their size`,
+})
+
 /** A page's audits in its views: at rest, then each state it opens in that view */
 const layouts = (page: LayoutPage, views: View[]): Benchmark[] =>
   views.flatMap((v) => [
@@ -293,6 +311,8 @@ export const SUITE: Benchmark[] = [
   lyricShift('pwa-landscape', PWA_LANDSCAPE, false),
   lyricDock('web', WEB),
   lyricDock('pwa-landscape', PWA_LANDSCAPE),
+  controlShade('pwa-landscape', PWA_LANDSCAPE, false),
+  controlShade('pwa-turned', PWA_PORTRAIT, true),
   lyricShift('pwa-turned', PWA_PORTRAIT, true),
   player('x1FV6IrjZCY'),
   player('ZRtdQ81jPUQ'),

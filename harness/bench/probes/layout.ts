@@ -188,6 +188,20 @@ export const OPENED_STATES: Record<string, OpenedState[]> = {
       ],
     },
     {
+      // Lock Landscape: the upright phone's page turned a quarter by CSS (page-turn.ts), the controls shown. Its
+      // safe areas are swapped for the turn, and nothing else audited it (owner, 2026-10-26: a shade read as a haze
+      // over the controls there)
+      name: 'lock-landscape',
+      steps: [
+        { at: { x: 60, y: 60 }, hover: { attr: 'data-player-stage' } },
+        { press: { name: 'Fullscreen', role: 'button' } },
+        { at: { x: 60, y: 60 }, hover: { attr: 'data-player-stage' } },
+        { press: { name: 'Lock Landscape', role: 'button' } },
+        { shows: { name: 'Exit Fullscreen', role: 'button' } },
+      ],
+      views: ['pwa-portrait'],
+    },
+    {
       // Lyrics Style: a popover by the rail with a mouse, a dialog in the middle of a touch screen. Upright and
       // on the web the rail sits under the video, always there
       name: 'style',
