@@ -26,15 +26,17 @@ const ACTING =
   'a[href],[role=tab],[role=radio],[role=menuitem],[role=menuitemradio],[role=menuitemcheckbox],[role=option],[role=switch],[role=checkbox],[role=link],input[type=checkbox],input[type=radio],summary'
 const CANDIDATES = `button,[role=button],${ACTING},[data-press-ok]`
 /** Elements a scan presses at most: the ones with press handlers first */
-const MAX_TESTED = 24
-const QUIET_MS = 60
-const AFTER_MS = 90
+const MAX_TESTED = 20
+const QUIET_MS = 40
+const AFTER_MS = 70
 
 interface Candidate {
   n: number
   label: string
   /** Its own React props handle a press or a lift */
   handled: boolean
+  /** It, or something around it, handles a lift (the only way a lift outside it can act) */
+  lifts: boolean
   pressOk: string | null
   acting: boolean
   popup: boolean
@@ -205,7 +207,7 @@ const prepare = async (page: Page): Promise<Candidate[]> =>
             '',
         ].join('|')
       // React keeps an element's props on it, under a key it names `__reactProps$<random>`
-      const hasHandler = (el: Element) => {
+      const handles = (el: Element, names: string[]) => {
         const key = Object.keys(el).find((k) => k.startsWith('__reactProps$'))
         if (key === undefined) {
           return false
@@ -214,8 +216,19 @@ const prepare = async (page: Page): Promise<Candidate[]> =>
         return (
           typeof props === 'object' &&
           props !== null &&
-          HANDLERS.some((h) => typeof Reflect.get(props, h) === 'function')
+          names.some((h) => typeof Reflect.get(props, h) === 'function')
         )
+      }
+      const hasHandler = (el: Element) => handles(el, HANDLERS)
+      // A lift outside can only act through a lift handler on it or around it (a click never comes)
+      const LIFTS = ['onPointerUp', 'onMouseUp', 'onTouchEnd']
+      const liftHandled = (el: Element) => {
+        for (let at: Element | null = el; at; at = at.parentElement) {
+          if (handles(at, LIFTS)) {
+            return true
+          }
+        }
+        return false
       }
       const all = [...document.querySelectorAll(candidates)].filter(
         (el) => pressOkOf(el) !== null || shown(el)
@@ -262,6 +275,7 @@ const prepare = async (page: Page): Promise<Candidate[]> =>
       return picked.map((el, n) => ({
         acting: el.matches(acting),
         handled: handled.includes(el),
+        lifts: liftHandled(el),
         label: label(el),
         n,
         popup: (el.getAttribute('aria-haspopup') ?? 'false') !== 'false',
@@ -500,8 +514,11 @@ export const pressScan = async (
         }
         continue
       }
+      // A phone: a press a scroll took, then (only where a lift handler could act on it) one that slid off
       const ends: ('cancel' | 'outside')[] = touch
-        ? ['cancel', 'outside']
+        ? c.lifts
+          ? ['cancel', 'outside']
+          : ['cancel']
         : ['outside']
       for (const end of ends) {
         writes = []
