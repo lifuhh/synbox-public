@@ -6,7 +6,7 @@ import {
   SearchIcon,
   SparklesIcon,
 } from 'lucide-react'
-import { useId, useState } from 'react'
+import { useId, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
 
 import {
@@ -16,6 +16,7 @@ import {
 } from '@/components/generate-lyrics/field-generation'
 import { GoogleMark } from '@/components/shared/google-mark'
 import { Button } from '@/components/ui/button'
+import { ClearFieldButton } from '@/components/ui/clear-field-button'
 import { Input, InputField } from '@/components/ui/input'
 import {
   Tooltip,
@@ -60,6 +61,7 @@ const HeroGenerateLyricsDefault = ({
   setInputVideoId,
 }: HeroGenerateLyricsDefaultProps) => {
   const [inputValue, setInputValue] = useState('')
+  const field = useRef<HTMLInputElement>(null)
   const statusId = useId()
   const roomy = useMediaQuery('(min-width: 22.5rem)')
   // Generate Lyrics' check, its answer, and the field emptying once the song started
@@ -297,6 +299,7 @@ const HeroGenerateLyricsDefault = ({
             state={refused ? 'invalid' : inputMode}
             className='relative'>
             <Input
+              ref={field}
               value={inputValue}
               onChange={handleInputChange}
               readOnly={checking}
@@ -311,6 +314,16 @@ const HeroGenerateLyricsDefault = ({
               aria-describedby={statusId}
               data-bench='hero-input'
               variant='bare'
+            />
+            {/* Not while Generate Lyrics checks the song: the field is read-only then */}
+            <ClearFieldButton
+              field={field}
+              value={inputValue}
+              off={checking}
+              onClear={() => {
+                setInputValue('')
+                edited()
+              }}
             />
             {showAction && (
               <>

@@ -21,6 +21,7 @@ import {
 import { BoxScrollbar } from '@/components/shared/doc-scroll'
 import DotsLoader from '@/components/shared/dots-loader'
 import { Button } from '@/components/ui/button'
+import { ClearFieldButton } from '@/components/ui/clear-field-button'
 import { Input, InputField } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useMediaQuery } from '@/hooks/use-media-query'
@@ -524,6 +525,14 @@ const SearchPage = () => {
   const query = (params.get('q') ?? '').trim()
   const similarTo = params.get('similar') ?? ''
   const field = useRef<HTMLInputElement>(null)
+  // The field's text: what was typed, set again to the query whenever the query changes (a pill, Back). Kept in
+  // state rather than remounting the field per query, so Clear Search empties it without taking its focus
+  const [typed, setTyped] = useState(query)
+  const [shownQuery, setShownQuery] = useState(query)
+  if (query !== shownQuery) {
+    setShownQuery(query)
+    setTyped(query)
+  }
   // Under 360px wide the full text runs past the field, as Home's does
   const roomy = useMediaQuery('(min-width: 22.5rem)')
 
@@ -565,7 +574,6 @@ const SearchPage = () => {
       <title>Search · Synbox</title>
       <h1 className='sr-only'>Search</h1>
       <form
-        key={query}
         className='w-full sm:mx-auto sm:w-4/5'
         onSubmit={(e) => {
           e.preventDefault()
@@ -577,7 +585,10 @@ const SearchPage = () => {
           <Input
             ref={field}
             name='q'
-            defaultValue={query}
+            value={typed}
+            onChange={(e) => {
+              setTyped(e.target.value)
+            }}
             aria-label='Search Songs'
             enterKeyHint='search'
             autoCapitalize='off'
@@ -600,6 +611,17 @@ const SearchPage = () => {
               }
             }}
             variant='bare'
+          />
+          {/* Empties the field and leaves the search (its results, a pasted link's video, More Like This) */}
+          <ClearFieldButton
+            field={field}
+            value={typed}
+            onClear={() => {
+              setTyped('')
+              if (query !== '' || similarTo !== '') {
+                setParams({})
+              }
+            }}
           />
           <Button
             type='submit'
