@@ -439,11 +439,12 @@ const SimilarSongs = ({
 }
 
 // Three queries a tap away, in one row the width of the field. On a phone the row runs to the screen's edges and
-// slides sideways, so a pill past the edge reads as more to see rather than wrapping under the others
+// slides sideways, so a pill past the edge reads as more to see rather than wrapping under the others. The 4px of
+// room around the pills (py-1, sm:px-1, the gutter on a phone) keeps their focus ring inside the scrolling box
 const Examples = ({ onSearch }: { onSearch: (query: string) => void }) => (
   <ul
     aria-label='Examples'
-    className='-my-1 no-scrollbar flex gap-2 overflow-x-auto overscroll-x-contain py-1 max-sm:page-bleed-x'>
+    className='-my-1 no-scrollbar flex gap-2 overflow-x-auto overscroll-x-contain py-1 max-sm:page-bleed-x sm:-mx-1 sm:px-1'>
     {SEARCH_EXAMPLES.map((example) => (
       <li key={example} className='shrink-0'>
         <Button
