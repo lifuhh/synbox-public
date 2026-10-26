@@ -315,7 +315,10 @@ const cached = async (
     return hit
   }
   const response = await load()
-  if (response.ok || response.status === 404) {
+  // Only a found row or timing is kept. A miss is never kept: a song being generated is missing until it saves,
+  // and a short song saves within the two minutes a kept miss would last (lP9KB4rJw68, 2026-10-27: generated in
+  // 81 s, then "Not on Synbox Yet" on Play and on every refresh)
+  if (response.ok) {
     const stored = new Response(await response.clone().arrayBuffer(), {
       headers: {
         'Cache-Control': `max-age=${CACHE_SECONDS}`,
@@ -481,11 +484,10 @@ lyrics.get('/lyrics/:videoId', async (c) => {
     return Response.json(body)
   })
   if (!response.ok) {
-    return c.json(
-      await response.json(),
-      response.status === 404 ? 404 : 503,
-      cors
-    )
+    return c.json(await response.json(), response.status === 404 ? 404 : 503, {
+      ...cors,
+      'Cache-Control': 'no-store',
+    })
   }
   const body: Record<string, unknown> = await response.json()
   const secret = c.env.TRACE_KEY ?? ''
@@ -535,7 +537,10 @@ lyrics.get('/karaoke/:videoId', async (c) => {
     }
   )
   if (response.status === 404) {
-    return c.json({ code: 'not_found' }, 404, cors)
+    return c.json({ code: 'not_found' }, 404, {
+      ...cors,
+      'Cache-Control': 'no-store',
+    })
   }
   if (!response.ok) {
     return c.json({ code: 'unavailable' }, 502, cors)

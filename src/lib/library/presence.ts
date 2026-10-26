@@ -1,3 +1,4 @@
+import { justMade } from '@/lib/generation/store'
 import {
   useGallerySongs,
   useGetChartsPlaylist,
@@ -32,8 +33,9 @@ export const useSongPresence = (videoId: string): SongPresence => {
   if (lyrics.data !== null) {
     return { kind: 'in-library' }
   }
-  // A cached "not yet" being asked again: the song may have arrived since
-  if (lyrics.isFetching) {
+  // A cached "not yet" being asked again: the song may have arrived since. A song this browser just finished is
+  // waited for (its lyrics query asks again until it arrives) rather than shown as missing
+  if (lyrics.isFetching || justMade(videoId)) {
     return songs.some((song) => song.videoId === videoId)
       ? { kind: 'in-library' }
       : { kind: 'checking' }

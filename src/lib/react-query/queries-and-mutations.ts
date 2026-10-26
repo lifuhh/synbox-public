@@ -2,6 +2,7 @@ import type { QueryClient } from '@tanstack/react-query'
 import { queryOptions, useMutation, useQuery } from '@tanstack/react-query'
 
 import { getSongInfoBySongId } from '../appwrite/api'
+import { justMade } from '../generation/store'
 import { fetchLyricsRow, RateLimitedError } from '../lyrics-api'
 import { getLandingPagePlaylist } from '../recommendations'
 import { getKaraoke } from '../synbox-flask/api'
@@ -26,6 +27,14 @@ const DAY_MS = 1000 * 60 * 60 * 24
 const HOUR_MS = 1000 * 60 * 60
 // How long a "not yet" answer (no lyrics, no timing) is trusted
 const NOT_YET_MS = 1000 * 30
+// A "not yet" for a song this browser just finished is never trusted: it is asked again this often until the song
+// arrives (generation/store.ts › justMade)
+const JUST_MADE_RETRY_MS = 3000
+
+const notYetStale = (videoId: string) => (justMade(videoId) ? 0 : NOT_YET_MS)
+
+const askAgainIfJustMade = (videoId: string, data: unknown) =>
+  data === null && justMade(videoId) ? JUST_MADE_RETRY_MS : false
 
 export const useGetLandingPagePlaylist = () =>
   useQuery({
@@ -138,12 +147,14 @@ export const useGetLyricsBySongId = (songId: string) =>
     // "No lyrics yet" is asked again on a visit once it is NOT_YET_MS old: anyone's generation can finish in the
     // meantime, and only the listener's own clears the cache (generation-host.tsx). Not on every mount: the page
     // remounts its readers while it checks, and each would ask again
+    refetchInterval: (query) => askAgainIfJustMade(songId, query.state.data),
     refetchOnMount: true,
     refetchOnReconnect: false,
     refetchOnWindowFocus: false,
     // A 404 is the normal "no lyrics yet" answer, so retrying only adds delay
     retry: false,
-    staleTime: (query) => (query.state.data === null ? NOT_YET_MS : HOUR_MS),
+    staleTime: (query) =>
+      query.state.data === null ? notYetStale(songId) : HOUR_MS,
   })
 
 // data is null when the song has no karaoke timing yet. A previewed version
@@ -162,6 +173,7 @@ export const useGetKaraokeById = (
         : ((await getKaraoke(videoId, version, signal)) ??
           (await getKaraoke(videoId, null, signal))),
     queryKey: [QUERY_KEYS.GET_KARAOKE_BY_ID, videoId, version],
+    refetchInterval: (query) => askAgainIfJustMade(videoId, query.state.data),
     refetchOnWindowFocus: false,
     // A busy server turns requests away for up to a minute while a lyrics job
     // runs; giving up sooner leaves plain lyrics until something remounts
@@ -169,7 +181,8 @@ export const useGetKaraokeById = (
       !(error instanceof RateLimitedError) && failures < 7,
     retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 20_000),
     // No timing yet goes stale as the lyrics' "not yet" does
-    staleTime: (query) => (query.state.data === null ? NOT_YET_MS : HOUR_MS),
+    staleTime: (query) =>
+      query.state.data === null ? notYetStale(videoId) : HOUR_MS,
   })
 
 export const useSearchVideos = (query: string) =>

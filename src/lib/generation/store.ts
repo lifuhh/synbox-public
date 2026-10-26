@@ -777,5 +777,17 @@ const subscribe = (listener: () => void) => {
 
 export const getGenerationState = () => state
 
+// A song this browser just finished. Its lyrics row exists even while a lookup still answers "not found": an older
+// auth Worker kept a miss at the edge for two minutes (worker/src/lyrics.ts › cached), longer than a short song takes
+// to generate. Until then a "not found" for it is asked again rather than believed
+export const JUST_MADE_MS = 3 * 60_000
+export const justMade = (videoId: string, now = Date.now()) =>
+  state.jobs.some(
+    (job) =>
+      job.videoId === videoId &&
+      job.status.kind === 'complete' &&
+      now - job.status.at < JUST_MADE_MS
+  )
+
 export const useGeneration = () =>
   useSyncExternalStore(subscribe, getGenerationState)
