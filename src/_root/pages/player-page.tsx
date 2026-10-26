@@ -8,7 +8,6 @@ import {
 } from 'react-router'
 
 import PlayerRail from '@/components/lyrics-display/player-rail'
-import SharedStyleBanner from '@/components/lyrics-display/shared-style-banner'
 import VersionPreviewBanner, {
   parsePreviewVersion,
 } from '@/components/lyrics-display/version-preview-banner'
@@ -340,8 +339,8 @@ const PlayerPage = () => {
     }
   }, [stageVideoId, setLyricsStyleSong])
 
-  // A link's ?style= is shown for this visit and then leaves the address, so a reload or a copied
-  // address is the viewer's own style again
+  // A link's ?style= is shown for this visit, with nothing to answer and nothing saved, then leaves the
+  // address, so a reload or a copied address is the viewer's own style again
   const sharedStyleParam = searchParams.get('style')
   const showSharedStyle = useSetAtom(showSharedLyricsStyleAtom)
   useEffect(() => {
@@ -429,7 +428,6 @@ const PlayerPage = () => {
       {previewVersion !== null && stageId !== null && (
         <VersionPreviewBanner videoId={stageId} />
       )}
-      {stageId !== null && <SharedStyleBanner />}
       <WatchPage
         surface={surface}
         theater={layout === 'theater'}

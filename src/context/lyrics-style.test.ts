@@ -22,8 +22,6 @@ import {
   lyricsTemplatesAtom,
   lyricsThemeIdAtom,
   lyricsTwoLinesAtom,
-  dismissSharedLyricsStyleAtom,
-  keepSharedLyricsStyleAtom,
   lyricsStyleSourceAtom,
   resetSongLyricsStyleAtom,
   saveLyricsTemplateAtom,
@@ -34,6 +32,12 @@ import {
 beforeEach(() => {
   localStorage.clear()
 })
+
+// Everything kept on the device, to compare before and after
+const stored = () =>
+  JSON.stringify(
+    Object.keys(localStorage).map((key) => [key, localStorage.getItem(key)])
+  )
 
 test('a song keeps its own style; other songs follow the defaults', () => {
   const store = createStore()
@@ -110,27 +114,43 @@ test("a shared link's style shows for the visit without touching the viewer's ow
   }
 
   const store = createStore()
+  store.sub(lyricsThemeIdAtom, () => {})
   store.set(lyricsStyleSongAtom, 'songA')
   store.set(lyricsThemeIdAtom, 'amethyst')
+  const saved = stored()
 
+  // Opening the link: shown, nothing stored, and the song still has no style of its own
   store.set(showSharedLyricsStyleAtom, sent)
-  expect(store.get(lyricsThemeIdAtom)).toBe('lemon')
-  expect(store.get(lyricsStyleSourceAtom)).toBe('shared')
-  store.set(dismissSharedLyricsStyleAtom)
-  expect(store.get(lyricsThemeIdAtom)).toBe('amethyst')
+  expect(store.get(lyricsStyleAtom)).toMatchObject({
+    fontSize: 1.25,
+    themeId: 'lemon',
+  })
+  expect(stored()).toBe(saved)
+  expect(store.get(lyricsStyleSourceAtom)).toBe('default')
+  expect(store.get(lyricsStyleScopeAtom)).toBe('all')
 
-  // Tuning a shared style keeps it, with the change, as the song's own
+  // Another song, and the same song opened again (a reload), are the viewer's own
+  store.set(lyricsStyleSongAtom, 'songB')
+  expect(store.get(lyricsThemeIdAtom)).toBe('amethyst')
+  const reloaded = createStore()
+  reloaded.sub(lyricsThemeIdAtom, () => {})
+  reloaded.set(lyricsStyleSongAtom, 'songA')
+  expect(reloaded.get(lyricsThemeIdAtom)).toBe('amethyst')
+
+  // A change while it shows: what is on screen changes, and only the changed field is saved, by the usual rules
+  store.set(lyricsStyleSongAtom, 'songA')
   store.set(showSharedLyricsStyleAtom, sent)
   store.set(fontSizeMultiplierAtom, 0.8)
-  expect(store.get(lyricsStyleSourceAtom)).toBe('song')
-  expect(store.get(lyricsThemeIdAtom)).toBe('lemon')
-  expect(store.get(fontSizeMultiplierAtom)).toBe(0.8)
-
+  expect(store.get(lyricsStyleAtom)).toMatchObject({
+    fontSize: 0.8,
+    themeId: 'lemon',
+  })
+  expect(localStorage.getItem('lyricsStyle:songA')).toBeNull()
   store.set(lyricsStyleSongAtom, 'songB')
-  store.set(showSharedLyricsStyleAtom, sent)
-  store.set(keepSharedLyricsStyleAtom)
-  store.set(lyricsStyleSongAtom, 'songB')
-  expect(store.get(lyricsThemeIdAtom)).toBe('lemon')
+  expect(store.get(lyricsStyleAtom)).toMatchObject({
+    fontSize: 0.8,
+    themeId: 'amethyst',
+  })
 })
 
 test('a malformed shared style is ignored', () => {

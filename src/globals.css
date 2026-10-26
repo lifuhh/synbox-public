@@ -1290,28 +1290,6 @@
   }
 }
 
-/* A notice that fades out on its own after a while. A pointer resting on it or focus inside holds the countdown;
-   the element ends at opacity 0 and the component removes it on animationend */
-@keyframes auto-hide {
-  to {
-    opacity: 0;
-  }
-}
-@utility auto-hide {
-  animation: auto-hide 0.3s ease-in 8s forwards;
-  &:focus-within {
-    animation-play-state: paused;
-  }
-  @media (hover: hover) {
-    &:hover {
-      animation-play-state: paused;
-    }
-  }
-  @media (prefers-reduced-motion: reduce) {
-    animation-duration: 1ms;
-  }
-}
-
 /* tw-animate's menu, dialog, popover, tooltip and toast entrances zoom and slide; under reduced motion they only
    fade. Unlayered, so it wins over the utilities that set these per element */
 @media (prefers-reduced-motion: reduce) {
