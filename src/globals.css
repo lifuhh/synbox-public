@@ -298,7 +298,7 @@
     var(--page-end) + var(--safe-bottom) + var(--tabbar-h)
   );
   --spacing-page-bottom-lg: calc(4rem + var(--safe-bottom) + var(--tabbar-h));
-  --spacing-controls-bottom: max(0.75rem, var(--safe-bottom));
+  --spacing-controls-bottom: max(var(--controls-bottom-min, 0.75rem), var(--safe-bottom));
   --spacing-controls-left: max(1rem, var(--safe-left));
   --spacing-controls-right: max(1rem, var(--safe-right));
   --spacing-controls-rail: calc(var(--safe-left) + 3.5rem);
@@ -997,6 +997,12 @@
   width: 100%;
   height: 100%;
   padding-top: var(--topbar-h);
+
+  /* A phone on its side: the video, the lyrics and their buttons keep out of the side safe areas (the notch and the
+     home indicator's side), which stay black (owner, 2026-10-26) */
+  @media (orientation: landscape) and (max-height: 500px) {
+    padding-inline: var(--safe-left) var(--safe-right);
+  }
 
   @media (min-width: 1000px) {
     display: grid;
@@ -1946,7 +1952,8 @@ html[data-installed] *::-webkit-scrollbar {
   /* The installed app's player held upright has no top bar, as YouTube's: the video starts under the status bar,
      full width at 16:9, and its Minimize (stage-controls.tsx) or the drag down goes back to the tabs, where search,
      notifications and the account are. The bar's row goes to the lyrics window under the video
-     (watch-lyrics-band: --topbar-freed). A phone on its side keeps its floating bar; the website keeps its own */
+     (watch-lyrics-band: --topbar-freed). On its side the watch page keeps its bar (the full-screen player there has
+     none, as on the turned page: below); the website keeps its own */
   @media (orientation: portrait) and (max-width: 999px) {
     html[data-installed][data-watch]:not([data-landscape-lock]) {
       --topbar-h: var(--safe-top);
@@ -2146,14 +2153,18 @@ html[data-installed] *::-webkit-scrollbar {
      left and the home indicator on its right. The top bar goes, as in fullscreen. Menus and popovers are
      placed in the page's axes by src/lib/turned-popper.ts */
   @media (orientation: portrait) {
+    /* Both sides take the larger of the notch's inset and the home indicator's, as iOS reports them when it turns
+       the screen itself (equal left and right): the turned page and the rotated one lay out the same (owner,
+       2026-10-26; harness/bench/probes/landscape-parity.ts). The home indicator's counts only where the page runs
+       over it: in a browser the page (below) stops above Safari's toolbar; in the installed app it runs to the
+       screen's bottom edge */
     html[data-landscape-lock] {
-      --safe-left: env(safe-area-inset-top, 0px);
-      /* The home indicator, unless it lies past the page's end: in a browser the page (below) stops above
-         Safari's toolbar; in the installed app it runs to the screen's bottom edge, over the home indicator */
-      --safe-right: max(
-        0px,
+      --turned-side: max(
+        env(safe-area-inset-top, 0px),
         calc(env(safe-area-inset-bottom, 0px) - (100lvh - var(--screen-h)))
       );
+      --safe-left: var(--turned-side);
+      --safe-right: var(--turned-side);
       --safe-bottom: env(safe-area-inset-left, 0px);
       --topbar-h: var(--safe-top);
       --topbar-shown-h: var(--topbar-h);
@@ -2180,13 +2191,8 @@ html[data-installed] *::-webkit-scrollbar {
     }
 
     /* Flip: the other way round, a quarter anticlockwise, for a phone held top to the right. The notch is on
-       the page's right and the home indicator on its left */
+       the page's right and the home indicator on its left; the sides stay the larger of the two */
     html[data-landscape-lock][data-landscape-flip] {
-      --safe-left: max(
-        0px,
-        calc(env(safe-area-inset-bottom, 0px) - (100lvh - var(--screen-h)))
-      );
-      --safe-right: env(safe-area-inset-top, 0px);
       --safe-top: env(safe-area-inset-left, 0px);
       --safe-bottom: env(safe-area-inset-right, 0px);
     }
@@ -2197,6 +2203,28 @@ html[data-installed] *::-webkit-scrollbar {
 
     html[data-landscape-lock] [data-topbar] {
       display: none;
+    }
+  }
+
+  /* The full-screen player on a phone on its side, however it got there: turned by Lock Landscape or Full Screen
+     (rotation lock on), or rotated by the system. Both lay out the same (harness/bench/probes/landscape-parity.ts): no top bar (the watch page on its side keeps it, and Exit
+     Fullscreen goes there), and the control bar at least 20px off the bottom edge, where iOS keeps its home indicator
+     when it turns the screen (a 21px inset); the turned page reports none there */
+  @media (orientation: landscape) and (max-height: 500px) {
+    html:has([data-player-stage]):not([data-watch]) {
+      --topbar-h: var(--safe-top);
+      --topbar-shown-h: var(--topbar-h);
+      --controls-bottom-min: 1.25rem;
+
+      & [data-topbar] {
+        display: none;
+      }
+    }
+  }
+
+  @media (orientation: portrait) {
+    html[data-landscape-lock]:has([data-player-stage]):not([data-watch]) {
+      --controls-bottom-min: 1.25rem;
     }
   }
 
@@ -2526,6 +2554,22 @@ html[data-transition='flip']::view-transition-new(root) {
     padding-bottom: 0;
     background: #000;
     mask-image: none;
+  }
+}
+
+/* The watch page on a phone on its side (Exit Fullscreen with the screen rotated): its content keeps inside the side
+   safe areas, and the bands beside it are black, not the page's glow (owner, 2026-10-26) */
+@media (orientation: landscape) and (max-height: 500px) {
+  html[data-watch],
+  html[data-watch] body,
+  html[data-watch] [data-page-glow] {
+    background: linear-gradient(
+      to right,
+      #000 var(--safe-left),
+      var(--color-background) var(--safe-left),
+      var(--color-background) calc(100% - var(--safe-right)),
+      #000 calc(100% - var(--safe-right))
+    );
   }
 }
 
