@@ -679,7 +679,7 @@ export const PlayerStage = ({
             setVolume({ ...storedVolume, muted: false })
           }}
           className={cn(
-            'absolute top-[calc(var(--topbar-h)+0.5rem+var(--notices-h,0px)+var(--preview-banner-h,0px))] left-1/2 z-40 flex -translate-x-1/2 items-center gap-2.5 rounded-full bg-black/60 px-5 py-2.5 text-base font-medium whitespace-nowrap text-white shadow-lg backdrop-blur-md transition-[background-color,opacity] duration-300 hover:bg-black/80',
+            'absolute top-[calc(var(--topbar-h)+0.5rem+var(--notices-h,0px)+var(--preview-banner-h,0px))] left-1/2 z-40 flex -translate-x-1/2 items-center gap-2.5 rounded-full bg-black/60 px-5 py-2.5 text-base font-medium whitespace-nowrap text-white shadow-lg backdrop-blur-md transition duration-300 hover:bg-black/80',
             controlsVisible &&
               'watch-narrow:pointer-events-none watch-narrow:opacity-0'
           )}>
