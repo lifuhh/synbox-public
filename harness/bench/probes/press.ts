@@ -310,10 +310,36 @@ const tryPress = async (
       const r = el.getBoundingClientRect()
       const x = r.left + r.width / 2
       const y = r.top + r.height / 2
-      // Well outside it (80px past its edge), above when there's room: a slide down on the player is its own gesture
-      // (drag to minimise), so a slide-off down there would test that instead of the control
-      const oy =
-        r.top - 80 > 2 ? r.top - 80 : Math.min(innerHeight - 2, r.bottom + 80)
+      // Where the slid-off finger lifts: 80px past an edge, clear of the control and of any menu or list open now (a
+      // mouse's menu opened on the press, and lifting on its item would pick it, by design). Above first: a slide down
+      // on the player is its own gesture (drag to minimise), which would test that instead of the control
+      const liftPoint = () => {
+        const tries = [
+          { x, y: r.top - 80 },
+          { x, y: r.bottom + 80 },
+          { x: r.left - 80, y },
+          { x: r.right + 80, y },
+        ]
+        const clear = tries.find((p) => {
+          if (
+            p.x < 2 ||
+            p.y < 2 ||
+            p.x > innerWidth - 2 ||
+            p.y > innerHeight - 2
+          ) {
+            return false
+          }
+          const at = document.elementFromPoint(p.x, p.y)
+          return (
+            at === null ||
+            (!el.contains(at) &&
+              at.closest(
+                '[role=menu],[role=listbox],[data-radix-popper-content-wrapper]'
+              ) === null)
+          )
+        })
+        return clear ?? { x, y: Math.min(innerHeight - 2, r.bottom + 80) }
+      }
       const pointer = (type: string, cx: number, cy: number) =>
         new PointerEvent(type, {
           bubbles: true,
@@ -382,22 +408,23 @@ const tryPress = async (
       if (location.href !== href) {
         press.push(`navigated to ${location.pathname}${location.search}`)
       }
+      const lift = liftPoint()
       if (onPhone) {
         // A touch stays with the element it landed on: its moves and lift go there, wherever the finger is
         if (ending === 'cancel') {
           send(el, pointer('pointercancel', x, y))
           send(el, touchEvent('touchcancel', x, y))
         } else {
-          send(el, pointer('pointermove', x, oy))
-          send(el, pointer('pointerup', x, oy))
-          send(el, touchEvent('touchend', x, oy))
+          send(el, pointer('pointermove', lift.x, lift.y))
+          send(el, pointer('pointerup', lift.x, lift.y))
+          send(el, touchEvent('touchend', lift.x, lift.y))
         }
       } else {
-        const out = document.elementFromPoint(x, oy) ?? document.body
-        send(out, pointer('pointermove', x, oy))
-        send(out, mouse('mousemove', x, oy))
-        send(out, pointer('pointerup', x, oy))
-        send(out, mouse('mouseup', x, oy))
+        const out = document.elementFromPoint(lift.x, lift.y) ?? document.body
+        send(out, pointer('pointermove', lift.x, lift.y))
+        send(out, mouse('mousemove', lift.x, lift.y))
+        send(out, pointer('pointerup', lift.x, lift.y))
+        send(out, mouse('mouseup', lift.x, lift.y))
       }
       await wait(after)
       const release = fresh()
@@ -450,12 +477,13 @@ export const pressScan = async (
   const onRequest = (request: Request) => {
     const { pathname } = new URL(request.url())
     // The app's own writes: the YouTube player's frame posts its own stats and logs as it plays, and Sentry's
-    // envelopes (tunnelled through /api/<project>/envelope/) report, they don't act
+    // envelopes (tunnelled through /api/<project>/envelope/) and the usage events' batches (/api/events, sent on a
+    // timer) report, they don't act
     if (
       request.frame() === page.mainFrame() &&
       request.method() !== 'GET' &&
       request.method() !== 'HEAD' &&
-      !/\/envelope\/?$/u.test(pathname)
+      !/\/envelope\/?$|^\/api\/events$/u.test(pathname)
     ) {
       writes.push(`${request.method()} ${pathname}`)
     }
@@ -486,8 +514,12 @@ export const pressScan = async (
           findings.tested += 1
         }
         // With a mouse, a menu or list trigger may open on the press (press, drag, release picks an item)
+        // ...and opening it may close another open popup (the search list loses focus to the menu): a dismissal
         const popupOpens = (change: string) =>
           /^opened (?:menu|listbox|dialog) /u.test(change) ||
+          / (?:aria-expanded true → false|data-state open → closed)$/u.test(
+            change
+          ) ||
           (change.startsWith(`${c.label} `) &&
             /^ (?:aria-expanded|data-state) /u.test(
               change.slice(c.label.length)
