@@ -39,6 +39,17 @@ export const lineReached = (
   return reached
 }
 
+// The line a following box keeps in view: the one lit as sung, and only when none is (before the first line, or
+// through an instrumental gap) the last one reached. Never the next line while the one before is still sung:
+// lineReached alone moves on 0.5 s before a line's start, half a line early on a fast song
+export const lineFollowed = (
+  lines: readonly { start: number; end: number }[],
+  time: number
+) => {
+  const sung = currentLineIndex(lines, time)
+  return sung >= 0 ? sung : lineReached(lines, time)
+}
+
 // A song's lyrics played without audio: a clock that runs from play, stops at the end and jumps on a seek.
 // `onFrame` gets the exact time every frame while it plays (the karaoke fill); React state carries the
 // rest: the time a few times a second, the line being sung (-1 between lines) and the line reached

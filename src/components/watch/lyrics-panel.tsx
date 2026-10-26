@@ -53,6 +53,9 @@ import { GenerateLyricsButton } from './generate-lyrics-button'
 const SEEK_JUMP_SEC = 1.5
 // A clock that hasn't moved for this long is paused
 const PAUSED_AFTER_MS = 500
+// The glide to a new line: 60% of that line's length, kept between these
+const GLIDE_MIN_MS = 250
+const GLIDE_MAX_MS = 600
 // A press held longer than this is the start of a look around the song, not a tap
 const TAP_MAX_MS = 500
 const NO_LINES: OfflineLine[] = []
@@ -300,16 +303,28 @@ export const LyricsPanel = ({
   // The clock's last time and when it last moved on: a jump is a seek, and a clock that stands still is paused
   const lastTime = useRef(0)
   const lastAdvance = useRef(0)
+  // The line lit as sung; through a gap, the last one reached (use-silent-playback.ts › lineFollowed)
+  const lit = active >= 0 ? active : reached
+  const litLine: OfflineLine | undefined = lines[Math.max(lit, 0)]
   const { blocks, content, follow, following, handlers, scroller } =
     useLyricsFollow({
       centred: band,
       enabled: lines.length > 0,
       followAt,
+      // Most of the line it moves to, so a fast song's glide ends before the next line
+      glideMs:
+        litLine === undefined
+          ? undefined
+          : Math.min(
+              GLIDE_MAX_MS,
+              Math.max(GLIDE_MIN_MS, (litLine.end - litLine.start) * 600)
+            ),
       isPlaying: () =>
         performance.now() - lastAdvance.current < PAUSED_AFTER_MS,
       resumes: !band,
-      // Before the first line, the first line waits in its place
-      target: Math.max(reached, 0),
+      // The lit line, not the last reached: that one moves on half a second before a line starts, while the one
+      // before it is still sung. Before the first line, the first line waits in its place
+      target: Math.max(lit, 0),
     })
   useEffect(
     () =>
@@ -338,7 +353,6 @@ export const LyricsPanel = ({
       }),
     [clock, lines, follow]
   )
-  const lit = active >= 0 ? active : reached
   const empty = emptyText({
     anyShown: show.japanese || show.romaji || show.translation,
     hasLines: lines.length > 0,
