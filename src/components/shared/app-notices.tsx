@@ -6,7 +6,7 @@ import { appJustUpdated, useOnline } from '@/lib/pwa'
 import { cn } from '@/utils/cn'
 
 const pill =
-  'pointer-events-auto flex h-8 items-center gap-1.5 rounded-full bg-popover/90 px-3 text-xs text-foreground shadow-lg backdrop-blur-md'
+  'pointer-events-auto flex h-8 items-center gap-1.5 rounded-full bg-glass px-3 text-xs text-foreground shadow-lg backdrop-blur-md'
 
 // How long the note about a connection change stays up
 const NOTICE_MS = 2000

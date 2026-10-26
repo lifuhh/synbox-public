@@ -210,7 +210,7 @@ export default defineConfig({
       // src/lib/pwa.ts swaps a new deploy in only where a reload goes unnoticed, never during a song
       injectRegister: false,
       manifest: {
-        background_color: '#1f0a15',
+        background_color: '#0e0c0c',
         categories: ['music', 'entertainment'],
         description:
           'Japanese karaoke for any YouTube video, with AI-transcribed, synced lyrics, furigana, romaji and translations.',
@@ -265,7 +265,7 @@ export default defineConfig({
         ],
         short_name: 'Synbox',
         start_url: '/',
-        theme_color: '#3c1628',
+        theme_color: '#0e0c0c',
       },
       registerType: 'prompt',
       workbox: {

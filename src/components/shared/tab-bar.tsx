@@ -90,7 +90,7 @@ export const TabNav = ({
   <nav
     aria-label='App'
     data-tab-nav
-    className='grid h-16 grid-cols-4 gap-1 rounded-full bg-popover/85 p-1 shadow-lg ring-1 ring-white/10 backdrop-blur-xl'>
+    className='grid h-16 grid-cols-4 gap-1 rounded-full bg-glass p-1 shadow-lg ring-1 ring-white/10 backdrop-blur-xl'>
     {TABS.map(({ to, label, icon: Icon, also }) => {
       const active = pathname === to || also?.test(pathname) === true
       return (
@@ -104,7 +104,7 @@ export const TabNav = ({
           className={cn(
             'flex flex-col items-center justify-center gap-0.5 rounded-full text-xs font-medium transition-colors',
             active
-              ? 'bg-primary-subtle text-primary-text'
+              ? 'bg-glass-selected text-foreground'
               : 'text-muted-foreground'
           )}>
           <Icon data-tab-icon className='size-6' aria-hidden />
