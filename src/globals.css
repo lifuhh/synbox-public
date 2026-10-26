@@ -850,6 +850,39 @@
     outline: 1px dashed oklch(1 0 0 / 0.35);
     outline-offset: 0.15em;
   }
+
+  /* Pulling it off the rows: its place stays drawn, dashed and faint, the text lifts off it (a fill, an outline that
+     firms up as the pull nears coming off, a slight scale), and past the point where letting go undocks it, it
+     snaps to a solid outline and a little larger, so "let go now and it comes off" shows before the drop. Transforms
+     and an outline on one small box only; reduced motion keeps the outline and fill, not the scale */
+  & .docked-translation-origin > * {
+    opacity: 0.35;
+    outline: 1px dashed oklch(1 0 0 / 0.4);
+    outline-offset: 0.15em;
+  }
+
+  &[data-pulling] .docked-translation-text {
+    /* Dark, and above the rows it crosses, so the lifted text reads over the lyrics and the video */
+    position: relative;
+    z-index: 2;
+    background: oklch(0 0 0 / 0.45);
+    outline: 1px solid oklch(1 0 0 / calc(0.2 + 0.35 * var(--dock-reach, 0)));
+    outline-offset: 0.15em;
+    scale: calc(1 + 0.03 * var(--dock-reach, 0));
+  }
+
+  &[data-torn] .docked-translation-text {
+    background: oklch(0 0 0 / 0.6);
+    outline: 2px solid oklch(1 0 0 / 0.75);
+    scale: 1.05;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    &[data-pulling] .docked-translation-text,
+    &[data-torn] .docked-translation-text {
+      scale: none;
+    }
+  }
 }
 
 /* On a phone on its side the lyrics' layer keeps clear of the rail on both sides (one line stays centred), but
