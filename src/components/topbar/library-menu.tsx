@@ -8,15 +8,25 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover'
+import { useMenuOffset } from '@/lib/menu-offset'
 import { newTabHandlers } from '@/lib/selectable-links'
 
 // The top bar's one place for the user's songs: Bookmarks, Playlists, Generated and History, opened by a click
 const LibraryMenu = () => {
   const [open, setOpen] = useState(false)
   const panel = useRef<HTMLDivElement>(null)
+  const { measure, offset, triggerRef } =
+    useMenuOffset<HTMLButtonElement>('bottom')
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
+    <Popover
+      open={open}
+      onOpenChange={(next) => {
+        if (next) {
+          measure()
+        }
+        setOpen(next)
+      }}>
+      <PopoverTrigger ref={triggerRef} asChild>
         <Button variant='toolbar' size='icon' {...newTabHandlers('/library')}>
           <LibraryBigIcon className='h-6 w-6 shrink-0' />
           <span className='sr-only'>Library</span>
@@ -25,7 +35,7 @@ const LibraryMenu = () => {
       <PopoverContent
         ref={panel}
         align='end'
-        sideOffset={10}
+        sideOffset={offset}
         collisionPadding={8}
         variant='floating'
         aria-label='Library'

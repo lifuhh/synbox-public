@@ -40,7 +40,8 @@ const drawnBox = (button: HTMLElement): DOMRect => {
       rects.push(range.getBoundingClientRect())
     }
   }
-  const drawn = rects.filter((rect) => rect.width > 0 && rect.height > 0)
+  // Over 1px: screen-reader-only text is a 1px box
+  const drawn = rects.filter((rect) => rect.width > 1 && rect.height > 1)
   if (drawn.length === 0) {
     return box
   }
@@ -64,16 +65,19 @@ const insetOn = (button: HTMLElement, side: Side) => {
   return insets[side]
 }
 
-// The sideOffset that puts a menu MENU_GAP from its trigger's drawn part, measured as it opens: give the trigger
-// `triggerRef` and call `measure` when the menu opens. A flipped side (no room) keeps the measure of the side asked
-// for, the same on a symmetric button
+// The sideOffset that puts a menu on `side` of `trigger` MENU_GAP from its drawn part. A flipped side (no room) keeps
+// the measure of the side asked for, the same on a symmetric button
+export const menuOffset = (trigger: HTMLElement, side: Side) =>
+  Math.round(MENU_GAP - insetOn(trigger, side))
+
+// menuOffset, measured as the menu opens: give the trigger `triggerRef` and call `measure` when it opens
 export const useMenuOffset = <T extends HTMLElement>(side: Side) => {
   const triggerRef = useRef<T>(null)
   const [offset, setOffset] = useState(MENU_GAP)
   const measure = useCallback(() => {
     const trigger = triggerRef.current
     if (trigger !== null) {
-      setOffset(Math.round(MENU_GAP - insetOn(trigger, side)))
+      setOffset(menuOffset(trigger, side))
     }
   }, [side])
   return { measure, offset, triggerRef }
