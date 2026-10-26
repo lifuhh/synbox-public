@@ -567,6 +567,7 @@ export const LAYOUT_FINDINGS = [
   'actsOnPress',
   'actsOnReleaseOutside',
   'badPressOk',
+  'staggeredActions',
 ] as const
 
 /** How far an open menu may sit from what can be seen of its button before the audit counts it detached */
@@ -624,6 +625,81 @@ const stepName = (step: Step): string => {
     return `focus ${controlName(step.focus)}`
   }
   return `shows ${controlName(step.shows)}`
+}
+
+/**
+ * Buttons in an open dialog, menu or popover that don't line up (owner, 2026-10-26: Lyrics Style's Reset Positions
+ * and Save Current Style sat staggered on two rows): two side by side whose centre lines differ by more than 1px,
+ * and two rows next to each other that share neither a leading nor a trailing edge (one at the start of a row, the
+ * other at the end of the next: a staggered pair, not a layout). Runs in the page; the page's own axes on a page
+ * turned by Lock Landscape
+ */
+const staggeredActions = (): string[] => {
+  const turned = document.documentElement.hasAttribute('data-landscape-lock')
+  const box = (e: Element) => {
+    const r = e.getBoundingClientRect()
+    return turned
+      ? { cy: r.left + r.width / 2, h: r.width, x0: r.top, x1: r.bottom }
+      : { cy: r.top + r.height / 2, h: r.height, x0: r.left, x1: r.right }
+  }
+  const found: string[] = []
+  const PANEL =
+    '[role="dialog"], [role="menu"], [data-radix-popper-content-wrapper]'
+  // A popover's content is a dialog inside its wrapper: each panel once, the outermost
+  const panels = [...document.querySelectorAll(PANEL)].filter(
+    (p) => p.parentElement?.closest(PANEL) == null
+  )
+  for (const panel of panels) {
+    const buttons = [...panel.querySelectorAll('button')]
+      .filter((b) => {
+        const r = b.getBoundingClientRect()
+        return (
+          r.width >= 1 &&
+          r.height >= 1 &&
+          b.closest('[role="radiogroup"]') === null
+        )
+      })
+      .map((b) => ({
+        label: (b.getAttribute('aria-label') ?? b.textContent ?? '')
+          .trim()
+          .slice(0, 30),
+        ...box(b),
+      }))
+    // Rows: buttons whose middles fall within half the first one's height of each other
+    const rows: (typeof buttons)[] = []
+    for (const b of [...buttons].sort((a, z) => a.cy - z.cy)) {
+      const row = rows.find((r) => Math.abs(r[0].cy - b.cy) < r[0].h / 2)
+      if (row) {
+        row.push(b)
+      } else {
+        rows.push([b])
+      }
+    }
+    for (const row of rows) {
+      const spread =
+        Math.max(...row.map((b) => b.cy)) - Math.min(...row.map((b) => b.cy))
+      if (row.length > 1 && spread > 1) {
+        found.push(
+          `side by side ${Math.round(spread * 10) / 10}px off one centre line: ${row.map((b) => b.label).join(' | ')}`
+        )
+      }
+    }
+    for (let i = 1; i < rows.length; i += 1) {
+      const [upper, lower] = [rows[i - 1], rows[i]]
+      const gap = lower[0].cy - lower[0].h / 2 - (upper[0].cy + upper[0].h / 2)
+      const start = (r: typeof buttons) => Math.min(...r.map((b) => b.x0))
+      const end = (r: typeof buttons) => Math.max(...r.map((b) => b.x1))
+      const sharesEdge =
+        Math.abs(start(upper) - start(lower)) <= 1 ||
+        Math.abs(end(upper) - end(lower)) <= 1
+      if (gap < 24 && !sharesEdge) {
+        found.push(
+          `staggered rows: ${upper.map((b) => b.label).join(' | ')} / ${lower.map((b) => b.label).join(' | ')}`
+        )
+      }
+    }
+  }
+  return found
 }
 
 /** Why an element is not on screen as a person sees it (no box, outside the viewport, hidden, faded out with an
@@ -937,6 +1013,8 @@ const auditOnce = async (
             : []
         })
     }, DETACHED_MENU_PX)
+    at.step = 'checking open panels for staggered buttons'
+    const staggered = await page.evaluate(staggeredActions)
     at.step = 'taking the screenshot'
     await page.screenshot({ path: shot })
     // With Reduce Motion on, nothing may still scroll smoothly (a focus or a tap on the bar would glide): every
@@ -1005,6 +1083,7 @@ const auditOnce = async (
         (label) => `scrolls smoothly under Reduce Motion: ${label}`
       ),
       ...detached.map((label) => `menu opened ${label}`),
+      ...staggered.map((s) => `buttons out of line: ${s}`),
       ...(audit.overflowX
         ? [`page scrolls sideways by ${audit.overflowX}px`]
         : []),
@@ -1037,6 +1116,7 @@ const auditOnce = async (
             panXPx: audit.pan.px,
             smallTargets: audit.small.length,
             smoothScrollReduced: smooth.length,
+            staggeredActions: staggered.length,
             targets: audit.targets,
             unnamedControls: audit.unnamed.length,
             unsafeTargets: audit.unsafe.length,
