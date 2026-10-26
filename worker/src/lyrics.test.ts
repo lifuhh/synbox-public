@@ -286,14 +286,14 @@ test('a song missing while it generates is found the moment it saves: a miss is 
     }
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Bun's fetch type adds preconnect, never called here
     spyOn(globalThis, 'fetch').mockImplementation(answer as typeof fetch)
-    const { call } = await setup()
+    const { call, statusOf } = await setup()
     const missing = await call(`/api/lyrics/${THIRD}`)
     expect(missing.status).toBe(404)
     expect(missing.headers.get('cache-control')).toBe('no-store')
-    expect((await call(`/api/karaoke/${THIRD}`)).status).toBe(404)
+    expect(await statusOf(`/api/karaoke/${THIRD}`)).toBe(404)
     saved = true
-    expect((await call(`/api/lyrics/${THIRD}`)).status).toBe(200)
-    expect((await call(`/api/karaoke/${THIRD}`)).status).toBe(200)
+    expect(await statusOf(`/api/lyrics/${THIRD}`)).toBe(200)
+    expect(await statusOf(`/api/karaoke/${THIRD}`)).toBe(200)
   } finally {
     restore()
   }
