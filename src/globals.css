@@ -1959,6 +1959,15 @@ html[data-installed] *::-webkit-scrollbar {
 
     & > nav {
       opacity: 0;
+      transition-duration: 300ms;
+    }
+  }
+
+  /* A phone on its side (or Lock Landscape's turn): the player has no top shade (it dimmed the lyrics' top lines), so the bar's logo and
+     buttons over the video carry the stage's own shadow */
+  [data-topbar][data-over-stage] :is(svg, img) {
+    @variant short {
+      filter: drop-shadow(var(--drop-shadow-stage));
     }
   }
 

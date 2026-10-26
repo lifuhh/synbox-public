@@ -215,14 +215,19 @@ const TopBar = () => {
     <header
       ref={header}
       data-topbar
+      data-over-stage={isVideoPlayer || undefined}
       className={cn(
-        'fixed top-0 right-0 left-0 z-50 pt-safe-top pr-(--safe-right) pl-(--safe-left)',
+        // Its own stacking layer above the top scrim (z-40), so nothing the scrim masks is ever composited over the
+        // logo and buttons
+        'fixed top-0 right-0 left-0 isolate z-50 pt-safe-top pr-(--safe-right) pl-(--safe-left)',
         // Slid away and faded by html[data-topbar-state='hidden'] (globals.css)
         isVideoPlayer
           ? 'pointer-events-none'
           : 'transition-transform duration-300 ease-out motion-reduce:transition-none'
       )}>
-      <nav className='flex-between h-14 w-full pr-2 pl-4 transition-opacity duration-300 ease-out sm:px-4 lg:px-topbar-x'>
+      {/* Back in 150ms (globals.css keeps 300ms for the way out): a slower fade-in was caught half-drawn and read as
+          blur */}
+      <nav className='flex-between h-14 w-full pr-2 pl-4 transition-opacity duration-150 ease-out sm:px-4 lg:px-topbar-x'>
         {/* The logo is the way home on every page, the player included */}
         {isVideoPlayer ? (
           <div data-player-chrome className={cluster}>
