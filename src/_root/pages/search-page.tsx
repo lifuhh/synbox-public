@@ -443,7 +443,7 @@ const SimilarSongs = ({
 const Examples = ({ onSearch }: { onSearch: (query: string) => void }) => (
   <ul
     aria-label='Examples'
-    className='-my-1 no-scrollbar flex gap-2 overflow-x-auto overscroll-x-contain py-1 max-sm:page-bleed-x sm:mx-auto sm:w-4/5'>
+    className='-my-1 no-scrollbar flex gap-2 overflow-x-auto overscroll-x-contain py-1 max-sm:page-bleed-x'>
     {SEARCH_EXAMPLES.map((example) => (
       <li key={example} className='shrink-0'>
         <Button
