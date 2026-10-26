@@ -1,7 +1,13 @@
 import type { UseQueryResult } from '@tanstack/react-query'
-import { ArrowUpRightIcon, SearchIcon } from 'lucide-react'
+import {
+  ArrowUpRightIcon,
+  ClipboardPasteIcon,
+  PlayIcon,
+  SearchIcon,
+  SparklesIcon,
+} from 'lucide-react'
 import { useLayoutEffect, useRef, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router'
+import { Link, Navigate, useNavigate, useSearchParams } from 'react-router'
 
 import { startFromButton } from '@/components/generation/start-generation'
 import {
@@ -13,18 +19,21 @@ import DotsLoader from '@/components/shared/dots-loader'
 import { Button } from '@/components/ui/button'
 import { Input, InputField } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
+import { useMediaQuery } from '@/hooks/use-media-query'
 import {
+  useGetLyricsBySongId,
   useGetSimilarSongs,
   useKaraokeIds,
   useSearchLibrary,
   useSearchVideos,
+  useYoutubeVideo,
 } from '@/lib/react-query/queries-and-mutations'
 import type {
   LibrarySearchResponse,
   VideoSearchResult,
 } from '@/lib/synbox-flask/discovery'
 import type { CssVars } from '@/types'
-import { extractVideoId } from '@/utils'
+import { BAD_LINK, readFieldText } from '@/utils'
 
 const Notice = ({ children }: { children: React.ReactNode }) => (
   <p className='rounded-md bg-muted/60 px-3 py-2 text-sm text-muted-foreground'>
@@ -89,36 +98,153 @@ const useKaraokeFilter = () => {
   }
 }
 
-// A pasted YouTube link, not a search: the video it names, or null
-const linkedVideoId = (query: string) =>
-  /youtube\.com|youtu\.be/u.test(query) ? extractVideoId(query) : null
-
 const youtubeSearchUrl = (query: string) =>
   query === ''
     ? 'https://www.youtube.com'
     : `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`
 
-// Search finds only songs we already have lyrics for; anything else is one tap away on YouTube
-const LookUpOnYoutube = ({ query, none }: { query: string; none: boolean }) => (
-  <div className='flex flex-wrap items-center gap-x-3 gap-y-2'>
-    <output className='text-sm text-muted-foreground'>
-      {none ? 'No Results' : 'Can’t find your song?'}
-    </output>
-    <Button asChild variant='outline' gap='sm' className='touch:h-11'>
-      <a
-        href={youtubeSearchUrl(query)}
-        target='_blank'
-        rel='noopener noreferrer'>
-        Look Up on YouTube
-        <span className='sr-only'> (opens in a new tab)</span>
-        <ArrowUpRightIcon
-          aria-hidden
-          className='size-4 shrink-0 text-muted-foreground'
-        />
-      </a>
-    </Button>
-  </div>
-)
+// Search finds only songs we already have lyrics for. Any other song is added by its YouTube link: Paste Link reads
+// one copied on YouTube (Look Up on YouTube opens its search there); where the browser can't read the clipboard, or
+// what it holds is no video link, the field takes the paste instead
+const AddByLink = ({
+  query,
+  none,
+  onLink,
+  focusField,
+}: {
+  query: string
+  none: boolean
+  onLink: (text: string) => void
+  focusField: () => void
+}) => {
+  const [hint, setHint] = useState('')
+  const canRead = typeof navigator.clipboard?.readText === 'function'
+  const paste = async () => {
+    const copied = await navigator.clipboard.readText().catch(() => '')
+    const { kind } = readFieldText(copied)
+    if (kind === 'video' || kind === 'own') {
+      setHint('')
+      onLink(copied)
+      return
+    }
+    setHint('Copy a YouTube video link, then paste it here')
+    focusField()
+  }
+  return (
+    <div className='flex flex-col gap-3'>
+      <output className='text-sm text-muted-foreground'>
+        {none ? 'No results. ' : 'Not here? '}Paste its YouTube link to add it.
+      </output>
+      <div className='flex flex-wrap items-center gap-x-3 gap-y-2'>
+        {canRead && (
+          <Button
+            variant='outline'
+            gap='sm'
+            className='touch:h-11'
+            onClick={() => {
+              void paste()
+            }}>
+            <ClipboardPasteIcon aria-hidden className='size-4 shrink-0' />
+            Paste Link
+          </Button>
+        )}
+        <Button asChild variant='outline' gap='sm' className='touch:h-11'>
+          <a
+            href={youtubeSearchUrl(query)}
+            target='_blank'
+            rel='noopener noreferrer'>
+            Look Up on YouTube
+            <span className='sr-only'> (opens in a new tab)</span>
+            <ArrowUpRightIcon
+              aria-hidden
+              className='size-4 shrink-0 text-muted-foreground'
+            />
+          </a>
+        </Button>
+      </div>
+      <output className='text-sm text-muted-foreground empty:hidden'>
+        {hint}
+      </output>
+    </div>
+  )
+}
+
+// A pasted YouTube link: that one video, whatever it is. A song with lyrics plays; any other is generated, through
+// the same check as every Generate Lyrics button (its refusal, Sign In included, shows as a notice)
+const LinkedVideo = ({ videoId }: { videoId: string }) => {
+  const video = useYoutubeVideo(videoId)
+  const lyrics = useGetLyricsBySongId(videoId)
+  if (video.error) {
+    return video.error.message.startsWith('No video found') ? (
+      <Notice>This video isn’t on YouTube.</Notice>
+    ) : (
+      <Failed
+        what="Couldn't look up this link."
+        retry={() => {
+          void video.refetch()
+        }}
+      />
+    )
+  }
+  const title = video.data?.title ?? ''
+  const action = () => {
+    if (lyrics.isLoading || video.data === undefined) {
+      return <Skeleton className='h-10 w-40 touch:h-11' />
+    }
+    if (lyrics.data) {
+      return (
+        <Button asChild gap='sm' className='self-start touch:h-11'>
+          <Link to={`/v/${videoId}`} state={{ videoId }}>
+            <PlayIcon aria-hidden className='size-4 shrink-0 fill-current' />
+            Play Video
+          </Link>
+        </Button>
+      )
+    }
+    return (
+      <Button
+        gap='sm'
+        className='self-start touch:h-11'
+        onClick={() => {
+          void startFromButton({ mode: 'new', title, videoId })
+        }}>
+        <SparklesIcon aria-hidden className='size-4 shrink-0' />
+        Generate Lyrics
+      </Button>
+    )
+  }
+  return (
+    <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-5'>
+      <div className='relative aspect-video w-full overflow-hidden rounded-lg bg-input sm:w-64 sm:shrink-0'>
+        {video.data !== undefined && (
+          <img
+            src={video.data.thumbnail}
+            alt=''
+            className='absolute inset-0 h-full w-full object-cover'
+          />
+        )}
+      </div>
+      <div className='flex min-w-0 flex-col gap-3'>
+        {video.data === undefined ? (
+          <div className='flex flex-col gap-2'>
+            <Skeleton className='h-4 w-56 max-w-full' />
+            <Skeleton className='h-3 w-32' />
+          </div>
+        ) : (
+          <div className='flex min-w-0 flex-col gap-1'>
+            <p className='line-clamp-2 font-semibold wrap-anywhere text-foreground'>
+              {title}
+            </p>
+            <p className='truncate text-sm text-muted-foreground'>
+              {video.data.channelTitle}
+            </p>
+          </div>
+        )}
+        {action()}
+      </div>
+    </div>
+  )
+}
 
 // What the library search says besides its songs: an error, or that it is not at its best
 const LibraryStatus = ({
@@ -162,29 +288,29 @@ const LibraryStatus = ({
 }
 
 // Only karaoke songs (the mic badge): the library's matches, then any the YouTube search found that the library
-// search missed (an English title, or the library still loading). The one exception is a pasted YouTube link: its
-// video shows whatever it is, and picking a new one generates it
+// search missed (an English title, or the library still loading). A pasted link never gets here (LinkedVideo)
 const SearchResults = ({
   query,
   onSelect,
   onMoreLikeThis,
+  onLink,
+  focusField,
 }: {
   query: string
   onSelect: (result: VideoSearchResult) => void
   onMoreLikeThis: (videoId: string) => void
+  onLink: (text: string) => void
+  focusField: () => void
 }) => {
   const library = useSearchLibrary(query)
   const videos = useSearchVideos(query)
   const karaoke = useKaraokeFilter()
-  const linkId = linkedVideoId(query)
   const libraryResults = (library.data?.results ?? []).filter((s) =>
     karaoke.has(s.video_id)
   )
   const libraryIds = new Set(libraryResults.map((s) => s.video_id))
   const extra = (videos.data?.results ?? []).filter(
-    (r) =>
-      (karaoke.has(r.video_id) || r.video_id === linkId) &&
-      !libraryIds.has(r.video_id)
+    (r) => karaoke.has(r.video_id) && !libraryIds.has(r.video_id)
   )
   // A retry after the library gave up has data already, so isLoading stays false while it waits again
   const notReady = library.data?.ready === false
@@ -203,15 +329,6 @@ const SearchResults = ({
           <LibraryStatus library={library} searching={searching} />
           {karaoke.error && (
             <Failed what="Couldn't load the songs." retry={karaoke.retry} />
-          )}
-          {/* A pasted link's video comes only from the YouTube search */}
-          {linkId !== null && videos.error && (
-            <Failed
-              what="Couldn't look up this link."
-              retry={() => {
-                void videos.refetch()
-              }}
-            />
           )}
           <ResultGrid>
             {libraryResults.map((song) => (
@@ -238,8 +355,10 @@ const SearchResults = ({
               ))}
           </ResultGrid>
         </div>
-        <LookUpOnYoutube
+        <AddByLink
           query={query}
+          onLink={onLink}
+          focusField={focusField}
           none={
             !searching &&
             library.error === null &&
@@ -334,6 +453,8 @@ const SearchBody = ({
   onBack,
   onSelect,
   onMoreLikeThis,
+  onLink,
+  focusField,
 }: {
   query: string
   similarTo: string
@@ -341,6 +462,8 @@ const SearchBody = ({
   onBack: () => void
   onSelect: (result: VideoSearchResult) => void
   onMoreLikeThis: (videoId: string) => void
+  onLink: (text: string) => void
+  focusField: () => void
 }) => {
   if (similarTo !== '') {
     return (
@@ -351,14 +474,30 @@ const SearchBody = ({
       />
     )
   }
-  if (query === '') {
+  const text = readFieldText(query)
+  if (text.kind === 'empty') {
     return <Examples onSearch={onSearch} />
+  }
+  if (text.kind === 'own') {
+    return <Navigate to={text.path} replace />
+  }
+  if (text.kind === 'video') {
+    return <LinkedVideo videoId={text.videoId} />
+  }
+  if (text.kind === 'bad') {
+    return (
+      <p role='alert' className='text-sm text-error-strong'>
+        {BAD_LINK}
+      </p>
+    )
   }
   return (
     <SearchResults
       query={query}
       onSelect={onSelect}
       onMoreLikeThis={onMoreLikeThis}
+      onLink={onLink}
+      focusField={focusField}
     />
   )
 }
@@ -369,6 +508,19 @@ const SearchPage = () => {
   const navigate = useNavigate()
   const query = (params.get('q') ?? '').trim()
   const similarTo = params.get('similar') ?? ''
+  const field = useRef<HTMLInputElement>(null)
+  // Under 360px wide the full text runs past the field, as Home's does
+  const roomy = useMediaQuery('(min-width: 22.5rem)')
+
+  // A search or a link, as typed, pasted or read by Paste Link: our own song link opens in place
+  const submit = (value: string) => {
+    const text = readFieldText(value)
+    if (text.kind === 'own') {
+      void navigate(text.path)
+    } else if (text.kind !== 'empty') {
+      setParams({ q: value.trim() })
+    }
+  }
 
   const handlePlay = (videoId: string) => {
     void navigate(`/v/${videoId}`, { state: { videoId } })
@@ -403,19 +555,35 @@ const SearchPage = () => {
         onSubmit={(e) => {
           e.preventDefault()
           const value = new FormData(e.currentTarget).get('q')
-          const q = typeof value === 'string' ? value.trim() : ''
-          if (q !== '') {
-            setParams({ q })
-          }
+          submit(typeof value === 'string' ? value : '')
         }}>
         {/* The home page's field: a pill with its action inside, an icon on phones and a labelled one wider */}
         <InputField>
           <Input
+            ref={field}
             name='q'
             defaultValue={query}
-            aria-label='Search Songs'
+            aria-label='Search songs or paste a YouTube link'
             enterKeyHint='search'
-            placeholder='Song, artist or mood'
+            autoCapitalize='off'
+            autoCorrect='off'
+            spellCheck={false}
+            placeholder={
+              roomy ? 'Song, artist or YouTube link' : 'Song or YouTube link'
+            }
+            // A link pasted over the whole field needs no Search press: it names one video, not words to search
+            onPaste={(e) => {
+              const pasted = e.clipboardData.getData('text')
+              const { kind } = readFieldText(pasted)
+              const { selectionEnd, selectionStart, value } = e.currentTarget
+              const replacesAll =
+                value.trim() === '' ||
+                (selectionStart === 0 && selectionEnd === value.length)
+              if ((kind === 'video' || kind === 'own') && replacesAll) {
+                e.preventDefault()
+                submit(pasted)
+              }
+            }}
             variant='bare'
           />
           <Button
@@ -450,6 +618,10 @@ const SearchPage = () => {
           }}
           onSelect={handleSelect}
           onMoreLikeThis={handleMoreLikeThis}
+          onLink={submit}
+          focusField={() => {
+            field.current?.focus()
+          }}
         />
       </div>
       <BoxScrollbar box={box} />

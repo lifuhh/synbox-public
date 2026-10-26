@@ -6,7 +6,7 @@ import {
   SearchIcon,
   SparklesIcon,
 } from 'lucide-react'
-import { useId, useMemo, useState } from 'react'
+import { useId, useState } from 'react'
 import { useNavigate } from 'react-router'
 
 import {
@@ -27,8 +27,7 @@ import { homeSearchFieldAtom } from '@/context/atoms'
 import { useMediaQuery } from '@/hooks/use-media-query'
 import { noSongReason, signInWithGoogle, useAccess } from '@/lib/auth'
 import { useGetLyricsBySongId } from '@/lib/react-query/queries-and-mutations'
-import { YouTubeUrlOrIdValidation } from '@/lib/validation'
-import { extractVideoId, ownSongPath } from '@/utils'
+import { BAD_LINK, readFieldText } from '@/utils'
 import { cn } from '@/utils/cn'
 
 interface HeroGenerateLyricsDefaultProps {
@@ -39,24 +38,6 @@ interface HeroGenerateLyricsDefaultProps {
 // Under 360px wide the full text runs past the field
 const heroPlaceholder = (roomy: boolean) =>
   roomy ? 'Search or paste a YouTube URL' : 'Search or paste a link'
-
-// A bare 11-character word only counts as a video id when it has a digit, - or _, or mixed case.
-const looksLikeYoutubeLink = (value: string) => {
-  const text = value.trim()
-  if (/youtube\.com|youtu\.be|https?:\/\//u.test(text)) {
-    return true
-  }
-  return (
-    /^[\w-]{11}$/u.test(text) &&
-    (/[\d_-]/u.test(text) || (/[a-z]/u.test(text) && /[A-Z]/u.test(text)))
-  )
-}
-
-// Text that is neither one of our own song links nor a YouTube link is a search
-const isSearchText = (value: string) =>
-  value.trim().length > 0 &&
-  ownSongPath(value) === null &&
-  !looksLikeYoutubeLink(value)
 
 // Search is a mode, not an error, so it gets its own colour; red is kept for a link that fails to parse.
 type InputMode = 'empty' | 'search' | 'valid' | 'invalid'
@@ -79,75 +60,38 @@ const HeroGenerateLyricsDefault = ({
   setInputVideoId,
 }: HeroGenerateLyricsDefaultProps) => {
   const [inputValue, setInputValue] = useState('')
-  const [errorMessage, setErrorMessage] = useState('')
   const statusId = useId()
   const roomy = useMediaQuery('(min-width: 22.5rem)')
-  const [validationSuccess, setValidationSuccess] = useState(false)
   // Generate Lyrics' check, its answer, and the field emptying once the song started
   const { busy, checking, clearing, edited, generate, refused, submission } =
     useFieldGeneration(() => {
       setInputValue('')
-      setValidationSuccess(false)
-      setErrorMessage('')
     })
   // A tooltip only opens on hover or keyboard focus, so a tap toggles it too
   const [infoOpen, setInfoOpen] = useState(false)
   const navigate = useNavigate()
   // The top bar's search docks from this field once it scrolls under the bar
   const setDockField = useSetAtom(homeSearchFieldAtom)
-  // A Synbox link opens its own page: no lyrics lookup, no generation
-  const ownPath = ownSongPath(inputValue)
-  const isSearch = isSearchText(inputValue)
+  // Words search; a Synbox link opens its own page (no lyrics lookup, no generation); a YouTube link plays or
+  // generates (utils › readFieldText, as the Search page and the top bar read it)
+  const text = readFieldText(inputValue)
+  const ownPath = text.kind === 'own' ? text.path : null
+  const isSearch = text.kind === 'search'
+  const validationSuccess = text.kind === 'video'
+  const extractedVideoId = text.kind === 'video' ? text.videoId : ''
+  const errorMessage = text.kind === 'bad' ? BAD_LINK : ''
   const inputMode = getInputMode(
     inputValue,
     isSearch,
     validationSuccess || ownPath !== null
   )
 
-  const extractedVideoId = useMemo(() => {
-    if (!inputValue) {
-      return ''
-    }
-
-    const result = YouTubeUrlOrIdValidation.safeParse(inputValue)
-    if (!result.success) {
-      return ''
-    }
-
-    const id = extractVideoId(inputValue)
-    return id ?? ''
-  }, [inputValue])
-
   const { data: existingLyrics, isLoading: isCheckingLyrics } =
-    useGetLyricsBySongId(validationSuccess ? extractedVideoId : '')
+    useGetLyricsBySongId(extractedVideoId)
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { value } = e.target
-    setInputValue(value)
+    setInputValue(e.target.value)
     edited()
-
-    if (!value || ownSongPath(value) !== null || !looksLikeYoutubeLink(value)) {
-      setErrorMessage('')
-      setValidationSuccess(false)
-      return
-    }
-
-    const result = YouTubeUrlOrIdValidation.safeParse(value)
-    if (result.success) {
-      const vidId = extractVideoId(value)
-      if (vidId !== null && vidId !== '') {
-        setValidationSuccess(true)
-        setErrorMessage('')
-      } else {
-        setErrorMessage('Paste a youtube.com or youtu.be link')
-        setValidationSuccess(false)
-      }
-    } else {
-      setErrorMessage(
-        result.error.issues.map((error) => error.message).join(', ')
-      )
-      setValidationSuccess(false)
-    }
   }
 
   // A new song here would be refused, so offer what would work instead: sign-in for a guest, nothing for a

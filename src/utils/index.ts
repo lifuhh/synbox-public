@@ -100,7 +100,7 @@ export const extractVideoId = (input: string): string | null => {
   }
 
   const videoIdPattern =
-    /(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))(?<id>[^#&?]{11})(?:[#?&]|$)/u
+    /(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|shorts\/|live\/|watch\?v=|watch\?.+&v=))(?<id>[^#&?]{11})(?:[#?&]|$)/u
 
   const fullUrl =
     trimmed.startsWith('http://') || trimmed.startsWith('https://')
@@ -152,6 +152,39 @@ export const ownSongPath = (input: string): string | null => {
   } catch {
     return null
   }
+}
+
+// A bare 11-character word only counts as a video id when it has a digit, - or _, or mixed case
+const looksLikeLink = (text: string) =>
+  /youtube\.com|youtu\.be|https?:\/\//u.test(text) ||
+  (/^[\w-]{11}$/u.test(text) &&
+    (/[\d_-]/u.test(text) || (/[a-z]/u.test(text) && /[A-Z]/u.test(text))))
+
+// What a search field holds, read the same way by Home, the Search page and the top bar: words to search, one of our
+// own song links (opened in the app), a YouTube video, or a link that names no video (a channel, a playlist)
+export type FieldText =
+  | { kind: 'empty' }
+  | { kind: 'search'; query: string }
+  | { kind: 'own'; path: string }
+  | { kind: 'video'; videoId: string }
+  | { kind: 'bad' }
+
+export const BAD_LINK = 'Paste a link to a YouTube video'
+
+export const readFieldText = (input: string): FieldText => {
+  const text = input.trim()
+  if (text === '') {
+    return { kind: 'empty' }
+  }
+  const path = ownSongPath(text)
+  if (path !== null) {
+    return { kind: 'own', path }
+  }
+  if (!looksLikeLink(text)) {
+    return { kind: 'search', query: text }
+  }
+  const videoId = extractVideoId(text)
+  return videoId === null ? { kind: 'bad' } : { kind: 'video', videoId }
 }
 
 // Appwrite ids may hold '-' and '_' but not start with one, so only a leading '-' or '_' is encoded.
