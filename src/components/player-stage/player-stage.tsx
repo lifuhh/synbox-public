@@ -7,7 +7,7 @@ import {
   VolumeXIcon,
 } from 'lucide-react'
 import type { ReactNode } from 'react'
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 
 import {
   playerChromeOpenAtom,
@@ -24,6 +24,7 @@ import type { CssVars } from '@/types'
 import { cn } from '@/utils/cn'
 
 import { CenterPlayButton, useYouTubeCenterShowing } from './center-play-button'
+import { PlayFlash, usePlayFlash } from './play-flash'
 import { clampSeek, HOLD_JUMP_MS, holdStep } from './seek-steps'
 import { StageControls } from './stage-controls'
 import { useIdle } from './use-idle'
@@ -477,13 +478,23 @@ export const PlayerStage = ({
       onPrevious()
     }
   }
+  // Every press that plays or pauses (the video, the keys, the bar's button) flashes what it did, as YouTube's
+  // player does: the icon fades in growing, then out (play-flash.tsx)
+  const { flash: playFlash, togglePlay } = usePlayFlash(
+    phase,
+    player.togglePlay
+  )
+  const flashingPlayer = useMemo(
+    () => ({ ...player, togglePlay }),
+    [player, togglePlay]
+  )
   const taps = useStageTaps({
     controlsVisible,
     hideControls: sleep,
     seekBy,
     showCover,
     toggleFullscreen,
-    togglePlay: player.togglePlay,
+    togglePlay,
   })
   const layout: StageLayout = {
     onDragChange: (next) => {
@@ -539,9 +550,9 @@ export const PlayerStage = ({
         event.target instanceof HTMLElement &&
         event.target.getAttribute('role') === 'slider'
       const simple: Partial<Record<string, () => void>> = {
-        ' ': player.togglePlay,
+        ' ': togglePlay,
         f: toggleFullscreen,
-        k: player.togglePlay,
+        k: togglePlay,
         t: onToggleTheater,
         z: toggleFit,
       }
@@ -636,9 +647,7 @@ export const PlayerStage = ({
           phase={phase}
           controlsVisible={controlsVisible}
           youTubeCenterShowing={youTubeCenterShowing}
-          onToggle={() => {
-            player.togglePlay()
-          }}
+          onToggle={togglePlay}
           onPrevious={previous}
           onNext={onNext}
         />
@@ -657,6 +666,7 @@ export const PlayerStage = ({
       )}
 
       {taps.flash && <SeekFlashBadge flash={taps.flash} />}
+      <PlayFlash flash={playFlash} />
 
       {autoplayMuted && (
         <button
@@ -685,7 +695,7 @@ export const PlayerStage = ({
       )}
 
       <StageControls
-        player={player}
+        player={flashingPlayer}
         visible={controlsVisible}
         loop={loop}
         onLoopChange={setLoop}
