@@ -635,7 +635,10 @@ const stepName = (step: Step): string => {
  * turned by Lock Landscape
  */
 const staggeredActions = (): string[] => {
-  const turned = document.documentElement.hasAttribute('data-landscape-lock')
+  const turned = Object.hasOwn(
+    document.documentElement.dataset,
+    'landscapeLock'
+  )
   const box = (e: Element) => {
     const r = e.getBoundingClientRect()
     return turned
@@ -647,7 +650,7 @@ const staggeredActions = (): string[] => {
     '[role="dialog"], [role="menu"], [data-radix-popper-content-wrapper]'
   // A popover's content is a dialog inside its wrapper: each panel once, the outermost
   const panels = [...document.querySelectorAll(PANEL)].filter(
-    (p) => p.parentElement?.closest(PANEL) == null
+    (p) => (p.parentElement?.closest(PANEL) ?? null) === null
   )
   for (const panel of panels) {
     const buttons = [...panel.querySelectorAll('button')]
@@ -667,7 +670,7 @@ const staggeredActions = (): string[] => {
       }))
     // Rows: buttons whose middles fall within half the first one's height of each other
     const rows: (typeof buttons)[] = []
-    for (const b of [...buttons].sort((a, z) => a.cy - z.cy)) {
+    for (const b of buttons.toSorted((a, z) => a.cy - z.cy)) {
       const row = rows.find((r) => Math.abs(r[0].cy - b.cy) < r[0].h / 2)
       if (row) {
         row.push(b)
