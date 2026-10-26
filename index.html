@@ -42,17 +42,62 @@
     <link
       href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400..800&family=Noto+Sans:wght@900&family=Noto+Sans+JP:wght@100..900&family=Noto+Sans+SC:wght@400..900&display=swap"
       rel="stylesheet" />
-    <title>Synbox</title>
+    <meta property="og:title" content="Synbox" />
+    <meta
+      property="og:description"
+      content="Japanese karaoke for any YouTube video, with AI-transcribed, synced lyrics, furigana, romaji and translations." />
+    <meta property="og:url" content="https://synbox.io/" />
+    <meta property="og:type" content="website" />
+    <title>Synbox · Japanese Karaoke</title>
     <!-- The page's colour from the first paint, before the stylesheet arrives (globals.css › --graphite-1), so a slow
          first load is the app's dark page, never a white one -->
     <style>
       html {
         background: oklch(0.155 0.012 350);
       }
+      /* What Synbox is, for a reader that runs no script (Google's app verification, crawlers): in the HTML from the
+         first byte, but shown only after 2.5s, by when React has long replaced it, so a visitor never sees it flash.
+         CSS, not a script: the CSP allows no inline script */
+      @keyframes static-home-reveal {
+        from {
+          visibility: hidden;
+        }
+        to {
+          visibility: visible;
+        }
+      }
+      #static-home {
+        visibility: hidden;
+        animation: static-home-reveal 0s 2.5s forwards;
+        max-width: 36rem;
+        margin: 0 auto;
+        padding: 4rem 1.5rem;
+        color: #e6dfe3;
+        font:
+          16px/1.6 system-ui,
+          sans-serif;
+      }
+      #static-home a {
+        color: #f0a6c8;
+      }
     </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <main id="static-home">
+        <h1>Synbox</h1>
+        <p>
+          Japanese karaoke for any YouTube video. Paste a link, and Synbox
+          transcribes the song, times its lyrics word by word, and shows them
+          with furigana, romaji and English or Chinese translations while it
+          plays.
+        </p>
+        <nav aria-label="Links">
+          <a href="/about">About</a> · <a href="/privacy">Privacy Policy</a> ·
+          <a href="/terms">Terms of Use</a>
+        </nav>
+      </main>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

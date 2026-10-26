@@ -297,7 +297,7 @@ const SongGallery = () => {
       ref={setSection}
       aria-labelledby='gallery-title'
       data-bench='gallery'
-      className='relative mt-12 pb-page-bottom in-data-rise:rise-in in-data-rise:rise-delay-500'>
+      className='relative mt-12 pb-6 in-data-rise:rise-in in-data-rise:rise-delay-500'>
       {/* Sticks only where the top bar hides on scroll (no mouse: top-bar.tsx), as the way back to the start. With a
           mouse the bar stays, so the page shows the bar alone */}
       <h2
