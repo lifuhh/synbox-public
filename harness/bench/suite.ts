@@ -16,6 +16,7 @@ import { cdpPerf } from './engines/cdp'
 import { homeVisit } from './probes/home'
 import { LAYOUT_FINDINGS, layoutAudit, layoutPages } from './probes/layout'
 import type { LayoutPage, OpenedState } from './probes/layout'
+import { lyricDockAudit } from './probes/lyric-dock'
 import { lyricShiftAudit } from './probes/lyric-shift'
 import { playerSession } from './probes/player'
 import { buildSize } from './probes/size'
@@ -162,6 +163,23 @@ const lyricShift = (name: string, view: View, turned: boolean): Benchmark => ({
   title: `Two Lines on the player, translation docked, in ${name} (${view.label}${turned ? ', turned by Lock Landscape' : ''}): moves of the other line, the lower line's romaji and the docked translation on each line change`,
 })
 
+/**
+ * Karaoke Style's rows and translation, by real pointer drags: never a dead end (probes/lyric-dock.ts). On desktop
+ * and the installed app on its side: Karaoke Style is off upright
+ */
+const lyricDock = (name: string, view: View): Benchmark => ({
+  id: `lyric-dock-${name}`,
+  metrics: [
+    count('rowsCantReachTop'),
+    count('rowsOntoNoDock'),
+    count('savedOverlapped'),
+  ],
+  run: lyricDockAudit(view.surface),
+  runs: 1,
+  surface: view.surface,
+  title: `Karaoke Style's rows and translation in ${name} (${view.label}): the rows reach the top with the translation moved down, the rows dropped onto the translation dock, a layout saved overlapped loads usable`,
+})
+
 /** A page's audits in its views: at rest, then each state it opens in that view */
 const layouts = (page: LayoutPage, views: View[]): Benchmark[] =>
   views.flatMap((v) => [
@@ -273,6 +291,8 @@ export const SUITE: Benchmark[] = [
     ])
   ),
   lyricShift('pwa-landscape', PWA_LANDSCAPE, false),
+  lyricDock('web', WEB),
+  lyricDock('pwa-landscape', PWA_LANDSCAPE),
   lyricShift('pwa-turned', PWA_PORTRAIT, true),
   player('x1FV6IrjZCY'),
   player('ZRtdQ81jPUQ'),
