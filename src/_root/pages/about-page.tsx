@@ -47,34 +47,40 @@ const FAQS = [
   },
 ]
 
-// Grouped by what each part does, in an order that leaves no chip alone on a phone's last row
+// The stack in general terms: languages, kinds of AI, and the companies whose platforms it runs on. No specific
+// library or model of the lyrics pipeline (the owner, 2026-10-26: that's what someone would copy). Each order
+// is measured to leave no chip alone on a row at 320, 390 and 1440 wide
 const BUILT_WITH = [
   {
-    group: 'App',
+    group: 'Code',
     names: [
-      'React',
       'TypeScript',
+      'SQL',
+      'React',
       'Vite',
-      'Tailwind CSS',
-      'Radix UI',
-      'TanStack Query',
-      'Jotai',
+      'Python',
+      'Flask',
+      'Better Auth',
     ],
   },
   {
-    group: 'Lyrics',
+    group: 'AI',
+    names: ['LLMs', 'Speech Recognition', 'NLP', 'Agentic Coding', 'Evals'],
+  },
+  {
+    group: 'Platforms',
     names: [
-      'ElevenLabs Scribe',
-      'OpenAI Whisper',
-      'OpenAI GPT',
-      'pyopenjtalk',
+      'OpenAI',
+      'Anthropic Claude',
+      'ElevenLabs',
+      'Google Cloud',
+      'Cloudflare',
+      'Netlify',
+      'Appwrite',
+      'YouTube Data API',
+      'Sentry',
     ],
   },
-  {
-    group: 'Backend',
-    names: ['Cloudflare Workers', 'Better Auth', 'Python', 'Flask', 'Appwrite'],
-  },
-  { group: 'Hosting', names: ['Netlify', 'Google Cloud Run'] },
 ]
 
 const HEADING = 'text-sm font-semibold tracking-wide text-muted-foreground'
