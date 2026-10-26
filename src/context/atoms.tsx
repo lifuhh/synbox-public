@@ -6,19 +6,15 @@ import { z } from 'zod'
 import type {
   LyricsStyle,
   LyricsStyleOverrides,
-  LyricsTemplate,
   ScreenSizes,
   SharedLyricsStyle,
 } from '@/lib/lyrics-style'
 import {
   DEFAULT_LYRICS_STYLE,
   lyricsThemeIdSchema,
-  MAX_LYRICS_TEMPLATES,
-  readLyricsTemplates,
   readSongStyle,
   sameLyricsStyle,
   screenSizesSchema,
-  writeLyricsTemplates,
   writeSongStyle,
 } from '@/lib/lyrics-style'
 import type { LyricsThemeId } from '@/lib/lyrics-themes'
@@ -65,9 +61,9 @@ export const translationIsEnglishAtom = atomWithStorage(
 // - This Song: the fields the viewer changed for one song (`lyricsStyle:<videoId>`), which win over the default
 // - Shared: a style from a shared link, shown over the viewer's own for one visit. It is never stored: opening a
 //   link changes nothing the viewer keeps, and a change made while it shows saves only the field changed
-// plus My Styles, named whole styles to apply in one tap. Changes on the player go to My Default or to This
-// Song, as the panel's "Changes Apply To" says: All Songs while the song follows the default, This Song once
-// it has a style of its own
+// Changes on the player go to My Default or to This Song, as the panel's "Changes Apply To" says: All Songs while the
+// song follows the default, This Song once it has a style of its own. (My Styles, named whole styles, went on
+// 2026-10-26; their `lyricsTemplates` value stays on devices and accounts, unread, for a later cleanup to drop)
 
 // My Default. The keys predate per-song styles, so a returning viewer's old settings became their defaults
 const initOptions = { getOnInit: true }
@@ -232,14 +228,40 @@ const songLyricsStyleAtom = atom<SongLyricsStyle | null>(null)
 const hasOwnStyle = (overrides: LyricsStyleOverrides) =>
   Object.keys(overrides).length > 0
 
+// Whether the listener has moved the lyrics or the translation themselves (a drag let go, docking included), which
+// Reset Positions clears: Lyrics Style offers Reset Positions only then, never because the app nudged a place (Karaoke
+// Style's switch keeps the rows' centre by rewriting their anchor). null on a device from before it existed, set
+// once from whether the places it would reset are away from their start (2026-10-27)
+export const lyricsPositionsDraggedAtom = atomWithStorage<boolean | null>(
+  'lyricsPositionsDragged',
+  null,
+  undefined,
+  { getOnInit: true }
+)
+
+const positionsAway = (style: LyricsStyle, docked: boolean) =>
+  style.anchor !== DEFAULT_LYRICS_STYLE.anchor ||
+  style.anchorPortrait !== DEFAULT_LYRICS_STYLE.anchorPortrait ||
+  style.translationAnchor !== DEFAULT_LYRICS_STYLE.translationAnchor ||
+  docked
+
 export const lyricsStyleSongAtom = atom(
   (get) => get(songLyricsStyleAtom)?.videoId ?? null,
-  (_get, set, videoId: string | null) => {
+  (get, set, videoId: string | null) => {
     if (videoId === null) {
       set(songLyricsStyleAtom, null)
       return
     }
     const overrides = readSongStyle(videoId)
+    if (get(lyricsPositionsDraggedAtom) === null) {
+      set(
+        lyricsPositionsDraggedAtom,
+        positionsAway(
+          { ...readDefaults(get), ...overrides },
+          get(translationDockedAtom)
+        )
+      )
+    }
     set(songLyricsStyleAtom, {
       overrides,
       scope: hasOwnStyle(overrides) ? 'song' : 'all',
@@ -260,10 +282,11 @@ const saveSongOverrides = (
   writeSongStyle(song.videoId, overrides)
 }
 
-const ownOverrides = (song: SongLyricsStyle): LyricsStyleOverrides => ({
-  ...song.overrides,
-  ...song.shared,
-})
+// Puts a song's style back as it was, for Undo
+const restoreSong = (set: Setter, song: SongLyricsStyle) => {
+  set(songLyricsStyleAtom, song)
+  writeSongStyle(song.videoId, song.overrides)
+}
 
 const ownLyricsStyle = (get: Getter, song: SongLyricsStyle | null) => ({
   ...readDefaults(get),
@@ -286,15 +309,26 @@ export const lyricsStyleSourceAtom = atom<LyricsStyleSource | null>((get) => {
   return hasOwnStyle(song.overrides) ? 'song' : 'default'
 })
 
-// Where the next change goes. Switching never discards anything: a song's own fields stay until a change to
-// that field for All Songs, Reset This Song to My Default, or Save as My Default
+// Where the next change goes, and what the song follows. This Song: changes go to the song alone (it looks as it did
+// until the first one). All Songs: the song follows the shared style, so choosing it for a song with its own style
+// lets that style go (owner, 2026-10-26: the choice is the state; no separate Reset This Song). Returns the Undo when
+// it let a style go, else null
 export const lyricsStyleScopeAtom = atom(
   (get): LyricsStyleScope => get(songLyricsStyleAtom)?.scope ?? 'all',
-  (get, set, scope: LyricsStyleScope) => {
+  (get, set, scope: LyricsStyleScope): (() => void) | null => {
     const song = get(songLyricsStyleAtom)
-    if (song !== null) {
-      set(songLyricsStyleAtom, { ...song, scope })
+    if (song === null) {
+      return null
     }
+    if (scope === 'all' && hasOwnStyle(song.overrides)) {
+      // Back to the viewer's own default: a shared style showing goes too, as Reset This Song's did (#507)
+      saveSongOverrides(set, { ...song, shared: null }, {}, 'all')
+      return () => {
+        restoreSong(set, song)
+      }
+    }
+    set(songLyricsStyleAtom, { ...song, scope })
+    return null
   }
 )
 
@@ -364,25 +398,6 @@ export const showSharedLyricsStyleAtom = atom(
   }
 )
 
-// Puts a song's style back as it was, for Undo
-const restoreSong = (set: Setter, song: SongLyricsStyle) => {
-  set(songLyricsStyleAtom, song)
-  writeSongStyle(song.videoId, song.overrides)
-}
-
-// Reset This Song to My Default. Returns its Undo
-export const resetSongLyricsStyleAtom = atom(null, (get, set) => {
-  const song = get(songLyricsStyleAtom)
-  if (song === null) {
-    return null
-  }
-  // Back to the viewer's own default: a shared style showing goes too
-  saveSongOverrides(set, { ...song, shared: null }, {}, 'all')
-  return () => {
-    restoreSong(set, song)
-  }
-})
-
 // Reset Positions: the lyrics, their upright place and Karaoke Style's translation back where they start (rows at the
 // foot, the translation at the top, undocked), wherever the changes go. Always one tap out of a layout that got stuck.
 // Returns its Undo
@@ -397,92 +412,34 @@ export const resetLyricsPositionsAtom = atom(null, (get, set) => {
     translationAnchor: get(lyricsTranslationAnchorAtom),
   }
   const docked = get(translationDockedAtom)
+  const dragged = get(lyricsPositionsDraggedAtom)
   applyLyricsStyle(get, set, {
     anchor: DEFAULT_LYRICS_STYLE.anchor,
     anchorPortrait: DEFAULT_LYRICS_STYLE.anchorPortrait,
     translationAnchor: DEFAULT_LYRICS_STYLE.translationAnchor,
   })
   set(translationDockedAtom, false)
+  set(lyricsPositionsDraggedAtom, false)
   return () => {
     applyLyricsStyle(get, set, before)
     set(translationDockedAtom, docked)
+    set(lyricsPositionsDraggedAtom, dragged)
   }
 })
 
-// Save as My Default: the style on screen becomes the default for every song without one of its own, and
-// this song follows it again. Returns its Undo
-export const applySongLyricsStyleToAllAtom = atom(null, (get, set) => {
-  const song = get(songLyricsStyleAtom)
-  if (song === null) {
-    return null
-  }
-  const defaults = readDefaults(get)
-  setDefaults(set, ownOverrides(song))
-  saveSongOverrides(set, { ...song, shared: null }, {}, 'all')
-  return () => {
-    setDefaults(set, defaults)
-    restoreSong(set, song)
-  }
-})
-
-// My Styles
-const templatesSavedAtom = atom<LyricsTemplate[] | null>(null)
+// Lyrics Style offers Reset Positions while the listener has moved something and it is still away from its start
+export const lyricsPositionsMovedAtom = atom(
+  (get) =>
+    get(lyricsPositionsDraggedAtom) === true &&
+    positionsAway(get(lyricsStyleAtom), get(translationDockedAtom))
+)
 
 // The account's newer value for a style key has just been written to the device (src/lib/prefs/sync.tsx):
 // what is read once rather than through an atom over the key is read again
 export const reloadStoredStyleAtom = atom(null, (get, set, key: string) => {
-  if (key === 'lyricsTemplates') {
-    set(templatesSavedAtom, null)
-  }
   const song = get(songLyricsStyleAtom)
   if (song !== null && key === `lyricsStyle:${song.videoId}`) {
     set(lyricsStyleSongAtom, song.videoId)
-  }
-})
-export const lyricsTemplatesAtom = atom(
-  (get) => get(templatesSavedAtom) ?? readLyricsTemplates()
-)
-const saveTemplates = (set: Setter, templates: LyricsTemplate[]) => {
-  set(templatesSavedAtom, templates)
-  writeLyricsTemplates(templates)
-}
-
-// Saves the style on screen under a name; a name already in use is replaced
-export const saveLyricsTemplateAtom = atom(null, (get, set, name: string) => {
-  const kept = get(lyricsTemplatesAtom).filter(
-    (template) => template.name !== name
-  )
-  if (kept.length >= MAX_LYRICS_TEMPLATES) {
-    return
-  }
-  saveTemplates(set, [
-    ...kept,
-    {
-      id: crypto.randomUUID(),
-      name,
-      savedAt: Date.now(),
-      style: get(lyricsStyleAtom),
-    },
-  ])
-})
-
-// Applies a saved style where changes go: to this song, or to My Default
-export const applyLyricsTemplateAtom = atom(null, (get, set, id: string) => {
-  const template = get(lyricsTemplatesAtom).find((t) => t.id === id)
-  if (template !== undefined) {
-    applyLyricsStyle(get, set, template.style)
-  }
-})
-
-// Returns its Undo
-export const deleteLyricsTemplateAtom = atom(null, (get, set, id: string) => {
-  const before = get(lyricsTemplatesAtom)
-  saveTemplates(
-    set,
-    before.filter((template) => template.id !== id)
-  )
-  return () => {
-    saveTemplates(set, before)
   }
 })
 

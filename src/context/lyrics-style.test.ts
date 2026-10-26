@@ -6,25 +6,20 @@ import {
   DEFAULT_LYRICS_STYLE,
   decodeSharedStyle,
   encodeSharedStyle,
-  sameSavedLyricsStyle,
 } from '@/lib/lyrics-style'
 
 import {
-  applyLyricsTemplateAtom,
-  lyricsCustomHueAtom,
-  lyricsScreenSizesAtom,
-  applySongLyricsStyleToAllAtom,
   fontSizeMultiplierAtom,
   lyricsAnchorAtom,
+  lyricsPositionsDraggedAtom,
+  lyricsPositionsMovedAtom,
   lyricsStyleAtom,
   lyricsStyleScopeAtom,
   lyricsStyleSongAtom,
-  lyricsTemplatesAtom,
   lyricsThemeIdAtom,
   lyricsTwoLinesAtom,
   lyricsStyleSourceAtom,
-  resetSongLyricsStyleAtom,
-  saveLyricsTemplateAtom,
+  resetLyricsPositionsAtom,
   showSharedLyricsStyleAtom,
   theaterShownAtom,
 } from './atoms'
@@ -69,21 +64,74 @@ test('a song keeps its own style; other songs follow the defaults', () => {
   reloaded.set(lyricsStyleSongAtom, 'songA')
   expect(reloaded.get(fontSizeMultiplierAtom)).toBe(1.3)
 
-  reloaded.set(resetSongLyricsStyleAtom)
+  // Choosing All Songs lets the song's own style go, and its Undo brings it back
+  const undo = reloaded.set(lyricsStyleScopeAtom, 'all')
   expect(reloaded.get(lyricsThemeIdAtom)).toBe('amethyst')
   expect(localStorage.getItem('lyricsStyle:songA')).toBeNull()
+  undo?.()
+  expect(reloaded.get(lyricsThemeIdAtom)).toBe('matcha')
+  expect(reloaded.get(lyricsStyleScopeAtom)).toBe('song')
+  expect(localStorage.getItem('lyricsStyle:songA')).not.toBeNull()
 })
 
-test('Save as My Default makes the song style the default', () => {
+test('All Songs on a song with its own style lets a shared style showing go too, and saves none of it', () => {
+  const sent = decodeSharedStyle(
+    encodeSharedStyle({ ...DEFAULT_LYRICS_STYLE, themeId: 'lemon' })
+  )
   const store = createStore()
   store.set(lyricsStyleSongAtom, 'songA')
   store.set(lyricsStyleScopeAtom, 'song')
-  store.set(lyricsThemeIdAtom, 'lemon')
-  store.set(applySongLyricsStyleToAllAtom)
-
-  expect(store.get(lyricsStyleSourceAtom)).toBe('default')
-  store.set(lyricsStyleSongAtom, 'songB')
+  store.set(lyricsAnchorAtom, 0.3)
+  if (sent !== null) {
+    store.set(showSharedLyricsStyleAtom, sent)
+  }
   expect(store.get(lyricsThemeIdAtom)).toBe('lemon')
+  store.set(lyricsStyleScopeAtom, 'all')
+  expect(store.get(lyricsThemeIdAtom)).toBe(DEFAULT_LYRICS_STYLE.themeId)
+  expect(localStorage.getItem('lyricsStyle:songA')).toBeNull()
+})
+
+test('choosing This Song or All Songs on a song without its own style drops nothing', () => {
+  const store = createStore()
+  store.set(lyricsThemeIdAtom, 'lemon')
+  store.set(lyricsStyleSongAtom, 'songA')
+  expect(store.set(lyricsStyleScopeAtom, 'song')).toBeNull()
+  expect(store.get(lyricsThemeIdAtom)).toBe('lemon')
+  expect(store.set(lyricsStyleScopeAtom, 'all')).toBeNull()
+  expect(store.get(lyricsThemeIdAtom)).toBe('lemon')
+})
+
+test('Reset Positions is offered only after the listener moved something, never for a place the app nudged', () => {
+  const store = createStore()
+  store.set(lyricsStyleSongAtom, 'songA')
+  expect(store.get(lyricsPositionsMovedAtom)).toBe(false)
+  // The app rewrites the anchor (Karaoke Style's switch keeps the rows' centre): not offered
+  store.set(lyricsAnchorAtom, 0.92)
+  expect(store.get(lyricsPositionsMovedAtom)).toBe(false)
+  // The listener's drop
+  store.set(lyricsAnchorAtom, 0.4)
+  store.set(lyricsPositionsDraggedAtom, true)
+  expect(store.get(lyricsPositionsMovedAtom)).toBe(true)
+  // Reset clears it, and its Undo brings both back
+  const undo = store.set(resetLyricsPositionsAtom)
+  expect(store.get(lyricsPositionsMovedAtom)).toBe(false)
+  undo()
+  expect(store.get(lyricsAnchorAtom)).toBe(0.4)
+  expect(store.get(lyricsPositionsMovedAtom)).toBe(true)
+})
+
+test('a device from before the dragged flag counts places already away from their start as moved', () => {
+  localStorage.setItem('lyricsAnchor', '0.5')
+  const moved = createStore()
+  moved.sub(lyricsAnchorAtom, () => {})
+  moved.set(lyricsStyleSongAtom, 'songA')
+  expect(moved.get(lyricsPositionsDraggedAtom)).toBe(true)
+  expect(moved.get(lyricsPositionsMovedAtom)).toBe(true)
+
+  localStorage.clear()
+  const untouched = createStore()
+  untouched.set(lyricsStyleSongAtom, 'songA')
+  expect(untouched.get(lyricsPositionsDraggedAtom)).toBe(false)
 })
 
 test('a corrupt or out-of-range saved style falls back to the defaults', () => {
@@ -235,72 +283,14 @@ test('a change carries to every song, unless the song has its own style; old sav
     themeId: 'lemon',
     twoLines: false,
   })
-  // For All Songs, a field the song had its own value for lets go of it, so the change shows; the rest stay
+  // Choosing All Songs puts the song back on the viewer's default, and a change then reaches it too
   store.set(lyricsStyleScopeAtom, 'all')
   store.set(fontSizeMultiplierAtom, 1.1)
   expect(store.get(lyricsStyleAtom)).toMatchObject({
-    anchor: 0.2,
+    anchor: DEFAULT_LYRICS_STYLE.anchor,
     fontSize: 1.1,
   })
-  expect(store.get(lyricsStyleSourceAtom)).toBe('song')
-})
-
-test('a saved style applies where changes go, and survives a reload', () => {
-  const store = createStore()
-  store.set(lyricsStyleSongAtom, 'songA')
-  store.set(lyricsStyleScopeAtom, 'song')
-  store.set(lyricsThemeIdAtom, 'matcha')
-  store.set(lyricsTwoLinesAtom, true)
-  store.set(saveLyricsTemplateAtom, 'Duet')
-  store.set(resetSongLyricsStyleAtom)
-
-  const reloaded = createStore()
-  reloaded.set(lyricsStyleSongAtom, 'songB')
-  const [duet] = reloaded.get(lyricsTemplatesAtom)
-  expect(duet?.name).toBe('Duet')
-  reloaded.set(applyLyricsTemplateAtom, duet?.id ?? '')
-  // songB followed the default, so the saved style became the default
-  expect(reloaded.get(lyricsStyleSourceAtom)).toBe('default')
-  reloaded.set(lyricsStyleSongAtom, 'songC')
-  expect(reloaded.get(lyricsStyleAtom)).toMatchObject({
-    themeId: 'matcha',
-    twoLines: true,
-  })
-
-  // One bad record drops only itself
-  const saved = localStorage.getItem('lyricsTemplates') ?? ''
-  localStorage.setItem(
-    'lyricsTemplates',
-    saved.replace('"templates":[', '"templates":[{"id":1},')
-  )
-  expect(
-    createStore()
-      .get(lyricsTemplatesAtom)
-      .map((t) => t.name)
-  ).toEqual(['Duet'])
-})
-
-test('a saved style shows as in use only while the style on screen matches it', () => {
-  const store = createStore()
-  store.set(lyricsThemeIdAtom, 'matcha')
-  store.set(saveLyricsTemplateAtom, 'Green')
-  const [green] = store.get(lyricsTemplatesAtom)
-  const inUse = () =>
-    green !== undefined &&
-    sameSavedLyricsStyle(green.style, store.get(lyricsStyleAtom))
-  expect(inUse()).toBe(true)
-
-  store.set(lyricsThemeIdAtom, 'amethyst')
-  expect(inUse()).toBe(false)
-  store.set(applyLyricsTemplateAtom, green?.id ?? '')
-  expect(inUse()).toBe(true)
-
-  // The hue shows only on the Custom colour, so off it a different hue is the same style
-  store.set(lyricsCustomHueAtom, 123)
-  expect(inUse()).toBe(true)
-  // A size on one screen only is part of the saved style
-  store.set(lyricsScreenSizesAtom, { desktop: 1.2, landscape: 1, portrait: 1 })
-  expect(inUse()).toBe(false)
+  expect(store.get(lyricsStyleSourceAtom)).toBe('default')
 })
 
 test('Aqua, retired, reads as Frost in saved song styles and in links shared before', () => {

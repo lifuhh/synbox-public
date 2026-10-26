@@ -1,7 +1,7 @@
 import { useAtom, useAtomValue } from 'jotai'
 import { CheckIcon, PaletteIcon } from 'lucide-react'
 import type { CSSProperties, RefObject } from 'react'
-import { use, useId, useRef } from 'react'
+import { use, useId, useLayoutEffect, useRef } from 'react'
 
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import {
@@ -29,14 +29,11 @@ import {
 import { sizeRangeOn } from '@/lib/lyrics-style'
 import type { LyricsThemeColors } from '@/lib/lyrics-themes'
 import { LYRICS_THEMES, getCustomThemeColors } from '@/lib/lyrics-themes'
+import { MENU_GAP, useMenuOffset } from '@/lib/menu-offset'
 import type { CssVars } from '@/types'
 import { cn } from '@/utils/cn'
 
-import {
-  LyricsStyleScopeSection,
-  MyStyles,
-  SaveStyle,
-} from './lyrics-style-scope'
+import { LyricsStyleScopeSection, ResetPositions } from './lyrics-style-scope'
 import { RailButton, RailInline, railMenuSide } from './rail-button'
 
 const HALF_FILLED: CSSProperties & Record<'--p', number> = { '--p': 0.5 }
@@ -189,6 +186,19 @@ export const LyricsThemePicker = ({
   // Focus moves in, and back to the button on close, only for a panel opened from the keyboard; after a
   // hover or a click it would pop the button's tooltip and hold the player's UI open
   const fromKeyboardRef = useRef(false)
+  const {
+    measure,
+    offset: menuOffset,
+    triggerRef,
+  } = useMenuOffset<HTMLButtonElement>(railMenuSide(inline, portrait))
+  // Off the inline row the panel opens from the rail itself, upright 8px off, floating over the stage MENU_GAP
+  const floatingOffset = portrait ? 8 : MENU_GAP
+  // Measured whenever the panel opens, from its button or from a click on the lyrics
+  useLayoutEffect(() => {
+    if (panel !== 'closed') {
+      measure()
+    }
+  }, [panel, measure])
   const close = () => {
     setPanel('closed')
   }
@@ -217,10 +227,8 @@ export const LyricsThemePicker = ({
   ) : (
     <h2 className='text-sm font-semibold'>Lyrics Style</h2>
   )
-  const body = (
-    <div className='flex flex-col gap-4 p-4 unhighlightable'>
-      <div className='flex items-center touch:pr-10'>{heading}</div>
-
+  const controls = (
+    <>
       <LyricsStyleScopeSection />
 
       {/* The layout switches sit a section's inner gap under the size row, not a full section gap: their 40px
@@ -280,6 +288,7 @@ export const LyricsThemePicker = ({
             onChange={setDocked}
           />
         )}
+        <ResetPositions />
       </div>
 
       <section className='flex flex-col gap-2'>
@@ -337,15 +346,12 @@ export const LyricsThemePicker = ({
           </div>
         )}
       </section>
-
-      <MyStyles onApplied={close} />
-
-      <SaveStyle />
-    </div>
+    </>
   )
 
-  // On a touch screen the panel is a modal in the middle of the screen, opened only from its button. A
-  // pick, Done, or a tap outside closes it
+  // On a touch screen the panel is a sheet, opened only from its button: from the bottom edge when the screen is
+  // tall, down the side when it's short, leaving the lyrics in view and undimmed as they change. A pick, Done,
+  // its Close or a tap outside closes it
   if (touch) {
     return (
       <Dialog
@@ -369,9 +375,15 @@ export const LyricsThemePicker = ({
           onOpenAutoFocus={(event) => {
             event.preventDefault()
           }}
-          variant='bare'
-          className='max-w-sm'>
-          {body}
+          variant='sheet'>
+          {/* The title row stays while the controls scroll under it, beside the sheet's Close; the controls fade
+              out at its edge rather than being cut there */}
+          <div className='flex min-h-6 flex-none items-center p-4 pr-14 pb-2'>
+            {heading}
+          </div>
+          <div className='flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto overscroll-contain [mask-image:linear-gradient(to_bottom,transparent,#000_0.5rem)] px-4 pt-2 pb-4 unhighlightable'>
+            {controls}
+          </div>
         </DialogContent>
       </Dialog>
     )
@@ -388,8 +400,13 @@ export const LyricsThemePicker = ({
       <PopoverAnchor virtualRef={anchorRef} />
       <PopoverTrigger asChild>
         <RailButton
+          ref={triggerRef}
           label='Lyrics Style'
-          className={cn(panel !== 'closed' && 'bg-white/10')}
+          // Open, inline it keeps a solid pill (its hover's), so it reads as the panel's button and the panel's
+          // gap is measured from the pill
+          className={cn(
+            panel !== 'closed' && (inline ? 'bg-accent' : 'bg-white/10')
+          )}
           onPointerEnter={(event) => {
             if (event.pointerType === 'mouse') {
               peek.enter(true)
@@ -413,7 +430,9 @@ export const LyricsThemePicker = ({
       <PopoverContent
         data-player-chrome
         side={railMenuSide(inline, portrait)}
-        sideOffset={portrait || inline ? 8 : 14}
+        // Inline, the rail's edge is the button's, so the panel opens MENU_GAP from what the button draws, as the
+        // player's other menus (src/lib/menu-offset.ts)
+        sideOffset={inline ? menuOffset : floatingOffset}
         collisionPadding={8}
         // Follows the rail as it slides in, when a click on the lyrics opens both at once
         updatePositionStrategy='always'
@@ -445,8 +464,11 @@ export const LyricsThemePicker = ({
         }}
         aria-label='Lyrics Style'
         variant='floating'
-        className='z-300 max-h-(--radix-popover-content-available-height) w-[min(300px,calc(100vw-1rem))] overflow-y-auto overscroll-contain'>
-        {body}
+        className='z-300 max-h-(--radix-popover-content-available-height) w-[min(21rem,calc(100vw-1rem))] overflow-y-auto overscroll-contain'>
+        <div className='flex flex-col gap-4 p-4 unhighlightable'>
+          <div className='flex min-h-6 items-center'>{heading}</div>
+          {controls}
+        </div>
       </PopoverContent>
     </Popover>
   )

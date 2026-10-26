@@ -37,6 +37,17 @@ Rules for the player (and any full-screen surface):
 - **Keep a dragged thing mounted, and save it on the drop**, not on every move: a remount mid-drag kills the drag, and a storage write per move is jank on a phone.
 - **Act on release, inside the control** (`onClick`), never on the press: a press that slides off or turns into a scroll does nothing (the owner's rule, 2026-10-26; `docs/private/2026-10-26-activation-timing-research.md`). Only a mouse may open a menu on the press (press, drag, release picks an item), and direct manipulation (sliders, drags, swipes) starts on the press and carries `data-press-ok="<why>"`. Every layout audit presses each control to check it (`harness/bench/probes/press.ts`).
 
+**Sheets, dialogs and panels** (from Apple's HIG, Material, NN/g, WCAG 2.2 and web.dev; the research with sources is the main checkout's `docs/private/2026-10-26-mobile-modal-research.md`, the owner's rule since 2026-10-26):
+
+- Settings that change what's behind them as they're set (Lyrics Style, Text Style) go in a sheet that leaves it in view, undimmed: `DialogContent variant='sheet'` on touch, a popover with a mouse. A centred, dimming dialog is for what must be answered first (sign in, a confirmation, a form).
+- The shape follows the space, not the device: a bottom sheet about half the screen high on a tall screen, a side sheet on a short one (`short:`, the Lock Landscape page included); one sheet at a time.
+- Always a visible Close at the top; swipe, Back, Escape and a tap outside are extra ways out.
+- Every press target is at least 44×44px on touch, whatever its drawn size; adjacent targets keep at least 8px apart.
+- Fewer buttons first: before adding one, make an existing control carry the meaning (Lyrics Style's All Songs | This Song is the scope _and_ the reset), and show an action only when it can do something (Reset Positions only while something moved). One prominent button per view at most, never a destructive one; a remaining action is quiet text sized to its words, placed with the setting it acts on, never a full-width filled button and never a wrapped grid of buttons.
+- Prefer Undo to a confirmation for anything reversible (`offerUndo`); confirm only what can't be undone, with buttons that name the outcome.
+- A control acts on release inside it (`onClick`): press, slide off, release does nothing, and a press that becomes a scroll does nothing. Only direct manipulation (a slider, a drag) starts on press; no `onPointerDown`/`onMouseDown` actions.
+- Controls in a sheet stay out of the safe areas (`--safe-*`); its surface may run under them.
+
 **"All views"** means three views, defined once in `harness/bench/engines/browser.ts` › `ALL_VIEWS`: **web** (desktop Chromium 1440×900), **PWA portrait** (WebKit iPhone 390×844, installed) and **PWA landscape** (WebKit 844×390, installed), each phone view with the iPhone's safe areas injected and the installed app emulated through `navigator.standalone`.
 
 **Check every UI change in all views**, by measuring, not only by looking:

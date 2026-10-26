@@ -14,8 +14,6 @@ const SYNCED_KEYS = new Set([
   'lyricsScreenSizes',
   'lyricsTheme',
   'lyricsTwoLines',
-  // My Styles
-  'lyricsTemplates',
   // What the lyrics show
   'lyricsShowLyrics',
   'lyricsShowRomaji',
