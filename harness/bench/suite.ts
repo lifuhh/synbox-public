@@ -15,6 +15,7 @@ import type { View } from './engines/browser'
 import { cdpPerf } from './engines/cdp'
 import { controlShadeAudit } from './probes/control-shade'
 import { homeVisit } from './probes/home'
+import { landscapeParityAudit } from './probes/landscape-parity'
 import { LAYOUT_FINDINGS, layoutAudit, layoutPages } from './probes/layout'
 import type { LayoutPage, OpenedState } from './probes/layout'
 import { lyricDockAudit } from './probes/lyric-dock'
@@ -315,6 +316,22 @@ export const SUITE: Benchmark[] = [
   controlShade('pwa-landscape', PWA_LANDSCAPE, false),
   controlShade('pwa-turned', PWA_PORTRAIT, true),
   lyricShift('pwa-turned', PWA_PORTRAIT, true),
+  {
+    // The full-screen player on an iPhone on its side, turned by CSS (rotation lock on) and rotated by iOS (lock off,
+    // also reached again from the watch page): the same layout within 1px, black side bands (probes/landscape-parity.ts)
+    id: 'landscape-parity',
+    metrics: [
+      count('layoutDiffs'),
+      count('blackBandsMissing'),
+      count('insetControls'),
+      count('boxes', false),
+    ],
+    run: landscapeParityAudit(),
+    runs: 1,
+    surface: PWA_LANDSCAPE.surface,
+    title:
+      'The full-screen player on an iPhone on its side, turned by Full Screen with rotation lock on vs rotated by iOS: element boxes within 1px, safe-area bands black',
+  },
   player('x1FV6IrjZCY'),
   player('ZRtdQ81jPUQ'),
   {
