@@ -173,6 +173,27 @@ export const closeBrowsers = async (): Promise<void> => {
   browsers.clear()
 }
 
+/**
+ * A page in Playwright's own Chromium, not the bench's Google Chrome, silenced like every other context: on macOS
+ * Chrome follows the system's Keyboard Navigation setting, which by default makes Tab skip buttons and links, so a
+ * keyboard journey (probes/keyboard.ts) runs here. Its own browser, closed with the page
+ */
+export const openPlainChromium = async (viewport: {
+  width: number
+  height: number
+}): Promise<{ page: Page; close: () => Promise<void> }> => {
+  const browser = await chromium.launch({ args: ['--mute-audio'] })
+  const context = await browser.newContext({ viewport })
+  await context.addInitScript(silenceAllMedia)
+  const page = await context.newPage()
+  return {
+    close: async () => {
+      await browser.close()
+    },
+    page,
+  }
+}
+
 export interface Opened {
   context: BrowserContext
   page: Page
