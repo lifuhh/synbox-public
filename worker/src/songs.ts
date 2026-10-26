@@ -101,13 +101,11 @@ export const listRecentListens = async (db: D1Database) => {
   return results.map((row) => row.videoId)
 }
 
-// The listens of every song played more than CARD_LISTENS_MIN times, for the counts on song cards; the songs
-// below it show no count, which keeps the answer small as the library grows
-export const CARD_LISTENS_MIN = 10
+// The listens of every song played at least once, for the counts on song cards (the owner, 2026-10-27: a count
+// shows as soon as there is one; it was songs over ten)
 export const listListenCounts = async (db: D1Database) => {
   const { results } = await db
-    .prepare(`select "videoId", "listens" from "songStat" where "listens" > ?1`)
-    .bind(CARD_LISTENS_MIN)
+    .prepare(`select "videoId", "listens" from "songStat" where "listens" > 0`)
     .all<{ videoId: string; listens: number }>()
   return Object.fromEntries(results.map((row) => [row.videoId, row.listens]))
 }
