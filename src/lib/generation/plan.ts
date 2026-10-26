@@ -5,59 +5,59 @@
 export const STAGES = [
   {
     id: 'check',
-    label: 'Checking the video',
+    label: 'Checking video',
     phase: 'validate',
     weight: 5,
   },
   {
     id: 'download',
-    label: 'Preparing the song',
+    label: 'Fetching song',
     phase: 'validate',
     weight: 10,
   },
   {
     id: 'read',
-    label: 'Reading subtitles and song details',
+    label: 'Reading details',
     phase: 'transcribe',
     weight: 8,
   },
   {
     id: 'separate',
-    label: 'Separating the vocals',
+    label: 'Analyzing vocals',
     phase: 'transcribe',
     weight: 90,
   },
   {
     id: 'listen',
-    label: 'Listening to the vocals',
+    label: 'Listening',
     phase: 'transcribe',
     weight: 30,
   },
   {
     id: 'lyrics',
-    label: 'Finding the lyrics',
+    label: 'Finding lyrics',
     phase: 'transcribe',
     weight: 20,
   },
   {
     id: 'align',
-    label: 'Timing every syllable',
+    label: 'Syncing words',
     phase: 'transcribe',
     weight: 45,
   },
   {
     id: 'verify',
-    label: 'Checking the timing',
+    label: 'Double-checking',
     phase: 'transcribe',
     weight: 10,
   },
   {
     id: 'translate',
-    label: 'Translating the whole song',
+    label: 'Translating',
     phase: 'translate',
     weight: 45,
   },
-  { id: 'save', label: 'Saving the song', phase: 'translate', weight: 4 },
+  { id: 'save', label: 'Saving', phase: 'translate', weight: 4 },
 ] as const
 
 export type StageId = (typeof STAGES)[number]['id']
@@ -74,7 +74,7 @@ export const isStageId = (value: unknown): value is StageId =>
 export const STEPS = [
   { id: 'check', stages: ['check'], title: 'Song Check' },
   { id: 'fetch', stages: ['download', 'read'], title: 'Song Analysis' },
-  { id: 'vocals', stages: ['separate'], title: 'Vocal Isolation' },
+  { id: 'vocals', stages: ['separate'], title: 'Vocal Analysis' },
   { id: 'transcribe', stages: ['listen', 'lyrics'], title: 'Transcription' },
   { id: 'sync', stages: ['align', 'verify'], title: 'Timing Sync' },
   { id: 'translate', stages: ['translate', 'save'], title: 'Translation' },

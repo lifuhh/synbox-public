@@ -97,9 +97,10 @@ const finishBefore = (runs: Runs, index: number, now: number): Runs => {
   return next
 }
 
+// The label is always the app's own (plan.ts › STAGES): the backend's stage labels are longer and may name how
+// the pipeline works
 interface StageUpdate {
   expectedS?: number
-  label?: string
 }
 
 const openStage = (
@@ -113,7 +114,6 @@ const openStage = (
   const run = next[id]
   if (run) {
     const expectedS = update.expectedS ?? run.expectedS
-    const label = update.label ?? run.label
     const changes =
       run.doneAt === null &&
       ((confirmed && !run.confirmed) || expectedS !== run.expectedS)
@@ -121,7 +121,6 @@ const openStage = (
       ...(changes ? rebase(run, now) : run),
       confirmed: run.confirmed || confirmed,
       expectedS,
-      label,
     }
     return next
   }
@@ -131,7 +130,7 @@ const openStage = (
     confirmed,
     doneAt: null,
     expectedS: update.expectedS ?? spec(id).weight,
-    label: update.label ?? spec(id).label,
+    label: spec(id).label,
     pace: PACE[id] ?? 1,
     reported: false,
     startedAt: now,
