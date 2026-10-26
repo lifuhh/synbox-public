@@ -48,8 +48,8 @@ const FAQS = [
 ]
 
 // The stack in general terms: languages, kinds of AI, and the companies whose platforms it runs on. No specific
-// library or model of the lyrics pipeline (the owner, 2026-10-26: that's what someone would copy). Each order
-// is measured to leave no chip alone on a row at 320, 390 and 1440 wide
+// library or model of the lyrics pipeline, since that is what someone would copy. Each order is measured for the
+// fewest rows with no chip alone on one at 320, 390, 844 and 1440 wide (Platforms: 2+2+3+3, 3+3+4, 5+5, 5+5)
 const BUILT_WITH = [
   {
     group: 'Code',
@@ -72,12 +72,13 @@ const BUILT_WITH = [
     names: [
       'OpenAI',
       'Anthropic Claude',
-      'ElevenLabs',
       'Google Cloud',
+      'YouTube Data API',
+      'ElevenLabs',
       'Cloudflare',
       'Netlify',
+      'TypeSafe Jev',
       'Appwrite',
-      'YouTube Data API',
       'Sentry',
     ],
   },
