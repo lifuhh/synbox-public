@@ -44,6 +44,13 @@ export const useYouTubeCenterShowing = (phase: StagePhase) => {
   )
 }
 
+// Where the middle row stands: the video's centre, over YouTube's own button. A narrow watch page's small video
+// (180px tall at 320px wide) has the control bar's rows over its bottom 82px, and the centre put the row on them
+// (A114: Play's lower 24px under the rows at 320px, so a press there missed). There it rises just enough to clear
+// them by the bar's gap (--stage-controls-h: the rows' height plus that gap, published by the bar)
+const TRANSPORT_TOP =
+  'top-(--video-cy) watch-narrow:top-[min(var(--video-cy),calc(100cqh-var(--stage-controls-h,5rem)-2rem))]'
+
 // Previous or Next beside the middle play button, a size down, with the floating UI. Only where a finger plays
 // or the video is small (a narrow watch page, whose control bar leaves them out): elsewhere the control bar has
 // them, and on a phone on its side its row is enough
@@ -70,7 +77,8 @@ const StepButton = ({
       disabled={onClick === undefined}
       onClick={onClick}
       className={cn(
-        'hidden absolute top-(--video-cy) z-26 size-12 -translate-1/2 place-items-center rounded-full bg-black/60 text-white shadow-stage backdrop-blur-md transition-opacity duration-300 disabled:text-white/35 watch-narrow:grid touch:grid short:hidden',
+        'hidden absolute z-26 size-12 -translate-1/2 place-items-center rounded-full bg-black/60 text-white shadow-stage backdrop-blur-md transition-opacity duration-300 disabled:text-white/35 watch-narrow:grid touch:grid short:hidden',
+        TRANSPORT_TOP,
         side === 'start' ? 'left-[calc(50%-5rem)]' : 'left-[calc(50%+5rem)]',
         visible ? 'opacity-100' : 'opacity-0',
         !armed && 'pointer-events-none'
@@ -86,7 +94,8 @@ const StepButton = ({
 // tap hiding it, a lock or a drag). Alone it only covers: it takes presses only with the rest of the UI, so a tap on
 // it then shows the controls instead of pausing. A mouse on a wide page gets no disc of ours: the bar has play,
 // a press flashes what it did (play-flash.tsx), and YouTube's own button shows for its ~4.5s after a play
-// (2026-10-26: it can't be turned off, and a cover is only another disc)
+// (2026-10-26: it can't be turned off, and a cover is only another disc). A narrow watch page's row may stand above
+// the video's centre (TRANSPORT_TOP), off YouTube's button, so there it shows only with the controls
 export const CenterPlayButton = ({
   phase,
   controlsVisible,
@@ -129,9 +138,11 @@ export const CenterPlayButton = ({
         tabIndex={-1}
         aria-label={phase.kind === 'playing' ? 'Pause' : 'Play'}
         aria-hidden={!visible}
+        data-controls={controlsVisible}
         onClick={onToggle}
         className={cn(
-          'absolute top-(--video-cy) left-1/2 z-26 grid size-16 -translate-1/2 place-items-center rounded-full bg-black/60 text-white shadow-stage backdrop-blur-md transition-opacity duration-300 mouse:hidden mouse:watch-narrow:grid',
+          'absolute left-1/2 z-26 grid size-16 -translate-1/2 place-items-center rounded-full bg-black/60 text-white shadow-stage backdrop-blur-md transition-opacity duration-300 watch-narrow:data-[controls=false]:opacity-0 mouse:hidden mouse:watch-narrow:grid',
+          TRANSPORT_TOP,
           visible ? 'opacity-100' : 'opacity-0',
           !armed && 'pointer-events-none',
           onlyForControls && 'short:pointer-events-none short:opacity-0'

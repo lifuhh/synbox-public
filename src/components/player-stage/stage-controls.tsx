@@ -246,6 +246,10 @@ const OBSTRUCTION_GAP_PX = 8
 // screen keeps the whole bar, so a finger that just misses a button doesn't hide the controls
 const PRESS_THROUGH = 'mouse:pointer-events-none'
 const PRESSABLE = 'mouse:[&_:is(button,[data-press])]:pointer-events-auto'
+// ...except in a narrow watch page's small video, where the gradient above the rows reaches the middle row of
+// Previous, Play and Next (center-play-button.tsx): there only the rows keep a finger's near misses
+const NARROW_ROWS_ONLY =
+  'touch:watch-narrow:pointer-events-none touch:watch-narrow:[&>[data-player-chrome]]:pointer-events-auto'
 const VOLUME_WHEEL_STEP = 0.05
 // The clock counts a seek as landed within this of its target
 const SEEK_SETTLED_SEC = 1
@@ -624,7 +628,7 @@ export const StageControls = ({
           'short:bg-none short:[&_[data-press][data-orientation]]:drop-shadow-stage short:[&_svg]:drop-shadow-stage',
           visible ? 'opacity-100' : 'opacity-0',
           PRESS_THROUGH,
-          armed ? PRESSABLE : 'pointer-events-none'
+          armed ? cn(PRESSABLE, NARROW_ROWS_ONLY) : 'pointer-events-none'
         )}>
         {/* On a phone on its side the seek bar joins the buttons' row: two rows would cover a third of the
           screen and push the lyrics to its middle. In the small video of a narrow watch page it runs the whole
