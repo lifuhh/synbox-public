@@ -466,9 +466,9 @@ export const LibraryView = ({
           <div className='no-scrollbar overflow-x-auto rounded-full'>
             <TabsList
               aria-label='Library'
-              className='flex h-10 w-max min-w-full *:flex-1 touch:h-12'>
+              className='flex h-10 w-max min-w-full touch:h-12'>
               {library.tabs.map(({ id, label }) => (
-                <TabsTrigger key={id} value={id} className='h-full'>
+                <TabsTrigger key={id} value={id} stretch className='h-full'>
                   {label}
                 </TabsTrigger>
               ))}
