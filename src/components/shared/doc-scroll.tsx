@@ -197,9 +197,9 @@ const OverlayScrollbar = ({ box }: { box: HTMLElement }) => {
         onWheel={onWheel}
         style={thumbVars}
         className={cn(
-          'absolute top-0 right-0 h-(--thumb-h) w-1.5 translate-y-(--thumb-y) touch-none rounded-full bg-primary/35 opacity-0 transition-fade-fill duration-200 motion-reduce:transition-none',
+          'absolute top-0 right-0 h-(--thumb-h) w-1.5 translate-y-(--thumb-y) touch-none rounded-full bg-foreground/25 opacity-0 transition-fade-fill duration-200 motion-reduce:transition-none',
           shown && 'pointer-events-auto opacity-100',
-          (near || held) && 'bg-primary/65'
+          (near || held) && 'bg-foreground/45'
         )}
       />
     </div>

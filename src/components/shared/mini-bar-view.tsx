@@ -34,7 +34,7 @@ export const MiniBarView = ({
   onUnmute?: () => void
   onClose?: () => void
 }) => (
-  <div className='relative flex h-14 items-center gap-1 overflow-hidden rounded-2xl bg-popover/90 p-1.5 shadow-lg ring-1 ring-white/10 backdrop-blur-xl'>
+  <div className='relative flex h-14 items-center gap-1 overflow-hidden rounded-2xl bg-glass p-1.5 shadow-lg ring-1 ring-white/10 backdrop-blur-xl'>
     <Link
       to={songPath(song.videoId)}
       state={songState(song.videoId, 'resume')}

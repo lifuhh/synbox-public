@@ -150,8 +150,8 @@
   --color-brand-glow: var(--magenta-10);
   --color-brand-ring-stop: var(--magenta-9);
   /* The two-color glow behind the top of a page */
-  --color-glow-a: var(--glow-a);
-  --color-glow-b: var(--glow-b);
+  --color-glass: var(--glass);
+  --color-glass-selected: var(--glass-selected);
   --color-generation-surface: var(--graphite-3);
 
   --text-badge: 11px;
@@ -163,8 +163,6 @@
   --radius-panel: 20px;
 
   --shadow-panel: 0 24px 64px -12px rgb(0 0 0/0.7);
-  --shadow-glow: 0 0 32px -6px var(--magenta-9);
-  --shadow-glow-sm: 0 0 12px -2px var(--magenta-9);
   --shadow-rail: 0 8px 24px rgb(0 0 0/0.4);
   --shadow-stage: 0 4px 16px rgb(0 0 0/0.35);
   --drop-shadow-stage: 0 2px 6px rgb(0 0 0/0.8);
@@ -1823,32 +1821,41 @@ html[data-installed] *::-webkit-scrollbar {
   /* Berry. One theme (index.html pins the dark class). Primitives are named by hue and never used in components;
      the shadcn names below point at them. Contrast notes are WCAG 2 ratios against the surface named */
   :root {
-    --graphite-1: oklch(0.155 0.012 350); /* page */
-    --graphite-2: oklch(0.195 0.012 350); /* card, input */
-    --graphite-3: oklch(0.23 0.012 350); /* popover, sheet */
-    --graphite-4: oklch(0.27 0.012 350); /* hover, track */
-    --graphite-5: oklch(0.28 0.012 350); /* subtle line */
-    --graphite-6: oklch(0.36 0.012 350); /* dock line */
-    --graphite-8: oklch(0.54 0.012 350); /* input line, 3.3:1 on a popover */
-    --graphite-9: oklch(0.62 0.012 350); /* faint text, 4.6:1 on a popover */
+    /* Near-neutral graphite with only a trace of the brand hue (chroma 0.004), as current dark music apps keep their
+       surfaces: colour is for what means something, not for the page */
+    --graphite-1: oklch(0.155 0.004 350); /* page */
+    --graphite-2: oklch(0.195 0.004 350); /* card, input */
+    --graphite-3: oklch(0.23 0.004 350); /* popover, sheet */
+    --graphite-4: oklch(0.27 0.004 350); /* hover, track */
+    --graphite-5: oklch(0.28 0.004 350); /* subtle line */
+    --graphite-6: oklch(0.36 0.004 350); /* dock line */
+    --graphite-8: oklch(0.54 0.004 350); /* input line, 3.3:1 on a popover */
+    --graphite-9: oklch(
+      0.62 0.004 350
+    ); /* faint text, 4.6:1 on a popover, 5.4:1 on the page */
     --graphite-11: oklch(
-      0.76 0.012 350
-    ); /* secondary text, 7.8:1 on a popover */
-    --graphite-12: oklch(0.96 0.005 350); /* text, 16.2:1 on a card */
-    --magenta-3: oklch(0.36 0.1 350); /* tonal fill; magenta-11 label 5.1:1 */
+      0.76 0.004 350
+    ); /* secondary text, 7.9:1 on a popover */
+    --graphite-12: oklch(0.96 0.002 350); /* text, 16.3:1 on a card */
+    /* The tonal fill behind a selected or tonal control: mostly neutral, the magenta label carries the colour */
+    --magenta-3: oklch(0.33 0.035 350); /* tonal fill; magenta-11 label 5.6:1 */
     --magenta-4: oklch(
-      0.39 0.105 350
-    ); /* tonal fill, hovered; magenta-11 label 4.6:1 */
+      0.37 0.04 350
+    ); /* tonal fill, hovered; magenta-11 label 4.8:1 */
     --magenta-7: oklch(0.46 0.18 350); /* selected border */
     --magenta-9: oklch(0.585 0.24 350); /* solid; white label 4.8:1 */
     --magenta-10: oklch(0.54 0.22 350); /* solid, hovered; white label 5.7:1 */
     --magenta-11: oklch(
       0.77 0.16 350
     ); /* magenta text: 8.2:1 on a card, 5.1:1 on the tonal fill */
-    /* A faint tint at the top of the page, near the page colour, so the band behind the top bar reads as the same
-       backdrop as the rest of the page rather than a coloured header */
-    --glow-a: oklch(0.22 0.045 356);
-    --glow-b: oklch(0.19 0.035 340);
+    /* A faint lift at the top of the page, barely off the page colour and nearly neutral, so the band behind the
+       top bar reads as the same backdrop as the rest of the page rather than a coloured header */
+    --glow-a: oklch(0.195 0.008 350);
+    --glow-b: oklch(0.175 0.006 340);
+    /* Floating bars over scrolling content (the tab dock, the mini player, notices): a lighter frosted surface.
+       0.88 opaque keeps their 12px labels at 4.8:1 even over a white thumbnail */
+    --glass: oklch(0.27 0.004 350 / 0.88);
+    --glass-selected: oklch(1 0 0 / 0.1);
     --danger-9: oklch(0.45 0.17 25); /* destructive fill; white label 8.2:1 */
     --red-3: oklch(
       0.27 0.08 25
@@ -1882,7 +1889,7 @@ html[data-installed] *::-webkit-scrollbar {
     --accent-foreground: var(--graphite-12);
     --destructive: var(--danger-9);
     --destructive-foreground: #fff;
-    --search: var(--magenta-11);
+    --search: var(--graphite-9);
     --border: var(--graphite-5);
     --input: var(--graphite-8);
     --ring: var(--magenta-11);
@@ -2283,12 +2290,12 @@ html[data-installed] *::-webkit-scrollbar {
 
     *::-webkit-scrollbar-thumb {
       border-radius: 3px;
-      background: color-mix(in oklab, var(--primary) 35%, transparent);
+      background: color-mix(in oklab, var(--foreground) 25%, transparent);
     }
 
     *::-webkit-scrollbar-thumb:hover,
     *::-webkit-scrollbar-thumb:active {
-      background: color-mix(in oklab, var(--primary) 65%, transparent);
+      background: color-mix(in oklab, var(--foreground) 45%, transparent);
     }
 
     /* Inside a blurred menu or dialog (backdrop-filter) Chromium paints no thumb on a box that isn't its own
@@ -2307,7 +2314,7 @@ html[data-installed] *::-webkit-scrollbar {
     @supports not selector(::-webkit-scrollbar) {
       * {
         scrollbar-width: thin;
-        scrollbar-color: color-mix(in oklab, var(--primary) 35%, transparent)
+        scrollbar-color: color-mix(in oklab, var(--foreground) 25%, transparent)
           transparent;
       }
     }
