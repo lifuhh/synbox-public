@@ -1,6 +1,7 @@
 import { beforeEach, expect, test, vi } from 'vite-plus/test'
 
 import { beginStage, reportFraction } from './progress'
+import { encodeJobs, STORAGE_KEY } from './queue'
 import type { Job } from './store'
 import {
   generationPhase,
@@ -314,4 +315,31 @@ test("a started song carries YouTube's title before the backend sends its own", 
     (current) => current.videoId === videoId
   )
   expect(job?.title).toBe('A Song')
+})
+
+test('a song finished in this browser, even before a reload, is waited for rather than shown as missing', async () => {
+  const now = Date.now()
+  const done = (id: number, at: number): Job =>
+    jobAt(id, at - 60_000, {
+      at,
+      karaoke: null,
+      kind: 'complete',
+      outcome: { kind: 'created' },
+    })
+  const stored = encodeJobs([done(7, now - 10_000), done(8, now - 10 * 60_000)])
+  vi.stubGlobal('localStorage', {
+    getItem: (key: string) => (key === STORAGE_KEY ? stored : null),
+    removeItem: () => {},
+    setItem: () => {},
+  })
+  vi.resetModules()
+  const store = await import('./store')
+  expect(store.getGenerationState().jobs).toHaveLength(2)
+  // Just finished: a "not found" for it is asked again (the lyrics and timing queries, useSongPresence)
+  expect(store.justMade('7'.repeat(11), now)).toBe(true)
+  // Long finished, or never made here: "not found" is believed
+  expect(store.justMade('8'.repeat(11), now)).toBe(false)
+  expect(store.justMade('9'.repeat(11), now)).toBe(false)
+  expect(store.justMade('7'.repeat(11), now + store.JUST_MADE_MS)).toBe(false)
+  vi.unstubAllGlobals()
 })

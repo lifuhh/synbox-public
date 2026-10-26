@@ -247,3 +247,54 @@ test("the app's pages, its deploy previews included, may read a song; other site
   expect(await allowOf('https://synbox.netlify.app.evil.test')).toBeNull()
   expect(await allowOf('https://x--evil.netlify.app')).toBeNull()
 })
+
+// The edge cache as Cloudflare's caches.default behaves for these keys: put keeps a response, match returns it
+const edgeCache = () => {
+  const kept = new Map<string, Response>()
+  const cache = {
+    // oxlint-disable-next-line eslint/require-await -- the Cache API's shape
+    match: async (request: Request) => kept.get(request.url)?.clone(),
+    // oxlint-disable-next-line eslint/require-await -- the Cache API's shape
+    put: async (request: Request, response: Response) => {
+      kept.set(request.url, response)
+    },
+  }
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the two methods the Worker calls
+  ;(globalThis as unknown as { caches: unknown }).caches = { default: cache }
+  return () => {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- undoing the stand-in above
+    delete (globalThis as unknown as { caches?: unknown }).caches
+  }
+}
+
+test('a song missing while it generates is found the moment it saves: a miss is never kept at the edge', async () => {
+  const restore = edgeCache()
+  try {
+    let saved = false
+    // oxlint-disable-next-line eslint/require-await -- fetch's shape; nothing here waits
+    const answer = async (input: RequestInfo | URL) => {
+      const url = input instanceof Request ? input.url : input.toString()
+      if (url.includes('/karaoke/')) {
+        return saved
+          ? Response.json({ lines: [], version: 0 })
+          : Response.json({ code: 'not_found' }, { status: 404 })
+      }
+      const rows = saved
+        ? [{ $createdAt: '', $id: THIRD, $updatedAt: '', active_version: 0 }]
+        : []
+      return Response.json({ rows, total: rows.length })
+    }
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Bun's fetch type adds preconnect, never called here
+    spyOn(globalThis, 'fetch').mockImplementation(answer as typeof fetch)
+    const { call } = await setup()
+    const missing = await call(`/api/lyrics/${THIRD}`)
+    expect(missing.status).toBe(404)
+    expect(missing.headers.get('cache-control')).toBe('no-store')
+    expect((await call(`/api/karaoke/${THIRD}`)).status).toBe(404)
+    saved = true
+    expect((await call(`/api/lyrics/${THIRD}`)).status).toBe(200)
+    expect((await call(`/api/karaoke/${THIRD}`)).status).toBe(200)
+  } finally {
+    restore()
+  }
+})
