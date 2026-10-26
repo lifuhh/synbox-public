@@ -86,7 +86,8 @@ const AccountLines = ({
       <p className='text-sm text-pretty text-muted-foreground'>
         {songsLeftText(quota)}
         {canRequest && (
-          <>
+          // The dot and the button wrap together, never a dot left at a line's end
+          <span className='whitespace-nowrap'>
             {' · '}
             <button
               type='button'
@@ -94,7 +95,7 @@ const AccountLines = ({
               className={INLINE_ACTION}>
               Request More
             </button>
-          </>
+          </span>
         )}
       </p>
       {request !== null && (

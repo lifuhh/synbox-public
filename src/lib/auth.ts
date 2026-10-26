@@ -155,7 +155,7 @@ const plural = (n: number, one: string, many: string) =>
 export const songsDoneText = (quota: Quota) =>
   quota.limit === null || quota.limit === 0
     ? 'More at midnight'
-    : `That's ${plural(quota.limit, 'song', 'songs')} today. More at midnight`
+    : `That’s ${plural(quota.limit, 'song', 'songs')} today. More at midnight`
 
 // The quiet counter where songs are added (You page, account menu): "3 Songs Left Today", and once they're added,
 // when more come rather than a zero
@@ -175,14 +175,14 @@ export const requestText = (request: SongRequest | null | undefined) => {
     return null
   }
   if (request.status === 'open') {
-    return "Request sent. I'll get back to you"
+    return 'Request sent. I’ll get back to you'
   }
   if (request.status === 'approved') {
     return request.granted === null
       ? null
       : `You now have ${plural(request.granted, 'song', 'songs')} a day`
   }
-  return "I couldn't add more this time"
+  return 'I couldn’t add more this time'
 }
 
 // Sends the browser's time zone when the account's day follows another one, so "midnight" is the listener's

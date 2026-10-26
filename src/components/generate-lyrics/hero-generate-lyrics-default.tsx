@@ -228,7 +228,8 @@ const HeroGenerateLyricsDefault = ({
         )}>
         {statusMessage()}
         {blocked && errorMessage === '' && (
-          <>
+          // The dot and the button wrap together, never a dot left at a line's end
+          <span className='whitespace-nowrap'>
             {' · '}
             <button
               type='button'
@@ -236,7 +237,7 @@ const HeroGenerateLyricsDefault = ({
               className="relative font-semibold text-foreground underline underline-offset-4 after:absolute after:-inset-x-1 after:-inset-y-2 after:content-['']">
               Request More
             </button>
-          </>
+          </span>
         )}
       </p>
     )
