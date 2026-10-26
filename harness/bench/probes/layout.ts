@@ -212,7 +212,9 @@ export const OPENED_STATES: Record<string, OpenedState[]> = {
       ],
     },
     {
-      // A speed chosen: the menu closed, the controls up with the button showing the speed
+      // A speed chosen: the menu closed, the controls up with the button showing the speed. The three views only:
+      // in Safari at 320px a press on the controls brings up the small video's middle Previous, Pause and Next, which
+      // the bar's box overlaps there (2026-10-26, not this button's doing: the bar's box is the same at 1×)
       name: 'speed-slowed',
       steps: [
         { at: { x: 60, y: 60 }, hover: { attr: 'data-player-stage' } },
@@ -221,6 +223,7 @@ export const OPENED_STATES: Record<string, OpenedState[]> = {
         { at: { x: 60, y: 60 }, hover: { attr: 'data-player-stage' } },
         { shows: { name: 'Playback Speed 0.75×', role: 'button' } },
       ],
+      views: ['web', 'pwa-portrait', 'pwa-landscape'],
     },
     {
       // Lyrics Style: a popover by the rail with a mouse, a dialog in the middle of a touch screen. Upright and
