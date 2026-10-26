@@ -310,11 +310,10 @@ const tryPress = async (
       const r = el.getBoundingClientRect()
       const x = r.left + r.width / 2
       const y = r.top + r.height / 2
-      // Well outside it, on the side with room
+      // Well outside it (80px past its edge), above when there's room: a slide down on the player is its own gesture
+      // (drag to minimise), so a slide-off down there would test that instead of the control
       const oy =
-        y + r.height + 120 < innerHeight
-          ? y + r.height + 120
-          : Math.max(2, y - r.height - 120)
+        r.top - 80 > 2 ? r.top - 80 : Math.min(innerHeight - 2, r.bottom + 80)
       const pointer = (type: string, cx: number, cy: number) =>
         new PointerEvent(type, {
           bubbles: true,
