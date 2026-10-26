@@ -3,7 +3,7 @@
 // quality controlled"). Three cases, each on a fresh page:
 // - reach: the translation moved down off its home, the rows dragged up as far as they go reach the top (within the
 //   translation home's top plus a little padding);
-// - below: the translation placed below the rows, then the rows dragged up: the same reach (a translation at the
+// - below: the translation saved at the foot, below the rows, then the rows dragged up: the same reach (a translation at the
 //   bottom must not restrict how high the lyrics can move). Reach is the rows' drawn text,
 //   not their block: the block is two of the song's tallest lines high, and its empty top once stopped at the edge
 //   with the text far under it;
@@ -24,8 +24,6 @@ import { LAYOUT_PAGES, PLAYER_SONG } from './layout'
 /** How far under the translation home's top the rows may stop and still count as at the top */
 const TOP_SLACK_PX = 32
 const LIMIT_MS = 150_000
-// The player's controls fade 1.8 s after the last input
-const CONTROLS_FADE_MS = 2500
 
 const ROWS = '[data-lyric-rows-area] [data-lyrics-style-toggle]'
 const TRANSLATION = '[data-lyric-translation] [data-lyrics-style-toggle]'
@@ -211,18 +209,18 @@ const dockAudit = async (
     }
   }
 
-  // below: the rows up first, the translation dragged past them to the foot (on its own), then the rows up again
+  // below: the translation saved at the foot on its own, the rows a third of the way down, then the rows dragged up
   {
-    const { page, close } = await karaokePage(surface, url, KARAOKE)
+    const { page, close } = await karaokePage(surface, url, {
+      ...KARAOKE,
+      lyricsAnchor: '0.3',
+      lyricsTranslationAnchor: '1',
+    })
     try {
-      await drag(page, ROWS, -2000)
-      // The drag shows the controls, which draw over the translation at the top until they fade
-      await page.waitForTimeout(CONTROLS_FADE_MS)
-      await drag(page, TRANSLATION, 2000)
       const placed = await boxes(page)
       if (placed.docked) {
         throw new Error(
-          'below: the translation docked instead of staying below the rows'
+          'below: the translation loaded docked instead of below the rows'
         )
       }
       await drag(page, ROWS, -2000)
