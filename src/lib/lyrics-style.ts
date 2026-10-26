@@ -238,60 +238,6 @@ export const writeSongStyle = (
   }
 }
 
-// Named styles the viewer saved to reuse ("My Styles"), on this device. Each holds a whole style
-export interface LyricsTemplate {
-  id: string
-  name: string
-  style: LyricsStyle
-  savedAt: number
-}
-export const MAX_LYRICS_TEMPLATES = 12
-export const TEMPLATE_NAME_MAX = 24
-const TEMPLATES_KEY = 'lyricsTemplates'
-const templatesSchema = z.object({
-  templates: z.array(z.unknown()),
-  v: z.literal(1),
-})
-// Checked one by one, so one bad record drops only itself
-const templateSchema = z.object({
-  id: z.string().min(1),
-  name: z.string().min(1).max(TEMPLATE_NAME_MAX),
-  savedAt: z.number(),
-  style: styleFieldsSchema,
-})
-
-export const readLyricsTemplates = (): LyricsTemplate[] => {
-  try {
-    const parsed = templatesSchema.safeParse(
-      JSON.parse(localStorage.getItem(TEMPLATES_KEY) ?? 'null')
-    )
-    return parsed.success
-      ? parsed.data.templates.flatMap((raw) => {
-          const template = templateSchema.safeParse(raw)
-          return template.success
-            ? [
-                {
-                  ...template.data,
-                  style: { ...DEFAULT_LYRICS_STYLE, ...template.data.style },
-                },
-              ]
-            : []
-        })
-      : []
-  } catch {
-    return []
-  }
-}
-
-export const writeLyricsTemplates = (templates: readonly LyricsTemplate[]) => {
-  try {
-    localStorage.setItem(TEMPLATES_KEY, JSON.stringify({ templates, v: 1 }))
-    touchPref(TEMPLATES_KEY)
-  } catch {
-    // Storage full or blocked: the templates still apply for this visit
-  }
-}
-
 // A shared link carries the sender's whole style as ?style=1.<theme>.<backdrop>.<size%>.<anchor%>.<portrait%>.<hue>,
 // the backdrop always `shadow` now that it is the only one (an older app reads it; one from before reads Fade or Box
 // and lands on the same look);
@@ -374,18 +320,3 @@ export const decodeSharedStyle = (
 
 export const sameLyricsStyle = (a: SharedLyricsStyle, b: SharedLyricsStyle) =>
   encodeSharedStyle(a) === encodeSharedStyle(b)
-
-// Whether the style on screen is a saved one. Fields that change nothing in a style don't count: the hue
-// away from the Custom colour, and the two-line size on one line (the share code already leaves it out)
-export const sameSavedLyricsStyle = (a: LyricsStyle, b: LyricsStyle) => {
-  const shown = (style: LyricsStyle) => ({
-    ...style,
-    customHue: style.themeId === 'custom' ? style.customHue : 0,
-  })
-  return (
-    sameLyricsStyle(shown(a), shown(b)) &&
-    LYRICS_SURFACES.every(
-      (surface) => a.screenSizes[surface] === b.screenSizes[surface]
-    )
-  )
-}

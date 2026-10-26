@@ -38,6 +38,9 @@ const buttonVariants = cva(
         sm: 'h-9 rounded-md px-3',
         // The hero's call to action: padding, not height, sets how tall it is
         tall: 'h-10 px-4 py-6',
+        // A quiet text action, as a panel's Reset: drawn 32px, its press area 44px on touch, reaching only above
+        // and below so neighbours side by side keep their gap
+        text: "relative h-8 rounded-md px-2 touch:after:absolute touch:after:inset-x-0 touch:after:-inset-y-1.5 touch:after:content-['']",
       },
       variant: {
         // The one main action on a view: a tonal pill that stands out without glaring
@@ -62,6 +65,8 @@ const buttonVariants = cva(
         // A floating panel's ghost button with an outline, for a second action beside a filled one
         'overlay-outline':
           'border border-white/20 text-white/90 hover:border-white/35 hover:bg-white/10 hover:text-white',
+        // Muted text, no fill or border until hovered: an action that should not draw the eye
+        quiet: 'text-muted-foreground hover:bg-accent hover:text-foreground',
         // A play button in a song list: a quiet icon that lights up on hover
         'row-icon':
           'rounded-full text-muted-foreground hover:bg-accent hover:text-foreground',

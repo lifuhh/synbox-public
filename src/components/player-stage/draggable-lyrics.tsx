@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from 'react'
 import {
   lyricsAnchorAtom,
   lyricsAnchorPortraitAtom,
+  lyricsPositionsDraggedAtom,
   lyricsStylePanelAtom,
 } from '@/context/atoms'
 import { usePortrait } from '@/hooks/use-media-query'
@@ -142,6 +143,7 @@ export const DraggableLyrics = ({
   const blockRef = useRef<HTMLDivElement>(null)
   const dragRef = useRef<DragStart | null>(null)
   const setStylePanel = useSetAtom(lyricsStylePanelAtom)
+  const setDragged = useSetAtom(lyricsPositionsDraggedAtom)
 
   // A drag cut off by leaving the page must not keep the controls hidden
   const layoutRef = useRef(layout)
@@ -215,8 +217,10 @@ export const DraggableLyrics = ({
       return
     }
     if (drag.moved) {
-      // Where it was dropped is its place; dropped over the rows, it docks under them
+      // Where it was dropped is its place; dropped over the rows, it docks under them. The listener moved it, so
+      // Lyrics Style offers Reset Positions
       setSavedAnchor(anchor)
+      setDragged(true)
       setDragAnchor(null)
       if (dock) {
         // Measured where it was let go, not as of the last move

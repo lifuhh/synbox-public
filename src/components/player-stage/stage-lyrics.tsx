@@ -27,6 +27,7 @@ import {
   translationVisibilityAtom,
   lyricsTranslationAnchorAtom,
   positionsResetAtAtom,
+  lyricsPositionsDraggedAtom,
   lyricsAnchorAtom,
   lyricsAnchorPortraitAtom,
   translationDockedAtom,
@@ -1093,6 +1094,7 @@ const useTranslationDock = (
   const [docked, setDocked] = useAtom(translationDockedAtom)
   const setAnchor = useSetAtom(lyricsTranslationAnchorAtom)
   const resetAt = useAtomValue(positionsResetAtAtom)
+  const setDragged = useSetAtom(lyricsPositionsDraggedAtom)
   // Subscribed, not only set: a new anchor re-reads the rows' place below after they move
   const [rowsAnchor, setRowsAnchor] = useAtom(
     usePortrait() ? lyricsAnchorPortraitAtom : lyricsAnchorAtom
@@ -1242,9 +1244,11 @@ const useTranslationDock = (
         )
       : undefined
   }, [room, layerRef, setAnchor, setDocked])
+  // The docked translation pulled off by the listener: a move of theirs, as a drag's drop is
   const handleTear = (top: number) => {
     drop.current = top
     setDocked(false)
+    setDragged(true)
   }
   const rowsBox = () => {
     const layer = layerRef.current
