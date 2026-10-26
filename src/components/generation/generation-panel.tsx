@@ -416,6 +416,7 @@ const SwipeRow = ({
       )}
       <motion.div
         ref={row}
+        data-press-ok='a finished row swipes away from the press; its tap acts on release'
         drag={finished ? 'x' : false}
         dragListener={false}
         dragControls={drag}

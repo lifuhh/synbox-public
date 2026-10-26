@@ -271,6 +271,7 @@ export const DraggableLyrics = ({
         <div
           data-testid='lyrics-handle'
           data-lyrics-style-toggle
+          data-press-ok='drags the lyrics from the press; a tap acts on release'
           className={cn(
             'lyrics-hit-text mx-auto max-w-full cursor-grab touch-none rounded-xl px-cqw ring-white/25 transition-surface hover:bg-white/5 hover:ring-1 mouse:pointer-events-auto',
             wide ? 'w-full' : 'w-fit',

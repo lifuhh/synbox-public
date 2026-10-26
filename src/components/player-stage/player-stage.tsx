@@ -656,6 +656,7 @@ export const PlayerStage = ({
       {blockInput && (
         <div
           data-testid='stage-input'
+          data-press-ok='the stage: a drag down from the press minimises; its taps act on release'
           aria-hidden='true'
           className={cn(
             'absolute inset-0 z-20',

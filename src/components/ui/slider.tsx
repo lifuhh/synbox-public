@@ -87,6 +87,7 @@ const SliderRender: React.ForwardRefRenderFunction<
       ref={ref}
       min={min}
       max={max}
+      data-press-ok='a slider: the value follows the pointer from the press'
       onPointerDown={(event) => {
         alongTurnedPage(event)
         onPointerDown?.(event)

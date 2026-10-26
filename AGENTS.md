@@ -35,6 +35,7 @@ Rules for the player (and any full-screen surface):
 - **Presses outside a control go to the stage.** The stage's own taps (show/hide controls, double-tap seek) sit under everything. Don't widen a press target over it: the lyrics take presses only on their drawn text (`lyrics-hit-text`).
 - **Input on the floating UI counts as activity.** Don't stop `pointerdown` on it, or the controls hide under a finger that is still tapping them.
 - **Keep a dragged thing mounted, and save it on the drop**, not on every move: a remount mid-drag kills the drag, and a storage write per move is jank on a phone.
+- **Act on release, inside the control** (`onClick`), never on the press: a press that slides off or turns into a scroll does nothing (the owner's rule, 2026-10-26; `docs/private/2026-10-26-activation-timing-research.md`). Only a mouse may open a menu on the press (press, drag, release picks an item), and direct manipulation (sliders, drags, swipes) starts on the press and carries `data-press-ok="<why>"`. Every layout audit presses each control to check it (`harness/bench/probes/press.ts`).
 
 **"All views"** means three views, defined once in `harness/bench/engines/browser.ts` › `ALL_VIEWS`: **web** (desktop Chromium 1440×900), **PWA portrait** (WebKit iPhone 390×844, installed) and **PWA landscape** (WebKit 844×390, installed), each phone view with the iPhone's safe areas injected and the installed app emulated through `navigator.standalone`.
 

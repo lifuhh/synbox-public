@@ -981,6 +981,9 @@ const DockedTranslation = ({
             : 'lyrics-hit-text cursor-grab touch-none transition-fade-translate duration-200 ease-out motion-reduce:transition-none',
           pulling && 'cursor-grabbing transition-none'
         )}
+        data-press-ok={
+          ghost ? undefined : 'drags the docked translation off from the press'
+        }
         onPointerDown={ghost ? undefined : handleDown}
         onPointerMove={ghost ? undefined : handleMove}
         onPointerUp={ghost ? undefined : handleUp}
