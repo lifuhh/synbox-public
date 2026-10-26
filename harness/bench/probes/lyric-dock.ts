@@ -243,9 +243,10 @@ const dockAudit = async (
         )
       }
       const placed = await boxes(page)
-      if (placed.rows && placed.translation && !placed.docked) {
+      // The rows' drawn lines onto it, not their block: its empty reserve above a one-row pair isn't the rows
+      if (placed.rowsText && placed.translation && !placed.docked) {
         const centre = (placed.translation.top + placed.translation.bottom) / 2
-        await drag(page, ROWS, centre - placed.rows.top + 4)
+        await drag(page, ROWS, centre - placed.rowsText.top + 4)
       }
       const end = await boxes(page)
       if (!end.docked) {
