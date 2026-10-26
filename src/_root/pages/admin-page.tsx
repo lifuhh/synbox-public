@@ -1164,13 +1164,13 @@ const ReportsList = () => {
               setShownState(option.id)
             }}
             className={cn(
-              'h-7 shrink-0 rounded-md px-2 text-sm font-medium whitespace-nowrap transition-colors focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-hidden sm:px-3 touch:h-9',
+              'h-7 shrink-0 rounded-md px-3 text-sm font-medium whitespace-nowrap transition-colors focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-hidden touch:h-9 touch:px-4',
               shownState === option.id
                 ? 'bg-background text-foreground shadow-sm'
                 : 'text-muted-foreground hover:text-foreground'
             )}>
             {option.name}
-            <span className='ml-1.5 text-muted-foreground tabular-nums'>
+            <span className='ml-2 text-muted-foreground tabular-nums'>
               {
                 reports.filter((report) => reportState(report) === option.id)
                   .length

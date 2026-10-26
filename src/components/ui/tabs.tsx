@@ -14,7 +14,7 @@ const TabsListRender: React.ForwardRefRenderFunction<
   <TabsPrimitive.List
     ref={ref}
     className={cn(
-      'inline-flex h-10 items-center justify-center rounded-full bg-muted p-1 text-muted-foreground',
+      'inline-flex h-10 items-center justify-center gap-1 rounded-full bg-muted p-1 text-muted-foreground',
       className
     )}
     {...props}
@@ -31,7 +31,7 @@ const TabsTriggerRender: React.ForwardRefRenderFunction<
     ref={ref}
     className={cn(
       // The selected tab takes the same filled pill as a selected filter chip (the Lyrics page's)
-      'inline-flex items-center justify-center rounded-full px-2 py-1.5 text-sm font-medium whitespace-nowrap ring-offset-background transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-hidden disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-foreground data-[state=active]:text-background data-[state=inactive]:hover:text-foreground',
+      'inline-flex items-center justify-center rounded-full px-4 py-1.5 text-sm font-medium whitespace-nowrap ring-offset-background transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-hidden disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-foreground data-[state=active]:text-background data-[state=inactive]:hover:text-foreground touch:px-5',
       className
     )}
     {...props}
