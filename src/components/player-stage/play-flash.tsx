@@ -60,9 +60,9 @@ export const PlayFlash = ({ flash }: { flash: PlayFlashState | null }) => {
       ref={disc}
       aria-hidden
       data-play-flash={flash.icon}
-      // 78px, as YouTube's (inline: one-off sizes would each add a utility rule to the stylesheet)
-      style={{ height: 78, margin: '-39px 0 0 -39px', width: 78 }}
-      className='hidden pointer-events-none absolute top-(--video-cy) left-1/2 z-26 place-items-center rounded-full bg-black/60 text-white opacity-0 backdrop-blur-md mouse:grid'>
+      // 80px, YouTube's 78 within 2px, from utilities the stylesheet already has (the translate centres it apart from
+      // the scale the animation drives)
+      className='hidden pointer-events-none absolute top-(--video-cy) left-1/2 z-26 size-20 -translate-1/2 place-items-center rounded-full bg-black/60 text-white opacity-0 backdrop-blur-md mouse:grid'>
       <Icon
         className={
           flash.icon === 'play'
