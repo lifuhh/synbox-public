@@ -23,7 +23,7 @@ export const STAGES = [
   },
   {
     id: 'separate',
-    label: 'Separating the vocals',
+    label: 'Analyzing the vocals',
     phase: 'transcribe',
     weight: 90,
   },
@@ -74,7 +74,7 @@ export const isStageId = (value: unknown): value is StageId =>
 export const STEPS = [
   { id: 'check', stages: ['check'], title: 'Song Check' },
   { id: 'fetch', stages: ['download', 'read'], title: 'Song Analysis' },
-  { id: 'vocals', stages: ['separate'], title: 'Vocal Isolation' },
+  { id: 'vocals', stages: ['separate'], title: 'Vocal Analysis' },
   { id: 'transcribe', stages: ['listen', 'lyrics'], title: 'Transcription' },
   { id: 'sync', stages: ['align', 'verify'], title: 'Timing Sync' },
   { id: 'translate', stages: ['translate', 'save'], title: 'Translation' },
