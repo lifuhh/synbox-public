@@ -9,74 +9,74 @@ const SECTIONS: LegalSection[] = [
   {
     items: [
       <>
-        Using Synbox means agreeing to these Terms, the{' '}
+        Using Synbox means accepting these Terms, the{' '}
         <Link to='/privacy' className={INLINE_LINK}>
           Privacy Policy
         </Link>{' '}
         and <Ext href='https://www.youtube.com/t/terms'>YouTube’s Terms</Ext>.
-        If you don’t agree, don’t use it.
+        Anyone who does not accept them may not use Synbox.
       </>,
-      'You must be 13 or older, and old enough where you live to agree, or have a parent or guardian agree for you.',
+      'You must be 13 or older and old enough to accept these Terms where you live, or have a parent or guardian accept them for you.',
     ],
-    title: 'The Deal',
+    title: 'Agreement',
   },
   {
     items: [
-      'A free, non-commercial karaoke site for Japanese songs.',
-      'Lyrics, readings, translations and timing are made by machines and can be wrong.',
+      'Synbox is a free, non-commercial karaoke site for Japanese songs.',
+      'Lyrics, readings, translations and timing are machine-generated and may contain errors.',
       'Videos play from YouTube and belong to their owners.',
-      'Features, limits and the service itself can change or stop at any time.',
+      'Features, limits and the service itself may change or end at any time.',
     ],
-    title: 'What Synbox Is',
+    title: 'The Service',
   },
   {
     items: [
-      'You sign in with Google. Keep your account to yourself.',
-      'We can limit, suspend or delete an account that breaks these Terms, without notice.',
+      'Sign-in is through Google. An account is for one person and may not be shared.',
+      'We may limit, suspend or delete an account that breaks these Terms, with or without notice.',
     ],
-    title: 'Your Account',
+    title: 'Accounts',
   },
   {
     items: [
-      'Scrape, copy in bulk or send automated requests.',
-      'Get around limits: extra accounts, switching networks, or skipping sign-in.',
-      'Overload, attack or probe the service, or use its APIs outside the app.',
-      'Send anything unlawful, abusive, hateful, sexual, or spam in reports or anything else.',
-      'Use Synbox to infringe anyone’s rights, or republish its lyrics, translations or timing.',
-      'Pretend to be someone else.',
+      'Scraping, bulk copying or sending automated requests.',
+      'Getting around limits, such as with extra accounts, by switching networks or by skipping sign-in.',
+      'Overloading, attacking or probing the service, or using its APIs outside the app.',
+      'Sending unlawful, abusive, hateful or sexual content, or spam, in reports or anywhere else.',
+      'Using Synbox to infringe anyone’s rights, or republishing its lyrics, translations or timing.',
+      'Impersonating anyone.',
     ],
-    title: 'Don’t',
+    title: 'Not Allowed',
   },
   {
     items: [
-      'You’re responsible for the reports and notes you send.',
-      'You let us store, use and change them, free and worldwide, to run and improve Synbox.',
-      'We can remove anything you send.',
+      'You are responsible for the reports and notes you send.',
+      'You grant us a free, worldwide licence to store, use and change them to run and improve Synbox.',
+      'We may remove anything you send.',
     ],
-    title: 'What You Send',
+    title: 'Content You Send',
   },
   {
     items: [
-      'Songs, lyrics and translations belong to their rights holders. Synbox shows them for personal learning and singing along.',
-      'Rights holders: use Contact (below) or email me@edwardhuang.dev and we’ll remove the song.',
-      'The app’s design and code are ours.',
+      'Songs, lyrics and translations belong to their rights holders. Synbox shows them for personal study and singing along.',
+      'Rights holders can have a song removed by writing through Contact (below) or to me@edwardhuang.dev.',
+      'The app’s design and code belong to Synbox.',
     ],
     title: 'Songs and Lyrics',
   },
   {
     items: [
-      'Synbox is provided as is, with no promise that it’s accurate, available or error-free, or that your data won’t be lost.',
-      'As far as the law allows, we aren’t liable for indirect or consequential loss, and our total liability is limited to S$50.',
+      'Synbox is provided as is, without any promise that it is accurate, available or free of errors, or that data will not be lost.',
+      'As far as the law allows, we are not liable for indirect or consequential loss, and our total liability is limited to S$50.',
     ],
-    title: 'No Guarantees',
+    title: 'Disclaimer and Liability',
   },
   {
     items: [
-      'You can stop using Synbox any time and ask us to delete your data.',
-      'We can end or suspend access, most of all for breaking these Terms.',
-      'Changes show here with a new date; using Synbox after them means agreeing.',
-      'Singapore law applies, and Singapore’s courts decide disputes.',
-      'Questions: use Contact (below) or email me@edwardhuang.dev.',
+      'You may stop using Synbox at any time and ask us to delete your data.',
+      'We may end or suspend access to Synbox, including for breaches of these Terms.',
+      'Changes appear here with a new date. Using Synbox after a change means accepting it.',
+      'These Terms are governed by Singapore law, and Singapore’s courts decide disputes.',
+      'For questions, use Contact (below) or email me@edwardhuang.dev.',
     ],
     title: 'Ending, Changes and Law',
   },
