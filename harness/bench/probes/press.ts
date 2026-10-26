@@ -207,6 +207,7 @@ const prepare = async (page: Page): Promise<Candidate[]> =>
             '',
         ].join('|')
       // React keeps an element's props on it, under a key it names `__reactProps$<random>`
+      // oxlint-disable-next-line unicorn/consistent-function-scoping -- runs in the page: nothing outside this function is there
       const handles = (el: Element, names: string[]) => {
         const key = Object.keys(el).find((k) => k.startsWith('__reactProps$'))
         if (key === undefined) {
@@ -275,8 +276,8 @@ const prepare = async (page: Page): Promise<Candidate[]> =>
       return picked.map((el, n) => ({
         acting: el.matches(acting),
         handled: handled.includes(el),
-        lifts: liftHandled(el),
         label: label(el),
+        lifts: liftHandled(el),
         n,
         popup: (el.getAttribute('aria-haspopup') ?? 'false') !== 'false',
         pressOk: pressOkOf(el),
@@ -475,6 +476,16 @@ export const pressValues = (f: PressFindings) => ({
   pressTested: f.tested,
 })
 
+/** Why a control's `data-press-ok` is wrong (it acts, or gives no reason), or null */
+const misusedPressOk = (c: Candidate): string | null => {
+  if (c.acting) {
+    return `${c.label} (data-press-ok="${c.pressOk}")`
+  }
+  return c.pressOk?.trim() === ''
+    ? `${c.label} (data-press-ok gives no reason)`
+    : null
+}
+
 /** Presses every candidate on the page as it is now (the audit's last step: it may change the page) */
 export const pressScan = async (
   page: Page,
@@ -507,19 +518,17 @@ export const pressScan = async (
   try {
     for (const c of candidates) {
       if (c.pressOk !== null) {
-        if (c.acting) {
-          findings.badPressOk.push(`${c.label} (data-press-ok="${c.pressOk}")`)
-        } else if (c.pressOk.trim() === '') {
-          findings.badPressOk.push(`${c.label} (data-press-ok gives no reason)`)
+        const bad = misusedPressOk(c)
+        if (bad !== null) {
+          findings.badPressOk.push(bad)
         }
         continue
       }
       // A phone: a press a scroll took, then (only where a lift handler could act on it) one that slid off
-      const ends: ('cancel' | 'outside')[] = touch
-        ? c.lifts
-          ? ['cancel', 'outside']
-          : ['cancel']
-        : ['outside']
+      const ends: ('cancel' | 'outside')[] = touch ? ['cancel'] : ['outside']
+      if (touch && c.lifts) {
+        ends.push('outside')
+      }
       for (const end of ends) {
         writes = []
         // oxlint-disable-next-line eslint/no-await-in-loop -- one press at a time
