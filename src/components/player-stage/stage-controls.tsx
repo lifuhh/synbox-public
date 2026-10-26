@@ -269,7 +269,9 @@ const FullScreenChrome = ({
         aria-hidden='true'
         style={FADE_VARS}
         className={cn(
-          'pointer-events-none absolute inset-x-0 top-0 z-30 h-[calc(var(--topbar-h)+3rem)] bg-linear-to-b from-black/60 to-transparent transition-opacity duration-(--controls-fade)',
+          // Not on a phone on its side, where the lyrics run up to the top: the shade dimmed their top lines whenever the
+          // controls showed. There the bar's buttons carry their own shadow (globals.css › player-topbar-shadow)
+          'pointer-events-none absolute inset-x-0 top-0 z-30 h-[calc(var(--topbar-h)+3rem)] bg-linear-to-b from-black/60 to-transparent transition-opacity duration-(--controls-fade) short:hidden',
           visible ? 'opacity-100' : 'opacity-0'
         )}
       />
