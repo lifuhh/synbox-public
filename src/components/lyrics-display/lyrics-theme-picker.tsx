@@ -369,7 +369,7 @@ export const LyricsThemePicker = ({
             event.preventDefault()
           }}
           variant='bare'
-          className='max-w-sm scroll-pb-20'>
+          className='max-w-sm'>
           {body}
         </DialogContent>
       </Dialog>
@@ -444,7 +444,7 @@ export const LyricsThemePicker = ({
         }}
         aria-label='Lyrics Style'
         variant='floating'
-        className='z-300 max-h-(--radix-popover-content-available-height) w-[min(300px,calc(100vw-1rem))] scroll-pb-20 overflow-y-auto overscroll-contain'>
+        className='z-300 max-h-(--radix-popover-content-available-height) w-[min(300px,calc(100vw-1rem))] overflow-y-auto overscroll-contain'>
         {body}
       </PopoverContent>
     </Popover>

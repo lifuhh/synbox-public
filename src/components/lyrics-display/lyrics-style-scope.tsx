@@ -200,8 +200,9 @@ export const MyStyles = ({ onApplied }: { onApplied: () => void }) => {
 
 const FOOTER_BUTTON = 'shrink-0 touch:h-11'
 
-// The panel's main action, in its bottom-right corner. It stays in view while the panel scrolls (a phone
-// on its side, or a desktop window with little height), and becomes the name field in place
+// The panel's last row, under My Styles where a saved style lands; it scrolls with the panel and becomes the name
+// field in place. Not pinned: a sticky footer covered a row of the panel wherever it scrolled, and on the Lock
+// Landscape page (turned by CSS) iOS pinned it mid-panel (owner, 2026-10-26)
 export const SaveStyle = () => {
   const templates = useAtomValue(lyricsTemplatesAtom)
   const save = useSetAtom(saveLyricsTemplateAtom)
@@ -215,7 +216,7 @@ export const SaveStyle = () => {
   }
 
   return (
-    <div className='sticky bottom-0 z-10 -mx-4 -mb-4 flex items-center gap-2 border-t border-border bg-popover p-4 pt-3'>
+    <div className='flex items-center gap-2'>
       {naming ? (
         <form
           className='flex flex-1 items-center gap-2'
