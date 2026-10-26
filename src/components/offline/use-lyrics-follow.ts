@@ -62,7 +62,16 @@ interface LyricsFollowOptions {
   // Whether a playing song takes the box back by itself after a while; without, only Current Line or a seek does
   resumes?: boolean
   isPlaying: () => boolean
+  // How long the glide to the next line takes, in ms: the caller sizes it to the line, so a fast song's glide
+  // ends before the next line comes
+  glideMs?: number
 }
+
+// The browser's own smooth scroll moves one line in about 120 ms on WebKit, a jump rather than a glide
+const GLIDE_MS = 450
+
+const easeInOut = (t: number) =>
+  t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2
 
 // A box of lyrics that follows the song: the followed line glides to `followAt` as the song moves on. A real
 // scroll by hand (a finger moved past the slop, or a wheel) lets the viewer read elsewhere; four seconds
@@ -75,6 +84,7 @@ export const useLyricsFollow = <Content extends HTMLElement = HTMLDivElement>({
   centred = false,
   resumes = true,
   isPlaying,
+  glideMs = GLIDE_MS,
 }: LyricsFollowOptions) => {
   const [following, setFollowing] = useState(true)
   const followingRef = useRef(following)
@@ -83,6 +93,15 @@ export const useLyricsFollow = <Content extends HTMLElement = HTMLDivElement>({
   })
   const scroller = useRef<HTMLDivElement>(null)
   const blocks = useRef<(HTMLDivElement | null)[]>([])
+  // The running glide's animation frame, stopped by a new target, a jump or the viewer's own scroll
+  const glide = useRef<number | null>(null)
+  const stopGlide = useCallback(() => {
+    if (glide.current !== null) {
+      cancelAnimationFrame(glide.current)
+      glide.current = null
+    }
+  }, [])
+  useEffect(() => stopGlide, [stopGlide])
 
   const scrollToTarget = useCallback(
     (behavior: ScrollBehavior) => {
@@ -91,23 +110,42 @@ export const useLyricsFollow = <Content extends HTMLElement = HTMLDivElement>({
       if (box === null || block === undefined || block === null) {
         return
       }
+      stopGlide()
       const offset = centred
         ? Math.max(0, (box.clientHeight - block.offsetHeight) / 2)
         : box.clientHeight * followAt
-      box.scrollTo({
-        behavior:
-          behavior === 'smooth' &&
-          matchMedia('(prefers-reduced-motion: reduce)').matches
-            ? 'instant'
-            : behavior,
-        top:
-          box.scrollTop +
-          block.getBoundingClientRect().top -
-          box.getBoundingClientRect().top -
-          offset,
-      })
+      const from = box.scrollTop
+      const to = Math.min(
+        Math.max(
+          0,
+          from +
+            block.getBoundingClientRect().top -
+            box.getBoundingClientRect().top -
+            offset
+        ),
+        box.scrollHeight - box.clientHeight
+      )
+      if (
+        behavior !== 'smooth' ||
+        Math.abs(to - from) < 1 ||
+        matchMedia('(prefers-reduced-motion: reduce)').matches
+      ) {
+        box.scrollTo({ behavior: 'instant', top: to })
+        return
+      }
+      // Eased in and out over glideMs; each step is instant, or the page's smooth scroll-behavior would chase it
+      const startedAt = performance.now()
+      const step = (now: number) => {
+        const t = Math.min(1, (now - startedAt) / glideMs)
+        box.scrollTo({
+          behavior: 'instant',
+          top: from + (to - from) * easeInOut(t),
+        })
+        glide.current = t < 1 ? requestAnimationFrame(step) : null
+      }
+      glide.current = requestAnimationFrame(step)
     },
-    [target, followAt, centred]
+    [target, followAt, centred, glideMs, stopGlide]
   )
 
   useEffect(() => {
@@ -185,6 +223,8 @@ export const useLyricsFollow = <Content extends HTMLElement = HTMLDivElement>({
   )
 
   const browse = () => {
+    // The viewer's own scroll wins over a glide still running
+    stopGlide()
     if (enabled) {
       setFollowing(false)
       armResume()
