@@ -202,6 +202,30 @@ export const OPENED_STATES: Record<string, OpenedState[]> = {
       views: ['pwa-portrait'],
     },
     {
+      // Playback Speed's menu: above the bar's button, or left of the right-hand column's on a touch screen's
+      // full-screen player; every speed the video allows must be reachable, none under the edge
+      name: 'speed-menu',
+      steps: [
+        { at: { x: 60, y: 60 }, hover: { attr: 'data-player-stage' } },
+        { press: { name: /^Playback Speed/u, role: 'button' } },
+        { shows: { name: /^Playback Speed/u, role: 'menu' } },
+      ],
+    },
+    {
+      // A speed chosen: the menu closed, the controls up with the button showing the speed. The three views only:
+      // in Safari at 320px a press on the controls brings up the small video's middle Previous, Pause and Next, which
+      // the bar's box overlaps there (2026-10-26, not this button's doing: the bar's box is the same at 1×)
+      name: 'speed-slowed',
+      steps: [
+        { at: { x: 60, y: 60 }, hover: { attr: 'data-player-stage' } },
+        { press: { name: /^Playback Speed/u, role: 'button' } },
+        { press: { name: '0.75×', role: 'menuitemradio' } },
+        { at: { x: 60, y: 60 }, hover: { attr: 'data-player-stage' } },
+        { shows: { name: 'Playback Speed 0.75×', role: 'button' } },
+      ],
+      views: ['web', 'pwa-portrait', 'pwa-landscape'],
+    },
+    {
       // Lyrics Style: a popover by the rail with a mouse, a dialog in the middle of a touch screen. Upright and
       // on the web the rail sits under the video, always there
       name: 'style',
@@ -497,7 +521,11 @@ export const LAYOUT_FINDINGS = [
   'unnamedControls',
   'unscrollableRegions',
   'smoothScrollReduced',
+  'detachedMenus',
 ] as const
+
+/** How far an open menu may sit from what can be seen of its button before the audit counts it detached */
+const DETACHED_MENU_PX = 12
 
 const routeMatches = (route: string, pathname: string): boolean =>
   new RegExp(`^${route.replaceAll(/:[^/]+/gu, '[^/]+')}/?$`, 'u').test(pathname)
@@ -780,6 +808,80 @@ const auditOnce = async (
       (s) => window.__bench.audit(s),
       safe
     )
+    // An open menu or popover sits next to what can be seen of its button: the button's box when it paints a
+    // surface, else its icons and text (a bare glyph's box is mostly empty). Farther than DETACHED_MENU_PX reads as
+    // a pane from nowhere (owner, 2026-10-26, and on a turned page 2026-10-25)
+    at.step = 'measuring open menus against their buttons'
+    const detached: string[] = await page.evaluate((limit) => {
+      // oxlint-disable-next-line unicorn/consistent-function-scoping -- runs in the page, where nothing outside this function exists
+      const drawn = (button: Element): DOMRect => {
+        const box = button.getBoundingClientRect()
+        const color = getComputedStyle(button).backgroundColor
+        const [, afterSlash] = color.split('/')
+        const parts = color.match(/[\d.]+/gu) ?? []
+        let alpha = 1
+        if (color === 'transparent') {
+          alpha = 0
+        } else if (afterSlash !== undefined) {
+          alpha = Number(/[\d.]+/u.exec(afterSlash)?.[0] ?? 1)
+        } else if (color.startsWith('rgba')) {
+          alpha = Number(parts.at(-1))
+        }
+        if (alpha >= 0.3) {
+          return box
+        }
+        const rects = [...button.querySelectorAll('svg')].map((svg) =>
+          svg.getBoundingClientRect()
+        )
+        const walker = document.createTreeWalker(button, NodeFilter.SHOW_TEXT)
+        for (let n = walker.nextNode(); n !== null; n = walker.nextNode()) {
+          if ((n.textContent ?? '').trim() !== '') {
+            const range = document.createRange()
+            range.selectNodeContents(n)
+            rects.push(range.getBoundingClientRect())
+          }
+        }
+        // Over 1px: screen-reader-only text is a 1px box (as src/lib/menu-offset.ts)
+        const seen = rects.filter((r) => r.width > 1 && r.height > 1)
+        if (seen.length === 0) {
+          return box
+        }
+        const left = Math.min(...seen.map((r) => r.left))
+        const top = Math.min(...seen.map((r) => r.top))
+        return new DOMRect(
+          left,
+          top,
+          Math.max(...seen.map((r) => r.right)) - left,
+          Math.max(...seen.map((r) => r.bottom)) - top
+        )
+      }
+      return [
+        ...document.querySelectorAll(
+          '[data-radix-popper-content-wrapper] > [id]'
+        ),
+      ]
+        .filter((menu) => menu.getBoundingClientRect().width > 0)
+        .flatMap((menu) => {
+          const button = document.querySelector(`[aria-controls="${menu.id}"]`)
+          if (button === null) {
+            return []
+          }
+          const a = drawn(button)
+          const b = menu.getBoundingClientRect()
+          const gap = Math.max(
+            b.left - a.right,
+            a.left - b.right,
+            b.top - a.bottom,
+            a.top - b.bottom,
+            0
+          )
+          return gap > limit
+            ? [
+                `${Math.round(gap)}px from ${button.getAttribute('aria-label') ?? button.textContent ?? 'its button'}`,
+              ]
+            : []
+        })
+    }, DETACHED_MENU_PX)
     at.step = 'taking the screenshot'
     await page.screenshot({ path: shot })
     // With Reduce Motion on, nothing may still scroll smoothly (a focus or a tap on the bar would glide): every
@@ -840,6 +942,7 @@ const auditOnce = async (
       ...smooth.map(
         (label) => `scrolls smoothly under Reduce Motion: ${label}`
       ),
+      ...detached.map((label) => `menu opened ${label}`),
       ...(audit.overflowX
         ? [`page scrolls sideways by ${audit.overflowX}px`]
         : []),
@@ -861,6 +964,7 @@ const auditOnce = async (
           values: {
             clippedText: audit.clipped.length,
             consoleErrors: logged.length,
+            detachedMenus: detached.length,
             insetSurfaces: audit.insetSurfaces.length,
             occludedTargets: audit.occluded.length,
             offscreenTargets: audit.offscreen.length,
