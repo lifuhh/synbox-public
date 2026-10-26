@@ -1030,30 +1030,13 @@ const translationHandleOf = (layer: HTMLElement) =>
     '[data-lyric-translation] [data-lyrics-style-toggle]'
   )
 
-// Where the rows' handle goes so their drawn lines clear the translation on its own, as drawn now, by the gap: above it
-// (`below`: the translation is under them) or under it. Null when either isn't drawn
-const rowsTopClearing = (layer: HTMLElement, below: boolean) => {
-  const rows = rowsHandleOf(layer)
-  const handle = translationHandleOf(layer)
-  const text = rowsTextOf(layer)
-  if (!(rows && handle && text) || handle.offsetHeight === 0) {
-    return null
-  }
-  const rowsTop = offsetIn(rows, layer)
-  const top = offsetIn(handle, layer)
-  const gap = clearGap(layer.clientHeight)
-  return below
-    ? rowsTop + (top - gap - text.bottom)
-    : rowsTop + (top + handle.offsetHeight + gap - text.top)
-}
-
 // The vertical move an element's `translate` and `transform` add (the upper row's --upper-floor, the pair's
 // --pair-drop: Tailwind's translate-y-* sets `translate`): layout offsets leave both out
 const shiftOf = (element: Element) => {
   const style = getComputedStyle(element)
   const [, y = '0'] =
     style.translate === 'none' ? [] : style.translate.split(' ')
-  const moved = Number.parseFloat(y) || 0
+  const moved = Number(y.replace(/px$/u, '')) || 0
   return style.transform === 'none'
     ? moved
     : moved + new DOMMatrixReadOnly(style.transform).m42
@@ -1093,6 +1076,23 @@ const rowsTextOf = (layer: HTMLElement) => {
     bottom: Math.max(...boxes.map((box) => box.bottom)),
     top: Math.min(...boxes.map((box) => box.top)),
   }
+}
+
+// Where the rows' handle goes so their drawn lines clear the translation on its own, as drawn now, by the gap: above it
+// (`below`: the translation is under them) or under it. Null when either isn't drawn
+const rowsTopClearing = (layer: HTMLElement, below: boolean) => {
+  const rows = rowsHandleOf(layer)
+  const handle = translationHandleOf(layer)
+  const text = rowsTextOf(layer)
+  if (!(rows && handle && text) || handle.offsetHeight === 0) {
+    return null
+  }
+  const rowsTop = offsetIn(rows, layer)
+  const top = offsetIn(handle, layer)
+  const gap = clearGap(layer.clientHeight)
+  return below
+    ? rowsTop + (top - gap - text.bottom)
+    : rowsTop + (top + handle.offsetHeight + gap - text.top)
 }
 
 // The translation on its own (`handle`) watched as it wraps taller or shorter, and as it first shows: overlapping the
