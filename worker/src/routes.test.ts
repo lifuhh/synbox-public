@@ -100,6 +100,25 @@ test('a guest cannot report', async () => {
   expect(await listReports(db)).toEqual([])
 })
 
+test('a guest cannot send through the Contact form, and nothing is kept', async () => {
+  const { call, db } = await setup()
+  const response = await call('/api/contact', {
+    body: JSON.stringify({
+      message: 'Hello there',
+      replyTo: 'someone@example.com',
+      subject: 'Hi',
+      website: '',
+    }),
+    headers: { 'content-type': 'application/json' },
+    method: 'POST',
+  })
+  expect(response.status).toBe(401)
+  const kept = await db
+    .prepare('select count(*) as "n" from "contactMessage"')
+    .first('n')
+  expect(kept).toBe(0)
+})
+
 test('a guest has no open report to show, whatever the song', async () => {
   const { call } = await setup()
   const response = await call('/api/reports/mine?videoId=6rG_irmOQsM')

@@ -5,7 +5,6 @@ import {
   contactAllowed,
   emailContact,
   MESSAGE_MAX,
-  NETWORK_PER_DAY,
   networkOf,
   parseContact,
   saveContact,
@@ -36,33 +35,54 @@ const rows = () =>
     )
     .all()
 
-test('a subject and a message are needed, within their lengths; a reply address must look like one', () => {
-  expect(parseContact({ message: 'Hello there', subject: ' Hi ' })).toEqual({
-    contact: { message: 'Hello there', replyTo: null, subject: 'Hi' },
-    ok: true,
-  })
-  expect(parseContact({ message: 'Hello there', subject: '' }).ok).toBe(false)
-  expect(parseContact({ message: 'x', subject: 'Hi' }).ok).toBe(false)
+const ME = 'me@example.com'
+
+test('a subject and a message are needed, within their lengths', () => {
+  expect(parseContact({ message: 'Hello there', subject: ' Hi ' }, ME)).toEqual(
+    {
+      contact: { message: 'Hello there', replyTo: ME, subject: 'Hi' },
+      ok: true,
+    }
+  )
+  expect(parseContact({ message: 'Hello there', subject: '' }, ME).ok).toBe(
+    false
+  )
+  expect(parseContact({ message: 'x', subject: 'Hi' }, ME).ok).toBe(false)
   expect(
-    parseContact({ message: 'Hello', subject: 'x'.repeat(SUBJECT_MAX + 1) }).ok
-  ).toBe(false)
-  expect(
-    parseContact({ message: 'x'.repeat(MESSAGE_MAX + 1), subject: 'Hi' }).ok
-  ).toBe(false)
-  expect(
-    parseContact({ message: 'Hello', replyTo: 'not an address', subject: 'Hi' })
+    parseContact({ message: 'Hello', subject: 'x'.repeat(SUBJECT_MAX + 1) }, ME)
       .ok
   ).toBe(false)
-  expect(parseContact(null).ok).toBe(false)
+  expect(
+    parseContact({ message: 'x'.repeat(MESSAGE_MAX + 1), subject: 'Hi' }, ME).ok
+  ).toBe(false)
+  expect(parseContact(null, ME).ok).toBe(false)
+})
+
+test("the reply address is the account's, whatever the form sends", () => {
+  const parsed = parseContact(
+    {
+      message: 'Hello there',
+      replyTo: 'someone-else@example.com',
+      subject: 'Hi',
+    },
+    ME
+  )
+  expect(parsed).toEqual({
+    contact: { message: 'Hello there', replyTo: ME, subject: 'Hi' },
+    ok: true,
+  })
 })
 
 test('the hidden field filled in is a bot, told apart from a bad request', () => {
   expect(
-    parseContact({ message: 'Buy now', subject: 'Deal', website: 'spam.biz' })
+    parseContact(
+      { message: 'Buy now', subject: 'Deal', website: 'spam.biz' },
+      ME
+    )
   ).toEqual({ code: 'trap', ok: false })
 })
 
-test('a sender gets a few a day, a network a few more, and the day rolls over', async () => {
+test('an account gets a few a day, others are unaffected, and the day rolls over', async () => {
   const network = await networkOf('203.0.113.7')
   await Promise.all(
     Array.from(
@@ -71,22 +91,11 @@ test('a sender gets a few a day, a network a few more, and the day rolls over', 
         await saveContact(db, message, 'u:alice', network, now - index)
     )
   )
-  expect(await contactAllowed(db, 'u:alice', network, now)).toBe(false)
-  // Another person on the same network still has room until the network's limit
-  expect(await contactAllowed(db, 'u:bob', network, now)).toBe(true)
-  await Promise.all(
-    Array.from(
-      { length: NETWORK_PER_DAY - SENDER_PER_DAY },
-      async (_, index) =>
-        await saveContact(db, message, `d:guest${index}`, network, now - index)
-    )
-  )
-  expect(await contactAllowed(db, 'u:bob', network, now)).toBe(false)
-  expect(await contactAllowed(db, null, network, now)).toBe(false)
-  // A day later both have room again
-  expect(await contactAllowed(db, 'u:alice', network, now + 25 * HOUR)).toBe(
-    true
-  )
+  expect(await contactAllowed(db, 'u:alice', now)).toBe(false)
+  // Another account on the same network still has room
+  expect(await contactAllowed(db, 'u:bob', now)).toBe(true)
+  // A day later Alice has room again
+  expect(await contactAllowed(db, 'u:alice', now + 25 * HOUR)).toBe(true)
 })
 
 test('the network is kept as a hash, never the address, and the same address hashes the same', async () => {

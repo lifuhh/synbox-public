@@ -1,17 +1,14 @@
-// The app's Contact form: anyone can send a subject and a message, with an address to reply to if they want one.
-// Each message is kept for /admin and emailed to the owner through Cloudflare's send_email binding. Without an
+// The app's Contact form, for signed-in accounts: a subject and a message, answered at the account's own email
+// (taken from the session, never from the form). Guests are shown the owner's address instead. Each message is
+// kept for /admin and emailed to the owner through Cloudflare's send_email binding. Without an
 // onboarded sending domain, that binding can only mail a verified destination address of the account, from an
 // address on one of its Email Routing domains: CONTACT_TO (a secret) and CONTACT_FROM
 
 export const SUBJECT_MAX = 120
 export const MESSAGE_MAX = 4000
-// Per sender (account or browser) and per network, a day: a person writing back and forth stays well under them
+// Per account, a day: a person writing back and forth stays well under it
 export const SENDER_PER_DAY = 5
-export const NETWORK_PER_DAY = 10
 const DAY_MS = 86_400_000
-const EMAIL_MAX = 254
-// Loose on purpose: the owner reads it, nothing is sent to it
-const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/u
 
 export interface ContactMessage {
   subject: string
@@ -29,7 +26,11 @@ const text = (body: object, key: string) => {
   return typeof value === 'string' ? value.trim() : null
 }
 
-export const parseContact = (body: unknown): ParsedContact => {
+// replyTo: the signed-in account's email, from the session; anything the body says about it is ignored
+export const parseContact = (
+  body: unknown,
+  replyTo: string | null
+): ParsedContact => {
   if (typeof body !== 'object' || body === null) {
     return { code: 'bad_request', ok: false }
   }
@@ -38,24 +39,18 @@ export const parseContact = (body: unknown): ParsedContact => {
   }
   const subject = text(body, 'subject') ?? ''
   const message = text(body, 'message') ?? ''
-  const replyTo = text(body, 'replyTo') ?? ''
   if (
     subject === '' ||
     subject.length > SUBJECT_MAX ||
     message.length < 2 ||
-    message.length > MESSAGE_MAX ||
-    replyTo.length > EMAIL_MAX ||
-    (replyTo !== '' && !EMAIL.test(replyTo))
+    message.length > MESSAGE_MAX
   ) {
     return { code: 'bad_request', ok: false }
   }
-  return {
-    contact: { message, replyTo: replyTo === '' ? null : replyTo, subject },
-    ok: true,
-  }
+  return { contact: { message, replyTo, subject }, ok: true }
 }
 
-// The sender's network for the daily limit, as a hash: the address itself is never kept
+// The sender's network, kept as a hash with each message (the column predates accounts-only): never the address
 export const networkOf = async (address: string) => {
   const digest = await crypto.subtle.digest(
     'SHA-256',
@@ -66,30 +61,19 @@ export const networkOf = async (address: string) => {
     .join('')
 }
 
-const sentSince = async (
+export const contactAllowed = async (
   db: D1Database,
-  column: 'sender' | 'network',
-  value: string,
-  since: number
+  sender: string,
+  now: number
 ) =>
   Number(
     (await db
       .prepare(
-        `select count(*) as "n" from "contactMessage" where "${column}" = ?1 and "createdAt" > ?2`
+        `select count(*) as "n" from "contactMessage" where "sender" = ?1 and "createdAt" > ?2`
       )
-      .bind(value, since)
+      .bind(sender, now - DAY_MS)
       .first('n')) ?? 0
-  )
-
-export const contactAllowed = async (
-  db: D1Database,
-  sender: string | null,
-  network: string,
-  now: number
-) =>
-  (await sentSince(db, 'network', network, now - DAY_MS)) < NETWORK_PER_DAY &&
-  (sender === null ||
-    (await sentSince(db, 'sender', sender, now - DAY_MS)) < SENDER_PER_DAY)
+  ) < SENDER_PER_DAY
 
 export const saveContact = async (
   db: D1Database,
