@@ -1,20 +1,110 @@
-import { SearchIcon, XIcon } from 'lucide-react'
+import {
+  ArrowUpRightIcon,
+  LoaderCircleIcon,
+  SearchIcon,
+  XIcon,
+} from 'lucide-react'
 import { useEffect, useId, useRef, useState } from 'react'
 import type { RefObject } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router'
 
 import { Button } from '@/components/ui/button'
-import { useGallerySongs } from '@/lib/react-query/queries-and-mutations'
+import {
+  useGallerySongs,
+  useSearchLibrary,
+} from '@/lib/react-query/queries-and-mutations'
 import type { LibraryListSong } from '@/lib/synbox-flask/discovery'
 import { matchTitles } from '@/lib/title-match'
 import { cn } from '@/utils/cn'
 
-const MAX_SONGS = 8
+const MAX_SONGS = 6
+// The full search waits until typing pauses this long, and asks only from this many characters: each new query can
+// spend one of the backend's ranked searches (a daily budget, then plain title matching)
+const SEARCH_DELAY_MS = 450
+const SEARCH_MIN_CHARS = 2
+// A row that leaves the app: opened in a new tab, never by the list's own navigation
+const EXTERNAL = 'external:'
 
-// What the dropdown lists while the field has text: the karaoke songs (the mic badge) whose title or channel holds
-// every word, then the full search for the words. Mounted only while open, so a page that never searches never
-// loads the list
+export const youtubeSearchUrl = (query: string) =>
+  `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`
+
+// `value` once it has stayed the same for `ms`
+const useSettled = (value: string, ms: number) => {
+  const [settled, setSettled] = useState(value)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSettled(value)
+    }, ms)
+    return () => {
+      clearTimeout(timer)
+    }
+  }, [value, ms])
+  return settled
+}
+
+interface Row {
+  target: string
+  song?: { videoId: string; title: string; thumbnailUrl: string }
+  label?: string
+}
+
+// One row's face: a song's picture and title, a row that leaves the app (its link opens the new tab), or an action
+const RowBody = ({
+  row,
+  onPick,
+}: {
+  row: Row
+  onPick: (target: string) => void
+}) => {
+  if (row.song) {
+    return (
+      <>
+        <img
+          src={row.song.thumbnailUrl}
+          alt=''
+          loading='lazy'
+          className='aspect-video h-8 shrink-0 rounded-sm bg-thumbnail-placeholder object-cover'
+        />
+        <span className='min-w-0 flex-1 truncate'>{row.song.title}</span>
+      </>
+    )
+  }
+  if (row.target.startsWith(EXTERNAL)) {
+    return (
+      <a
+        href={row.target.slice(EXTERNAL.length)}
+        target='_blank'
+        rel='noopener noreferrer'
+        tabIndex={-1}
+        onClick={() => {
+          onPick('')
+        }}
+        className='flex min-w-0 flex-1 items-center gap-3 self-stretch'>
+        <span className='grid w-14 shrink-0 place-items-center text-muted-foreground'>
+          <ArrowUpRightIcon aria-hidden className='size-4' />
+        </span>
+        <span className='min-w-0 flex-1 truncate'>
+          {row.label}
+          <span className='sr-only'> (opens in a new tab)</span>
+        </span>
+      </a>
+    )
+  }
+  return (
+    <>
+      <span className='grid w-14 shrink-0 place-items-center text-muted-foreground'>
+        <SearchIcon aria-hidden className='size-4' />
+      </span>
+      <span className='min-w-0 flex-1 truncate'>{row.label}</span>
+    </>
+  )
+}
+
+// What the dropdown lists while the field has text. At once: the karaoke songs (the mic badge) whose title or
+// channel holds every word. Once typing pauses: the library's ranked search too (the Search page's), karaoke songs
+// only, with a Searching… row meanwhile. Then See All Results (the Search page) and Search on YouTube (a new tab).
+// Mounted only while open, so a page that never searches never loads the list
 const Results = ({
   query,
   active,
@@ -33,64 +123,118 @@ const Results = ({
   // Rows inset on the panel, their thumbnails under the field's search icon
   inset: boolean
 }) => {
+  const typed = query.trim()
+  const settled = useSettled(typed, SEARCH_DELAY_MS)
+  const asked = settled.length >= SEARCH_MIN_CHARS ? settled : ''
+  const library = useSearchLibrary(asked)
   const { songs } = useGallerySongs()
-  const matches = matchTitles(
-    songs.filter((song) => song.karaoke),
-    query,
-    MAX_SONGS
-  )
-  const rows: { target: string; song?: LibraryListSong }[] = [
-    ...matches.map((song) => ({ song, target: `/v/${song.videoId}` })),
-    { target: `/search?q=${encodeURIComponent(query.trim())}` },
+  const karaoke = songs.filter((song) => song.karaoke)
+  const karaokeIds = new Set(karaoke.map((song) => song.videoId))
+  const matches = matchTitles(karaoke, typed, MAX_SONGS)
+  const seen = new Set(matches.map((song) => song.videoId))
+  // The ranked answer only for the words on screen, never a stale query's
+  const ranked =
+    library.data?.query.trim() === typed
+      ? library.data.results.filter(
+          (song) => karaokeIds.has(song.video_id) && !seen.has(song.video_id)
+        )
+      : []
+  const found: Row[] = [
+    ...matches.map((song: LibraryListSong) => ({
+      song,
+      target: `/v/${song.videoId}`,
+    })),
+    ...ranked.map((song) => ({
+      song: {
+        thumbnailUrl: song.thumbnail_url,
+        title: song.title,
+        videoId: song.video_id,
+      },
+      target: `/v/${song.video_id}`,
+    })),
+  ].slice(0, MAX_SONGS)
+  const searching =
+    typed.length >= SEARCH_MIN_CHARS &&
+    (settled !== typed || library.isFetching)
+  const rows: Row[] = [
+    ...found,
+    {
+      label: 'See All Results',
+      target: `/search?q=${encodeURIComponent(typed)}`,
+    },
+    {
+      label: 'Search on YouTube',
+      target: `${EXTERNAL}${youtubeSearchUrl(typed)}`,
+    },
   ]
+  const rowClass = (index: number) =>
+    cn(
+      'flex h-11 cursor-pointer items-center gap-3 px-3 text-sm text-foreground touch:h-12',
+      inset && 'mx-2 rounded-xl px-3.5',
+      index === active ? 'bg-accent' : 'hover:bg-accent'
+    )
   return (
-    <ul
-      id={listId}
-      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role, jsx-a11y/no-noninteractive-element-to-interactive-role -- the combobox pattern's popup: a <select> or <datalist> can't hold thumbnails
-      role='listbox'
-      aria-label='Search Results'
-      className={cn('overflow-y-auto overscroll-contain', className)}>
-      {rows.map((row, index) => (
-        <li
-          key={row.target}
-          id={optionId(index)}
-          data-target={row.target}
-          // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role, jsx-a11y/no-noninteractive-element-to-interactive-role -- an option of the listbox above
-          role='option'
-          aria-selected={index === active}
-          // Pointer down, not click: the field's blur would close the list before a click lands
-          onPointerDown={(event) => {
-            event.preventDefault()
-            onPick(row.target)
-          }}
+    <div className={cn('overflow-y-auto overscroll-contain', className)}>
+      <p className='sr-only' aria-live='polite'>
+        {searching
+          ? 'Searching'
+          : `${found.length} ${found.length === 1 ? 'song' : 'songs'}`}
+      </p>
+      {searching && (
+        <div
+          aria-hidden
           className={cn(
-            'flex h-11 cursor-pointer items-center gap-3 px-3 text-sm text-foreground touch:h-12',
-            inset && 'mx-2 rounded-xl px-3.5',
-            index === active ? 'bg-accent' : 'hover:bg-accent'
+            'flex h-11 items-center gap-3 px-3 text-sm text-muted-foreground touch:h-12',
+            inset && 'mx-2 px-3.5'
           )}>
-          {row.song ? (
-            <>
-              <img
-                src={row.song.thumbnailUrl}
-                alt=''
-                loading='lazy'
-                className='aspect-video h-8 shrink-0 rounded-sm bg-thumbnail-placeholder object-cover'
-              />
-              <span className='min-w-0 flex-1 truncate'>{row.song.title}</span>
-            </>
-          ) : (
-            <>
-              <span className='grid w-14 shrink-0 place-items-center text-muted-foreground'>
-                <SearchIcon aria-hidden className='size-4' />
-              </span>
-              <span className='min-w-0 flex-1 truncate'>
-                Search “{query.trim()}”
-              </span>
-            </>
-          )}
-        </li>
-      ))}
-    </ul>
+          <span className='grid w-14 shrink-0 place-items-center'>
+            <LoaderCircleIcon className='size-4 animate-spin motion-reduce:animate-none' />
+          </span>
+          Searching…
+        </div>
+      )}
+      {!searching && found.length === 0 && (
+        <p
+          className={cn(
+            'flex h-11 items-center px-3 text-sm text-muted-foreground touch:h-12',
+            inset && 'mx-2 px-3.5'
+          )}>
+          No karaoke songs found
+        </p>
+      )}
+      <ul
+        id={listId}
+        // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role, jsx-a11y/no-noninteractive-element-to-interactive-role -- the combobox pattern's popup: a <select> or <datalist> can't hold thumbnails
+        role='listbox'
+        aria-label='Search Results'>
+        {rows.map((row, index) => {
+          const external = row.target.startsWith(EXTERNAL)
+          return (
+            <li
+              key={row.target}
+              id={optionId(index)}
+              data-target={row.target}
+              // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role, jsx-a11y/no-noninteractive-element-to-interactive-role -- an option of the listbox above
+              role='option'
+              aria-selected={index === active}
+              // Pointer down, not click: the field's blur would close the list before a click lands. A row that
+              // leaves the app keeps the field focused here and opens from its link's own click
+              onPointerDown={(event) => {
+                event.preventDefault()
+                if (!external) {
+                  onPick(row.target)
+                }
+              }}
+              className={cn(
+                rowClass(index),
+                index === found.length && 'mt-1 border-t border-border pt-1'
+              )}>
+              <RowBody row={row} onPick={onPick} />
+            </li>
+          )
+        })}
+      </ul>
+    </div>
   )
 }
 
@@ -168,9 +312,18 @@ export const TopbarSearch = ({ variant }: { variant: 'inline' | 'button' }) => {
     setActive(-1)
     inputRef.current?.focus()
   }
+  // A song or the Search page in place; a row that leaves the app in a new tab; '' only closes (its link opened it)
   const pick = (target: string) => {
     close()
-    void navigate(target)
+    if (target.startsWith(EXTERNAL)) {
+      window.open(
+        target.slice(EXTERNAL.length),
+        '_blank',
+        'noopener,noreferrer'
+      )
+    } else if (target !== '') {
+      void navigate(target)
+    }
   }
 
   const results = (className: string) =>
@@ -261,7 +414,16 @@ export const TopbarSearch = ({ variant }: { variant: 'inline' | 'button' }) => {
                 : (current + step + options.length) % options.length
             )
           }
-          const target = options[active]?.dataset.target
+          // Enter takes the highlighted row, else the top song, or with none, Search on YouTube (the last row)
+          const firstIsSong =
+            options[0]?.dataset.target?.startsWith('/v/') === true
+          let index = options.length - 1
+          if (active >= 0) {
+            index = active
+          } else if (firstIsSong) {
+            index = 0
+          }
+          const target = options[index]?.dataset.target
           if (event.key === 'Enter' && target !== undefined) {
             event.preventDefault()
             pick(target)
