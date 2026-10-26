@@ -397,6 +397,7 @@ const fitSong = (
   let measuredFor = ''
   let sizes: SongLineSizes = { shortest: -1, tallest: -1 }
   let idle: ReturnType<typeof setTimeout> | undefined
+  let resized: ReturnType<typeof setTimeout> | undefined
   const apply = () => {
     grid.style.setProperty(
       '--row-fit',
@@ -412,9 +413,11 @@ const fitSong = (
     const fit =
       tallest.height <=
       (height - pixels(getComputedStyle(lines).rowGap)) / 2 + 1
-    // Which lines are tallest and shortest barely moves between nearby sizes: the last size tried that fits, or any
-    // while none does
-    if (fit || sizes.tallest < 0) {
+    // Which lines are tallest and shortest barely moves between nearby sizes: the last size tried that fits and could
+    // be shown, or any while none does. A size above the viewer's is only tried, never shown: in a tall room the
+    // search reaches the largest size, where another line wraps tallest, and the block was sized for that one
+    // (I0wRx6C758o: 97px rows with the translation away from the top, 161px under it, at the same size)
+    if ((fit && size <= scale) || sizes.tallest < 0) {
       sizes = { shortest: tallest.shortest, tallest: tallest.index }
     }
     return fit
@@ -471,8 +474,15 @@ const fitSong = (
     measuredFor = `${layer.clientWidth}x${layer.clientHeight}`
     const pad = getComputedStyle(block)
     const slot = dockedSlotOf(reserve)
+    // The reserve hanging over the room's top (TwoRows' hang) is the rows' own, not room for them
+    const area = layer.closest<HTMLElement>('[data-lyric-rows-area]')
+    const overhang =
+      area?.dataset.free === undefined
+        ? 0
+        : pixels(area.style.getPropertyValue('--rows-overhang'))
     height =
       layer.clientHeight -
+      overhang -
       pixels(getComputedStyle(lift).minHeight) -
       pixels(getComputedStyle(spacer).minHeight) -
       pixels(pad.paddingTop) -
@@ -522,9 +532,18 @@ const fitSong = (
         settle()
       }
       apply()
+      // The song's tallest line at the size now shown, once the slider rests (each step is arithmetic only)
+      clearTimeout(resized)
+      resized = setTimeout(() => {
+        if (steps === 0) {
+          fits(Math.max(ROW_FIT_FLOOR * scale, Math.min(scale, fitting)))
+          apply()
+        }
+      }, FIT_IDLE_MS)
     },
     stop: () => {
       clearTimeout(idle)
+      clearTimeout(resized)
       observer.disconnect()
       lineChanges.disconnect()
       document.fonts.removeEventListener('loadingdone', measure)
@@ -625,6 +644,7 @@ const TwoRows = ({
   const placed = useRef<{ line: number; floor: number } | null>(null)
   const [upperLine] = view.rows
   const place = useRef<((keep: boolean) => void) | null>(null)
+  const hang = useRef<(() => void) | null>(null)
   useLayoutEffect(() => {
     place.current = (keep: boolean) => {
       const grid = gridRef.current
@@ -648,6 +668,46 @@ const TwoRows = ({
           : next
       placed.current = { floor: held, line: upperLine }
       grid.style.setProperty('--upper-floor', `${held}px`)
+      hang.current?.()
+    }
+    // The block is two of the song's tallest lines high, so above a one-row pair it is empty: the reserve a taller
+    // line rises into. With nothing above the rows (the translation away from its home, `free`) the reserve may
+    // hang over the room's top (globals.css › lyric-stagger-area's --rows-overhang), so the lines
+    // themselves reach it. A line that then rises past it pushes the pair down by as much (--pair-drop): never
+    // over the top, the one place a taller line can't go. Not docked: the pair pushed down would cover the docked
+    // translation under it
+    hang.current = () => {
+      const grid = gridRef.current
+      const floor = floorRef.current
+      const home = homeRef.current
+      const upper = upperRef.current
+      const block = grid?.closest<HTMLElement>('.player-lyrics-overlay')
+      const spacer = block?.previousElementSibling
+      const area = grid?.closest<HTMLElement>('[data-lyric-rows-area]')
+      if (!(grid && floor && home && upper && block && area && spacer)) {
+        return
+      }
+      const gap = pixels(getComputedStyle(grid).rowGap)
+      const reserve = Math.max(
+        0,
+        grid.offsetHeight - (2 * home.offsetHeight + gap)
+      )
+      area.style.setProperty('--rows-overhang', `${reserve}px`)
+      const overhang = area.dataset.free === undefined ? 0 : reserve
+      // The highest the lines may stand: where a block with no reserve stops, under the room's own top
+      const ceiling =
+        overhang +
+        pixels(getComputedStyle(spacer).minHeight) +
+        pixels(getComputedStyle(block).paddingTop)
+      const upperTop =
+        offsetIn(floor, area) +
+        floor.offsetHeight -
+        (placed.current?.floor ?? 0) -
+        upper.offsetHeight
+      grid.style.setProperty(
+        '--pair-drop',
+        `${Math.max(0, ceiling - upperTop)}px`
+      )
     }
     place.current(true)
   })
@@ -665,8 +725,19 @@ const TwoRows = ({
       })
       resized.observe(floor)
       resized.observe(home)
+      // A drag or a drop moves the block: the spacer over it changes height with every move
+      const moved = new ResizeObserver(() => {
+        hang.current?.()
+      })
+      const spacer = floor.closest(
+        '.player-lyrics-overlay'
+      )?.previousElementSibling
+      if (spacer) {
+        moved.observe(spacer)
+      }
       return () => {
         resized.disconnect()
+        moved.disconnect()
       }
     }
     const floor = floorRef.current
@@ -695,7 +766,9 @@ const TwoRows = ({
           {tallest >= 0 && roomOf(tallest)}
         </div>
       </div>
-      <div ref={floorRef} className='relative col-start-1 row-start-1'>
+      <div
+        ref={floorRef}
+        className='relative col-start-1 row-start-1 translate-y-[var(--pair-drop,0px)]'>
         {/* Unseen, a one-row pair: the upper line's home over the lower one */}
         <div
           ref={homeRef}
@@ -1305,6 +1378,7 @@ const rowsRoomFor = (
 }
 const rowsRoomOf = (room: RowsRoom) => ({
   'data-docked': room === 'docked' || room === 'free' || undefined,
+  'data-free': room === 'free' || undefined,
   'data-translation': room === 'split' || undefined,
 })
 
