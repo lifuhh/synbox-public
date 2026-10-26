@@ -51,18 +51,24 @@ export const useYouTubeCenterShowing = (phase: StagePhase) => {
 const TRANSPORT_TOP =
   'top-(--video-cy) watch-narrow:top-[min(var(--video-cy),calc(100cqh-var(--stage-controls-h,5rem)-2rem))]'
 
-// Previous or Next beside the middle play button, a size down, with the floating UI. Only where a finger plays
-// or the video is small (a narrow watch page, whose control bar leaves them out): elsewhere the control bar has
-// them, and on a phone on its side its row is enough
+// Where Previous and Next beside the middle button show. On the watch page: where a finger plays or the video is
+// small (a narrow watch page, whose control bar leaves them out), but not on a phone on its side, whose bar row is
+// enough. Full screen: with a finger, on its side too (the bar leaves them to this row there)
+const WATCH_STEPS = 'hidden watch-narrow:grid touch:grid short:hidden'
+const FULL_SCREEN_STEPS = 'hidden touch:grid'
+
+// A button beside the middle play button, a size down, with the floating UI
 const StepButton = ({
   label,
   side,
+  shows,
   visible,
   onClick,
   children,
 }: {
   label: string
   side: 'start' | 'end'
+  shows: string
   visible: boolean
   onClick: (() => void) | undefined
   children: ReactNode
@@ -77,7 +83,8 @@ const StepButton = ({
       disabled={onClick === undefined}
       onClick={onClick}
       className={cn(
-        'hidden absolute z-26 size-12 -translate-1/2 place-items-center rounded-full bg-black/60 text-white shadow-stage backdrop-blur-md transition-opacity duration-300 disabled:text-white/35 watch-narrow:grid touch:grid short:hidden',
+        'absolute z-26 size-12 -translate-1/2 place-items-center rounded-full bg-black/60 text-white shadow-stage backdrop-blur-md transition-opacity duration-300 disabled:text-white/35',
+        shows,
         TRANSPORT_TOP,
         side === 'start' ? 'left-[calc(50%-5rem)]' : 'left-[calc(50%+5rem)]',
         visible ? 'opacity-100' : 'opacity-0',
@@ -100,6 +107,7 @@ export const CenterPlayButton = ({
   phase,
   controlsVisible,
   youTubeCenterShowing,
+  fullScreen,
   onToggle,
   onPrevious,
   onNext,
@@ -107,21 +115,25 @@ export const CenterPlayButton = ({
   phase: StagePhase
   controlsVisible: boolean
   youTubeCenterShowing: boolean
+  fullScreen: boolean
   onToggle: () => void
   onPrevious: () => void
   onNext: (() => void) | undefined
 }) => {
   const visible = controlsVisible || youTubeCenterShowing
-  // On a phone on its side, or a page turned by Lock Landscape (the `short:` variant covers both), the
-  // lyrics reach the middle of the screen: there the bar's own play button is
-  // enough, and this one shows only while it covers YouTube's
-  const onlyForControls = !youTubeCenterShowing
+  // The watch page on a phone on its side (the `short:` variant, a Lock Landscape page included) has the lyrics
+  // across the middle of the screen: there the bar's own play button is enough, and this one shows only while it
+  // covers YouTube's. Full screen it shows with the controls, Previous and Next beside it as on YouTube's phone
+  // player (owner, 2026-10-27; the bar keeps -10s and +10s); the lyrics fade back while they show
+  // (`lyrics-behind-controls` in globals.css)
+  const onlyForControls = !youTubeCenterShowing && !fullScreen
   const armed = useArmed(controlsVisible)
   return (
     <>
       <StepButton
         label='Previous'
         side='start'
+        shows={fullScreen ? FULL_SCREEN_STEPS : WATCH_STEPS}
         visible={controlsVisible}
         onClick={onPrevious}>
         <SkipBackIcon className='size-6 fill-current' />
@@ -129,6 +141,7 @@ export const CenterPlayButton = ({
       <StepButton
         label='Next'
         side='end'
+        shows={fullScreen ? FULL_SCREEN_STEPS : WATCH_STEPS}
         visible={controlsVisible}
         onClick={onNext}>
         <SkipForwardIcon className='size-6 fill-current' />
@@ -139,6 +152,9 @@ export const CenterPlayButton = ({
         aria-label={phase.kind === 'playing' ? 'Pause' : 'Play'}
         aria-hidden={!visible}
         data-controls={controlsVisible}
+        data-full-screen-controls={
+          fullScreen && controlsVisible ? '' : undefined
+        }
         onClick={onToggle}
         className={cn(
           'absolute left-1/2 z-26 grid size-16 -translate-1/2 place-items-center rounded-full bg-black/60 text-white shadow-stage backdrop-blur-md transition-opacity duration-300 watch-narrow:data-[controls=false]:opacity-0 mouse:hidden mouse:watch-narrow:grid',

@@ -94,6 +94,12 @@ const SeekGlyph = ({ direction }: { direction: 'back' | 'forward' }) => (
   </span>
 )
 
+// Previous, Play and Next leave the bar wherever the middle row has them: a narrow watch page, and full screen on
+// a touch screen (CenterPlayButton, owner 2026-10-27); the bar keeps -10s and +10s. Space, K and the arrow keys
+// still work there (player-stage.tsx › handleKeyDown)
+const inCentreRow = (fullscreen: boolean) =>
+  fullscreen ? 'watch-narrow:hidden touch:hidden' : 'watch-narrow:hidden'
+
 interface IconButtonProps {
   label: string
   onClick?: () => void
@@ -650,13 +656,13 @@ export const StageControls = ({
               className={cn('contents watch-narrow:hidden', PILL)}>
               <IconButton
                 label='Previous'
-                className='watch-narrow:hidden'
+                className={inCentreRow(fullscreen)}
                 onClick={onPrevious}>
                 <SkipBackIcon className='size-5 fill-current' />
               </IconButton>
               <IconButton
                 label={isPlaying ? 'Pause' : 'Play'}
-                className='watch-narrow:hidden'
+                className={inCentreRow(fullscreen)}
                 onClick={() => {
                   player.togglePlay()
                 }}>
@@ -668,7 +674,7 @@ export const StageControls = ({
               </IconButton>
               <IconButton
                 label='Next'
-                className='watch-narrow:hidden'
+                className={inCentreRow(fullscreen)}
                 disabled={onNext === undefined}
                 onClick={onNext}>
                 <SkipForwardIcon className='size-5 fill-current' />

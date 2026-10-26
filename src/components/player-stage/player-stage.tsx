@@ -647,6 +647,7 @@ export const PlayerStage = ({
           phase={phase}
           controlsVisible={controlsVisible}
           youTubeCenterShowing={youTubeCenterShowing}
+          fullScreen={shown}
           onToggle={togglePlay}
           onPrevious={previous}
           onNext={onNext}
@@ -694,7 +695,7 @@ export const PlayerStage = ({
         // draws over them and never moves them
         <div
           className={cn(
-            'pointer-events-none absolute inset-0 z-25 short:inset-x-controls-rail',
+            'pointer-events-none absolute inset-0 z-25 lyrics-behind-controls short:inset-x-controls-rail',
             LYRICS_TOP[fit]
           )}>
           {renderLyrics(player, layout)}

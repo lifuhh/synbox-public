@@ -947,6 +947,17 @@
   }
 }
 
+/* Full screen, the lyrics step back while the controls show, so the middle -10s / play / +10s and the bar read
+   over them instead of tangling with them (owner, 2026-10-27; YouTube and Netflix dim the picture under their
+   controls the same way). Opacity only: the lyrics never move, and the fade keeps the controls' own timing */
+@utility lyrics-behind-controls {
+  transition: opacity 300ms ease-out;
+
+  [data-player-stage]:has([data-full-screen-controls]) & {
+    opacity: 0.45;
+  }
+}
+
 /* One line's rows: the Japanese line's double leading (room for furigana when it wraps) leaves about half its
    size free below it, so its romaji sat further from it (8px at 1440) than from the translation (3px). The romaji
    moves up into that room and the translation down by as much (0.25em of the romaji, 0.29em of the translation,
