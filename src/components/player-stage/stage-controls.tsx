@@ -490,18 +490,6 @@ const FullScreenChrome = ({
           className={STAGE_DISC}>
           <SmartphoneIcon className='size-5 rotate-90' />
         </IconButton>
-        {/* The system turns a phone held either way only while its rotation lock is off; with it on, the
-            page turns one way, and this turns it to the other */}
-        {landscape.turned && (
-          <IconButton
-            label='Flip Screen'
-            onClick={() => {
-              landscape.flip()
-            }}
-            className={STAGE_DISC}>
-            <RefreshCwIcon className='size-5' />
-          </IconButton>
-        )}
         <IconButton
           label='Lock Screen'
           onClick={() => {
@@ -510,6 +498,22 @@ const FullScreenChrome = ({
           className={STAGE_DISC}>
           <LockIcon className='size-5' />
         </IconButton>
+        {/* The system turns a phone held either way only while its rotation lock is off; with it on, the
+            page turns one way, and this turns it to the other. On its side it hangs under the column, out of
+            its centring, so the turned page's column sits where the rotated one's does (landscape-parity.ts) */}
+        {landscape.turned && (
+          <IconButton
+            label='Flip Screen'
+            onClick={() => {
+              landscape.flip()
+            }}
+            className={cn(
+              STAGE_DISC,
+              'short:absolute short:top-[calc(100%-0.125rem)] short:left-2'
+            )}>
+            <RefreshCwIcon className='size-5' />
+          </IconButton>
+        )}
       </div>
       {locked && (
         <StageLock

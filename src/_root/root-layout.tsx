@@ -9,6 +9,7 @@ const RootLayout: React.FC = () => (
   <div className='relative min-h-(--app-h) w-full'>
     <div
       aria-hidden='true'
+      data-page-glow
       className='pointer-events-none fixed inset-0 -z-10 page-glow'
     />
 
