@@ -26,6 +26,7 @@ import {
   translationIsEnglishAtom,
   translationVisibilityAtom,
   lyricsTranslationAnchorAtom,
+  positionsResetAtAtom,
   lyricsAnchorAtom,
   lyricsAnchorPortraitAtom,
   translationDockedAtom,
@@ -771,6 +772,8 @@ const StaggerTranslation = ({
 const pullToTear = (stageHeight: number) => Math.max(40, 0.1 * stageHeight)
 // How long after Karaoke Style is switched the rows keep their centre while their size settles
 const SETTLE_HOLD_MS = 1000
+// How long a Reset Positions counts as the cause of a room change
+const RESET_WINDOW_MS = 1000
 const TAP_SLOP_PX = { mouse: 4, touch: 10 }
 
 interface Press {
@@ -945,12 +948,15 @@ const translationHandleOf = (layer: HTMLElement) =>
     '[data-lyric-translation] [data-lyrics-style-toggle]'
   )
 
-// The translation on its own (`handle`) watched as it wraps taller or shorter: grown into the rows, it is set clear of
-// them again on the side away from them (`place`: its new anchor)
+// The translation on its own (`handle`) watched as it wraps taller or shorter, and as it first shows: overlapping the
+// rows, it is set clear of them on the side away from them (`place`: its new anchor), or, with no room on that side
+// (a layout saved overlapped before overlaps were docked), docked (`dock`). The two never stay overlapped, so
+// neither covers the other's grab
 const keepClearOfRows = (
   layer: HTMLElement,
   handle: HTMLElement,
-  place: (anchor: number) => void
+  place: (anchor: number) => void,
+  dock: () => void
 ) => {
   const observer = new ResizeObserver(() => {
     const rows = rowsHandleOf(layer)
@@ -970,9 +976,13 @@ const keepClearOfRows = (
       box,
       clearGap(layer.clientHeight)
     )
-    if (clear !== top) {
-      place(clamp01((clear - track.base) / track.free))
+    const anchor = clamp01((clear - track.base) / track.free)
+    const placed = track.base + anchor * track.free
+    if (placed < box.bottom && placed + handle.offsetHeight > box.top) {
+      dock()
+      return
     }
+    place(anchor)
   })
   observer.observe(handle)
   return () => {
@@ -991,6 +1001,7 @@ const useTranslationDock = (
 ) => {
   const [docked, setDocked] = useAtom(translationDockedAtom)
   const setAnchor = useSetAtom(lyricsTranslationAnchorAtom)
+  const resetAt = useAtomValue(positionsResetAtAtom)
   // Subscribed, not only set: a new anchor re-renders this hook, so the rows' place below is read again after they move
   const [, setRowsAnchor] = useAtom(
     usePortrait() ? lyricsAnchorPortraitAtom : lyricsAnchorAtom
@@ -1047,7 +1058,9 @@ const useTranslationDock = (
     const rowsTrack = handleTrack(rows, layer)
     let rowsTop = offsetIn(rows, layer)
     const at = rowsAt.current
-    if (rowsTrack && at !== null) {
+    // Reset Positions just set where everything goes: that wins over keeping the rows where they were
+    const reset = performance.now() - resetAt < RESET_WINDOW_MS
+    if (rowsTrack && at !== null && !reset) {
       // Switching Karaoke Style on or off swaps one line's block for two rows of another height: the block keeps its
       // centre, so the sung line stays about where it was. A room change alone keeps the rows' top, so a dock or
       // undock adds or takes the translation under them without moving them
@@ -1081,7 +1094,7 @@ const useTranslationDock = (
       clearGap(layer.clientHeight)
     )
     setAnchor(clamp01((top - track.base) / track.free))
-  }, [docked, room, twoLines, layerRef, setAnchor, setRowsAnchor])
+  }, [docked, room, twoLines, layerRef, setAnchor, setRowsAnchor, resetAt])
   // Holding the rows' centre while they settle after Karaoke Style is switched (above). The rows' handle is one
   // element for good (DraggableLyrics stays mounted across the switch)
   useLayoutEffect(() => {
@@ -1116,11 +1129,18 @@ const useTranslationDock = (
     const handle = layer && translationHandleOf(layer)
     // On its own only, and again when the room changes (the translation's block remounts with Karaoke Style)
     return layer && handle && room !== 'none' && room !== 'docked'
-      ? keepClearOfRows(layer, handle, (anchor) => {
-          setAnchor(anchor)
-        })
+      ? keepClearOfRows(
+          layer,
+          handle,
+          (anchor) => {
+            setAnchor(anchor)
+          },
+          () => {
+            setDocked(true)
+          }
+        )
       : undefined
-  }, [room, layerRef, setAnchor])
+  }, [room, layerRef, setAnchor, setDocked])
   const handleTear = (top: number) => {
     drop.current = top
     setDocked(false)
