@@ -27,7 +27,12 @@ import { homeSearchFieldAtom } from '@/context/atoms'
 import { useMediaQuery } from '@/hooks/use-media-query'
 import { openRequestMore } from '@/lib/account-prompts'
 import type { Access } from '@/lib/auth'
-import { signInWithGoogle, songsDoneText, useAccess } from '@/lib/auth'
+import {
+  signInWithGoogle,
+  songsDoneText,
+  useAccess,
+  useGuestSongUsed,
+} from '@/lib/auth'
 import { useGetLyricsBySongId } from '@/lib/react-query/queries-and-mutations'
 import { BAD_LINK, readFieldText } from '@/utils'
 import { cn } from '@/utils/cn'
@@ -70,12 +75,15 @@ const signIn = () => {
 
 // The line under a link that would make a new song, when there's something to say: a guest's one free song, and
 // signing in for more; an account out of today's songs, when more come and Request More
-const newSongNote = (access: Access): SongNote | null => {
+const newSongNote = (access: Access, guestSpent: boolean): SongNote | null => {
   if (access.kind === 'guest') {
     return access.ready
       ? {
           action: { handleClick: signIn, label: 'Sign In for 5 a Day' },
-          text: access.newSong ? 'Your free song' : 'That’s your free song',
+          text:
+            access.newSong && !guestSpent
+              ? 'Your free song'
+              : 'That’s your free song',
         }
       : null
   }
@@ -85,6 +93,14 @@ const newSongNote = (access: Access): SongNote | null => {
         action: { handleClick: openRequestMore, label: 'Request More' },
         text: songsDoneText(access.quota),
       }
+}
+
+// The note for a link that would make a new song; a guest's device is asked about its free song only then
+const useNewSongNote = (access: Access, newSong: boolean) => {
+  const guestSpent = useGuestSongUsed(
+    newSong && access.kind === 'guest' && access.ready
+  )
+  return newSong ? newSongNote(access, guestSpent) : null
 }
 
 const HeroGenerateLyricsDefault = ({
@@ -132,7 +148,7 @@ const HeroGenerateLyricsDefault = ({
   const access = useAccess()
   const newSong =
     !isSearch && validationSuccess && !isCheckingLyrics && !existingLyrics
-  const note = newSong ? newSongNote(access) : null
+  const note = useNewSongNote(access, newSong)
   const blocked = newSong && access.kind === 'user' && !access.newSong
 
   const handleOpenLandingPageDialog = () => {

@@ -139,16 +139,18 @@ const fetchGuestSongUsed = async () => {
   }
 }
 
-export const useGuestSongUsed = (guest: boolean) =>
+// Asked only where a guest is about to add a song or reads about it (the hero's link, the You page), not on every page
+export const useGuestSongUsed = (ask: boolean) =>
   useQuery({
-    enabled: guest,
+    enabled: ask,
     queryFn: fetchGuestSongUsed,
     queryKey: [QUERY_KEYS.GET_GUEST_SONG],
     staleTime: 5 * 60_000,
   }).data === true
 
 // What the person on the page may do. Browsing is open to everyone; a guest adds one song, ever, and an account
-// a few a day. `newSong` is false for a guest whose song is spent, and for an account that added today's songs.
+// a few a day. `newSong` is false for a guest whose song this page saw go (useGuestSongUsed asks the device's), and for an account that
+// added today's songs.
 // `ready` is false until the sign-in check answers; until then everyone looks like a guest
 export type Access =
   | { kind: 'guest'; newSong: boolean; admin: false; ready: boolean }
@@ -163,9 +165,7 @@ export type Access =
 export const useAccess = (): Access => {
   const { data, isPending } = useMe()
   const user = data?.user ?? null
-  const guest = !isPending && (user === null || data?.quota === undefined)
-  const asked = useGuestSongUsed(guest)
-  const spent = useAtomValue(guestSongSpentAtom) || asked
+  const spent = useAtomValue(guestSongSpentAtom)
   if (user === null || data?.quota === undefined) {
     return { admin: false, kind: 'guest', newSong: !spent, ready: !isPending }
   }

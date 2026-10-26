@@ -23,6 +23,7 @@ import {
   signOut,
   songsLeftText,
   useAccess,
+  useGuestSongUsed,
   useMe,
 } from '@/lib/auth'
 import type { Quota } from '@/lib/auth'
@@ -121,6 +122,7 @@ const YouPage = () => {
   const user = me?.user ?? null
   const quota = me?.quota
   const access = useAccess()
+  const guestSpent = useGuestSongUsed(access.kind === 'guest' && access.ready)
 
   return (
     <section
@@ -154,7 +156,9 @@ const YouPage = () => {
               <AccountLines
                 user={user}
                 quota={quota}
-                freeSong={access.kind === 'guest' && access.newSong}
+                freeSong={
+                  access.kind === 'guest' && access.newSong && !guestSpent
+                }
               />
             </div>
           </div>
