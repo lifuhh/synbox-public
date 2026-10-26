@@ -278,6 +278,16 @@ export const OPENED_STATES: Record<string, OpenedState[]> = {
       views: ['web'],
     },
     {
+      // Text Style, for the lyrics on the page: a popover from the Lyrics panel's header with a mouse, opening out over
+      // the video; a sheet from the corner of the band under the video on an upright phone
+      name: 'text-style',
+      steps: [
+        { press: { name: 'Text Style', role: 'button' } },
+        { shows: { name: 'Text Style', role: 'dialog' } },
+      ],
+      views: ['web', 'pwa-portrait', 'safari-portrait'],
+    },
+    {
       // On its side the rail floats over the video and shows with the controls
       name: 'style-floating',
       steps: [
@@ -332,7 +342,7 @@ export const OPENED_STATES: Record<string, OpenedState[]> = {
     },
     {
       // Upright, the lyrics window under the video expands to fill the screen under it (a tap on its lines, or
-      // Expand Lyrics in its corner), with Lyrics Style and Minimize Lyrics in that corner
+      // Expand Lyrics in its corner), with Text Style and Minimize Lyrics in that corner
       name: 'lyrics-expanded',
       steps: [
         { press: { name: 'Expand Lyrics', role: 'button' } },
