@@ -5,25 +5,25 @@
 export const STAGES = [
   {
     id: 'check',
-    label: 'Checking video',
+    label: 'Checking Video',
     phase: 'validate',
     weight: 5,
   },
   {
     id: 'download',
-    label: 'Fetching song',
+    label: 'Fetching Song',
     phase: 'validate',
     weight: 10,
   },
   {
     id: 'read',
-    label: 'Reading details',
+    label: 'Reading Details',
     phase: 'transcribe',
     weight: 8,
   },
   {
     id: 'separate',
-    label: 'Analyzing vocals',
+    label: 'Analyzing Vocals',
     phase: 'transcribe',
     weight: 90,
   },
@@ -35,19 +35,19 @@ export const STAGES = [
   },
   {
     id: 'lyrics',
-    label: 'Finding lyrics',
+    label: 'Finding Lyrics',
     phase: 'transcribe',
     weight: 20,
   },
   {
     id: 'align',
-    label: 'Syncing words',
+    label: 'Syncing Words',
     phase: 'transcribe',
     weight: 45,
   },
   {
     id: 'verify',
-    label: 'Double-checking',
+    label: 'Verifying Output',
     phase: 'transcribe',
     weight: 10,
   },

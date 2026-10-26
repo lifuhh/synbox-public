@@ -190,7 +190,7 @@ describe('a step', () => {
     let runs = beginStage({}, 'download', 0)
     runs = reportFraction(runs, 'download', 1, 2 * S)
     expect(stepView(runs, STEPS[1], 2 * S)).toMatchObject({
-      detail: 'Reading details',
+      detail: 'Reading Details',
       state: 'active',
     })
   })
