@@ -5,5 +5,5 @@
 export const SEARCH_EXAMPLES = [
   'Falling in Love',
   'Graduation Goodbyes',
-  'Anime openings to belt out',
+  'Anime Theme Songs',
 ] as const
