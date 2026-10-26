@@ -6,9 +6,9 @@
 // its overflow. A step whose target Tab never reaches, focus falling to the page's body after an action, and a focused
 // element with no visible indicator are each a finding.
 
-import { chromium } from 'playwright'
 import type { Page } from 'playwright'
 
+import { openPlainChromium } from '../engines/browser'
 import { isRecord } from '../json'
 import type { BenchContext, Sample } from '../types'
 import { PLAYER_SONG } from './layout'
@@ -193,10 +193,7 @@ export const journey = async (origin: string): Promise<Journey> => {
   // Playwright's own Chromium, not the bench's Google Chrome: on macOS, Chrome follows the system's Keyboard
   // Navigation setting, which by default makes Tab skip buttons and links (Option-Tab reaches them). A TV's D-pad
   // and a keyboard user with that setting on reach everything, so the journey runs without it
-  const browser = await chromium.launch({ args: ['--mute-audio'] })
-  const page = await browser.newPage({
-    viewport: { height: 1080, width: 1920 },
-  })
+  const { page, close } = await openPlainChromium({ height: 1080, width: 1920 })
   await page.route(/sentry\.io/u, async (route) => {
     await route.abort()
   })
@@ -271,7 +268,7 @@ export const journey = async (origin: string): Promise<Journey> => {
       }
     }
   } finally {
-    await browser.close()
+    await close()
   }
   return j
 }
