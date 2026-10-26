@@ -61,7 +61,44 @@ export interface OpenedState {
   name: string
   /** The views it is opened in (names from engines/browser.ts); the page's every view when omitted */
   views?: string[]
+  /** Opened as a signed-in listener (SIGNED_IN), for controls a guest doesn't get */
+  signedIn?: true
   steps: Step[]
+}
+
+// A listener with an empty library, as the auth Worker answers: what a signed-in state's page sees. Only GETs are
+// answered; a write (library or settings sync) gets a bare 204
+const SIGNED_IN: Record<string, unknown> = {
+  '/api/me': {
+    quota: {
+      limit: 5,
+      request: null,
+      resetsAt: '2099-01-01T00:00:00.000Z',
+      used: 2,
+    },
+    timeZone: 'UTC',
+    user: {
+      email: 'listener@example.com',
+      id: 'bench',
+      image: null,
+      name: 'Bench',
+      role: 'user',
+    },
+  },
+  '/api/me/fixes': { fixes: [] },
+  '/api/me/library': { bookmarks: [], history: [], playlists: [] },
+  '/api/me/prefs': { prefs: {} },
+  '/api/me/songs': { songs: [] },
+}
+
+const signIn = async (page: Page) => {
+  await page.route(/\/api\/me(?:\/|$|\?)/u, async (route) => {
+    const request = route.request()
+    const body = SIGNED_IN[new URL(request.url()).pathname]
+    await (request.method() === 'GET' && body !== undefined
+      ? route.fulfill({ json: body })
+      : route.fulfill({ status: 204 }))
+  })
 }
 
 export const PLAYER_SONG = '6rG_irmOQsM'
@@ -143,7 +180,9 @@ export const OPENED_STATES: Record<string, OpenedState[]> = {
     SEARCH_FIELD,
     SEARCH_BUTTON,
     {
+      // The bell and the Library menu are a signed-in listener's
       name: 'notifications',
+      signedIn: true,
       steps: [
         { press: { name: /^Notifications/u, role: 'button' } },
         { shows: { name: 'Notifications', role: 'dialog' } },
@@ -151,6 +190,7 @@ export const OPENED_STATES: Record<string, OpenedState[]> = {
     },
     {
       name: 'library',
+      signedIn: true,
       steps: [
         { press: { name: 'Library', role: 'button' } },
         { shows: { name: 'Library', role: 'dialog' } },
@@ -767,6 +807,9 @@ const auditOnce = async (
     }
   })
   try {
+    if (state?.signedIn === true) {
+      await signIn(page)
+    }
     at.step = 'loading the page'
     await page.goto(url, { waitUntil: 'commit' })
     at.step = 'waiting for the page to get ready'
