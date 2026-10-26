@@ -140,7 +140,9 @@ export const DEFAULT_LYRICS_STYLE: LyricsStyle = {
   anchor: 1,
   anchorPortrait: 0,
   customHue: DEFAULT_LYRICS_CUSTOM_HUE,
-  fontSize: 1,
+  // A new viewer starts at 65% of the screen's base size (the owner, 2026-10-27: at 100% one line over the video
+  // read as the largest it could be, worst on a phone on its side); the slider still reaches the base and past it
+  fontSize: 0.65,
   fontSizeTwoLines: 0.85,
   // Desktop starts a size down: at 100% one line spans most of a wide stage
   screenSizes: { desktop: 0.85, landscape: 1, portrait: 1 },

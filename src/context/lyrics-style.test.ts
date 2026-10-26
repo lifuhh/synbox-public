@@ -96,7 +96,7 @@ test('a corrupt or out-of-range saved style falls back to the defaults', () => {
   store.set(lyricsStyleSongAtom, 'bad')
   expect(store.get(lyricsThemeIdAtom)).toBe(DEFAULT_LYRICS_STYLE.themeId)
   store.set(lyricsStyleSongAtom, 'range')
-  expect(store.get(fontSizeMultiplierAtom)).toBe(1)
+  expect(store.get(fontSizeMultiplierAtom)).toBe(DEFAULT_LYRICS_STYLE.fontSize)
 })
 
 test("a shared link's style shows for the visit without touching the viewer's own", () => {
