@@ -317,15 +317,16 @@ test("a started song carries YouTube's title before the backend sends its own", 
   expect(job?.title).toBe('A Song')
 })
 
+const done = (id: number, at: number): Job =>
+  jobAt(id, at - 60_000, {
+    at,
+    karaoke: null,
+    kind: 'complete',
+    outcome: { kind: 'created' },
+  })
+
 test('a song finished in this browser, even before a reload, is waited for rather than shown as missing', async () => {
   const now = Date.now()
-  const done = (id: number, at: number): Job =>
-    jobAt(id, at - 60_000, {
-      at,
-      karaoke: null,
-      kind: 'complete',
-      outcome: { kind: 'created' },
-    })
   const stored = encodeJobs([done(7, now - 10_000), done(8, now - 10 * 60_000)])
   vi.stubGlobal('localStorage', {
     getItem: (key: string) => (key === STORAGE_KEY ? stored : null),
