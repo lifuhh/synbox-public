@@ -306,7 +306,8 @@ export const OPENED_STATES: Record<string, OpenedState[]> = {
     {
       // Lyrics Style with the song's own style (This Song, then a change): the panel grows the layout switches and
       // what only a song's own style shows; audited beside the shared state (owner, 2026-10-26: a 2×2 of buttons
-      // there went unaudited)
+      // there went unaudited). On the web only, as `style`: a narrow watch page's rail has no Lyrics Style once
+      // feat/text-style lands; the touch sheet with a song's own style is audited on its side (style-floating-own)
       name: 'style-own',
       steps: [
         { press: { name: 'Lyrics Style', role: 'button' } },
@@ -314,7 +315,7 @@ export const OPENED_STATES: Record<string, OpenedState[]> = {
         { press: { name: 'This Song', role: 'radio' } },
         { press: { name: 'Karaoke Style', role: 'switch' } },
       ],
-      views: ['web', 'pwa-portrait'],
+      views: ['web'],
     },
     {
       // The same on a phone on its side, where the rail floats over the video
