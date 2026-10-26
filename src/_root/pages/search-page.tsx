@@ -214,7 +214,9 @@ const LinkedVideo = ({ videoId }: { videoId: string }) => {
     )
   }
   return (
-    <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-5'>
+    <div
+      data-bench='search-result'
+      className='flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-5'>
       <div className='relative aspect-video w-full overflow-hidden rounded-lg bg-input sm:w-64 sm:shrink-0'>
         {video.data !== undefined && (
           <img
