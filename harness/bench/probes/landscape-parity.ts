@@ -115,7 +115,7 @@ const measure = async (
   Omit<Measure, 'bands'> & { bands: { left: BandAt; right: BandAt } }
 > =>
   await page.evaluate(() => {
-    const body = document.body
+    const { body } = document
     const turn = new DOMMatrix(getComputedStyle(body).transform)
     const back = turn.inverse()
     // A screen rect in the page's axes: its corners mapped back through the body's turn
@@ -159,11 +159,13 @@ const measure = async (
       'position:absolute;visibility:hidden;padding:var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left)'
     body.append(probe)
     const ps = getComputedStyle(probe)
+    // oxlint-disable-next-line unicorn/consistent-function-scoping -- runs in the page: nothing outside this function is there
+    const pixels = (value: string) => Number(value.replace('px', ''))
     const insets = {
-      bottom: Number.parseFloat(ps.paddingBottom),
-      left: Number.parseFloat(ps.paddingLeft),
-      right: Number.parseFloat(ps.paddingRight),
-      top: Number.parseFloat(ps.paddingTop),
+      bottom: pixels(ps.paddingBottom),
+      left: pixels(ps.paddingLeft),
+      right: pixels(ps.paddingRight),
+      top: pixels(ps.paddingTop),
     }
     probe.remove()
     const size = { h: body.offsetHeight, w: body.offsetWidth }
@@ -201,7 +203,7 @@ const measure = async (
     // screenshot (a gradient or a layer's colour can't be told from the styles alone)
     const bandAt = (px: number, py: number) => {
       const s = turn.transformPoint(new DOMPoint(px, py))
-      const top = document.elementsFromPoint(s.x, s.y)[0]
+      const [top] = document.elementsFromPoint(s.x, s.y)
       if (top === undefined) {
         return { on: 'nothing', x: s.x, y: s.y }
       }
@@ -340,10 +342,13 @@ const insetControls = (m: Measure, label: string): string[] =>
 /** Black on screen: every channel this dark or darker (the screenshot's encoding can lift a black by a step) */
 const BLACK_MAX = 6
 
-const isBlack = (rgb: string) =>
-  (/^rgb\((\d+), (\d+), (\d+)\)/u.exec(rgb) ?? [])
-    .slice(1)
-    .every((c) => Number(c) <= BLACK_MAX)
+const isBlack = (rgb: string) => {
+  const channels = /^rgb\((?<r>\d+), (?<g>\d+), (?<b>\d+)\)/u.exec(rgb)?.groups
+  return (
+    channels !== undefined &&
+    Object.values(channels).every((c) => Number(c) <= BLACK_MAX)
+  )
+}
 
 const bandProblems = (m: Measure, label: string): string[] =>
   (['left', 'right'] as const)
