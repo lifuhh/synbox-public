@@ -32,7 +32,7 @@ import { useListening, usePlaylists } from '@/lib/listening/store'
 import { toRecommendation } from '@/lib/recommendations'
 
 const ROW =
-  'group/row flex min-h-11 w-full items-center gap-3 rounded-lg px-2 text-start transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden aria-disabled:cursor-default aria-disabled:hover:bg-transparent'
+  'group/row flex min-h-11 w-full items-center gap-3 rounded-lg px-2 text-start transition-colors hover:bg-accent aria-disabled:cursor-default aria-disabled:hover:bg-transparent'
 
 // A row's leading icon: a tick when the song is in the list, which turns to an X under the pointer, as a tap
 // takes it out

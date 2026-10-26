@@ -461,7 +461,7 @@ const SwipeRow = ({
               type='button'
               aria-label={`Dismiss ${name}`}
               onClick={dismiss}
-              className='pointer-events-none absolute top-1/2 right-1 flex size-7 translate-x-2 -translate-y-1/2 items-center justify-center rounded-full bg-secondary text-white/80 opacity-0 transition-fade-translate duration-150 ease-out outline-none group-focus-within:pointer-events-auto group-focus-within:translate-x-0 group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:translate-x-0 group-hover:opacity-100 hover:text-white focus-visible:ring-2 focus-visible:ring-brand-light motion-reduce:translate-x-0'>
+              className='pointer-events-none absolute top-1/2 right-1 flex size-7 translate-x-2 -translate-y-1/2 items-center justify-center rounded-full bg-secondary text-white/80 opacity-0 transition-fade-translate duration-150 ease-out outline-none group-focus-within:pointer-events-auto group-focus-within:translate-x-0 group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:translate-x-0 group-hover:opacity-100 hover:text-white motion-reduce:translate-x-0'>
               <X className='size-4' aria-hidden />
             </button>
           )}
@@ -473,7 +473,7 @@ const SwipeRow = ({
 }
 
 const ROW_MAIN =
-  'flex min-w-0 flex-1 items-center gap-2 rounded-lg px-1.5 py-1 text-left outline-none focus-visible:ring-2 focus-visible:ring-brand-light touch:py-2'
+  'flex min-w-0 flex-1 items-center gap-2 rounded-lg px-1.5 py-1 text-left outline-none touch:py-2'
 
 const RowThumbnail = ({ src }: { src: string }) => (
   <span className='h-8 w-[57px] shrink-0 overflow-hidden rounded bg-thumbnail-placeholder'>

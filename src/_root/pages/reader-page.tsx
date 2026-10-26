@@ -140,7 +140,7 @@ const ReaderHeader = ({
 const WatchVideo = ({ videoId }: { videoId: string }) => (
   <Link
     to={`/v/${videoId}`}
-    className='mt-3 inline-flex h-10 items-center gap-2 rounded-full border border-(--reader-line-strong) px-4 text-sm font-medium transition-colors hover:bg-(--reader-hover) focus-visible:ring-2 focus-visible:ring-(--reader-fg) focus-visible:outline-hidden touch:h-11'>
+    className='mt-3 inline-flex h-10 items-center gap-2 rounded-full border border-(--reader-line-strong) px-4 text-sm font-medium transition-colors hover:bg-(--reader-hover) touch:h-11'>
     <TvMinimalPlayIcon aria-hidden className='size-4' />
     Watch Video
   </Link>

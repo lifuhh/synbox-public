@@ -26,7 +26,7 @@ const ContactDialog = lazy(
 )
 
 const ROW =
-  'flex min-h-12 items-center gap-3 rounded-xl px-3 text-left transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden'
+  'flex min-h-12 items-center gap-3 rounded-xl px-3 text-left transition-colors hover:bg-accent'
 
 // A row that opens a page: its icon, its label, a chevron
 const LinkRow = ({

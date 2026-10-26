@@ -7,8 +7,11 @@ import { BrowserRouter } from 'react-router'
 
 import App from './app'
 import ErrorBoundary from './components/shared/error-boundary'
+import { trackInputModality } from './lib/input-modality'
 import { QueryProvider } from './lib/react-query/query-provider'
 import { trackAppOpenLater } from './lib/usage-later'
+
+trackInputModality()
 
 const rootElement = document.querySelector('#root')
 if (rootElement === null) {

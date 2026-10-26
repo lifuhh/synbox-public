@@ -22,10 +22,11 @@ export const Switch = ({
     onClick={() => {
       onCheckedChange(!checked)
     }}
-    className='group grid h-11 w-12 shrink-0 place-items-center rounded-full focus-visible:outline-hidden'>
+    data-focus-proxy
+    className='group grid h-11 w-12 shrink-0 place-items-center rounded-full'>
     <span
       className={cn(
-        'flex h-6 w-10 items-center rounded-full p-0.5 transition-colors group-focus-visible:ring-2 group-focus-visible:ring-ring',
+        'focus-target flex h-6 w-10 items-center rounded-full p-0.5 transition-colors',
         checked ? 'bg-primary' : 'bg-muted'
       )}>
       <span

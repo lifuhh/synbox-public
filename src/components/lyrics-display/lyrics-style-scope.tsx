@@ -29,9 +29,9 @@ const SECTION_HEADING =
   'text-xs font-medium tracking-wide text-muted-foreground uppercase'
 // A choice in a segmented track (rounded-lg, p-1): its corners are the track's less the padding
 const SEGMENT =
-  'rounded-sm py-1.5 text-xs font-medium transition-colors focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-hidden touch:py-2.5 touch:text-sm'
+  'rounded-sm py-1.5 text-xs font-medium transition-colors touch:py-2.5 touch:text-sm'
 const TEXT_BUTTON =
-  'rounded-lg px-2 py-2 text-xs font-medium transition-colors focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-hidden touch:py-2.5 touch:text-sm'
+  'rounded-lg px-2 py-2 text-xs font-medium transition-colors touch:py-2.5 touch:text-sm'
 
 // A style change that drops what was there, with the app's short Undo toast (as removing a song from the queue)
 const offerUndo = (title: string, undo: (() => void) | null) => {
@@ -167,7 +167,7 @@ export const MyStyles = ({ onApplied }: { onApplied: () => void }) => {
                   onApplied()
                 }}
                 className={cn(
-                  'flex max-w-40 items-center gap-1 rounded-full py-1.5 pr-1 text-xs font-medium text-foreground transition-colors hover:text-primary-text focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-hidden touch:py-2.5 touch:text-sm',
+                  'flex max-w-40 items-center gap-1 rounded-full py-1.5 pr-1 text-xs font-medium text-foreground transition-colors hover:text-primary-text touch:py-2.5 touch:text-sm',
                   selected ? 'pl-2' : 'pl-3'
                 )}>
                 {selected && <CheckIcon className='size-3.5 shrink-0' />}
@@ -179,7 +179,7 @@ export const MyStyles = ({ onApplied }: { onApplied: () => void }) => {
                 onClick={() => {
                   offerUndo(`${template.name} Deleted`, remove(template.id))
                 }}
-                className='flex size-7 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-hidden touch:size-10'>
+                className='flex size-7 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent hover:text-foreground touch:size-10'>
                 <XIcon className='size-3.5 shrink-0' />
               </button>
             </li>
@@ -242,7 +242,7 @@ export const SaveStyle = () => {
                 setNaming(false)
               }
             }}
-            className='h-10 min-w-0 flex-1 rounded-md border border-border bg-transparent px-2 text-sm text-foreground focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-hidden touch:h-11 touch:text-base'
+            className='h-10 min-w-0 flex-1 rounded-md border border-border bg-transparent px-2 text-sm text-foreground touch:h-11 touch:text-base'
           />
           <Button type='submit' className={FOOTER_BUTTON}>
             Save

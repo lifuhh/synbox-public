@@ -199,7 +199,7 @@ export const UpNext = ({
                     setFilter(option)
                   }}
                   className={cn(
-                    'h-8 shrink-0 rounded-lg px-3 text-sm font-medium whitespace-nowrap transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden',
+                    'h-8 shrink-0 rounded-lg px-3 text-sm font-medium whitespace-nowrap transition-colors',
                     on
                       ? 'bg-foreground text-background'
                       : 'bg-card text-foreground hover:bg-accent'

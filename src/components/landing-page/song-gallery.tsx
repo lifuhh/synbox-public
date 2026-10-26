@@ -39,7 +39,7 @@ const Card = ({ song }: { song: LibraryListSong }) => (
       to={`/v/${song.videoId}`}
       state={{ videoId: song.videoId }}
       title={song.title}
-      className='group block rounded-xl focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden'>
+      className='focus-inset group block rounded-xl'>
       <span className='relative block aspect-video overflow-hidden rounded-xl bg-thumbnail-placeholder'>
         {/* YouTube's 480×360 picture (object-cover crops its letterbox), not the 1280×720 one the list
             gives: decoding dozens of those stalls scrolling on a phone */}

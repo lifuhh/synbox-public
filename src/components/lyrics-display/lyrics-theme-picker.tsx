@@ -77,14 +77,15 @@ const ThemeSwatch = ({
       aria-checked={selected}
       aria-label={name}
       onClick={onSelect}
-      className='group flex flex-col items-center gap-1 focus-visible:outline-hidden'>
+      data-focus-proxy
+      className='group flex flex-col items-center gap-1'>
       <span
         className={cn(
-          'relative flex h-11 w-14 items-center justify-center overflow-hidden rounded-md ring-2 ring-offset-2 ring-offset-popover transition-shadow duration-150 bg-theme-swatch',
-          // Focus turns even the chosen swatch's ring to the focus colour
+          'focus-target relative flex h-11 w-14 items-center justify-center overflow-hidden rounded-md ring-2 ring-offset-2 ring-offset-popover transition-shadow duration-150 bg-theme-swatch',
+          // Keyboard focus draws the shared indicator on the tile (globals.css › .focus-target), over this ring
           selected
-            ? 'ring-foreground group-focus-visible:ring-ring'
-            : 'ring-transparent group-hover:ring-border group-focus-visible:ring-ring'
+            ? 'ring-foreground'
+            : 'ring-transparent group-hover:ring-border'
         )}
         style={themeVars}>
         {/* Caught mid-wipe, so the swatch shows both the white and the theme's accent */}
@@ -138,7 +139,7 @@ const StyleSwitch = ({
       onClick={() => {
         onChange(!checked)
       }}
-      className='group -mx-2 flex min-h-10 items-center justify-between gap-3 rounded-md px-2 text-sm font-medium focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-hidden touch:min-h-11'>
+      className='group -mx-2 flex min-h-10 items-center justify-between gap-3 rounded-md px-2 text-sm font-medium touch:min-h-11'>
       <span className='flex min-w-0 items-baseline'>
         <span id={labelId}>{label}</span>
         {hint !== undefined && (

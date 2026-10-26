@@ -498,7 +498,7 @@ export const LibraryView = ({
                         <Link
                           to={`/playlists/${playlist.id}`}
                           onClick={onLeave}
-                          className='flex items-center gap-3 rounded-xl p-2 hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden'>
+                          className='flex items-center gap-3 rounded-xl p-2 hover:bg-accent'>
                           <PlaylistCover
                             playlist={playlist}
                             className='size-12'

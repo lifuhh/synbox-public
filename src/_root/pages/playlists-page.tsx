@@ -67,7 +67,7 @@ const PlaylistsPage = () => {
                 className='flex items-center gap-1 rounded-xl transition-colors pointer-fine:has-[a:hover]:bg-accent'>
                 <Link
                   to={`/playlists/${list.id}`}
-                  className='flex min-w-0 flex-1 items-center gap-3 rounded-xl p-2 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden'>
+                  className='flex min-w-0 flex-1 items-center gap-3 rounded-xl p-2'>
                   <PlaylistCover playlist={list} className='size-16' />
                   <span className='flex min-w-0 flex-col'>
                     <span className='truncate font-medium text-foreground'>
