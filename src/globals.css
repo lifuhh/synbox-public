@@ -2450,8 +2450,9 @@ html[data-input-modality='keyboard']
 }
 
 /* The pages scroll in boxes that run under the fixed top bar: a control Tab scrolls into view stops below the bar,
-   not hidden behind it (WCAG 2.2 2.4.11) */
-[data-scroll-top] {
+   not hidden behind it (WCAG 2.2 2.4.11). Only while the keyboard drives: the gallery's own scroll-to (its stuck
+   filter row) lands differently with a scroll padding */
+html[data-input-modality='keyboard'] [data-scroll-top] {
   scroll-padding-top: calc(var(--topbar-h, 0px) + 0.5rem);
 }
 
