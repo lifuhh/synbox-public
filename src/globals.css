@@ -1403,6 +1403,18 @@
   }
 }
 
+/* The two copies of the search's text in flight, the field's fading out as the bar's fades in, on the same line:
+   added rather than layered (plus-lighter), inside their own group so only they add up, never onto the fill. Two
+   layers of the same words at 1-t and t then draw exactly one, neither bolder nor fainter midway */
+@utility search-ghost-text {
+  position: absolute;
+  inset: 0;
+  isolation: isolate;
+  & > * {
+    mix-blend-mode: plus-lighter;
+  }
+}
+
 /* A loading placeholder: a lighter band sweeps across it, so it reads as loading on a dark card, where a
    pulse between two near-blacks looked like an empty box */
 /* A skeleton stays invisible for its first 400 ms and then fades in, so a load that finishes quickly shows

@@ -59,13 +59,29 @@ const paintOf = (shell: HTMLElement) => {
   }
 }
 
-// A still copy of what a field shows (`data-dock-face`, or the shell itself), without the shell's edge and fill,
-// and how far its face sits from the shell, so the copy can be laid with the shell on the ghost's box
+// A still copy of what a field shows (`data-dock-face`, or the shell itself), without the shell's edge and fill or
+// its buttons, and where its text starts: the two fields set the same words in the same type, so the flight moves
+// one line of text from where the field draws it to where the bar does, unscaled, and the copies crossfade unseen
 interface Layer {
   el: HTMLElement
   shellH: number
+  // The face's offset from the shell, and the text's left edge, centre line and size, all from the shell's corner
   dx: number
   dy: number
+  textX: number
+  textY: number
+  font: number
+}
+
+// The field's action button (Generate Lyrics, or its round icon on a phone), drawn on its own so it can shrink into
+// the field's right end and fade, instead of riding the text across
+interface Button {
+  el: HTMLElement
+  // Its centre, from the shell's right edge and top, and its size
+  fromRight: number
+  midY: number
+  w: number
+  h: number
 }
 
 const copyOf = (el: HTMLElement) => {
@@ -76,10 +92,36 @@ const copyOf = (el: HTMLElement) => {
   return copy
 }
 
-const layerOf = (shell: HTMLElement): Layer => {
+// Positioned at the ghost's corner, moved only by transform, and given its own layer: a copy repainted at a new
+// place every frame shimmers as its text snaps to the pixel grid
+const asLayer = (el: HTMLElement, w: number, h: number) => {
+  Object.assign(el.style, {
+    height: `${h}px`,
+    left: '0',
+    margin: '0',
+    position: 'absolute',
+    top: '0',
+    transformOrigin: '0 0',
+    width: `${w}px`,
+    willChange: 'transform, opacity',
+  })
+}
+
+const drawn = (el: Element) => el.getClientRects().length > 0
+
+// A computed length (always in px) as a number
+const px = (value: string) => Number(value.replace('px', ''))
+
+const layerOf = (
+  shell: HTMLElement
+): { layer: Layer; button: Button | null } => {
   const face = shell.closest<HTMLElement>('[data-dock-face]') ?? shell
   const faceBox = face.getBoundingClientRect()
   const shellBox = shell.getBoundingClientRect()
+  const action =
+    [...face.querySelectorAll<HTMLElement>('button[type="submit"]')].find(
+      drawn
+    ) ?? null
   const el = copyOf(face)
   const copies = [el, ...el.querySelectorAll<HTMLElement>('*')]
   const values = [face, ...face.querySelectorAll<HTMLElement>('*')]
@@ -96,6 +138,11 @@ const layerOf = (shell: HTMLElement): Layer => {
       node.style.background = 'transparent'
       node.style.boxShadow = 'none'
     }
+    // Buttons leave the text's copy: the action flies on its own, and the rest (Clear Search) has nothing to do. Not
+    // the shell itself: on a phone the bar's search is a button
+    if (node instanceof HTMLButtonElement && source !== shell) {
+      node.style.visibility = 'hidden'
+    }
     for (const name of [
       'id',
       'data-bench',
@@ -105,34 +152,81 @@ const layerOf = (shell: HTMLElement): Layer => {
       node.removeAttribute(name)
     }
   }
-  Object.assign(el.style, {
-    height: `${faceBox.height}px`,
-    left: '0',
-    margin: '0',
-    position: 'absolute',
-    top: '0',
-    transformOrigin: '0 0',
-    width: `${faceBox.width}px`,
-  })
-  return {
+  asLayer(el, faceBox.width, faceBox.height)
+  const input = face.querySelector('input') ?? shell
+  const inputBox = input.getBoundingClientRect()
+  const style = getComputedStyle(input)
+  const layer: Layer = {
     dx: faceBox.left - shellBox.left,
     dy: faceBox.top - shellBox.top,
     el,
+    font: px(style.fontSize),
     shellH: shellBox.height,
+    textX:
+      inputBox.left +
+      px(style.borderLeftWidth) +
+      px(style.paddingLeft) -
+      shellBox.left,
+    textY: inputBox.top + inputBox.height / 2 - shellBox.top,
+  }
+  if (action === null) {
+    return { button: null, layer }
+  }
+  const box = action.getBoundingClientRect()
+  const copy = copyOf(action)
+  copy.removeAttribute('id')
+  asLayer(copy, box.width, box.height)
+  return {
+    button: {
+      el: copy,
+      fromRight: shellBox.right - (box.left + box.width / 2),
+      h: box.height,
+      midY: box.top + box.height / 2 - shellBox.top,
+      w: box.width,
+    },
+    layer,
   }
 }
 
-// The copy scaled to the ghost's height, its shell's top left on the ghost's
-const place = (layer: Layer, height: number, opacity: number) => {
-  const scale = height / layer.shellH
-  layer.el.style.transform = `scale(${scale}) translate(${layer.dx}px, ${layer.dy}px)`
+// Both copies follow one line of text: its left edge and size move from the field's to the bar's, and each copy is
+// laid so its own text sits on that line
+const place = (
+  layer: Layer,
+  textX: number,
+  textY: number,
+  font: number,
+  opacity: number
+) => {
+  const scale = font / layer.font
+  const x = textX - scale * (layer.textX - layer.dx)
+  const y = textY - scale * (layer.textY - layer.dy)
+  layer.el.style.transform = `translate(${x}px, ${y}px) scale(${scale})`
   layer.el.style.opacity = String(opacity)
+}
+
+// The action button keeps to the ghost's right end, scaled with its height, and shrinks to 60% as it fades out
+// over the first 40% of the flight
+const placeButton = (
+  button: Button,
+  width: number,
+  height: number,
+  shellH: number,
+  at: number
+) => {
+  const k = height / shellH
+  const gone = ramp(at, 0, 0.4)
+  const scale = k * mix(1, 0.6, gone)
+  const cx = width - button.fromRight * k
+  const cy = button.midY * k
+  button.el.style.transform = `translate(${cx - (button.w * scale) / 2}px, ${cy - (button.h * scale) / 2}px) scale(${scale})`
+  button.el.style.opacity = String(1 - gone)
 }
 
 interface Flight {
   shell: HTMLElement
   page: Layer
   bar: Layer
+  button: Button | null
   // Flying up, the page's end of the flight stays under the bar while the field scrolls on past it
   stick: number
 }
@@ -193,15 +287,26 @@ const dock = (
     const from = field.getBoundingClientRect()
     const to = flight.shell.getBoundingClientRect()
     const height = mix(from.height, to.height, at)
+    const width = mix(from.width, to.width, at)
     const x = mix(from.left, to.left, at) - origin.left
     const y = mix(Math.max(from.top, flight.stick), to.top, at) - origin.top
     ghost.style.transform = `translate(${x}px, ${y}px)`
-    ghost.style.width = `${mix(from.width, to.width, at)}px`
+    ghost.style.width = `${width}px`
     ghost.style.height = `${height}px`
     ghost.style.setProperty('--dock-t', String(at))
-    // The field's face is gone before the bar's comes in, so the two never show at once as a muddle of both
-    place(flight.page, height, 1 - ramp(at, 0, 0.35))
-    place(flight.bar, height, ramp(at, 0.2, 0.6))
+    const { page, bar } = flight
+    const textX = mix(page.textX, bar.textX, at)
+    const textY =
+      mix(page.textY / page.shellH, bar.textY / bar.shellH, at) * height
+    const font = mix(page.font, bar.font, at)
+    // The same words on the same line, crossfaded additively (`search-ghost-text`), so the text neither doubles
+    // nor thins halfway; the bar's search icon comes in with its copy
+    const swap = ramp(at, 0.15, 0.55)
+    place(page, textX, textY, font, 1 - swap)
+    place(bar, textX, textY, font, swap)
+    if (flight.button !== null) {
+      placeButton(flight.button, width, height, page.shellH, at)
+    }
   }
 
   const settle = () => {
@@ -225,13 +330,21 @@ const dock = (
     ghost.style.setProperty('--dock-from-fill', from.fill)
     ghost.style.setProperty('--dock-to-edge', to.edge)
     ghost.style.setProperty('--dock-to-fill', to.fill)
+    const page = layerOf(field)
     flight = {
-      bar: layerOf(shell),
-      page: layerOf(field),
+      bar: layerOf(shell).layer,
+      button: page.button,
+      page: page.layer,
       shell,
       stick: Math.min(field.getBoundingClientRect().top, barBottom()),
     }
-    ghost.replaceChildren(flight.page.el, flight.bar.el)
+    const text = document.createElement('div')
+    text.className = 'search-ghost-text'
+    text.append(flight.page.el, flight.bar.el)
+    ghost.replaceChildren(
+      text,
+      ...(flight.button === null ? [] : [flight.button.el])
+    )
     // The ghost carries the search from here, in the frame the real one hides
     field.style.opacity = '0'
     show('flying')
@@ -364,7 +477,10 @@ export const useBarSearch = (
     shown:
       !isVideoPlayer && pathname !== '/search' && (!home || stage !== 'page'),
     slot: {
-      className: waiting ? 'opacity-0' : undefined,
+      // Under Reduce Motion there is no flight, so the bar's search fades in where it lands instead of popping in
+      className: waiting
+        ? 'opacity-0'
+        : 'motion-reduce:transition-opacity motion-reduce:duration-150',
       'data-dock-slot': true,
       inert: waiting,
     },

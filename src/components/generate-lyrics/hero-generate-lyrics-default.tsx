@@ -36,9 +36,10 @@ interface HeroGenerateLyricsDefaultProps {
   inputVideoId: string
 }
 
+// The top bar's words (topbar-search.tsx), so the field flying into the bar carries the same text it lands with.
 // Under 360px wide the full text runs past the field
 const heroPlaceholder = (roomy: boolean) =>
-  roomy ? 'Search or Paste a YouTube URL' : 'Search or Paste a Link'
+  roomy ? 'Search or Paste a YouTube Link' : 'Search or Paste a Link'
 
 // Search is a mode, not an error, so it gets its own colour; red is kept for a link that fails to parse.
 type InputMode = 'empty' | 'search' | 'valid' | 'invalid'
