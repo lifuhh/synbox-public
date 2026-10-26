@@ -532,6 +532,10 @@ export const StageControls = ({
         style={FADE_VARS}
         className={cn(
           'absolute inset-x-0 bottom-0 z-30 bg-linear-to-t from-black/80 via-black/40 to-transparent pt-10 pr-controls-right pb-controls-bottom pl-controls-left transition-opacity duration-(--controls-fade) watch-narrow:pt-6 watch-narrow:pr-2 watch-narrow:pb-1 watch-narrow:pl-2 pills:from-black/60 pills:via-black/20 short:pl-controls-rail',
+          // A phone on its side, Lock Landscape's turn included: no shade. Its band ran the stage's whole length behind
+          // the buttons and the rail's corner, and read as a haze over the controls (owner, 2026-10-26); the buttons,
+          // the seek bar and the clock carry the stage's own shadow instead, as the bar's top icons do (#467)
+          'short:bg-none short:[&_[data-press][data-orientation]]:drop-shadow-stage short:[&_svg]:drop-shadow-stage',
           visible ? 'opacity-100' : 'opacity-0',
           PRESS_THROUGH,
           armed ? PRESSABLE : 'pointer-events-none'
@@ -546,7 +550,7 @@ export const StageControls = ({
           {/* On a touch screen the clock sits at the end of the seek bar, so the buttons' row fits at 320px */}
           <div className='mb-2 flex items-center gap-3 watch-narrow:contents short:contents'>
             <SeekSlider className='min-w-0 flex-1 cursor-pointer watch-narrow:order-4 watch-narrow:mx-2 watch-narrow:mb-1 watch-narrow:basis-full short:order-1 short:mx-2' />
-            <LiveClock className='hidden shrink-0 watch-narrow:order-2 touch:block short:order-2' />
+            <LiveClock className='hidden shrink-0 watch-narrow:order-2 touch:block short:order-2 short:drop-shadow-stage' />
           </div>
           <div className='flex items-center gap-1 watch-narrow:contents touch:gap-0.5 pills:gap-2 short:contents'>
             {/* Bottom left, where every player has it, between Previous and Next; the small video of a narrow watch
