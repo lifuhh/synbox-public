@@ -3,7 +3,6 @@ import {
   LinkIcon,
   LoaderCircleIcon,
   SearchIcon,
-  XIcon,
 } from 'lucide-react'
 import { useEffect, useId, useRef, useState } from 'react'
 import type { RefObject } from 'react'
@@ -11,6 +10,7 @@ import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router'
 
 import { Button } from '@/components/ui/button'
+import { ClearFieldButton } from '@/components/ui/clear-field-button'
 import {
   useGallerySongs,
   useSearchLibrary,
@@ -485,21 +485,12 @@ export const TopbarSearch = ({ variant }: { variant: 'inline' | 'button' }) => {
           panel ? 'h-11 rounded-xl' : 'h-10 rounded-full'
         )}
       />
-      {query !== '' && (
-        <button
-          type='button'
-          aria-label='Clear Search'
-          // Cleared on the press, which keeps the field focused and the keyboard up: WebKit sends no click
-          // after a touch whose pointerdown was cancelled. Click is the keyboard's way
-          onPointerDown={(event) => {
-            event.preventDefault()
-            clear()
-          }}
-          onClick={clear}
-          className='absolute top-1/2 right-2 grid size-7 -translate-y-1/2 place-items-center rounded-full text-muted-foreground hover:text-foreground'>
-          <XIcon className='size-4' />
-        </button>
-      )}
+      <ClearFieldButton
+        field={inputRef}
+        value={query}
+        onClear={clear}
+        className='absolute top-1/2 right-2 -translate-y-1/2'
+      />
     </form>
   )
 

@@ -1,6 +1,6 @@
 import { atom, useAtom, useAtomValue, useSetAtom } from 'jotai'
 import { CloudOffIcon, SearchIcon, XIcon } from 'lucide-react'
-import { useDeferredValue, useEffect, useMemo, useState } from 'react'
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode, Ref } from 'react'
 import { Link } from 'react-router'
 import { toRomaji } from 'wanakana'
@@ -16,6 +16,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
+import { ClearFieldButton } from '@/components/ui/clear-field-button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ToastAction } from '@/components/ui/toast'
 import { toast } from '@/components/ui/use-toast'
@@ -268,34 +269,35 @@ const SearchField = ({
   library: { query, setQuery },
 }: {
   library: Library
-}) => (
-  <label className='relative block'>
-    <span className='sr-only'>Search Library</span>
-    <SearchIcon className='pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground' />
-    <input
-      type='search'
-      value={query}
-      onChange={(event) => {
-        setQuery(event.target.value)
-      }}
-      placeholder='Title, Artist or a Lyric'
-      enterKeyHint='search'
-      autoComplete='off'
-      className='h-10 w-full rounded-full border border-border bg-card pr-10 pl-9 text-base text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none [&::-webkit-search-cancel-button]:hidden'
-    />
-    {query !== '' && (
-      <button
-        type='button'
-        aria-label='Clear Search'
-        onClick={() => {
+}) => {
+  const field = useRef<HTMLInputElement>(null)
+  return (
+    <label className='relative block'>
+      <span className='sr-only'>Search Library</span>
+      <SearchIcon className='pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground' />
+      <input
+        ref={field}
+        type='search'
+        value={query}
+        onChange={(event) => {
+          setQuery(event.target.value)
+        }}
+        placeholder='Title, Artist or a Lyric'
+        enterKeyHint='search'
+        autoComplete='off'
+        className='h-10 w-full rounded-full border border-border bg-card pr-10 pl-9 text-base text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none [&::-webkit-search-cancel-button]:hidden'
+      />
+      <ClearFieldButton
+        field={field}
+        value={query}
+        onClear={() => {
           setQuery('')
         }}
-        className='absolute top-1/2 right-1 flex size-9 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground hover:text-foreground'>
-        <XIcon className='size-4' />
-      </button>
-    )}
-  </label>
-)
+        className='absolute top-1/2 right-2 -translate-y-1/2'
+      />
+    </label>
+  )
+}
 
 const Empty = ({ children }: { children: ReactNode }) => (
   <p className='px-4 py-10 text-center text-sm text-pretty text-muted-foreground'>
