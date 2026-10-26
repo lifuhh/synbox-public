@@ -78,6 +78,9 @@ const SignInButton = () => {
             variant='toolbar-outline'
             size='pill-collapse'
             gap='md'
+            // The top bar's wide padding (topbar-x) leaves 8px for a ghost button's invisible edge; this pill draws its
+            // edge, so it steps in by that 8px to line up with the page's content edge
+            className='lg:mr-2'
             aria-busy={pending || undefined}
             onClick={() => {
               if (!pending) {
