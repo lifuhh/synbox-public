@@ -10,12 +10,11 @@ import {
 
 const indexHtml = readFileSync(
   new URL('../index.html', import.meta.url),
-  'utf8'
+  'utf-8'
 )
 const canonical = 'https://synbox.io/v/gcgKUcJKxls'
 
-const count = (html: string, pattern: RegExp) =>
-  html.match(new RegExp(pattern, 'gu'))?.length ?? 0
+const count = (html: string, text: string) => html.split(text).length - 1
 
 describe('page head', () => {
   it("replaces the home page's head with the song's, once each", () => {
@@ -47,12 +46,12 @@ describe('page head', () => {
     )
     expect(html).toContain('maxresdefault.jpg')
     for (const tag of [
-      /<title>/,
-      /rel="canonical"/,
-      /name="description"/,
-      /property="og:title"/,
-      /property="og:description"/,
-      /property="og:url"/,
+      '<title>',
+      'rel="canonical"',
+      'name="description"',
+      'property="og:title"',
+      'property="og:description"',
+      'property="og:url"',
     ]) {
       expect(count(html, tag)).toBe(1)
     }
