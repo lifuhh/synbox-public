@@ -3,9 +3,7 @@ import {
   CircleQuestionMarkIcon,
   EllipsisVerticalIcon,
   LoaderCircleIcon,
-  LockIcon,
   MailIcon,
-  ScrollTextIcon,
   ShieldIcon,
   LogOutIcon,
   MonitorDownIcon,
@@ -179,14 +177,18 @@ const ProfileButtonDropdown = () => {
     <>
       <DropdownMenu>
         <ProfileTrigger user={user} pending={isPending} />
+        {/* As wide as its longest line, within a floor and a ceiling: a long name or email truncates. Privacy and
+            Terms live in the footers of Home, About and the policies themselves, not here */}
         <DropdownMenuContent
           align='end'
           sideOffset={10}
-          className='w-64 overflow-auto'>
+          className='w-max max-w-64 min-w-44 overflow-auto'>
           {user ? (
             <div className='flex flex-col gap-0.5 px-2 pt-1.5 pb-2'>
               <p className='truncate text-sm font-medium'>{user.name}</p>
-              <p className='truncate text-xs text-muted-foreground'>
+              <p
+                title={user.email}
+                className='truncate text-xs text-muted-foreground'>
                 {user.email}
               </p>
               {me?.quota && (
@@ -209,18 +211,6 @@ const ProfileButtonDropdown = () => {
               <Link to='/about'>
                 <CircleQuestionMarkIcon className='mr-2 size-5 shrink-0' />
                 <span>About Synbox</span>
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild className='cursor-pointer'>
-              <Link to='/privacy'>
-                <LockIcon className='mr-2 size-5 shrink-0' />
-                <span>Privacy Policy</span>
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild className='cursor-pointer'>
-              <Link to='/terms'>
-                <ScrollTextIcon className='mr-2 size-5 shrink-0' />
-                <span>Terms of Use</span>
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem
