@@ -1,16 +1,49 @@
-import { useAtom } from 'jotai'
-import { BoldIcon, CheckIcon, MinusIcon, PlusIcon } from 'lucide-react'
+import { useAtom, useAtomValue } from 'jotai'
+import {
+  BoldIcon,
+  CheckIcon,
+  MinusIcon,
+  PlayIcon,
+  PlusIcon,
+} from 'lucide-react'
 import { useState } from 'react'
 
+import type { LineShow } from '@/components/offline/lyric-line-block'
+import {
+  lyricsCustomHueAtom,
+  lyricsThemeIdAtom,
+  translationIsEnglishAtom,
+} from '@/context/atoms'
+import { getLyricsThemeColors } from '@/lib/lyrics-themes'
 import type { ReaderLayer } from '@/lib/offline/reader-prefs'
 import {
   READER_COLORS,
   READER_SIZES,
-  accentColor,
+  readerColor,
   readerPrefsAtom,
 } from '@/lib/offline/reader-prefs'
 import type { CssVars } from '@/types'
 import { cn } from '@/utils/cn'
+
+// The Lyrics Style colour, which Text Style's Video colour follows
+export const useVideoColor = () =>
+  getLyricsThemeColors(
+    useAtomValue(lyricsThemeIdAtom),
+    useAtomValue(lyricsCustomHueAtom)
+  ).accent
+
+// The lines a page of lyrics shows (Text Style's own), in the translation language the video uses too
+export const useTextLines = (): LineShow => {
+  const prefs = useAtomValue(readerPrefsAtom)
+  const english = useAtomValue(translationIsEnglishAtom)
+  return {
+    bold: prefs.bold,
+    japanese: prefs.japanese,
+    language: english ? 'en' : 'zh',
+    romaji: prefs.romaji,
+    translation: prefs.translation,
+  }
+}
 
 // A 40px target, 44px on touch screens, with the reader's own colours
 export const ReaderButton = ({
@@ -53,6 +86,8 @@ const LAYERS: { id: ReaderLayer; label: string }[] = [
 // Which lines each block shows. One always stays on, so the page is never blank
 export const LayersPanel = () => {
   const [prefs, setPrefs] = useAtom(readerPrefsAtom)
+  const [english, setEnglish] = useAtom(translationIsEnglishAtom)
+  const language = english ? 'en' : 'zh'
   const shown = LAYERS.filter((layer) => prefs[layer.id]).length
   return (
     // Its corners hold the rows': their 8px plus the 6px padding and the border
@@ -102,13 +137,14 @@ export const LayersPanel = () => {
           <button
             key={id}
             type='button'
-            aria-pressed={prefs.language === id}
+            aria-pressed={language === id}
             onClick={() => {
-              setPrefs({ language: id, translation: true })
+              setEnglish(id === 'en')
+              setPrefs({ translation: true })
             }}
             className={cn(
               'h-9 rounded-md text-sm font-medium text-(--reader-fg) transition-colors',
-              prefs.language === id && 'bg-(--reader-bg) shadow-sm'
+              language === id && 'bg-(--reader-bg) shadow-sm'
             )}>
             {label}
           </button>
@@ -121,14 +157,18 @@ export const LayersPanel = () => {
 const SELECTED_RING =
   'ring-2 ring-(--reader-fg) ring-offset-2 ring-offset-(--reader-bg)'
 
+// The swatches have no labels, so Video (the Lyrics Style colour) carries a play mark: it can be the same colour as
+// another swatch
 const ColorSwatch = ({
   label,
   color,
+  video,
   selected,
   onSelect,
 }: {
   label: string
   color: string
+  video: boolean
   selected: boolean
   onSelect: () => void
 }) => {
@@ -144,10 +184,16 @@ const ColorSwatch = ({
       <span
         style={swatchVars}
         className={cn(
-          'size-6 rounded-full border border-(--reader-line-strong) bg-(--swatch)',
+          'flex size-6 items-center justify-center rounded-full border border-(--reader-line-strong) bg-(--swatch)',
           selected && SELECTED_RING
+        )}>
+        {video && (
+          <PlayIcon
+            aria-hidden
+            className='size-2.5 translate-x-px fill-(--reader-bg) text-(--reader-bg)'
+          />
         )}
-      />
+      </span>
     </button>
   )
 }
@@ -160,6 +206,7 @@ const Divider = () => (
 // swatches' place in that row while it is open
 export const TypeBar = () => {
   const [prefs, setPrefs] = useAtom(readerPrefsAtom)
+  const video = useVideoColor()
   const [customOpen, setCustomOpen] = useState(false)
   return (
     <div className='mx-auto flex h-14 w-full max-w-lg items-center gap-1.5 px-2 sm:gap-2.5 sm:px-3'>
@@ -225,8 +272,16 @@ export const TypeBar = () => {
             <ColorSwatch
               key={color.id}
               label={color.label}
+              video={color.id === 'video'}
               selected={prefs.color === color.id}
-              color={accentColor(prefs.theme, color.hue) ?? 'var(--reader-fg)'}
+              color={
+                readerColor({
+                  id: color.id,
+                  prefs,
+                  theme: prefs.theme,
+                  video,
+                }) ?? 'var(--reader-fg)'
+              }
               onSelect={() => {
                 setPrefs({ color: color.id })
               }}

@@ -14,7 +14,7 @@ import {
   SparklesIcon,
   ThumbsUpIcon,
 } from 'lucide-react'
-import type { ReactNode } from 'react'
+import type { ReactNode, RefObject } from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
 
@@ -293,8 +293,8 @@ const actionsClass = (inline: boolean, chart: boolean) =>
   chart
     ? groupClass(inline)
     : cn(groupClass(inline), 'short:hidden', !inline && 'portrait:hidden')
-const lyricsGroupClass = (inline: boolean, chart: boolean) =>
-  chart ? 'hidden' : groupClass(inline)
+const lyricsGroupClass = (inline: boolean, empty: boolean) =>
+  empty ? 'hidden' : groupClass(inline)
 // A gap between the lyrics' buttons and the song's, the discs' own spacing again
 const dividerClass = (chart: boolean) => (chart ? 'hidden' : 'size-1 shrink-0')
 
@@ -312,6 +312,76 @@ const railClass = (inline: boolean, interactive: boolean, open: boolean) =>
           : '-translate-x-[calc(100%+var(--safe-left))] motion-reduce:translate-x-0 motion-reduce:opacity-0 portrait:translate-x-0 portrait:opacity-0'
       )
 
+// What the lyrics over the video show, and Lyrics Style
+const VideoLyricsButtons = ({
+  anchorRef,
+  peek,
+}: {
+  anchorRef: RefObject<HTMLElement | null>
+  peek: ReturnType<typeof usePeek>
+}) => {
+  const [showLyrics, setShowLyrics] = useAtom(lyricsVisibilityAtom)
+  const [showRomaji, setShowRomaji] = useAtom(romajiVisibilityAtom)
+  const [showTranslation, setShowTranslation] = useAtom(
+    translationVisibilityAtom
+  )
+  const [english, setEnglish] = useAtom(translationIsEnglishAtom)
+  const languageLabel = english
+    ? 'View Chinese Translations'
+    : 'View English Translations'
+  return (
+    <>
+      <RailTooltip label={showLyrics ? 'Hide Lyrics' : 'Show Lyrics'}>
+        <RailButton
+          label='Lyrics'
+          pressed={showLyrics}
+          onClick={() => {
+            setShowLyrics(!showLyrics)
+            trackLyricsFeature('lyrics', !showLyrics)
+          }}>
+          <MessageSquareTextIcon className='size-5 shrink-0' />
+        </RailButton>
+      </RailTooltip>
+      <RailTooltip label={showRomaji ? 'Hide Romaji' : 'Show Romaji'}>
+        <RailButton
+          label='Romaji'
+          pressed={showRomaji}
+          onClick={() => {
+            setShowRomaji(!showRomaji)
+            trackLyricsFeature('romaji', !showRomaji)
+          }}>
+          <span className='text-base leading-none font-bold'>R</span>
+        </RailButton>
+      </RailTooltip>
+      <RailTooltip
+        label={showTranslation ? 'Hide Translations' : 'Show Translations'}>
+        <RailButton
+          label='Translations'
+          pressed={showTranslation}
+          onClick={() => {
+            setShowTranslation(!showTranslation)
+            trackLyricsFeature('translation', !showTranslation)
+          }}>
+          <LanguagesIcon className='size-5 shrink-0' />
+        </RailButton>
+      </RailTooltip>
+      <RailTooltip label={languageLabel}>
+        <RailButton
+          label={languageLabel}
+          onClick={() => {
+            setEnglish(!english)
+            trackLyricsFeature('language', !english)
+          }}>
+          <span className='text-sm leading-none font-bold'>
+            {english ? 'EN' : '中'}
+          </span>
+        </RailButton>
+      </RailTooltip>
+      <LyricsThemePicker anchorRef={anchorRef} peek={peek} />
+    </>
+  )
+}
+
 // The player's own buttons: the lyrics toggles and style, versions (admins), bookmark, share and Read Lyrics.
 // Floating, it is the stage's rail that shows and hides with the rest of its UI. Inline, it is a row under the
 // video on the watch page, always there
@@ -324,6 +394,10 @@ const PlayerRail = ({ inline = false }: { inline?: boolean }) => {
   const open = useAtomValue(playerChromeOpenAtom)
   const armed = useArmed(open)
   const peek = usePeek()
+  // The video's lyrics toggles and Lyrics Style act on the lyrics over the video. A narrow watch page draws none
+  // there (the panel under it carries them, with its own Text Style), so they wait for the full-screen player
+  const wide = useMediaQuery('(min-width: 1000px)')
+  const videoLyrics = !inline || wide
 
   // Published so that in portrait, where the rail sits on the control bar, the notices and the lyrics stay
   // above it
@@ -353,12 +427,6 @@ const PlayerRail = ({ inline = false }: { inline?: boolean }) => {
   const isFavorite = useAtomValue(isFavoriteAtom)
   const bookmarked = currentVideo ? isFavorite(currentVideo.videoId) : false
 
-  const [showLyrics, setShowLyrics] = useAtom(lyricsVisibilityAtom)
-  const [showRomaji, setShowRomaji] = useAtom(romajiVisibilityAtom)
-  const [showTranslation, setShowTranslation] = useAtom(
-    translationVisibilityAtom
-  )
-  const [english, setEnglish] = useAtom(translationIsEnglishAtom)
   const touch = useMediaQuery('(pointer: coarse)')
   const nativeShare = touch && 'share' in navigator
   const shareLabel = nativeShare ? 'Share' : 'Copy Link'
@@ -516,65 +584,14 @@ const PlayerRail = ({ inline = false }: { inline?: boolean }) => {
               data-player-chrome={inline ? undefined : true}
               aria-label='Player Controls'
               className={railClass(inline, open && armed, open)}>
-              <div className={lyricsGroupClass(inline, chart)}>
-                <RailTooltip label={showLyrics ? 'Hide Lyrics' : 'Show Lyrics'}>
-                  <RailButton
-                    label='Lyrics'
-                    pressed={showLyrics}
-                    onClick={() => {
-                      setShowLyrics(!showLyrics)
-                      trackLyricsFeature('lyrics', !showLyrics)
-                    }}>
-                    <MessageSquareTextIcon className='size-5 shrink-0' />
-                  </RailButton>
-                </RailTooltip>
-                <RailTooltip label={showRomaji ? 'Hide Romaji' : 'Show Romaji'}>
-                  <RailButton
-                    label='Romaji'
-                    pressed={showRomaji}
-                    onClick={() => {
-                      setShowRomaji(!showRomaji)
-                      trackLyricsFeature('romaji', !showRomaji)
-                    }}>
-                    <span className='text-base leading-none font-bold'>R</span>
-                  </RailButton>
-                </RailTooltip>
-                <RailTooltip
-                  label={
-                    showTranslation ? 'Hide Translations' : 'Show Translations'
-                  }>
-                  <RailButton
-                    label='Translations'
-                    pressed={showTranslation}
-                    onClick={() => {
-                      setShowTranslation(!showTranslation)
-                      trackLyricsFeature('translation', !showTranslation)
-                    }}>
-                    <LanguagesIcon className='size-5 shrink-0' />
-                  </RailButton>
-                </RailTooltip>
-                <RailTooltip
-                  label={
-                    english
-                      ? 'View Chinese Translations'
-                      : 'View English Translations'
-                  }>
-                  <RailButton
-                    label={
-                      english
-                        ? 'View Chinese Translations'
-                        : 'View English Translations'
-                    }
-                    onClick={() => {
-                      setEnglish(!english)
-                      trackLyricsFeature('language', !english)
-                    }}>
-                    <span className='text-sm leading-none font-bold'>
-                      {english ? 'EN' : '中'}
-                    </span>
-                  </RailButton>
-                </RailTooltip>
-                <LyricsThemePicker anchorRef={panelRef} peek={peek} />
+              <div
+                className={lyricsGroupClass(
+                  inline,
+                  chart || (!videoLyrics && !(admin && videoId !== ''))
+                )}>
+                {videoLyrics && (
+                  <VideoLyricsButtons anchorRef={panelRef} peek={peek} />
+                )}
                 {admin && videoId !== '' && (
                   <LyricsVersionsMenu videoId={videoId} />
                 )}

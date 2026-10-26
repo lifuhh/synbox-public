@@ -13,7 +13,7 @@ import type { LyricsStyleScope } from '@/context/atoms'
 import { cn } from '@/utils/cn'
 
 // A choice in a segmented track (rounded-lg, p-1): its corners are the track's less the padding
-const SEGMENT =
+export const SEGMENT =
   'rounded-sm py-1.5 text-xs font-medium transition-colors touch:py-3 touch:text-sm'
 
 // A style change that drops what was there, with the app's short Undo toast (as removing a song from the queue)

@@ -1,7 +1,7 @@
 import { useAtom, useAtomValue } from 'jotai'
 import { CheckIcon, PaletteIcon } from 'lucide-react'
 import type { CSSProperties, RefObject } from 'react'
-import { use, useId, useLayoutEffect, useRef } from 'react'
+import { use, useLayoutEffect, useRef } from 'react'
 
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import {
@@ -35,19 +35,9 @@ import { cn } from '@/utils/cn'
 
 import { LyricsStyleScopeSection, ResetPositions } from './lyrics-style-scope'
 import { RailButton, RailInline, railMenuSide } from './rail-button'
+import { StyleSwitch } from './style-switch'
 
 const HALF_FILLED: CSSProperties & Record<'--p', number> = { '--p': 0.5 }
-
-// A hint on its label's line ("Two Lines · Landscape only"): quieter than the label, after a centred dot.
-// The dot takes its label's size, raised a little so it centres on the capitals as well as the x-height
-const INLINE_HINT = 'text-xs font-normal text-faint'
-const InlineHintDot = () => (
-  <span
-    aria-hidden='true'
-    className='relative -top-[0.075em] px-1.5 font-normal text-faint'>
-    ·
-  </span>
-)
 
 interface ThemeSwatchProps {
   name: string
@@ -105,61 +95,6 @@ const ThemeSwatch = ({
           selected ? 'text-foreground' : 'text-muted-foreground'
         )}>
         {name}
-      </span>
-    </button>
-  )
-}
-
-// A switch row in the panel: on and off, applied at once without closing it. A hint, when the label alone
-// doesn't say it, sits on the label's line after a dot
-const StyleSwitch = ({
-  label,
-  hint,
-  checked,
-  onChange,
-}: {
-  label: string
-  hint?: string
-  checked: boolean
-  onChange: (checked: boolean) => void
-}) => {
-  const labelId = useId()
-  const hintId = useId()
-  return (
-    <button
-      type='button'
-      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- a switch: on and off, applied at once
-      role='switch'
-      aria-checked={checked}
-      aria-labelledby={labelId}
-      aria-describedby={hint === undefined ? undefined : hintId}
-      onClick={() => {
-        onChange(!checked)
-      }}
-      className='group -mx-2 flex min-h-10 items-center justify-between gap-3 rounded-md px-2 text-sm font-medium touch:min-h-11'>
-      <span className='flex min-w-0 items-baseline'>
-        <span id={labelId}>{label}</span>
-        {hint !== undefined && (
-          <>
-            <InlineHintDot />
-            <span id={hintId} className={INLINE_HINT}>
-              {hint}
-            </span>
-          </>
-        )}
-      </span>
-      <span
-        aria-hidden='true'
-        className={cn(
-          'relative h-5 w-9 shrink-0 rounded-full transition-colors',
-          checked ? 'bg-primary' : 'bg-secondary ring-1 ring-border'
-        )}>
-        <span
-          className={cn(
-            'absolute top-0.5 left-0.5 size-4 rounded-full bg-white shadow transition-transform motion-reduce:transition-none',
-            checked && 'translate-x-4'
-          )}
-        />
       </span>
     </button>
   )

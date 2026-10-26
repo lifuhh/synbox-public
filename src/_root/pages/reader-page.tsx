@@ -22,13 +22,14 @@ import {
   LayersPanel,
   ReaderButton,
   TypeBar,
+  useTextLines,
+  useVideoColor,
 } from '@/components/offline/reader-controls'
 import { useSyncedLyrics } from '@/components/offline/use-synced-lyrics'
 import { useThemeColor } from '@/hooks/use-theme-color'
 import {
   READER_SIZES,
-  accentColor,
-  colorHue,
+  readerColor,
   readerPrefsAtom,
 } from '@/lib/offline/reader-prefs'
 import type { OfflineLine, OfflineSong } from '@/lib/offline/song'
@@ -331,9 +332,12 @@ const ReaderPage = () => {
     setBarsShown(true)
     setPrefs({ mode: prefs.mode === 'synced' ? 'reader' : 'synced' })
   }
+  const show = useTextLines()
+  const video = useVideoColor()
   const readerVars: CssVars = {
     '--reader-accent':
-      accentColor(prefs.theme, colorHue(prefs)) ?? 'var(--reader-fg)',
+      readerColor({ id: prefs.color, prefs, theme: prefs.theme, video }) ??
+      'var(--reader-fg)',
     '--reader-scale': READER_SIZES[prefs.size] ?? 1,
   }
 
@@ -397,7 +401,7 @@ const ReaderPage = () => {
                 // Lines are positional and never reorder
                 // oxlint-disable-next-line no-array-index-key
                 key={index}
-                show={prefs}
+                show={show}
                 line={line}
                 first={index === 0}
                 synced={synced}

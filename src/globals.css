@@ -1108,8 +1108,8 @@
 /* The lyrics under the video on a phone held upright (LyricsPanel as a band): a karaoke window over the song,
    the sung line in the middle and a part of the lines either side fading out at its edges (a sung line with
    its romaji and translation wrapping takes ~220px at 390px wide, so it is about that tall on an iPhone). Holding
-   a line to look around the song selects nothing. The type is the reader's a size up, fixed: Lyrics Style offers
-   no size on an upright phone. Its heights are shares of the area under the video (watch-below). The band is no
+   a line to look around the song selects nothing. The type is the reader's a size up, fixed: Text Style offers
+   no size on the band. Its heights are shares of the area under the video (watch-below). The band is no
    container itself: a size container that changes height every frame has every element in it styled and laid out
    again, about 2,200 boxes per frame for a song's characters, and the growth stuttered */
 @utility watch-lyrics-band {
