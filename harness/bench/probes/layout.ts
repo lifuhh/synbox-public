@@ -227,14 +227,15 @@ export const OPENED_STATES: Record<string, OpenedState[]> = {
       views: ['web', 'pwa-portrait', 'pwa-landscape'],
     },
     {
-      // Lyrics Style: a popover by the rail with a mouse, a dialog in the middle of a touch screen. Upright and
-      // on the web the rail sits under the video, always there
+      // Lyrics Style: a popover by the rail under the video on the wide watch page. Only there: a narrow watch page
+      // draws no lyrics over its video, and its rail is losing the lyrics toggles and Lyrics Style (feat/text-style).
+      // The full-screen player's rail keeps them (style-floating, lock-landscape-style)
       name: 'style',
       steps: [
         { press: { name: 'Lyrics Style', role: 'button' } },
         { shows: { name: 'Lyrics Style', role: 'dialog' } },
       ],
-      views: ['web', 'pwa-portrait'],
+      views: ['web'],
     },
     {
       // On its side the rail floats over the video and shows with the controls
