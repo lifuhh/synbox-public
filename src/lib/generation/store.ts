@@ -572,14 +572,33 @@ const send = (command: Command) => {
   shared.send(command)
 }
 
-// Adds a generation and opens the panel on it, so every start shows where it went (the owner, 2026-10-26: songs
-// added while others run included). A song already generating is picked instead, and this returns false.
-// `stayed`: no input elsewhere since the press that started it; a listener who moved on gets no panel
+// Whether a start opens the panel by itself: never once the listener moved on (`stayed` false). A song started from
+// a link field is one deliberate song, so it opens it every time (`'always'`, the owner, 2026-10-26). One picked
+// from a list (`'first'`) opens it only as the first song in progress, or when pressed while already going: a song
+// added while others run shows on the ring's count, so picking several in a row doesn't cover the list each time
+export type PanelOpening = 'always' | 'first'
+export const opensPanel = (
+  jobs: readonly Job[],
+  videoId: string,
+  stayed: boolean,
+  opening: PanelOpening
+) =>
+  stayed &&
+  (opening === 'always' ||
+    !jobs.some(isActive) ||
+    jobs.some((job) => isActive(job) && job.videoId === videoId))
+
+// Adds a generation, and opens the panel on it when `opensPanel` says so. A song already generating is picked
+// instead, and this returns false. `stayed`: no input elsewhere since the press that started it
 export const startGeneration = (
   request: GenerationRequest,
-  { stayed = true }: { stayed?: boolean } = {}
+  {
+    stayed = true,
+    opening = 'first',
+  }: { stayed?: boolean; opening?: PanelOpening } = {}
 ): boolean => {
-  const expanded = state.expanded || stayed
+  const expanded =
+    state.expanded || opensPanel(state.jobs, request.videoId, stayed, opening)
   const same = state.jobs.find(
     (job) => isActive(job) && job.videoId === request.videoId
   )
@@ -614,7 +633,8 @@ export const startGeneration = (
 // press on a song already being checked does nothing (`'checking'`): the first press's answer starts it
 export const requestGeneration = async (
   request: GenerationRequest,
-  stayed: () => boolean = () => true
+  stayed: () => boolean = () => true,
+  opening: PanelOpening = 'first'
 ): Promise<Refusal | 'checking' | null> => {
   const { videoId } = request
   if (state.checking.includes(videoId)) {
@@ -639,11 +659,11 @@ export const requestGeneration = async (
     }
     startGeneration(
       { ...request, title: request.title ?? video.title ?? undefined },
-      { stayed: stayed() }
+      { opening, stayed: stayed() }
     )
     return null
   }
-  startGeneration(request, { stayed: stayed() })
+  startGeneration(request, { opening, stayed: stayed() })
   return null
 }
 

@@ -33,7 +33,7 @@ export const useFieldGeneration = (onStarted: () => void) => {
     setSubmission({ kind: 'checking' })
     const outcome = await startFromButton(
       { mode: 'new', videoId },
-      { announce: false, quiet: true }
+      { announce: false, opening: 'always', quiet: true }
     )
     pressed.current = false
     if (outcome.kind === 'refused') {

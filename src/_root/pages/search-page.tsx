@@ -206,7 +206,10 @@ const LinkedVideo = ({ videoId }: { videoId: string }) => {
         gap='sm'
         className='self-start touch:h-11'
         onClick={() => {
-          void startFromButton({ mode: 'new', title, videoId })
+          void startFromButton(
+            { mode: 'new', title, videoId },
+            { opening: 'always' }
+          )
         }}>
         <SparklesIcon aria-hidden className='size-4 shrink-0' />
         Generate Lyrics

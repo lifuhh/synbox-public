@@ -6,6 +6,7 @@ import {
   generationPhase,
   getGenerationState,
   leadJob,
+  opensPanel,
   MAX_RUNNING,
   requestGeneration,
   setGenerationExpanded,
@@ -197,17 +198,36 @@ test('the ring follows the song that started running first, then the one further
   expect(leadJob([jobAt(6, 10, failed, 0.5)], 1000)).toBeNull()
 })
 
-test('a song started while another runs opens the panel on the new song', () => {
+test('a start from a link field opens the panel on its song every time; one from a list only for the first song going', () => {
+  const running = jobAt(1, 10, RUNNING, 0.2)
+  const done = {
+    at: 0,
+    code: undefined,
+    kind: 'failed',
+    message: '',
+    retry: true,
+  } as const
+  // From a list: the first song in progress, or a press on one already going
+  expect(opensPanel([], 'a', true, 'first')).toBe(true)
+  expect(opensPanel([jobAt(2, 10, done)], 'a', true, 'first')).toBe(true)
+  expect(opensPanel([running], 'a', true, 'first')).toBe(false)
+  expect(opensPanel([running], running.videoId, true, 'first')).toBe(true)
+  // The listener moved on while the backend answered
+  expect(opensPanel([], 'a', false, 'always')).toBe(false)
+
+  // From a link field, while another song runs: the panel opens on the new song
   startGeneration({ mode: 'new', videoId: 'p'.repeat(11) })
   setGenerationExpanded(false)
-  startGeneration({ mode: 'new', videoId: 'q'.repeat(11) })
+  startGeneration(
+    { mode: 'new', videoId: 'q'.repeat(11) },
+    { opening: 'always' }
+  )
   const { expanded, focusedId, jobs } = getGenerationState()
   expect(expanded).toBe(true)
   expect(jobs.find((job) => job.id === focusedId)?.videoId).toBe('q'.repeat(11))
-
-  // The listener moved on while the backend answered: no panel
+  // ...and from a list it stays closed
   setGenerationExpanded(false)
-  startGeneration({ mode: 'new', videoId: 'r'.repeat(11) }, { stayed: false })
+  startGeneration({ mode: 'new', videoId: 'r'.repeat(11) })
   expect(getGenerationState().expanded).toBe(false)
 })
 

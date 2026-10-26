@@ -4,7 +4,7 @@ import { GoogleMark } from '@/components/shared/google-mark'
 import { ToastAction } from '@/components/ui/toast'
 import { toast } from '@/components/ui/use-toast'
 import { signInWithGoogle, SIGN_IN_CODES } from '@/lib/auth'
-import type { GenerationRequest } from '@/lib/generation/store'
+import type { GenerationRequest, PanelOpening } from '@/lib/generation/store'
 import { requestGeneration } from '@/lib/generation/store'
 import type { Refusal } from '@/lib/generation/stream'
 
@@ -42,13 +42,15 @@ export type StartOutcome =
 
 // Starts a generation from a button, or says at once why it can't start. Until the checks answer, a notice
 // says the press was taken, unless the button shows that itself (`announce: false`). A refusal shows as a notice
-// unless the caller shows it where it was pressed (`quiet: true`)
+// unless the caller shows it where it was pressed (`quiet: true`). `opening`: when the panel opens on the song
+// (store.ts › opensPanel); a link field's start passes `'always'`
 export const startFromButton = async (
   request: GenerationRequest,
   {
     announce = true,
     quiet = false,
-  }: { announce?: boolean; quiet?: boolean } = {}
+    opening = 'first',
+  }: { announce?: boolean; quiet?: boolean; opening?: PanelOpening } = {}
 ): Promise<StartOutcome> => {
   let notice: ReturnType<typeof toast> | undefined
   const timer = announce
@@ -68,9 +70,11 @@ export const startFromButton = async (
       }, STARTING_NOTICE_DELAY_MS)
     : undefined
   const watch = watchStay()
-  const refusal = await requestGeneration(request, watch.stayed).finally(
-    watch.stop
-  )
+  const refusal = await requestGeneration(
+    request,
+    watch.stayed,
+    opening
+  ).finally(watch.stop)
   clearTimeout(timer)
   // Started, or a second press while the first is still being checked
   if (refusal === null || refusal === 'checking') {
