@@ -58,37 +58,49 @@ const LinkRow = ({
   </Link>
 )
 
-// Under the name: what signing in is for, the songs left today, or the email of a Worker without them
-const accountLine = (
-  user: { email: string } | null,
-  quota: Quota | undefined
-) => {
-  if (user === null) {
-    return 'Browsing stays free for everyone'
-  }
-  return quota === undefined ? user.email : songsLeftText(quota)
-}
+// A text button inside a line of text: its press area reaches 8px above and below the line
+const INLINE_ACTION =
+  "relative font-medium text-foreground underline underline-offset-4 after:absolute after:-inset-x-1 after:-inset-y-2 after:content-['']"
 
-// Where the latest request stands, and Request More: a quiet second step for an account on a daily number with no
-// request waiting. Nothing at all for an admin
-const MoreSongs = ({ quota }: { quota: Quota }) => {
+// Under the name: the songs left today with Request More beside it (a quiet second step, for an account on a daily
+// number with no request waiting; none for an admin), then where the latest request stands. For a guest, what
+// signing in is for
+const AccountLines = ({
+  user,
+  quota,
+}: {
+  user: { email: string } | null
+  quota: Quota | undefined
+}) => {
+  if (user === null || quota === undefined) {
+    return (
+      <p className='text-sm text-pretty text-muted-foreground'>
+        {user === null ? 'Browsing stays free for everyone' : user.email}
+      </p>
+    )
+  }
   const request = requestText(quota.request)
   const canRequest = quota.limit !== null && quota.request?.status !== 'open'
-  if (request === null && !canRequest) {
-    return null
-  }
   return (
-    <div className='flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-sm'>
-      {request !== null && <p className='text-muted-foreground'>{request}</p>}
-      {canRequest && (
-        <Button
-          variant='ghost-subtle'
-          className='-mx-3'
-          onClick={openRequestMore}>
-          Request More
-        </Button>
+    <>
+      <p className='text-sm text-pretty text-muted-foreground'>
+        {songsLeftText(quota)}
+        {canRequest && (
+          <>
+            {' · '}
+            <button
+              type='button'
+              onClick={openRequestMore}
+              className={INLINE_ACTION}>
+              Request More
+            </button>
+          </>
+        )}
+      </p>
+      {request !== null && (
+        <p className='text-sm text-pretty text-muted-foreground'>{request}</p>
       )}
-    </div>
+    </>
   )
 }
 
@@ -131,13 +143,10 @@ const YouPage = () => {
               <p className='truncate font-medium text-foreground'>
                 {user ? user.name : 'Sign In to Add Songs'}
               </p>
-              <p className='text-sm text-pretty text-muted-foreground'>
-                {accountLine(user, quota)}
-              </p>
+              <AccountLines user={user} quota={quota} />
             </div>
           </div>
           {user === null && <BenefitList />}
-          {user !== null && quota !== undefined && <MoreSongs quota={quota} />}
           {user ? (
             <Button
               variant='outline'

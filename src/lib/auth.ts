@@ -150,18 +150,24 @@ export const SIGN_IN_CODES = new Set(['sign_in_required'])
 const plural = (n: number, one: string, many: string) =>
   `${n} ${n === 1 ? one : many}`
 
-// The quiet counter where songs are added (You page, account menu): "3 Songs Left Today"
-export const songsLeftText = (quota: Quota) =>
-  quota.limit === null
-    ? 'Unlimited Songs'
-    : `${plural(Math.max(quota.limit - quota.used, 0), 'Song', 'Songs')} Left Today`
-
 // When an account has added today's songs: what it did, and when more come. The day ends at the account's own
 // midnight, so "midnight" is exact
 export const songsDoneText = (quota: Quota) =>
   quota.limit === null || quota.limit === 0
     ? 'More at midnight'
     : `That's ${plural(quota.limit, 'song', 'songs')} today. More at midnight`
+
+// The quiet counter where songs are added (You page, account menu): "3 Songs Left Today", and once they're added,
+// when more come rather than a zero
+export const songsLeftText = (quota: Quota) => {
+  if (quota.limit === null) {
+    return 'Unlimited Songs'
+  }
+  const left = quota.limit - quota.used
+  return left > 0
+    ? `${plural(left, 'Song', 'Songs')} Left Today`
+    : songsDoneText(quota)
+}
 
 // Where the account's latest request stands, for the You page; null when there's nothing to say
 export const requestText = (request: SongRequest | null | undefined) => {
