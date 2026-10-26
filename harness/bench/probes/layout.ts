@@ -630,9 +630,9 @@ const stepName = (step: Step): string => {
 /**
  * Buttons in an open dialog, menu or popover that don't line up (owner, 2026-10-26: Lyrics Style's Reset Positions
  * and Save Current Style sat staggered on two rows): two side by side whose centre lines differ by more than 1px,
- * and two rows next to each other that share neither a leading nor a trailing edge (one at the start of a row, the
- * other at the end of the next: a staggered pair, not a layout). Runs in the page; the page's own axes on a page
- * turned by Lock Landscape
+ * and two rows next to each other that share neither a leading nor a trailing edge and overlap across by less than
+ * half the narrower (one at the start of a row, the other at the end of the next: a staggered pair, not a layout).
+ * Runs in the page; the page's own axes on a page turned by Lock Landscape
  */
 const staggeredActions = (): string[] => {
   const turned = Object.hasOwn(
@@ -695,7 +695,14 @@ const staggeredActions = (): string[] => {
       const sharesEdge =
         Math.abs(start(upper) - start(lower)) <= 1 ||
         Math.abs(end(upper) - end(lower)) <= 1
-      if (gap < 24 && !sharesEdge) {
+      // Rows that mostly lie across each other (a full-width button over a switch row) are stacked, not staggered
+      const overlap =
+        Math.min(end(upper), end(lower)) - Math.max(start(upper), start(lower))
+      const narrower = Math.min(
+        end(upper) - start(upper),
+        end(lower) - start(lower)
+      )
+      if (gap < 24 && !sharesEdge && overlap < narrower / 2) {
         found.push(
           `staggered rows: ${upper.map((b) => b.label).join(' | ')} / ${lower.map((b) => b.label).join(' | ')}`
         )
