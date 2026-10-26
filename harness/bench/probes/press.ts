@@ -322,6 +322,21 @@ const tryPress = async (
       }
       state.changes = []
       const { href } = location
+      // What's typed in each field: a control that empties or fills one acted, whatever else it shows
+      // oxlint-disable-next-line unicorn/consistent-function-scoping -- runs in the page: nothing outside this function is there
+      const typed = () =>
+        [...document.querySelectorAll('input,textarea')].map((f) =>
+          f instanceof HTMLInputElement || f instanceof HTMLTextAreaElement
+            ? `${f.getAttribute('aria-label') ?? f.name}=${f.value}`
+            : ''
+        )
+      let fieldsBefore = typed()
+      const fieldChanges = () => {
+        const now = typed()
+        const changed = now.filter((v, i) => v !== fieldsBefore[i])
+        fieldsBefore = now
+        return changed.map((v) => `field ${v.replace(/[=].*$/su, '')} changed`)
+      }
       const r = el.getBoundingClientRect()
       const x = r.left + r.width / 2
       const y = r.top + r.height / 2
@@ -419,7 +434,7 @@ const tryPress = async (
         send(el, mouse('mousedown', x, y))
       }
       await wait(after)
-      const press = fresh()
+      const press = [...fresh(), ...fieldChanges()]
       if (location.href !== href) {
         press.push(`navigated to ${location.pathname}${location.search}`)
       }
@@ -442,7 +457,7 @@ const tryPress = async (
         send(out, mouse('mouseup', lift.x, lift.y))
       }
       await wait(after)
-      const release = fresh()
+      const release = [...fresh(), ...fieldChanges()]
       if (
         location.href !== href &&
         !press.some((c) => c.startsWith('navigated'))
@@ -475,6 +490,11 @@ export const pressValues = (f: PressFindings) => ({
   badPressOk: f.badPressOk.length,
   pressTested: f.tested,
 })
+
+/** Any press may dismiss what is open (a menu, a list): closing a transient is allowed on the press, by the table. A
+ * field the press empties or fills still counts (tryPress' field changes) */
+const closes = (change: string) =>
+  / (?:aria-expanded true → false|data-state open → closed)$/u.test(change)
 
 /** Why a control's `data-press-ok` is wrong (it acts, or gives no reason), or null */
 const misusedPressOk = (c: Candidate): string | null => {
@@ -539,22 +559,20 @@ export const pressScan = async (
         if (end === ends[0]) {
           findings.tested += 1
         }
-        // With a mouse, a menu or list trigger may open on the press (press, drag, release picks an item)
-        // ...and opening it may close another open popup (the search list loses focus to the menu): a dismissal
+        // With a mouse, a menu or list trigger may also open on the press (press, drag, release picks an item)
         const popupOpens = (change: string) =>
           /^opened (?:menu|listbox|dialog) /u.test(change) ||
-          / (?:aria-expanded true → false|data-state open → closed)$/u.test(
-            change
-          ) ||
           (change.startsWith(`${c.label} `) &&
             /^ (?:aria-expanded|data-state) /u.test(
               change.slice(c.label.length)
             ))
-        const onPress =
-          !touch && c.popup
-            ? tried.press.filter((ch) => !popupOpens(ch))
-            : tried.press
-        const afterLift = [...tried.release, ...writes]
+        const allowed = (change: string) =>
+          closes(change) || (!touch && c.popup && popupOpens(change))
+        const onPress = tried.press.filter((ch) => !allowed(ch))
+        const afterLift = [
+          ...tried.release.filter((ch) => !closes(ch)),
+          ...writes,
+        ]
         const onPressNote = `${input}: ${c.label} → ${onPress.join('; ')}`
         // Each control once: a phone presses it twice (then a scroll, then a slide off)
         if (onPress.length > 0 && !findings.actsOnPress.includes(onPressNote)) {
