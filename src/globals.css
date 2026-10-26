@@ -2579,19 +2579,20 @@ html[data-transition='flip']::view-transition-new(root) {
   }
 }
 
-/* Home's refresh (landing-page/home-refresh.tsx): the page slides down to show a spinner under the top bar while its
-   lists refresh, then back. A transform only, so nothing lays out mid-slide; reduced motion keeps the spinner's fade */
+/* A tab page's refresh (shared/page-refresh.tsx: Home, Library): the page slides down to show a spinner under the top
+   bar while it refreshes, then back. A transform only, so nothing lays out mid-slide; reduced motion keeps the
+   spinner's fade */
 @media (prefers-reduced-motion: no-preference) {
-  [data-home-page] {
+  [data-refresh-page] {
     transition: translate 320ms var(--ease-out);
   }
 
-  [data-home-page][data-refreshing] {
+  [data-refresh-page][data-refreshing] {
     translate: 0 3.5rem;
   }
 }
 
-.home-refresh-spinner {
+.page-refresh-spinner {
   position: fixed;
   /* Over the page, under the top scrim (z-40) and the bar */
   z-index: 30;

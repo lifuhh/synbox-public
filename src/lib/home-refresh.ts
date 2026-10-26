@@ -1,25 +1,42 @@
-// Home's refresh. Tapping Home at the top (tab-bar.tsx), with no update waiting, asks the landing page to refresh
-// its three lists; the page draws the pull-down spinner while it does (home-refresh.tsx)
+// A tab page's refresh. Tapping its dock tab at the top (tab-bar.tsx), with no update waiting, asks the page showing
+// under that tab to refresh; the page draws the pull-down spinner while it does (page-refresh.tsx). Home and Library
+// take it
+import { scrollMotion } from '@/lib/reduced-motion'
 
-let listener: (() => void) | null = null
+const listeners = new Map<string, () => void>()
 
-// The landing page takes the requests while it shows
-export const onHomeRefresh = (next: () => void) => {
-  listener = next
+// The page at `path` takes the requests while it shows
+export const onPageRefresh = (path: string, next: () => void) => {
+  listeners.set(path, next)
   return () => {
-    if (listener === next) {
-      listener = null
+    if (listeners.get(path) === next) {
+      listeners.delete(path)
     }
   }
 }
 
-// False when Home isn't showing to take it
-export const requestHomeRefresh = () => {
-  if (listener === null) {
+// False when no page at `path` is showing to take it
+export const requestPageRefresh = (path: string) => {
+  const listener = listeners.get(path)
+  if (listener === undefined) {
     return false
   }
   listener()
   return true
+}
+
+// What pressing the button for the page already showing does where there is no dock tab (the top bar's Library
+// button on the Library page): at its top the page refreshes, else it goes back to the top. False when no page at
+// `path` takes it
+export const refreshOrScrollUp = (path: string) => {
+  const scroller =
+    document.querySelector<HTMLElement>('[data-scroll-top]') ??
+    document.scrollingElement
+  if ((scroller?.scrollTop ?? 0) > 2) {
+    scroller?.scrollTo({ behavior: scrollMotion(), top: 0 })
+    return true
+  }
+  return requestPageRefresh(path)
 }
 
 // The lists are fetched again at most this often, however often Home is tapped; between, the recommendations
