@@ -5,25 +5,28 @@ import { z } from 'zod'
 
 import { syncedStorage } from '@/lib/prefs/storage'
 
-// How the offline reader looks, kept on this device. Separate from the player's lyrics style: a page of
-// text wants different sizes and colours from lyrics over a video
+// Text Style: how lyrics look on a page (the watch page's Lyrics panel, the band under the video on an upright
+// phone, the reader). Separate from Lyrics Style, which styles the lyrics over the video: a page of text wants
+// different sizes, colours and lines from lyrics over a picture. The translation's language is one setting for
+// both (translationIsEnglishAtom)
 export const READER_SIZES = [0.85, 1, 1.15, 1.3, 1.5, 1.75] as const
 
-// The Japanese line's colour. Ink is the page's own text colour; the rest are hues, drawn lighter on the
-// dark page and darker on the light one so they read on both
+// The Japanese line's colour. Video is the Lyrics Style colour, so the page matches the video until the
+// viewer picks another; Ink is the page's own text colour; the rest are hues, drawn lighter on the dark page
+// and darker on the light one so they read on both. No blue: Video is Frost's pale blue by default, and Sky beside
+// it read as the same choice (a saved `sky` falls back to Video)
 export const READER_COLORS = [
+  { hue: null, id: 'video', label: 'Video' },
   { hue: null, id: 'ink', label: 'Ink' },
   { hue: 10, id: 'rose', label: 'Rose' },
   { hue: 75, id: 'amber', label: 'Amber' },
-  { hue: 235, id: 'sky', label: 'Sky' },
 ] as const
 
 const readerPrefsSchema = z.object({
   bold: z.boolean().catch(false),
-  color: z.enum(['ink', 'rose', 'amber', 'sky', 'custom']).catch('ink'),
+  color: z.enum(['video', 'ink', 'rose', 'amber', 'custom']).catch('video'),
   hue: z.number().min(0).max(360).catch(300),
   japanese: z.boolean().catch(true),
-  language: z.enum(['en', 'zh']).catch('en'),
   // Synced plays the lyrics on a silent clock, Spotify style; reader is the plain page
   mode: z.enum(['synced', 'reader']).catch('synced'),
   romaji: z.boolean().catch(true),
@@ -38,6 +41,7 @@ const readerPrefsSchema = z.object({
 })
 export type ReaderPrefs = z.infer<typeof readerPrefsSchema>
 export type ReaderTheme = ReaderPrefs['theme']
+export type ReaderColor = ReaderPrefs['color']
 export type ReaderLayer = 'japanese' | 'romaji' | 'translation'
 
 // Synced to a signed-in account like the lyrics style (src/lib/prefs)
@@ -63,13 +67,28 @@ export const readerPrefsAtom = atom(
   }
 )
 
-export const colorHue = (prefs: ReaderPrefs) =>
-  prefs.color === 'custom'
+const colorHue = (prefs: ReaderPrefs, id: ReaderColor) =>
+  id === 'custom'
     ? prefs.hue
-    : (READER_COLORS.find((color) => color.id === prefs.color)?.hue ?? null)
+    : (READER_COLORS.find((color) => color.id === id)?.hue ?? null)
 
-// The Japanese line's colour on this page, or null for the page's text colour
-export const accentColor = (theme: ReaderTheme, hue: number | null) => {
+// A colour on a dark or light page, or null for the page's text colour. The Lyrics Style colour (`video`) is
+// drawn for the dark video, so a light page keeps its hue at the page's own lightness
+export const readerColor = ({
+  id,
+  prefs,
+  theme,
+  video,
+}: {
+  id: ReaderColor
+  prefs: ReaderPrefs
+  theme: ReaderTheme
+  video: string
+}) => {
+  if (id === 'video') {
+    return theme === 'dark' ? video : `oklch(from ${video} 0.45 0.14 h)`
+  }
+  const hue = colorHue(prefs, id)
   if (hue === null) {
     return null
   }

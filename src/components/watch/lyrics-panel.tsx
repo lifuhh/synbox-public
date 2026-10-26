@@ -1,18 +1,13 @@
-import { useAtomValue, useSetAtom } from 'jotai'
-import {
-  LocateFixedIcon,
-  Maximize2Icon,
-  Minimize2Icon,
-  PaletteIcon,
-} from 'lucide-react'
+import { useAtomValue } from 'jotai'
+import { LocateFixedIcon, Maximize2Icon, Minimize2Icon } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 
 import type { KaraokeLineHandle } from '@/components/lyrics-display/karaoke-line'
-import type { LineShow } from '@/components/offline/lyric-line-block'
 import {
   linePhase,
   LyricLineBlock,
 } from '@/components/offline/lyric-line-block'
+import { useTextLines } from '@/components/offline/reader-controls'
 import { useLyricsFollow } from '@/components/offline/use-lyrics-follow'
 import { lineReached } from '@/components/offline/use-silent-playback'
 import {
@@ -24,19 +19,11 @@ import { Button } from '@/components/ui/button'
 import {
   chartSongAtom,
   currentVideoAtom,
-  lyricsCustomHueAtom,
-  lyricsStylePanelAtom,
-  lyricsThemeIdAtom,
-  lyricsVisibilityAtom,
-  romajiVisibilityAtom,
   stageClockAtom,
-  translationIsEnglishAtom,
-  translationVisibilityAtom,
 } from '@/context/atoms'
 import { currentLineIndex, karaokeMatchesLyrics } from '@/lib/karaoke'
 import { RateLimitedError } from '@/lib/lyrics-api'
 import { parseLyricsDocument } from '@/lib/lyrics-document'
-import { getLyricsThemeColors } from '@/lib/lyrics-themes'
 import type { OfflineLine } from '@/lib/offline/song'
 import { offlineLines } from '@/lib/offline/song'
 import {
@@ -48,6 +35,7 @@ import type { CssVars } from '@/types'
 import { cn } from '@/utils/cn'
 
 import { GenerateLyricsButton } from './generate-lyrics-button'
+import { TextStyleButton, useTextStyle } from './text-style'
 
 // A clock that jumps further than this between frames was seeked (from the video, the bar or a key)
 const SEEK_JUMP_SEC = 1.5
@@ -124,29 +112,20 @@ const scrollerLook = (band: boolean, empty: boolean) => {
   return 'watch-lyrics-band-scroller overflow-y-auto'
 }
 
-// The band's own corner: Expand while small; Lyrics Style and Minimize while expanded, when the rail's
-// Lyrics Style is out of sight under it
-const BandCorner = ({
+// The panel's corner when it has no header (the band, the panel under a narrow video): Text Style, and on the band
+// Expand or Minimize. Kept 8px apart, each a 44px target on touch
+const PanelCorner = ({
+  band,
   expanded,
   onExpandedChange,
 }: {
+  band: boolean
   expanded: boolean
-  onExpandedChange: (expanded: boolean) => void
-}) => {
-  const setStylePanel = useSetAtom(lyricsStylePanelAtom)
-  return (
-    <div className='absolute top-1.5 right-1.5 z-10 flex gap-1'>
-      {expanded && (
-        <Button
-          variant='surface-icon'
-          size='icon'
-          aria-label='Lyrics Style'
-          onClick={() => {
-            setStylePanel('pinned')
-          }}>
-          <PaletteIcon className='size-5' />
-        </Button>
-      )}
+  onExpandedChange: ((expanded: boolean) => void) | null
+}) => (
+  <div className='absolute top-1.5 right-1.5 z-10 flex gap-2'>
+    <TextStyleButton corner sized={!band} />
+    {onExpandedChange !== null && (
       <Button
         variant='surface-icon'
         size='icon'
@@ -154,22 +133,23 @@ const BandCorner = ({
         aria-expanded={expanded}
         onClick={() => {
           onExpandedChange(!expanded)
-        }}>
+        }}
+        className='touch:size-11'>
         {expanded ? (
           <Minimize2Icon className='size-5' />
         ) : (
           <Maximize2Icon className='size-5' />
         )}
       </Button>
-    </div>
-  )
-}
+    )}
+  </div>
+)
 
 // The whole song beside or under the video: the line being sung lights up and fills as it is sung, the panel
-// follows it until the viewer scrolls, and a tap on a line plays from there. The same toggles as the
-// player's rail choose the rows.
+// follows it until the viewer scrolls, and a tap on a line plays from there. Text Style (its header's button, or
+// its corner's without a header) chooses the rows, the colour and the size, apart from Lyrics Style over the video.
 // As a band (under the video on a phone held upright) it is a karaoke window instead: the sung line centred at
-// the Lyrics Style size, the lines either side fading out at its edges, and a tap expands it to fill the screen
+// one fixed size, the lines either side fading out at its edges, and a tap expands it to fill the screen
 // under the video, never a seek. Expanded, holding and scrolling reads elsewhere until Current Line or a seek,
 // while the song plays on
 // What the panel says instead of lines: '' while they load, null when it has lines to show
@@ -246,12 +226,7 @@ const useBandSize = ({
   const expandTap = useExpandTap(sizable, () => {
     resize(!expanded)
   })
-  return {
-    corner: sizable ? (
-      <BandCorner expanded={expanded} onExpandedChange={resize} />
-    ) : null,
-    expandTap,
-  }
+  return { expandTap, resize: sizable ? resize : null }
 }
 
 export const LyricsPanel = ({
@@ -278,19 +253,13 @@ export const LyricsPanel = ({
 }) => {
   const { limited, lines, loading } = useSongLines(videoId, version)
   const clock = useAtomValue(stageClockAtom)
-  // The Japanese and the karaoke fill take the lyrics colour (Lyrics Style), as the lyrics over the video do
-  const { accent } = getLyricsThemeColors(
-    useAtomValue(lyricsThemeIdAtom),
-    useAtomValue(lyricsCustomHueAtom)
-  )
-  const sheetVars: CssVars = { '--reader-accent': accent }
-  const show: LineShow = {
-    bold: false,
-    japanese: useAtomValue(lyricsVisibilityAtom),
-    language: useAtomValue(translationIsEnglishAtom) ? 'en' : 'zh',
-    romaji: useAtomValue(romajiVisibilityAtom),
-    translation: useAtomValue(translationVisibilityAtom),
+  // Text Style's lines, colour and size, not the video's (the band keeps its own size: watch-lyrics-band-scroller)
+  const { accent, scale } = useTextStyle()
+  const sheetVars: CssVars = {
+    '--reader-accent': accent,
+    '--reader-scale': scale,
   }
+  const show = useTextLines()
 
   const [active, setActive] = useState(-1)
   // The last line reached, which stays lit and followed through an instrumental gap; -1 before the first
@@ -357,7 +326,7 @@ export const LyricsPanel = ({
     limited,
     loading,
   })
-  const { corner, expandTap } = useBandSize({
+  const { expandTap, resize } = useBandSize({
     band,
     expanded,
     follow,
@@ -380,14 +349,22 @@ export const LyricsPanel = ({
         band ? 'watch-lyrics-band text-center' : !heading && 'pt-3',
         className
       )}>
-      {heading && (
-        <header className='flex h-12 shrink-0 items-center ps-4 pe-2'>
+      {heading ? (
+        // Text Style leads, at the panel's edge by the video, so its popover opens out over the video and leaves
+        // the lines it changes in view
+        <header className='flex h-12 shrink-0 items-center gap-1 ps-1 pe-4'>
+          <TextStyleButton />
           <h2 id='lyrics-panel-title' className='text-base font-semibold'>
             Lyrics
           </h2>
         </header>
+      ) : (
+        <PanelCorner
+          band={band}
+          expanded={expanded}
+          onExpandedChange={resize}
+        />
       )}
-      {corner}
       {/* Over the panel's foot, in thumb reach, while the viewer reads elsewhere in the song */}
       {!following && empty === null && (
         <div className='pointer-events-none absolute inset-x-0 bottom-3 z-10 flex justify-center'>
