@@ -57,11 +57,16 @@ const LibraryMenu = () => {
         variant='floating'
         aria-label='Library'
         onOpenAutoFocus={(event) => {
-          // The search field takes focus with a keyboard at hand; on a phone it would pull the keyboard up
-          // over the list, so the panel itself takes it (a screen reader starts there)
+          // The search field takes focus with a keyboard at hand (it sits under the tabs, so not the first
+          // control); on a phone it would pull the keyboard up over the list, so the panel itself takes it (a
+          // screen reader starts there)
+          event.preventDefault()
           if (matchMedia('(pointer: coarse)').matches) {
-            event.preventDefault()
             panel.current?.focus({ preventScroll: true })
+          } else {
+            panel.current
+              ?.querySelector<HTMLInputElement>('input[type=search]')
+              ?.focus({ preventScroll: true })
           }
         }}
         className='flex max-h-[min(38rem,calc(var(--radix-popover-content-available-height)-var(--safe-bottom)))] w-[min(28rem,calc(100vw-1rem-var(--safe-left)-var(--safe-right)))] flex-col overflow-hidden'>
