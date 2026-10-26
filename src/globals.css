@@ -298,7 +298,10 @@
     var(--page-end) + var(--safe-bottom) + var(--tabbar-h)
   );
   --spacing-page-bottom-lg: calc(4rem + var(--safe-bottom) + var(--tabbar-h));
-  --spacing-controls-bottom: max(var(--controls-bottom-min, 0.75rem), var(--safe-bottom));
+  --spacing-controls-bottom: max(
+    var(--controls-bottom-min, 0.75rem),
+    var(--safe-bottom)
+  );
   --spacing-controls-left: max(1rem, var(--safe-left));
   --spacing-controls-right: max(1rem, var(--safe-right));
   --spacing-controls-rail: calc(var(--safe-left) + 3.5rem);
