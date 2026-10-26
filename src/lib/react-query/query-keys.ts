@@ -12,6 +12,7 @@ export enum QUERY_KEYS {
   GET_SIMILAR_SONGS = 'getSimilarSongs',
   GET_KARAOKE_BY_ID = 'getKaraokeById',
   GET_ME = 'getMe',
+  GET_GUEST_SONG = 'getGuestSong',
   GET_ADMIN_USERS = 'getAdminUsers',
   GET_ADMIN_SETTINGS = 'getAdminSettings',
   GET_ADMIN_GENERATIONS = 'getAdminGenerations',

@@ -26,7 +26,8 @@ import {
 import { homeSearchFieldAtom } from '@/context/atoms'
 import { useMediaQuery } from '@/hooks/use-media-query'
 import { openRequestMore } from '@/lib/account-prompts'
-import { songsDoneText, useAccess } from '@/lib/auth'
+import type { Access } from '@/lib/auth'
+import { signInWithGoogle, songsDoneText, useAccess } from '@/lib/auth'
 import { useGetLyricsBySongId } from '@/lib/react-query/queries-and-mutations'
 import { BAD_LINK, readFieldText } from '@/utils'
 import { cn } from '@/utils/cn'
@@ -56,6 +57,34 @@ const getInputMode = (
     return 'search'
   }
   return isValidLink ? 'valid' : 'invalid'
+}
+
+interface SongNote {
+  text: string
+  action: { label: string; handleClick: () => void }
+}
+
+const signIn = () => {
+  void signInWithGoogle()
+}
+
+// The line under a link that would make a new song, when there's something to say: a guest's one free song, and
+// signing in for more; an account out of today's songs, when more come and Request More
+const newSongNote = (access: Access): SongNote | null => {
+  if (access.kind === 'guest') {
+    return access.ready
+      ? {
+          action: { handleClick: signIn, label: 'Sign In for 5 a Day' },
+          text: access.newSong ? 'Your free song' : 'That’s your free song',
+        }
+      : null
+  }
+  return access.newSong
+    ? null
+    : {
+        action: { handleClick: openRequestMore, label: 'Request More' },
+        text: songsDoneText(access.quota),
+      }
 }
 
 const HeroGenerateLyricsDefault = ({
@@ -97,16 +126,14 @@ const HeroGenerateLyricsDefault = ({
     edited()
   }
 
-  // An account that added today's songs is told when more come instead of offered a song that would be turned
-  // away. A guest keeps Generate Lyrics: pressing it opens the sign-in sheet (start-generation.tsx)
+  // A link that would make a new song: an account that added today's songs is told when more come instead of
+  // offered a song that would be turned away; a guest hears it's their free song, and keeps Generate Lyrics even
+  // once it's spent (the press brings the sign-in sheet, start-generation.tsx)
   const access = useAccess()
-  const blocked =
-    !isSearch &&
-    validationSuccess &&
-    !isCheckingLyrics &&
-    !existingLyrics &&
-    access.kind === 'user' &&
-    !access.newSong
+  const newSong =
+    !isSearch && validationSuccess && !isCheckingLyrics && !existingLyrics
+  const note = newSong ? newSongNote(access) : null
+  const blocked = newSong && access.kind === 'user' && !access.newSong
 
   const handleOpenLandingPageDialog = () => {
     if (ownPath !== null) {
@@ -140,8 +167,8 @@ const HeroGenerateLyricsDefault = ({
     if (existingLyrics) {
       return 'Lyrics Ready'
     }
-    if (blocked && access.kind === 'user') {
-      return songsDoneText(access.quota)
+    if (note !== null) {
+      return note.text
     }
     return validationSuccess ? 'Valid YouTube URL' : ''
   }
@@ -223,19 +250,19 @@ const HeroGenerateLyricsDefault = ({
       <p
         className={cn(
           'text-success',
-          blocked && 'text-muted-foreground',
+          note !== null && 'text-muted-foreground',
           errorMessage !== '' && 'text-error-strong'
         )}>
         {statusMessage()}
-        {blocked && errorMessage === '' && (
+        {note !== null && errorMessage === '' && (
           // The dot and the button wrap together, never a dot left at a line's end
           <span className='whitespace-nowrap'>
             {' · '}
             <button
               type='button'
-              onClick={openRequestMore}
+              onClick={note.action.handleClick}
               className="relative font-semibold text-foreground underline underline-offset-4 after:absolute after:-inset-x-1 after:-inset-y-2 after:content-['']">
-              Request More
+              {note.action.label}
             </button>
           </span>
         )}

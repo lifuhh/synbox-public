@@ -10,7 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { signInWithGoogle } from '@/lib/auth'
+import { signInWithGoogle, useAccess } from '@/lib/auth'
 
 // What an account adds, the same three lines wherever sign-in is offered
 export const SIGN_IN_BENEFITS = [
@@ -35,7 +35,8 @@ export const BenefitList = () => (
   </ul>
 )
 
-// Shown only when a guest presses Generate Lyrics: browsing never asks for anything. One way in, and an easy Not Now
+// Shown only when Generate Lyrics needs an account: a guest whose one free song is spent, or a listener signed out since
+// the page loaded. Browsing never asks for anything. One way in, and an easy Not Now
 export const SignInSheet = ({
   open,
   onOpenChange,
@@ -44,13 +45,19 @@ export const SignInSheet = ({
   onOpenChange: (open: boolean) => void
 }) => {
   const [pending, setPending] = useState(false)
+  const access = useAccess()
+  const spent = access.kind === 'guest' && !access.newSong
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className='max-w-sm'>
         <DialogHeader>
-          <DialogTitle>Sign In to Add Songs</DialogTitle>
+          <DialogTitle>
+            {spent ? 'That’s Your Free Song' : 'Sign In to Add Songs'}
+          </DialogTitle>
           <DialogDescription>
-            Browsing stays free for everyone
+            {spent
+              ? 'Sign in to keep adding songs'
+              : 'Browsing stays free for everyone'}
           </DialogDescription>
         </DialogHeader>
         <BenefitList />

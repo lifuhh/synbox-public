@@ -1,6 +1,7 @@
 // The three generation endpoints of synbox-transcribe-whisper, read as NDJSON streams of {type, data}.
 
 import { backendToken } from '@/lib/auth'
+import { DEVICE_HEADER, deviceTraits } from '@/lib/device-traits'
 import { BE_ADDRESS } from '@/lib/synbox-flask/address'
 import { isKaraokeDoc } from '@/lib/synbox-flask/api'
 import type { KaraokeDoc } from '@/types'
@@ -17,6 +18,12 @@ const VALIDATE_IDLE_MS = 60_000
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null
+
+// Who is asking: an account's token, or for a guest the device traits their one free song is kept by
+const callerHeaders = (token: string | null): Record<string, string> =>
+  token === null
+    ? { [DEVICE_HEADER]: deviceTraits() }
+    : { Authorization: `Bearer ${token}` }
 
 export interface ProgressEvent {
   stage: StageId
@@ -100,7 +107,7 @@ const readStream = async (
         headers: {
           Accept: 'application/x-ndjson',
           'Content-Type': 'application/json',
-          ...(token === null ? {} : { Authorization: `Bearer ${token}` }),
+          ...callerHeaders(token),
         },
         method: 'POST',
         signal: AbortSignal.any([signal, idle.signal, resumed.signal]),
@@ -317,7 +324,7 @@ export const checkGeneration = async (
       body: JSON.stringify(withOrigin({ id: videoId, kind })),
       headers: {
         'Content-Type': 'application/json',
-        ...(token === null ? {} : { Authorization: `Bearer ${token}` }),
+        ...callerHeaders(token),
       },
       method: 'POST',
       // A cold backend takes several seconds to start

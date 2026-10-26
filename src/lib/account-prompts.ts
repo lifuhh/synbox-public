@@ -6,6 +6,14 @@ import { atom, getDefaultStore } from 'jotai'
 export const signInSheetAtom = atom(false)
 export const requestMoreAtom = atom(false)
 
+// This guest's one free song went to a generation just now, or the proxy said it already had: the app knows before
+// the next ask of the proxy answers (auth.ts › useAccess)
+export const guestSongSpentAtom = atom(false)
+
+export const markGuestSongSpent = () => {
+  getDefaultStore().set(guestSongSpentAtom, true)
+}
+
 export const openSignInSheet = () => {
   getDefaultStore().set(signInSheetAtom, true)
 }

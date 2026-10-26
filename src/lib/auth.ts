@@ -1,10 +1,14 @@
 import { useQuery } from '@tanstack/react-query'
 import { adminClient, jwtClient } from 'better-auth/client/plugins'
 import { createAuthClient } from 'better-auth/react'
+import { useAtomValue } from 'jotai'
 import { z } from 'zod'
 
 import { toast } from '@/components/ui/use-toast'
+import { guestSongSpentAtom } from '@/lib/account-prompts'
+import { DEVICE_HEADER, deviceTraits } from '@/lib/device-traits'
 import { QUERY_KEYS } from '@/lib/react-query/query-keys'
+import { BE_ADDRESS } from '@/lib/synbox-flask/address'
 
 // Same origin: Netlify (and the dev server) pass /api/auth/* and /api/me to the auth Worker, so its
 // session cookie is first-party on synbox.io
@@ -115,11 +119,39 @@ export const useMe = () =>
     staleTime: 60_000,
   })
 
-// What the person on the page may do. Browsing is open to everyone; adding songs takes an account. `newSong` is
-// false for a guest, and for an account that added today's songs. `ready` is false until the sign-in check
-// answers; until then everyone looks like a guest
+// Whether this device's one free song is spent (worker/src/guest-song.ts, asked of the generation proxy); null when
+// unknown (no answer, or a local backend without the route), which counts as still there: the press finds out
+const fetchGuestSongUsed = async () => {
+  try {
+    const response = await fetch(`${BE_ADDRESS}/guest-song`, {
+      headers: { [DEVICE_HEADER]: deviceTraits() },
+      method: 'POST',
+    })
+    const body: unknown = await response.json()
+    return typeof body === 'object' &&
+      body !== null &&
+      'used' in body &&
+      typeof body.used === 'boolean'
+      ? body.used
+      : null
+  } catch {
+    return null
+  }
+}
+
+export const useGuestSongUsed = (guest: boolean) =>
+  useQuery({
+    enabled: guest,
+    queryFn: fetchGuestSongUsed,
+    queryKey: [QUERY_KEYS.GET_GUEST_SONG],
+    staleTime: 5 * 60_000,
+  }).data === true
+
+// What the person on the page may do. Browsing is open to everyone; a guest adds one song, ever, and an account
+// a few a day. `newSong` is false for a guest whose song is spent, and for an account that added today's songs.
+// `ready` is false until the sign-in check answers; until then everyone looks like a guest
 export type Access =
-  | { kind: 'guest'; newSong: false; admin: false; ready: boolean }
+  | { kind: 'guest'; newSong: boolean; admin: false; ready: boolean }
   | {
       kind: 'user'
       newSong: boolean
@@ -131,8 +163,11 @@ export type Access =
 export const useAccess = (): Access => {
   const { data, isPending } = useMe()
   const user = data?.user ?? null
+  const guest = !isPending && (user === null || data?.quota === undefined)
+  const asked = useGuestSongUsed(guest)
+  const spent = useAtomValue(guestSongSpentAtom) || asked
   if (user === null || data?.quota === undefined) {
-    return { admin: false, kind: 'guest', newSong: false, ready: !isPending }
+    return { admin: false, kind: 'guest', newSong: !spent, ready: !isPending }
   }
   const { quota } = data
   return {
@@ -145,7 +180,7 @@ export const useAccess = (): Access => {
 }
 
 // Refusals that signing in would fix: the app opens the sign-in sheet for them (account-prompts.ts)
-export const SIGN_IN_CODES = new Set(['sign_in_required'])
+export const SIGN_IN_CODES = new Set(['sign_in_required', 'guest_song_used'])
 
 const plural = (n: number, one: string, many: string) =>
   `${n} ${n === 1 ? one : many}`

@@ -2,7 +2,11 @@ import { LoaderCircleIcon } from 'lucide-react'
 
 import { ToastAction } from '@/components/ui/toast'
 import { toast } from '@/components/ui/use-toast'
-import { openRequestMore, openSignInSheet } from '@/lib/account-prompts'
+import {
+  markGuestSongSpent,
+  openRequestMore,
+  openSignInSheet,
+} from '@/lib/account-prompts'
 import {
   knownGuest,
   knownQuota,
@@ -39,8 +43,8 @@ const watchStay = () => {
   }
 }
 
-// How a press ended: the generation started, the check refused it, the song was already being checked, or a guest
-// was shown the sign-in sheet instead (nothing for the caller to show)
+// How a press ended: the generation started, the check refused it, the song was already being checked, or the
+// sign-in sheet was shown instead (nothing for the caller to show)
 export type StartOutcome =
   | { kind: 'started' }
   | { kind: 'refused'; refusal: Refusal }
@@ -105,11 +109,6 @@ export const startFromButton = async (
     opening = 'first',
   }: { announce?: boolean; quiet?: boolean; opening?: PanelOpening } = {}
 ): Promise<StartOutcome> => {
-  // Adding a song takes an account: a guest gets the sign-in sheet, never a refusal after the fact
-  if (knownGuest()) {
-    openSignInSheet()
-    return { kind: 'prompted' }
-  }
   let notice: ReturnType<typeof toast> | undefined
   const timer = announce
     ? setTimeout(() => {
@@ -137,11 +136,18 @@ export const startFromButton = async (
   // Started, or a second press while the first is still being checked
   if (refusal === null || refusal === 'checking') {
     notice?.dismiss()
+    // A guest's one free song is this one now
+    if (refusal === null && knownGuest()) {
+      markGuestSongSpent()
+    }
     return refusal === null ? { kind: 'started' } : { kind: 'busy' }
   }
-  // Signed out since the page loaded: the same sheet a guest gets
+  // A guest who had their free song, or signed out since the page loaded: the sign-in sheet, never an error
   if (SIGN_IN_CODES.has(refusal.code)) {
     notice?.dismiss()
+    if (refusal.code === 'guest_song_used') {
+      markGuestSongSpent()
+    }
     openSignInSheet()
     return { kind: 'prompted' }
   }

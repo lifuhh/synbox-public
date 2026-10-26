@@ -22,6 +22,7 @@ import {
   signInWithGoogle,
   signOut,
   songsLeftText,
+  useAccess,
   useMe,
 } from '@/lib/auth'
 import type { Quota } from '@/lib/auth'
@@ -62,20 +63,25 @@ const LinkRow = ({
 const INLINE_ACTION =
   "relative font-medium text-foreground underline underline-offset-4 after:absolute after:-inset-x-1 after:-inset-y-2 after:content-['']"
 
+const guestLine = (freeSong: boolean) =>
+  freeSong ? 'Your first song is on me' : 'Browsing stays free for everyone'
+
 // Under the name: the songs left today with Request More beside it (a quiet second step, for an account on a daily
-// number with no request waiting; none for an admin), then where the latest request stands. For a guest, what
-// signing in is for
+// number with no request waiting; none for an admin), then where the latest request stands. For a guest, their
+// free song while it's there
 const AccountLines = ({
   user,
   quota,
+  freeSong,
 }: {
   user: { email: string } | null
   quota: Quota | undefined
+  freeSong: boolean
 }) => {
   if (user === null || quota === undefined) {
     return (
       <p className='text-sm text-pretty text-muted-foreground'>
-        {user === null ? 'Browsing stays free for everyone' : user.email}
+        {user === null ? guestLine(freeSong) : user.email}
       </p>
     )
   }
@@ -114,6 +120,7 @@ const YouPage = () => {
   const { data: me } = useMe()
   const user = me?.user ?? null
   const quota = me?.quota
+  const access = useAccess()
 
   return (
     <section
@@ -142,9 +149,13 @@ const YouPage = () => {
             </span>
             <div className='min-w-0'>
               <p className='truncate font-medium text-foreground'>
-                {user ? user.name : 'Sign In to Add Songs'}
+                {user ? user.name : 'Sign In for 5 Songs a Day'}
               </p>
-              <AccountLines user={user} quota={quota} />
+              <AccountLines
+                user={user}
+                quota={quota}
+                freeSong={access.kind === 'guest' && access.newSong}
+              />
             </div>
           </div>
           {user === null && <BenefitList />}
