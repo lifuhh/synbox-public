@@ -14,7 +14,7 @@ const SECTIONS: LegalSection[] = [
       'Songs you generated and checked, and when, with a one-way code made from your network and your browser name, for the limits.',
       'Your history, saved songs, likes, playlists and settings, so they follow you to other devices.',
       'Lyrics reports you send.',
-      'Messages you send through Contact: the subject, the message, the email you give for a reply, your account or browser id, and a one-way code made from your network, for the daily limit. Each is emailed to us.',
+      'Messages you send through Contact, when signed in: the subject, the message, your account and its email (where we reply), and a one-way code made from your network. Each is emailed to us.',
       'Songs you played in the last hour, by account or by a random id in your browser, so a reload isn’t counted twice. Signed in, every visit to a song counts; as a guest, once per song an hour.',
       'With an account: how many songs you’ve played, when you last played one, and when you last used the app (to within 10 minutes).',
       'Without an account: a one-way code made from your network counts your free song.',

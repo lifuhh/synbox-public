@@ -1,6 +1,5 @@
-import { deviceId } from './song-stats'
-
-// The Contact form's message, kept and emailed to the owner by the auth Worker (worker/src/contact.ts)
+// The Contact form's message, from a signed-in account: kept and emailed to the owner by the auth Worker
+// (worker/src/contact.ts), which answers it at the account's own email
 
 export const SUBJECT_MAX = 120
 export const MESSAGE_MAX = 4000
@@ -8,20 +7,23 @@ export const MESSAGE_MAX = 4000
 export interface ContactRequest {
   subject: string
   message: string
-  // Where to reply; empty for none
-  replyTo: string
   // The hidden field only bots fill in
   website: string
 }
 
-export type ContactResult = 'sent' | 'limit' | 'invalid' | 'failed'
+export type ContactResult =
+  | 'sent'
+  | 'limit'
+  | 'invalid'
+  | 'signed_out'
+  | 'failed'
 
 export const sendContact = async (
   request: ContactRequest
 ): Promise<ContactResult> => {
   try {
     const response = await fetch('/api/contact', {
-      body: JSON.stringify({ ...request, device: deviceId() }),
+      body: JSON.stringify(request),
       credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json' },
       method: 'POST',
@@ -31,6 +33,9 @@ export const sendContact = async (
     }
     if (response.status === 429) {
       return 'limit'
+    }
+    if (response.status === 401) {
+      return 'signed_out'
     }
     return response.status === 400 ? 'invalid' : 'failed'
   } catch {

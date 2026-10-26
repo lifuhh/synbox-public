@@ -1,4 +1,4 @@
-import { CheckIcon } from 'lucide-react'
+import { CheckIcon, CopyIcon } from 'lucide-react'
 import { useId, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
@@ -21,18 +21,19 @@ const PROBLEMS: Partial<Record<ContactResult, string>> = {
   failed: 'Couldn’t send. Try again.',
   invalid: 'Add a subject and a message.',
   limit: `Too many today. Email ${CONTACT_EMAIL}.`,
+  signed_out: 'Signed out. Sign in again.',
 }
+// How long Copy reads Copied
+const COPIED_MS = 2000
 
 const FIELD =
   'w-full rounded-md border border-input bg-background px-3 py-2 text-base placeholder:text-muted-foreground focus-visible:border-foreground/80 focus-visible:outline-hidden sm:text-sm touch:text-base'
 
-// Contact Us: a subject, a message and, if they want an answer, where to send it (a signed-in account's own
-// address to start with). Kept and emailed to the owner by the Worker; a guest can send too
+// Contact Us for a signed-in account: a subject and a message, kept and emailed to the owner by the Worker, which
+// answers at the account's own email (shown above the form, not editable)
 const ContactForm = ({ onDone }: { onDone: () => void }) => {
-  const { data: me } = useMe()
   const [subject, setSubject] = useState('')
   const [message, setMessage] = useState('')
-  const [replyTo, setReplyTo] = useState(me?.user?.email ?? '')
   const [website, setWebsite] = useState('')
   const [sending, setSending] = useState(false)
   const [sent, setSent] = useState(false)
@@ -50,7 +51,6 @@ const ContactForm = ({ onDone }: { onDone: () => void }) => {
     setSending(true)
     const result = await sendContact({
       message: message.trim(),
-      replyTo: replyTo.trim(),
       subject: subject.trim(),
       website,
     })
@@ -122,21 +122,6 @@ const ContactForm = ({ onDone }: { onDone: () => void }) => {
         }}
         className={`min-h-32 resize-y ${FIELD}`}
       />
-      <label htmlFor={`${id}-reply`} className='sr-only'>
-        Your Email (Optional)
-      </label>
-      <Input
-        id={`${id}-reply`}
-        type='email'
-        value={replyTo}
-        maxLength={254}
-        placeholder='Your email, for a reply (optional)'
-        autoComplete='email'
-        onChange={(event) => {
-          setReplyTo(event.target.value)
-          setProblem(null)
-        }}
-      />
       {/* Only bots fill this in: off screen, out of the tab order and the accessibility tree */}
       <input
         type='text'
@@ -162,36 +147,86 @@ const ContactForm = ({ onDone }: { onDone: () => void }) => {
   )
 }
 
+// A guest is shown where to write instead of a form: the owner's address, to open in their mail app or copy
+const GuestContact = () => {
+  const [copied, setCopied] = useState(false)
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(CONTACT_EMAIL)
+      setCopied(true)
+      setTimeout(() => {
+        setCopied(false)
+      }, COPIED_MS)
+    } catch {
+      // No clipboard (an old browser, or permission denied): the address is on screen to select
+    }
+  }
+  return (
+    <div className='flex items-center gap-2 rounded-md border border-input bg-background py-1 pr-1 pl-3'>
+      <a
+        href={`mailto:${CONTACT_EMAIL}`}
+        className='min-w-0 flex-1 truncate font-medium underline-offset-2 hover:underline'>
+        {CONTACT_EMAIL}
+      </a>
+      <Button
+        type='button'
+        variant='ghost'
+        gap='md'
+        onClick={() => {
+          void copy()
+        }}>
+        {copied ? (
+          <CheckIcon className='size-4' aria-hidden />
+        ) : (
+          <CopyIcon className='size-4' aria-hidden />
+        )}
+        <span aria-live='polite'>{copied ? 'Copied' : 'Copy'}</span>
+      </Button>
+    </div>
+  )
+}
+
+// Contact Us: the form for a signed-in account, the owner's address for a guest. Nothing until the session is known,
+// so a signed-in account never sees the guest's version first
 export const ContactDialog = ({
   open,
   onOpenChange,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
-}) => (
-  <Dialog open={open} onOpenChange={onOpenChange}>
-    <DialogContent className='max-w-md'>
-      <DialogHeader>
-        <DialogTitle>Contact Us</DialogTitle>
-        <DialogDescription>
-          Or email{' '}
-          <a
-            href={`mailto:${CONTACT_EMAIL}`}
-            className='underline underline-offset-2 hover:text-foreground'>
-            {CONTACT_EMAIL}
-          </a>
-        </DialogDescription>
-      </DialogHeader>
-      {/* A fresh form each opening: a sent message doesn't come back as the next one */}
-      {open && (
-        <ContactForm
-          onDone={() => {
-            onOpenChange(false)
-          }}
-        />
-      )}
-    </DialogContent>
-  </Dialog>
-)
+}) => {
+  const { data: me, isPending } = useMe()
+  const email = me?.user?.email ?? null
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className='max-w-md'>
+        <DialogHeader>
+          <DialogTitle>Contact Us</DialogTitle>
+          {!isPending && (
+            <DialogDescription>
+              {email === null ? (
+                'For questions or concerns, email'
+              ) : (
+                <>
+                  Replies go to{' '}
+                  <span className='font-medium text-foreground'>{email}</span>
+                </>
+              )}
+            </DialogDescription>
+          )}
+        </DialogHeader>
+        {/* A fresh form each opening: a sent message doesn't come back as the next one */}
+        {open && !isPending && email !== null && (
+          <ContactForm
+            onDone={() => {
+              onOpenChange(false)
+            }}
+          />
+        )}
+        {!isPending && email === null && <GuestContact />}
+      </DialogContent>
+    </Dialog>
+  )
+}
 
 export default ContactDialog

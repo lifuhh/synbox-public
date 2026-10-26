@@ -349,21 +349,27 @@ app.post('/api/events', async (c) => {
   return c.body(null, 204)
 })
 
-// A message from the Contact form (contact.ts), from anyone: kept for /admin and emailed to the owner after the
-// answer. A filled hidden field (a bot) is answered as sent and kept nowhere
+// A message from the Contact form (contact.ts), from a signed-in account only (a guest is shown the owner's address
+// instead): kept for /admin and emailed to the owner after the answer, with the account's own email to reply to. A
+// filled hidden field (a bot) is answered as sent and kept nowhere
 app.post('/api/contact', async (c) => {
+  const session = await createAuth(c.env).api.getSession({
+    headers: c.req.raw.headers,
+  })
+  if (!session) {
+    return c.json({ code: 'unauthorized' }, 401)
+  }
   const body = await c.req.json<Record<string, unknown>>().catch(() => null)
-  const parsed = parseContact(body)
+  const parsed = parseContact(body, session.user.email)
   if (!parsed.ok) {
     return parsed.code === 'trap'
       ? c.body(null, 201)
       : c.json({ code: parsed.code }, 400)
   }
   const now = Date.now()
-  const device = typeof body?.device === 'string' ? body.device : null
-  const sender = listenerOf(await userIdOf(c.env, c.req.raw.headers), device)
+  const sender = `u:${session.user.id}`
   const network = await networkOf(c.req.header('cf-connecting-ip') ?? '')
-  if (!(await contactAllowed(c.env.DB, sender, network, now))) {
+  if (!(await contactAllowed(c.env.DB, sender, now))) {
     return c.json({ code: 'too_many' }, 429)
   }
   const id = await saveContact(c.env.DB, parsed.contact, sender, network, now)
