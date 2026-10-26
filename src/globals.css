@@ -2221,7 +2221,8 @@ html[data-installed] *::-webkit-scrollbar {
   }
 
   /* The full-screen player on a phone on its side, however it got there: turned by Lock Landscape or Full Screen
-     (rotation lock on), or rotated by the system. Both lay out the same (harness/bench/probes/landscape-parity.ts): no top bar (the watch page on its side keeps it, and Exit
+     (rotation lock on), or rotated by the system. Both lay out the same
+     (harness/bench/probes/landscape-parity.ts): no top bar (the watch page on its side keeps it, and Exit
      Fullscreen goes there), and the control bar at least 20px off the bottom edge, where iOS keeps its home indicator
      when it turns the screen (a 21px inset); the turned page reports none there */
   @media (orientation: landscape) and (max-height: 500px) {

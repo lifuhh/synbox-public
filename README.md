@@ -1,145 +1,70 @@
 <p align="center">
-  <a href="https://synbox.io" target="_blank" rel="noopener noreferrer">
-    <img src="docs/readme/Synbox.svg" alt="Synbox Logo" width="340px" />
-  </a>
+  <a href="https://synbox.io"><img src="docs/readme/Synbox.svg" alt="Synbox" width="300" /></a>
 </p>
 
 <p align="center">
-  <a href="./LICENSE" target="_blank" rel="noopener noreferrer">
-    <img src="https://img.shields.io/badge/license-PolyForm_Noncommercial-orange" alt="License Badge" />
-  </a>
+  Japanese karaoke for any YouTube video: synced lyrics with furigana, romaji and translations.<br />
+  <a href="https://synbox.io"><strong>synbox.io</strong></a>
 </p>
 
 <p align="center">
-  Effortlessly transcribe, translate, and annotate Japanese song lyrics from YouTube with AI, enhancing your viewing experience.  
-  <br>
-  <br>
-View the <a href="https://github.com/lifuhh/synbox-transcribe-whisper"  target="_blank" rel="noopener noreferrer">backend repository</a> here
-  <br/>
-  <br />
-  <a href="https://synbox.io" target="_blank" rel="noopener noreferrer"><strong>Visit Website »</strong></a>
-  <br />
-  <br />
-  <a href="https://github.com/lifuhh/synbox">Explore the Docs</a> · 
-  <a href="https://github.com/lifuhh/synbox/issues" target="_blank" rel="noopener noreferrer">Report Bug</a> · 
-  <a href="https://github.com/lifuhh/synbox/issues" target="_blank" rel="noopener noreferrer">Request Feature</a>
+  <img src="public/screenshots/wide-player.jpg" alt="The player: a music video with the current line in Japanese, its furigana, romaji and an English translation" width="88%" />
 </p>
-
----
-
-## Table of Contents
-
-- [Motivation](#motivation)
-- [Features Showcase](#features-showcase)
-- [Infrastructure / Technologies](#infrastructure--technologies)
-- [Contacts](#contacts)
-- [License](#license)
-
-## **Motivation**
-
-As someone who loves Japanese music and culture but has only a basic understanding of the language, I’ve often struggled with the lack of proper translations, romaji, or furigana in many Japanese music videos on YouTube. Singing along or truly connecting with the lyrics felt nearly impossible.
-
-This frustration inspired me to create Synbox — a tool that helps fans like me enjoy Japanese music on a deeper level by providing customizable overlays with translations, romaji, and furigana annotations, all while preserving the experience of the original music video.
-
-## **Features Showcase**
-
-🔊 **Accurate Transcriptions** - Leverage the latest OpenAI Whisper model to transcribe any Japanese song with precision.
 
 <p align="center">
-  <img src="docs/readme/showcase/overlay.gif" alt="Overlay Display" width="90%">
+  <img src="public/screenshots/narrow-home.jpg" alt="Home on a phone: search or paste a YouTube link" width="28%" />
+  &nbsp;
+  <img src="public/screenshots/narrow-player.jpg" alt="The player on a phone: video above, scrolling lyrics below" width="28%" />
 </p>
 
-<p align="center">-</p>
+This is the frontend of Synbox: the web app, its installable PWA, and the auth Worker. The lyrics generation service is a separate, private repository.
 
-🎵 **Discover New Music** - Explore a landing page with a carousel, an infinite scroll gallery, and links to top songs played in Japan, curated from YouTube’s popular playlists.
-<p align="center">
-  <img src="docs/readme/showcase/landingpage.gif" alt="Landing Page" width="90%">
-</p>
+## What it does
 
-<p align="center">-</p>
+- **Sing along to any Japanese song on YouTube.** Paste a link or search; lyrics fill mora by mora in time with the singer, with furigana over the kanji, romaji, and an English or Chinese translation.
+- **Make lyrics for songs that have none.** Anyone can ask for a new song from a YouTube link; generation streams its progress and keeps running if the phone sleeps.
+- **Read it your way.** Karaoke or plain lines, one or two lines at a time, adjustable size and style per song, playback speed, and a full-screen player built for a phone on its side.
+- **Install it.** The same build runs as a website and as an installed app on iOS, Android and desktop.
+- **Keep a library.** Playlists and history on the device, merged into an account at sign-in; likes for accounts.
 
-### **Smart Lyrics Transcription**
+## How it is built
 
-🎶 **Smart Lyrics Transcription** - Core feature of Synbox, delivering advanced, multi-step processes for generating highly accurate Japanese lyrics with translations and annotations.
-
-⚡ **Real-Time Updates** - Live progress streaming for immediate feedback, ensuring a seamless user experience.
-
-🔄 **Smart Retries** - Automatic 3-attempt retry system with timeout protection.
-
-<h5 align="center">Transcription</h5>
-<p align="center">
-  <img src="docs/readme/showcase/transcription.gif" alt="Transcription Showcase" width="90%">
-</p>
-
-🎯 **Intelligent Detection** - Automatically detects and utilises existing YouTube subtitles.
-
-🤖 **OpenAI Transcription** - Uses the Whisper model for precise transcription when subtitles aren't available.
-
-<h5 align="center">Translation & Annotation</h5>
-<p align="center">
-  <img src="docs/readme/showcase/annotation.gif" alt="Annotation Showcase" width="90%">
-</p>
-
-📝 **Complete Language Support** - Japanese lyrics are annotated with Romaji and Furigana annotations to provide a tailored viewing experience that meets the needs of diverse users.
-
-<p align="center">-</p>
-
-⚙️ **Customizable Lyrics Overlay** - Adjust the size, position, and appearance of the lyrics overlay to match your preferences and the music video’s styling.
-
-<p align="center">
-  <img src="docs/readme/showcase/customize.gif" alt="Customizable Overlay" width="90%">
-</p>
-
-<p align="center">-</p>
-
-📌 **History and Bookmarks** - Keep track of your favorite songs with history and bookmark features, ensuring easy access to revisit and enjoy.
-
-<p align="center">
-  <img src="docs/readme/showcase/bookmark.png" alt="Bookmark Feature" width="90%">
-</p>
-
-## **Infrastructure / Technologies**
-
-| **Category** | **Technologies** |
+| Part | What runs it |
 | --- | --- |
-| **Frontend** | React, TypeScript, TailwindCSS, ShadCN UI, Vite+ |
-| **Backend** | Python, Flask |
-| **APIs** | ElevenLabs Scribe, OpenAI API, YouTube Data API |
-| **Database** | Appwrite (songs, lyrics), Cloudflare D1 (accounts) |
-| **Auth** | Better Auth on a Cloudflare Worker |
-| **Deployment** | Netlify (frontend), Cloudflare Workers (auth), Cloud Run (backend) |
-| **Other Tools** | Bun, Oxlint, Oxfmt, Ultracite |
+| Web app | React 19, TypeScript, Vite+ (Vite with Rolldown, Oxlint, Oxfmt), Tailwind CSS 4, Jotai, Motion |
+| Hosting | Netlify: the static app, two functions (YouTube Data API proxy, cached song list) and an Edge Function for link previews |
+| Accounts and app data | A Cloudflare Worker at `api.synbox.io` (Hono, Better Auth with Google sign-in, D1), proxied as first-party `/api` |
+| Lyrics and songs | A private generation service and a read-only lookup service; song files in Appwrite |
+| Errors | Sentry, with source maps uploaded at build and never deployed |
 
-### **System Architecture**
+Security basics are in the code, not just in docs: a strict Content-Security-Policy (no eval, no inline scripts), HSTS, rate limits on the Netlify functions, per-account quotas in the Worker, and builds that fail rather than ship a source map.
 
-Synbox leverages a cutting edge full-stack architecture, combining a user-friendly frontend with powerful backend capabilities for seamless AI-driven transcription, translation, and annotation.
+## How it is developed
 
-**Frontend** - Built with React, TypeScript, and TailwindCSS, the frontend provides a dynamic and responsive interface. Features include a landing page with an infinite scroll gallery, customizable lyrics overlays, viewing history and bookmarks.
+Since October 2026 the app has been built mostly by AI coding agents (Claude Code) working in parallel sessions, with one person setting direction and reviewing. The repository is set up so an agent's "done" has to come with evidence:
 
-**Backend** - Powered by Flask and Python, the backend processes AI requests, including speech recognition, lyric alignment, translation, and annotation.
+- **[`AGENTS.md`](AGENTS.md)** is the contract every agent reads: what must never be committed, how to work on phones and desktop, and how a change ships.
+- **One task, one worktree, one PR.** `harness/wt.ts` gives each task its own worktree and dev server, so sessions never touch each other's work. Finished PRs collect in `staging`.
+- **`harness/bench/cli.ts check` gates every PR**: typecheck, lint, tests and formatting, bundle-size budgets, and layout audits of every route in three views (desktop Chromium, and iPhone WebKit upright and on its side, with safe areas), plus iPhone Safari and a 320px screen. The audits measure what users hit: undersized or covered tap targets, content under the notch, sideways scrolling, clipped text, controls with no accessible name, and controls that act on press instead of release. A hook refuses a PR without a passing verdict for the exact tree.
+- **One release path.** `harness/release.ts` is the only way to production: it re-checks `staging`, smoke-tests a local production build, a deploy preview and then the live site, and stops at the first failure.
+- **Every change has a written why.** Each PR carries a change-log entry (problem, cause, change, lesson, judgment calls). The log is kept private; this public copy is exported without it.
 
-**Database** - Appwrite stores songs and generated lyrics. Accounts live in Cloudflare D1, behind the auth Worker.
+### This public copy
 
-**APIs and Integrations**  
-**ElevenLabs Scribe** - Speech recognition with character timestamps.  
-**OpenAI API** - Translation and song metadata.  
-**Google Data API** - Integrates YouTube data to fetch popular Japanese playlists and user-submitted video links.
+This repository is an export of the private one, rebuilt with full history by a script that removes what must stay private and refuses to publish until its checks pass: a secret scan of every commit (gitleaks), no song lyrics in any version of any file, and no private notes, personal data or internal links in files or commit messages.
 
-**Hosting and Deployment**  
-**Frontend** - Hosted on **Netlify**, ensuring fast and reliable delivery.  
-**Auth** - A **Cloudflare Worker** handles sign-in, quotas and admin.  
-**Backend** - Runs on **Google Cloud Run**, offering scalable and efficient serverless deployment.
+## Run it locally
 
-This architecture ensures Synbox remains fast, responsive, and capable of delivering a rich user experience while handling computationally intensive AI tasks in the backend.
+Requires [Bun](https://bun.sh).
 
-## **Contacts**
+```sh
+bun install
+cp .env.example .env    # the names and what each one is for are in the file
+bunx vp dev
+```
 
-Feel free to reach out for feedback, issues, or contributions:
+Lyrics and generation come from the private backend, so a local copy needs its own services to show songs.
 
-**Lifu**: [LinkedIn](https://www.linkedin.com/in/lifuhh) **GitHub Issues**: [Report issues](https://github.com/lifuhh/synbox/issues)
+## License
 
-## **License**
-
-Synbox is a non-commercial passion and learning project. It has no monetization and never will.
-
-The code is licensed under the [PolyForm Noncommercial License 1.0.0](./LICENSE). You may read, run, fork and modify it for any non-commercial purpose, such as personal study, hobby projects or research. Commercial use is not permitted.
+[PolyForm Noncommercial 1.0.0](LICENSE): free to read, run and modify for noncommercial use.
