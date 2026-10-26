@@ -1006,15 +1006,14 @@ const ReportAction = ({ report }: { report: AdminReport }) => {
         ? `v${report.resolvedVersion}`
         : null,
       state === 'dropped' ? dropReasonLabel(report.dropReason) : null,
-      report.resolution,
     ]
       .filter(Boolean)
       .join(' · ')
     return (
-      <div className='flex min-w-0 shrink-0 items-center gap-2'>
+      <div className='ml-auto flex shrink-0 items-center gap-2'>
         <span
           className={cn(
-            'max-w-48 truncate text-xs',
+            'text-xs whitespace-nowrap',
             state === 'resolved' ? 'text-success' : 'text-muted-foreground'
           )}>
           {status}
@@ -1034,7 +1033,7 @@ const ReportAction = ({ report }: { report: AdminReport }) => {
     )
   }
   return (
-    <div className='flex shrink-0 items-center gap-2'>
+    <div className='ml-auto flex shrink-0 items-center gap-2'>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
@@ -1105,12 +1104,20 @@ const ReportItem = ({ report }: { report: AdminReport }) => {
         {report.message}
       </p>
       {state === 'review' && (
-        <p className='text-xs text-muted-foreground'>
+        <p className='text-xs text-pretty text-muted-foreground'>
           Fixer · {report.reviewNote ?? 'Nothing to fix'}
         </p>
       )}
-      <div className='flex items-center justify-between gap-3'>
-        <p className='min-w-0 truncate text-xs text-muted-foreground'>
+      {/* The closing note runs long (a fix's lines and seconds), so it gets its own line, never a truncated tail */}
+      {(state === 'resolved' || state === 'dropped') &&
+        (report.resolution ?? '') !== '' && (
+          <p className='text-xs text-pretty text-muted-foreground'>
+            Note · {report.resolution}
+          </p>
+        )}
+      {/* Who, from what and when wraps whole rather than giving way to the actions; they drop under it when it's long */}
+      <div className='flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5'>
+        <p className='min-w-0 text-xs text-pretty text-muted-foreground'>
           {[by, clientLabel(report.client)].filter(Boolean).join(' · ')} ·{' '}
           <When value={report.createdAt} />
         </p>

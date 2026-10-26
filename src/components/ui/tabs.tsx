@@ -25,13 +25,17 @@ TabsList.displayName = TabsPrimitive.List.displayName
 
 const TabsTriggerRender: React.ForwardRefRenderFunction<
   React.ComponentRef<typeof TabsPrimitive.Trigger>,
-  React.ComponentPropsWithoutRef<typeof TabsPrimitive.Trigger>
-> = ({ className, ...props }, ref) => (
+  React.ComponentPropsWithoutRef<typeof TabsPrimitive.Trigger> & {
+    // Tabs that share the row's width equally (Library's): the row spreads them, so they need less padding
+    stretch?: boolean
+  }
+> = ({ className, stretch = false, ...props }, ref) => (
   <TabsPrimitive.Trigger
     ref={ref}
     className={cn(
       // The selected tab takes the same filled pill as a selected filter chip (the Lyrics page's)
-      'inline-flex items-center justify-center rounded-full px-4 py-1.5 text-sm font-medium whitespace-nowrap ring-offset-background transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-hidden disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-foreground data-[state=active]:text-background data-[state=inactive]:hover:text-foreground touch:px-5',
+      'inline-flex items-center justify-center rounded-full px-4 py-1.5 text-sm font-medium whitespace-nowrap ring-offset-background transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-hidden disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-foreground data-[state=active]:text-background data-[state=inactive]:hover:text-foreground',
+      stretch ? 'flex-1 px-3' : 'touch:px-5',
       className
     )}
     {...props}
