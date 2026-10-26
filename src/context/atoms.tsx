@@ -540,4 +540,8 @@ export const playerVolumeAtom = atomWithStorage('playerVolume', {
   muted: false,
 })
 
+// Playback speed for this visit, every song included, as YouTube keeps it; a new visit starts at 1, so nobody finds a
+// song slowed without having asked. The player's Playback Speed sets it, with the engine (setEngineRate)
+export const playbackRateAtom = atom(1)
+
 export const currentVideoAtom = atom<CurrentPlayingInfo | null>(null)

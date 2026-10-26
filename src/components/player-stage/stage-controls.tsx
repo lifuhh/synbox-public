@@ -2,6 +2,7 @@ import { useAtom, useAtomValue } from 'jotai'
 import {
   ChevronDownIcon,
   ExpandIcon,
+  GaugeIcon,
   LockIcon,
   MaximizeIcon,
   MinimizeIcon,
@@ -34,7 +35,7 @@ import { STAGE_DISC } from '@/components/lyrics-display/rail-button'
 import { TheaterIcon } from '@/components/svgicons'
 import { Slider } from '@/components/ui/slider'
 import { minimisePlayer } from '@/components/watch/use-drag-to-minimise'
-import { playerSurfaceAtom } from '@/context/atoms'
+import { playbackRateAtom, playerSurfaceAtom } from '@/context/atoms'
 import { useArmed } from '@/hooks/use-armed'
 import { useLandscapeLock } from '@/hooks/use-landscape-lock'
 import { autoplayAtom } from '@/lib/listening/store'
@@ -45,6 +46,7 @@ import { cn } from '@/utils/cn'
 import { StageLock } from './stage-lock'
 import { TAP_SEEK_SEC } from './use-stage-taps'
 import type { PlayerVolume, StagePlayer } from './use-you-tube-player'
+import { engineRates, setEngineRate } from './youtube-engine'
 
 const usePlaybackClock = ({ subscribeFrame }: StagePlayer) => {
   const [time, setTime] = useState(0)
@@ -117,6 +119,45 @@ const IconButton = ({
     {children}
   </button>
 )
+
+// Slower playback for learning a song: each press steps down a speed, and the slowest steps back to normal. Only the
+// speeds the video allows (YouTube's list is empty until its player is ready); with fewer than two, no button
+const SPEEDS = [1, 0.75, 0.5]
+
+// At normal speed a gauge, like the bar's other icons; slowed, the speed itself, lit as Loop is when on
+const SpeedButton = ({ className }: { className?: string }) => {
+  const [rate, setRate] = useAtom(playbackRateAtom)
+  const allowed = engineRates()
+  const speeds =
+    allowed.length === 0
+      ? SPEEDS
+      : SPEEDS.filter((speed) => allowed.includes(speed))
+  if (speeds.length < 2) {
+    return null
+  }
+  const shown = `${rate}×`
+  return (
+    <IconButton
+      label={`Playback Speed ${shown}`}
+      active={rate !== 1}
+      className={className}
+      onClick={() => {
+        const next = speeds[(speeds.indexOf(rate) + 1) % speeds.length] ?? 1
+        setRate(next)
+        setEngineRate(next)
+      }}>
+      {rate === 1 ? (
+        <GaugeIcon className='size-5' />
+      ) : (
+        // The × smaller, so 0.75× fits inside the right-hand column's round disc
+        <span className='text-xs leading-none font-semibold tabular-nums'>
+          {rate}
+          <span className='text-micro'>×</span>
+        </span>
+      )}
+    </IconButton>
+  )
+}
 
 interface StageControlsProps {
   player: StagePlayer
@@ -402,6 +443,7 @@ const FullScreenChrome = ({
             : 'translate-x-[calc(100%+var(--spacing-controls-right)+1.125rem)] motion-reduce:translate-x-0 motion-reduce:opacity-0',
           !armed && 'pointer-events-none'
         )}>
+        <SpeedButton className={STAGE_DISC} />
         <IconButton
           label='Lock Landscape'
           active={landscape.locked}
@@ -518,6 +560,9 @@ export const StageControls = ({
 
   const isPlaying =
     player.phase.kind === 'playing' || player.phase.kind === 'buffering'
+  // A touch screen's full-screen player has no room in its bar: Playback Speed sits in the column on the right
+  // (FullScreenChrome) there
+  const watch = useAtomValue(playerSurfaceAtom) === 'watch'
 
   return (
     <PlaybackTimeProvider player={player}>
@@ -655,6 +700,7 @@ export const StageControls = ({
                 PILL
               )}>
               <AutoplaySwitch />
+              <SpeedButton className={watch ? undefined : 'touch:hidden'} />
               <IconButton
                 label='Loop'
                 active={loop}

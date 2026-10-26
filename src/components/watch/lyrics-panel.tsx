@@ -15,7 +15,11 @@ import {
 } from '@/components/offline/lyric-line-block'
 import { useLyricsFollow } from '@/components/offline/use-lyrics-follow'
 import { lineReached } from '@/components/offline/use-silent-playback'
-import { parseLyricsText } from '@/components/player-stage/stage-lyrics'
+import {
+  lyricsLead,
+  parseLyricsText,
+} from '@/components/player-stage/stage-lyrics'
+import { engineRate } from '@/components/player-stage/youtube-engine'
 import { Button } from '@/components/ui/button'
 import {
   chartSongAtom,
@@ -45,8 +49,6 @@ import { cn } from '@/utils/cn'
 
 import { GenerateLyricsButton } from './generate-lyrics-button'
 
-// The overlay's lead over the player's clock (stage-lyrics), so the panel and the video agree
-const LEAD_SEC = 0.15
 // A clock that jumps further than this between frames was seeked (from the video, the bar or a key)
 const SEEK_JUMP_SEC = 1.5
 // A clock that hasn't moved for this long is paused
@@ -312,7 +314,8 @@ export const LyricsPanel = ({
   useEffect(
     () =>
       clock?.subscribeFrame((playerTime) => {
-        const time = playerTime + LEAD_SEC
+        // The overlay's lead over the player's clock, so the panel and the video agree
+        const time = playerTime + lyricsLead(engineRate())
         if (playerTime !== lastTime.current) {
           if (Math.abs(playerTime - lastTime.current) > SEEK_JUMP_SEC) {
             follow()

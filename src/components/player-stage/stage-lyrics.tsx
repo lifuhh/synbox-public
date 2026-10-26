@@ -77,6 +77,7 @@ import type { StageLayout } from './player-stage'
 import { clearOfRows, textSpansOf, upperLineFloor } from './two-line-layout'
 import { useRowsBoost } from './use-rows-boost'
 import type { StagePlayer } from './use-you-tube-player'
+import { engineRate } from './youtube-engine'
 
 // Fields read before (or without) a full parse; a missing or malformed field
 // reads as absent rather than failing the others
@@ -98,8 +99,10 @@ export const parseLyricsText = (data: unknown): LyricsText => {
   return result.success ? result.data : {}
 }
 // Everything the overlay draws runs this far ahead of the player's clock: on a device the lyrics read
-// 100–200 ms behind the voice, from the embed reporting its time late and the frame it takes to paint
+// 100–200 ms behind the voice, from the embed reporting its time late and the frame it takes to paint. That delay is
+// real time, so slowed playback covers less of the song in it (lyricsLead)
 const LYRICS_LEAD_SEC = 0.15
+export const lyricsLead = (rate: number) => LYRICS_LEAD_SEC * rate
 
 const findLineIndex = (lines: TimedLyrics['lines'], time: number) =>
   lines.findIndex((line) => time >= line.startSeconds && time < line.endSeconds)
@@ -1508,14 +1511,15 @@ export const StageLyrics = ({
   useEffect(() => {
     if (karaokeLines) {
       return subscribeFrame((reported) => {
-        // YouTube reports time in steps; the clock smooths it for the fill
+        const rate = engineRate()
+        // YouTube reports time in steps; the clock smooths it for the fill, at the speed the video plays
         clockRef.current = advancePlaybackClock(clockRef.current, {
           mediaTime: reported,
           now: performance.now(),
           playing: playingRef.current,
-          rate: 1,
+          rate,
         })
-        const time = clockRef.current.time + LYRICS_LEAD_SEC
+        const time = clockRef.current.time + lyricsLead(rate)
         probeRef.current?.push({
           clock: clockRef.current.time,
           now: performance.now(),
@@ -1535,7 +1539,7 @@ export const StageLyrics = ({
     }
     return lyrics
       ? subscribeFrame((reported) => {
-          const time = reported + LYRICS_LEAD_SEC
+          const time = reported + lyricsLead(engineRate())
           if (twoLines) {
             // Plain lines have no lead-in: each one runs until the next one starts
             showView(twoLineView(plainSpans, time, 0))
