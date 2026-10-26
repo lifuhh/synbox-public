@@ -156,6 +156,7 @@ export const SortableList = <T,>({
             <button
               type='button'
               data-grip
+              data-press-ok='a drag handle: the row follows from the press, and lands on release'
               aria-label={`Move ${labelOf(item)}`}
               aria-keyshortcuts='ArrowUp ArrowDown'
               onPointerDown={start(index)}

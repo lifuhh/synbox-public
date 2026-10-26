@@ -189,6 +189,7 @@ const OverlayScrollbar = ({ box }: { box: HTMLElement }) => {
           place(el, box, thumb)
         }}
         data-scrollbar-thumb
+        data-press-ok='a scrollbar thumb: dragged from the press'
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}

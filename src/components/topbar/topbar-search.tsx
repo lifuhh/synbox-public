@@ -253,6 +253,7 @@ const Results = ({
         {rows.map((row, index) => {
           const external = row.target.startsWith(EXTERNAL)
           return (
+            // oxlint-disable-next-line jsx-a11y/click-events-have-key-events -- the keyboard picks an option from the field (arrows, Enter)
             <li
               key={row.target}
               id={optionId(index)}
@@ -260,10 +261,13 @@ const Results = ({
               // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role, jsx-a11y/no-noninteractive-element-to-interactive-role -- an option of the listbox above
               role='option'
               aria-selected={index === active}
-              // Pointer down, not click: the field's blur would close the list before a click lands. A row that
-              // leaves the app keeps the field focused here and opens from its link's own click
-              onPointerDown={(event) => {
+              // Picked on release, inside the row (a press that slides off picks nothing). The press keeps the field
+              // focused (a mouse's, and the mousedown a tap sends as it lifts), so its blur doesn't close the list
+              // before the click lands. A row that leaves the app opens from its link's own click
+              onMouseDown={(event) => {
                 event.preventDefault()
+              }}
+              onClick={() => {
                 if (!external) {
                   onPick(row.target)
                 }

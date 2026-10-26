@@ -10,9 +10,93 @@ import { keepScrollWhenTurned } from '@/lib/page-turn'
 import '@/lib/turned-popper'
 import { cn } from '@/utils/cn'
 
-const DropdownMenu = DropdownMenuPrimitive.Root
+// The menu's open state, held here so its trigger can open it on a finger's release (DropdownMenuTrigger)
+interface MenuOpen {
+  open: boolean
+  setOpen: (open: boolean) => void
+}
+const MenuOpenContext = React.createContext<MenuOpen | null>(null)
 
-const DropdownMenuTrigger = DropdownMenuPrimitive.Trigger
+const DropdownMenu = ({
+  open: openProp,
+  defaultOpen = false,
+  onOpenChange,
+  ...props
+}: React.ComponentProps<typeof DropdownMenuPrimitive.Root>) => {
+  const [own, setOwn] = React.useState(defaultOpen)
+  const open = openProp ?? own
+  const setOpen = React.useCallback(
+    (next: boolean) => {
+      setOwn(next)
+      onOpenChange?.(next)
+    },
+    [onOpenChange]
+  )
+  const value = React.useMemo(() => ({ open, setOpen }), [open, setOpen])
+  return (
+    <MenuOpenContext.Provider value={value}>
+      <DropdownMenuPrimitive.Root
+        open={open}
+        onOpenChange={setOpen}
+        {...props}
+      />
+    </MenuOpenContext.Provider>
+  )
+}
+
+// How far past the trigger a lifting finger still counts as on it (UIKit's touchUpInside is as forgiving)
+const LIFT_SLACK_PX = 16
+
+// A finger or a pen opens the menu when it lifts on the trigger, not as it lands: the press may start a scroll, or
+// slide off to take it back. A mouse keeps Radix's open-on-press, so pressing, dragging to an item and releasing picks
+// it; releasing anywhere else picks nothing (docs/private/2026-10-26-activation-timing-research.md)
+const DropdownMenuTriggerRender: React.ForwardRefRenderFunction<
+  React.ComponentRef<typeof DropdownMenuPrimitive.Trigger>,
+  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Trigger>
+> = ({ onPointerDown, onPointerUp, onPointerCancel, ...props }, ref) => {
+  const menu = React.useContext(MenuOpenContext)
+  const pressed = React.useRef<number | null>(null)
+  return (
+    <DropdownMenuPrimitive.Trigger
+      ref={ref}
+      onPointerDown={(event) => {
+        onPointerDown?.(event)
+        if (
+          menu !== null &&
+          event.pointerType !== 'mouse' &&
+          !event.defaultPrevented
+        ) {
+          // Keeps Radix from opening it now (it skips a press already handled)
+          event.preventDefault()
+          pressed.current = event.pointerId
+        }
+      }}
+      onPointerUp={(event) => {
+        onPointerUp?.(event)
+        if (menu === null || pressed.current !== event.pointerId) {
+          return
+        }
+        pressed.current = null
+        const r = event.currentTarget.getBoundingClientRect()
+        if (
+          event.clientX >= r.left - LIFT_SLACK_PX &&
+          event.clientX <= r.right + LIFT_SLACK_PX &&
+          event.clientY >= r.top - LIFT_SLACK_PX &&
+          event.clientY <= r.bottom + LIFT_SLACK_PX
+        ) {
+          menu.setOpen(!menu.open)
+        }
+      }}
+      onPointerCancel={(event) => {
+        onPointerCancel?.(event)
+        pressed.current = null
+      }}
+      {...props}
+    />
+  )
+}
+const DropdownMenuTrigger = React.forwardRef(DropdownMenuTriggerRender)
+DropdownMenuTrigger.displayName = DropdownMenuPrimitive.Trigger.displayName
 
 const DropdownMenuGroup = DropdownMenuPrimitive.Group
 
