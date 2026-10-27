@@ -91,7 +91,7 @@ const SIGNED_IN: Record<string, unknown> = {
   '/api/me/songs': { songs: [] },
 }
 
-const signIn = async (page: Page) => {
+export const signIn = async (page: Page) => {
   await page.route(/\/api\/me(?:\/|$|\?)/u, async (route) => {
     const request = route.request()
     const body = SIGNED_IN[new URL(request.url()).pathname]

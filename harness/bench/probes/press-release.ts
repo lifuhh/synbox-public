@@ -13,6 +13,7 @@ import type { Page } from 'playwright'
 
 import { open } from '../engines/browser'
 import type { BenchContext, Sample, Surface } from '../types'
+import { signIn } from './layout'
 
 const LIMIT_MS = 60_000
 const PAGE = '/privacy'
@@ -56,7 +57,8 @@ const SECOND_TAB = '[role=dialog] [role=tab]:nth-of-type(2)'
 const tagTopBar = async (page: Page) => {
   for (const [key, name] of [
     ['library', 'Library'],
-    ['more', 'More'],
+    // Signed in (run below): the account button, which a guest sees as More
+    ['more', 'Account'],
     ['notifications', /^Notifications/u],
   ] as const) {
     // oxlint-disable-next-line eslint/no-await-in-loop -- one button at a time
@@ -78,6 +80,9 @@ const reload = async (page: Page, url: string) => {
     .getByRole('button', { exact: true, name: 'Library' })
     .first()
     .waitFor({ timeout: 20_000 })
+    .catch((error: unknown) => {
+      throw new Error(`no Library button on ${page.url()}: ${String(error)}`)
+    })
   await tagTopBar(page)
 }
 
@@ -286,7 +291,8 @@ const run = async (
   origin: string,
   shot: string
 ): Promise<{ samples: Sample[]; errors: string[] }> => {
-  const { page, close } = await open(surface)
+  // No service worker: after the first load it would fetch the sign-in check itself, past signIn's route
+  const { page, close } = await open(surface, { serviceWorkers: 'block' })
   const values: Record<string, number> = {
     buttonClickFails: 0,
     buttonSlideOffActs: 0,
@@ -300,6 +306,8 @@ const run = async (
   }
   const notes: string[] = []
   try {
+    // Signed in: a guest's top bar has no Library or bell to press
+    await signIn(page)
     await reload(page, `${origin}${PAGE}`)
     await (surface.kind === 'phone'
       ? touchRun(page, values, notes)
