@@ -85,6 +85,7 @@ const SIGNED_IN: Record<string, unknown> = {
       role: 'user',
     },
   },
+  '/api/me/feedback': { feedback: [] },
   '/api/me/fixes': { fixes: [] },
   '/api/me/library': { bookmarks: [], history: [], playlists: [] },
   '/api/me/prefs': { prefs: {} },
@@ -202,6 +203,25 @@ export const OPENED_STATES: Record<string, OpenedState[]> = {
       steps: [
         { press: { name: 'More', role: 'button' } },
         { shows: { name: 'More', role: 'menu' } },
+      ],
+    },
+    {
+      // Contact Me's dialog from the guest's menu: the owner's address to copy
+      name: 'contact',
+      steps: [
+        { press: { name: 'More', role: 'button' } },
+        { press: { name: 'Contact Me', role: 'menuitem' } },
+        { shows: { name: 'Contact Me', role: 'dialog' } },
+      ],
+    },
+    {
+      // The same dialog for an account: the form, with the field iOS must not zoom into
+      name: 'contact-form',
+      signedIn: true,
+      steps: [
+        { press: { name: 'Account', role: 'button' } },
+        { press: { name: 'Contact Me', role: 'menuitem' } },
+        { shows: { name: 'Contact Me', role: 'dialog' } },
       ],
     },
   ],
