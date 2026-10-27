@@ -256,12 +256,13 @@ const drawParts = (
   const { page, bar, icon, pill } = flight
   const mid = height / 2
   // The pill keeps its gap to the right end, scaled with the box's height, and fades out over the first half of the
-  // flight. Its size goes straight from full at the field to 60% of the bar's height in the bar, in step with the box,
-  // so neither of its edges ever runs past where it ends up
+  // flight's time. Its size goes straight from full at the field to 60% of the bar's height in the bar, in step with
+  // the box, so neither of its edges ever runs past where it ends up. The fade follows time, not the eased progress:
+  // the ease-out covers the most ground in its first frames, which faded the pill by half in one
   let reserve = 0
   if (pill !== null) {
     const k = height / pill.of
-    const gone = ramp(at, 0, 0.5)
+    const gone = ramp(1 - Math.sqrt(1 - at), 0, 0.5)
     const scale = mix(1, (0.6 * flight.barH) / pill.of, at)
     const right = width - pill.gap * k
     reserve = width - right + pill.w * scale
