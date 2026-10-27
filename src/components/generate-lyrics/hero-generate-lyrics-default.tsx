@@ -202,7 +202,7 @@ const HeroGenerateLyricsDefault = ({
     if (checking) {
       return 'Checking…'
     }
-    return existingLyrics ? 'Play Video' : 'Generate Lyrics'
+    return existingLyrics ? 'Play Song' : 'Generate Lyrics'
   }
 
   const buttonIcon = () => {
@@ -212,8 +212,11 @@ const HeroGenerateLyricsDefault = ({
     if (isSearch) {
       return <SearchIcon className='size-5 shrink-0' />
     }
+    // While a pasted link is looked up the icon's place holds a spinner (still under Reduce Motion)
     if (isCheckingLyrics || checking) {
-      return null
+      return (
+        <LoaderCircleIcon className='size-5 shrink-0 motion-safe:animate-spin' />
+      )
     }
     return existingLyrics ? (
       <PlayIcon className='size-5 shrink-0 fill-current' />
@@ -363,10 +366,13 @@ const HeroGenerateLyricsDefault = ({
               variant='bare'
             />
             {/* Not while Generate Lyrics checks the song: the field is read-only then */}
+            {/* 3px closer to the action than the field's gap: its × glyph sits 6px inside its own box, so the drawn
+                gap to the action was 14px, now 11 */}
             <ClearFieldButton
               field={field}
               value={inputValue}
               off={checking}
+              className='-mr-[3px]'
               onClear={() => {
                 setInputValue('')
                 edited()
@@ -382,9 +388,7 @@ const HeroGenerateLyricsDefault = ({
                   size='icon'
                   aria-label={buttonLabel()}
                   className='shrink-0 aria-disabled:cursor-progress sm:hidden'>
-                  {buttonIcon() ?? (
-                    <LoaderCircleIcon className='size-5 shrink-0 motion-safe:animate-spin' />
-                  )}
+                  {buttonIcon()}
                 </Button>
                 <Button
                   type='submit'

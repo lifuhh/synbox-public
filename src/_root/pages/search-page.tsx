@@ -204,7 +204,7 @@ const LinkedVideo = ({ videoId }: { videoId: string }) => {
         <Button asChild gap='sm' className='self-start touch:h-11'>
           <Link to={`/v/${videoId}`} state={{ videoId }}>
             <PlayIcon aria-hidden className='size-4 shrink-0 fill-current' />
-            Play Video
+            Play Song
           </Link>
         </Button>
       )
