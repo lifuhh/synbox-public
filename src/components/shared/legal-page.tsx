@@ -46,8 +46,8 @@ export const LegalPage = ({
       className='relative flex flex-1 flex-col overflow-y-auto pt-(--topbar-h) page-x pb-page-bottom-sm'>
       <title>{`${title} · Synbox`}</title>
 
-      <div className='mx-auto flex w-full max-w-2xl flex-col gap-8 pt-8 lg:max-w-6xl lg:gap-6 lg:pt-4'>
-        <header className='flex flex-col gap-3 text-center'>
+      <div className='mx-auto flex w-full max-w-2xl flex-col gap-8 pt-8 lg:max-w-6xl lg:gap-6 lg:pt-4 xl:max-w-7xl'>
+        <header className='flex flex-col gap-2 text-center'>
           <h1 className='text-3xl font-bold'>{title}</h1>
           <p className='text-sm text-muted-foreground'>Updated {updated}</p>
         </header>

@@ -14,7 +14,6 @@ const SECTIONS: LegalSection[] = [
           Privacy Policy
         </Link>{' '}
         and <Ext href='https://www.youtube.com/t/terms'>YouTube’s Terms</Ext>.
-        Anyone who does not accept them may not use Synbox.
       </>,
       'You must be 13 or older and old enough to accept these Terms where you live, or have a parent or guardian accept them for you.',
     ],
@@ -49,19 +48,19 @@ const SECTIONS: LegalSection[] = [
   },
   {
     items: [
-      'You are responsible for the reports and notes you send.',
-      'You grant us a free, worldwide licence to store, use and change them to run and improve Synbox.',
-      'We may remove anything you send.',
-    ],
-    title: 'Content You Send',
-  },
-  {
-    items: [
       'Songs, lyrics and translations belong to their rights holders. Synbox shows them for personal study and singing along.',
       'Rights holders can have a song removed by writing through Contact Me (below) or to me@edwardhuang.dev.',
       'We own the app’s design and code.',
     ],
     title: 'Songs and Lyrics',
+  },
+  {
+    items: [
+      'You are responsible for the reports and notes you send.',
+      'You grant us a free, worldwide licence to store, use and change them to run and improve Synbox.',
+      'We may remove anything you send.',
+    ],
+    title: 'Content You Send',
   },
   {
     items: [
@@ -76,14 +75,13 @@ const SECTIONS: LegalSection[] = [
       'We may end or suspend access to Synbox, including for breaches of these Terms.',
       'Changes appear here with a new date. Using Synbox after a change means accepting it.',
       'These Terms are governed by Singapore law, and Singapore’s courts decide disputes.',
-      'For questions, use Contact Me (below) or email me@edwardhuang.dev.',
     ],
     title: 'Ending, Changes and Law',
   },
 ]
 
 const TermsPage = () => (
-  <LegalPage title='Terms' updated='26 October 2026' sections={SECTIONS} />
+  <LegalPage title='Terms' updated='27 October 2026' sections={SECTIONS} />
 )
 
 export default TermsPage

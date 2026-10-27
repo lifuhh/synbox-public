@@ -9,48 +9,30 @@ import type { LegalSection } from '@/components/shared/legal-page'
 const SECTIONS: LegalSection[] = [
   {
     items: [
-      'Your Google name, email, profile picture and account id, from Google sign-in. Nothing else from your Google account.',
-      'Your signed-in sessions, with the browser and IP address they came from.',
-      'Songs you generated and checked, and when, with a one-way code made from your network and your browser name, for the limits.',
-      'Your history, saved songs, likes, playlists and settings, so they follow you to other devices.',
-      'Lyrics reports you send.',
-      'Messages you send through Contact Me, when signed in: the subject, the message, your account and its email (where we reply), and a one-way code made from your network. Each is emailed to us.',
-      'Feedback you send: the subject and the message, with your account unless you send it anonymously or signed out. Anonymous feedback keeps nothing about you. Daily limits are counted apart from it, by a one-way code made from your account or network.',
-      'Songs you played in the last hour, by account or by a random id in your browser, so a reload is not counted twice. Signed in, every visit to a song counts; as a guest, once per song an hour.',
-      'With an account: how many songs you have played, when you last played one, and when you last used the app (to within 10 minutes).',
-      'Without an account: your one free song is kept by a one-way code made from your network and your device’s system, screen size, cores and time zone. No IP address or browser details are kept with it.',
+      'Your name, email and profile picture from Google sign-in. Nothing else from your Google account.',
+      'Your library: history, saved songs, likes, playlists and settings, so they follow you to other devices.',
+      'Songs you generate, and the lyrics reports, messages and feedback you send us. Anonymous feedback keeps nothing about you.',
+      'Basic usage, such as songs played and features used, to see what works.',
+      'Basic network and device details, such as your IP address and browser, to keep you signed in, count song limits and stop abuse.',
     ],
     title: 'What We Store',
   },
   {
     items: [
-      'To measure which parts of Synbox are used, the app records a few events: the app opened (installed or in a browser; phone, tablet or computer), a song page opened (the song’s id), lyrics, romaji or translation turned on or off, the translation language, a song shared or its link copied, and Install App pressed or the app installed.',
-      'Each carries its time and your account, or without one, a random id kept in your browser. No IP address, email or browser details.',
-      'Kept 90 days, then deleted. Only the admin sees them.',
-      'If your browser sends Global Privacy Control or Do Not Track, none are sent.',
-    ],
-    title: 'Usage Events',
-  },
-  {
-    items: [
       'To sign you in and sync your library.',
-      'To enforce limits, since every new song costs money to make.',
-      'To fix the lyrics you report and the errors the app hits.',
-      'To run and improve Synbox, and to set limits against abuse.',
+      'To apply song limits, since every new song costs money to make.',
+      'To fix reported lyrics and app errors, and to improve Synbox.',
       'No advertising, and no data is sold.',
+      'Usage is not recorded if your browser sends Global Privacy Control or Do Not Track.',
     ],
     title: 'Why It Is Kept',
   },
   {
     items: [
-      'Accounts, libraries and usage events: Cloudflare.',
-      'Lyrics are made on Google Cloud, which gets your account id only, not your name or email.',
-      'Songs and lyrics: Appwrite. No personal data.',
-      'Making lyrics sends the song’s audio and text, not your data, to OpenAI and ElevenLabs.',
-      'Error reports: Sentry, with a short screen recording around the error; all text and media are hidden in it.',
-      'The site is served by Netlify.',
-      'This data may be processed outside your country.',
-      "The site's admin sees accounts, their activity and who generated which song, to manage limits and stop abuse.",
+      'Accounts and libraries: Cloudflare. Songs and lyrics: Appwrite. The site: Netlify.',
+      'Lyrics are made on Google Cloud, which gets your account id only. Making them sends the song’s audio and text, never your data, to AI services (OpenAI, ElevenLabs).',
+      'Error reports: Sentry, with a short screen recording that hides all text and media.',
+      'This data may be processed outside your country. The admin sees accounts and their activity, to manage limits and stop abuse.',
     ],
     title: 'Where It Lives',
   },
@@ -80,11 +62,9 @@ const SECTIONS: LegalSection[] = [
   },
   {
     items: [
-      'Plays and song checks: up to a day. Feedback limits: until the next day.',
-      'Usage events: 90 days.',
-      'Your account, its activity, library, reports, the songs you generated, the messages you sent through Contact Me and the feedback you sent: until you delete them or ask us to.',
-      'Sign-in sessions: until you sign out or they expire.',
-      'Error reports: Sentry keeps them for a limited time.',
+      'Song checks and feedback limits: a day. Usage: 90 days.',
+      'Your account, everything in it and the details kept with it: until you delete it or ask us to. A guest’s free song is kept so it counts once.',
+      'Sign-in: until you sign out or it expires. Error reports: a limited time.',
     ],
     title: 'How Long',
   },
@@ -120,7 +100,7 @@ const SECTIONS: LegalSection[] = [
 ]
 
 const PrivacyPage = () => (
-  <LegalPage title='Privacy' updated='26 October 2026' sections={SECTIONS} />
+  <LegalPage title='Privacy' updated='27 October 2026' sections={SECTIONS} />
 )
 
 export default PrivacyPage
