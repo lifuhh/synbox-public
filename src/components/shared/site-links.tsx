@@ -5,14 +5,11 @@ import { Link } from 'react-router'
 const ContactDialog = lazy(async () => await import('./contact-dialog'))
 const FeedbackDialog = lazy(async () => await import('./feedback-dialog'))
 
-// Kept here as well as in contact-dialog.tsx, so the footer doesn't load the form's chunk to show it
-const CONTACT_EMAIL = 'me@edwardhuang.dev'
-
 const LINK =
   'inline-flex min-h-6 items-center py-1 transition-colors hover:text-foreground'
 
 // The footer of About, Privacy and Terms: the two policies, the two ways to write (Send Feedback about the app,
-// Contact Me with the address it answers from), then the source. Plain links, no secondary lines: the dialogs say
+// Contact Me, whose dialog shows the address), then the source. Plain links, no secondary lines: the dialogs say
 // what each is for. Wraps on a phone, one line from sm
 export const SiteLinks = () => {
   // Mounted from their first opening on, so they can animate closed
@@ -45,9 +42,6 @@ export const SiteLinks = () => {
           }}>
           Contact Me
         </button>
-        <a href={`mailto:${CONTACT_EMAIL}`} className={LINK}>
-          {CONTACT_EMAIL}
-        </a>
         <a
           href='https://github.com/lifuhh/synbox-public'
           target='_blank'
