@@ -1,8 +1,10 @@
 // `check`: the exact checks a change must pass before it goes into staging, and staging before it ships. Nothing
-// here is timed, so nothing needs a baseline or a quiet machine: typecheck, lint, tests and format, bytes shipped
-// against harness/budgets.json, and a layout audit of the app's routes (harness/routes.json says which are
-// skipped) on desktop and phone screens against the same budgets. It stops at the first failure, prints each
-// step's seconds, and stamps a verdict for the committed tree only when every expected step ran.
+// here is compared with a baseline: typecheck, lint, tests and format, bytes shipped against harness/budgets.json,
+// and browser audits of the app's routes (harness/routes.json says which are skipped) on desktop and phone screens
+// against the same budgets. Browser audits share the machine with other sessions' through slots (lock.ts); timing
+// audits run last with the machine to themselves. A docs-only commit after a passing verdict reuses it (reuse.ts).
+// It stops at the first failure, prints each step's seconds, and stamps a verdict for the committed tree only when
+// every expected step ran.
 
 import { execFileSync, spawn } from 'node:child_process'
 import { readFileSync } from 'node:fs'
@@ -12,7 +14,9 @@ import { buildWorkingTree } from './build'
 import { closeBrowsers, replayFonts } from './engines/browser'
 import { evaluatorTouched } from './gate'
 import { isRecord, parseJson } from './json'
+import { holdMachine, holdSlot } from './lock'
 import { routeProblems } from './probes/layout'
+import { reusableVerdict } from './reuse'
 import { serveBuild } from './server'
 import { changedSince, existedAt, storeDir, writeVerdict } from './store'
 import type { Repo } from './store'
@@ -130,16 +134,73 @@ export interface CheckResult {
   steps: Step[]
   wallMs: number
   verdict: string | null
+  /** Set when the verdict was stamped without a run: what it was reused from */
+  reused: string | null
+}
+
+/**
+ * A docs-only commit after a passing verdict: stamp this tree with that verdict, noting where it came from, and run
+ * nothing. Null when there is nothing to reuse
+ */
+const reuse = (repo: Repo, started: number): CheckResult | null => {
+  const found = reusableVerdict(repo)
+  if (found === null) {
+    return null
+  }
+  if (found.verdict.tree === repo.tree) {
+    process.stdout.write(
+      `this tree already passed (${found.verdict.at}); nothing to run (--full runs everything again)\n`
+    )
+    return {
+      reused: repo.tree,
+      status: 'pass',
+      steps: [],
+      verdict: path.join(storeDir(repo, 'verdicts'), `${repo.tree}.json`),
+      wallMs: Date.now() - started,
+    }
+  }
+  const from = found.verdict.reused?.tree ?? found.verdict.tree
+  const v: Verdict = {
+    ...found.verdict,
+    at: new Date().toISOString(),
+    branch: repo.branch,
+    reused: { files: found.files, sha: found.from, tree: from },
+    sha: repo.sha,
+    summary: `reused from ${from.slice(0, 8)}: only docs changed (${found.files.join(', ')})`,
+    tree: repo.tree,
+    wallMs: Date.now() - started,
+  }
+  process.stdout.write(`${v.summary}\n`)
+  return {
+    reused: from,
+    status: 'pass',
+    steps: [],
+    verdict: writeVerdict(repo, v),
+    wallMs: v.wallMs,
+  }
 }
 
 export const runCheck = async (
   repo: Repo,
-  opts: { only: string[] | null; jobs: number; log: (m: string) => void }
+  opts: {
+    only: string[] | null
+    full: boolean
+    jobs: number
+    log: (m: string) => void
+  }
 ): Promise<CheckResult> => {
   if (!Number.isInteger(opts.jobs) || opts.jobs < 1) {
     throw new Error(`--jobs must be a positive whole number, not ${opts.jobs}`)
   }
   const started = Date.now()
+  // `--only`: the named audits, while working, no verdict. Otherwise everything, stamped; `--full` never reuses
+  const stamped = opts.only === null
+  if (stamped && !opts.full) {
+    const reused = reuse(repo, started)
+    if (reused !== null) {
+      return reused
+    }
+  }
   const steps: Step[] = []
   const say = (s: Step) => {
     steps.push(s)
@@ -148,10 +209,12 @@ export const runCheck = async (
     )
   }
   const failed = () => steps.some((s) => s.status === 'fail')
-  const full = opts.only === null
+  const selected = SUITE.filter(isExact).filter(
+    (b) => opts.only === null || opts.only.some((o) => b.id.startsWith(o))
+  )
 
   const phases = async (): Promise<void> => {
-    if (full) {
+    if (stamped) {
       const t = Date.now()
       const touched = evaluatorTouched(changedForGuard(repo), (f) =>
         existedAt(repo, STAGING, f.replace(/#.*$/u, ''))
@@ -197,7 +260,7 @@ export const runCheck = async (
         return null
       }
     })()
-    const statics = full
+    const statics = stamped
       ? STATIC.map(async (script) => {
           const t = Date.now()
           const r = await sh(repo.top, 'bun', ['run', script])
@@ -215,9 +278,7 @@ export const runCheck = async (
     }
 
     const budgets = readBudgets(repo)
-    const benches = SUITE.filter(isExact).filter(
-      (b) => opts.only === null || opts.only.some((o) => b.id.startsWith(o))
-    )
+    const benches = selected
     if (benches.length === 0) {
       throw new Error(`no check matches --only ${opts.only?.join(',')}`)
     }
@@ -289,14 +350,23 @@ export const runCheck = async (
         status: ok ? 'pass' : 'fail',
       })
     }
-    // `jobs` audits at a time, each in its own browser context; none starts after a failure
-    const queue = benches.filter((b) => b.surface !== null)
-    const worker = async (): Promise<void> => {
-      for (let b = queue.shift(); b && !failed(); b = queue.shift()) {
-        // oxlint-disable-next-line eslint/no-await-in-loop -- each worker takes the next audit when it is free
-        await measureOne(b)
+    // `jobs` audits at a time, each in its own browser context and one of the machine's browser slots (lock.ts);
+    // none starts after a failure. Timing audits come last, with the machine to themselves
+    const queue = benches.filter((b) => b.surface !== null && b.timing !== true)
+    const timed = benches.filter((b) => b.surface !== null && b.timing === true)
+    const worker =
+      (from: Benchmark[], slotted: boolean) => async (): Promise<void> => {
+        for (let b = from.shift(); b && !failed(); b = from.shift()) {
+          // oxlint-disable-next-line eslint/no-await-in-loop -- each worker takes the next audit when it is free
+          const release = slotted ? await holdSlot(repo, opts.log) : null
+          try {
+            // oxlint-disable-next-line eslint/no-await-in-loop -- one audit per slot
+            await measureOne(b)
+          } finally {
+            release?.()
+          }
+        }
       }
-    }
     try {
       // Bytes first, alone: the cheapest check, and the commonest failure
       const size = benches.filter((b) => b.surface === null)
@@ -304,7 +374,25 @@ export const runCheck = async (
         // oxlint-disable-next-line eslint/no-await-in-loop -- one at a time, before any browser starts
         await measureOne(b)
       }
-      await Promise.all(Array.from({ length: opts.jobs }, worker))
+      await Promise.all(Array.from({ length: opts.jobs }, worker(queue, true)))
+      if (timed.length > 0 && !failed()) {
+        const t = Date.now()
+        const release = await holdMachine(
+          repo,
+          `timing audits (${timed.map((b) => b.id).join(', ')})`,
+          opts.log
+        )
+        opts.log(
+          `the machine to itself for ${timed.length} timing audits after ${((Date.now() - t) / 1000).toFixed(1)}s`
+        )
+        try {
+          await Promise.all(
+            Array.from({ length: opts.jobs }, worker(timed, false))
+          )
+        } finally {
+          release()
+        }
+      }
       process.stdout.write(
         `screenshots: ${storeDir(repo, 'bench', 'runs', runId)}\n`
       )
@@ -319,14 +407,10 @@ export const runCheck = async (
   // whatever the reason, is not a pass)
   if (!failed()) {
     const expected = [
-      ...(full ? ['evaluator untouched by app changes', ...STATIC] : []),
+      ...(stamped ? ['evaluator untouched by app changes', ...STATIC] : []),
       'audit list matches the router',
       'build',
-      ...SUITE.filter(isExact)
-        .filter(
-          (b) => opts.only === null || opts.only.some((o) => b.id.startsWith(o))
-        )
-        .map((b) => b.id),
+      ...selected.map((b) => b.id),
     ]
     const ran = steps.map((s) => s.name)
     const missing = expected.filter(
@@ -350,7 +434,7 @@ export const runCheck = async (
   const status: Status = failed() ? 'fail' : 'pass'
   const wallMs = Date.now() - started
   let verdict: string | null = null
-  if (full && !repo.dirty) {
+  if (stamped && !repo.dirty) {
     const v: Verdict = {
       at: new Date().toISOString(),
       branch: repo.branch,
@@ -372,5 +456,5 @@ export const runCheck = async (
     }
     verdict = writeVerdict(repo, v)
   }
-  return { status, steps, verdict, wallMs }
+  return { reused: null, status, steps, verdict, wallMs }
 }

@@ -67,6 +67,11 @@ export interface Benchmark {
     ctx: BenchContext,
     runs: number
   ) => Promise<{ samples: Sample[]; errors: string[] }>
+  /**
+   * It samples over time (frame by frame, or every few ms while a song plays), so it runs last with the machine to
+   * itself: no other session's browser audits beside it (lock.ts)
+   */
+  timing?: true
 }
 
 /** Every metric is exact: the benchmark belongs to `check`, not `trend` */
@@ -114,4 +119,6 @@ export interface Verdict {
   summary: string
   wallMs: number
   steps: { name: string; ms: number; status: Status; detail: string }[]
+  /** Stamped without a run: only docs changed since the passing verdict of `tree` (commit `sha`) */
+  reused?: { tree: string; sha: string; files: string[] }
 }

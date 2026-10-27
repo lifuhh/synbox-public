@@ -174,6 +174,7 @@ const lyricShift = (name: string, view: View, turned: boolean): Benchmark => ({
   run: lyricShiftAudit(view.surface, turned),
   runs: 1,
   surface: view.surface,
+  timing: true,
   title: `Two Lines on the player, translation docked, in ${name} (${view.label}${turned ? ', turned by Lock Landscape' : ''}): moves of the other line, the lower line's romaji and the docked translation on each line change`,
 })
 
@@ -248,6 +249,7 @@ const motion = (morph: Morph, view: View, minFlights: number): Benchmark => ({
   run: motionAudit(morph, view.surface, minFlights),
   runs: 1,
   surface: view.surface,
+  timing: true,
   title: `${morph.name} in ${view.name} (${view.label}), each way, slow and fast: teleports, scale against the morph's way, detached parts, passes with no flight, parts never shown, frames over 25ms of main-thread work`,
 })
 
@@ -393,6 +395,7 @@ export const SUITE: Benchmark[] = [
     run: theaterMotionAudit,
     runs: 1,
     surface: WEB.surface,
+    timing: true,
     title:
       'Theater Mode in and out on the wide watch page (1440×900), every frame: teleports, size reversals, the video or the bar off the stage, the YouTube iframe reloaded; dropped frames reported',
   },
