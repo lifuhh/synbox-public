@@ -96,11 +96,19 @@ const BUSY_PAGES = new Set(['home', 'gallery', 'player', 'search'])
 /** The route of the player, which most probes play a song on */
 const PLAYER = '/v/:videoId'
 
-/** A check's scope (scope.ts): the routes it visits, and its module in probes/ */
-const probe = (name: string, routes: string[]): BenchScope => ({
+/** A check's scope (scope.ts): the routes it visits, its module in probes/, and the shell modules it measures */
+const probe = (
+  name: string,
+  routes: string[],
+  shell?: string[]
+): BenchScope => ({
   probe: `harness/bench/probes/${name}.ts`,
   routes,
+  ...(shell === undefined ? {} : { shell }),
 })
+
+/** The top bar: it floats over the player's stage, so audits of the stage's chrome and morphs into it observe it */
+const TOP_BAR = 'src/components/shared/top-bar.tsx'
 
 /**
  * Lighthouse's mobile lab: a mid-range phone on slow 4G, where load regressions show first. The service worker is
@@ -186,7 +194,7 @@ const lyricShift = (name: string, view: View, turned: boolean): Benchmark => ({
   ],
   run: lyricShiftAudit(view.surface, turned),
   runs: 1,
-  scope: probe('lyric-shift', [PLAYER]),
+  scope: probe('lyric-shift', [PLAYER], [TOP_BAR]),
   surface: view.surface,
   timing: true,
   title: `Two Lines on the player, translation docked, in ${name} (${view.label}${turned ? ', turned by Lock Landscape' : ''}): moves of the other line, the lower line's romaji and the docked translation on each line change`,
@@ -207,7 +215,7 @@ const lyricDock = (name: string, view: View): Benchmark => ({
   ],
   run: lyricDockAudit(view.surface),
   runs: 1,
-  scope: probe('lyric-dock', [PLAYER]),
+  scope: probe('lyric-dock', [PLAYER], []),
   surface: view.surface,
   title: `Karaoke Style's rows and translation in ${name} (${view.label}): the rows' text reaches the top with the translation moved down and with it below them, a translation let go at the foot below the rows neither docks nor rests over them (and doesn't move them when there's room), the rows dropped onto the translation dock, a layout saved overlapped loads usable`,
 })
@@ -231,7 +239,7 @@ const lyricUndock = (name: string, view: View, turned: boolean): Benchmark => ({
   ],
   run: lyricUndockAudit(view.surface, turned),
   runs: 1,
-  scope: probe('lyric-undock', [PLAYER]),
+  scope: probe('lyric-undock', [PLAYER], []),
   surface: view.surface,
   title: `Karaoke Style's docked translation in ${name} (${view.label}${turned ? ', turned by Lock Landscape' : ''}), the block dragged to the middle, the translation pulled to the bottom, the top, just under the block and onto the rows, then dragged back: the rows' lines never move, the translation never overlaps them or the block, comes off where there is room, and docks again`,
 })
@@ -249,7 +257,7 @@ const controlShade = (
   metrics: [count('shadedControls'), count('controls', false)],
   run: controlShadeAudit(view.surface, turned),
   runs: 1,
-  scope: probe('control-shade', [PLAYER]),
+  scope: probe('control-shade', [PLAYER], [TOP_BAR]),
   surface: view.surface,
   title: `The player's controls in ${name} (${view.label}${turned ? ', turned by Lock Landscape' : ''}), shown: controls sitting in a shade band many times their size`,
 })
@@ -296,7 +304,7 @@ const motion = (morph: Morph, view: View, minFlights: number): Benchmark => ({
   ],
   run: motionAudit(morph, view.surface, minFlights),
   runs: 1,
-  scope: probe('motion', [morph.path]),
+  scope: probe('motion', [morph.path], [TOP_BAR]),
   surface: view.surface,
   timing: true,
   title: `${morph.name} in ${view.name} (${view.label}), each way, slow and fast: teleports, scale against the morph's way, detached parts, passes with no flight, parts never shown, frames of the morph over 34ms of main-thread work (over 25ms reported)`,
@@ -318,7 +326,7 @@ const sizeDrag = (view: View, cases: DragCase[]): Benchmark => ({
   ],
   run: sizeDragAudit(view.surface, cases),
   runs: 1,
-  scope: probe('drag-perf', [PLAYER]),
+  scope: probe('drag-perf', [PLAYER], []),
   surface: view.surface,
   timing: true,
   title: `Lyrics Size dragged in ${view.name} (${view.label}): ${cases.map((c) => c.label).join(', ')}; frames over 50ms and main-thread time per move against the budgets in probes/drag-perf.ts`,
@@ -486,7 +494,7 @@ export const SUITE: Benchmark[] = [
     ],
     run: theaterMotionAudit,
     runs: 1,
-    scope: probe('theater-motion', [PLAYER]),
+    scope: probe('theater-motion', [PLAYER], [TOP_BAR]),
     surface: WEB.surface,
     timing: true,
     title:
@@ -504,7 +512,7 @@ export const SUITE: Benchmark[] = [
     ],
     run: landscapeParityAudit(),
     runs: 1,
-    scope: probe('landscape-parity', [PLAYER]),
+    scope: probe('landscape-parity', [PLAYER], [TOP_BAR]),
     surface: PWA_LANDSCAPE.surface,
     title:
       'The full-screen player on an iPhone on its side, turned by Full Screen with rotation lock on vs rotated by iOS: element boxes within 1px, safe-area bands black',

@@ -21,22 +21,33 @@ const audited = () => {
   return [...routeModules(top).routes.keys()].filter((r) => !skip.includes(r))
 }
 // Benchmarks shaped like suite.ts's (which can't load under the test runner: it reads routes through Bun)
-const bench = (id: string, routes: string[], probe: string): Benchmark => ({
+const bench = (
+  id: string,
+  routes: string[],
+  probe: string,
+  shell?: string[]
+): Benchmark => ({
   id,
   metrics: [],
   run: async () => await Promise.resolve({ errors: [], samples: [] }),
   runs: 1,
-  scope: { probe: `harness/bench/probes/${probe}.ts`, routes },
+  scope: {
+    probe: `harness/bench/probes/${probe}.ts`,
+    routes,
+    ...(shell === undefined ? {} : { shell }),
+  },
   surface: null,
   title: id,
 })
+const TOP_BAR = 'src/components/shared/top-bar.tsx'
 const BENCHES: Benchmark[] = [
   { ...bench('size', [], 'size'), scope: 'always' },
   bench('layout-home-web', ['/'], 'layout'),
   bench('layout-player-web', ['/v/:videoId'], 'layout'),
   bench('layout-privacy-web', ['/privacy'], 'layout'),
   bench('keyboard-journey', ['/', '/v/:videoId', '/search'], 'keyboard'),
-  bench('lyric-dock-web', ['/v/:videoId'], 'lyric-dock'),
+  bench('lyric-dock-web', ['/v/:videoId'], 'lyric-dock', []),
+  bench('lyric-shift-web', ['/v/:videoId'], 'lyric-shift', [TOP_BAR]),
 ]
 const repo: Repo = {
   branch: 'test',
@@ -46,12 +57,13 @@ const repo: Repo = {
   top,
   tree: 'tree',
 }
-const select = (files: string[]) =>
+const select = (files: string[], exports?: Map<string, Set<string> | 'all'>) =>
   selectBenches(repo, BENCHES, {
     audited: audited(),
-    changed: { base: 'base', files },
+    changed: { base: 'base', exports, files },
     full: false,
   })
+const ran = (s: ReturnType<typeof select>) => [...s.run.keys()].toSorted()
 
 describe('scope', () => {
   test('every audited route maps to its page module through src/app.tsx', () => {
@@ -82,6 +94,41 @@ describe('scope', () => {
       'layout-home-web',
       'size',
     ])
+  })
+
+  test('a top-bar change runs every page and the audits that observe the top bar, not the stage-only ones', () => {
+    expect(ran(select(['src/components/topbar/profile-button.tsx']))).toEqual([
+      'keyboard-journey',
+      'layout-home-web',
+      'layout-player-web',
+      'layout-privacy-web',
+      'lyric-shift-web',
+      'size',
+    ])
+  })
+
+  test("a change inside the player's stage runs its timing audits", () => {
+    const s = select(['src/components/player-stage/stage-lyrics.tsx'])
+    expect(s.run.has('lyric-dock-web')).toBe(true)
+    expect(s.run.has('layout-home-web')).toBe(false)
+  })
+
+  test("a new export in a module the player imports reaches only that export's importers", () => {
+    // src/lib/auth.ts is imported by the player's stage; the importers of the new export are not
+    const auth = 'src/lib/auth.ts'
+    const whole = ran(select([auth]))
+    expect(whole).toContain('lyric-dock-web')
+    const narrowed = select(
+      [auth],
+      new Map([[auth, new Set(['NOT_IMPORTED_ANYWHERE'])]])
+    )
+    expect(ran(narrowed)).toEqual(['size'])
+    expect(narrowed.why[0]).toMatch(/only NOT_IMPORTED_ANYWHERE changed/u)
+    // An export the stage does import still reaches it
+    const used = select([auth], new Map([[auth, new Set(['useAccess'])]]))
+    expect(
+      used.run.has('lyric-dock-web') || used.run.has('lyric-shift-web')
+    ).toBe(true)
   })
 
   test('the stylesheet, a build file or the check itself runs everything', () => {
