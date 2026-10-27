@@ -919,24 +919,47 @@ const rowsTextOf = (layer: HTMLElement): Span | null => {
   }
 }
 
-// The block the translation on its own keeps out of: the rows' drawn lines and, under them, the docked translation's
-// place, which the block keeps whether the translation is there or not (UnderRows)
-const blockAreaOf = (layer: HTMLElement): Span | null => {
-  const lines = rowsTextOf(layer)
+// The docked translation's place under the rows' floor, open or not (UnderRows), within the lyrics' layer: where letting
+// go docks the translation. Shut, only where it fits above the foot's room; rows nearer the foot than that would rise
+// to dock, and a translation let go at the foot under them is put there, not docked
+const dockedPlaceOf = (layer: HTMLElement): Span | null => {
   const slot = layer.querySelector<HTMLElement>(
     '[data-lyric-rows-area] [data-docked-slot]'
   )
+  const place =
+    slot === null
+      ? 0
+      : pixels(getComputedStyle(slot).getPropertyValue('--docked-h'))
+  if (slot === null || place === 0) {
+    return null
+  }
+  const top = drawnTopIn(slot, layer)
+  const open = slot.offsetHeight >= place - 1
+  const room = slot.closest('.player-lyrics-overlay')?.parentElement
+  const lift = slot.closest('.player-lyrics-overlay')?.nextElementSibling
+  const foot =
+    room && lift
+      ? offsetIn(room, layer) +
+        room.clientHeight -
+        pixels(getComputedStyle(lift).minHeight)
+      : Number.POSITIVE_INFINITY
+  return open || top + place <= foot + 1 ? { bottom: top + place, top } : null
+}
+
+// The block the translation on its own keeps out of: the rows' drawn lines and the docked place under them
+// (dockedPlaceOf), so it never stands where letting go would dock it
+const blockAreaOf = (layer: HTMLElement): Span | null => {
+  const lines = rowsTextOf(layer)
   if (lines === null) {
     return null
   }
-  if (slot === null || slot.offsetHeight === 0) {
-    return lines
-  }
-  const top = drawnTopIn(slot, layer)
-  return {
-    bottom: Math.max(lines.bottom, top + slot.offsetHeight),
-    top: Math.min(lines.top, top),
-  }
+  const place = dockedPlaceOf(layer)
+  return place === null
+    ? lines
+    : {
+        bottom: Math.max(lines.bottom, place.bottom),
+        top: Math.min(lines.top, place.top),
+      }
 }
 
 // Where the translation's handle may stand in its room, in layout units within the layer: from its anchor's top to
