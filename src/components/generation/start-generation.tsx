@@ -15,6 +15,7 @@ import {
 } from '@/lib/auth'
 import type { GenerationRequest, PanelOpening } from '@/lib/generation/store'
 import { requestGeneration } from '@/lib/generation/store'
+import { NEW_SONGS_PAUSED } from '@/lib/generation/stream'
 import type { Refusal } from '@/lib/generation/stream'
 
 // A check answered this fast needs no notice; one that waits on a backend starting up (up to 20 s) does
@@ -52,7 +53,8 @@ export type StartOutcome =
   | { kind: 'prompted' }
 
 // The friendly words for a refusal the app knows better than the backend's generic line: an account that added
-// today's songs hears what it did and when more come, with Request More beside it
+// today's songs hears what it did and when more come, with Request More beside it. `quiet`: nothing the listener
+// did wrong, so it reads as a note, not an error (today's songs added, new songs paused for everyone)
 export const refusalOf = (
   refusal: Refusal
 ): { message: string; action: 'request_more' | null; quiet: boolean } => {
@@ -64,13 +66,25 @@ export const refusalOf = (
       quiet: true,
     }
   }
+  if (refusal.code === NEW_SONGS_PAUSED.code) {
+    return { action: null, message: NEW_SONGS_PAUSED.message, quiet: true }
+  }
   return { action: null, message: refusal.message, quiet: false }
 }
 
 // A refusal as a notice. Today's songs added is good news, not an error: what was done, when more come, and
-// Request More beside it
+// Request More beside it. New songs paused is no one's error either
 const refusalToast = (refusal: Refusal) => {
   const friendly = refusalOf(refusal)
+  if (refusal.code === NEW_SONGS_PAUSED.code) {
+    return {
+      action: undefined,
+      description: friendly.message,
+      icon: undefined,
+      title: NEW_SONGS_PAUSED.title,
+      variant: 'default' as const,
+    }
+  }
   if (!friendly.quiet) {
     return {
       action: undefined,

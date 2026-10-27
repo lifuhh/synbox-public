@@ -49,8 +49,11 @@ const adminUserSchema = z.preprocess(
 )
 
 const settingsSchema = z.object({
+  // Set while the site's daily ceiling paused generation (not the owner): when, and the songs it counted. Both
+  // optional for a Worker from before migration 0032
+  autoPause: z.object({ at: z.number(), count: z.number() }).nullish(),
   generationEnabled: z.boolean(),
-  limits: z.object({ user: z.number() }),
+  limits: z.object({ site: z.number().optional(), user: z.number() }),
 })
 
 const generationSchema = z.object({

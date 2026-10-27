@@ -1,14 +1,18 @@
 import type { Database } from 'bun:sqlite'
 import { beforeEach, describe, expect, test } from 'bun:test'
 
+import { emailAutoPause } from './auto-pause'
+import type { EmailSender } from './contact'
 import { claimGuestSong } from './guest-song'
-import type { Owner } from './quota'
+import type { Owner, SiteTrip } from './quota'
 import {
   checkGeneration,
   finishGeneration,
   getQuota,
   localDay,
+  readGenerationSettings,
   reserveGeneration,
+  setGenerationEnabled,
   setTimeZone,
 } from './quota'
 import { migratedD1 } from './test-d1'
@@ -16,7 +20,7 @@ import { migratedD1 } from './test-d1'
 let db: D1Database
 let sqlite: Database
 const now = new Date('2026-10-21T10:00:00Z')
-const LIMITS = { network: 100, user: 2 }
+const LIMITS = { network: 100, site: 1000, user: 2 }
 const reserve = async (id: string, userId = 'u1', videoId = 'v') =>
   await reserveGeneration(
     db,
@@ -368,5 +372,124 @@ describe('alternate accounts on one network', () => {
       { code: 'network_limit', networkKey: 'net-a', userId: 'u3' },
       { code: 'quota_exceeded', networkKey: 'net-a', userId: 'u1' },
     ])
+  })
+})
+
+// A time on the day `now` falls in
+const at = (time: string) => new Date(`2026-10-21T${time}Z`)
+
+describe("the site's daily ceiling", () => {
+  const sent: { subject: string; text: string }[] = []
+  const emails: Promise<void>[] = []
+  let failing = false
+  const sender: EmailSender = {
+    // oxlint-disable-next-line eslint/require-await -- the binding's send is async; this fake answers at once
+    send: async (mail) => {
+      if (failing) {
+        throw new Error('send failed')
+      }
+      sent.push(mail)
+    },
+  }
+  const onTrip = (trip: SiteTrip) => {
+    emails.push(
+      emailAutoPause(
+        { CONTACT_FROM: 'from', CONTACT_TO: 'to', EMAIL: sender },
+        trip,
+        'https://example.test/admin'
+      )
+    )
+  }
+  const reserveUnder = async (
+    site: number,
+    id: string,
+    owner: Owner,
+    when = now
+  ) =>
+    await reserveGeneration(
+      db,
+      { id, kind: 'new', owner, videoId: 'v' },
+      { ...LIMITS, site },
+      when,
+      onTrip
+    )
+
+  beforeEach(() => {
+    sent.length = 0
+    emails.length = 0
+    failing = false
+    const insert = sqlite.prepare(
+      `insert into "user" ("id", "name", "email", "emailVerified", "createdAt", "updatedAt", "role", "banned") values (?, 'n', ?, 1, 0, 0, 'user', 0)`
+    )
+    for (const id of ['u2', 'u3', 'u4']) {
+      insert.run(id, `${id}@x`)
+    }
+  })
+
+  test('the request that would pass it pauses everyone but admins, and only one of many at once emails', async () => {
+    // An admin's songs count toward it, though no ceiling holds them
+    await reserveUnder(3, 'a1', user('admin'))
+    await reserveUnder(3, 'a2', user('admin'))
+    const outcomes = await Promise.all(
+      ['u1', 'u2', 'u3', 'u4'].map(
+        async (id) => await reserveUnder(3, `r-${id}`, user(id))
+      )
+    )
+    await Promise.all(emails)
+    expect(outcomes.filter((o) => o.outcome === 'reserved')).toHaveLength(1)
+    expect(
+      outcomes.filter((o) => o.outcome === 'generation_paused')
+    ).toHaveLength(3)
+    expect(sent).toHaveLength(1)
+    expect(sent[0]?.subject).toBe(
+      'Synbox paused new songs: 3 today hit the daily ceiling'
+    )
+    expect(sent[0]?.text).toContain('at 10:00 UTC after 3 generations today')
+    expect(await readGenerationSettings(db)).toMatchObject({
+      autoPause: { at: now.getTime(), count: 3 },
+      enabled: false,
+    })
+    expect(await reserveUnder(3, 'a3', user('admin'))).toEqual({
+      outcome: 'reserved',
+    })
+    expect(
+      await checkGeneration(
+        db,
+        { kind: 'new', owner: { key: 'g', kind: 'guest' }, videoId: 'v' },
+        { ...LIMITS, site: 3 },
+        now
+      )
+    ).toEqual({ outcome: 'generation_paused' })
+  })
+
+  test('a failed email leaves the pause; it holds past midnight, and Resume restarts the count from its time', async () => {
+    failing = true
+    await reserveUnder(2, 'r1', user('u1'))
+    await reserveUnder(2, 'r2', user('u2'))
+    expect(await reserveUnder(2, 'r3', user('u3'))).toEqual({
+      outcome: 'generation_paused',
+    })
+    await Promise.all(emails)
+    expect(emails).toHaveLength(1)
+    expect(sent).toHaveLength(0)
+    expect(
+      await reserveUnder(2, 'r3', user('u3'), new Date('2026-10-22T08:00:00Z'))
+    ).toEqual({ outcome: 'generation_paused' })
+
+    // The same day: two songs since midnight, none since the Resume
+    await setGenerationEnabled(db, true, at('10:30:00').getTime())
+    expect(await readGenerationSettings(db)).toMatchObject({
+      autoPause: null,
+      enabled: true,
+    })
+    expect(await reserveUnder(2, 'r3', user('u3'), at('11:00:00'))).toEqual({
+      outcome: 'reserved',
+    })
+    expect(await reserveUnder(2, 'r4', user('u4'), at('11:01:00'))).toEqual({
+      outcome: 'reserved',
+    })
+    expect(await reserveUnder(2, 'r5', user('u1'), at('11:02:00'))).toEqual({
+      outcome: 'generation_paused',
+    })
   })
 })

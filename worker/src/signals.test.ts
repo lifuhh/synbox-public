@@ -8,7 +8,7 @@ import { migratedD1 } from './test-d1'
 let db: D1Database
 let sqlite: Database
 const now = new Date('2026-10-21T10:00:00Z')
-const LIMITS = { network: 30, user: 2 }
+const LIMITS = { network: 30, site: 1000, user: 2 }
 
 beforeEach(() => {
   ;({ db, sqlite } = migratedD1())

@@ -33,6 +33,7 @@ const setup = async () => {
     INTERNAL_SECRET: 'internal',
     NETWORK_DAILY_LIMIT: '30',
     REPORTS_FIXER_TOKEN: TOKEN,
+    SITE_DAILY_LIMIT: '100',
     TRUSTED_ORIGINS: 'http://localhost:5173',
     USER_DAILY_LIMIT: '10',
     VALIDATION_GUEST_DAILY_LIMIT: '10',
