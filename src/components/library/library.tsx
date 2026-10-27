@@ -1,6 +1,13 @@
 import { atom, useAtom, useAtomValue, useSetAtom } from 'jotai'
 import { CloudOffIcon, SearchIcon, XIcon } from 'lucide-react'
-import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  useCallback,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import type { ReactNode, Ref } from 'react'
 import { Link } from 'react-router'
 import { toRomaji } from 'wanakana'
@@ -23,6 +30,7 @@ import { toast } from '@/components/ui/use-toast'
 import { PlaylistCover } from '@/components/watch/playlist-cover'
 import { SongRow } from '@/components/watch/song-row'
 import { useScrollEdges } from '@/hooks/use-scroll-edges'
+import { wheelSideways } from '@/hooks/wheel-sideways'
 import { useMe } from '@/lib/auth'
 import {
   addFavoriteAtom,
@@ -410,7 +418,19 @@ export const LibraryView = ({
   const library = useLibrary()
   const clearHistory = useSetAtom(clearHistoryAtom)
   const [confirmingClear, setConfirmingClear] = useState(false)
-  const tabEdges = useScrollEdges()
+  const edges = useScrollEdges()
+  // The tabs fade at the edge with more past it, and a mouse wheel over them scrolls them sideways
+  const tabsRef = useCallback(
+    (el: HTMLElement | null) => {
+      const unwatch = [edges(el), wheelSideways(el)]
+      return () => {
+        for (const stop of unwatch) {
+          stop?.()
+        }
+      }
+    },
+    [edges]
+  )
   const menu = variant === 'menu'
   const searching = library.deferredQuery.trim() !== ''
 
@@ -471,7 +491,7 @@ export const LibraryView = ({
           {/* The four tabs fit a 390px phone; on a narrower one they scroll sideways, fading at the edge with more
               past it, rather than clip */}
           <div
-            ref={tabEdges}
+            ref={tabsRef}
             className='no-scrollbar overflow-x-auto rounded-full mask-fade-x'>
             <TabsList
               aria-label='Library'

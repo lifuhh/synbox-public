@@ -14,6 +14,7 @@ import {
   lyricsThemeIdAtom,
   translationIsEnglishAtom,
 } from '@/context/atoms'
+import { wheelSideways } from '@/hooks/wheel-sideways'
 import { getLyricsThemeColors } from '@/lib/lyrics-themes'
 import type { ReaderLayer } from '@/lib/offline/reader-prefs'
 import {
@@ -266,6 +267,7 @@ export const TypeBar = () => {
         </div>
       ) : (
         <fieldset
+          ref={wheelSideways}
           aria-label='Japanese Colour'
           className='no-scrollbar flex min-w-0 flex-1 items-center justify-between gap-0.5 overflow-x-auto'>
           {READER_COLORS.map((color) => (

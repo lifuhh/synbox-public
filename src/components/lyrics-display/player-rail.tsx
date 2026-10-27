@@ -307,7 +307,8 @@ const railClass = (inline: boolean, interactive: boolean, open: boolean) =>
   inline
     ? 'flex w-fit max-w-full flex-wrap items-center gap-x-5 gap-y-2 watch-narrow:w-full watch-narrow:flex-col watch-narrow:items-stretch'
     : cn(
-        // Discs on the video, no panel: padded so their shadows and focus rings aren't clipped
+        // Discs on the video, no panel: padded so their shadows and focus rings aren't clipped. Upright they scroll
+        // sideways only on a phone narrower than the discs, so the wheel stays native: no mouse reaches it there
         'flex flex-col items-center gap-2 p-2 transition-translate-fade duration-300 ease-out short:gap-1.5',
         'portrait:no-scrollbar portrait:max-w-[calc(100vw-0.5rem)] portrait:flex-row portrait:overflow-x-auto',
         interactive && 'pointer-events-auto',

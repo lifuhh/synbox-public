@@ -25,6 +25,7 @@ import { ClearFieldButton } from '@/components/ui/clear-field-button'
 import { Input, InputField } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useMediaQuery } from '@/hooks/use-media-query'
+import { wheelSideways } from '@/hooks/wheel-sideways'
 import {
   useGetLyricsBySongId,
   useGetSimilarSongs,
@@ -444,6 +445,7 @@ const SimilarSongs = ({
 // room around the pills (py-1, sm:px-1, the gutter on a phone) keeps their focus ring inside the scrolling box
 const Examples = ({ onSearch }: { onSearch: (query: string) => void }) => (
   <ul
+    ref={wheelSideways}
     aria-label='Examples'
     className='-my-1 no-scrollbar flex gap-2 overflow-x-auto overscroll-x-contain py-1 max-sm:page-bleed-x sm:-mx-1 sm:px-1'>
     {SEARCH_EXAMPLES.map((example) => (

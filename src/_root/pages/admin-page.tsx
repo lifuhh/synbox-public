@@ -40,6 +40,7 @@ import { Select } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useToast } from '@/components/ui/use-toast'
+import { wheelSideways } from '@/hooks/wheel-sideways'
 import {
   AdminOutdatedError,
   GUESTS,
@@ -1165,6 +1166,7 @@ const StatePicker = <T extends string>({
   onChange: (id: T) => void
 }) => (
   <div
+    ref={wheelSideways}
     role='radiogroup'
     aria-label={label}
     className='no-scrollbar inline-flex max-w-full gap-1 self-start overflow-x-auto rounded-lg bg-secondary p-1'>
@@ -1396,6 +1398,7 @@ const UsagePanel = () => {
         <h2 className='text-base font-semibold text-foreground'>
           By Day (UTC)
         </h2>
+        {/* Wheel stays native: a table reads down the page, so the wheel over it scrolls the page */}
         <div className='overflow-x-auto'>
           <table className='w-full min-w-xl border-collapse'>
             <thead className='text-xs text-muted-foreground'>
@@ -1900,7 +1903,9 @@ const AdminTabs = () => {
         }
       }}>
       {/* Scrolls sideways on a phone too narrow for every tab */}
-      <div className='-mx-1 no-scrollbar overflow-x-auto px-1'>
+      <div
+        ref={wheelSideways}
+        className='-mx-1 no-scrollbar overflow-x-auto px-1'>
         <TabsList className='justify-start touch:h-13'>
           <TabsTrigger value='songs' className='h-full'>
             Songs
