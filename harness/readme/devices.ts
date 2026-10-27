@@ -1,5 +1,6 @@
 // HTML for the README's device mockups: an iPhone-like frame around a 390×844 screen (the harness's phone views),
-// upright or on its side. compose.ts lays these out and shoots them with a transparent background.
+// upright or on its side, and a desktop browser window. compose.ts and scenes.ts lay these out and shoot them with a
+// transparent background.
 
 export const SCREEN = { height: 844, width: 390 }
 
@@ -36,6 +37,14 @@ body { font-family: -apple-system, 'SF Pro Text', 'Helvetica Neue', sans-serif; 
   justify-content: space-between; padding: 6px 32px 0 50px; color: #fff; z-index: 2; }
 .status .time { font-weight: 600; font-size: 17px; letter-spacing: -0.2px; }
 .status .icons { display: flex; gap: 6px; align-items: center; fill: currentColor; }
+.browser { position: absolute; border-radius: 14px; overflow: hidden; background: #1b1b1f;
+  box-shadow: 0 40px 80px -30px rgba(0,0,0,.6), 0 0 0 1px rgba(255,255,255,.08); }
+.browser .bar { height: 44px; display: flex; align-items: center; gap: 8px; padding: 0 16px; background: #232328;
+  border-bottom: 1px solid rgba(255,255,255,.06); }
+.browser .dot { width: 12px; height: 12px; border-radius: 50%; }
+.browser .url { margin: 0 auto; width: 38%; height: 28px; border-radius: 8px; background: #2f2f35; color: #c9c9d1;
+  font-size: 13px; display: flex; align-items: center; justify-content: center; gap: 6px; transform: translateX(-28px); }
+.browser > img { display: block; width: 100%; }
 `
 
 // Side buttons: action and volume on the left, power on the right (on the top and bottom edges when on its side)
@@ -65,6 +74,21 @@ export const phone = (opts: {
     <div class="screen">${images}${land ? '' : STATUS_BAR}<div class="island"></div><div class="home"></div></div>
   </div>`
 }
+
+/** A desktop browser window at (x, y), `width` wide, around a shot of the website (1440×900, any scale) */
+export const browser = (opts: {
+  src: string
+  width: number
+  x: number
+  y: number
+}) => `<div class="browser" style="left:${opts.x}px;top:${opts.y}px;width:${opts.width}px">
+  <div class="bar"><span class="dot" style="background:#ff5f57"></span><span class="dot" style="background:#febc2e"></span><span class="dot" style="background:#28c840"></span>
+    <span class="url"><svg width="11" height="12" viewBox="0 0 11 12" fill="#9a9aa3"><rect x="1" y="5" width="9" height="7" rx="1.5"/><path d="M3 5V3.5a2.5 2.5 0 0 1 5 0V5" stroke="#9a9aa3" stroke-width="1.4" fill="none"/></svg>synbox.io</span></div>
+  <img src="${opts.src}">
+</div>`
+
+/** The browser window's outer height for a `width`-wide window: the bar, then the 1440×900 shot scaled to fit */
+export const browserHeight = (width: number) => 44 + (width * 900) / 1440
 
 /** The frame's outer size at scale 1, padding included */
 export const outer = (land: boolean) =>
