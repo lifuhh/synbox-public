@@ -21,6 +21,7 @@ import { cn } from '@/utils/cn'
 // the last pixels in (a spring's settle read as a bounce)
 const FLIGHT_MS = 260
 const easeOut = (x: number) => 1 - (1 - x) * (1 - x)
+const FRAME_STEP_MS = 1000 / 60
 // How far below the bar the page's field must come back before the search leaves the bar, so a scroll resting
 // at the edge doesn't send it back and forth
 const RETURN_PX = 16
@@ -240,6 +241,9 @@ interface Leg {
   from: number
   goal: number
   start: number | null
+  // The time since `start` at the last frame, and how far the flight has gone, in ms
+  clock: number
+  elapsed: number
 }
 
 // Each part of the ghost at `at` (0 at the field, 1 in the bar), in a box `width` × `height`
@@ -431,7 +435,9 @@ const dock = (
     const leaving = drawnBox === null ? setOff : null
     flight ??= flightOf(field, shell)
     leg = {
+      clock: 0,
       depart: drawnBox ?? boxOf((leaving ?? field).getBoundingClientRect()),
+      elapsed: 0,
       from: at,
       goal: docked ? 1 : 0,
       leaving,
@@ -475,7 +481,12 @@ const dock = (
             leg.depart = boxOf(leg.leaving.getBoundingClientRect())
           }
         }
-        const x = Math.min((now - leg.start) / FLIGHT_MS, 1)
+        // A frame moves the flight on by the time since the last, at most one 60Hz frame's worth: the ease-out's
+        // first frames cover the most ground, and a late or jittery frame (WebKit's frame times wander) would
+        // otherwise snap the pill's fade and the text's slide forward in one step
+        leg.elapsed += Math.min(now - leg.start - leg.clock, FRAME_STEP_MS)
+        leg.clock = now - leg.start
+        const x = Math.min(leg.elapsed / FLIGHT_MS, 1)
         draw(easeOut(x))
         landed = x === 1
         frame = requestAnimationFrame(tick)
