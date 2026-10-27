@@ -4,14 +4,18 @@
 //
 // The ink centre is not the text box's centre: a font's line box reserves its ascender and descender, which are
 // rarely even (Plus Jakarta Sans' ascent is taller than its descent), so a label centred by its box draws its
-// letters off the box's middle. What reads as the label's middle is half its cap height above the baseline (half
-// the x-height for a label in lower case only; for CJK, the middle of the label's own ink). Measured as:
+// letters off the box's middle. What reads as the label's middle (its optical centre):
+// - capitals and digits only ("OK", "0.75×"): half the cap height above the baseline;
+// - mixed case ("Play Song"): halfway between the cap-height centre and the x-height centre, as most of its ink is
+//   lower-case letters. Centred on the capitals alone, an icon reads high (about 1px at 15px);
+// - lower case only: half the x-height; CJK: the middle of the label's own ink.
+// Measured as:
 // - the baseline: a zero-size inline-block at `vertical-align: baseline` placed right before the text, in the
 //   text's own line (an empty inline-block's baseline is its bottom edge, so its box sits on the line's baseline).
 //   When the text's parent is a flex or grid box, the text is its own anonymous item; it is wrapped in a span for
 //   the measurement so the marker shares its line instead of becoming a second item. The DOM is put back before
 //   the function returns, in the same task, so nothing is painted or seen by the app;
-// - the cap height (x-height): canvas `measureText` in the text's computed font (`actualBoundingBoxAscent` of "H"
+// - the cap height and x-height: canvas `measureText` in the text's computed font (`actualBoundingBoxAscent` of "H"
 //   or "x"), which reads the same loaded font file the page draws with.
 //
 // A deliberately off-centre glyph that is optically right carries `data-optical="<why>"` on the svg (or a parent
@@ -71,8 +75,14 @@ export const iconTextOffsets = (limitPx: number): IconOffset[] => {
       const m = canvas.measureText(text)
       return (m.actualBoundingBoxAscent - m.actualBoundingBoxDescent) / 2
     }
-    const glyph = /[\p{Lu}\p{N}]/u.test(text) ? 'H' : 'x'
-    return canvas.measureText(glyph).actualBoundingBoxAscent / 2
+    const cap = canvas.measureText('H').actualBoundingBoxAscent
+    const ex = canvas.measureText('x').actualBoundingBoxAscent
+    // Capitals and digits only: the cap centre. With lower case the eye takes the middle of the cap and x-height
+    // centres (a label centred on its capitals alone reads high next to its icon)
+    if (!/\p{Ll}/u.test(text)) {
+      return cap / 2
+    }
+    return /[\p{Lu}\p{N}]/u.test(text) ? (cap + ex) / 4 : ex / 2
   }
   // The baseline of a text node's line, on screen (content's vertical axis); the DOM is restored before it returns
   const baselineOf = (node: Text): number => {
@@ -110,8 +120,7 @@ export const iconTextOffsets = (limitPx: number): IconOffset[] => {
     }
     // Its own icons and text, not those of a control nested inside it
     const own = (n: Node) =>
-      (n instanceof Element ? n : n.parentElement)?.closest(CONTROL) ===
-      control
+      (n instanceof Element ? n : n.parentElement)?.closest(CONTROL) === control
     const icons = [...control.querySelectorAll('svg')].filter(
       (svg) => own(svg) && seen(svg) && svg.closest('[data-optical]') === null
     )
