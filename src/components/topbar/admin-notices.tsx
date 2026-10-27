@@ -1,15 +1,21 @@
-import { FlagIcon, MailIcon, SparklesIcon } from 'lucide-react'
+import { FlagIcon, MailIcon, MusicIcon } from 'lucide-react'
 import { Link } from 'react-router'
 
+import {
+  UNREAD_LABEL,
+  UnreadDot,
+} from '@/components/generation/generation-panel'
+import { Button } from '@/components/ui/button'
 import type { AdminNotice } from '@/lib/admin-notices'
-import { NOTICE_TAB } from '@/lib/admin-notices'
+import { NOTICE_TAB, noticeKey, useClearReadNotices } from '@/lib/admin-notices'
+import { useGeneration } from '@/lib/generation/store'
 import { useGetSongInfoBySongId } from '@/lib/react-query/queries-and-mutations'
 import { cn } from '@/utils/cn'
 
 const ICONS = {
   message: MailIcon,
   report: FlagIcon,
-  request: SparklesIcon,
+  request: MusicIcon,
 } as const
 
 const ago = (at: number) => {
@@ -39,50 +45,75 @@ const NoticeTitle = ({ notice }: { notice: AdminNotice }) => {
   return <>New message from {notice.name || 'a guest'}</>
 }
 
-// The admin's part of the bell: one row per new contact message, report or request, opening its /admin tab
+// A notice the open panel found unread (GenerationState.unread) keeps its dot and bright title until the panel
+// closes, though opening it read them all
+const NoticeRow = ({ notice }: { notice: AdminNotice }) => {
+  const unread = useGeneration().unread.includes(noticeKey(notice))
+  const Icon = ICONS[notice.kind]
+  return (
+    <li className='relative'>
+      {unread && <UnreadDot className='top-1/2 left-1 -translate-y-1/2' />}
+      <Link
+        to={`/admin?tab=${NOTICE_TAB[notice.kind]}`}
+        className='flex min-h-11 items-center gap-3 rounded-lg py-2 pr-2 pl-4 transition-colors hover:bg-accent focus-visible:bg-accent'>
+        <span className='grid size-8 shrink-0 place-items-center rounded-full bg-secondary text-muted-foreground'>
+          <Icon className='size-4' aria-hidden />
+        </span>
+        <span className='flex min-w-0 flex-1 flex-col'>
+          <span
+            className={cn(
+              'truncate text-sm',
+              unread ? 'text-foreground' : 'text-muted-foreground'
+            )}>
+            {unread && UNREAD_LABEL}
+            <NoticeTitle notice={notice} />
+          </span>
+          <span className='text-xs text-muted-foreground'>
+            {ago(notice.at)}
+          </span>
+        </span>
+      </Link>
+    </li>
+  )
+}
+
+// The admin's part of the bell: one row per recent contact message, report or request, opening its /admin tab.
+// Clear Read only where the Worker keeps it (`clearable`), and only once something is read
 export const AdminNoticeList = ({
   notices,
+  clearable,
 }: {
   notices: readonly AdminNotice[]
-}) => (
-  <section aria-label='Admin' className='flex flex-col gap-1 p-2'>
-    <h2 className='px-2 pt-1 text-xs font-medium tracking-wide text-muted-foreground uppercase'>
-      Admin
-    </h2>
-    <ul className='flex flex-col'>
-      {notices.map((notice) => {
-        const Icon = ICONS[notice.kind]
-        return (
-          <li key={`${notice.kind}-${notice.id}`}>
-            <Link
-              to={`/admin?tab=${NOTICE_TAB[notice.kind]}`}
-              className='flex min-h-11 items-center gap-3 rounded-lg px-2 py-2 transition-colors hover:bg-accent focus-visible:bg-accent'>
-              <span className='relative grid size-8 shrink-0 place-items-center rounded-full bg-secondary text-muted-foreground'>
-                <Icon className='size-4' aria-hidden />
-                {notice.unread && (
-                  <span
-                    aria-hidden
-                    className='absolute top-0 right-0 size-2 rounded-full bg-primary'
-                  />
-                )}
-              </span>
-              <span className='flex min-w-0 flex-1 flex-col'>
-                <span
-                  className={cn(
-                    'truncate text-sm',
-                    notice.unread ? 'text-foreground' : 'text-muted-foreground'
-                  )}>
-                  <NoticeTitle notice={notice} />
-                  {notice.unread && <span className='sr-only'> (new)</span>}
-                </span>
-                <span className='text-xs text-muted-foreground'>
-                  {ago(notice.at)}
-                </span>
-              </span>
-            </Link>
-          </li>
-        )
-      })}
-    </ul>
-  </section>
-)
+  clearable: boolean
+}) => {
+  const { mutate: clearRead } = useClearReadNotices()
+  return (
+    <section
+      aria-labelledby='admin-notices-heading'
+      className='flex flex-col gap-1 p-2'>
+      <div className='flex min-h-8 items-center justify-between gap-2 pl-4'>
+        <h2
+          id='admin-notices-heading'
+          className='text-xs font-medium tracking-wide text-muted-foreground uppercase'>
+          Admin
+        </h2>
+        {clearable && notices.some((notice) => !notice.unread) && (
+          <Button
+            variant='overlay-muted'
+            size='sm'
+            className='touch:h-11'
+            onClick={() => {
+              clearRead()
+            }}>
+            Clear Read
+          </Button>
+        )}
+      </div>
+      <ul aria-labelledby='admin-notices-heading' className='flex flex-col'>
+        {notices.map((notice) => (
+          <NoticeRow key={noticeKey(notice)} notice={notice} />
+        ))}
+      </ul>
+    </section>
+  )
+}

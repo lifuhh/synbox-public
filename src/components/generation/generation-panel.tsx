@@ -80,13 +80,13 @@ const Stamp = ({ at, className }: { at: number; className?: string }) => (
 )
 
 // Marks what was unread when the panel opened, at the row's left; read out as "Unread" before its name
-const UnreadDot = ({ className }: { className: string }) => (
+export const UnreadDot = ({ className }: { className: string }) => (
   <span
     aria-hidden
     className={cn('absolute size-1.5 rounded-full bg-brand-light', className)}
   />
 )
-const UNREAD_LABEL = <span className='sr-only'>Unread: </span>
+export const UNREAD_LABEL = <span className='sr-only'>Unread: </span>
 
 // Whether the open panel found this row unread (GenerationState.unread)
 const useUnread = (key: string) => useGeneration().unread.includes(key)

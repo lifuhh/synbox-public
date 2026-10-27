@@ -406,8 +406,10 @@ export const expireReports = async (db: D1Database, now: number) => {
   return meta.changes
 }
 
-// A fix stays in the reporter's notifications until they dismiss it; the newest this many are listed
+// A fix stays in the reporter's notifications until they dismiss it, or FIX_READ_DAYS after they saw it; the newest
+// this many are listed
 const FIX_MAX = 50
+const FIX_READ_DAYS = 3
 
 // A signed-in reporter's report that was resolved with other lyrics than the ones they reported. Guests' old reports
 // get none (their key was a network's), and a dropped report never tells anyone
@@ -416,14 +418,19 @@ const FIXED = `"userId" = ?1 and "resolvedVersion" is not null
 
 // The caller's fixed songs not dismissed, newest fix first: several reports of one song are one notification,
 // seen once all of them are
-export const listFixes = async (db: D1Database, userId: string) => {
+export const listFixes = async (
+  db: D1Database,
+  userId: string,
+  now: number
+) => {
   const { results } = await db
     .prepare(
       `select "videoId", max("resolvedAt") as "fixedAt", min("seenAt" is not null) as "seen" from "report"
        where ${FIXED} and "dismissedAt" is null
-       group by "videoId" order by "fixedAt" desc limit ${FIX_MAX}`
+       group by "videoId" having not ("seen" and max("seenAt") < ?2)
+       order by "fixedAt" desc limit ${FIX_MAX}`
     )
-    .bind(userId)
+    .bind(userId, now - FIX_READ_DAYS * DAY_MS)
     .all<{ videoId: string; fixedAt: number; seen: number }>()
   return results.map(({ videoId, fixedAt, seen }) => ({
     fixedAt,

@@ -3,9 +3,12 @@ import { z } from 'zod'
 
 import { QUERY_KEYS } from '@/lib/react-query/query-keys'
 
-// An admin's in-app notices (worker/src/notices.ts): new contact messages, song reports and requests for more
-// songs, unread until the admin opens the bell. Read on open, on focus and every minute; nobody else asks
+// An admin's in-app notices (worker/src/notices.ts): recent contact messages, song reports and requests for more
+// songs, unread until the admin opens the bell, gone 3 days after or at Clear Read. Read on open, on focus and every
+// minute; nobody else asks
 const noticesSchema = z.object({
+  // Set by a Worker that takes POST /notices/clear; an older one leaves Clear Read out
+  clearable: z.boolean().optional(),
   notices: z.array(
     z.object({
       at: z.number(),
@@ -62,6 +65,7 @@ export const useMarkNoticesSeen = () => {
           old === undefined
             ? old
             : {
+                ...old,
                 notices: old.notices.map((n) => ({ ...n, unread: false })),
                 unread: 0,
               }
@@ -69,6 +73,35 @@ export const useMarkNoticesSeen = () => {
     },
   })
 }
+
+// Clear Read: the read ones leave the bell at once, then on the Worker; a failed save brings them back on the next read
+export const useClearReadNotices = () => {
+  const queryClient = useQueryClient()
+  const queryKey = [QUERY_KEYS.GET_ADMIN_NOTICES]
+  return useMutation({
+    mutationFn: async () => {
+      await fetch('/api/admin/notices/clear', {
+        credentials: 'same-origin',
+        method: 'POST',
+      })
+    },
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey })
+      queryClient.setQueryData<Notices>(queryKey, (old) =>
+        old === undefined
+          ? old
+          : { ...old, notices: old.notices.filter((n) => n.unread) }
+      )
+    },
+    onSettled: async () => {
+      await queryClient.invalidateQueries({ queryKey })
+    },
+  })
+}
+
+// The open panel's record of a notice it found unread (GenerationState.unread)
+export const noticeKey = (notice: AdminNotice) =>
+  `notice:${notice.kind}:${notice.id}`
 
 // Where each kind opens on /admin
 export const NOTICE_TAB: Record<AdminNotice['kind'], string> = {

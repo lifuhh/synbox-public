@@ -22,7 +22,12 @@ import type { LibraryEnv } from './library-songs'
 import { libraryMembership } from './library-songs'
 import { lyrics, pruneHits } from './lyrics'
 import type { LyricsEnv } from './lyrics'
-import { markNoticesSeen, readNotices } from './notices'
+import {
+  clearReadNotices,
+  markNoticesSeen,
+  pruneNoticeReads,
+  readNotices,
+} from './notices'
 import { applyPrefOps, parsePrefOps, readPrefs } from './prefs'
 import {
   checkGeneration,
@@ -312,7 +317,7 @@ app.get('/api/reports/mine', async (c) => {
 app.get('/api/me/fixes', async (c) => {
   const userId = await userIdOf(c.env, c.req.raw.headers)
   return c.json({
-    fixes: userId === null ? [] : await listFixes(c.env.DB, userId),
+    fixes: userId === null ? [] : await listFixes(c.env.DB, userId, Date.now()),
   })
 })
 
@@ -800,13 +805,18 @@ admin.post('/quota-requests/:id/:decision{approve|decline}', async (c) => {
   return decided ? c.body(null, 204) : c.json({ code: 'not_found' }, 404)
 })
 
-// New contact messages, reports and requests since this admin last looked
+// Recent contact messages, reports and requests, unread ones since this admin last opened the bell
 admin.get('/notices', async (c) =>
-  c.json(await readNotices(c.env.DB, c.get('adminId')))
+  c.json(await readNotices(c.env.DB, c.get('adminId'), Date.now()))
 )
 
 admin.post('/notices/seen', async (c) => {
   await markNoticesSeen(c.env.DB, c.get('adminId'), Date.now())
+  return c.body(null, 204)
+})
+
+admin.post('/notices/clear', async (c) => {
+  await clearReadNotices(c.env.DB, c.get('adminId'), Date.now())
   return c.body(null, 204)
 })
 
@@ -904,5 +914,6 @@ export default {
     ctx.waitUntil(pruneValidations(env.DB, now))
     ctx.waitUntil(pruneHits(env.DB, now))
     ctx.waitUntil(pruneEvents(env.DB, now))
+    ctx.waitUntil(pruneNoticeReads(env.DB, now))
   },
 } satisfies ExportedHandler<AppEnv>
