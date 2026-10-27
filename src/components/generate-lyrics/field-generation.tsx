@@ -80,6 +80,9 @@ export const useFieldGeneration = (onStarted?: () => void) => {
 // continuously instead of jumping. The width eases like the search dock's flight (search-dock.tsx › easeOut,
 // quadratic: full speed off the mark, no tail). Under Reduce Motion only the fade runs. The wider label, fading,
 // spills half the labels' difference past each side of the cell (up to 16px), within the button's padding
+const WIDTH_EASE = 'width 200ms cubic-bezier(0.33, 0.67, 0.67, 1)'
+const REDUCED_MOTION = '(prefers-reduced-motion: reduce)'
+
 export const GenerateLabel = ({ checking }: { checking: boolean }) => {
   const box = useRef<HTMLSpanElement>(null)
   const idle = useRef<HTMLSpanElement>(null)
@@ -90,42 +93,37 @@ export const GenerateLabel = ({ checking }: { checking: boolean }) => {
   useLayoutEffect(() => {
     const cell = box.current
     const label = (checking ? busy : idle).current
-    if (cell === null || label === null) {
-      return
-    }
-    // Eases only on a swap in a cell already laid out; a first layout or a font that changed the label jumps
+    // Eases only on a swap in a cell already laid out, and not under Reduce Motion; a first layout or a font that
+    // changed the label's width sets it at once
     const fit = (swap: boolean) => {
+      if (cell === null || label === null) {
+        return
+      }
       // The computed width ignores the pill's scale on press; 'auto' (NaN) while the pill is hidden
-      const width = Number.parseFloat(getComputedStyle(label).width)
+      const width = Number(getComputedStyle(label).width.replace(/px$/u, ''))
       if (!(width > 0) || width === fitted.current) {
         return
       }
-      const ease = swap && fitted.current > 0
+      const ease =
+        swap && fitted.current > 0 && !matchMedia(REDUCED_MOTION).matches
       fitted.current = width
-      if (!ease) {
-        cell.style.transition = 'none'
-      }
+      cell.style.transition = ease ? WIDTH_EASE : ''
       cell.style.width = `${width}px`
-      if (!ease) {
-        // Applies the width before the transition comes back, so it doesn't run
-        cell.getBoundingClientRect()
-        cell.style.transition = ''
-      }
     }
     fit(true)
     const observer = new ResizeObserver(() => {
       fit(false)
     })
-    observer.observe(label)
+    if (label !== null) {
+      observer.observe(label)
+    }
     return () => {
       observer.disconnect()
     }
   }, [checking])
 
   return (
-    <span
-      ref={box}
-      className='grid grid-cols-1 justify-items-center motion-safe:transition-[width] motion-safe:duration-200 motion-safe:ease-[cubic-bezier(0.33,0.67,0.67,1)]'>
+    <span ref={box} className='grid grid-cols-1 justify-items-center'>
       {([false, true] as const).map((forChecking) => (
         <span
           key={String(forChecking)}
