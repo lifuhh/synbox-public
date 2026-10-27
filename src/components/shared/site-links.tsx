@@ -10,8 +10,8 @@ const CONTACT_EMAIL = 'me@edwardhuang.dev'
 const LINK =
   'inline-flex min-h-6 items-center py-1 transition-colors hover:text-foreground'
 
-// The footer of About, Privacy and Terms: who made it, the two policies, and how to write. Wraps on a phone, one
-// line from sm
+// The footer of About, Privacy and Terms: the two policies, how to write, then who made it. Wraps on a phone, one
+// line from sm (max-w-lg fits all five)
 export const SiteLinks = () => {
   // Mounted from its first opening on, so it can animate closed
   const [contact, setContact] = useState<'closed' | 'open' | null>(null)
@@ -19,7 +19,13 @@ export const SiteLinks = () => {
     <>
       <nav
         aria-label='Links'
-        className='mx-auto flex max-w-md flex-wrap items-center justify-center gap-x-5 gap-y-1 pt-10 text-sm text-muted-foreground'>
+        className='mx-auto flex max-w-lg flex-wrap items-center justify-center gap-x-5 gap-y-1 pt-10 text-sm text-muted-foreground'>
+        <Link to='/privacy' className={LINK}>
+          Privacy
+        </Link>
+        <Link to='/terms' className={LINK}>
+          Terms
+        </Link>
         <button
           type='button'
           className={LINK}
@@ -31,12 +37,6 @@ export const SiteLinks = () => {
         <a href={`mailto:${CONTACT_EMAIL}`} className={LINK}>
           {CONTACT_EMAIL}
         </a>
-        <Link to='/privacy' className={LINK}>
-          Privacy
-        </Link>
-        <Link to='/terms' className={LINK}>
-          Terms
-        </Link>
         <a
           href='https://www.linkedin.com/in/lifuhh/'
           target='_blank'
