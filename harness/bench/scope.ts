@@ -10,6 +10,12 @@
 // ui/ components it uses), and a change there affects every page. A change below one page affects that page.
 // Anything that can't be placed (a file outside src/ that the build or the bench server reads, a route whose page
 // module isn't found) widens the scope; nothing narrows it on a guess.
+//
+// Two things narrow it on evidence. A module whose change alters only some of its exports (exports.ts) reaches only
+// the modules that import one of those. And a shell module is on every page, but an audit that declares which part
+// of the shell it observes (BenchScope › shell: the timing audits of the player, which measure the stage, not the
+// top bar's menus) runs for a shell change only inside that part. The frame (entry, router, root layout) and
+// stylesheets still reach everything. What a scoped check skips, the release's `check --full` still runs.
 
 import { execFileSync } from 'node:child_process'
 import { existsSync, readFileSync, statSync } from 'node:fs'
@@ -17,6 +23,7 @@ import path from 'node:path'
 
 import { parseSync } from 'vite'
 
+import { changedExports } from './exports'
 import { isRecord } from './json'
 import { isDocs } from './reuse'
 import type { Repo } from './store'
@@ -70,7 +77,20 @@ const resolve = (top: string, from: string, spec: string): string | null => {
 interface Edge {
   to: string
   dynamic: boolean
+  /** The exports it takes ('default' for the default export); 'all' for a namespace, `export *`, `import()` or CSS */
+  names: string[] | 'all'
 }
+
+/** The export an import or re-export entry takes from its module; null for all of them (a namespace, `export *`) */
+const taken = (kind: string, name: string | null): string | null => {
+  if (kind === 'Name' && name !== null) {
+    return name
+  }
+  return kind === 'Default' ? 'default' : null
+}
+
+const merge = (names: (string | null)[]): string[] | 'all' =>
+  names.includes(null) ? 'all' : names.filter((n): n is string => n !== null)
 
 const literal = (text: string): string | null => {
   const m = /^(?<q>['"`])(?<s>[^'"`$]*)\k<q>$/u.exec(text.trim())
@@ -84,7 +104,7 @@ export const importsOf = (top: string, file: string): Edge[] => {
     return [...text.matchAll(/@import\s+['"](?<s>[^'"]+)['"]/gu)].flatMap(
       (m) => {
         const to = resolve(top, file, m.groups?.s ?? '')
-        return to === null ? [] : [{ dynamic: false, to }]
+        return to === null ? [] : [{ dynamic: false, names: 'all', to }]
       }
     )
   }
@@ -94,21 +114,31 @@ export const importsOf = (top: string, file: string): Edge[] => {
     throw new Error(`can't parse ${file}: ${errors[0]?.message ?? ''}`)
   }
   const specs: Edge[] = []
-  const add = (spec: string, dynamic: boolean) => {
+  const add = (spec: string, dynamic: boolean, names: string[] | 'all') => {
     const to = resolve(top, file, spec)
     if (to !== null) {
-      specs.push({ dynamic, to })
+      specs.push({ dynamic, names, to })
     }
   }
   for (const imp of module.staticImports) {
-    if (imp.entries.length === 0 || imp.entries.some((e) => !e.isType)) {
-      add(imp.moduleRequest.value, false)
+    const values = imp.entries.filter((e) => !e.isType)
+    if (imp.entries.length === 0 || values.length > 0) {
+      // A side-effect import takes no export: only a change to what the module runs on import reaches it
+      add(
+        imp.moduleRequest.value,
+        false,
+        merge(values.map((e) => taken(e.importName.kind, e.importName.name)))
+      )
     }
   }
   for (const exp of module.staticExports) {
     for (const e of exp.entries) {
       if (e.moduleRequest !== null && !e.isType) {
-        add(e.moduleRequest.value, false)
+        add(
+          e.moduleRequest.value,
+          false,
+          merge([taken(e.importName.kind, e.importName.name)])
+        )
       }
     }
   }
@@ -117,7 +147,7 @@ export const importsOf = (top: string, file: string): Edge[] => {
       text.slice(dyn.moduleRequest.start, dyn.moduleRequest.end)
     )
     if (spec !== null) {
-      add(spec, true)
+      add(spec, true, 'all')
     }
   }
   return specs
@@ -341,18 +371,23 @@ const entries = (top: string): string[] => {
 export interface PageMap {
   /** Reached from the entry without entering a route's page module: in every page */
   shell: Set<string>
+  /** The entry, the router and the root layout: every page renders inside them, so every audit sees a change */
+  frame: Set<string>
   /** Each route's page module and everything it imports */
   pages: Map<string, Set<string>>
+  /** Routes' page modules: a change to one is that page's, not its router's */
+  pageFiles: Set<string>
   /** Routes whose page module wasn't found: any change to src/ may affect them */
   unmapped: string[]
 }
 
 export const pageMap = (top: string, audited: string[]): PageMap => {
   const graph = graphAt(top)
-  const { routes } = routeModules(top)
+  const { routes, layout } = routeModules(top)
   const pageFiles = new Set(
     [...routes.values()].filter((f): f is string => f !== null)
   )
+  const frame = new Set([...entries(top), APP, ...layout])
   // The router's own imports of page modules (static or lazy) are where a page starts; anything else importing one
   // pulls it into what imports it
   const shell = closure(
@@ -370,7 +405,7 @@ export const pageMap = (top: string, audited: string[]): PageMap => {
       pages.set(route, closure(graph, [file]))
     }
   }
-  return { pages, shell, unmapped }
+  return { frame, pageFiles, pages, shell, unmapped }
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -386,14 +421,84 @@ export interface Selection {
   run: Map<string, string>
 }
 
+export interface Changed {
+  base: string
+  files: string[]
+  /** For a changed module that exists on both sides, the exports the change can alter (exports.ts); a file
+   * missing here counts whole */
+  exports?: Map<string, Set<string> | 'all'>
+}
+
 /** Files the working tree changes against its merge base with staging: committed, uncommitted and untracked */
-export const changedFiles = (repo: Repo): { base: string; files: string[] } => {
+export const changedFiles = (repo: Repo): Changed => {
   const base = git(repo.top, 'merge-base', 'HEAD', STAGING)
-  const files = new Set([
-    ...lines(git(repo.top, 'diff', '--name-only', base)),
-    ...lines(git(repo.top, 'ls-files', '--others', '--exclude-standard')),
-  ])
-  return { base, files: [...files].toSorted() }
+  const files = [
+    ...new Set([
+      ...lines(git(repo.top, 'diff', '--name-only', base)),
+      ...lines(git(repo.top, 'ls-files', '--others', '--exclude-standard')),
+    ]),
+  ].toSorted()
+  const exports = new Map<string, Set<string> | 'all'>()
+  for (const file of files) {
+    const now = path.join(repo.top, file)
+    if (!/^src\/.+\.tsx?$/u.test(file) || !existsSync(now)) {
+      continue
+    }
+    let before: string
+    try {
+      before = git(repo.top, 'show', `${base}:${file}`)
+    } catch {
+      continue
+    }
+    exports.set(file, changedExports(file, before, readFileSync(now, 'utf-8')))
+  }
+  return { base, exports, files }
+}
+
+/**
+ * The diff as the files whose behaviour it can change: a module whose change alters only some exports is replaced
+ * by the modules that import one of those (each counted whole), and one that alters none is dropped. A route's page
+ * module stays itself: the router importing it is how every page starts.
+ */
+const narrow = (
+  top: string,
+  changed: Changed,
+  map: () => PageMap,
+  graph: Graph
+): { files: string[]; notes: string[] } => {
+  const files = new Set(changed.files)
+  const notes: string[] = []
+  const narrowable = [...(changed.exports ?? [])].filter(
+    (e): e is [string, Set<string>] =>
+      e[1] !== 'all' && !map().pageFiles.has(e[0])
+  )
+  if (narrowable.length === 0) {
+    return { files: [...files], notes }
+  }
+  const sources = lines(git(top, 'ls-files', 'src')).filter((f) =>
+    /\.(?:tsx?|css)$/u.test(f)
+  )
+  for (const [file, names] of narrowable) {
+    files.delete(file)
+    const users = sources.filter((src) =>
+      graph
+        .edges(src)
+        .some(
+          (e) =>
+            e.to === file &&
+            (e.names === 'all' || e.names.some((n) => names.has(n)))
+        )
+    )
+    for (const user of users) {
+      files.add(user)
+    }
+    notes.push(
+      names.size === 0
+        ? `${file}: no export's run-time value changed`
+        : `${file}: only ${[...names].join(', ')} changed, so its importers of those (${users.length}) count instead`
+    )
+  }
+  return { files: [...files].toSorted(), notes }
 }
 
 const budgetsAt = (
@@ -422,6 +527,8 @@ const budgetChanges = (top: string, base: string): string[] => {
 interface Affects {
   everything: string | null
   routes: Map<string, string[]>
+  /** Changed shell modules: on every page, so every audit that observes them (BenchScope › shell) */
+  shell: string[]
   /** harness files, each with the benchmarks it is part of (empty: none) */
   harness: string[]
   budgets: string[]
@@ -444,11 +551,17 @@ const placeHarness = (
   }
 }
 
-/** A file under src/: the shell (every page), the pages that import it, or none */
+/**
+ * A file under src/: the frame or a stylesheet in the shell (everything), a shell module (every audit that observes
+ * it), and the pages that import it themselves
+ */
 const placeSource = (file: string, map: PageMap, out: Affects): void => {
-  if (map.shell.has(file)) {
-    out.everything ??= `${file}: in the app shell, so on every page`
+  if (map.frame.has(file) || (map.shell.has(file) && file.endsWith('.css'))) {
+    out.everything ??= `${file}: every page renders inside it`
     return
+  }
+  if (map.shell.has(file)) {
+    out.shell.push(file)
   }
   const routes = [
     ...[...map.pages].filter(([, mods]) => mods.has(file)).map(([r]) => r),
@@ -457,7 +570,7 @@ const placeSource = (file: string, map: PageMap, out: Affects): void => {
   for (const route of routes) {
     out.routes.set(route, [...(out.routes.get(route) ?? []), file])
   }
-  if (routes.length === 0) {
+  if (routes.length === 0 && !map.shell.has(file)) {
     out.notes.push(`${file}: no audited page imports it`)
   }
 }
@@ -466,7 +579,7 @@ const affects = (
   repo: Repo,
   base: string,
   files: string[],
-  audited: string[]
+  map: () => PageMap
 ): Affects => {
   const out: Affects = {
     budgets: [],
@@ -474,8 +587,8 @@ const affects = (
     harness: [],
     notes: [],
     routes: new Map(),
+    shell: [],
   }
-  let map: PageMap | null = null
   for (const file of files) {
     if (isDocs(file) || NO_PAGE.test(file)) {
       continue
@@ -486,13 +599,12 @@ const affects = (
       out.everything ??= `${file}: the build, or what serves it, reads it`
     } else if (existsSync(path.join(repo.top, file))) {
       // A deleted file is skipped: whatever imported it changed too, and is placed on its own
-      map ??= pageMap(repo.top, audited)
-      placeSource(file, map, out)
+      placeSource(file, map(), out)
     }
   }
-  if (map !== null && map.unmapped.length > 0) {
+  if (out.routes.size > 0 && map().unmapped.length > 0) {
     out.notes.push(
-      `page module not found in ${APP} for ${map.unmapped.join(', ')}: any change to src/ runs their audits`
+      `page module not found in ${APP} for ${map().unmapped.join(', ')}: any change to src/ runs their audits`
     )
   }
   return out
@@ -503,7 +615,8 @@ const benchWhy = (
   b: Benchmark,
   hit: Affects,
   audited: string[],
-  ofProbe: (probe: string) => Set<string>
+  ofProbe: (probe: string) => Set<string>,
+  observes: (roots: string[]) => Set<string>
 ): string | null => {
   const { scope } = b
   if (scope === 'always') {
@@ -522,6 +635,13 @@ const benchWhy = (
   const unknown = scope.routes.filter((r) => !audited.includes(r))
   if (unknown.length > 0) {
     return `visits ${unknown.join(', ')}, not an audited route, so it always runs`
+  }
+  const seen = scope.shell === undefined ? null : observes(scope.shell)
+  const shellHit = hit.shell.find((f) => seen === null || seen.has(f))
+  if (shellHit !== undefined) {
+    return seen === null
+      ? `${shellHit}: in the app shell, so on every page`
+      : `${shellHit}: in the part of the shell it observes`
   }
   for (const route of scope.routes) {
     const [first, ...more] = hit.routes.get(route) ?? []
@@ -543,7 +663,7 @@ export const selectBenches = (
     full: boolean
     audited: string[]
     /** The diff, when the caller has it (tests); else the working tree against its merge base with staging */
-    changed?: { base: string; files: string[] }
+    changed?: Changed
   }
 ): Selection => {
   const all = (
@@ -572,11 +692,26 @@ export const selectBenches = (
         'full'
       )
     }
-    const hit = affects(repo, changed.base, changed.files, opts.audited)
+    const graph = graphAt(repo.top)
+    let pages: PageMap | null = null
+    const map = () => (pages ??= pageMap(repo.top, opts.audited))
+    const narrowed = narrow(repo.top, changed, map, graph)
+    const hit = affects(repo, changed.base, narrowed.files, map)
+    hit.notes.unshift(...narrowed.notes)
     if (hit.everything !== null) {
       return all([hit.everything, ...hit.notes], base)
     }
-    const graph = graphAt(repo.top)
+    const observed = new Map<string, Set<string>>()
+    const observes = (roots: string[]): Set<string> => {
+      const key = roots.join('\n')
+      const known = observed.get(key)
+      if (known !== undefined) {
+        return known
+      }
+      const found = closure(graph, roots)
+      observed.set(key, found)
+      return found
+    }
     const probeFiles = new Map<string, Set<string>>()
     const ofProbe = (probe: string): Set<string> => {
       const known = probeFiles.get(probe)
@@ -608,7 +743,7 @@ export const selectBenches = (
     }
     const run = new Map<string, string>()
     for (const b of benches) {
-      const why = benchWhy(b, hit, opts.audited, ofProbe)
+      const why = benchWhy(b, hit, opts.audited, ofProbe, observes)
       if (why !== null) {
         run.set(b.id, why)
       }

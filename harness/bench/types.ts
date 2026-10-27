@@ -83,6 +83,11 @@ export interface BenchScope {
   routes: string[]
   /** Repo-relative path of the module that runs it; everything it imports counts as the probe */
   probe: string
+  /**
+   * The app-shell modules whose rendering it measures (with everything they import): a change elsewhere in the shell
+   * doesn't run it. Absent: the whole shell, so any shell change runs it
+   */
+  shell?: string[]
 }
 
 /** Every metric is exact: the benchmark belongs to `check`, not `trend` */
