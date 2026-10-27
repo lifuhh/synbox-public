@@ -2083,14 +2083,20 @@ html[data-installed] *::-webkit-scrollbar {
      same frame and over the same 300ms as the top bar. The icons zoom out less than the pill (to 7/8), so the
      room the labels leave goes with them. Icon and label move as one, so the label fades on the same curve with
      no delay and never crosses its icon. The labels only fade, so each tab keeps its name for assistive tech.
-     Keyboard focus inside restores it. With reduced motion only the labels fade */
+     Keyboard focus inside restores it. With reduced motion only the labels fade.
+     The whole dock zooms, the mini bar with the pill, as one transform about the pill's centre (the dock's foot less
+     half the pill's 4rem): one animation, nothing in it scaled on a clock of its own, and the frosted surfaces never
+     carry the animated transform themselves. The mini bar's video, laid over it from outside, glides along on the
+     same timing (mini-bar.tsx › followZoom) */
   [data-tabbar-root] {
     --tab-compact: 0.78;
+    transform-origin: 50% calc(100% - 2rem);
+    transition: scale 300ms var(--ease-out);
+    /* Its own layer before the first zoom, so the zoom's first frame doesn't wait on one being made */
+    will-change: scale;
   }
 
   [data-tab-nav] {
-    transition: scale 300ms var(--ease-out);
-
     & [data-tab-icon],
     & [data-tab-label] {
       transition: 300ms var(--ease-out);
@@ -2125,12 +2131,7 @@ html[data-installed] *::-webkit-scrollbar {
     touch-action: none;
   }
 
-  /* The resume bar zooms with the pill as one group, about the pill's centre: below its own bottom edge by the
-     gap and half the pill's 4rem */
   [data-resume-box] {
-    transform-origin: 50% calc(100% + 0.5rem + 2rem);
-    transition: scale 300ms var(--ease-out);
-
     /* Its close button's press area reaches over the bar's padding, so it stays 44px zoomed out */
     & button:last-of-type {
       position: relative;
@@ -2150,9 +2151,7 @@ html[data-installed] *::-webkit-scrollbar {
     }
 
     @media (prefers-reduced-motion: no-preference) {
-      & [data-tab-nav] {
-        scale: var(--tab-compact);
-      }
+      scale: var(--tab-compact);
 
       /* Half the label's line and the gap above it, in the pill's own units */
       & [data-tab-icon],
@@ -2162,10 +2161,6 @@ html[data-installed] *::-webkit-scrollbar {
 
       & [data-tab-icon] {
         scale: calc(0.875 / var(--tab-compact));
-      }
-
-      & [data-resume-box] {
-        scale: var(--tab-compact);
       }
     }
   }

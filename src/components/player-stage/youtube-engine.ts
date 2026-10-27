@@ -319,12 +319,15 @@ const pageRect = (element: HTMLElement) => {
       }
 }
 
-// The placement in force, for a box that moves without resizing (a transform: the mini bar's zoom)
+// The placement in force, redone for a box that moves without resizing (glideEngine)
 let placed: (() => void) | null = null
 // The stage's placement (placeEngine), the one in force while `placed` is it
 let staged: (() => void) | null = null
-export const followEngine = () => {
-  placed?.()
+// The video gliding along its box's zoom (glideEngine), until a placement is redone
+let glide: Animation | null = null
+const stopGlide = () => {
+  glide?.cancel()
+  glide = null
 }
 
 // Where the video showed when its last placement ended, so the next one flies it from there: the player's stage
@@ -386,23 +389,28 @@ const keepPlaced = (
   radiusPx = 0
 ) => {
   const parts = ensureLayer()
+  stopGlide()
   place()
   fly(parts.layer, parts.layer.style.transform, parts.layer.style.borderRadius)
   placed = place
   const told = placedListener
   placedListener = null
   told?.()
-  const observer = new ResizeObserver(place)
+  const replace = () => {
+    stopGlide()
+    place()
+  }
+  const observer = new ResizeObserver(replace)
   for (const element of watched) {
     observer.observe(element)
   }
-  window.addEventListener('resize', place)
+  window.addEventListener('resize', replace)
   return ({ keepShown = false }: { keepShown?: boolean } = {}) => {
     if (placed === place) {
       placed = null
     }
     observer.disconnect()
-    window.removeEventListener('resize', place)
+    window.removeEventListener('resize', replace)
     zBeforeDrag = null
     dragged = null
     if (parts.layer.style.visibility === 'visible') {
@@ -417,6 +425,7 @@ const keepPlaced = (
     if (keepShown) {
       return
     }
+    stopGlide()
     Object.assign(parts.layer.style, {
       borderRadius: '',
       transform: '',
@@ -633,8 +642,11 @@ export const floatEngine = (target: HTMLElement, radiusPx: number) => {
     const scroll = scrolled()
     const sx = box.width / width
     const sy = box.height / height
+    // The rounding as the target draws it, zoomed with it (the mini bar's zoom)
+    const zoom = target.offsetWidth > 0 ? box.width / target.offsetWidth : 1
+    const radius = radiusPx * zoom
     Object.assign(parts.layer.style, {
-      borderRadius: `${radiusPx / sx}px / ${radiusPx / sy}px`,
+      borderRadius: `${radius / sx}px / ${radius / sy}px`,
       height: `${height}px`,
       left: `${box.left + scroll.left}px`,
       top: `${box.top + scroll.top}px`,
@@ -648,4 +660,65 @@ export const floatEngine = (target: HTMLElement, radiusPx: number) => {
   // Over the tab bar (z-40)
   parts.layer.style.zIndex = '41'
   return keepPlaced(place, [target], radiusPx)
+}
+
+// Glides the placed video onto `end`, its box's place once `along` ends: a CSS transition that moves the box without
+// resizing it (the dock's zoom, which the compositor runs). The glide is a compositor animation timed as `along`, so
+// the two move as one however busy the page is; a box copied every frame by script fell behind it. A zoom about a
+// fixed point moves and scales the box linearly in the eased progress, as a translate and scale do between two ends
+export const glideEngine = (end: ScreenBox, along: Animation) => {
+  stopGlide()
+  const { layer } = ensureLayer()
+  if (placed === null || layer.style.visibility !== 'visible') {
+    return
+  }
+  placed()
+  const timing = along.effect?.getTiming()
+  const frames =
+    along.effect instanceof KeyframeEffect ? along.effect.getKeyframes() : []
+  const from = layer.getBoundingClientRect()
+  const width = layer.offsetWidth
+  const height = layer.offsetHeight
+  if (pageTurned() || timing === undefined || width === 0 || height === 0) {
+    return
+  }
+  const mine = layer.animate(
+    [
+      {
+        easing: frames[0]?.easing ?? 'linear',
+        transform: `translate(0px, 0px) scale(${from.width / width}, ${from.height / height})`,
+      },
+      {
+        transform: `translate(${end.left - from.left}px, ${end.top - from.top}px) scale(${end.width / width}, ${end.height / height})`,
+      },
+    ],
+    {
+      delay: timing.delay,
+      duration: timing.duration,
+      easing: timing.easing,
+      fill: 'forwards',
+    }
+  )
+  glide = mine
+  const align = () => {
+    if (glide === mine && along.startTime !== null) {
+      mine.startTime = along.startTime
+    }
+  }
+  align()
+  along.ready.then(align, () => {
+    if (glide === mine) {
+      stopGlide()
+      placed?.()
+    }
+  })
+  mine.finished.then(
+    () => {
+      if (glide === mine) {
+        placed?.()
+        stopGlide()
+      }
+    },
+    () => {}
+  )
 }
