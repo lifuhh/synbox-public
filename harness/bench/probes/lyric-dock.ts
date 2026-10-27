@@ -9,7 +9,7 @@
 //   with the text far under it;
 // - onto: the rows dragged onto the translation on its own dock them;
 // - saved: a layout saved overlapped (rows and translation both at the foot, undocked) loads usable: docked, or the
-//   two not overlapping.
+//   translation not over the rows' drawn lines (their block's empty top above a one-row pair is not the rows).
 // Each failure counts 1; the counts gate in `check` at 0. A case that couldn't run (no rows on the stage) is an
 // error, no sample.
 
@@ -373,10 +373,10 @@ const dockAudit = async (
     })
     try {
       const end = await boxes(page)
-      if (!end.docked && overlap(end.rows, end.translation)) {
+      if (!end.docked && overlap(end.rowsText, end.translation)) {
         values.savedOverlapped = 1
         notes.push(
-          `saved: a layout saved overlapped loaded overlapped (rows ${JSON.stringify(end.rows)}, translation ${JSON.stringify(end.translation)})`
+          `saved: a layout saved overlapped loaded overlapped (rows' lines ${JSON.stringify(end.rowsText)}, translation ${JSON.stringify(end.translation)})`
         )
       }
     } finally {
