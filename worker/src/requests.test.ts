@@ -103,9 +103,9 @@ const guestMessage = (at: number) =>
     [at]
   )
 
-// What the bell shows the admin at `now`: each notice's arrival and whether it's unread
-const shown = async (now: number) => {
-  const { notices } = await readNotices(db, 'admin', now)
+// What the bell shows the admin at `at`: each notice's arrival and whether it's unread
+const shown = async (at: number) => {
+  const { notices } = await readNotices(db, 'admin', at)
   return notices.map((n) => [n.at, n.unread])
 }
 
