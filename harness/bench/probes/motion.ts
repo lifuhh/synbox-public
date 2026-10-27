@@ -1,6 +1,6 @@
 // A motion audit for any morph, where one element turns into another (home's search field flying into the top bar's
 // search and back). It drives the real transition, records every part's box and opacity on every rendered frame, and
-// judges the frames against four rules:
+// judges the frames against these rules:
 //
 // - teleport: nothing jumps between frames. An element's opacity changes by at most POP_STEP a frame (one not there
 //   counts as 0), unless another element of the same part takes over in the same place, within HANDOVER_PX (the real
@@ -22,11 +22,16 @@
 //   the scroll put one frame in nine runs at 26ms; and a headless frame clock is uneven (8% of idle frames on desktop
 //   Chromium came over 25ms). Frames before and after the morph, the page scrolling, are the page's, not the morph's.
 //
-// Thresholds, from the hero flight measured frame by frame (2026-10-27, desktop Chromium and iPhone WebKit): a
-// critically damped 0.45 s spring across ~330px moves a box at most ~30px a frame, so FREE_STEP_PX (40, on top of the
-// scroll) passes any spring and catches a jump; a part riding its container's edge moves under 2px a frame against
-// it, so STEP_PX is 3; HANDOVER_PX is the 0.5px a hand-off from a moving copy to the real element may miss by;
-// POP_STEP 0.5 is a fade of fewer than two frames.
+// - overshoot, slant, settle: the flight's own shape (`judgeShape`): no edge passes its landing and comes back, the
+//   box's edges share one progress, and no tail creeps the last pixels in.
+//
+// Thresholds, from the hero flight measured frame by frame (2026-10-27, desktop Chromium and iPhone WebKit): a 260ms
+// ease-out across ~330px moves a box ~41px in its first frame (a 0.45 s spring ~30px), so FREE_STEP_PX (60, on top
+// of the scroll) passes any such curve and catches a jump; a part riding its container's edge moves under 2px a frame
+// against it, so STEP_PX is 3; HANDOVER_PX is the 0.5px a hand-off from a moving copy to the real element may miss
+// by; POP_STEP 0.5 is a fade of fewer than two frames. A box whose edges share one progress measures under 0.005 apart
+// (a box sliding with a bar 0.04-0.06), so SLANT_SPREAD is 0.03; a spring crept within 2px of its landing for 14-24
+// frames, a 260ms ease-out for 3, so SETTLE_FRAMES is 4.
 
 import { mkdirSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
@@ -41,7 +46,12 @@ const LIMIT_MS = 120_000
 const POP_STEP = 0.5
 const HANDOVER_PX = 0.5
 const STEP_PX = 3
-const FREE_STEP_PX = 40
+const FREE_STEP_PX = 60
+const OVERSHOOT_PX = 0.5
+const SLANT_SPREAD = 0.03
+const SLANT_MIN_PX = 4
+const SETTLE_PX = 2
+const SETTLE_FRAMES = 4
 const NOISE_PX = 1
 const FRAME_MS = 25
 const DROP_MS = 34
@@ -455,7 +465,14 @@ const WAYS = { x: ['left', 'right'], y: ['up', 'down'] }
 const signOf = (from: number, to: number) =>
   Math.abs(to - from) > NOISE_PX ? Math.sign(to - from) : 0
 
-export type Rule = 'teleport' | 'scale' | 'detached' | 'frame'
+export type Rule =
+  | 'teleport'
+  | 'scale'
+  | 'detached'
+  | 'frame'
+  | 'overshoot'
+  | 'slant'
+  | 'settle'
 
 type Flag = (rule: Rule, part: string, frame: number, text: string) => void
 
@@ -492,35 +509,30 @@ const jumpText = (from: Shown, to: Shown) => {
   return ` (a jump of ${Math.abs(dx).toFixed(1)}px ${WAYS.x[dx < 0 ? 0 : 1]}, ${Math.abs(dy).toFixed(1)}px ${WAYS.y[dy < 0 ? 0 : 1]})`
 }
 
+/** Whether two elements of a part sat in the same place in some frame they both had: this one or the one before */
+const together = (
+  a: { was?: Shown; now?: Shown },
+  b: { was?: Shown; now?: Shown }
+) =>
+  (a.was !== undefined && b.was !== undefined && meets(a.was, b.was)) ||
+  (a.now !== undefined && b.now !== undefined && meets(a.now, b.now)) ||
+  (a.was !== undefined && b.now !== undefined && meets(a.was, b.now)) ||
+  (a.now !== undefined && b.was !== undefined && meets(a.now, b.was))
+
 /**
- * An element shown or hidden at once is fine when another element of its part takes over in the same place (where
- * the one before was last drawn or, still there unseen, where it is now: both riding a moving bar), or when it was
- * off screen in the other frame (hidden as it left the screen, shown as it came back: its opacity was never seen)
+ * A show or hide at once is fine when it hands over: the element and another of its part sat in the same place in
+ * the frame before or this one (a ghost lands on a field the page is still moving: they matched the frame before,
+ * and the field shows where the page has taken it); or when it was off screen in the other frame
  */
 const excused = (
   appearing: boolean,
-  before: Shown | undefined,
-  after: Shown | undefined,
-  others: Shown[],
-  nowOf: (id: number) => Shown | undefined
+  self: { was?: Shown; now?: Shown },
+  others: { was?: Shown; now?: Shown }[]
 ) => {
-  if (appearing) {
-    return (
-      after !== undefined &&
-      ((before !== undefined && before.a < 1) ||
-        others.some((q) => {
-          const there = nowOf(q.id)
-          return meets(q, after) || (there !== undefined && meets(there, after))
-        }))
-    )
-  }
-  return (
-    before !== undefined &&
-    ((after !== undefined && after.a < 1) ||
-      others.some(
-        (q) => meets(before, q) || (after !== undefined && meets(after, q))
-      ))
-  )
+  const offScreen = appearing
+    ? self.was !== undefined && self.was.a < 1
+    : self.now !== undefined && self.now.a < 1
+  return offScreen || others.some((o) => together(self, o))
 }
 
 /** Showing and hiding go by a ramp of opacity, unless `excused` */
@@ -541,7 +553,14 @@ const judgePops = (p: MorphPart, { n, prev, cur, span }: Step, flag: Flag) => {
     if (
       at !== undefined &&
       Math.abs(to - from) > POP_STEP * span &&
-      !excused(appearing, before, after, others, nowOf)
+      !excused(
+        appearing,
+        { now: after, was: before },
+        others.map((q) => ({
+          now: nowOf(q.id),
+          was: was.find((w) => w.id === q.id),
+        }))
+      )
     ) {
       const [other] = others
       const there =
@@ -741,6 +760,133 @@ const judgeScale = (frames: Frame[], parts: MorphPart[], flag: Flag) => {
   }
 }
 
+const EDGES = ['l', 'r', 't', 'b'] as const
+interface Flying {
+  n: number
+  f: Frame
+  g: Shown
+}
+
+/** The frames the morph is drawn in flight (by neither the element it started as nor the one it lands as) */
+const flightFrames = (frames: Frame[], root: string) => {
+  const ids = frames.map((f) => primary(f, root)?.id ?? null)
+  const from = ids.find((id) => id !== null)
+  const to = ids.findLast((id) => id !== null)
+  const flying: Flying[] = frames.flatMap((f, n) => {
+    const g = primary(f, root)
+    return g !== null && g.id !== from && g.id !== to ? [{ f, g, n }] : []
+  })
+  return { flying, to }
+}
+
+/** Each edge's share of the way, from where the flight's box first showed to its destination now */
+const sharesOf = (g: Shown, start: Shown, dest: Shown) =>
+  EDGES.flatMap((k) => {
+    const way = dest[k] - start[k]
+    return Math.abs(way) >= SLANT_MIN_PX
+      ? [{ k, share: (g[k] - start[k]) / way }]
+      : []
+  })
+
+/** Slant and settle of the morph's own box (see `judgeShape`) */
+const judgeBox = (frames: Frame[], root: string, flag: Flag) => {
+  const { flying, to } = flightFrames(frames, root)
+  const start = flying[0]?.g
+  let close = 0
+  for (const { f, g, n } of start === undefined ? [] : flying) {
+    const dest = (f.parts[root] ?? []).find((e) => e.id === to)
+    if (dest !== undefined) {
+      const shares = sharesOf(g, start ?? g, dest)
+      const values = shares.map((s) => s.share)
+      const spread =
+        values.length > 1 ? Math.max(...values) - Math.min(...values) : 0
+      if (spread > SLANT_SPREAD) {
+        flag(
+          'slant',
+          root,
+          n,
+          `its edges are ${shares.map((s) => `${s.k} ${(s.share * 100).toFixed(0)}%`).join(', ')} of the way: ${(spread * 100).toFixed(1)} points apart (allowed ${SLANT_SPREAD * 100})`
+        )
+      }
+      const off = Math.max(...EDGES.map((k) => Math.abs(g[k] - dest[k])))
+      // Creeping: close but not yet on it (the frame drawn exactly on its landing is the landing)
+      close = off <= SETTLE_PX && off > 0.1 ? close + 1 : 0
+    }
+  }
+  if (close > SETTLE_FRAMES) {
+    flag(
+      'settle',
+      root,
+      flying.at(-1)?.n ?? 0,
+      `crept within ${SETTLE_PX}px of where it lands for ${close} frames before landing (allowed ${SETTLE_FRAMES})`
+    )
+  }
+  return new Set(flying.map((x) => x.n))
+}
+
+const edgeName = (k: (typeof EDGES)[number]) =>
+  EDGE_NAMES[k === 'l' || k === 'r' ? 'x' : 'y'][
+    k === 'l' || k === 't' ? 'start' : 'end'
+  ]
+
+/** One part's edges in flight against the same edges of the element that draws it after the pass, frame by frame */
+const judgeOvershoot = (
+  frames: Frame[],
+  p: MorphPart,
+  window: Set<number>,
+  flag: Flag
+) => {
+  const end = frames.findLast((f) => shownOf(f, p.name).length > 0)
+  const destId = end === undefined ? undefined : primary(end, p.name)?.id
+  const sides = new Map<string, number>()
+  for (const [n, f] of frames.entries()) {
+    const dest = (f.parts[p.name] ?? []).find((e) => e.id === destId)
+    const flying = shownOf(f, p.name).filter((q) => q.id !== destId)
+    for (const e of window.has(n) && dest !== undefined ? flying : []) {
+      for (const k of EDGES) {
+        const d = e[k] - (dest?.[k] ?? e[k])
+        const key = `${e.id} ${k}`
+        const side = sides.get(key)
+        if (Math.abs(d) > OVERSHOOT_PX && side === undefined) {
+          sides.set(key, Math.sign(d))
+        } else if (
+          Math.abs(d) > OVERSHOOT_PX &&
+          Math.sign(d) === -(side ?? 0)
+        ) {
+          flag(
+            'overshoot',
+            p.name,
+            n,
+            `its ${edgeName(k)} went ${Math.abs(d).toFixed(1)}px past where it lands (allowed ${OVERSHOOT_PX}px)`
+          )
+          sides.set(key, Math.sign(d))
+        }
+      }
+    }
+  }
+}
+
+/**
+ * The flight's own shape, from the first frame the morph is drawn by something other than where it started to the
+ * last before it lands. Every part is measured against its destination (the element that draws it once the pass is
+ * over, read in the same frame even while hidden, so a destination that moves with the page counts where it is):
+ * - overshoot: an edge never passes its destination's edge and comes back (beyond OVERSHOOT_PX);
+ * - slant: the morph's edges (left, right, top, bottom) cover the same share of the way, from where the flight's box
+ *   first showed to its destination, in every frame (within SLANT_SPREAD): one progress, never an edge leading;
+ * - settle: the flight lands within SETTLE_FRAMES frames of coming within SETTLE_PX of its destination: no tail
+ *   creeping the last pixels in
+ */
+const judgeShape = (frames: Frame[], parts: MorphPart[], flag: Flag) => {
+  const [root] = parts
+  if (root === undefined) {
+    return
+  }
+  const window = judgeBox(frames, root.name, flag)
+  for (const p of parts) {
+    judgeOvershoot(frames, p, window, flag)
+  }
+}
+
 export interface Judged {
   counts: Record<Rule, number>
   /** Frames over FRAME_MS after the one before, in the morph: reported, not judged (see the top of this file) */
@@ -758,7 +904,10 @@ export const judge = (frames: Frame[], parts: MorphPart[]): Judged => {
   const counts: Record<Rule, number> = {
     detached: 0,
     frame: 0,
+    overshoot: 0,
     scale: 0,
+    settle: 0,
+    slant: 0,
     teleport: 0,
   }
   const kept = new Map<string, number>()
@@ -814,6 +963,7 @@ export const judge = (frames: Frame[], parts: MorphPart[]): Judged => {
     judgeDrift(frames, p, flag)
   }
   judgeScale(frames, parts, flag)
+  judgeShape(frames, parts, flag)
   const seen = new Set(
     parts
       .filter((p) => frames.some((f) => shownOf(f, p.name).length > 0))
@@ -827,7 +977,15 @@ export const judge = (frames: Frame[], parts: MorphPart[]): Judged => {
   return { counts, flight: rootIds.size > 1, late, notes, seen, slow }
 }
 
-const RULES: Rule[] = ['teleport', 'scale', 'detached', 'frame']
+const RULES: Rule[] = [
+  'teleport',
+  'scale',
+  'detached',
+  'frame',
+  'overshoot',
+  'slant',
+  'settle',
+]
 
 const runMotion = async (
   morph: Morph,
@@ -872,7 +1030,10 @@ const runMotion = async (
     const counts: Record<Rule, number> = {
       detached: 0,
       frame: 0,
+      overshoot: 0,
       scale: 0,
+      settle: 0,
+      slant: 0,
       teleport: 0,
     }
     const notes: string[] = []
@@ -896,7 +1057,7 @@ const runMotion = async (
       late += j.late
       slow += j.slow
       notes.push(
-        `${cut.name}: ${cut.to - cut.from} frames, ${j.flight ? 'flew' : 'no flight'}; teleport ${j.counts.teleport}, scale ${j.counts.scale}, detached ${j.counts.detached}, over ${FRAME_MS}ms of work ${j.slow} (over ${DROP_MS}ms ${j.counts.frame}), late ${j.late}`,
+        `${cut.name}: ${cut.to - cut.from} frames, ${j.flight ? 'flew' : 'no flight'}; teleport ${j.counts.teleport}, scale ${j.counts.scale}, detached ${j.counts.detached}, overshoot ${j.counts.overshoot}, slant ${j.counts.slant}, settle ${j.counts.settle}, over ${FRAME_MS}ms of work ${j.slow} (over ${DROP_MS}ms ${j.counts.frame}), late ${j.late}`,
         ...j.notes.map((line) => `  ${line}`)
       )
     }
@@ -912,7 +1073,10 @@ const runMotion = async (
         flights,
         lateFrames: late,
         missingFlights: Math.max(minFlights - flights, 0),
+        overshoots: counts.overshoot,
         scaleReversals: counts.scale,
+        settles: counts.settle,
+        slants: counts.slant,
         slowFrames: slow,
         teleports: counts.teleport,
         unseenParts: unseen.length,

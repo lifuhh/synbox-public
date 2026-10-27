@@ -27,6 +27,7 @@ Any UI or UX change (a screen, component, dialog, layout, copy, colour, icon, mo
 - **Motion** (the owner's rule, 2026-10-27; every animated transition, a morph of one element into another above all):
   - Nothing teleports: no element jumps between frames, appears from nowhere or vanishes while still visible. It moves continuously, fades over at least two frames, or hands over in place to the element that takes its part (within 0.5px).
   - Scaling goes one way per transition: in a morph that shrinks nothing grows, in one that grows nothing shrinks, and nothing shrinks and then grows back.
+  - It lands decisively: no edge passes where it lands and comes back (0.5px), no tail creeps the last pixels in, and a box's edges move on one shared progress (never one edge leading, so it never looks slanted).
   - Children stay attached to what they belong to: a button rides its field's end and text its field's edge, inside the box, never on a path of their own. A copy drawn in flight carries no CSS transition of its own (it would trail every move).
   - Every morph has a motion audit: a `Morph` in `harness/bench/probes/motion.ts` (selectors for its parts and the passes that drive it, slow and fast, both ways), registered in `harness/bench/suite.ts`, so `check` runs it frame by frame (`motion-hero-flight-*`). Its notes name each jump, and the frames behind them are in the run's `frames.json`.
 
