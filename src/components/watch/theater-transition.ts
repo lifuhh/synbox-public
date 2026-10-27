@@ -93,6 +93,24 @@ const PARTS: Part[] = [
     kind: 'slide',
     name: 'song',
   },
+  // The song's own rows each slide on their own: the block gets wider in Theater and takes the lyrics panel's inset,
+  // so inside its snapshot the title and channel line sit 16px further in and the action row, at the right end,
+  // 24px; drawn by the block's snapshots they would cross-fade between their two places
+  {
+    elements: one('.watch-main > :first-child h1'),
+    kind: 'slide',
+    name: 'song-title',
+  },
+  {
+    elements: one('.watch-main > :first-child h1 + div > :first-child'),
+    kind: 'slide',
+    name: 'song-meta',
+  },
+  {
+    elements: one('.watch-main nav[aria-label="Player Controls"]'),
+    kind: 'slide',
+    name: 'song-actions',
+  },
   {
     elements: () => {
       const last = document.querySelector('.watch-main > :last-child')
