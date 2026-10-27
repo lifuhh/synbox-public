@@ -1,7 +1,9 @@
 // synbox bench.
 //
-//   bun harness/bench/cli.ts check [--only <id prefix>,…] [--jobs 3]
-//                                                          exact checks; stamps the verdict the PR hook and release read
+//   bun harness/bench/cli.ts check [--jobs 3]             exact checks; a docs-only commit after a pass reuses it;
+//                                                          stamps the verdict the PR hook reads
+//   bun harness/bench/cli.ts check --full                  the same, never reusing a verdict; the release runs this
+//   bun harness/bench/cli.ts check --only <id prefix>,…    just those audits, while working (no verdict)
 //   bun harness/bench/cli.ts trend [--only <id>,…] [--ref origin/main] [--reference <commit>]
 //                                                          timing benches, candidate vs pinned reference → .harness/queue.md
 //   bun harness/bench/cli.ts list                          every benchmark, and which command runs it
@@ -22,6 +24,7 @@ import { isExact } from './types'
 const { values: flags, positionals } = parseArgs({
   allowPositionals: true,
   options: {
+    full: { type: 'boolean' },
     jobs: { default: '3', type: 'string' },
     only: { type: 'string' },
     port: { type: 'string' },
@@ -45,36 +48,38 @@ const main = async () => {
   const repo = repoAt(process.cwd())
   switch (command) {
     case 'check': {
-      // Waits for a trend run: its timings must not share the machine with browsers auditing layout
-      const release = await holdMachine(repo, 'check', log)
-      try {
-        const r = await runCheck(repo, {
-          jobs: jobsOf(flags.jobs),
-          log,
-          only,
-        })
-        let stamp = ` → ${r.verdict ?? ''}`
-        if (r.verdict === null) {
-          stamp = repo.dirty
-            ? ' (uncommitted changes: no verdict; commit, then run again)'
-            : ' (--only: no verdict)'
-        }
-        // A retried audit is what makes a slow run slow (a stuck one waits out its time limit first): said on the last
-        // line, so a run read through \`tail -1\` still shows it
-        const retried = r.steps.filter((st) =>
-          st.detail.includes('retried after')
-        )
-        const retries =
-          retried.length === 0
-            ? ''
-            : ` (retried: ${retried.map((st) => `${st.name}, ${st.detail.split('retried after: ')[1] ?? ''}`).join('; ')})`
-        process.stdout.write(
-          `\ncheck ${r.status.toUpperCase()} in ${Math.round(r.wallMs / 1000)}s${retries}${stamp}\n`
-        )
-        process.exitCode = r.status === 'fail' ? 3 : 0
-      } finally {
-        release()
+      if (flags.full === true && only !== null) {
+        throw new Error('--full and --only exclude each other')
       }
+      // No machine lock for the whole run: audits share the machine with other sessions' through browser slots, and
+      // timing audits take it to themselves (lock.ts)
+      const r = await runCheck(repo, {
+        full: flags.full === true,
+        jobs: jobsOf(flags.jobs),
+        log,
+        only,
+      })
+      let stamp = ` → ${r.verdict ?? ''}`
+      if (r.verdict === null) {
+        stamp = repo.dirty
+          ? ' (uncommitted changes: no verdict; commit, then run again)'
+          : ' (--only: no verdict)'
+      } else if (r.reused !== null) {
+        stamp = ` (reused from ${r.reused.slice(0, 8)}) → ${r.verdict}`
+      }
+      // A retried audit is what makes a slow run slow (a stuck one waits out its time limit first): said on the last
+      // line, so a run read through \`tail -1\` still shows it
+      const retried = r.steps.filter((st) =>
+        st.detail.includes('retried after')
+      )
+      const retries =
+        retried.length === 0
+          ? ''
+          : ` (retried: ${retried.map((st) => `${st.name}, ${st.detail.split('retried after: ')[1] ?? ''}`).join('; ')})`
+      process.stdout.write(
+        `\ncheck ${r.status.toUpperCase()} in ${Math.round(r.wallMs / 1000)}s${retries}${stamp}\n`
+      )
+      process.exitCode = r.status === 'fail' ? 3 : 0
       break
     }
     case 'trend': {

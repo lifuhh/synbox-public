@@ -5,6 +5,7 @@
 // page that has come to rest (signals, not sleeps: see `settle`).
 
 import { readFileSync } from 'node:fs'
+import os from 'node:os'
 import path from 'node:path'
 
 import type { Locator, Page } from 'playwright'
@@ -1266,6 +1267,16 @@ const auditOnce = async (
  */
 const AUDIT_LIMIT_MS = 45_000
 
+/**
+ * The limit for an audit starting now: longer on a busy machine (1-minute load over the cores, up to twice), where
+ * every wait runs slower and a slow audit is not a stuck one. Capped, so a real hang still ends within 90 s
+ */
+const auditLimitMs = (): number =>
+  Math.round(
+    AUDIT_LIMIT_MS *
+      Math.min(2, Math.max(1, os.loadavg()[0] / os.availableParallelism()))
+  )
+
 /** One page at one URL on one screen, its screenshot saved to `shot` */
 export const auditPage = async (
   p: LayoutPage,
@@ -1275,18 +1286,17 @@ export const auditPage = async (
   state?: OpenedState
 ): Promise<{ samples: Sample[]; errors: string[] }> => {
   const at = { step: 'opening the page' }
+  const limit = auditLimitMs()
   let timer: ReturnType<typeof setTimeout> | undefined
   // oxlint-disable-next-line promise/avoid-new -- settles when the limit passes
   const stuck = new Promise<{ samples: Sample[]; errors: string[] }>(
     (resolve) => {
       timer = setTimeout(() => {
         resolve({
-          errors: [
-            `audit stuck for ${AUDIT_LIMIT_MS / 1000}s while ${at.step}`,
-          ],
+          errors: [`audit stuck for ${limit / 1000}s while ${at.step}`],
           samples: [],
         })
-      }, AUDIT_LIMIT_MS)
+      }, limit)
     }
   )
   try {

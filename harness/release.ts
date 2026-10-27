@@ -160,8 +160,10 @@ const gatePaths = (dir: string): string[] => {
 }
 
 /**
- * Runs `check` on staging's tree, every release: the combined tree is what ships, and each PR's own verdict judged
- * a different tree. Skipped only when nothing it checks differs from main.
+ * Runs the full `check` on staging's tree, every release: the combined tree is what ships, and each PR's own
+ * verdict judged a different tree. `--full` never reuses a verdict, and a reused one (stamped on the same tree by a
+ * docs-only commit) doesn't count: the release always runs it. Skipped only when
+ * nothing it checks differs from main.
  */
 const checkStaging = (dir: string) => {
   const changed = git('diff', '--name-only', 'origin/main', `origin/${STAGING}`)
@@ -180,7 +182,7 @@ const checkStaging = (dir: string) => {
     return
   }
   say('check: running on staging')
-  const result = spawnSync('bun', ['harness/bench/cli.ts', 'check'], {
+  const result = spawnSync('bun', ['harness/bench/cli.ts', 'check', '--full'], {
     cwd: dir,
     stdio: 'inherit',
   })
@@ -188,6 +190,11 @@ const checkStaging = (dir: string) => {
   if (result.status !== 0 || verdict === null || verdict.status !== 'pass') {
     throw new Error(
       `check: ${verdict?.summary ?? 'no verdict'}. Fix it in a PR into staging, then release again`
+    )
+  }
+  if (verdict.reused !== undefined) {
+    throw new Error(
+      `check: staging's verdict is not a full run (${verdict.summary}); run \`bun harness/bench/cli.ts check --full\` in ${dir}`
     )
   }
   say(`check: pass in ${Math.round(verdict.wallMs / 1000)}s`)
