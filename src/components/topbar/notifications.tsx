@@ -16,7 +16,11 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover'
-import { useMarkNoticesSeen, useAdminNotices } from '@/lib/admin-notices'
+import {
+  noticeKey,
+  useMarkNoticesSeen,
+  useAdminNotices,
+} from '@/lib/admin-notices'
 import type { AdminNotice } from '@/lib/admin-notices'
 import { lastAccount, useAccess } from '@/lib/auth'
 import type { Access } from '@/lib/auth'
@@ -133,16 +137,20 @@ interface PanelContent {
 const PanelBody = ({
   content,
   notices,
+  clearable,
   onDismissFixes,
 }: {
   content: PanelContent
   notices: readonly AdminNotice[]
+  clearable: boolean
   onDismissFixes: (dismissed: readonly Fix[]) => void
 }) => {
   const songs = content.job !== null || content.fixes.length > 0
   return (
     <>
-      {notices.length > 0 && <AdminNoticeList notices={notices} />}
+      {notices.length > 0 && (
+        <AdminNoticeList notices={notices} clearable={clearable} />
+      )}
       {songs && (
         <GenerationPanel
           job={content.job}
@@ -282,6 +290,9 @@ const Notifications = () => {
       void markFixesSeen()
     }
     if (adminNotices.unread > 0) {
+      noteUnread(
+        adminNotices.notices.filter((n) => n.unread).map((n) => noticeKey(n))
+      )
       markNoticesSeen()
     }
   }, [
@@ -291,6 +302,7 @@ const Notifications = () => {
     fixes,
     markFixesSeen,
     adminNotices.unread,
+    adminNotices.notices,
     markNoticesSeen,
   ])
   // The panel closes when the last thing in it goes, as when its last song is dismissed
@@ -425,6 +437,7 @@ const Notifications = () => {
         <PanelBody
           content={content}
           notices={adminNotices.notices}
+          clearable={adminNotices.clearable === true}
           onDismissFixes={onDismissFixes}
         />
       </PopoverContent>

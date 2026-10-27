@@ -1,7 +1,12 @@
 import type { Database } from 'bun:sqlite'
 import { beforeEach, expect, test } from 'bun:test'
 
-import { markNoticesSeen, readNotices } from './notices'
+import {
+  clearReadNotices,
+  markNoticesSeen,
+  pruneNoticeReads,
+  readNotices,
+} from './notices'
 import { getQuota } from './quota'
 import {
   decideRequest,
@@ -72,7 +77,7 @@ test("an admin's notices: new messages, reports and requests are unread until th
     `insert into "report" ("id", "videoId", "message", "userId", "createdAt") values ('r1', 'abcdefghijk', 'off by a line', 'u1', 20)`
   )
   await sendRequest(db, 'u1', 'more please', 30)
-  const first = await readNotices(db, 'admin')
+  const first = await readNotices(db, 'admin', 100)
   expect(first.unread).toBe(3)
   expect(first.notices.map((n) => [n.kind, n.name])).toEqual([
     ['request', 'Mika'],
@@ -80,12 +85,45 @@ test("an admin's notices: new messages, reports and requests are unread until th
     ['message', 'Mika'],
   ])
   await markNoticesSeen(db, 'admin', 30)
-  const seen = await readNotices(db, 'admin')
+  const seen = await readNotices(db, 'admin', 100)
   expect(seen.unread).toBe(0)
   sqlite.run(
     `insert into "contactMessage" ("createdAt", "sender", "network", "subject", "message") values (40, 'd:guest', 'n', 'Yo', 'hey')`
   )
-  const later = await readNotices(db, 'admin')
+  const later = await readNotices(db, 'admin', 100)
   expect(later.unread).toBe(1)
   expect(later.notices[0]).toMatchObject({ kind: 'message', name: '' })
+})
+
+test('a read notice leaves the bell 3 days after it was read, or at Clear Read; an unread one stays', async () => {
+  const DAY = 86_400_000
+  const message = (at: number) =>
+    sqlite.run(
+      `insert into "contactMessage" ("createdAt", "sender", "network", "subject", "message") values (?, 'd:guest', 'n', 'Hi', 'hello')`,
+      [at]
+    )
+  message(10)
+  // Read long after it arrived: the 3 days count from the reading
+  await markNoticesSeen(db, 'admin', 5 * DAY)
+  expect((await readNotices(db, 'admin', 8 * DAY - 1)).notices).toHaveLength(1)
+  expect((await readNotices(db, 'admin', 8 * DAY + 1)).notices).toEqual([])
+
+  message(9 * DAY)
+  await markNoticesSeen(db, 'admin', 9 * DAY + 1)
+  message(9 * DAY + 2)
+  // Clear Read takes the read one and leaves the one that came after the bell was opened
+  await clearReadNotices(db, 'admin', 9 * DAY + 3)
+  const cleared = await readNotices(db, 'admin', 9 * DAY + 4)
+  expect(cleared.notices.map((n) => [n.at, n.unread])).toEqual([
+    [9 * DAY + 2, true],
+  ])
+  // Once read, it isn't taken by the earlier Clear Read
+  await markNoticesSeen(db, 'admin', 9 * DAY + 5)
+  expect(
+    (await readNotices(db, 'admin', 9 * DAY + 6)).notices.map((n) => n.unread)
+  ).toEqual([false])
+
+  // The cron's prune leaves what the bell shows unchanged
+  await pruneNoticeReads(db, 20 * DAY)
+  expect((await readNotices(db, 'admin', 20 * DAY)).notices).toEqual([])
 })
