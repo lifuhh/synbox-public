@@ -22,6 +22,7 @@ import { ToastAction } from '@/components/ui/toast'
 import { toast } from '@/components/ui/use-toast'
 import { PlaylistCover } from '@/components/watch/playlist-cover'
 import { SongRow } from '@/components/watch/song-row'
+import { useScrollEdges } from '@/hooks/use-scroll-edges'
 import { useMe } from '@/lib/auth'
 import {
   addFavoriteAtom,
@@ -409,6 +410,7 @@ export const LibraryView = ({
   const library = useLibrary()
   const clearHistory = useSetAtom(clearHistoryAtom)
   const [confirmingClear, setConfirmingClear] = useState(false)
+  const tabEdges = useScrollEdges()
   const menu = variant === 'menu'
   const searching = library.deferredQuery.trim() !== ''
 
@@ -466,13 +468,17 @@ export const LibraryView = ({
             'flex flex-col gap-2',
             !menu && 'mx-auto w-full max-w-xl px-4 pt-2'
           )}>
-          {/* On the narrowest phones the four tabs scroll sideways rather than clip */}
-          <div className='no-scrollbar overflow-x-auto rounded-full'>
+          {/* The four tabs fit a 390px phone; on a narrower one they scroll sideways, fading at the edge with more
+              past it, rather than clip */}
+          <div
+            ref={tabEdges}
+            className='no-scrollbar overflow-x-auto rounded-full mask-fade-x'>
             <TabsList
               aria-label='Library'
+              compact
               className='flex h-10 w-max min-w-full justify-start touch:h-12'>
               {library.tabs.map(({ id, label }) => (
-                <TabsTrigger key={id} value={id} className='h-full'>
+                <TabsTrigger key={id} value={id} compact className='h-full'>
                   {label}
                 </TabsTrigger>
               ))}
