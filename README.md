@@ -20,7 +20,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/readme/showcase/hero.webp" alt="The Synbox player on desktop and iPhone, with karaoke lyrics over the music video" width="100%" />
+  <img src="docs/readme/showcase/hero.webp" alt="The Synbox player on desktop and iPhone as a song plays: karaoke lyrics fill over the music video, and the lyrics beside it follow along" width="100%" />
 </p>
 
 Pick a song or paste a YouTube link. The lyrics play over the video and fill as they are sung, with readings and a translation. Synbox runs in the browser and installs on a phone as an app.
