@@ -5,7 +5,6 @@ import {
   BookmarkCheckIcon,
   BookmarkIcon,
   EllipsisIcon,
-  FlagIcon,
   LanguagesIcon,
   LoaderCircleIcon,
   MessageSquareTextIcon,
@@ -72,7 +71,7 @@ import {
   RailTooltip,
   RailTooltipsOff,
 } from './rail-button'
-import { useReportIssue } from './report-issue'
+import { useRailReport } from './report-sent-note'
 
 // The style panel peeks open while the pointer rests on its button, and closes once the pointer has been off
 // button and panel this long; a click pins it. The only hover-to-open surface left: it previews, and menus
@@ -230,9 +229,11 @@ const BookmarkGlyph = ({ bookmarked }: { bookmarked: boolean }) =>
 const SongActionsMenu = ({
   actions,
   hidden,
+  buttonRef,
 }: {
   actions: SongAction[]
   hidden: boolean
+  buttonRef: RefObject<HTMLButtonElement | null>
 }) => {
   const [open, setOpen] = useState(false)
   // Upright the rail lies along the bottom, so the menu opens up from it
@@ -254,7 +255,10 @@ const SongActionsMenu = ({
       }}>
       <DropdownMenuTrigger asChild>
         <RailButton
-          ref={triggerRef}
+          ref={(node) => {
+            triggerRef.current = node
+            buttonRef.current = node
+          }}
           label='More Actions'
           className={cn(
             'hidden portrait:grid short:grid',
@@ -428,7 +432,7 @@ const PlayerRail = ({ inline = false }: { inline?: boolean }) => {
 
   const currentVideo = useAtomValue(currentVideoAtom)
   const [saving, setSaving] = useState(false)
-  const report = useReportIssue(videoId)
+  const report = useRailReport(videoId, inline)
   const likeAction = useLikeAction(videoId)
   const saveButton = useRef<HTMLButtonElement>(null)
   const addFavorite = useSetAtom(addFavoriteAtom)
@@ -535,6 +539,12 @@ const PlayerRail = ({ inline = false }: { inline?: boolean }) => {
     icon: <PlatformShareIcon className='size-5 shrink-0' />,
     label: shareLabel,
   }
+  const reportAction: SongAction = {
+    disabled: videoId === '',
+    handleSelect: report.open,
+    icon: report.icon,
+    label: report.label,
+  }
   const libraryActions = forAccounts(guest, [
     {
       disabled: !currentVideo,
@@ -566,16 +576,17 @@ const PlayerRail = ({ inline = false }: { inline?: boolean }) => {
       label: 'Read Lyrics',
       stageOnly: true,
     },
-    {
-      disabled: videoId === '',
-      handleSelect: report.open,
-      icon: <FlagIcon className='size-5 shrink-0' />,
-      label: report.label,
-    },
+    reportAction,
   ])
   const actions = songActions.filter(
     (action) => !(inline && action.stageOnly === true)
   )
+  const refOf = (action: SongAction) => {
+    if (action === reportAction) {
+      return report.buttonRef
+    }
+    return action.label === 'Save to Playlist' ? saveButton : undefined
+  }
 
   return (
     // Hoverable tooltips wait for a pointer move to close after the trigger is left, and none comes once
@@ -613,13 +624,13 @@ const PlayerRail = ({ inline = false }: { inline?: boolean }) => {
 
               <div className={actionsClass(inline, chart)}>
                 {actions.map((action) => (
-                  <RailTooltip key={action.label} label={action.label}>
+                  <RailTooltip
+                    // Report keeps its button as its label turns to Report Sent: focus and the note stay on it
+                    key={action === reportAction ? 'report' : action.label}
+                    label={action.label}
+                    hidden={action === reportAction && report.sent}>
                     <RailButton
-                      ref={
-                        action.label === 'Save to Playlist'
-                          ? saveButton
-                          : undefined
-                      }
+                      ref={refOf(action)}
                       label={action.label}
                       // Lit while on; off, an action looks like the others, not like a dimmed lyrics toggle
                       pressed={action.pressed === true ? true : undefined}
@@ -631,7 +642,13 @@ const PlayerRail = ({ inline = false }: { inline?: boolean }) => {
                   </RailTooltip>
                 ))}
               </div>
-              {!inline && <SongActionsMenu actions={actions} hidden={chart} />}
+              {!inline && (
+                <SongActionsMenu
+                  actions={actions}
+                  hidden={chart}
+                  buttonRef={report.moreRef}
+                />
+              )}
             </nav>
           </div>
         </RailTooltipsOff>
@@ -645,6 +662,7 @@ const PlayerRail = ({ inline = false }: { inline?: boolean }) => {
         />
       )}
       {report.dialog}
+      {report.note}
     </TooltipProvider>
   )
 }

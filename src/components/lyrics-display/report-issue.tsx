@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import { useId, useState } from 'react'
+import { useCallback, useId, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router'
 
 import { Button } from '@/components/ui/button'
@@ -46,10 +46,15 @@ const PROBLEMS: Partial<Record<ReportResult, string>> = {
 export const ReportIssue = ({
   target,
   onClose,
+  onSent,
 }: {
   target: ReportTarget | null
   onClose: () => void
+  // Sent: the confirmation shows beside the button that opened it, once this has closed and screen readers hear the
+  // page again
+  onSent: () => void
 }) => {
+  const justSent = useRef(false)
   const [message, setMessage] = useState('')
   const [sending, setSending] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
@@ -108,11 +113,11 @@ export const ReportIssue = ({
       return
     }
     onClose()
-    toast(
-      result === 'sent'
-        ? { title: 'Report Sent' }
-        : { title: 'Too Many Reports Today', variant: 'destructive' }
-    )
+    if (result === 'sent') {
+      justSent.current = true
+    } else {
+      toast({ title: 'Too Many Reports Today', variant: 'destructive' })
+    }
   }
 
   return (
@@ -123,7 +128,14 @@ export const ReportIssue = ({
           onClose()
         }
       }}>
-      <DialogContent className='max-w-md'>
+      <DialogContent
+        className='max-w-md'
+        onCloseAutoFocus={() => {
+          if (justSent.current) {
+            justSent.current = false
+            onSent()
+          }
+        }}>
         <DialogHeader>
           <DialogTitle>
             {view.mine ? 'Already Reported' : 'Report Issue'}
@@ -201,7 +213,7 @@ export const ReportIssue = ({
 
 // Opens Report Issue for the song on screen: what it is about, and the moment, are fixed at the press; the song
 // plays on while the listener writes. Reporting is for accounts: a guest's press signs in instead
-export const useReportIssue = (videoId: string) => {
+export const useReportIssue = (videoId: string, onSent: () => void) => {
   const [target, setTarget] = useState<ReportTarget | null>(null)
   const clock = useAtomValue(stageClockAtom)
   const video = useAtomValue(currentVideoAtom)
@@ -210,6 +222,25 @@ export const useReportIssue = (videoId: string) => {
   // The row the lyrics on screen came from (the stage and the watch page read the same cached query)
   const { data: lyricsRow } = useGetLyricsBySongId(videoId)
   const guest = access.kind === 'guest'
+  // The account's open report on the song, from the Worker: it outlives a reload, shows what another device sent, and
+  // is gone once the report is resolved or dropped. A guest can't report, so has none
+  const { data: mine } = useQuery({
+    enabled: !guest && videoId !== '',
+    queryFn: async () => await fetchMyReport(videoId),
+    queryKey: [QUERY_KEYS.GET_MY_REPORT, videoId],
+    staleTime: 60_000,
+  })
+  const reported = !guest && mine !== undefined && mine !== null
+  // Report Sent beside the button, for the send that just went through, on this song
+  const [sent, setSent] = useState(false)
+  const [sentSong, setSentSong] = useState(videoId)
+  if (sentSong !== videoId) {
+    setSentSong(videoId)
+    setSent(false)
+  }
+  const endSent = useCallback(() => {
+    setSent(false)
+  }, [])
   const open = () => {
     if (guest) {
       void signInWithGoogle()
@@ -232,11 +263,24 @@ export const useReportIssue = (videoId: string) => {
       onClose={() => {
         setTarget(null)
       }}
+      onSent={() => {
+        onSent()
+        setSent(true)
+      }}
     />
   )
+  const label = (() => {
+    if (guest) {
+      return 'Sign In to Report'
+    }
+    return reported ? 'Report Sent' : 'Report Issue'
+  })()
   return {
     dialog: guest ? null : dialog,
-    label: guest ? 'Sign In to Report' : 'Report Issue',
+    endSent,
+    label,
     open,
+    reported,
+    sent,
   }
 }

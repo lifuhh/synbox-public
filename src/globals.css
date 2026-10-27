@@ -131,6 +131,9 @@
   --color-youtube: #ff0033;
   --color-success: var(--green-11);
   --color-warning: var(--amber-11);
+  /* A light surface for a short confirmation that must be noticed over the video or the dark page */
+  --color-callout: var(--callout);
+  --color-callout-foreground: var(--callout-foreground);
 
   /* Neutral text and surfaces */
   --color-tagline: var(--graphite-11);
@@ -175,6 +178,7 @@
   --transition-property-filter-fade: filter, opacity;
   --transition-property-surface: background-color, box-shadow;
   --transition-property-fade-fill: opacity, background-color;
+  --transition-property-fill: fill;
 
   --breakpoint-xs: 480px;
 
@@ -1956,6 +1960,9 @@ html[data-installed] *::-webkit-scrollbar {
     --accent-foreground: var(--graphite-12);
     --destructive: var(--danger-9);
     --destructive-foreground: #fff;
+    /* The one light surface; its text 17.3:1, the surface 18.7:1 on black video */
+    --callout: var(--graphite-12);
+    --callout-foreground: var(--graphite-1);
     --search: var(--graphite-9);
     --border: var(--graphite-5);
     --input: var(--graphite-8);
