@@ -143,7 +143,7 @@ const DropdownMenuContent = React.forwardRef(DropdownMenuContentRender)
 DropdownMenuContent.displayName = DropdownMenuPrimitive.Content.displayName
 
 const ITEM =
-  'relative flex cursor-pointer items-center rounded-lg px-2 py-1.5 text-sm outline-hidden transition-colors select-none focus:bg-accent focus:text-accent-foreground data-disabled:pointer-events-none data-disabled:opacity-50'
+  'relative flex cursor-pointer items-center rounded-lg px-2 py-1.5 text-sm label-icons outline-hidden transition-colors select-none focus:bg-accent focus:text-accent-foreground data-disabled:pointer-events-none data-disabled:opacity-50'
 
 const DropdownMenuItemRender: React.ForwardRefRenderFunction<
   React.ComponentRef<typeof DropdownMenuPrimitive.Item>,

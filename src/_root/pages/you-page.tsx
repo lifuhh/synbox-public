@@ -41,7 +41,7 @@ const FeedbackDialog = lazy(
 )
 
 const ROW =
-  'flex min-h-12 items-center gap-3 rounded-xl px-3 text-left transition-colors hover:bg-accent'
+  'flex min-h-12 items-center gap-3 rounded-xl px-3 text-left label-icons transition-colors hover:bg-accent'
 
 // A row that opens a page: its icon, its label, a chevron
 const LinkRow = ({
