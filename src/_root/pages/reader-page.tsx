@@ -154,7 +154,7 @@ const NotFound = () => {
       <p className='text-base'>
         {online
           ? 'This song has no lyrics yet'
-          : 'This song isn’t saved on this device. Saved songs can be read offline.'}
+          : 'This song isn’t saved for offline'}
       </p>
       <Link
         to='/library'

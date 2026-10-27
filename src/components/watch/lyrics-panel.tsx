@@ -171,7 +171,7 @@ const emptyText = ({
     return ''
   }
   return limited
-    ? 'Too many songs this hour. Try again soon.'
+    ? 'Too many songs this hour. Try again soon'
     : 'No lyrics for this song yet'
 }
 

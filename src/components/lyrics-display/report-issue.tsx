@@ -37,8 +37,8 @@ export interface ReportTarget {
 
 // The form's line under the message, for a refusal the listener can fix there
 const PROBLEMS: Partial<Record<ReportResult, string>> = {
-  failed: 'Couldn’t send. Try again.',
-  signedOut: 'Signed out. Sign in again.',
+  failed: 'Couldn’t send. Try again',
+  signedOut: 'Signed out. Sign in again',
   uninformative: 'Say what’s wrong',
 }
 

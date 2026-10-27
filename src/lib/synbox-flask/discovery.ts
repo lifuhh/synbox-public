@@ -143,7 +143,7 @@ const getJson = async <T>(
     throw new Error('This song is not in the library yet')
   }
   if (response.status === 429) {
-    throw new Error('Too many searches, try again in a minute')
+    throw new Error('Too many searches. Try again in a minute')
   }
   if (!response.ok) {
     throw new Error(`Search failed (HTTP ${response.status})`)

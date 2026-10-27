@@ -194,7 +194,7 @@ export const useListening = () => {
     toast({
       action: (
         <ToastAction
-          altText='Undo delete'
+          altText='Undo Delete Playlist'
           onClick={() => {
             record({
               kind: 'playlist',

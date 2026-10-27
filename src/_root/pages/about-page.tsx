@@ -11,15 +11,15 @@ import {
 
 const STEPS = [
   {
-    text: 'Any Japanese song on YouTube, 1 to 8 minutes long.',
+    text: 'Any Japanese song on YouTube, 1 to 8 minutes long',
     title: 'Paste a Link',
   },
   {
-    text: 'The song is transcribed and aligned to its lyrics, word by word.',
+    text: 'The song is transcribed and its lyrics timed word by word',
     title: 'Lyrics Are Timed',
   },
   {
-    text: 'Each word fills as it is sung, with furigana, romaji and an English or Chinese translation.',
+    text: 'Each word fills as it is sung, with furigana, romaji and an English or Chinese translation',
     title: 'Sing Along',
   },
 ]

@@ -53,7 +53,7 @@ const InstallGuideDialog = ({
           <DialogDescription>
             {openIn === undefined
               ? 'Full screen, like an app'
-              : `Not possible in this browser. Open this page in ${openIn}.`}
+              : `Not possible in this browser. Open this page in ${openIn}`}
           </DialogDescription>
         </DialogHeader>
         {steps.length > 0 && (

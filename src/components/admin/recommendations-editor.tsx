@@ -84,7 +84,7 @@ const LibrarySearch = ({
       {words.length > 0 &&
         (matches.length === 0 ? (
           <p className='text-xs text-muted-foreground'>
-            No song in our library matches “{query.trim()}”.
+            No library song matches “{query.trim()}”
           </p>
         ) : (
           <ul aria-label='Matching Songs' className='flex flex-col'>
@@ -152,7 +152,7 @@ const AddSong = ({
   const full = songs.length >= MAX_RECOMMENDATIONS
   const hint = full
     ? `The list holds at most ${MAX_RECOMMENDATIONS} songs`
-    : 'Or any YouTube or Synbox link, or a video ID. Added to the end, saved at once.'
+    : 'Or a YouTube or Synbox link, or a video ID. Adds to the end'
 
   // The field keeps focus on an error, so the fix is one keystroke away
   const refuse = (message: string) => {
@@ -167,7 +167,7 @@ const AddSong = ({
       return
     }
     if (songs.some((song) => song.videoId === videoId)) {
-      refuse('That song is already in the list. Paste a different one.')
+      refuse('Already in the list')
       return
     }
     setPending(true)
@@ -179,9 +179,7 @@ const AddSong = ({
       .catch(() => null)
     setPending(false)
     if (info === null) {
-      refuse(
-        "Couldn't load that video from YouTube. Check the link and try again."
-      )
+      refuse("Couldn't load that video. Check the link")
       return
     }
     onAdd({
@@ -400,7 +398,7 @@ export const RecommendationsEditor = () => {
       onError: () => {
         queryClient.setQueryData(key, saved)
         toast({
-          description: 'The list is unchanged. Try again.',
+          description: 'Nothing changed. Try again',
           title: "Couldn't Save Recommended",
           variant: 'destructive',
         })

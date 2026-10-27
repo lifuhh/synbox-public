@@ -574,7 +574,7 @@ export const LibraryView = ({
           <AlertDialogHeader>
             <AlertDialogTitle>Clear History?</AlertDialogTitle>
             <AlertDialogDescription>
-              Removes every song you played. You can&apos;t undo it.
+              Removes every song you played. You can&apos;t undo it
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

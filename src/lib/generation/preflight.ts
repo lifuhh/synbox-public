@@ -19,11 +19,10 @@ export interface VideoFacts {
 }
 
 export const VIDEO_REFUSALS = {
-  not_found: 'No video at this link. It may be private or deleted.',
-  too_long: 'Too long. Songs can be 1 to 8 minutes.',
-  too_short: 'Too short. Songs can be 1 to 8 minutes.',
-  youtube_only:
-    'YouTube only lets this video play on youtube.com. Try another upload.',
+  not_found: 'No video at this link. It may be private or deleted',
+  too_long: 'Too long. Songs can be 1 to 8 minutes',
+  too_short: 'Too short. Songs can be 1 to 8 minutes',
+  youtube_only: 'This video only plays on youtube.com. Try another upload',
 } as const
 
 const refusal = (code: keyof typeof VIDEO_REFUSALS): Refusal => ({

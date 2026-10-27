@@ -313,7 +313,7 @@ const SongGallery = () => {
         <div ref={setList}>
           {isError && (
             <LoadError
-              message="Couldn't load the gallery."
+              message="Couldn't load the gallery"
               retrying={isFetching}
               onRetry={() => {
                 void refetch()
@@ -337,7 +337,7 @@ const SongGallery = () => {
           <p
             data-gallery-end
             className='appear pt-6 text-center text-sm text-faint'>
-            That&apos;s every song in the gallery, for now
+            That&apos;s every song in the gallery
           </p>
         )}
       </div>

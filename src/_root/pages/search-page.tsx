@@ -140,7 +140,7 @@ const AddByLink = ({
   return (
     <div className='flex flex-col gap-3'>
       <output className='text-sm text-muted-foreground'>
-        {none ? 'No results. ' : 'Not here? '}Paste its YouTube link to add it.
+        {none ? 'No results. ' : 'Not here? '}Paste its YouTube link to add it
       </output>
       <div className='flex flex-wrap items-center gap-x-3 gap-y-2'>
         {canRead && (
@@ -184,10 +184,10 @@ const LinkedVideo = ({ videoId }: { videoId: string }) => {
   const { checking, generate, submission } = useFieldGeneration()
   if (video.error) {
     return video.error.message.startsWith('No video found') ? (
-      <Notice>No video at this link. Paste another one.</Notice>
+      <Notice>No video at this link. Paste another one</Notice>
     ) : (
       <Failed
-        what="Couldn't look up this link."
+        what="Couldn't look up this link"
         retry={() => {
           void video.refetch()
         }}
@@ -277,7 +277,7 @@ const LibraryStatus = ({
   if (library.error) {
     return (
       <Failed
-        what="Couldn't search the songs."
+        what="Couldn't search the songs"
         retry={() => {
           void library.refetch()
         }}
@@ -287,7 +287,7 @@ const LibraryStatus = ({
   if (notReady) {
     return (
       <div className='flex flex-wrap items-center gap-3'>
-        <Notice>Library still loading. Some songs may be missing.</Notice>
+        <Notice>Library still loading. Some songs may be missing</Notice>
         <Button
           variant='ghost'
           onClick={() => {
@@ -299,7 +299,7 @@ const LibraryStatus = ({
     )
   }
   return library.data?.mode === 'title_match' ? (
-    <Notice>Smart search is down. Matching titles only.</Notice>
+    <Notice>Smart search is down. Matching titles only</Notice>
   ) : null
 }
 
@@ -344,7 +344,7 @@ const SearchResults = ({
         <div className='flex flex-col gap-3 empty:hidden'>
           <LibraryStatus library={library} searching={searching} />
           {karaoke.error && (
-            <Failed what="Couldn't load the songs." retry={karaoke.retry} />
+            <Failed what="Couldn't load the songs" retry={karaoke.retry} />
           )}
           <ResultGrid>
             {libraryResults.map((song) => (
@@ -413,11 +413,11 @@ const SimilarSongs = ({
       </div>
       {(isLoading || (data !== undefined && karaoke.waiting)) && <DotsLoader />}
       {karaoke.error && (
-        <Failed what="Couldn't load the songs." retry={karaoke.retry} />
+        <Failed what="Couldn't load the songs" retry={karaoke.retry} />
       )}
       {error && (
         <Failed
-          what="Couldn't load similar songs."
+          what="Couldn't load similar songs"
           retry={() => {
             void refetch()
           }}
