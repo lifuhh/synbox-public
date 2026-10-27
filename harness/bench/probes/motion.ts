@@ -22,7 +22,8 @@
 //   the scroll put one frame in nine runs at 26ms; and a headless frame clock is uneven (8% of idle frames on desktop
 //   Chromium came over 25ms). Frames before and after the morph, the page scrolling, are the page's, not the morph's.
 // - stall: a frame that came over `stallMs` after the one before (STALL_MS, or STALL_FACTOR times the pass's median
-//   frame if that is longer) is the machine stalling, not the page: what moved across it is not judged as a teleport.
+//   frame if that is longer) is the machine stalling, not the page: what moved across it, or across the frame after it
+//   (where what the page did during the stall is drawn), is not judged as a teleport.
 //   A pass where such a gap hid a jump is run again (REDOS times at most) and the first attempt with none is judged;
 //   if every attempt stalled, the audit has no sample (`machine stalled`), which `check` retries like any audit that
 //   measured nothing. A jump between frames a normal interval apart is judged as ever. Gaps over `stallMs`, and
@@ -1015,19 +1016,22 @@ export const judge = (frames: Frame[], parts: MorphPart[]): Judged => {
       slow += s.cur.work > FRAME_MS ? 1 : 0
       late += s.cur.t - s.prev.t > FRAME_MS ? 1 : 0
     }
-    const gapMs = s.cur.t - s.prev.t
-    const stalled = gapMs > limitMs
-    stalledFrames += stalled ? 1 : 0
+    const ownGap = s.cur.t - s.prev.t
+    stalledFrames += ownGap > limitMs ? 1 : 0
+    // The frame after a stalled one too: what the page did during the stall (a scroll step timed by the clock) is
+    // drawn there, a few ms after the late frame (seen: 153ms late, then 2ms, the scroll 125px on)
+    const gapMs = Math.max(ownGap, s.prev.t - (frames[s.n - 2]?.t ?? s.prev.t))
     // Across a stalled frame a jump is the machine's: kept aside, never counted
-    const stepFlag: Flag = stalled
-      ? (rule, part, frame, text) => {
-          if (rule === 'teleport') {
-            hidden.push({ frame, gapMs })
-          } else {
-            flag(rule, part, frame, text)
+    const stepFlag: Flag =
+      gapMs > limitMs
+        ? (rule, part, frame, text) => {
+            if (rule === 'teleport') {
+              hidden.push({ frame, gapMs })
+            } else {
+              flag(rule, part, frame, text)
+            }
           }
-        }
-      : flag
+        : flag
     for (const p of parts) {
       judgePops(p, s, stepFlag)
       if (p.within === undefined) {

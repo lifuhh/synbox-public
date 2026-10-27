@@ -517,12 +517,17 @@ class Judgement {
   }
 
   /** Whether the part changed between the frames */
-  step(part: string, i: number, prev: Frame, cur: Frame): boolean {
+  step(
+    part: string,
+    i: number,
+    prev: Frame,
+    cur: Frame,
+    gapMs: number
+  ): boolean {
     const a = prev.parts[part]
     const b = cur.parts[part]
     const ao = shown(a) ? a.o : 0
     const bo = shown(b) ? b.o : 0
-    const gapMs = cur.t - prev.t
     if (Math.abs(bo - ao) > POP_STEP) {
       this.jump(
         part,
@@ -659,8 +664,13 @@ export const judge = (
   for (let i = 1; i < frames.length; i += 1) {
     const prev = frames[i - 1]
     const cur = frames[i]
+    // This frame's gap, or the one before's: what moved during a stall can show in the frame after the late one
+    const gapMs = Math.max(
+      cur.t - prev.t,
+      prev.t - (frames[i - 2]?.t ?? prev.t)
+    )
     const changed = Object.keys(PARTS).map((part) =>
-      judgement.step(part, i, prev, cur)
+      judgement.step(part, i, prev, cur, gapMs)
     )
     const anyMove = changed.includes(true)
     judgement.attached(i, cur)
