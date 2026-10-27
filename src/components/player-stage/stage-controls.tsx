@@ -138,12 +138,15 @@ const YOUTUBE_SPEEDS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2]
 const speedName = (rate: number) => (rate === 1 ? 'Normal' : `${rate}×`)
 
 // The speed as plain text on the bar's glass, as video players show it now ("1×", "0.75×"): the label is the control.
-// As tall as the icon buttons beside it and as wide as its text, never narrower than square
+// As tall as the icon buttons beside it, one width for every speed ("0.75×" the widest), so choosing one never moves
+// the buttons beside it
 const SPEED_IN_BAR =
-  'grid h-9 min-w-9 shrink-0 place-items-center rounded-md px-1.5 text-sm leading-none font-semibold whitespace-nowrap text-white/85 tabular-nums transition-colors hover:bg-white/10 hover:text-white touch:h-11 touch:min-w-11 touch:watch-narrow:h-10 touch:watch-narrow:min-w-10 pills:h-10 pills:min-w-10 pills:rounded-full'
-// In the right-hand column: the discs' glass and height, stretched into a pill so "0.75×" fits
+  'grid h-9 w-12 shrink-0 place-items-center rounded-md text-sm leading-none font-semibold whitespace-nowrap text-white/85 tabular-nums transition-colors hover:bg-white/10 hover:text-white touch:h-11 touch:watch-narrow:h-10 pills:h-10 pills:rounded-full'
+// In the right-hand column: the discs' glass and height, stretched into a pill so "0.75×" fits. The column is as wide
+// as a disc (FullScreenChrome), and a wider pill keeps the discs' right edge and grows to the left, so the discs stay
+// on its axis and the pill stays out of the right-hand safe area
 const SPEED_IN_COLUMN =
-  'grid h-10 min-w-10 shrink-0 place-items-center rounded-full bg-black/55 px-2 text-sm leading-none font-semibold whitespace-nowrap text-white/90 tabular-nums shadow-rail backdrop-blur-md transition-colors hover:bg-black/70 hover:text-white touch:h-11 touch:min-w-11 short:h-9 short:min-w-9'
+  'grid h-10 min-w-10 shrink-0 self-end place-items-center rounded-full bg-black/55 px-2 text-sm leading-none font-semibold whitespace-nowrap text-white/90 tabular-nums shadow-rail backdrop-blur-md transition-colors hover:bg-black/70 hover:text-white touch:h-11 touch:min-w-11 short:h-9 short:min-w-9'
 
 // Every speed the video allows, in a menu, the current one checked; a choice applies it and closes the menu. In the
 // bar the menu opens above its button; in the right-hand column, to its left. Its open menu holds the controls up
@@ -248,8 +251,9 @@ export const CONTROLS_FADE_MS = 300
 const FADE_VARS: CssVars = { '--controls-fade': `${CONTROLS_FADE_MS}ms` }
 const OBSTRUCTION_GAP_PX = 8
 // With a mouse the bar takes presses only on its controls and the glass they sit on (`data-press`): its top padding
-// and the gaps between its groups pass them on to the stage, and to lyrics dragged down under the bar. A touch
-// screen keeps the whole bar, so a finger that just misses a button doesn't hide the controls
+// and the gaps between its groups pass them on to lyrics dragged down under the bar. The stage itself ignores a
+// press on the bar (use-stage-taps.ts › onControlBar), so a gap never plays or pauses. A touch screen keeps the
+// whole bar, so a finger that just misses a button doesn't hide the controls
 const PRESS_THROUGH = 'mouse:pointer-events-none'
 const PRESSABLE = 'mouse:[&_:is(button,[data-press])]:pointer-events-auto'
 // ...except in a narrow watch page's small video, where the gradient above the rows reaches the middle row of
@@ -480,7 +484,7 @@ const FullScreenChrome = ({
       <div
         data-player-chrome
         className={cn(
-          'hidden absolute top-(--stage-corner-top) right-[calc(var(--safe-right)+0.125rem)] z-30 flex-col items-center gap-2 p-2 transition-translate-fade duration-300 ease-out sm:right-[calc(var(--safe-right)+0.625rem)] touch:flex',
+          'hidden absolute top-(--stage-corner-top) right-[calc(var(--safe-right)+0.125rem)] z-30 w-14 flex-col items-center gap-2 p-2 transition-translate-fade duration-300 ease-out sm:right-[calc(var(--safe-right)+0.625rem)] touch:flex touch:w-15 short:w-13',
           // On its side, vertically centred, mirroring the rail on the left, on the control bar's right-hand
           // axis: the bar's 44px buttons sit inside its max(1rem, safe area) padding, these 36px discs 4px
           // further in
@@ -642,6 +646,7 @@ export const StageControls = ({
         <div
           ref={contentRef}
           data-player-chrome
+          data-controls-rows
           className='watch-narrow:flex watch-narrow:flex-wrap watch-narrow:items-center watch-narrow:gap-0.5 short:flex short:items-center short:gap-1'>
           {/* On a touch screen the clock sits at the end of the seek bar, so the buttons' row fits at 320px */}
           <div className='mb-2 flex items-center gap-3 watch-narrow:contents short:contents'>

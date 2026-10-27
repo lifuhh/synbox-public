@@ -13,6 +13,26 @@ const FORWARDED_CLICK_MS = 100
 
 type Side = 'back' | 'forward'
 
+// A menu, sheet or popover open over the player (Radix marks its content): a press outside it only closes it
+const OPEN_OVERLAY =
+  ':is([role="dialog"], [role="alertdialog"], [role="menu"], [role="listbox"])[data-state="open"]'
+// The control bar from its rows' top down to the stage's edge, its whole width. With a mouse its gaps pass presses
+// through, so lyrics dragged under it can still be grabbed (stage-controls.tsx › PRESS_THROUGH), but a press there
+// is still on the bar
+const onControlBar = (x: number, y: number) => {
+  const rows = document.querySelector('[data-controls-rows]')
+  const bar = rows?.parentElement?.getBoundingClientRect()
+  if (!rows || !bar) {
+    return false
+  }
+  return (
+    y >= rows.getBoundingClientRect().top &&
+    y <= bar.bottom &&
+    x >= bar.left &&
+    x <= bar.right
+  )
+}
+
 // A double tap on the left half skips back, on the right half forward (owner, 2026-10-25)
 const sideAt = (x: number): Side => (x < 1 / 2 ? 'back' : 'forward')
 // What a single tap does, decided as it lands, while the controls still show what was there before it: `style` is a
@@ -59,6 +79,11 @@ export const useStageTaps = ({
   const intentRef = useRef<TapIntent>('toggle')
   const pointerRef = useRef('mouse')
   const sideRef = useRef<Side | null>(null)
+  // Where the latest press landed, read before anything under it handles it
+  const pointRef = useRef({ x: -1, y: -1 })
+  // A press that closed a menu or sheet, or landed on the control bar, does nothing on the stage: no play/pause,
+  // controls, seek or full screen
+  const ignoredRef = useRef(false)
   const pendingRef = useRef<{
     side: Side
     timer: ReturnType<typeof setTimeout>
@@ -69,13 +94,17 @@ export const useStageTaps = ({
     undefined
   )
 
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    const record = (event: globalThis.PointerEvent) => {
+      pointRef.current = { x: event.clientX, y: event.clientY }
+    }
+    window.addEventListener('pointerdown', record, { capture: true })
+    return () => {
+      window.removeEventListener('pointerdown', record, { capture: true })
       clearTimeout(pendingRef.current?.timer)
       clearTimeout(flashTimer.current)
-    },
-    []
-  )
+    }
+  }, [])
 
   const runSingleTap = (intent: TapIntent) => {
     const actions: Record<TapIntent, () => void> = {
@@ -113,6 +142,9 @@ export const useStageTaps = ({
     target: TapTarget = 'stage'
   ) => {
     pointerRef.current = pointerType
+    ignoredRef.current =
+      document.querySelector(OPEN_OVERLAY) !== null ||
+      (controlsVisible && onControlBar(pointRef.current.x, pointRef.current.y))
     if (pointerType === 'mouse' || showCover) {
       intentRef.current = 'toggle'
     } else if (target === 'lyrics') {
@@ -128,6 +160,9 @@ export const useStageTaps = ({
 
   const forwardedAt = useRef(0)
   const onClick = () => {
+    if (ignoredRef.current) {
+      return
+    }
     const side = sideRef.current
     if (pointerRef.current === 'mouse' || side === null) {
       runSingleTap(intentRef.current)
@@ -159,7 +194,7 @@ export const useStageTaps = ({
   }
 
   const onDoubleClick = (event: MouseEvent<HTMLElement>) => {
-    if (pointerRef.current === 'mouse') {
+    if (pointerRef.current === 'mouse' && !ignoredRef.current) {
       event.preventDefault()
       toggleFullscreen()
     }
