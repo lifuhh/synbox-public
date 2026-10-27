@@ -95,6 +95,21 @@ test("an admin's notices: new messages, reports and requests are unread until th
   expect(later.notices[0]).toMatchObject({ kind: 'message', name: '' })
 })
 
+test("an admin's own report isn't a notice to them; a guest's and another admin's are", async () => {
+  sqlite.run(
+    `insert into "user" ("id", "name", "email", "emailVerified", "createdAt", "updatedAt", "role", "banned") values ('admin2', 'Helper', 'c@x', 1, 0, 0, 'admin', 0)`
+  )
+  sqlite.run(
+    `insert into "report" ("id", "videoId", "message", "userId", "guestKey", "createdAt") values
+       ('own', 'abcdefghijk', 'mine', 'admin', null, 10),
+       ('guest', 'abcdefghijk', 'theirs', null, 'g1', 20)`
+  )
+  const ids = async (adminId: string) =>
+    (await readNotices(db, adminId, 100)).notices.map((n) => n.id)
+  expect(await ids('admin')).toEqual(['guest'])
+  expect(await ids('admin2')).toEqual(['guest', 'own'])
+})
+
 const DAY = 86_400_000
 
 const guestMessage = (at: number) =>

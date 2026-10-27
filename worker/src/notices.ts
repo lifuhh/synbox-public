@@ -26,7 +26,8 @@ const DAY_MS = 86_400_000
 
 type Row = Omit<Notice, 'unread'>
 
-const recentRows = async (db: D1Database) => {
+// An admin's own reports aren't news to them, so they're left out; the fix still reaches them as a reporter (/api/me/fixes)
+const recentRows = async (db: D1Database, adminId: string) => {
   const { results } = await db
     .prepare(
       `select * from (
@@ -37,6 +38,7 @@ const recentRows = async (db: D1Database) => {
          union all
          select 'report', r."id", r."createdAt", coalesce(u."name", ''), r."videoId", null
          from "report" r left join "user" u on u."id" = r."userId"
+         where r."userId" is not ?2
          union all
          select 'request', cast(q."id" as text), q."createdAt", coalesce(u."name", ''), null, null
          from "quotaRequest" q left join "user" u on u."id" = q."userId"
@@ -45,7 +47,7 @@ const recentRows = async (db: D1Database) => {
          from "feedback" f left join "user" u on u."id" = f."userId"
        ) order by "at" desc limit ?1`
     )
-    .bind(SCAN)
+    .bind(SCAN, adminId)
     .all<Row>()
   return results
 }
@@ -82,7 +84,7 @@ export const readNotices = async (
   adminId: string,
   now: number
 ): Promise<{ notices: Notice[]; unread: number; clearable: true }> => {
-  const rows = await recentRows(db)
+  const rows = await recentRows(db, adminId)
   const { clearedAt, readAt } = await readTimes(db, adminId)
   const notices = rows
     .flatMap((row) => {
@@ -110,7 +112,7 @@ export const markNoticesSeen = async (
   adminId: string,
   now: number
 ) => {
-  const rows = await recentRows(db)
+  const rows = await recentRows(db, adminId)
   const { readAt } = await readTimes(db, adminId)
   const unread = rows.filter((row) => row.at <= now && readAt(row) === null)
   await db.batch([
@@ -136,7 +138,7 @@ export const clearReadNotices = async (
   adminId: string,
   now: number
 ) => {
-  const rows = await recentRows(db)
+  const rows = await recentRows(db, adminId)
   const { readAt } = await readTimes(db, adminId)
   // Up to the oldest notice still unread, so clearing never takes one the admin hasn't seen
   const unread = rows.filter((row) => readAt(row) === null).map((row) => row.at)
