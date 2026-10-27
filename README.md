@@ -87,20 +87,10 @@ Size, seven colour presets or your own. Karaoke Style sets the lyrics in two row
 The same groups as the [About page](https://synbox.io/about), with a little more detail.
 
 - **Code:** TypeScript and React on Vite, Tailwind CSS. Python and Flask for the lyrics service. SQL on Cloudflare D1. Better Auth for Google sign-in.
-- **AI:** LLMs, speech recognition and NLP make each song's lyrics, readings and translations; evals keep them accurate. TypeSafe's Jev understands searches and tags each song's mood and voice. Agentic coding builds the app.
+- **AI:** LLMs, speech recognition and NLP make each song's lyrics, readings and translations; evals keep them accurate. TypeSafe's Jev understands searches and tags each song's mood and voice.
 - **Platforms:** OpenAI, Anthropic Claude, ElevenLabs and TypeSafe for AI. Google Cloud runs the lyrics service, Cloudflare the accounts, Netlify the site, Appwrite the song files. YouTube's embedded player and Data API for video. Sentry for errors.
 
 Security lives in code: a strict Content-Security-Policy, HSTS, rate limits, per-account quotas, and a build that fails instead of shipping source maps.
-
-## How It's Developed
-
-Since October 2026, AI coding agents (Claude Code) write most changes, several at a time. One person sets direction and reviews. Nothing ships without evidence:
-
-- **[`AGENTS.md`](AGENTS.md)** holds the rules every agent follows: what never gets committed, how to build for phones and desktop, how changes ship.
-- **One task, one worktree, one PR.** `harness/wt.ts` gives each task its own copy and dev server. Finished work merges into `staging`.
-- **Every PR passes `harness/bench/cli.ts check`:** types, lint, tests, formatting, bundle size, and a layout audit of every page on desktop, an iPhone app upright and sideways, iPhone Safari and a 320px screen. The audit catches small or covered buttons, content under the notch, sideways scroll, clipped text, unnamed controls, and buttons that fire on press instead of release. A hook blocks any PR without a passing check.
-- **One path to production.** `harness/release.ts` re-checks `staging`, then smoke-tests a local build, a preview deploy and the live site. It stops at the first failure.
-- **A written reason for every change.** Each PR gets a private change-log entry: problem, cause, fix, lesson.
 
 ## Run It Locally
 
