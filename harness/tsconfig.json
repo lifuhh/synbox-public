@@ -14,6 +14,7 @@
     "asks.ts",
     "bench",
     "history.ts",
+    "readme",
     "release.ts",
     "smoke.ts",
     "views.ts",

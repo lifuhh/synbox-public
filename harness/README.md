@@ -187,6 +187,25 @@ bun harness/asks.ts import <transcript.jsonl>                       # backfill a
 - **Private.** The inbox, the transcript findings and `ledger.json` live in the main checkout's gitignored `docs/private/asks/`, shared by every worktree (`SYNBOX_ASKS_DIR` overrides it). Prompts may hold anything: never commit them, and quote an ask in a PR or log entry only as the owner's request, never a pasted secret. The ledger has one writer, this tool, under a lock.
 - **From the backend repo**, run it through the release worktree, which `bun harness/release.ts` keeps on staging's tip: `bun ~/github-workspace/synbox-release/harness/asks.ts report`.
 
+## README images: `readme/`
+
+The repository README's phone scene and colour strip, rebuilt after a redesign. Every browser opens through `bench/engines/browser.ts` › `open`, silent and headless, with the bench's recorded fonts (WebKit stalls on the live Japanese font, and the app holds lyrics until it loads).
+
+```sh
+bun harness/readme/moments.ts <videoId>                       # the song's short, verified lines: times only, never lyric text
+bun harness/readme/capture.ts <dir> scout <videoId> 0 --site <origin>      # the song on its side at each moment, to pick from
+bun harness/readme/capture.ts <dir>/raw home <videoId> <sec>               # Home, the song in the mini player (live site)
+bun harness/readme/capture.ts <dir>/raw sideways <videoId> <sec> --site <origin> --other-fit
+bun harness/readme/capture.ts <dir>/upright upright <videoId> <start> <end> --site <origin>
+bun harness/readme/compose.ts <out.webp> --sideways <png> --home <png> --upright <dir> --from <s> --to <s> [--keep]
+bun harness/readme/colors.ts <out.webp>                        # one row, one card per lyric colour
+```
+
+- **The player shots come from staging** (`--site` a `wt serve` address), with karaoke and YouTube reads answered from the deployed services, which the dev server's stand-ins can't reach without the backend's keys. Home comes from https://synbox.io, whose recommendations and charts are real.
+- **The upright clip plays, at 0.25×,** and is shot as fast as WebKit allows (about 14 frames a second of song): a pause or a seek brings up YouTube's own centre button and the app's controls. Only the video and lyric card are shot each frame; `base.png` is the rest of the screen.
+- **`--other-fit`** switches the video's fit, for a music video whose own captions the default crop cuts in half.
+- **Pick moments by eye and by line:** pretty art, and a line that reads well in English. Lyrics stay out of the repo; the images show a line or two, as the app does.
+
 ## Known limits
 
 - What the lab can't show: the real iOS keyboard, iOS's zoom into a field under 16px (`zoomInputs` predicts it; WebKit in Playwright never zooms, so `panXPx` only catches a pan the layout itself causes), the status bar's own drawing, and touch drags.
