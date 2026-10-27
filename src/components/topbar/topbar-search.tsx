@@ -483,9 +483,10 @@ export const TopbarSearch = ({ variant }: { variant: 'inline' | 'button' }) => {
             pick(target)
           }
         }}
-        // 16px text: iOS zooms the page into any field set smaller when it takes focus, and pans it sideways
+        // 16px text on touch: iOS zooms the page into any field set smaller when it takes focus, and pans it sideways.
+        // 15px with a mouse, where Plus Jakarta's wide letters at 16px read larger than a top bar's field should
         className={cn(
-          'w-full border border-border bg-background/60 pr-9 pl-10 text-base text-foreground outline-none placeholder:text-muted-foreground focus-visible:border-ring [&::-webkit-search-cancel-button]:hidden',
+          'w-full border border-border bg-background/60 pr-9 pl-10 text-base text-foreground outline-none placeholder:text-muted-foreground focus-visible:border-ring mouse:text-label [&::-webkit-search-cancel-button]:hidden',
           panel ? 'h-11 rounded-xl' : 'h-10 rounded-full'
         )}
       />
