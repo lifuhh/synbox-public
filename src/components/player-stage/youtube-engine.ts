@@ -668,21 +668,21 @@ export const floatEngine = (target: HTMLElement, radiusPx: number) => {
 // fixed point moves and scales the box linearly in the eased progress, as a translate and scale do between two ends
 export const glideEngine = (end: ScreenBox, along: Animation) => {
   stopGlide()
-  const { layer } = ensureLayer()
-  if (placed === null || layer.style.visibility !== 'visible') {
+  const video = ensureLayer().layer
+  if (placed === null || video.style.visibility !== 'visible') {
     return
   }
   placed()
   const timing = along.effect?.getTiming()
   const frames =
     along.effect instanceof KeyframeEffect ? along.effect.getKeyframes() : []
-  const from = layer.getBoundingClientRect()
-  const width = layer.offsetWidth
-  const height = layer.offsetHeight
+  const from = video.getBoundingClientRect()
+  const width = video.offsetWidth
+  const height = video.offsetHeight
   if (pageTurned() || timing === undefined || width === 0 || height === 0) {
     return
   }
-  const mine = layer.animate(
+  const mine = video.animate(
     [
       {
         easing: frames[0]?.easing ?? 'linear',
@@ -700,25 +700,25 @@ export const glideEngine = (end: ScreenBox, along: Animation) => {
     }
   )
   glide = mine
-  const align = () => {
+  // Placed at rest and the glide dropped in one task, so no frame shows both
+  const settle = () => {
+    if (glide === mine) {
+      placed?.()
+      stopGlide()
+    }
+  }
+  // The same start as the zoom, once it has one; a zoom cancelled (reversed) ends the glide where the box is
+  const align = async () => {
+    try {
+      await along.ready
+    } catch {
+      settle()
+      return
+    }
     if (glide === mine && along.startTime !== null) {
       mine.startTime = along.startTime
     }
   }
-  align()
-  along.ready.then(align, () => {
-    if (glide === mine) {
-      stopGlide()
-      placed?.()
-    }
-  })
-  mine.finished.then(
-    () => {
-      if (glide === mine) {
-        placed?.()
-        stopGlide()
-      }
-    },
-    () => {}
-  )
+  void align()
+  mine.addEventListener('finish', settle)
 }

@@ -91,20 +91,22 @@ const useListenHere = (song: ListSong, startedHere: boolean) => {
   }, [startedHere, inLibrary, song, addToHistory])
 }
 
+// A computed `scale` ('none' or one number) as a number
 const scaleOf = (value: string | null | undefined) => {
-  const scale = Number.parseFloat(value ?? '')
-  return Number.isFinite(scale) ? scale : 1
+  const scale = Number(value)
+  return value !== null &&
+    value !== undefined &&
+    value !== '' &&
+    Number.isFinite(scale)
+    ? scale
+    : 1
 }
 
 // The bar zooms with the tabs when the top bar's state flips: the whole dock scales, as one CSS transition
 // (globals.css). The video, laid over the thumbnail from outside the dock, glides along with the same timing
 // (youtube-engine › glideEngine), to where the thumbnail ends: the zoom about the dock's origin, applied to where it
 // is now. Read on the flip itself, the style flushed so the transition exists
-const followZoom = (thumb: HTMLElement) => {
-  const dock = thumb.closest<HTMLElement>('[data-tabbar-root]')
-  if (dock === null) {
-    return undefined
-  }
+const followZoom = (thumb: HTMLElement, dock: HTMLElement) => {
   const observer = new MutationObserver(() => {
     const style = getComputedStyle(dock)
     const now = scaleOf(style.scale)
@@ -124,7 +126,7 @@ const followZoom = (thumb: HTMLElement) => {
     const ratio = scaleOf(last) / now
     const [ox = 0, oy = 0] = style.transformOrigin
       .split(' ')
-      .map((part) => Number.parseFloat(part))
+      .map((part) => Number(part.replace('px', '')))
     const box = dock.getBoundingClientRect()
     const x = box.left + ox * now
     const y = box.top + oy * now
@@ -270,7 +272,8 @@ const MiniPlayer = ({
   }, [playing])
   useEffect(() => {
     const el = thumb.current
-    return el === null ? undefined : followZoom(el)
+    const dock = el?.closest<HTMLElement>('[data-tabbar-root]')
+    return el && dock ? followZoom(el, dock) : undefined
   }, [])
 
   // The progress line, written straight to its transform each frame while the song plays
