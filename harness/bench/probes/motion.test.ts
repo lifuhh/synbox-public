@@ -8,7 +8,7 @@ const PARTS: MorphPart[] = [
   {
     name: 'pill',
     selector: '.pill',
-    within: { drift: 4, part: 'box', x: 'end', y: 'centre' },
+    within: { drift: { x: 1, y: 1 }, part: 'box', x: 'end', y: 'centre' },
   },
 ]
 
@@ -21,6 +21,8 @@ const el = (id: number, l: number, r: number, o = 1): Shown => ({
   r,
   t: 10,
 })
+
+const at = (e: Shown, dy: number): Shown => ({ ...e, b: e.b + dy, t: e.t + dy })
 
 const frame = (i: number, box: Shown[], pill: Shown[]): Frame => ({
   parts: { box, pill },
@@ -53,6 +55,17 @@ describe('judge', () => {
     const j = judge(frames, PARTS)
     expect(j.counts).toEqual({ detached: 0, frame: 0, scale: 0, teleport: 0 })
     expect(j.flight).toBe(true)
+  })
+
+  test('a pill whose centre trails the box rising is detached, a little at a time too', () => {
+    const frames = [
+      frame(0, [el(1, 0, 600)], [el(2, 420, 595)]),
+      frame(1, [at(el(1, 0, 600), -2)], [at(el(2, 420, 595), -1)]),
+      frame(2, [at(el(1, 0, 600), -4)], [at(el(2, 420, 595), -2)]),
+    ]
+    expect(judge(frames, PARTS).notes.join('\n')).toContain(
+      "2.0px down of where it keeps against box's centre line"
+    )
   })
 
   test('a pill that grows in a shrinking morph is a scale reversal', () => {
