@@ -21,6 +21,7 @@ const twMerge = extendTailwindMerge({
             'fade-translate',
             'filter-fade',
             'surface',
+            'fill',
           ],
         },
       ],

@@ -28,6 +28,9 @@ const popoverContentVariants = cva('', {
   defaultVariants: { variant: 'default' },
   variants: {
     variant: {
+      // A short light pill beside its button, for a confirmation that must be noticed (Report Sent)
+      callout:
+        'flex w-auto items-center gap-1.5 rounded-full border border-transparent bg-callout py-1.5 ps-2.5 pe-3 text-sm font-medium whitespace-nowrap text-callout-foreground shadow-rail',
       default: '',
       // A floating card that lays out its own padding
       floating: 'rounded-[10px] p-0 shadow-[0_12px_32px_rgb(0_0_0/0.5)]',

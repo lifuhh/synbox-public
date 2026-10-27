@@ -1,4 +1,4 @@
-import { useAtom, useSetAtom } from 'jotai'
+import { useAtom, useAtomValue, useSetAtom } from 'jotai'
 import {
   LoaderIcon,
   PlayIcon,
@@ -13,6 +13,7 @@ import {
   lyricsStylePanelAtom,
   lyricsVisibilityAtom,
   playbackRateAtom,
+  playerChromeHeldAtom,
   playerChromeOpenAtom,
   playerVolumeAtom,
   stageClockAtom,
@@ -199,11 +200,12 @@ const useFullscreen = () => {
 // under ours, so the centre button never outlives the rest of the UI on its own. With a mouse it doesn't wait for
 // that: the rest goes on idle or the moment the mouse leaves. A tap that hides the controls (`dismissed`) hides
 // them whatever holds them, paused or not (owner, 2026-10-25). Either way the centre button alone stays over
-// YouTube's until it goes (CenterPlayButton)
+// YouTube's until it goes (CenterPlayButton). Something that must be seen beside its button holds it (`held`)
 const showsControls = (state: {
   locked: boolean
   dragging: boolean
   idle: boolean
+  held: boolean
   dismissed: boolean
   outside: boolean
   playing: boolean
@@ -213,6 +215,7 @@ const showsControls = (state: {
   !state.locked &&
   !state.dragging &&
   (!state.idle ||
+    state.held ||
     (!state.dismissed &&
       ((state.youTubeCenterShowing && !state.mouse) ||
         (!state.playing && !state.outside))))
@@ -443,6 +446,15 @@ export const PlayerStage = ({
     }
     lastPhase.current = phase.kind
   }, [phase.kind, wake, outside])
+  const chromeHeld = useAtomValue(playerChromeHeldAtom)
+  // Released, the UI stays the idle time from then, as after any input; not for a mouse away from the player
+  const wasHeld = useRef(chromeHeld)
+  useEffect(() => {
+    if (wasHeld.current && !chromeHeld && !outside) {
+      wake()
+    }
+    wasHeld.current = chromeHeld
+  }, [chromeHeld, wake, outside])
   const [dragging, setDragging] = useState(false)
   const [locked, setLocked] = useState(false)
   useWakeLock(phase.kind === 'playing' || phase.kind === 'buffering')
@@ -458,6 +470,7 @@ export const PlayerStage = ({
   const controlsVisible = showsControls({
     dismissed,
     dragging,
+    held: chromeHeld,
     idle,
     locked,
     mouse,

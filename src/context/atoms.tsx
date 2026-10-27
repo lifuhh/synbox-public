@@ -442,6 +442,9 @@ export const reloadStoredStyleAtom = atom(null, (get, set, key: string) => {
 // Whether the player's floating UI shows: the rail, the top bar's buttons and the stage controls show and
 // hide together. PlayerStage owns it
 export const playerChromeOpenAtom = atom(true)
+// Set while something anchored to the floating UI must be seen (Report Sent beside its button): PlayerStage shows
+// the UI for as long, and counts the release as activity
+export const playerChromeHeldAtom = atom(false)
 // The home page's own search field, which the top bar's search docks from once it scrolls under the bar
 export const homeSearchFieldAtom = atom<HTMLElement | null>(null)
 // The rail's lyrics style panel. 'peek' opened as the pointer came over the rail and closes when it
