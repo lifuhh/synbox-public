@@ -51,6 +51,40 @@ const liftMinHeight = (lifts: boolean, dragging: boolean) => {
   return dragging ? EDGE : `max(var(--safe-bottom, 0px), ${EDGE})`
 }
 
+interface SpacerState {
+  floor: boolean
+  anchor: number
+  lifts: boolean
+  // Dragged or put somewhere at once: no ease
+  still: boolean
+  // Dragged to the edge, below the home indicator's room
+  toEdge: boolean
+}
+
+// The spacers above and below the block split the free space by the anchor. Floor-anchored, the one above takes
+// whatever the block leaves and the one below places the floor (globals.css › lyrics-floor); dragged, the block
+// stands where it will rest, so the drop moves nothing
+const spacersOf = ({ floor, anchor, lifts, still, toEdge }: SpacerState) => {
+  if (floor) {
+    return {
+      grow: 1,
+      growTransition: 'none',
+      liftMin: liftMinHeight(lifts, false),
+      liftTransition: still ? 'none' : `--rows-anchor ${LIFT_MS}ms ease-out`,
+    }
+  }
+  const settle = still ? 'none' : `flex-grow ${LIFT_MS}ms ease-out`
+  return {
+    grow: anchor,
+    growTransition: settle,
+    liftMin: liftMinHeight(lifts, toEdge),
+    // A drop settles from the drag's edge onto the home indicator's
+    liftTransition: still
+      ? 'none'
+      : `min-height ${LIFT_MS}ms ease-out, ${settle}`,
+  }
+}
+
 interface DragStart {
   pointerY: number
   slop: number
@@ -85,6 +119,9 @@ interface DraggableLyricsProps {
   // Whether a drag may take it down to the edge, below the home indicator's room, settling there on the drop. Off,
   // it stands while dragged where it will rest, so the drop moves nothing
   dragToEdge?: boolean
+  // Karaoke Style's rows: the anchor places their floor (`[data-lyric-floor]`'s bottom, the lower line's romaji), not
+  // the block, so a block that grows or shrinks with its lines never moves the floor (floorTrackIn)
+  floor?: boolean
 }
 
 export interface Dock {
@@ -119,10 +156,77 @@ export const handleTrack = (handle: HTMLElement, layer: HTMLElement) => {
   }
 }
 
+// oxlint-disable-next-line unicorn/prefer-number-coercion -- the value ends in px, which Number() rejects
+const pixels = (value: string) => Number.parseFloat(value) || 0
+
+// Where a floor-anchored block's floor can go, within its room: `base + anchor * free`. At 0 a one-row pair
+// (--rows-home, set by the rows) stands under the top edge; at 1 the floor stands on the room kept at the foot. The
+// same sums as globals.css › lyrics-floor, which places it
+const floorTrackIn = (block: HTMLElement) => {
+  const room = block.parentElement
+  const above = block.previousElementSibling
+  const below = block.nextElementSibling
+  if (!(room && above instanceof Element && below instanceof Element)) {
+    return null
+  }
+  const pad = getComputedStyle(block)
+  const under = getComputedStyle(below)
+  const base =
+    pixels(getComputedStyle(above).minHeight) +
+    pixels(pad.paddingTop) +
+    pixels(under.getPropertyValue('--rows-home'))
+  return {
+    base,
+    free: Math.max(
+      1,
+      room.clientHeight -
+        base -
+        pixels(pad.paddingBottom) -
+        pixels(under.minHeight)
+    ),
+  }
+}
+
+// A floor-anchored block's floor as drawn, within its room, and its track; null for a block placed by its top
+const floorOf = (block: HTMLElement) => {
+  const floor = block.dataset.anchorFloor === undefined ? null : block
+  const line = floor?.querySelector<HTMLElement>('[data-lyric-floor]')
+  const track = floor && floorTrackIn(floor)
+  const room = block.parentElement
+  return line && track && room
+    ? { at: offsetIn(line, room) + line.offsetHeight, track }
+    : null
+}
+
+// The track of the rows' floor, from their handle: how far it can travel (`free`), for a place kept under it
+export const floorTrackOf = (handle: HTMLElement) => {
+  const block = handle.closest<HTMLElement>('.player-lyrics-overlay')
+  return block ? (floorOf(block)?.track ?? null) : null
+}
+
+// The anchor that puts a block's handle's top at `top` within the layer, at the handle's height now: the share of
+// its track, by its top or, floor-anchored, by its floor
+export const anchorForTop = (
+  handle: HTMLElement,
+  layer: HTMLElement,
+  top: number
+) => {
+  const block = handle.closest<HTMLElement>('.player-lyrics-overlay')
+  const floor = block ? floorOf(block) : null
+  if (floor) {
+    const moved = top - offsetIn(handle, layer)
+    return clamp01((floor.at + moved - floor.track.base) / floor.track.free)
+  }
+  const track = handleTrack(handle, layer)
+  return track ? clamp01((top - track.base) / track.free) : null
+}
+
 // `anchor` is where the viewer put the lyrics (0 = top, 1 = bottom of their
 // area) and is what persists, once per drop. Flex spacers split the free
 // space above and below the block by the anchor, so a taller or shorter line
-// keeps its place without measuring. A drag goes anywhere between the edges,
+// keeps its place without measuring. Karaoke Style's rows (`floor`) are placed
+// by their floor instead: the spacer below is the floor's height over the foot
+// (globals.css › lyrics-floor), and their block grows up from it. A drag goes anywhere between the edges,
 // the floor included. The controls showing or hiding never moves the block:
 // they draw over it. Only the drawn text is
 // grabbable; a click on it without a drag opens the rail's style panel (a
@@ -140,6 +244,7 @@ export const DraggableLyrics = ({
   targeted = false,
   eases = true,
   dragToEdge = true,
+  floor = false,
 }: DraggableLyricsProps) => {
   const lyricsAnchor = usePortrait()
     ? lyricsAnchorPortraitAtom
@@ -183,9 +288,14 @@ export const DraggableLyrics = ({
       layout.pressStage(event.pointerType, fractionAcross(event, stage))
     }
     // Start from where the block is drawn, which the spacers' minimum
-    // heights can keep off the saved anchor
-    const room = layer.clientHeight - block.offsetHeight
-    const from = room > 0 ? clamp01(block.offsetTop / room) : anchor
+    // heights (and, floor-anchored, a pair pushed down from the top or up by a docked translation) can keep off the
+    // saved anchor
+    const placed = floorOf(block)
+    const room = placed?.track.free ?? layer.clientHeight - block.offsetHeight
+    let from = room > 0 ? clamp01(block.offsetTop / room) : anchor
+    if (placed) {
+      from = clamp01((placed.at - placed.track.base) / placed.track.free)
+    }
     dragRef.current = {
       anchor: from,
       asked: from,
@@ -257,24 +367,29 @@ export const DraggableLyrics = ({
 
   // Never while dragging: the block follows the pointer exactly
   const still = dragging || !eases
-  const settle = still ? 'none' : `flex-grow ${LIFT_MS}ms ease-out`
+  const spacers = spacersOf({
+    anchor,
+    floor,
+    lifts,
+    still,
+    toEdge: dragging && dragToEdge,
+  })
   const anchorVars: CssVars = {
-    '--anchor-grow': anchor,
+    '--anchor-grow': spacers.grow,
     '--anchor-min-h': EDGE,
-    '--anchor-transition': settle,
+    '--anchor-transition': spacers.growTransition,
+  }
+  const liftVars: CssVars = {
+    '--anchor-min-h': EDGE,
+    '--lift-grow': 1 - anchor,
+    '--lift-min-h': spacers.liftMin,
+    '--lift-transition': spacers.liftTransition,
+    '--rows-anchor': anchor,
   }
   const blockVars: CssVars = {
     '--lyric-accent': colors.accent,
     '--lyric-glow': colors.glow,
     '--lyric-scale': scale,
-  }
-  const liftVars: CssVars = {
-    '--lift-grow': 1 - anchor,
-    '--lift-min-h': liftMinHeight(lifts, dragging && dragToEdge),
-    // A drop settles from the drag's edge onto the home indicator's
-    '--lift-transition': still
-      ? 'none'
-      : `min-height ${LIFT_MS}ms ease-out, ${settle}`,
   }
   return (
     // A block taller than the room overflows upward, over the video, never down off the stage
@@ -282,6 +397,7 @@ export const DraggableLyrics = ({
       <div className='anchor-spacer' style={anchorVars} />
       <div
         ref={blockRef}
+        data-anchor-floor={floor || undefined}
         className={cn(
           'player-lyrics-overlay relative isolate shrink-0 px-3 py-cqh select-none',
           children === undefined && 'invisible'
@@ -304,7 +420,10 @@ export const DraggableLyrics = ({
           {children}
         </div>
       </div>
-      <div className='lyrics-lift' style={liftVars} />
+      <div
+        className={floor ? 'lyrics-floor' : 'lyrics-lift'}
+        style={liftVars}
+      />
     </div>
   )
 }

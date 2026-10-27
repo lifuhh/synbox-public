@@ -799,7 +799,7 @@
      block it docks under the rows: stage-lyrics › useTranslationDock). Its text is centred and narrower than the
      stage, clear of the corner buttons.
    - The rows', the whole stage too (lyric-stagger-area[data-translated]), docked or not. Rows that wrap too tall
-     for it, less the docked translation's place their block always keeps, shrink to fit (stage-lyrics' fitSong) */
+     for it, less the docked translation's place, shrink to fit (stage-lyrics' fitSong) */
 @utility lyric-stagger-translation-area {
   position: absolute;
   /* Over the rows' area: next to the rows' lines (in their block's empty top, which a mouse can grab the rows by) the
@@ -903,11 +903,21 @@
     }
   }
 
-  /* With the translation shown, the whole stage, docked or not, so docking never changes where the rows are. Their
-     block's empty reserve (two of the song's tallest lines, over a one-row pair) may hang over the top, so the lines
-     themselves reach it (stage-lyrics › TwoRows' hang sets --rows-overhang) */
+  /* With the translation shown, the whole stage, docked or not, so docking never changes where the rows are */
   &[data-translated] {
-    top: calc(var(--lyric-translation-top) - var(--rows-overhang, 0px));
+    top: var(--lyric-translation-top);
+  }
+
+  /* Docking eases the docked translation's place open under the floor (lyrics-floor): with room below, the block
+     grows down and the rows stay; at the foot, the rows rise as it opens. Undocking closes it at once, and the floor
+     stays where it is */
+  &[data-docked] {
+    --dock-on: 1;
+    transition: --dock-on 200ms ease-out;
+
+    @media (prefers-reduced-motion: reduce) {
+      transition: none;
+    }
   }
 
   @variant short {
@@ -961,6 +971,51 @@
    below, so a tap there still shows the controls or double-tap seeks. Blocks pass presses through;
    inline text takes them. A box that shows a hover outline takes presses over all of it with a mouse
    (`mouse:pointer-events-auto`), where the outline promises it */
+/* Karaoke Style's rows are placed by their floor, the lower line's romaji, so a line change never moves it: this
+   spacer under their block is the floor's height over the room's foot, less the docked translation's place while it
+   is docked (the block holds it under the floor). The anchor runs from a one-row pair under the top edge
+   (--rows-home, stage-lyrics › TwoRows) at 0 to the floor on the foot's room at 1, as draggable-lyrics ›
+   floorTrackIn reads it. A docked place with no room under the floor keeps this at its least and the rows rise by
+   as much; a pair too tall for the room above it shrinks this, pushing the pair down (the top spacer keeps its
+   least) */
+@property --rows-anchor {
+  syntax: '<number>';
+  inherits: false;
+  initial-value: 1;
+}
+
+@property --dock-on {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 0;
+}
+
+@utility lyrics-floor {
+  flex: 0 1 auto;
+  min-height: var(--lift-min-h);
+  height: max(
+    var(--lift-min-h),
+    calc(
+      var(--lift-min-h) + (1 - var(--rows-anchor)) *
+        (
+          100% - var(--anchor-min-h) - 2 * var(--spacing-cqh) -
+            var(--rows-home, 0px) - var(--lift-min-h)
+        ) -
+        var(--dock-on) * var(--docked-h, 0px)
+    )
+  );
+  transition: var(--lift-transition);
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+}
+
+/* The docked translation's place under the rows' floor: open while docked (--dock-on, eased), shut otherwise */
+@utility docked-slot {
+  height: calc(var(--dock-on) * var(--docked-h, 0px));
+}
+
 @utility lyrics-hit-text {
   pointer-events: none;
 
