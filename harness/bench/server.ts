@@ -2,18 +2,11 @@
 // /api proxies, and an SPA fallback. API responses are recorded once and replayed after, so every run (and both
 // sides of a comparison) sees the same data: the bench measures the frontend, not the backend's weather.
 
-import { createHash } from 'node:crypto'
-import {
-  existsSync,
-  readdirSync,
-  readFileSync,
-  statSync,
-  writeFileSync,
-} from 'node:fs'
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import path from 'node:path'
 import { brotliCompressSync, gzipSync } from 'node:zlib'
 
-import { isRecord, parseJson } from './json'
+import { backendOrigins, benchOrigins, replayedGet } from './replay'
 
 export type ApiMode = 'replay' | 'live'
 
@@ -41,17 +34,7 @@ export const proxiesFrom = (repoTop: string): Proxy[] => {
   const declared = tomlBlocks(toml, 'redirects')
     .filter((r) => r.to?.startsWith('https://'))
     .map((r) => ({ from: r.from, to: r.to }))
-  const lookup = /VITE_SYNBOX_LOOKUP_URL\s*=\s*"(?<url>[^"]+)"/u.exec(toml)
-    ?.groups?.url
-  if (lookup === undefined) {
-    throw new Error(
-      'netlify.toml has no VITE_SYNBOX_LOOKUP_URL; the bench build needs it'
-    )
-  }
-  // Trees from before the site read lyrics through the Worker don't set it
-  const api =
-    /VITE_SYNBOX_API_URL\s*=\s*"(?<url>[^"]+)"/u.exec(toml)?.groups?.url ??
-    'https://api.synbox.io'
+  const { lookup, api } = backendOrigins(repoTop)
   return [
     ...declared,
     // netlify/functions/youtube.ts answers this path in production
@@ -78,20 +61,6 @@ const target = (proxies: Proxy[], pathname: string): string | null => {
   }
   return null
 }
-
-interface Fixture {
-  request: { method: string; url: string }
-  status: number
-  contentType: string
-  body: string
-  recordedAt: string
-}
-
-const isFixture = (v: unknown): v is Fixture =>
-  isRecord(v) &&
-  typeof v.body === 'string' &&
-  typeof v.contentType === 'string' &&
-  typeof v.status === 'number'
 
 const TEXT =
   /^(?:text\/|application\/(?:javascript|json|manifest\+json|xml)|image\/svg)/u
@@ -186,12 +155,6 @@ export const serveBuild = (opts: {
     replayed: 0,
   }
 
-  const fixtureFile = (method: string, url: string) =>
-    path.join(
-      opts.fixturesDir,
-      `${createHash('sha256').update(`${method} ${url}`).digest('hex').slice(0, 20)}.json`
-    )
-
   const api = async (req: Request, upstream: string): Promise<Response> => {
     // A bench run never writes to production: every listen it played went to the real Worker, and one test song
     // showed 1,914 listens (2026-10-24). The app ignores what a write answers, so an empty success does
@@ -199,11 +162,14 @@ export const serveBuild = (opts: {
       counts.absorbed += 1
       return new Response(null, { status: 204 })
     }
-    const file = fixtureFile(req.method, upstream)
-    if (opts.mode === 'replay' && req.method === 'GET' && existsSync(file)) {
-      counts.replayed += 1
-      const f = parseJson(readFileSync(file, 'utf-8'), isFixture, file)
-      return respond(req, f.body, f.contentType, f.status)
+    if (opts.mode === 'replay' && req.method === 'GET') {
+      const { answer, how } = await replayedGet(
+        opts.fixturesDir,
+        upstream,
+        req.headers.get('accept')
+      )
+      counts[how] += 1
+      return respond(req, answer.body, answer.contentType, answer.status)
     }
     const res = await fetch(upstream, {
       // The YouTube function passes the page's referrer on to Google; give it the production one
@@ -213,25 +179,13 @@ export const serveBuild = (opts: {
       },
       method: req.method,
     })
-    const body = await res.text()
-    const contentType =
-      res.headers.get('content-type') ?? 'application/octet-stream'
-    // Only a success is kept: a 404 recorded while a route was not live yet (the Worker's /api/recommendations,
-    // 2026-10-22) replayed for good and failed every home probe. An error passes through and is asked again next run
-    if (opts.mode === 'replay' && req.method === 'GET' && res.ok) {
-      counts.recorded += 1
-      const fixture: Fixture = {
-        body,
-        contentType,
-        recordedAt: new Date().toISOString(),
-        request: { method: req.method, url: upstream },
-        status: res.status,
-      }
-      writeFileSync(file, JSON.stringify(fixture))
-    } else {
-      counts.live += 1
-    }
-    return respond(req, body, contentType, res.status)
+    counts.live += 1
+    return respond(
+      req,
+      await res.text(),
+      res.headers.get('content-type') ?? 'application/octet-stream',
+      res.status
+    )
   }
 
   const file = (req: Request, requested: string): Response => {
@@ -278,10 +232,13 @@ export const serveBuild = (opts: {
     },
     port: opts.port ?? 0,
   })
+  const origin = `http://localhost:${server.port}`
+  benchOrigins.add(origin)
   return {
     counts,
-    origin: `http://localhost:${server.port}`,
+    origin,
     stop: () => {
+      benchOrigins.delete(origin)
       void server.stop(true)
     },
   }

@@ -6,7 +6,8 @@
 //
 //   bun harness/smoke.ts <url> [--song <id>]   e.g. https://deploy-preview-335--synbox.netlify.app or https://synbox.io
 //   bun harness/smoke.ts --local [--song <id>] a production build of this checkout, served by Netlify's own local
-//                                              runtime (harness/local-site.ts): the same flows, no build minutes
+//                                              runtime (harness/local-site.ts): the same flows, no build minutes,
+//                                              with the lookup service's reads replayed (bench/replay.ts)
 //
 // One line per flow, `smoke PASS|FAIL`, exit 0 or 1, and a report in the main checkout's
 // .reports/YYYY-MM-DD-smoke-<host>/ (index.html, result.json, a screenshot of each failed flow). About 40 seconds
@@ -29,6 +30,7 @@ import {
 } from './bench/engines/browser'
 import type { Opened, View } from './bench/engines/browser'
 import { isRecord } from './bench/json'
+import { liveLookup } from './bench/replay'
 import { repoAt, storeDir } from './bench/store'
 import { serveLocalSite } from './local-site'
 
@@ -748,6 +750,10 @@ const notASong = async (ctx: FlowContext): Promise<string> => {
   return `${id}: "Not on Synbox", 0 iframes, 0 writes`
 }
 
+/** A local build (--local) reads the lookup service from the bench's fixtures; a deployed copy reads it live */
+const replaysLookup = (origin: string) =>
+  origin.startsWith('http://') && !liveLookup()
+
 // The lookup service, asked directly for a song's versions list below (netlify.toml sets it for the build)
 const LOOKUP_ORIGIN = new URL(
   /VITE_SYNBOX_LOOKUP_URL\s*=\s*"(?<url>[^"]+)"/u.exec(
@@ -781,6 +787,11 @@ const readerVersions = async (ctx: FlowContext): Promise<string> => {
     .getByRole('heading', { name: 'Access Forbidden' })
     .waitFor({ timeout: 20_000 })
     .catch(() => fail('versions: no "Access Forbidden" for a guest'))
+  // A local build reads the lookup service from fixtures; asking it here would wake it for a backend check the
+  // deployed copy's smoke test makes
+  if (replaysLookup(origin)) {
+    return `${song.id}: reader ${lines} lines; versions as a guest: 403 page (lookup service's list: deployed copies only)`
+  }
   const host = LOOKUP_ORIGIN
   const answer = await fetch(`${host}/lyrics/${song.id}/versions`).catch(
     () => null
@@ -867,7 +878,9 @@ const runFlow = async (
   const started = Date.now()
   // A retry's writes and violations are its own: the first attempt's must not count toward its listen total
   const label = retry ? `${flow.name} (retry)` : flow.name
+  const lookup = replaysLookup(origin) ? 'replay' : 'live'
   const { context, page, close } = await open(view.surface, {
+    lookup,
     serviceWorkers: 'block',
   })
   const flowLog: Guard = { csp: log.csp, flow: label, writes: log.writes }
@@ -881,7 +894,10 @@ const runFlow = async (
   // back to it
   if (view.surface.engine === 'webkit') {
     await context.route(API_ORIGIN, async (route) => {
-      if (route.request().method() !== 'GET') {
+      const replayed =
+        lookup === 'replay' &&
+        new URL(route.request().url()).pathname.startsWith('/api/karaoke/')
+      if (route.request().method() !== 'GET' || replayed) {
         await route.fallback()
         return
       }

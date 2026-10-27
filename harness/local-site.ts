@@ -27,6 +27,8 @@ import { parseArgs } from 'node:util'
 import { loadEnv } from 'vite'
 
 import { isRecord } from './bench/json'
+import { backendOrigins, liveLookup, replayedGet } from './bench/replay'
+import { repoAt, storeDir } from './bench/store'
 
 // Pinned: a new netlify-cli can change what "as on Netlify" means
 const NETLIFY_CLI = 'netlify-cli@27.14.2'
@@ -218,9 +220,32 @@ export const serveLocalSite = async (
   // In front of the runtime: netlify-cli 27 exits ("Error: aborted") when a browser drops a request it is still
   // answering, which a page navigating away does all the time. Here a dropped request is finished upstream and
   // thrown away, so the runtime never sees the abort. Bytes pass through as they are (no decompression)
+  // The gallery's song list from the bench's fixtures, as the browsers read the lookup service's other answers
+  // (bench/replay.ts), unless SYNBOX_LIVE_LOOKUP=1: asked live, the Netlify function woke the lookup service every run
+  const repo = repoAt(dir)
+  const fixtures = storeDir(repo, 'bench', 'fixtures')
+  const { lookup } = backendOrigins(repo.top)
   front.server = Bun.serve({
     fetch: async (request) => {
       const url = new URL(request.url)
+      if (
+        !liveLookup() &&
+        request.method === 'GET' &&
+        url.pathname === '/api/library/songs'
+      ) {
+        const { answer } = await replayedGet(
+          fixtures,
+          `${lookup}/library/songs${url.search}`,
+          request.headers.get('accept')
+        )
+        return new Response(answer.body, {
+          headers: {
+            'cache-control': 'no-store',
+            'content-type': answer.contentType,
+          },
+          status: answer.status,
+        })
+      }
       const headers = new Headers(request.headers)
       headers.delete('connection')
       const hasBody = request.method !== 'GET' && request.method !== 'HEAD'
