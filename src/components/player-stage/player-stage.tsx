@@ -11,6 +11,8 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 
 import {
   lyricsStylePanelAtom,
+  lyricsVisibilityAtom,
+  playbackRateAtom,
   playerChromeOpenAtom,
   playerVolumeAtom,
   stageClockAtom,
@@ -20,6 +22,7 @@ import { PHONE_QUERY, useLandscapeLock } from '@/hooks/use-landscape-lock'
 import { useMediaQuery } from '@/hooks/use-media-query'
 import { useThemeColor } from '@/hooks/use-theme-color'
 import { useWakeLock } from '@/hooks/use-wake-lock'
+import { trackLyricsFeature } from '@/lib/usage'
 import { transitionLayout } from '@/lib/view-transition'
 import type { CssVars } from '@/types'
 import { cn } from '@/utils/cn'
@@ -27,10 +30,12 @@ import { cn } from '@/utils/cn'
 import { CenterPlayButton, useYouTubeCenterShowing } from './center-play-button'
 import { PlayFlash, usePlayFlash } from './play-flash'
 import { clampSeek, HOLD_JUMP_MS, holdStep } from './seek-steps'
-import { StageControls } from './stage-controls'
+import { shortcutFor } from './shortcuts'
+import type { PlayerAction } from './shortcuts'
+import { StageControls, stepSpeed } from './stage-controls'
 import { useIdle } from './use-idle'
 import type { SeekFlash } from './use-stage-taps'
-import { useStageTaps } from './use-stage-taps'
+import { TAP_SEEK_SEC, useStageTaps } from './use-stage-taps'
 import type {
   PlayerVolume,
   StagePhase,
@@ -39,6 +44,7 @@ import type {
 import { useYouTubePlayer } from './use-you-tube-player'
 import type { VideoFit } from './video-fit'
 import { useVideoAspect, useVideoFit } from './video-fit'
+import { setEngineRate } from './youtube-engine'
 import type { YouTubeQuirks } from './youtube-quirks'
 
 // The floating UI goes this long after the last input: with a finger, and 40% sooner with a mouse (owner,
@@ -253,7 +259,8 @@ const playerOwnsKey = (event: KeyboardEvent) => {
     event.defaultPrevented ||
     isEditable(event.target) ||
     event.metaKey ||
-    event.ctrlKey
+    event.ctrlKey ||
+    event.altKey
   ) {
     return false
   }
@@ -520,6 +527,15 @@ export const PlayerStage = ({
 
   usePublishStage(player, fullscreen, immersive, onEnded)
 
+  // What only a key reaches from here: the speed (the bar's Playback Speed menu) and the lyrics over the video (the
+  // rail's Lyrics toggle)
+  const [rate, setRate] = useAtom(playbackRateAtom)
+  const setSpeed = (next: number) => {
+    setRate(next)
+    setEngineRate(next)
+  }
+  const [showLyrics, setShowLyrics] = useAtom(lyricsVisibilityAtom)
+
   // The arrow key being held: how many jumps it has made, when the last one was, and where it aimed. A
   // held key's jumps build on that aim, since the player's own time lags a seek it has not finished
   const hold = useRef<{
@@ -559,17 +575,42 @@ export const PlayerStage = ({
       const onSlider =
         event.target instanceof HTMLElement &&
         event.target.getAttribute('role') === 'slider'
-      const simple: Partial<Record<string, () => void>> = {
-        ' ': togglePlay,
-        f: toggleFullscreen,
-        k: togglePlay,
-        t: onToggleTheater,
-        z: toggleFit,
+      const actions: Record<PlayerAction, (() => void) | undefined> = {
+        back: () => {
+          seekBy(-TAP_SEEK_SEC)
+        },
+        faster: () => {
+          setSpeed(stepSpeed(rate, 1))
+        },
+        forward: () => {
+          seekBy(TAP_SEEK_SEC)
+        },
+        fullscreen: toggleFullscreen,
+        lyrics: () => {
+          setShowLyrics(!showLyrics)
+          trackLyricsFeature('lyrics', !showLyrics)
+        },
+        mute: () => {
+          setVolume({ ...volume, muted: !volume.muted })
+        },
+        next: onNext,
+        playPause: togglePlay,
+        previous,
+        slower: () => {
+          setSpeed(stepSpeed(rate, -1))
+        },
+        theater: onToggleTheater,
+        zoom: toggleFit,
       }
-      const action = simple[event.key]
+      const shortcut = shortcutFor(event)
+      const action = shortcut === null ? undefined : actions[shortcut]
       if (action !== undefined) {
         action()
         event.preventDefault()
+        return
+      }
+      // The arrows with Shift belong to whatever has focus (a text selection, a list)
+      if (event.shiftKey) {
         return
       }
       switch (event.key) {
@@ -595,11 +636,6 @@ export const PlayerStage = ({
           setVolume(clampVolume(volume.level - VOLUME_STEP))
           break
         }
-        case 'm': {
-          setVolume({ ...volume, muted: !volume.muted })
-          break
-        }
-
         case 'Escape': {
           if (!immersive) {
             return

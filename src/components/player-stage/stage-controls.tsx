@@ -50,6 +50,8 @@ import type { CssVars } from '@/types'
 import { formatClock } from '@/utils'
 import { cn } from '@/utils/cn'
 
+import { ariaKeys, SHORTCUTS } from './shortcuts'
+import type { PlayerAction } from './shortcuts'
 import { StageLock } from './stage-lock'
 import { TAP_SEEK_SEC } from './use-stage-taps'
 import type { PlayerVolume, StagePlayer } from './use-you-tube-player'
@@ -100,12 +102,50 @@ const SeekGlyph = ({ direction }: { direction: 'back' | 'forward' }) => (
 const inCentreRow = (fullscreen: boolean) =>
   fullscreen ? 'watch-narrow:hidden touch:hidden' : 'watch-narrow:hidden'
 
+// Where a button's label sits over it: centred, or flush with the button's outer side at the bar's ends, so it stays
+// on the stage
+const TIP_CENTRE = 'left-1/2 -translate-x-1/2'
+const TIP_START = 'left-0'
+const TIP_END = 'right-0'
+
+// The label over a bar button (globals.css › control-tip): its name, then its key where it has one. Hidden from
+// assistive technology, which reads the button's own name and aria-keyshortcuts
+const ControlTip = ({
+  label,
+  shortcut,
+  place = TIP_CENTRE,
+}: {
+  label: string
+  shortcut?: PlayerAction | PlayerAction[]
+  place?: string
+}) => {
+  const actions = shortcut === undefined ? [] : [shortcut].flat()
+  return (
+    <span aria-hidden className={cn('control-tip', place)}>
+      {label}
+      {actions.length > 0 && (
+        <span className='flex gap-1'>
+          {actions
+            .flatMap((action) => SHORTCUTS[action].caps)
+            .map((cap) => (
+              <kbd key={cap} className='control-key'>
+                {cap}
+              </kbd>
+            ))}
+        </span>
+      )}
+    </span>
+  )
+}
+
 interface IconButtonProps {
   label: string
   onClick?: () => void
   active?: boolean
   disabled?: boolean
   className?: string
+  shortcut?: PlayerAction
+  tipPlace?: string
   children: React.ReactNode
 }
 
@@ -115,27 +155,45 @@ const IconButton = ({
   active,
   disabled,
   className,
+  shortcut,
+  tipPlace,
   children,
 }: IconButtonProps) => (
   <button
     type='button'
     aria-label={label}
-    title={label}
+    aria-keyshortcuts={shortcut === undefined ? undefined : ariaKeys(shortcut)}
     aria-pressed={active}
     disabled={disabled}
     onClick={onClick}
     className={cn(
-      'grid size-9 shrink-0 place-items-center rounded-md text-white/85 transition-colors hover:bg-white/10 hover:text-white disabled:cursor-default disabled:text-white/35 disabled:hover:bg-transparent touch:size-11 touch:watch-narrow:size-10 pills:size-10 pills:rounded-full',
+      'relative grid size-9 shrink-0 place-items-center rounded-md text-white/85 transition-colors hover:bg-white/10 hover:text-white disabled:cursor-default disabled:text-white/35 disabled:hover:bg-transparent touch:size-11 touch:watch-narrow:size-10 pills:size-10 pills:rounded-full',
       active === true && 'text-primary-text hover:text-primary-text',
       className
     )}>
     {children}
+    <ControlTip label={label} shortcut={shortcut} place={tipPlace} />
   </button>
 )
 
 // YouTube's own speeds, for a player that hasn't said which the video allows yet
 const YOUTUBE_SPEEDS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2]
 const speedName = (rate: number) => (rate === 1 ? 'Normal' : `${rate}×`)
+const allowedSpeeds = () => {
+  const reported = engineRates()
+  return reported.length > 0 ? reported : YOUTUBE_SPEEDS
+}
+
+// The speed one step slower or faster than `rate` among those the video allows (the < and > keys); the same at
+// either end
+export const stepSpeed = (rate: number, direction: -1 | 1): number => {
+  const speeds = allowedSpeeds()
+  const next =
+    direction === 1
+      ? speeds.find((speed) => speed > rate)
+      : speeds.findLast((speed) => speed < rate)
+  return next ?? rate
+}
 
 // The speed as plain text on the bar's glass, as video players show it now ("1×", "0.75×"): the label is the control.
 // As tall as the icon buttons beside it, one width for every speed ("0.75×" the widest), so choosing one never moves
@@ -160,8 +218,7 @@ const SpeedMenu = ({
 }) => {
   const [rate, setRate] = useAtom(playbackRateAtom)
   const { measure, offset, triggerRef } = useMenuOffset<HTMLButtonElement>(side)
-  const reported = engineRates()
-  const speeds = reported.length > 0 ? reported : YOUTUBE_SPEEDS
+  const speeds = allowedSpeeds()
   if (speeds.length < 2) {
     return null
   }
@@ -178,13 +235,20 @@ const SpeedMenu = ({
           ref={triggerRef}
           type='button'
           aria-label={`Playback Speed ${rate}×`}
-          className={className}>
+          aria-keyshortcuts={`${ariaKeys('slower')} ${ariaKeys('faster')}`}
+          className={cn('relative', className)}>
           {/* One grid item, so the sign stays on the digits' line. Its ink centres 0.1em under theirs (Plus Jakarta Sans:
-              3.8 vs 5.2px above the baseline at 14px) */}
+              3.8 vs 5.2px above the baseline at 14px). The label is out of the grid's flow (absolute) */}
           <span>
             {rate}
             <span className='relative -top-[0.1em]'>×</span>
           </span>
+          {side === 'top' && (
+            <ControlTip
+              label='Playback Speed'
+              shortcut={['slower', 'faster']}
+            />
+          )}
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent
@@ -375,6 +439,32 @@ const LiveClock = ({ className }: { className: string }) => {
   return <Clock time={shown} duration={duration} className={className} />
 }
 
+// Escape puts the bar's labels away (WCAG 1.4.13: dismissed without moving the pointer or focus) until the pointer or
+// focus reaches another button
+const useTipsDismiss = () => {
+  const [tipsOff, setTipsOff] = useState(false)
+  const shownFor = useRef<Element | null>(null)
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setTipsOff(true)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => {
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [])
+  const tipsOn = (target: EventTarget) => {
+    const button = target instanceof Element ? target.closest('button') : null
+    if (button !== shownFor.current) {
+      shownFor.current = button
+      setTipsOff(false)
+    }
+  }
+  return { tipsOff, tipsOn }
+}
+
 // One of the control bar's pills: a light glass behind a group of buttons, on a wide screen with a mouse. Over the
 // bar's shade a dark pill vanished; a light one reads over dark and bright video alike. No backdrop blur: under the
 // bar's fading opacity a blurred backdrop doesn't fade with the rest, and the pills hung on after their icons
@@ -393,11 +483,11 @@ const AutoplaySwitch = () => {
       role='switch'
       aria-checked={autoplay}
       aria-label='Autoplay'
-      title={autoplay ? 'Autoplay Is On' : 'Autoplay Is Off'}
       onClick={() => {
         setAutoplay(!autoplay)
       }}
-      className='hidden h-10 w-13 shrink-0 place-items-center rounded-full pills:grid'>
+      className='hidden relative h-10 w-13 shrink-0 place-items-center rounded-full pills:grid'>
+      <ControlTip label={autoplay ? 'Autoplay Is On' : 'Autoplay Is Off'} />
       <span
         className={cn(
           'flex h-3.5 w-9 items-center rounded-full transition-colors',
@@ -433,6 +523,7 @@ const ViewButtons = ({
     {onToggleTheater !== undefined && !fullscreen && (
       <IconButton
         label={theater ? 'Default View' : 'Theater Mode'}
+        shortcut='theater'
         active={theater}
         onClick={onToggleTheater}>
         <TheaterIcon aria-hidden theater={theater} className='size-5' />
@@ -440,6 +531,9 @@ const ViewButtons = ({
     )}
     <IconButton
       label={fullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
+      shortcut='fullscreen'
+      // The bar's last button: its label ends at the button's right edge, on the stage
+      tipPlace={TIP_END}
       onClick={onToggleFullscreen}>
       {fullscreen ? (
         <MinimizeIcon className='size-5' />
@@ -595,6 +689,7 @@ export const StageControls = ({
   const armed = useArmed(visible)
   const barRef = useRef<HTMLDivElement>(null)
   const contentRef = useRef<HTMLDivElement>(null)
+  const { tipsOff, tipsOn } = useTipsDismiss()
 
   useEffect(() => {
     const observe = (bar: HTMLDivElement, content: HTMLDivElement) => {
@@ -635,8 +730,19 @@ export const StageControls = ({
       <div
         ref={barRef}
         style={FADE_VARS}
+        data-controls-hidden={visible ? undefined : ''}
+        data-tips-off={tipsOff ? '' : undefined}
+        onPointerOver={(event) => {
+          tipsOn(event.target)
+        }}
+        onFocus={(event) => {
+          tipsOn(event.target)
+        }}
         className={cn(
           'absolute inset-x-0 bottom-0 z-30 bg-linear-to-t from-black/80 via-black/40 to-transparent pt-10 pr-controls-right pb-controls-bottom pl-controls-left transition-opacity duration-(--controls-fade) watch-narrow:pt-6 watch-narrow:pr-2 watch-narrow:pb-1 watch-narrow:pl-2 pills:from-black/60 pills:via-black/20 short:pl-controls-rail',
+          // The buttons' labels clear the seek bar where it runs over them (the seek row's 16px and its 8px margin);
+          // where it runs beside or under them, they sit just over the button
+          '[--tip-lift:2rem] watch-narrow:[--tip-lift:0.5rem] short:[--tip-lift:0.5rem]',
           // A phone on its side, Lock Landscape's turn included: no shade. Its band ran the stage's whole length behind
           // the buttons and the rail's corner, and read as a haze over the controls (owner, 2026-10-26); the buttons,
           // the seek bar and the clock carry the stage's own shadow instead, as the bar's top icons do (#467)
@@ -666,12 +772,16 @@ export const StageControls = ({
               className={cn('contents watch-narrow:hidden', PILL)}>
               <IconButton
                 label='Previous'
+                shortcut='previous'
+                // The bar's first button: its label starts at the button's left edge, on the stage
+                tipPlace={TIP_START}
                 className={inCentreRow(fullscreen)}
                 onClick={onPrevious}>
                 <SkipBackIcon className='size-5 fill-current' />
               </IconButton>
               <IconButton
                 label={isPlaying ? 'Pause' : 'Play'}
+                shortcut='playPause'
                 className={inCentreRow(fullscreen)}
                 onClick={() => {
                   player.togglePlay()
@@ -684,6 +794,7 @@ export const StageControls = ({
               </IconButton>
               <IconButton
                 label='Next'
+                shortcut='next'
                 className={inCentreRow(fullscreen)}
                 disabled={onNext === undefined}
                 onClick={onNext}>
@@ -693,6 +804,7 @@ export const StageControls = ({
             <div data-press className={cn('contents', PILL)}>
               <IconButton
                 label={`Back ${TAP_SEEK_SEC} Seconds`}
+                shortcut='back'
                 className='watch-narrow:hidden'
                 onClick={() => {
                   onSeekBy(-TAP_SEEK_SEC)
@@ -701,6 +813,7 @@ export const StageControls = ({
               </IconButton>
               <IconButton
                 label={`Forward ${TAP_SEEK_SEC} Seconds`}
+                shortcut='forward'
                 className='watch-narrow:hidden'
                 onClick={() => {
                   onSeekBy(TAP_SEEK_SEC)
@@ -723,6 +836,12 @@ export const StageControls = ({
               }}>
               <IconButton
                 label={volume.muted ? 'Unmute' : 'Mute'}
+                shortcut='mute'
+                // First in a narrow watch page's bar
+                tipPlace={cn(
+                  TIP_CENTRE,
+                  'watch-narrow:left-0 watch-narrow:translate-x-0'
+                )}
                 onClick={() => {
                   setVolume({ ...volume, muted: !volume.muted })
                 }}>
@@ -775,6 +894,7 @@ export const StageControls = ({
               </IconButton>
               <IconButton
                 label='Zoom to Fill'
+                shortcut='zoom'
                 active={zoomed}
                 // A 320px phone's bar has no room for it beside Fullscreen; Z still toggles it
                 className='max-[359px]:hidden'
