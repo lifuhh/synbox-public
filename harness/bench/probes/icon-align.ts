@@ -42,6 +42,7 @@ export const iconTextOffsets = (limitPx: number): IconOffset[] => {
   // The content's vertical position of a point on screen: y, or x on a page turned a quarter
   const along = (r: DOMRect) =>
     turned ? r.left + r.width / 2 : r.top + r.height / 2
+  // oxlint-disable-next-line unicorn/consistent-function-scoping -- runs in the page, where nothing outside this function exists
   const seen = (el: Element): boolean => {
     const r = el.getBoundingClientRect()
     if (
@@ -90,7 +91,7 @@ export const iconTextOffsets = (limitPx: number): IconOffset[] => {
     if (parent === null) {
       return Number.NaN
     }
-    const display = getComputedStyle(parent).display
+    const { display } = getComputedStyle(parent)
     const itemized = /flex|grid/u.test(display)
     const marker = document.createElement('span')
     marker.style.cssText =
@@ -98,10 +99,10 @@ export const iconTextOffsets = (limitPx: number): IconOffset[] => {
     let wrap: HTMLSpanElement | null = null
     if (itemized) {
       wrap = document.createElement('span')
-      parent.insertBefore(wrap, node)
+      node.before(wrap)
       wrap.append(marker, node)
     } else {
-      parent.insertBefore(marker, node)
+      node.before(marker)
     }
     const r = marker.getBoundingClientRect()
     const y = turned ? r.left : r.bottom
@@ -113,87 +114,89 @@ export const iconTextOffsets = (limitPx: number): IconOffset[] => {
     }
     return y
   }
-  const found: IconOffset[] = []
-  for (const control of document.querySelectorAll(CONTROL)) {
-    if (!seen(control)) {
-      continue
-    }
-    // Its own icons and text, not those of a control nested inside it
-    const own = (n: Node) =>
-      (n instanceof Element ? n : n.parentElement)?.closest(CONTROL) === control
-    const icons = [...control.querySelectorAll('svg')].filter(
-      (svg) => own(svg) && seen(svg) && svg.closest('[data-optical]') === null
-    )
-    if (icons.length === 0) {
-      continue
-    }
-    const texts: { node: Text; rect: DOMRect; text: string }[] = []
+  interface Label {
+    node: Text
+    rect: DOMRect
+    text: string
+  }
+  // A control's own one-line texts (not those of a control nested inside it), or none when its text runs on
+  // several lines: a song row's title over its artist, or a card, is a layout, not an icon and its label
+  const labelsOf = (control: Element): Label[] => {
+    const texts: Label[] = []
     const walker = document.createTreeWalker(control, NodeFilter.SHOW_TEXT)
     for (let n = walker.nextNode(); n !== null; n = walker.nextNode()) {
       const text = (n.textContent ?? '').trim()
       const parent = n.parentElement
       if (
-        text === '' ||
-        parent === null ||
-        !own(n) ||
-        !seen(parent) ||
-        parent.closest('svg') !== null
+        text !== '' &&
+        n instanceof Text &&
+        parent !== null &&
+        parent.closest(CONTROL) === control &&
+        parent.closest('svg') === null &&
+        seen(parent)
       ) {
-        continue
-      }
-      const range = document.createRange()
-      range.selectNodeContents(n)
-      const lines = [...range.getClientRects()].filter(
-        (r) => r.width > 1 && r.height > 1
-      )
-      // One line only: a wrapped label has no single centre line to meet
-      if (lines.length === 1 && n instanceof Text) {
-        texts.push({ node: n, rect: lines[0], text })
+        const range = document.createRange()
+        range.selectNodeContents(n)
+        const lines = [...range.getClientRects()].filter(
+          (r) => r.width > 1 && r.height > 1
+        )
+        if (lines.length !== 1) {
+          return []
+        }
+        const [rect] = lines
+        texts.push({ node: n, rect, text })
       }
     }
-    // A label is one line: a control whose text runs on several lines (a song row's title over its artist, a card)
-    // is a layout, not an icon and its label
     const spans = texts.map(({ rect }) =>
       turned ? [rect.left, rect.right] : [rect.top, rect.bottom]
     )
     const oneLine =
-      texts.length > 0 &&
       Math.max(...spans.map(([a]) => a)) < Math.min(...spans.map(([, z]) => z))
-    if (!oneLine) {
-      continue
-    }
-    for (const svg of icons) {
-      const ir = svg.getBoundingClientRect()
-      // An icon, not artwork: lucide's sizes run 12-28px
-      if (Math.max(ir.width, ir.height) > 32) {
-        continue
-      }
-      // The label beside this icon: across its centre line, apart from it along the other axis, the nearest
-      const centre = along(ir)
-      const beside = texts
-        .filter(({ rect }) =>
-          turned
-            ? rect.left < centre &&
-              rect.right > centre &&
-              (rect.bottom <= ir.top + 1 || rect.top >= ir.bottom - 1)
-            : rect.top < centre &&
-              rect.bottom > centre &&
-              (rect.right <= ir.left + 1 || rect.left >= ir.right - 1)
-        )
-        .map((t) => {
-          const r = t.rect
-          const gap = turned
-            ? Math.max(r.top - ir.bottom, ir.top - r.bottom)
-            : Math.max(r.left - ir.right, ir.left - r.right)
-          return { ...t, gap }
+    return oneLine ? texts : []
+  }
+  // The label beside an icon: across its centre line, apart from it along the other axis, the nearest within 24px
+  const labelBeside = (ir: DOMRect, texts: Label[]): Label | undefined => {
+    const centre = along(ir)
+    return texts
+      .filter(({ rect }) =>
+        turned
+          ? rect.left < centre &&
+            rect.right > centre &&
+            (rect.bottom <= ir.top + 1 || rect.top >= ir.bottom - 1)
+          : rect.top < centre &&
+            rect.bottom > centre &&
+            (rect.right <= ir.left + 1 || rect.left >= ir.right - 1)
+      )
+      .map((t) => ({
+        gap: turned
+          ? Math.max(t.rect.top - ir.bottom, ir.top - t.rect.bottom)
+          : Math.max(t.rect.left - ir.right, ir.left - t.rect.right),
+        t,
+      }))
+      .filter(({ gap }) => gap <= 24)
+      .toSorted((a, z) => a.gap - z.gap)
+      .at(0)?.t
+  }
+  const found: IconOffset[] = []
+  for (const control of document.querySelectorAll(CONTROL)) {
+    // Its own icons, at icon size (lucide's run 12-28px; anything larger is artwork)
+    const icons = seen(control)
+      ? [...control.querySelectorAll('svg')].filter((svg) => {
+          const r = svg.getBoundingClientRect()
+          return (
+            svg.closest(CONTROL) === control &&
+            svg.closest('[data-optical]') === null &&
+            Math.max(r.width, r.height) <= 32 &&
+            seen(svg)
+          )
         })
-        .filter((t) => t.gap <= 24)
-        .toSorted((a, z) => a.gap - z.gap)[0]
-      if (beside === undefined) {
-        continue
-      }
-      const parent = beside.node.parentElement
-      if (parent === null) {
+      : []
+    const texts = icons.length === 0 ? [] : labelsOf(control)
+    for (const svg of texts.length === 0 ? [] : icons) {
+      const ir = svg.getBoundingClientRect()
+      const beside = labelBeside(ir, texts)
+      const parent = beside?.node.parentElement
+      if (beside === undefined || parent === null || parent === undefined) {
         continue
       }
       const baseline = baselineOf(beside.node)
