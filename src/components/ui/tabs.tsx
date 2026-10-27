@@ -9,12 +9,16 @@ const Tabs = TabsPrimitive.Root
 
 const TabsListRender: React.ForwardRefRenderFunction<
   React.ComponentRef<typeof TabsPrimitive.List>,
-  React.ComponentPropsWithoutRef<typeof TabsPrimitive.List>
-> = ({ className, ...props }, ref) => (
+  React.ComponentPropsWithoutRef<typeof TabsPrimitive.List> & {
+    // For compact tabs (TabsTrigger `compact`): 8px between them on touch, so adjacent press targets keep apart
+    compact?: boolean
+  }
+> = ({ className, compact = false, ...props }, ref) => (
   <TabsPrimitive.List
     ref={ref}
     className={cn(
       'inline-flex h-10 items-center justify-center gap-1 rounded-full bg-muted p-1 text-muted-foreground',
+      compact && 'touch:gap-2',
       className
     )}
     {...props}
@@ -26,10 +30,11 @@ TabsList.displayName = TabsPrimitive.List.displayName
 const TabsTriggerRender: React.ForwardRefRenderFunction<
   React.ComponentRef<typeof TabsPrimitive.Trigger>,
   React.ComponentPropsWithoutRef<typeof TabsPrimitive.Trigger> & {
-    // Tabs that share the row's width equally (Library's): the row spreads them, so they need less padding
-    stretch?: boolean
+    // Tabs that must sit side by side on a phone (Library's four fit a 390px screen): half the side padding on touch,
+    // and a press target that reaches past the list's 4px inset to the full row height
+    compact?: boolean
   }
-> = ({ className, stretch = false, onMouseDown, onClick, ...props }, ref) => (
+> = ({ className, compact = false, onMouseDown, onClick, ...props }, ref) => (
   <TabsPrimitive.Trigger
     ref={ref}
     // A tab is chosen on release, inside it, not on the press Radix uses: a press that slides off chooses nothing
@@ -48,7 +53,9 @@ const TabsTriggerRender: React.ForwardRefRenderFunction<
     className={cn(
       // The selected tab takes the same filled pill as a selected filter chip (the Lyrics page's)
       'inline-flex items-center justify-center rounded-full px-4 py-1.5 text-sm font-medium whitespace-nowrap ring-offset-background transition-colors disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-foreground data-[state=active]:text-background data-[state=inactive]:hover:text-foreground',
-      stretch ? 'flex-1 px-3' : 'touch:px-5',
+      compact
+        ? 'relative after:absolute after:inset-x-0 after:-inset-y-1 touch:px-2'
+        : 'touch:px-5',
       className
     )}
     {...props}
