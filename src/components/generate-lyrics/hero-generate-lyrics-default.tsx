@@ -322,7 +322,7 @@ const HeroGenerateLyricsDefault = ({
               collisionPadding={16}
               side='top'
               sideOffset={6}>
-              Lyrics are made by AI and can have mistakes
+              Synbox is powered by AI and can make mistakes
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
