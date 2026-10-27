@@ -22,7 +22,7 @@ export const SiteLinks = () => {
     <>
       <nav
         aria-label='Links'
-        className='mx-auto flex max-w-xl flex-wrap items-center justify-center gap-x-5 gap-y-1 pt-10 text-sm text-muted-foreground'>
+        className='mx-auto flex max-w-2xl flex-wrap items-center justify-center gap-x-5 gap-y-1 pt-8 text-sm text-muted-foreground'>
         <Link to='/privacy' className={LINK}>
           Privacy
         </Link>

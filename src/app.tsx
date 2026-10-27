@@ -156,7 +156,7 @@ const App = () => {
           <Route
             path='/about'
             element={
-              <Suspense fallback={<TextPageSkeleton docScroll />}>
+              <Suspense fallback={<TextPageSkeleton docScroll={false} />}>
                 <AboutPage />
               </Suspense>
             }
@@ -164,7 +164,7 @@ const App = () => {
           <Route
             path='/privacy'
             element={
-              <Suspense fallback={<TextPageSkeleton docScroll />}>
+              <Suspense fallback={<TextPageSkeleton docScroll={false} />}>
                 <PrivacyPage />
               </Suspense>
             }
@@ -172,7 +172,7 @@ const App = () => {
           <Route
             path='/terms'
             element={
-              <Suspense fallback={<TextPageSkeleton docScroll />}>
+              <Suspense fallback={<TextPageSkeleton docScroll={false} />}>
                 <TermsPage />
               </Suspense>
             }
@@ -200,7 +200,7 @@ const App = () => {
           <Route
             path='/playlists'
             element={
-              <Suspense fallback={<ListPageSkeleton docScroll />}>
+              <Suspense fallback={<ListPageSkeleton docScroll={false} />}>
                 <PlaylistsPage />
               </Suspense>
             }
@@ -216,7 +216,7 @@ const App = () => {
           <Route
             path='/you'
             element={
-              <Suspense fallback={<ListPageSkeleton docScroll />}>
+              <Suspense fallback={<ListPageSkeleton docScroll={false} />}>
                 <YouPage />
               </Suspense>
             }
@@ -224,7 +224,7 @@ const App = () => {
           <Route
             path='/search'
             element={
-              <Suspense fallback={<ListPageSkeleton docScroll />}>
+              <Suspense fallback={<ListPageSkeleton docScroll={false} />}>
                 <SearchPage />
               </Suspense>
             }
