@@ -12,7 +12,7 @@ import { useNavigate } from 'react-router'
 import {
   connectEngine,
   floatEngine,
-  followEngine,
+  glideEngine,
   heldSong,
   loadSong,
 } from '@/components/player-stage/youtube-engine'
@@ -91,29 +91,61 @@ const useListenHere = (song: ListSong, startedHere: boolean) => {
   }, [startedHere, inLibrary, song, addToHistory])
 }
 
-// The bar zooms with the tab bar when the top bar's state flips (globals.css, 300ms), a transform no resize reports:
-// the video follows it every frame from the flip itself, since a transition's own events come a frame late
-const ZOOM_MS = 350
-const followZoom = () => {
-  let frame = 0
-  let until = 0
-  const follow = (now: number) => {
-    followEngine()
-    frame = now < until ? requestAnimationFrame(follow) : 0
-  }
+// A computed `scale` ('none' or one number) as a number
+const scaleOf = (value: string | null | undefined) => {
+  const scale = Number(value)
+  return value !== null &&
+    value !== undefined &&
+    value !== '' &&
+    Number.isFinite(scale)
+    ? scale
+    : 1
+}
+
+// The bar zooms with the tabs when the top bar's state flips: the whole dock scales, as one CSS transition
+// (globals.css). The video, laid over the thumbnail from outside the dock, glides along with the same timing
+// (youtube-engine › glideEngine), to where the thumbnail ends: the zoom about the dock's origin, applied to where it
+// is now. Read on the flip itself, the style flushed so the transition exists
+const followZoom = (thumb: HTMLElement, dock: HTMLElement) => {
   const observer = new MutationObserver(() => {
-    until = performance.now() + ZOOM_MS
-    if (frame === 0) {
-      followEngine()
-      frame = requestAnimationFrame(follow)
+    const style = getComputedStyle(dock)
+    const now = scaleOf(style.scale)
+    const zoom = dock
+      .getAnimations()
+      .find(
+        (animation) =>
+          animation instanceof CSSTransition &&
+          animation.transitionProperty === 'scale'
+      )
+    const frames =
+      zoom?.effect instanceof KeyframeEffect ? zoom.effect.getKeyframes() : []
+    const last = frames.at(-1)?.scale
+    if (zoom === undefined || typeof last !== 'string' || now === 0) {
+      return
     }
+    const ratio = scaleOf(last) / now
+    const [ox = 0, oy = 0] = style.transformOrigin
+      .split(' ')
+      .map((part) => Number(part.replace('px', '')))
+    const box = dock.getBoundingClientRect()
+    const x = box.left + ox * now
+    const y = box.top + oy * now
+    const at = thumb.getBoundingClientRect()
+    glideEngine(
+      {
+        height: at.height * ratio,
+        left: x + (at.left - x) * ratio,
+        top: y + (at.top - y) * ratio,
+        width: at.width * ratio,
+      },
+      zoom
+    )
   })
   observer.observe(document.documentElement, {
     attributeFilter: ['data-topbar-state'],
   })
   return () => {
     observer.disconnect()
-    cancelAnimationFrame(frame)
   }
 }
 
@@ -238,7 +270,11 @@ const MiniPlayer = ({
     const el = thumb.current
     return playing && el !== null ? floatThumb(el, restoring) : undefined
   }, [playing])
-  useEffect(followZoom, [])
+  useEffect(() => {
+    const el = thumb.current
+    const dock = el?.closest<HTMLElement>('[data-tabbar-root]')
+    return el && dock ? followZoom(el, dock) : undefined
+  }, [])
 
   // The progress line, written straight to its transform each frame while the song plays
   useEffect(() => {
