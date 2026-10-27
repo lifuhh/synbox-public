@@ -13,7 +13,10 @@
 //
 // Each rule counts the parts (per direction) that broke it at least once, so a count reads "how many things moved
 // wrong", not how many frames. Dropped frames (a frame gap over 1.5 refreshes while anything moves) are reported, not
-// judged: a headless browser's frame clock is uneven.
+// judged: a headless browser's frame clock is uneven. A jump or pop across a stalled frame (over probes/motion.ts ›
+// `stallLimit`: 50ms, or three median frames) is the machine's, not counted: the toggle is recorded again, up to
+// REDOS times, and each way judged on its first recording where no stall hid a jump; if none, the audit has no sample
+// (`machine stalled`). Seen on a loaded machine: entering, no frame for 4 s after the press, then the end layout.
 //
 // Where it reads the boxes: a part animated by its own transform or opacity is read from its element
 // (getBoundingClientRect includes transforms; opacity through every ancestor). A part in a view transition is drawn
@@ -36,6 +39,8 @@ import type { Page } from 'playwright'
 import { open } from '../engines/browser'
 import type { BenchContext, Sample } from '../types'
 import { LAYOUT_PAGES, PLAYER_SONG } from './layout'
+import { REDOS, stallLimit, stallText } from './motion'
+import type { Stall } from './motion'
 
 const LIMIT_MS = 120_000
 const STEP_PX = 48
@@ -447,6 +452,10 @@ interface Judged {
   /** From the release to the first frame that shows any change, and to the last */
   startMs: number
   doneMs: number
+  /** Jumps across stalled frames, not counted: the direction is recorded again. Null when none hid one */
+  stall: Stall | null
+  /** Frames over the stall limit after the one before, whatever they hid */
+  stalledFrames: number
 }
 
 const EDGES = ['l', 'r', 't', 'b'] as const
@@ -460,9 +469,12 @@ class Judgement {
     dropped: 0,
     notes: [],
     scaleReversals: new Set(),
+    stall: null,
+    stalledFrames: 0,
     startMs: 0,
     teleports: new Set(),
   }
+  readonly limitMs: number
   private readonly noted: Record<string, number> = {}
   // Each part's last size and the way each axis last moved
   private readonly sizes: Record<string, Size> = {}
@@ -471,9 +483,14 @@ class Judgement {
   // How far each edge of each part goes over the whole transition: a frame's step is judged against it
   private readonly travel: Record<string, number[]>
 
-  constructor(direction: string, travel: Record<string, number[]>) {
+  constructor(
+    direction: string,
+    travel: Record<string, number[]>,
+    limitMs: number
+  ) {
     this.direction = direction
     this.travel = travel
+    this.limitMs = limitMs
   }
 
   note(rule: string, text: string) {
@@ -483,16 +500,34 @@ class Judgement {
     }
   }
 
+  /** A jump between two frames: a teleport, or, across a stalled frame, the machine's (kept aside, not counted) */
+  private jump(part: string, i: number, gapMs: number, text: string) {
+    if (gapMs > this.limitMs) {
+      const s = this.out.stall
+      this.out.stall = {
+        frame: i,
+        gapMs: Math.max(gapMs, s?.gapMs ?? 0),
+        hidden: (s?.hidden ?? 0) + 1,
+        limitMs: this.limitMs,
+      }
+      return
+    }
+    this.out.teleports.add(part)
+    this.note('teleport', text)
+  }
+
   /** Whether the part changed between the frames */
   step(part: string, i: number, prev: Frame, cur: Frame): boolean {
     const a = prev.parts[part]
     const b = cur.parts[part]
     const ao = shown(a) ? a.o : 0
     const bo = shown(b) ? b.o : 0
+    const gapMs = cur.t - prev.t
     if (Math.abs(bo - ao) > POP_STEP) {
-      this.out.teleports.add(part)
-      this.note(
-        'teleport',
+      this.jump(
+        part,
+        i,
+        gapMs,
         `${part} opacity ${ao.toFixed(2)} → ${bo.toFixed(2)} in one frame (frame ${i})`
       )
     }
@@ -514,9 +549,10 @@ class Judgement {
         s > STEP_PX * late && s > JUMP_SHARE * late * (travel[edge] ?? 0)
     )
     if (jumped && Math.min(ao, bo) > POP_STEP) {
-      this.out.teleports.add(part)
-      this.note(
-        'teleport',
+      this.jump(
+        part,
+        i,
+        gapMs,
         `${part} jumped ${Math.round(Math.max(...steps))}px in one frame (frame ${i}: ${Math.round(a.l)},${Math.round(a.t)} ${Math.round(a.r - a.l)}×${Math.round(a.b - a.t)} → ${Math.round(b.l)},${Math.round(b.t)} ${Math.round(b.r - b.l)}×${Math.round(b.b - b.t)})`
       )
     }
@@ -607,8 +643,15 @@ const travelOf = (frames: Frame[]): Record<string, number[]> => {
   return travel
 }
 
-const judge = (direction: string, { frames, input }: Recorded): Judged => {
-  const judgement = new Judgement(direction, travelOf(frames))
+export const judge = (
+  direction: string,
+  { frames, input }: Recorded
+): Judged => {
+  const judgement = new Judgement(
+    direction,
+    travelOf(frames),
+    stallLimit(frames.map((f) => f.t))
+  )
   const { out } = judgement
   let firstMove: number | null = null
   let lastMove: number | null = null
@@ -624,6 +667,7 @@ const judge = (direction: string, { frames, input }: Recorded): Judged => {
     if ((anyMove || moving) && cur.t - prev.t > VSYNC_MS * 1.5) {
       out.dropped += 1
     }
+    out.stalledFrames += cur.t - prev.t > judgement.limitMs ? 1 : 0
     if (anyMove && input !== null && cur.t >= input) {
       firstMove ??= cur.t
       lastMove = cur.t
@@ -693,20 +737,55 @@ export const theaterRun = async (
         subtree: true,
       })
     })
-    await page.waitForTimeout(500)
     const press = async () => {
       await page.mouse.down()
       await page.mouse.up()
     }
-    await pointAt(page, 'Theater Mode')
-    const enter = await record(page, press)
-    await page.waitForSelector('[data-theater]', { timeout: 5000 })
-    await page.waitForTimeout(600)
-    await pointAt(page, 'Default View')
-    const exit = await record(page, press)
-    await page.waitForSelector('.watch-page:not([data-theater])', {
-      timeout: 5000,
-    })
+    // In and out, again while a stall hid a jump in either way (probes/motion.ts › "stall"); each way is judged on
+    // its first recording where none did
+    const attempts: { enter: Recorded; exit: Recorded }[] = []
+    const kept: Partial<Record<'enter' | 'exit', Judged>> = {}
+    const stalls: string[] = []
+    let stalledFrames = 0
+    for (
+      let attempt = 0;
+      attempt <= REDOS && (kept.enter === undefined || kept.exit === undefined);
+      attempt += 1
+    ) {
+      // oxlint-disable-next-line eslint/no-await-in-loop -- one toggle after the other
+      await page.waitForTimeout(attempt === 0 ? 500 : 600)
+      // oxlint-disable-next-line eslint/no-await-in-loop -- one toggle after the other
+      await pointAt(page, 'Theater Mode')
+      // oxlint-disable-next-line eslint/no-await-in-loop -- one toggle after the other
+      const enter = await record(page, press)
+      // oxlint-disable-next-line eslint/no-await-in-loop -- one toggle after the other
+      await page.waitForSelector('[data-theater]', { timeout: 5000 })
+      // oxlint-disable-next-line eslint/no-await-in-loop -- one toggle after the other
+      await page.waitForTimeout(600)
+      // oxlint-disable-next-line eslint/no-await-in-loop -- one toggle after the other
+      await pointAt(page, 'Default View')
+      // oxlint-disable-next-line eslint/no-await-in-loop -- one toggle after the other
+      const exit = await record(page, press)
+      // oxlint-disable-next-line eslint/no-await-in-loop -- one toggle after the other
+      await page.waitForSelector('.watch-page:not([data-theater])', {
+        timeout: 5000,
+      })
+      attempts.push({ enter, exit })
+      for (const [way, rec] of [
+        ['enter', enter],
+        ['exit', exit],
+      ] as const) {
+        const j = judge(way, rec)
+        stalledFrames += j.stalledFrames
+        if (j.stall === null) {
+          kept[way] ??= j
+        } else {
+          stalls.push(
+            `${way}, attempt ${attempt + 1}: run again: ${stallText(j.stall)}`
+          )
+        }
+      }
+    }
     const iframe = await page.evaluate(() => ({
       loads: window.__theater?.loads ?? 0,
       same:
@@ -716,14 +795,24 @@ export const theaterRun = async (
     }))
     writeFileSync(
       path.join(artifactDir, 'frames.json'),
-      JSON.stringify({ enter, exit }, null, 1)
+      JSON.stringify(
+        attempts.length === 1 ? attempts[0] : { attempts },
+        null,
+        1
+      )
     )
-    const judged = [judge('enter', enter), judge('exit', exit)]
+    if (kept.enter === undefined || kept.exit === undefined) {
+      throw new Error(
+        `machine stalled: ${kept.enter === undefined ? 'enter' : 'exit'} stalled on all ${REDOS + 1} attempts (last: ${stalls.at(-1) ?? 'unknown'})`
+      )
+    }
+    const judged = [kept.enter, kept.exit]
     const sum = (key: 'teleports' | 'scaleReversals' | 'detachments') =>
       judged.reduce((n, j) => n + j[key].size, 0)
     const iframeReloads = iframe.loads + (iframe.same ? 0 : 1)
     return {
       notes: [
+        ...stalls,
         ...judged.flatMap((j) => j.notes),
         ...(iframeReloads > 0
           ? [
@@ -738,9 +827,14 @@ export const theaterRun = async (
         enterStartMs: judged[0].startMs,
         exitDoneMs: judged[1].doneMs,
         exitStartMs: judged[1].startMs,
-        frames: enter.frames.length + exit.frames.length,
+        frames: attempts.reduce(
+          (n, a) => n + a.enter.frames.length + a.exit.frames.length,
+          0
+        ),
         iframeReloads,
+        redos: attempts.length - 1,
         scaleReversals: sum('scaleReversals'),
+        stalledFrames,
         teleports: sum('teleports'),
       },
     }

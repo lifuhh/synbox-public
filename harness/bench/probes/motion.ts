@@ -21,6 +21,12 @@
 //   flight's frames take under 15ms, but with three audits at once (as `check` runs them) the page's own work during
 //   the scroll put one frame in nine runs at 26ms; and a headless frame clock is uneven (8% of idle frames on desktop
 //   Chromium came over 25ms). Frames before and after the morph, the page scrolling, are the page's, not the morph's.
+// - stall: a frame that came over `stallMs` after the one before (STALL_MS, or STALL_FACTOR times the pass's median
+//   frame if that is longer) is the machine stalling, not the page: what moved across it is not judged as a teleport.
+//   A pass where such a gap hid a jump is run again (REDOS times at most) and the first attempt with none is judged;
+//   if every attempt stalled, the audit has no sample (`machine stalled`), which `check` retries like any audit that
+//   measured nothing. A jump between frames a normal interval apart is judged as ever. Gaps over `stallMs`, and
+//   passes run again, are reported (`stalledFrames`, `redos`), not judged.
 //
 // - overshoot, slant, settle: the flight's own shape (`judgeShape`): no edge passes its landing and comes back, the
 //   box's edges share one progress, and no tail creeps the last pixels in.
@@ -32,6 +38,12 @@
 // by; POP_STEP 0.5 is a fade of fewer than two frames. A box whose edges share one progress measures under 0.005 apart
 // (a box sliding with a bar 0.04-0.06), so SLANT_SPREAD is 0.03; a spring crept within 2px of its landing for 14-24
 // frames, a 260ms ease-out for 3, so SETTLE_FRAMES is 4.
+//
+// STALL_MS, from 304 recorded passes (2026-10-27, every view): frames where something moved came 16.8ms apart at the
+// median, 34ms at the 99th percentile (two refreshes), and a stall on a loaded machine left 105-4000ms gaps; 50 (three
+// refreshes) sits above the clock's own jitter. STALL_FACTOR 3 keeps a page whose clock runs slow throughout (a 33ms
+// median) from reading every frame as a stall. A redo costs one more run of the speed's passes (~2-5 s); a gap that
+// hid nothing costs none.
 
 import { mkdirSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
@@ -56,6 +68,10 @@ const NOISE_PX = 1
 const FRAME_MS = 25
 const DROP_MS = 34
 const VSYNC_MS = 1000 / 60
+const STALL_MS = 50
+const STALL_FACTOR = 3
+/** Times each speed's passes run again while a stall hid a jump in one of them */
+export const REDOS = 2
 /** An element this faint, or with no area left on screen, isn't shown */
 const SHOWN_OPACITY = 0.02
 /** Frames in a row with nothing moving: the transition is over */
@@ -326,6 +342,26 @@ const frameCount = async (page: Page) =>
       ? found.frames.length
       : 0
   })
+
+/** Frames `from` to `to` so far, the recorder still running */
+const framesBetween = async (
+  page: Page,
+  from: number,
+  to: number
+): Promise<Frame[]> =>
+  await page.evaluate(
+    ([a, b]) => {
+      const found: unknown = Reflect.get(globalThis, '__motion')
+      return typeof found === 'object' &&
+        found !== null &&
+        'frames' in found &&
+        Array.isArray(found.frames)
+        ? // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the recorder's own frames, installed by startRecording
+          (found.frames.slice(a, b) as Frame[])
+        : []
+    },
+    [from, to] as const
+  )
 
 /** Waits until nothing has moved for QUIET_FRAMES frames, or SETTLE_MS */
 const settled = async (page: Page): Promise<void> => {
@@ -887,8 +923,34 @@ const judgeShape = (frames: Frame[], parts: MorphPart[], flag: Flag) => {
   }
 }
 
+/** The gap between two frames past which the machine stalled: STALL_MS, or STALL_FACTOR times the median frame */
+export const stallLimit = (times: number[]): number => {
+  const gaps = times
+    .slice(1)
+    .map((t, i) => t - (times[i] ?? t))
+    .toSorted((a, b) => a - b)
+  const median = gaps[Math.floor(gaps.length / 2)] ?? VSYNC_MS
+  return Math.max(STALL_MS, STALL_FACTOR * median)
+}
+
+/** Jumps a stalled frame hid: not judged, the pass is run again */
+export interface Stall {
+  /** The longest gap that hid one, and the frame after it */
+  gapMs: number
+  frame: number
+  hidden: number
+  limitMs: number
+}
+
+export const stallText = (s: Stall): string =>
+  `a ${s.gapMs.toFixed(0)}ms frame gap at frame ${s.frame} (over ${s.limitMs.toFixed(0)}ms) hid ${s.hidden} jump${s.hidden === 1 ? '' : 's'}`
+
 export interface Judged {
   counts: Record<Rule, number>
+  /** Jumps across stalled frames, not judged; null when none hid one */
+  stall: Stall | null
+  /** Frames over the stall limit after the one before, whatever they hid */
+  stalledFrames: number
   /** Frames over FRAME_MS after the one before, in the morph: reported, not judged (see the top of this file) */
   late: number
   /** Frames in the morph with over FRAME_MS of main-thread work: reported; over DROP_MS they count as dropped */
@@ -923,6 +985,9 @@ export const judge = (frames: Frame[], parts: MorphPart[]): Judged => {
   }
   let late = 0
   let slow = 0
+  const hidden: { frame: number; gapMs: number }[] = []
+  let stalledFrames = 0
+  const limitMs = stallLimit(frames.map((f) => f.t))
   const [root] = parts
   // Frames are judged from the morph's first hand-over to its last (the field to the ghost, the ghost to the bar):
   // the page scrolling before and after is the page's own business
@@ -950,12 +1015,25 @@ export const judge = (frames: Frame[], parts: MorphPart[]): Judged => {
       slow += s.cur.work > FRAME_MS ? 1 : 0
       late += s.cur.t - s.prev.t > FRAME_MS ? 1 : 0
     }
+    const gapMs = s.cur.t - s.prev.t
+    const stalled = gapMs > limitMs
+    stalledFrames += stalled ? 1 : 0
+    // Across a stalled frame a jump is the machine's: kept aside, never counted
+    const stepFlag: Flag = stalled
+      ? (rule, part, frame, text) => {
+          if (rule === 'teleport') {
+            hidden.push({ frame, gapMs })
+          } else {
+            flag(rule, part, frame, text)
+          }
+        }
+      : flag
     for (const p of parts) {
-      judgePops(p, s, flag)
+      judgePops(p, s, stepFlag)
       if (p.within === undefined) {
-        judgeFreeSteps(p, s, flag)
+        judgeFreeSteps(p, s, stepFlag)
       } else {
-        judgeAttached(p, s, flag)
+        judgeAttached(p, s, stepFlag)
       }
     }
   }
@@ -974,7 +1052,20 @@ export const judge = (frames: Frame[], parts: MorphPart[]): Judged => {
       root === undefined ? [] : shownOf(f, root.name).map((e) => e.id)
     )
   )
-  return { counts, flight: rootIds.size > 1, late, notes, seen, slow }
+  const [longest] = hidden.toSorted((a, b) => b.gapMs - a.gapMs)
+  return {
+    counts,
+    flight: rootIds.size > 1,
+    late,
+    notes,
+    seen,
+    slow,
+    stall:
+      longest === undefined
+        ? null
+        : { ...longest, hidden: hidden.length, limitMs },
+    stalledFrames,
+  }
 }
 
 const RULES: Rule[] = [
@@ -986,6 +1077,66 @@ const RULES: Rule[] = [
   'slant',
   'settle',
 ]
+
+/**
+ * Every pass at every speed, judged as it ends. A speed's passes all run again, in order (so each starts where it did
+ * the first time), while a stall hid a jump in one of them, REDOS times at most. `cuts` is every pass run; `kept` the
+ * one judged per pass: its first attempt where no stall hid a jump
+ */
+const runPasses = async (page: Page, morph: Morph) => {
+  const cuts: {
+    name: string
+    attempt: number
+    from: number
+    to: number
+    stalled?: string
+  }[] = []
+  const kept = new Map<string, { attempt: number; j: Judged }>()
+  const stalls = new Map<string, Stall>()
+  let stalledFrames = 0
+  let redos = 0
+  for (const speed of morph.speeds) {
+    const names = morph.passes.map((p) => `${p.name} (${speed.name})`)
+    for (
+      let attempt = 0;
+      attempt <= REDOS && names.some((n) => !kept.has(n));
+      attempt += 1
+    ) {
+      redos += attempt > 0 ? 1 : 0
+      for (const [i, pass] of morph.passes.entries()) {
+        const name = names[i] ?? pass.name
+        // oxlint-disable-next-line eslint/no-await-in-loop -- one pass after the other, each settled
+        const from = await frameCount(page)
+        // oxlint-disable-next-line eslint/no-await-in-loop -- one pass after the other, each settled
+        await pass.drive(page, speed.ms)
+        // oxlint-disable-next-line eslint/no-await-in-loop -- one pass after the other, each settled
+        await settled(page)
+        // oxlint-disable-next-line eslint/no-await-in-loop -- one pass after the other, each settled
+        const to = await frameCount(page)
+        // From the frame before the pass starts, so its first step is judged
+        const j = judge(
+          // oxlint-disable-next-line eslint/no-await-in-loop -- judged before the next pass decides on a redo
+          await framesBetween(page, Math.max(from - 1, 0), to),
+          morph.parts
+        )
+        stalledFrames += j.stalledFrames
+        cuts.push({
+          attempt,
+          from,
+          name,
+          to,
+          ...(j.stall === null ? {} : { stalled: stallText(j.stall) }),
+        })
+        if (j.stall !== null) {
+          stalls.set(name, j.stall)
+        } else if (!kept.has(name)) {
+          kept.set(name, { attempt, j })
+        }
+      }
+    }
+  }
+  return { cuts, kept, redos, stalledFrames, stalls }
+}
 
 const runMotion = async (
   morph: Morph,
@@ -1000,20 +1151,10 @@ const runMotion = async (
     await morph.ready(page)
     await page.waitForTimeout(500)
     await startRecording(page, morph.parts, morph.scroller)
-    const cuts: { name: string; from: number; to: number }[] = []
-    for (const speed of morph.speeds) {
-      for (const pass of morph.passes) {
-        // oxlint-disable-next-line eslint/no-await-in-loop -- one pass after the other, each settled
-        const from = await frameCount(page)
-        // oxlint-disable-next-line eslint/no-await-in-loop -- one pass after the other, each settled
-        await pass.drive(page, speed.ms)
-        // oxlint-disable-next-line eslint/no-await-in-loop -- one pass after the other, each settled
-        await settled(page)
-        // oxlint-disable-next-line eslint/no-await-in-loop -- one pass after the other, each settled
-        const to = await frameCount(page)
-        cuts.push({ from, name: `${pass.name} (${speed.name})`, to })
-      }
-    }
+    const { cuts, kept, redos, stalledFrames, stalls } = await runPasses(
+      page,
+      morph
+    )
     const frames = await recorded(page)
     // Every frame behind the verdict, for a look at what moved where
     mkdirSync(artifactDir, { recursive: true })
@@ -1021,6 +1162,14 @@ const runMotion = async (
       path.join(artifactDir, 'frames.json'),
       JSON.stringify({ cuts, frames })
     )
+    const unjudged = cuts.filter((c) => !kept.has(c.name))
+    if (unjudged.length > 0) {
+      const [first] = unjudged
+      const stall = first === undefined ? undefined : stalls.get(first.name)
+      throw new Error(
+        `machine stalled: ${first?.name ?? 'a pass'} stalled on all ${REDOS + 1} attempts (last: ${stall === undefined ? 'unknown' : stallText(stall)})`
+      )
+    }
     // Where it came to rest; WebKit sometimes never finishes a screenshot, and the verdict doesn't need it
     await page
       .screenshot({ path: path.join(artifactDir, 'screen.png'), timeout: 5000 })
@@ -1042,11 +1191,16 @@ const runMotion = async (
     let late = 0
     let slow = 0
     for (const cut of cuts) {
-      // From the frame before the pass starts, so its first step is judged
-      const j = judge(
-        frames.slice(Math.max(cut.from - 1, 0), cut.to),
-        morph.parts
-      )
+      if (cut.stalled !== undefined) {
+        notes.push(
+          `${cut.name}, attempt ${cut.attempt + 1}: run again: ${cut.stalled}`
+        )
+      }
+      const keep = kept.get(cut.name)
+      if (keep === undefined || keep.attempt !== cut.attempt) {
+        continue
+      }
+      const { j } = keep
       for (const rule of RULES) {
         counts[rule] += j.counts[rule]
       }
@@ -1057,7 +1211,7 @@ const runMotion = async (
       late += j.late
       slow += j.slow
       notes.push(
-        `${cut.name}: ${cut.to - cut.from} frames, ${j.flight ? 'flew' : 'no flight'}; teleport ${j.counts.teleport}, scale ${j.counts.scale}, detached ${j.counts.detached}, overshoot ${j.counts.overshoot}, slant ${j.counts.slant}, settle ${j.counts.settle}, over ${FRAME_MS}ms of work ${j.slow} (over ${DROP_MS}ms ${j.counts.frame}), late ${j.late}`,
+        `${cut.name}${cut.attempt > 0 ? `, attempt ${cut.attempt + 1}` : ''}: ${cut.to - cut.from} frames, ${j.flight ? 'flew' : 'no flight'}; teleport ${j.counts.teleport}, scale ${j.counts.scale}, detached ${j.counts.detached}, overshoot ${j.counts.overshoot}, slant ${j.counts.slant}, settle ${j.counts.settle}, over ${FRAME_MS}ms of work ${j.slow} (over ${DROP_MS}ms ${j.counts.frame}), late ${j.late}`,
         ...j.notes.map((line) => `  ${line}`)
       )
     }
@@ -1074,10 +1228,12 @@ const runMotion = async (
         lateFrames: late,
         missingFlights: Math.max(minFlights - flights, 0),
         overshoots: counts.overshoot,
+        redos,
         scaleReversals: counts.scale,
         settles: counts.settle,
         slants: counts.slant,
         slowFrames: slow,
+        stalledFrames,
         teleports: counts.teleport,
         unseenParts: unseen.length,
       },
