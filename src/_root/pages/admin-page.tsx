@@ -178,6 +178,47 @@ const Stat = ({ label, children }: { label: string; children: ReactNode }) => (
   </div>
 )
 
+const clockTime = new Intl.DateTimeFormat([], { timeStyle: 'short' })
+
+// The time today, the date and time before today
+const sameDayTime = (date: Date) =>
+  (date.toDateString() === new Date().toDateString()
+    ? clockTime
+    : fullDate
+  ).format(date)
+
+// When the site's ceiling paused generation
+const PausedAt = ({ at }: { at: number }) => {
+  const date = new Date(at)
+  return (
+    <time dateTime={date.toISOString()} title={fullDate.format(date)}>
+      {sameDayTime(date)}
+    </time>
+  )
+}
+
+const GenerationStatus = ({
+  enabled,
+  autoPause,
+}: {
+  enabled: boolean
+  autoPause: { at: number; count: number } | null | undefined
+}) => {
+  if (enabled) {
+    return 'On'
+  }
+  if (autoPause === null || autoPause === undefined) {
+    return 'Paused for Everyone'
+  }
+  return (
+    <>
+      Paused Automatically · {autoPause.count}{' '}
+      {autoPause.count === 1 ? 'Song' : 'Songs'} ·{' '}
+      <PausedAt at={autoPause.at} />
+    </>
+  )
+}
+
 const GenerationPanel = () => {
   const { data } = useAdminSettings()
   const { isPending, mutate: setEnabled } = useSetGenerationEnabled()
@@ -185,7 +226,7 @@ const GenerationPanel = () => {
   if (data === undefined) {
     return <Skeleton className='h-20 w-full' />
   }
-  const { generationEnabled, limits } = data
+  const { autoPause, generationEnabled, limits } = data
   return (
     <section className='flex flex-wrap items-center gap-x-10 gap-y-4 rounded-xl bg-card/60 p-4'>
       <Stat label='Generation'>
@@ -193,15 +234,22 @@ const GenerationPanel = () => {
           <span
             aria-hidden
             className={cn(
-              'size-2 rounded-full',
+              'size-2 shrink-0 rounded-full',
               generationEnabled ? 'bg-success' : 'bg-warning'
             )}
           />
-          {generationEnabled ? 'On' : 'Paused for Everyone'}
+          <span>
+            <GenerationStatus
+              enabled={generationEnabled}
+              autoPause={autoPause}
+            />
+          </span>
         </span>
       </Stat>
       <Stat label='Songs a Day per Account'>{limits.user}</Stat>
-      <Stat label='Guests'>Browse Only</Stat>
+      {limits.site === undefined ? null : (
+        <Stat label='Songs a Day Site-Wide'>{limits.site}</Stat>
+      )}
       <Button
         className='w-full sm:ml-auto sm:w-auto'
         variant={generationEnabled ? 'outline' : 'default'}

@@ -4,6 +4,7 @@ import type { Context } from 'hono'
 import { touchActive } from './activity'
 import { createAuth } from './auth'
 import type { Env } from './auth'
+import { emailAutoPause } from './auto-pause'
 import {
   contactAllowed,
   emailContact,
@@ -46,13 +47,16 @@ import {
   finishGeneration,
   getQuota,
   isTimeZone,
+  readGenerationSettings,
   reserveGeneration,
+  setGenerationEnabled,
   setTimeZone,
 } from './quota'
 import type {
   FinishedStatus,
   GenerationKind,
   Limits,
+  OnTrip,
   Owner,
   Reservation,
 } from './quota'
@@ -108,6 +112,7 @@ type AppEnv = Env &
   ContactEnv & {
     USER_DAILY_LIMIT: string
     NETWORK_DAILY_LIMIT: string
+    SITE_DAILY_LIMIT: string
     VALIDATION_USER_DAILY_LIMIT: string
     VALIDATION_GUEST_DAILY_LIMIT: string
     VALIDATION_NETWORK_DAILY_LIMIT: string
@@ -124,6 +129,7 @@ const count = (value: string | undefined) => {
 
 const limitsOf = (env: AppEnv): Limits => ({
   network: count(env.NETWORK_DAILY_LIMIT),
+  site: count(env.SITE_DAILY_LIMIT),
   user: count(env.USER_DAILY_LIMIT),
 })
 
@@ -633,6 +639,15 @@ const answer = (c: Context, reservation: Reservation) => {
     : c.json({ ...reservation, code: reservation.outcome }, status)
 }
 
+// The request that trips the site's ceiling emails the owner, after it answers
+const emailOnTrip =
+  (c: Context<{ Bindings: AppEnv }>): OnTrip =>
+  (trip) => {
+    c.executionCtx.waitUntil(
+      emailAutoPause(c.env, trip, `${c.env.BETTER_AUTH_URL}/admin`)
+    )
+  }
+
 internal.post('/generations', async (c) => {
   const body = await c.req.json<Record<string, unknown>>()
   const { id, videoId, kind } = body
@@ -645,7 +660,9 @@ internal.post('/generations', async (c) => {
     await reserveGeneration(
       c.env.DB,
       { id, kind, owner, videoId, ...originOf(body) },
-      limitsOf(c.env)
+      limitsOf(c.env),
+      new Date(),
+      emailOnTrip(c)
     )
   )
 })
@@ -663,7 +680,9 @@ internal.post('/generations/check', async (c) => {
     await checkGeneration(
       c.env.DB,
       { kind, owner, videoId, ...originOf(body) },
-      limitsOf(c.env)
+      limitsOf(c.env),
+      new Date(),
+      emailOnTrip(c)
     )
   )
 })
@@ -829,13 +848,15 @@ admin.put('/users/:id/limit', async (c) => {
   return c.body(null, 204)
 })
 
-// The limits in force, today's guest songs, and the switch that pauses all generation
+// The limits in force, and the switch that pauses generation: by hand, or by the site's ceiling (autoPause: when,
+// and the songs counted)
 admin.get('/settings', async (c) => {
-  const limits = limitsOf(c.env)
-  const enabled = await c.env.DB.prepare(
-    `select "value" from "appSetting" where "key" = 'generationEnabled'`
-  ).first<string>('value')
-  return c.json({ generationEnabled: enabled === '1', limits })
+  const { enabled, autoPause } = await readGenerationSettings(c.env.DB)
+  return c.json({
+    autoPause,
+    generationEnabled: enabled,
+    limits: limitsOf(c.env),
+  })
 })
 
 // Requests for more songs a day, open ones first
@@ -892,11 +913,7 @@ admin.put('/settings', async (c) => {
   if (typeof generationEnabled !== 'boolean') {
     return c.json({ code: 'bad_request' }, 400)
   }
-  await c.env.DB.prepare(
-    `update "appSetting" set "value" = ?1 where "key" = 'generationEnabled'`
-  )
-    .bind(generationEnabled ? '1' : '0')
-    .run()
+  await setGenerationEnabled(c.env.DB, generationEnabled)
   return c.body(null, 204)
 })
 

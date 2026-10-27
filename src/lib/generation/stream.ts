@@ -19,6 +19,18 @@ const VALIDATE_IDLE_MS = 60_000
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null
 
+// Generation paused for everyone (by the owner, or by the site's daily ceiling until the owner resumes it). The app
+// owns this copy: it replaces the backend's line for the code wherever a refusal or a failed step shows
+export const NEW_SONGS_PAUSED = {
+  code: 'generation_paused',
+  message:
+    'We’re at capacity for new songs right now. Everything on Synbox still plays',
+  title: 'New Songs Paused',
+} as const
+
+const appMessage = (code: string | undefined, message: string) =>
+  code === NEW_SONGS_PAUSED.code ? NEW_SONGS_PAUSED.message : message
+
 // Who is asking: an account's token, or for a guest the device traits their one free song is kept by
 const callerHeaders = (token: string | null): Record<string, string> =>
   token === null
@@ -160,8 +172,9 @@ const readStream = async (
         return
       }
       if (content.type === 'error') {
-        throw new GenerationError(String(content.data), {
-          code: typeof content.code === 'string' ? content.code : undefined,
+        const code = typeof content.code === 'string' ? content.code : undefined
+        throw new GenerationError(appMessage(code, String(content.data)), {
+          code,
         })
       }
       if (content.type === 'resume') {
@@ -337,7 +350,7 @@ export const checkGeneration = async (
       typeof body.code === 'string' &&
       typeof body.message === 'string'
     ) {
-      return { code: body.code, message: body.message }
+      return { code: body.code, message: appMessage(body.code, body.message) }
     }
     return response.ok ? null : UNREACHABLE
   } catch {

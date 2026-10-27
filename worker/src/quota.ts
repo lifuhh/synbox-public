@@ -14,7 +14,19 @@ export interface Limits {
   // Per network in any rolling 24 hours, for its accounts under the default limit together, so a second account on
   // the same network doesn't bring a fresh allowance
   network: number
+  // Songs a day site-wide, every kind and owner counted, from the later of UTC midnight and the last Resume; the
+  // request that would pass it pauses generation (tripIfFull). Admins are held to none of it
+  site: number
 }
+
+// An automatic pause, as the request that tripped it saw it: when, and the songs counted
+export interface SiteTrip {
+  at: number
+  count: number
+}
+
+// Told once per automatic pause, by the one request that flipped the switch (the owner's email)
+export type OnTrip = (trip: SiteTrip) => void
 
 export interface Quota {
   limit: number | null
@@ -174,9 +186,139 @@ const NETWORK_COUNT = `(select count(*) from "generation"
 
 // Failed generations never count. ?7 the user's limit (null: none), ?10 the caller's network (null: unknown), ?11
 // the network's limit, ?13 whether this user is held to it (1: an account under the default limit)
-const SLOT_FREE = `(?7 is null or (select count(*) from "generation"
+const OWN_FREE = `(?7 is null or (select count(*) from "generation"
     where ${COUNTED} and "status" <> 'failed') < ?7)
   and (?13 = 0 or ?10 is null or ${NETWORK_COUNT} < ?11)`
+
+// Room under the site's ceiling: every generation row since the count started, failed ones too (they ran on the
+// GPU). `limit` binds the ceiling (null: an admin, exempt), `since` when the count started
+const siteFree = (limit: string, since: string) =>
+  `(${limit} is null or (select count(*) from "generation" where "createdAt" >= ${since}) < ${limit})`
+
+// ?15 the ceiling, ?16 when the count started
+const SITE_FREE = siteFree('?15', '?16')
+const SLOT_FREE = `${OWN_FREE} and ${SITE_FREE}`
+
+// Where the site's count starts: the later of UTC midnight and the owner's last Resume
+interface Site {
+  limit: number | null
+  since: number
+}
+
+const siteSince = (countSince: number, now: Date) =>
+  Math.max(Math.floor(now.getTime() / DAY_MS) * DAY_MS, countSince)
+
+const siteCount = async (db: D1Database, since: number) =>
+  (await db
+    .prepare(`select count(*) from "generation" where "createdAt" >= ?1`)
+    .bind(since)
+    .first<number>('count(*)')) ?? 0
+
+const putSetting = (db: D1Database, key: string, value: string) =>
+  db
+    .prepare(
+      `insert into "appSetting" ("key", "value") values (?1, ?2)
+       on conflict ("key") do update set "value" = ?2`
+    )
+    .bind(key, value)
+
+// A request its own limits let through, turned away by the site's ceiling, pauses generation for everyone but
+// admins. The switch flips only while it is on, so of many requests turned away at once exactly one flips it,
+// records the pause as automatic and tells `onTrip`. Null when the site has room after all
+const tripIfFull = async (
+  db: D1Database,
+  site: Site,
+  now: Date,
+  onTrip: OnTrip
+): Promise<Reservation | null> => {
+  if (site.limit === null) {
+    return null
+  }
+  const count = await siteCount(db, site.since)
+  if (count < site.limit) {
+    return null
+  }
+  const { meta } = await db
+    .prepare(
+      `update "appSetting" set "value" = '0' where "key" = 'generationEnabled' and "value" = '1'`
+    )
+    .run()
+  if (meta.changes > 0) {
+    await db.batch([
+      putSetting(db, 'generationAutoPausedAt', String(now.getTime())),
+      putSetting(db, 'generationAutoPausedCount', String(count)),
+    ])
+    onTrip({ at: now.getTime(), count })
+  }
+  return { outcome: 'generation_paused' }
+}
+
+export interface GenerationSettings {
+  enabled: boolean
+  // Set while the pause is the ceiling's, not the owner's
+  autoPause: SiteTrip | null
+  // The owner's last Resume (ms), 0 before the first
+  countSince: number
+}
+
+const SETTING_KEYS = `('generationEnabled', 'generationAutoPausedAt', 'generationAutoPausedCount',
+  'generationCountSince')`
+
+export const readGenerationSettings = async (
+  db: D1Database
+): Promise<GenerationSettings> => {
+  const { results } = await db
+    .prepare(
+      `select "key", "value" from "appSetting" where "key" in ${SETTING_KEYS}`
+    )
+    .all<{ key: string; value: string }>()
+  // A number setting; null while unset or '' (Number('') would be 0)
+  const numberOf = (key: string) => {
+    const text = results.find((r) => r.key === key)?.value ?? ''
+    const n = text === '' ? Number.NaN : Number(text)
+    return Number.isFinite(n) ? n : null
+  }
+  const enabled =
+    results.find((r) => r.key === 'generationEnabled')?.value === '1'
+  const at = numberOf('generationAutoPausedAt')
+  return {
+    autoPause:
+      !enabled && at !== null
+        ? { at, count: numberOf('generationAutoPausedCount') ?? 0 }
+        : null,
+    countSince: numberOf('generationCountSince') ?? 0,
+    enabled,
+  }
+}
+
+// The owner's switch. Resume restarts the site's count from now and forgets an automatic pause; a pause by hand is
+// never automatic. Resuming while on changes nothing
+export const setGenerationEnabled = async (
+  db: D1Database,
+  enabled: boolean,
+  now = Date.now()
+) => {
+  if (!enabled) {
+    await db.batch([
+      putSetting(db, 'generationEnabled', '0'),
+      putSetting(db, 'generationAutoPausedAt', ''),
+      putSetting(db, 'generationAutoPausedCount', ''),
+    ])
+    return
+  }
+  const { meta } = await db
+    .prepare(
+      `update "appSetting" set "value" = '1' where "key" = 'generationEnabled' and "value" <> '1'`
+    )
+    .run()
+  if (meta.changes > 0) {
+    await db.batch([
+      putSetting(db, 'generationCountSince', String(now)),
+      putSetting(db, 'generationAutoPausedAt', ''),
+      putSetting(db, 'generationAutoPausedCount', ''),
+    ])
+  }
+}
 
 const countSince = async (db: D1Database, userId: string, since: number) =>
   (await db
@@ -222,6 +364,8 @@ interface OwnLimits {
   limit: number | null
   // Counts toward, and is held to, its network's cap
   capped: boolean
+  // Held to neither the site's ceiling nor its automatic pause
+  admin: boolean
   day: { start: number; end: number }
 }
 
@@ -236,6 +380,7 @@ const ownLimits = async (
     return null
   }
   return {
+    admin: user.role === 'admin',
     capped: user.role !== 'admin' && user.overridden !== 1,
     day: localDay(user.timeZone, now),
     limit: limitFor(user, limits.user),
@@ -326,13 +471,15 @@ interface GenerationRequest {
 // guest's one song has its own path (reserveGuest)
 type Admitted =
   | { refused: Reservation }
-  | { guestKey: string }
+  | { guestKey: string; site: Site }
   | {
       userId: string
       bindings: (string | number | null)[]
       own: OwnLimits
+      site: Site
     }
 
+// A pause by hand stops everyone, admins included; the ceiling's automatic pause lets admins through
 const admit = async (
   db: D1Database,
   request: GenerationRequest,
@@ -340,22 +487,26 @@ const admit = async (
   now: Date
 ): Promise<Admitted> => {
   await expireStalled(db, now)
-  const enabled = await db
-    .prepare(
-      `select "value" from "appSetting" where "key" = 'generationEnabled'`
-    )
-    .first<string>('value')
-  if (enabled !== '1') {
-    return { refused: { outcome: 'generation_paused' } }
+  const settings = await readGenerationSettings(db)
+  const paused = { refused: { outcome: 'generation_paused' } } as const
+  if (!settings.enabled && settings.autoPause === null) {
+    return paused
   }
+  const since = siteSince(settings.countSince, now)
   if (request.owner.kind === 'guest') {
-    return { guestKey: request.owner.key }
+    return settings.enabled
+      ? { guestKey: request.owner.key, site: { limit: limits.site, since } }
+      : paused
   }
   const userId = request.owner.id
   const own = await ownLimits(db, userId, limits, now)
   if (own === null) {
     return { refused: { outcome: 'forbidden' } }
   }
+  if (!settings.enabled && !own.admin) {
+    return paused
+  }
+  const site = { limit: own.admin ? null : limits.site, since }
   const bindings = [
     request.id,
     userId,
@@ -371,21 +522,26 @@ const admit = async (
     request.client ?? null,
     own.capped ? 1 : 0,
     now.getTime() - DAY_MS,
+    site.limit,
+    site.since,
   ]
-  return { bindings, own, userId }
+  return { bindings, own, site, userId }
 }
 
 // A guest's one song (guest-song.ts): reserved only under the claim the generation proxy took for this generation,
 // and held to its network's cap. ?1 the generation, ?2 the guest, ?3 the video, ?4 the kind, ?5 the UTC day, ?6 now,
-// ?7 the network (null: unknown), ?8 the client, ?9 a day ago, ?10 the network's limit
-const GUEST_SLOT_FREE = `exists (select 1 from "guestSong" where "requestId" = ?1)
+// ?7 the network (null: unknown), ?8 the client, ?9 a day ago, ?10 the network's limit, ?11 the site's ceiling, ?12
+// when its count started
+const GUEST_OWN_FREE = `exists (select 1 from "guestSong" where "requestId" = ?1)
   and (?7 is null or (select count(*) from "generation"
     where "networkKey" = ?7 and "capped" = 1 and "createdAt" > ?9 and "status" <> 'failed') < ?10)`
+const GUEST_SITE_FREE = siteFree('?11', '?12')
 
 const guestBindings = (
   request: GenerationRequest,
   guestKey: string,
   limits: Limits,
+  site: Site,
   now: Date
 ) => [
   request.id,
@@ -398,33 +554,57 @@ const guestBindings = (
   request.client ?? null,
   now.getTime() - DAY_MS,
   limits.network,
+  site.limit,
+  site.since,
 ]
 
+// Whether the owner's own limits and the site's ceiling each have room, by the slot's own conditions
+const roomFor = async (
+  db: D1Database,
+  own: string,
+  site: string,
+  bindings: (string | number | null)[]
+) =>
+  (await db
+    .prepare(`select ${own} as "own", ${site} as "site"`)
+    .bind(...bindings)
+    .first<{ own: number; site: number }>()) ?? { own: 0, site: 0 }
+
 // Whether a new song would be reserved, without taking it: the app asks before it starts a generation, so a
-// refusal shows at the button instead of partway through. A guest's claim is the proxy's to check
+// refusal shows at the button instead of partway through. A guest's claim is the proxy's to check. A check its own
+// limits pass trips the site's ceiling like a reservation would
 export const checkGeneration = async (
   db: D1Database,
   request: Omit<GenerationRequest, 'id'>,
   limits: Limits,
-  now = new Date()
+  now = new Date(),
+  onTrip: OnTrip = () => null
 ): Promise<Reservation> => {
   const admitted = await admit(db, { ...request, id: '' }, limits, now)
   if ('refused' in admitted) {
     return admitted.refused
   }
   if ('guestKey' in admitted) {
-    return (await networkFull(db, request.network ?? null, limits, now))
-      ? { outcome: 'network_limit' }
-      : { outcome: 'allowed' }
+    if (await networkFull(db, request.network ?? null, limits, now)) {
+      return { outcome: 'network_limit' }
+    }
+    return (
+      (await tripIfFull(db, admitted.site, now, onTrip)) ?? {
+        outcome: 'allowed',
+      }
+    )
   }
-  const { bindings, own, userId } = admitted
-  const free = await db
-    .prepare(`select ${SLOT_FREE} as "free"`)
-    .bind(...bindings)
-    .first<number>('free')
-  return free === 1
-    ? { outcome: 'allowed' }
-    : await refusal(db, userId, request.network ?? null, own, limits, now)
+  const { bindings, own, site, userId } = admitted
+  const room = await roomFor(db, OWN_FREE, SITE_FREE, bindings)
+  if (room.own === 1 && room.site === 1) {
+    return { outcome: 'allowed' }
+  }
+  const tripped =
+    room.own === 1 ? await tripIfFull(db, site, now, onTrip) : null
+  return (
+    tripped ??
+    (await refusal(db, userId, request.network ?? null, own, limits, now))
+  )
 }
 
 interface Slot {
@@ -494,46 +674,67 @@ export const reserveGeneration = async (
   db: D1Database,
   request: GenerationRequest,
   limits: Limits,
-  now = new Date()
+  now = new Date(),
+  onTrip: OnTrip = () => null
 ): Promise<Reservation> => {
   const admitted = await admit(db, request, limits, now)
   if ('refused' in admitted) {
     return admitted.refused
   }
   if ('guestKey' in admitted) {
-    const { guestKey } = admitted
+    const { guestKey, site } = admitted
+    const bindings = guestBindings(request, guestKey, limits, site, now)
     return await takeSlot(db, request, {
-      bindings: guestBindings(request, guestKey, limits, now),
+      bindings,
       column: '"guestKey"',
-      free: GUEST_SLOT_FREE,
+      free: `${GUEST_OWN_FREE} and ${GUEST_SITE_FREE}`,
       insertValues: `?1, ?2, ?3, ?4, 'reserved', ?5, ?6, ?6, ?7, ?8, 1`,
       owner: guestKey,
-      // Without the device's claim, signing in is the way to more songs; with it, the network is full
+      // Without the device's claim, signing in is the way to more songs; with it, the network or the site is full
       turnedAway: async () => {
         const claimed = await db
           .prepare(`select 1 from "guestSong" where "requestId" = ?1`)
           .bind(request.id)
           .first()
-        return claimed === null
-          ? { outcome: 'sign_in_required' }
-          : await recorded(db, request, { outcome: 'network_limit' }, now)
+        if (claimed === null) {
+          return { outcome: 'sign_in_required' }
+        }
+        const room = await roomFor(
+          db,
+          GUEST_OWN_FREE,
+          GUEST_SITE_FREE,
+          bindings
+        )
+        const tripped =
+          room.own === 1 ? await tripIfFull(db, site, now, onTrip) : null
+        return (
+          tripped ??
+          (await recorded(db, request, { outcome: 'network_limit' }, now))
+        )
       },
     })
   }
-  const { bindings, own, userId } = admitted
+  const { bindings, own, site, userId } = admitted
   return await takeSlot(db, request, {
     bindings,
     column: '"userId"',
     free: SLOT_FREE,
     insertValues: `?1, ?2, ?3, ?4, 'reserved', ?5, ?6, ?6, ?10, ?12, ?13`,
     owner: userId,
-    turnedAway: async () =>
-      await recorded(
-        db,
-        request,
-        await refusal(db, userId, request.network ?? null, own, limits, now),
-        now
-      ),
+    turnedAway: async () => {
+      const room = await roomFor(db, OWN_FREE, SITE_FREE, bindings)
+      const tripped =
+        room.own === 1 ? await tripIfFull(db, site, now, onTrip) : null
+      return (
+        tripped ??
+        (await recorded(
+          db,
+          request,
+          await refusal(db, userId, request.network ?? null, own, limits, now),
+          now
+        ))
+      )
+    },
   })
 }
 

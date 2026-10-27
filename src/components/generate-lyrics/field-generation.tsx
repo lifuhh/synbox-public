@@ -15,8 +15,14 @@ import { cn } from '@/utils/cn'
 export type Submission =
   | { kind: 'idle' }
   | { kind: 'checking' }
-  // `quiet`: nothing went wrong (today's songs are added), so it reads as a note, with Request More beside it
-  | { kind: 'refused'; message: string; quiet: boolean }
+  // `quiet`: nothing the listener did wrong (today's songs are added, new songs are paused), so it reads as a note;
+  // `action`: Request More beside it, when more songs are the way past it
+  | {
+      kind: 'refused'
+      message: string
+      quiet: boolean
+      action: 'request_more' | null
+    }
 
 const IDLE: Submission = { kind: 'idle' }
 // The link fades out of the field (input.tsx › bare, data-clearing) before it empties
@@ -41,8 +47,7 @@ export const useFieldGeneration = (onStarted?: () => void) => {
     )
     pressed.current = false
     if (outcome.kind === 'refused') {
-      const { message, quiet } = refusalOf(outcome.refusal)
-      setSubmission({ kind: 'refused', message, quiet })
+      setSubmission({ kind: 'refused', ...refusalOf(outcome.refusal) })
       return
     }
     if (outcome.kind === 'busy' || outcome.kind === 'prompted') {
@@ -118,13 +123,17 @@ export const SubmissionStatus = ({
     return (
       <p className='text-muted-foreground'>
         {submission.message}
-        {' · '}
-        <button
-          type='button'
-          onClick={openRequestMore}
-          className={INLINE_ACTION}>
-          Request More
-        </button>
+        {submission.action === 'request_more' ? (
+          <>
+            {' · '}
+            <button
+              type='button'
+              onClick={openRequestMore}
+              className={INLINE_ACTION}>
+              Request More
+            </button>
+          </>
+        ) : null}
       </p>
     )
   }
