@@ -8,7 +8,8 @@
 //   vanishes while still visible.
 // - scale: a part's width and height each move one way only through a transition (beyond NOISE_PX).
 // - detached: the video stays on the stage and the control bar inside it, every frame (within NOISE_PX).
-// - iframe: the YouTube iframe is the same element after both toggles and never loads again.
+// - iframe: the YouTube iframe is the same element after both toggles, never moved in the document (which reloads
+//   it) nor pointed elsewhere.
 //
 // Each rule counts the parts (per direction) that broke it at least once, so a count reads "how many things moved
 // wrong", not how many frames. Dropped frames (a frame gap over 1.5 refreshes while anything moves) are reported, not
@@ -622,19 +623,35 @@ export const theaterRun = async (
     await page.addInitScript(installRecorder, PARTS)
     await page.goto(url, { waitUntil: 'commit' })
     await player.ready(page)
-    // The iframe the page built, marked, and every load it makes from here on counted
+    // The iframe the page built, marked, and every time the page takes it out of the document (a move reloads it
+    // too) or points it elsewhere counted. Its own load events are not: the embed navigates inside itself as it
+    // plays, toggle or not
     await page.evaluate(() => {
       const frame = document.querySelector('[data-stage-video] iframe')
-      if (frame === null) {
+      if (!(frame instanceof HTMLIFrameElement)) {
         throw new Error('no YouTube iframe')
       }
-      if (frame instanceof HTMLElement) {
-        frame.dataset.theaterProbe = ''
-      }
-      frame.addEventListener('load', () => {
+      frame.dataset.theaterProbe = ''
+      // oxlint-disable-next-line unicorn/consistent-function-scoping -- runs in the page: nothing outside this function is there
+      const count = () => {
         if (window.__theater !== undefined) {
           window.__theater.loads += 1
         }
+      }
+      new MutationObserver((records) => {
+        for (const r of records) {
+          const removed = [...r.removedNodes].some(
+            (node) => node === frame || node.contains(frame)
+          )
+          if (removed || (r.type === 'attributes' && r.target === frame)) {
+            count()
+          }
+        }
+      }).observe(document.body, {
+        attributeFilter: ['src'],
+        attributes: true,
+        childList: true,
+        subtree: true,
       })
     })
     await page.waitForTimeout(500)
@@ -671,7 +688,7 @@ export const theaterRun = async (
         ...judged.flatMap((j) => j.notes),
         ...(iframeReloads > 0
           ? [
-              `the YouTube iframe ${iframe.same ? `loaded ${iframe.loads} more time(s)` : 'was replaced'}`,
+              `the YouTube iframe ${iframe.same ? `was moved or pointed elsewhere ${iframe.loads} time(s)` : 'was replaced'}`,
             ]
           : []),
       ],
