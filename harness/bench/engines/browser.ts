@@ -31,6 +31,8 @@ const GOOGLE_FONTS = /^https:\/\/fonts\.(?:googleapis|gstatic)\.com\//u
 // The writes a plain visit makes to the site's counters, on any origin (a local build proxies /api to the live
 // Worker): a song's listen (src/lib/song-stats.ts › countListen) and the usage events (src/lib/usage.ts)
 const SITE_COUNTERS = /\/api\/(?:songs\/[\w-]{11}\/listen|events)(?:\?|$)/u
+export const YOUTUBE_IFRAME_API =
+  /^https:\/\/www\.youtube\.com\/(?:iframe_api(?:\?|$)|s\/player\/[\w-]+\/www-widgetapi\.vflset\/)/u
 let fontDir: string | null = null
 
 /**
@@ -368,6 +370,19 @@ export const open = async (
     const dir = fontDir
     await context.route(GOOGLE_FONTS, async (route) => {
       await fromFontCache(route, dir)
+    })
+  }
+  // The YouTube iframe API's two scripts (iframe_api, then the www-widgetapi.js it names) are all the player needs to
+  // put its iframe in the page (`player-iframe`). In WebKit they come through Playwright's network stack, as smoke.ts
+  // does for the API's reads: in one full check (2026-10-27) every WebKit player page for ~3 minutes, retries
+  // included, never got the iframe within 30 s while the same views had it in ~5 s before, and the page under a
+  // load of 32 had it in 1.5 s, so the wait was on WebKit's own connection to youtube.com, not the machine's load
+  if (surface.engine === 'webkit') {
+    await context.route(YOUTUBE_IFRAME_API, async (route) => {
+      const response = await route.fetch().catch(() => null)
+      await (response === null
+        ? route.abort('failed')
+        : route.fulfill({ response }))
     })
   }
   // Before anything else, so no frame plays a sound: WebKit has no --mute-audio

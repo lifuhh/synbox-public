@@ -17,6 +17,7 @@ import {
   SAFARI_LANDSCAPE,
   SAFARI_NARROW,
   SAFARI_PORTRAIT,
+  YOUTUBE_IFRAME_API,
 } from '../engines/browser'
 import type { Audit } from '../engines/recorder'
 import { isRecord, parseJson } from '../json'
@@ -447,6 +448,41 @@ export const OPENED_STATES: Record<string, OpenedState[]> = {
   ],
 }
 
+/**
+ * The player's YouTube iframe (mark `player-iframe`). It needs only the iframe API's scripts from youtube.com, so a
+ * wait that runs out says which of them were still unanswered: the network's wait, not the page's
+ */
+const iframeMark = async (page: Page): Promise<void> => {
+  const pending = new Map<string, number>()
+  const started = (r: { url: () => string }) => {
+    if (YOUTUBE_IFRAME_API.test(r.url())) {
+      pending.set(r.url(), Date.now())
+    }
+  }
+  const ended = (r: { url: () => string }) => {
+    pending.delete(r.url())
+  }
+  page.on('request', started)
+  page.on('requestfinished', ended)
+  page.on('requestfailed', ended)
+  try {
+    await mark(page, 'player-iframe', 30_000)
+  } catch (error) {
+    const waits = [...pending].map(
+      ([url, at]) =>
+        `${new URL(url).pathname.split('/').at(-1) ?? url} for ${((Date.now() - at) / 1000).toFixed(0)}s`
+    )
+    throw new Error(
+      `${error instanceof Error ? error.message : String(error)}; YouTube API scripts unanswered: ${waits.join(', ') || 'none'}`,
+      { cause: error }
+    )
+  } finally {
+    page.off('request', started)
+    page.off('requestfinished', ended)
+    page.off('requestfailed', ended)
+  }
+}
+
 /** Pages with their own readiness; every other route in src/app.tsx is audited once settled */
 export const LAYOUT_PAGES: LayoutPage[] = [
   {
@@ -487,7 +523,7 @@ export const LAYOUT_PAGES: LayoutPage[] = [
     path: `/v/${PLAYER_SONG}`,
     ready: async (page, note) => {
       note?.('the YouTube iframe (mark player-iframe)')
-      await mark(page, 'player-iframe', 30_000)
+      await iframeMark(page)
       note?.('the player out of loading, starting and buffering')
       // WebKit in Playwright may never play the video; audit whatever the player settled into, controls shown
       await page

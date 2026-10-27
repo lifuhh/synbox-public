@@ -288,6 +288,9 @@ const motion = (morph: Morph, view: View, minFlights: number): Benchmark => ({
     count('lateFrames', false),
     count('slowFrames', false),
     count('flights', false),
+    // Frame gaps over the stall limit, and passes run again because one hid a jump: the machine's, reported
+    count('stalledFrames', false),
+    count('redos', false),
   ],
   run: motionAudit(morph, view.surface, minFlights),
   runs: 1,
@@ -434,6 +437,8 @@ export const SUITE: Benchmark[] = [
       ...THEATER_MOTION_FINDINGS.map((key) => count(key)),
       count('droppedFrames', false),
       count('frames', false),
+      count('stalledFrames', false),
+      count('redos', false),
       // From the press's release to the first frame that changes, and to the last: reported, the timing is a
       // headless browser's
       ...['enterStartMs', 'enterDoneMs', 'exitStartMs', 'exitDoneMs'].map(

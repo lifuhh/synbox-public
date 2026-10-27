@@ -31,6 +31,25 @@ const frame = (i: number, box: Shown[], pill: Shown[]): Frame => ({
   work: 4,
 })
 
+// The box and its pill 600px further right in one step: after a normal frame a teleport; after a 120ms gap the
+// machine's stall, kept aside so the pass runs again
+const jumpAfter = (gapMs: number) => {
+  const rest = [0, 1, 2, 3, 4, 5].map((i) =>
+    frame(i, [el(1, 0, 600)], [el(2, 420, 595)])
+  )
+  const last = rest.at(-1)?.t ?? 0
+  return judge(
+    [
+      ...rest,
+      {
+        ...frame(6, [el(1, 600, 1200)], [el(2, 1020, 1195)]),
+        t: last + gapMs,
+      },
+    ],
+    PARTS
+  )
+}
+
 describe('judge', () => {
   test('a pill handed to a copy at the box’s far end is a teleport, and detached', () => {
     // The real box and pill, then a copy of the box in the same place and a copy of the pill at its left end
@@ -103,5 +122,21 @@ describe('judge', () => {
       frame(2, [el(1, 6, 590)], [el(2, 410, 588)]),
     ]
     expect(judge(frames, PARTS).counts.scale).toBe(1)
+  })
+
+  test('a jump between frames a normal interval apart is a teleport', () => {
+    const j = jumpAfter(16.7)
+    expect(j.counts.teleport).toBeGreaterThan(0)
+    expect(j.stall).toBeNull()
+  })
+
+  test('the same jump across a stalled frame is not a teleport but a stall', () => {
+    const j = jumpAfter(120)
+    expect(j.counts.teleport).toBe(0)
+    expect(j.stall?.frame).toBe(6)
+    expect(j.stall?.gapMs).toBeCloseTo(120)
+    // Three median frames (16.7ms) apart
+    expect(j.stall?.limitMs).toBeCloseTo(50.1)
+    expect(j.stalledFrames).toBe(1)
   })
 })
