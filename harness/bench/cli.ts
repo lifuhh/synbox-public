@@ -1,9 +1,10 @@
 // synbox bench.
 //
-//   bun harness/bench/cli.ts check [--jobs 3]             exact checks; a docs-only commit after a pass reuses it;
+//   bun harness/bench/cli.ts check [--jobs 3]             exact checks, browser audits scoped to the branch's diff;
 //                                                          stamps the verdict the PR hook reads
-//   bun harness/bench/cli.ts check --full                  the same, never reusing a verdict; the release runs this
+//   bun harness/bench/cli.ts check --full                  every audit, never reusing a verdict; the release runs this
 //   bun harness/bench/cli.ts check --only <id prefix>,…    just those audits, while working (no verdict)
+//   bun harness/bench/cli.ts scope                         what a scoped check would run here, and why, without running it
 //   bun harness/bench/cli.ts trend [--only <id>,…] [--ref origin/main] [--reference <commit>]
 //                                                          timing benches, candidate vs pinned reference → .harness/queue.md
 //   bun harness/bench/cli.ts list                          every benchmark, and which command runs it
@@ -12,7 +13,7 @@
 import { parseArgs } from 'node:util'
 
 import { buildWorkingTree } from './build'
-import { runCheck } from './check'
+import { runCheck, scopeReport } from './check'
 import { closeBrowsers } from './engines/browser'
 import { holdMachine } from './lock'
 import { serveBuild } from './server'
@@ -80,6 +81,10 @@ const main = async () => {
         `\ncheck ${r.status.toUpperCase()} in ${Math.round(r.wallMs / 1000)}s${retries}${stamp}\n`
       )
       process.exitCode = r.status === 'fail' ? 3 : 0
+      break
+    }
+    case 'scope': {
+      process.stdout.write(`${scopeReport(repo)}\n`)
       break
     }
     case 'trend': {
