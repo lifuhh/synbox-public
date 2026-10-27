@@ -224,6 +224,26 @@ export const OPENED_STATES: Record<string, OpenedState[]> = {
         { shows: { name: 'Contact Me', role: 'dialog' } },
       ],
     },
+    {
+      // Send Feedback from the guest's menu: always anonymous, a note where an account's checkbox goes
+      name: 'feedback',
+      steps: [
+        { press: { name: 'More', role: 'button' } },
+        { press: { name: 'Send Feedback', role: 'menuitem' } },
+        { shows: { name: 'Send Feedback', role: 'dialog' } },
+      ],
+    },
+    {
+      // The same dialog for an account: Send Anonymously and its note share Send's row (one centre line, even when
+      // the note wraps on a phone)
+      name: 'feedback-form',
+      signedIn: true,
+      steps: [
+        { press: { name: 'Account', role: 'button' } },
+        { press: { name: 'Send Feedback', role: 'menuitem' } },
+        { shows: { name: 'Send Feedback', role: 'dialog' } },
+      ],
+    },
   ],
   '/search': [
     {
