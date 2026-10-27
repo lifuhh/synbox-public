@@ -227,11 +227,13 @@ bun harness/readme/capture.ts <dir>/raw sideways <videoId> <sec> --site <origin>
 bun harness/readme/capture.ts <dir>/upright upright <videoId> <start> <end> --site <origin>
 bun harness/readme/compose.ts <out.webp> --sideways <png> --home <png> --upright <dir> --from <s> --to <s> [--keep]
 # Hero, Lyrics Style, Search, generation and the karaoke clip
-bun harness/readme/capture.ts <dir>/raw player <videoId> <sec> --site <origin>
+bun harness/readme/capture.ts <dir>/hero hero <videoId> <start> <end> --site <origin>      # website + upright app, as a clip
+bun harness/readme/capture.ts <dir>/raw player <videoId> <sec> --site <origin>             # the same as stills, and Lyrics Style
 bun harness/readme/capture.ts <dir>/raw search "<query>" --site <origin>
 bun harness/readme/capture.ts <dir>/raw generate <videoId> --site <origin>  # a song not in the library
 bun harness/readme/capture.ts <dir>/karaoke karaoke <videoId> <start> <end> --site <origin> [--theater]
-bun harness/readme/scenes.ts <dir> --raw <dir>/raw --karaoke <dir>/karaoke --from <s> --to <s> [--keep]
+bun harness/readme/scenes.ts <dir> [--raw <dir>/raw] [--hero <dir>/hero --hero-from <s> --hero-to <s>] \
+  [--karaoke <dir>/karaoke --karaoke-from <s> --karaoke-to <s>] [--keep]
 bun harness/readme/colors.ts <out.webp>                        # one row, one card per lyric colour
 ```
 

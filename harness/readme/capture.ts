@@ -117,7 +117,8 @@ const songTime = async (page: Page) =>
   await page.evaluate(() => window.__songSec ?? -1)
 
 const waitForSong = async (page: Page, atLeast: number) => {
-  const deadline = Date.now() + 40_000
+  // A slowed song takes four times as long to get there
+  const deadline = Date.now() + 120_000
   // oxlint-disable-next-line eslint/no-await-in-loop -- polled until the song gets there
   while ((await songTime(page)) < atLeast) {
     if (Date.now() > deadline) {
@@ -270,26 +271,59 @@ const slowDown = async (page: Page, touch: boolean) => {
   }
 }
 
+// The upright player: only the video and the lyric card move; the rest of the screen comes from one full shot after
+const uprightClip = async (page: Page) =>
+  await page.evaluate(() => {
+    const card = document
+      .querySelector('section.lyrics-sheet')
+      ?.getBoundingClientRect()
+    const bottom = card === undefined ? innerHeight : card.bottom
+    return {
+      height: Math.min(innerHeight, Math.ceil(bottom + 8)),
+      width: innerWidth,
+      x: 0,
+      y: 0,
+    }
+  })
+
+// The website's watch page: the stage and the lyrics panel beside it, the box around both
+const webClip = async (page: Page) =>
+  await page.evaluate(() => {
+    const boxes = [
+      document.querySelector('[data-player-stage]'),
+      document.querySelector('section.lyrics-sheet'),
+    ].flatMap((element) =>
+      element === null ? [] : [element.getBoundingClientRect()]
+    )
+    const left = Math.floor(Math.min(...boxes.map((box) => box.left)))
+    const top = Math.floor(Math.min(...boxes.map((box) => box.top)))
+    const right = Math.ceil(Math.max(...boxes.map((box) => box.right)))
+    const bottom = Math.ceil(Math.max(...boxes.map((box) => box.bottom)))
+    return { height: bottom - top, width: right - left, x: left, y: top }
+  })
+
 // One frame of `clip` after another while the song plays at SLOW, until the song passes `end`
 const shootClip = async (
   page: Page,
   clip: { height: number; width: number; x: number; y: number },
-  end: number
+  end: number,
+  dir = outDir
 ) => {
+  mkdirSync(dir, { recursive: true })
   const anchor = { song: await songTime(page), wall: Date.now() }
   const frames: { file: string; songSec: number }[] = []
   for (let songSec = anchor.song; songSec < end + 0.5;) {
     const file = `f${String(frames.length).padStart(3, '0')}.png`
     const shotAt = Date.now()
     // oxlint-disable-next-line eslint/no-await-in-loop -- frames are shot one after another as the song plays
-    await page.screenshot({ clip, path: path.join(outDir, file) })
+    await page.screenshot({ clip, path: path.join(dir, file) })
     songSec =
       anchor.song + (((shotAt + Date.now()) / 2 - anchor.wall) / 1000) * SLOW
     frames.push({ file, songSec })
   }
-  await page.screenshot({ path: path.join(outDir, 'base.png') })
+  await page.screenshot({ path: path.join(dir, 'base.png') })
   writeFileSync(
-    path.join(outDir, 'frames.json'),
+    path.join(dir, 'frames.json'),
     `${JSON.stringify({ clip, frames }, null, 1)}\n`
   )
   const step = (frames.at(-1)?.songSec ?? 0) - (frames[0]?.songSec ?? 0)
@@ -500,21 +534,33 @@ if (shot === 'home') {
   const { page, close } = await player(PWA_PORTRAIT, 10)
   await slowDown(page, true)
   await waitForSong(page, start - 0.5)
-  // Only the video and the lyric card move; the rest of the screen comes from one full shot after the clip
-  const clip = await page.evaluate(() => {
-    const card = document
-      .querySelector('section.lyrics-sheet')
-      ?.getBoundingClientRect()
-    const bottom = card === undefined ? innerHeight : card.bottom
-    return {
-      height: Math.min(innerHeight, Math.ceil(bottom + 8)),
-      width: innerWidth,
-      x: 0,
-      y: 0,
-    }
-  })
-  await shootClip(page, clip, Number(endArg))
+  await shootClip(page, await uprightClip(page), Number(endArg))
   await close()
+} else if (shot === 'hero' && endArg !== undefined) {
+  // The website, then the upright installed app, each shot as the lines from startSec to endSec are sung, into
+  // web/ and portrait/; scenes.ts plays them side by side on one song clock
+  for (const view of [WEB, PWA_PORTRAIT]) {
+    const touch = view === PWA_PORTRAIT
+    // oxlint-disable-next-line eslint/no-await-in-loop -- one view after another
+    const { page, close } = await player(view, 10)
+    // oxlint-disable-next-line eslint/no-await-in-loop -- one view after another
+    await slowDown(page, touch)
+    // oxlint-disable-next-line eslint/no-await-in-loop -- one view after another
+    await imagesLoaded(page)
+    // oxlint-disable-next-line eslint/no-await-in-loop -- one view after another
+    await waitForSong(page, start - 0.5)
+    // oxlint-disable-next-line eslint/no-await-in-loop -- one view after another
+    const clip = await (touch ? uprightClip(page) : webClip(page))
+    // oxlint-disable-next-line eslint/no-await-in-loop -- one view after another
+    await shootClip(
+      page,
+      clip,
+      Number(endArg),
+      path.join(outDir, touch ? 'portrait' : 'web')
+    )
+    // oxlint-disable-next-line eslint/no-await-in-loop -- one view after another
+    await close()
+  }
 } else if (shot === 'karaoke' && endArg !== undefined) {
   // The stage alone, its controls hidden under a still mouse; --theater for Theater (the T key), whose lyrics
   // default to Karaoke Style's two rows

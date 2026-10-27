@@ -44,7 +44,7 @@ body { font-family: -apple-system, 'SF Pro Text', 'Helvetica Neue', sans-serif; 
 .browser .dot { width: 12px; height: 12px; border-radius: 50%; }
 .browser .url { margin: 0 auto; width: 38%; height: 28px; border-radius: 8px; background: #2f2f35; color: #c9c9d1;
   font-size: 13px; display: flex; align-items: center; justify-content: center; gap: 6px; transform: translateX(-28px); }
-.browser > img { display: block; width: 100%; }
+.browser img { display: block; width: 100%; }
 `
 
 // Side buttons: action and volume on the left, power on the right (on the top and bottom edges when on its side)
@@ -75,17 +75,31 @@ export const phone = (opts: {
   </div>`
 }
 
-/** A desktop browser window at (x, y), `width` wide, around a shot of the website (1440×900, any scale) */
+/**
+ * A desktop browser window at (x, y), `width` wide, around a shot of the website (1440×900, any scale). `clip` lays
+ * a second image over the region `box` (CSS px of the 1440×900 page), for a clip's moving part
+ */
 export const browser = (opts: {
   src: string
   width: number
   x: number
   y: number
-}) => `<div class="browser" style="left:${opts.x}px;top:${opts.y}px;width:${opts.width}px">
+  clip?: {
+    id: string
+    src: string
+    box: { height: number; width: number; x: number; y: number }
+  }
+}) => {
+  const over =
+    opts.clip === undefined
+      ? ''
+      : `<img id="${opts.clip.id}" src="${opts.clip.src}" style="position:absolute;left:${(opts.clip.box.x / 1440) * 100}%;top:${(opts.clip.box.y / 900) * 100}%;width:${(opts.clip.box.width / 1440) * 100}%">`
+  return `<div class="browser" style="left:${opts.x}px;top:${opts.y}px;width:${opts.width}px">
   <div class="bar"><span class="dot" style="background:#ff5f57"></span><span class="dot" style="background:#febc2e"></span><span class="dot" style="background:#28c840"></span>
     <span class="url"><svg width="11" height="12" viewBox="0 0 11 12" fill="#9a9aa3"><rect x="1" y="5" width="9" height="7" rx="1.5"/><path d="M3 5V3.5a2.5 2.5 0 0 1 5 0V5" stroke="#9a9aa3" stroke-width="1.4" fill="none"/></svg>synbox.io</span></div>
-  <img src="${opts.src}">
+  <div style="position:relative"><img src="${opts.src}">${over}</div>
 </div>`
+}
 
 /** The browser window's outer height for a `width`-wide window: the bar, then the 1440×900 shot scaled to fit */
 export const browserHeight = (width: number) => 44 + (width * 900) / 1440
