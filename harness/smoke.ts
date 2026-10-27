@@ -27,7 +27,7 @@ import {
   open,
   replayFonts,
 } from './bench/engines/browser'
-import type { View } from './bench/engines/browser'
+import type { Opened, View } from './bench/engines/browser'
 import { isRecord } from './bench/json'
 import { repoAt, storeDir } from './bench/store'
 import { serveLocalSite } from './local-site'
@@ -256,6 +256,9 @@ const pick = async (origin: string, song?: string): Promise<Picks> => {
 }
 
 // ---- The network guard ----
+
+/** The auth Worker's own host (Cloudflare), which the app reads lyrics and karaoke timing from */
+const API_ORIGIN = /^https:\/\/api\.synbox\.io\//u
 
 /** Synbox's own services; a write anywhere else (YouTube's player logging its own playback) is not ours */
 const isOurs = (url: URL, origin: string) =>
@@ -869,15 +872,15 @@ const runFlow = async (
   })
   const flowLog: Guard = { csp: log.csp, flow: label, writes: log.writes }
   await guard(context, origin, view.name, flowLog)
-  // A local run on WebKit: its reads from the API go through Playwright's own network stack. WebKit's (macOS
-  // Network.framework) tried HTTP/3 to Cloudflare and stalled 14-35s through this machine's VPN tunnels while Chromium
-  // and curl answered in under a second, failing phone flows on code that had passed (2026-10-26). Registered after the
-  // guard, so it runs first and hands writes back to it. A deployed copy keeps WebKit's own transport
-  if (
-    view.surface.engine === 'webkit' &&
-    origin.startsWith('http://localhost')
-  ) {
-    await context.route(/^https:\/\/api\.synbox\.io\//u, async (route) => {
+  // On WebKit, reads from the API go through Playwright's own network stack, on every origin. api.synbox.io's DNS
+  // HTTPS record offers h3, so macOS WebKit speaks QUIC to it from the first request (one UDP socket, no TCP). Through
+  // this machine's VPN tunnel the first exchange answers and every later one on that connection gets nothing, with no
+  // fallback; the app's reads are a preflight and then the GET, so every flow that waits on lyrics or karaoke timed out
+  // on code that passed (2026-10-26 local, 2026-10-27 live). That tests this machine's network, not the app. The
+  // transport itself is timed apart (webkitTransport). Registered after the guard, so it runs first and hands writes
+  // back to it
+  if (view.surface.engine === 'webkit') {
+    await context.route(API_ORIGIN, async (route) => {
       if (route.request().method() !== 'GET') {
         await route.fallback()
         return
@@ -902,11 +905,13 @@ const runFlow = async (
     })
   })
   const appErrors: string[] = []
-  // A reload in the middle of a flow (the app recovering from a crash) runs every page effect again
-  let loads = 0
-  page.on('framenavigated', (frame) => {
-    if (frame === page.mainFrame() && frame.url().startsWith(origin)) {
-      loads += 1
+  // A reload in the middle of a flow (the app recovering from a crash, a new version swapped in) runs every page
+  // effect again. Counted per document: `framenavigated` also fires on history updates, which the app makes on every
+  // page (2026-10-27: reported as "2 page loads" with one document request)
+  const loads: string[] = []
+  page.on('domcontentloaded', () => {
+    if (page.url().startsWith(origin)) {
+      loads.push(new URL(page.url()).pathname)
     }
   })
   page.on('pageerror', (error) => {
@@ -970,7 +975,9 @@ const runFlow = async (
         ? error.message
         : `error: ${error instanceof Error ? error.message.split('\n')[0] : String(error)}`
     const seen = [
-      ...(loads > 1 ? [`${loads} page loads`] : []),
+      ...(loads.length > 1
+        ? [`${loads.length} document loads (${loads.join(', ')})`]
+        : []),
       ...appErrors.slice(0, 2).map((e) => `app error: ${e}`),
     ]
     return {
@@ -1038,6 +1045,68 @@ const securityHeaders = async (
   }
 }
 
+const TRANSPORT_LIMIT_MS = 15_000
+
+/**
+ * Two reads in a row from api.synbox.io over WebKit's own transport, which the flows relay around (runFlow). The
+ * second is the one that stalled (2026-10-27: the first answered in ~1 s over QUIC, every later one on that connection
+ * got none), and the app's reads are always a preflight and then the GET. Reported, never failing the run: a stall
+ * here has been this machine's network (a VPN tunnel), which no iPhone shares. Opaque (no-cors): it times the
+ * connection, not CORS
+ */
+const webkitTransport = async (
+  origin: string
+): Promise<{ ms: (number | null)[]; line: string }> => {
+  const view = ALL_VIEWS.find((v) => v.surface.engine === 'webkit')
+  if (view === undefined) {
+    return { line: 'no WebKit view', ms: [] }
+  }
+  let opened: Opened | undefined
+  try {
+    opened = await open(view.surface, { serviceWorkers: 'block' })
+    const { page } = opened
+    await page.goto(`${origin}/manifest.webmanifest`, {
+      waitUntil: 'domcontentloaded',
+    })
+    const ms = await page.evaluate(
+      async ({ url, limit }) => {
+        const read = async () => {
+          const started = performance.now()
+          try {
+            await fetch(url, {
+              mode: 'no-cors',
+              signal: AbortSignal.timeout(limit),
+            })
+            return Math.round(performance.now() - started)
+          } catch {
+            return null
+          }
+        }
+        const first = await read()
+        return [first, first === null ? null : await read()]
+      },
+      {
+        limit: TRANSPORT_LIMIT_MS,
+        url: `https://api.synbox.io/api/karaoke/${NOT_SONGS[0]}`,
+      }
+    )
+    const said = ms.map((m) =>
+      m === null ? `no answer in ${seconds(TRANSPORT_LIMIT_MS)}` : seconds(m)
+    )
+    return {
+      line: `WebKit's own transport to api.synbox.io: first read ${said[0]}, second ${said[1]}${ms.includes(null) ? " (the flows relay these reads; a stall here has been this machine's VPN, not the site)" : ''}`,
+      ms,
+    }
+  } catch (error) {
+    return {
+      line: `WebKit transport not measured: ${error instanceof Error ? error.message.split('\n')[0] : String(error)}`,
+      ms: [],
+    }
+  } finally {
+    await opened?.close()
+  }
+}
+
 const describe = (v: { id: string } | string) =>
   typeof v === 'string' ? `none (${v})` : v.id
 
@@ -1048,13 +1117,14 @@ const html = (
   title: string,
   rows: FlowResult[],
   writes: Write[],
-  csp: CspViolation[]
+  csp: CspViolation[],
+  transport: string
 ) => {
   const row = (r: FlowResult) =>
     `<tr class="${r.pass ? 'ok' : 'bad'}"><td>${r.pass ? 'PASS' : 'FAIL'}</td><td>${r.flow}</td><td>${r.view}</td><td>${seconds(r.ms)}</td><td>${esc(r.evidence)}${r.screenshot === undefined ? '' : `<br><img src="${r.screenshot}" alt="">`}</td></tr>`
   return `<!doctype html><meta charset="utf-8"><title>${esc(title)}</title>
 <style>body{background:#111;color:#ddd;font:14px/1.4 system-ui;margin:16px}table{border-collapse:collapse;width:100%}td,th{border-bottom:1px solid #333;padding:6px;text-align:left;vertical-align:top}.ok td:first-child{color:#6c6}.bad td:first-child{color:#f66}img{max-width:420px;margin-top:6px}</style>
-<h1>${esc(title)}</h1><table><tr><th></th><th>Flow</th><th>View</th><th>Time</th><th>Evidence</th></tr>${rows.map(row).join('')}</table>
+<h1>${esc(title)}</h1><p>${esc(transport)}</p><table><tr><th></th><th>Flow</th><th>View</th><th>Time</th><th>Evidence</th></tr>${rows.map(row).join('')}</table>
 <h2>Writes answered here (${writes.length})</h2><table>${writes.map((w) => `<tr class="${w.expected ? 'ok' : 'bad'}"><td>${w.rule}</td><td>${w.view}</td><td>${w.flow}</td><td>${w.method} ${esc(w.url)}</td></tr>`).join('')}</table>
 <h2>CSP violations (${csp.length})</h2><table>${csp.map((c) => `<tr class="bad"><td>${c.view}</td><td>${c.flow}</td><td>${esc(c.what)}</td></tr>`).join('')}</table>`
 }
@@ -1086,6 +1156,7 @@ export const smoke = async (
   )
   const log: Guard = { csp: [], flow: '', writes: [] }
   try {
+    const transport = webkitTransport(origin)
     const perView = await Promise.all(
       ALL_VIEWS.map(async (view) => {
         const results: FlowResult[] = []
@@ -1148,11 +1219,13 @@ export const smoke = async (
     for (const l of [...lines, csp, writes]) {
       console.log(l.line)
     }
+    const webkit = await transport
+    console.log(`INFO  ${'webkit-api'.padEnd(16)} ${webkit.line}`)
     const pass = [...lines, csp, writes].every((l) => l.pass)
     const title = `smoke ${pass ? 'PASS' : 'FAIL'} · ${origin} · ${new Date().toISOString().slice(0, 16)}`
     writeFileSync(
       path.join(dir, 'index.html'),
-      html(title, results, log.writes, log.csp)
+      html(title, results, log.writes, log.csp, webkit.line)
     )
     writeFileSync(
       path.join(dir, 'result.json'),
@@ -1169,6 +1242,7 @@ export const smoke = async (
           },
           results,
           wallMs: Date.now() - started,
+          webkitApiMs: webkit.ms,
           writes: log.writes,
         },
         null,
