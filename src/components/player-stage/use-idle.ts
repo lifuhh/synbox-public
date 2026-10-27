@@ -99,7 +99,15 @@ export const useIdle = (
       )
     }
     const leave = (event: PointerEvent) => {
-      if (event.pointerType !== 'mouse') {
+      // While a layout change animates (a view transition: Theater Mode, the zoom into full screen) the browser
+      // points the mouse at the page's root, so it reads as leaving the player: the controls drawn in the
+      // snapshots would end the transition hidden, in one frame. The mouse hasn't moved; the next move decides
+      if (
+        event.pointerType !== 'mouse' ||
+        document.documentElement.matches(
+          '[data-transition], [data-theater-move]'
+        )
+      ) {
         return
       }
       outsideRef.current = true
