@@ -66,13 +66,13 @@ export const failedResponse = (status: number, body: string) => {
   }
   if (status === 429) {
     return new GenerationError(
-      'The lyrics server is busy with other songs right now. Try again in a minute.',
+      'The lyrics server is busy. Try again in a minute',
       { lost: true }
     )
   }
   if (status === 502 || status === 503 || status === 504) {
     return new GenerationError(
-      "Couldn't reach the lyrics server. It may be busy with another song, so try again in a minute.",
+      "Couldn't reach the lyrics server. Try again in a minute",
       { lost: true }
     )
   }

@@ -166,7 +166,7 @@ const SongHighlightCarousel = () => {
       </div>
       {isError && (
         <LoadError
-          message="Couldn't load the recommendations."
+          message="Couldn't load the recommendations"
           retrying={isFetching}
           onRetry={() => {
             void refetch()

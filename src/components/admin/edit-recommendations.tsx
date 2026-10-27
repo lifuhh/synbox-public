@@ -47,8 +47,8 @@ export const EditRecommendations = () => {
           <DialogHeader>
             <DialogTitle>Edit Recommendations</DialogTitle>
             <DialogDescription>
-              Add songs from our library, drag them into order, then save. Each
-              visitor sees the list shuffled.
+              Add songs from the library and drag them into order. Changes save
+              at once; each visitor sees the list shuffled
             </DialogDescription>
           </DialogHeader>
           {/* The content mounts only while open or closing, so the editor stays drawn as the dialog closes */}

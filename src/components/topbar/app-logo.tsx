@@ -30,7 +30,7 @@ const AppLogo: React.FC = () => {
       <Link
         to='/'
         onClick={handleOnClick}
-        aria-label='Synbox home'
+        aria-label='Synbox Home'
         className='flex h-14 items-center'>
         <span className='pointer-events-none inline-block'>
           <SynboxLogo />

@@ -147,7 +147,7 @@ const LandingPageCharts: React.FC = () => {
           style={LIST_VARS}>
           {isError && (
             <LoadError
-              message="Couldn't load the YouTube charts."
+              message="Couldn't load the YouTube charts"
               retrying={isFetching}
               onRetry={() => {
                 void refetch()

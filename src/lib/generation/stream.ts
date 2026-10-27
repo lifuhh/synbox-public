@@ -122,7 +122,7 @@ const readStream = async (
       // Also what a busy server looks like: Cloud Run turns away the CORS preflight with a 429 and no
       // CORS headers, which the browser reports as a network error
       throw new GenerationError(
-        "Couldn't reach the lyrics server. It may be busy with another song, so try again in a minute.",
+        "Couldn't reach the lyrics server. Try again in a minute",
         { lost: true }
       )
     }
@@ -309,7 +309,7 @@ export interface Refusal {
 // The check couldn't reach the backend: a generation started now would fail its first step the same way
 export const UNREACHABLE: Refusal = {
   code: 'unreachable',
-  message: "Couldn't reach Synbox. Check your connection and try again.",
+  message: "Couldn't reach Synbox. Check your connection and try again",
 }
 
 // Whether the backend would refuse this generation, asked when its button is pressed so the refusal shows

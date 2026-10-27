@@ -55,8 +55,7 @@ const PlaylistsPage = () => {
               No Playlists Yet
             </p>
             <p className='max-w-sm text-sm text-pretty text-muted-foreground'>
-              Name one above, or save a song to a new playlist from its menu or
-              the player&apos;s Save to Playlist button
+              Or make one while saving a song from its menu
             </p>
           </div>
         ) : (

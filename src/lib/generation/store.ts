@@ -290,7 +290,7 @@ const runPhase = async <T>(
         }
         if (now - lostSince > RECONNECT_WINDOW_MS) {
           throw new GenerationError(
-            'Lost the connection to the lyrics server. The song may still finish there, so try again in a minute.',
+            'Lost the connection to the lyrics server. The song may still finish, so try again in a minute',
             { code: 'connection_lost' }
           )
         }
@@ -326,7 +326,7 @@ const runPhase = async <T>(
 class YouTubeOnlyError extends Error {
   constructor() {
     super(
-      "YouTube only lets this video play on youtube.com (it's age-restricted), so it can't play here. Try another upload of this song."
+      'This video is age-restricted, so it only plays on youtube.com. Try another upload'
     )
     this.name = 'YouTubeOnlyError'
   }
@@ -419,7 +419,7 @@ const run = async (job: Job, signal: AbortSignal) => {
       return
     }
     const message =
-      error instanceof Error ? error.message : 'Something went wrong'
+      error instanceof Error ? error.message : 'Couldn’t generate the lyrics'
     updateJob(id, (current) => ({
       ...current,
       ahead: 0,

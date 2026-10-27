@@ -253,8 +253,8 @@ const MakeDefaultDialog = ({
           <DialogHeader>
             <DialogTitle>Make Version {asked} the Default?</DialogTitle>
             <DialogDescription>
-              Everyone who plays this song will get these lyrics. You can switch
-              back at any time.
+              Everyone who plays this song gets these lyrics. You can switch
+              back any time
             </DialogDescription>
           </DialogHeader>
           {error !== null && (
@@ -346,7 +346,7 @@ const VersionsAdmin = ({ videoId }: { videoId: string }) => {
 
       <p className='-mt-2 text-sm text-muted-foreground'>
         Each regeneration is saved as a new version and becomes the default.
-        Make an older one the default to roll back.
+        Make an older one the default to roll back
       </p>
 
       {isLoading && (
@@ -363,7 +363,7 @@ const VersionsAdmin = ({ videoId }: { videoId: string }) => {
       {data?.versions.length === 0 && (
         <p className='rounded-xl border border-dashed border-input p-6 text-center text-sm text-muted-foreground'>
           No versions yet. The first regeneration also keeps the current lyrics
-          as the original version.
+          as the original version
         </p>
       )}
       {versions.length > 0 && (

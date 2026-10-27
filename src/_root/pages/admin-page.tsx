@@ -195,7 +195,7 @@ const GenerationPanel = () => {
         </span>
       </Stat>
       <Stat label='Songs a Day per Account'>{limits.user}</Stat>
-      <Stat label='Guests'>Browse only</Stat>
+      <Stat label='Guests'>Browse Only</Stat>
       <Button
         className='w-full sm:ml-auto sm:w-auto'
         variant={generationEnabled ? 'outline' : 'default'}
@@ -215,7 +215,7 @@ const GenerationPanel = () => {
             <AlertDialogTitle>Pause Generation for Everyone?</AlertDialogTitle>
             <AlertDialogDescription>
               No one, admins included, can start a new song until you resume.
-              Songs already running finish.
+              Songs already running finish
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -308,7 +308,7 @@ const LimitControl = ({
       {
         onError: () => {
           toast({
-            description: `${user.name}'s limit is unchanged. Try again.`,
+            description: `${user.name}'s limit is unchanged. Try again`,
             title: 'Could Not Save the Limit',
             variant: 'destructive',
           })
@@ -331,7 +331,7 @@ const LimitControl = ({
         autoFocus
         aria-label={`Songs a Day for ${user.name}`}
         inputMode='numeric'
-        placeholder='Songs a day'
+        placeholder='5'
         value={draft}
         className='h-9 w-full'
         onChange={(event) => {
@@ -457,7 +457,7 @@ const RowActions = ({
             <AlertDialogTitle>Block {user.name}?</AlertDialogTitle>
             <AlertDialogDescription>
               {user.email} is signed out everywhere and can&apos;t generate
-              songs. You can unblock them later.
+              songs. You can unblock them later
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -1639,7 +1639,7 @@ const RequestsPanel = () => {
   const { data, error } = useAdminRequests()
   if (error !== null) {
     return error.message.includes('404') ? (
-      <p className='text-sm text-error'>Needs the Worker update.</p>
+      <p className='text-sm text-error'>Needs the Worker update</p>
     ) : (
       <LoadError error={error} />
     )
@@ -1741,7 +1741,7 @@ const AdminTabs = () => {
         <div className='flex flex-col gap-3'>
           <p className='text-sm text-muted-foreground'>
             The landing page&apos;s carousel, shuffled for each visitor. The mic
-            marks songs that have karaoke lyrics.
+            marks songs that have karaoke lyrics
           </p>
           <RecommendationsEditor />
         </div>

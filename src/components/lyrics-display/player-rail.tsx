@@ -488,7 +488,7 @@ const PlayerRail = ({ inline = false }: { inline?: boolean }) => {
       toast({
         action: (
           <ToastAction
-            altText='Undo removal'
+            altText='Undo Remove Bookmark'
             onClick={() => {
               addFavorite(video)
             }}>
@@ -503,7 +503,7 @@ const PlayerRail = ({ inline = false }: { inline?: boolean }) => {
       toast({
         action: (
           <ToastAction
-            altText='Undo add'
+            altText='Undo Add Bookmark'
             onClick={() => {
               removeFavorite(video.videoId)
             }}>
