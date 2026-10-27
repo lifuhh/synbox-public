@@ -1,19 +1,22 @@
 import type { Database } from 'bun:sqlite'
 import { beforeEach, describe, expect, test } from 'bun:test'
 
+import { claimGuestSong } from './guest-song'
 import type { Owner } from './quota'
 import {
   checkGeneration,
   finishGeneration,
   getQuota,
+  localDay,
   reserveGeneration,
+  setTimeZone,
 } from './quota'
 import { migratedD1 } from './test-d1'
 
 let db: D1Database
 let sqlite: Database
 const now = new Date('2026-10-21T10:00:00Z')
-const LIMITS = { guest: 1, guestTotal: 2, network: 100, user: 2 }
+const LIMITS = { network: 100, user: 2 }
 const reserve = async (id: string, userId = 'u1', videoId = 'v') =>
   await reserveGeneration(
     db,
@@ -49,7 +52,8 @@ test('the daily limit holds and a reconnect is free', async () => {
   expect(await reserve('r3')).toEqual({
     limit: 2,
     outcome: 'quota_exceeded',
-    resetsAt: '2026-10-22T10:00:00.000Z',
+    // No time zone reported yet: the day is UTC's
+    resetsAt: '2026-10-22T00:00:00.000Z',
   })
   expect(await getQuota(db, 'u1', LIMITS, now)).toMatchObject({
     limit: 2,
@@ -120,39 +124,69 @@ test('an unlimited override lifts the limit, and removing it brings the default 
   })
 })
 
-test('a guest gets one song a day, and all guests together stop at the shared cap', async () => {
+test("a guest's song is reserved only under its device's claim, and a reconnect takes nothing more", async () => {
+  // No claim: a call that skipped the proxy, or a token the backend couldn't verify
+  expect(await reserveAsGuest('g1', 'net-a')).toEqual({
+    outcome: 'sign_in_required',
+  })
+  expect(
+    await claimGuestSong(
+      db,
+      { deviceKey: 'device', requestId: 'g1', videoId: 'v' },
+      now.getTime()
+    )
+  ).toBe(true)
   expect(await reserveAsGuest('g1', 'net-a')).toEqual({ outcome: 'reserved' })
+  expect(await reserveAsGuest('g1', 'net-a')).toEqual({ outcome: 'replay' })
   expect(await reserveAsGuest('g2', 'net-a')).toEqual({
-    outcome: 'guest_limit',
+    outcome: 'sign_in_required',
   })
-  expect(await reserveAsGuest('g3', 'net-b')).toEqual({ outcome: 'reserved' })
-  expect(await reserveAsGuest('g4', 'net-c')).toEqual({
-    outcome: 'guests_full',
-  })
-  // Signed-in users don't share the guests' cap
-  expect(await reserve('r1')).toEqual({ outcome: 'reserved' })
-  // A guest's request id is not a user's, and the other way round
-  expect(await reserve('g1')).toEqual({ outcome: 'forbidden' })
 })
 
-test("a user's limit is per rolling 24 hours", async () => {
+const reserveAt = async (id: string, at: Date) =>
+  await reserveGeneration(
+    db,
+    { id, kind: 'new', owner: { id: 'u1', kind: 'user' }, videoId: 'v' },
+    LIMITS,
+    at
+  )
+
+test("a user's day ends at their own midnight, not 24 hours after their first song", async () => {
+  // 10:00 UTC is 18:00 in Singapore
+  await setTimeZone(db, 'u1', 'Asia/Singapore', 0)
   await reserve('r1')
   await reserve('r2')
-  expect(await reserve('r3')).toMatchObject({ outcome: 'quota_exceeded' })
-  const later = new Date(now.getTime() + 86_400_001)
+  // Finished, so the hours below don't let them go as stalled
+  await finishGeneration(db, 'r1', { status: 'succeeded' }, now)
+  await finishGeneration(db, 'r2', { status: 'succeeded' }, now)
+  expect(await reserve('r3')).toEqual({
+    limit: 2,
+    outcome: 'quota_exceeded',
+    resetsAt: '2026-10-21T16:00:00.000Z',
+  })
+  expect(await reserveAt('r3', new Date('2026-10-21T15:59:59Z'))).toMatchObject(
+    { outcome: 'quota_exceeded' }
+  )
+  expect(await reserveAt('r3', new Date('2026-10-21T16:00:00Z'))).toEqual({
+    outcome: 'reserved',
+  })
   expect(
-    await reserveGeneration(
-      db,
-      {
-        id: 'r3',
-        kind: 'new',
-        owner: { id: 'u1', kind: 'user' },
-        videoId: 'v',
-      },
-      LIMITS,
-      later
-    )
-  ).toEqual({ outcome: 'reserved' })
+    await getQuota(db, 'u1', LIMITS, new Date('2026-10-21T16:00:00Z'))
+  ).toEqual({ limit: 2, resetsAt: '2026-10-22T16:00:00.000Z', used: 1 })
+})
+
+test('a local day follows daylight saving and survives an unknown zone', () => {
+  // New York's day before the clocks go back (2026-11-01) is 25 hours long
+  expect(
+    localDay('America/New_York', new Date('2026-11-01T12:00:00Z'))
+  ).toEqual({
+    end: Date.parse('2026-11-02T05:00:00Z'),
+    start: Date.parse('2026-11-01T04:00:00Z'),
+  })
+  expect(localDay('Not/AZone', new Date('2026-10-21T10:00:00Z'))).toEqual({
+    end: Date.parse('2026-10-22T00:00:00Z'),
+    start: Date.parse('2026-10-21T00:00:00Z'),
+  })
 })
 
 test('a check answers what reserving would, and takes nothing', async () => {
@@ -169,9 +203,8 @@ test('a check answers what reserving would, and takes nothing', async () => {
   expect(await check({ id: 'banned', kind: 'user' })).toEqual({
     outcome: 'forbidden',
   })
+  // A guest's claim is the generation proxy's to check (guest-song.ts)
   expect(await check(guest)).toEqual({ outcome: 'allowed' })
-  await reserveAsGuest('g', 'g1')
-  expect(await check(guest)).toEqual({ outcome: 'guest_limit' })
   sqlite.run(
     `update "appSetting" set "value" = '0' where "key" = 'generationEnabled'`
   )
@@ -267,7 +300,7 @@ describe('alternate accounts on one network', () => {
     )
   })
 
-  test('share the network cap, whichever account or guest asks', async () => {
+  test('share the network cap, whichever account asks', async () => {
     expect(await reserveFrom('a1', user('u1'), 'net-a')).toEqual({
       outcome: 'reserved',
     })
@@ -283,7 +316,7 @@ describe('alternate accounts on one network', () => {
     })
     expect(
       await reserveFrom('g1', { key: 'net-a', kind: 'guest' }, 'net-a')
-    ).toEqual({ outcome: 'network_limit' })
+    ).toEqual({ outcome: 'sign_in_required' })
     // The same account elsewhere is not held back by net-a
     expect(await reserveFrom('c2', user('u3'), 'net-b')).toEqual({
       outcome: 'reserved',

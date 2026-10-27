@@ -49,6 +49,8 @@ import {
   reportState,
   useAdminGenerations,
   useAdminMessages,
+  useAdminRequests,
+  useDecideRequest,
   useAdminReports,
   useAdminSettings,
   useAdminSignals,
@@ -62,6 +64,7 @@ import {
 import type {
   AdminGeneration,
   AdminMessage,
+  AdminRequest,
   AdminReport,
   ReportChange,
   ReportState,
@@ -176,7 +179,7 @@ const GenerationPanel = () => {
   if (data === undefined) {
     return <Skeleton className='h-20 w-full' />
   }
-  const { generationEnabled, guestSongsToday, limits } = data
+  const { generationEnabled, limits } = data
   return (
     <section className='flex flex-wrap items-center gap-x-10 gap-y-4 rounded-xl bg-card/60 p-4'>
       <Stat label='Generation'>
@@ -191,11 +194,8 @@ const GenerationPanel = () => {
           {generationEnabled ? 'On' : 'Paused for Everyone'}
         </span>
       </Stat>
-      <Stat label='Default User Limit'>{limits.user} a day</Stat>
-      <Stat label='Guest Limit'>{limits.guest} a day per network</Stat>
-      <Stat label='Guest Songs Today'>
-        {guestSongsToday} of {limits.guestTotal}
-      </Stat>
+      <Stat label='Songs a Day per Account'>{limits.user}</Stat>
+      <Stat label='Guests'>Browse only</Stat>
       <Button
         className='w-full sm:ml-auto sm:w-auto'
         variant={generationEnabled ? 'outline' : 'default'}
@@ -1518,6 +1518,147 @@ const MessagesPanel = () => {
   )
 }
 
+const REQUEST_STATUS = {
+  approved: 'Approved',
+  declined: 'Declined',
+  open: 'Waiting',
+} as const
+
+// One request: who asked, their note, what they have now. Approve asks for the songs a day first (10 to start,
+// editable later on Accounts); Decline is one press
+const RequestRow = ({ request }: { request: AdminRequest }) => {
+  const [approving, setApproving] = useState(false)
+  const [songs, setSongs] = useState('10')
+  const { isPending, mutate: decide } = useDecideRequest()
+  const { toast } = useToast()
+  const count = Number(songs)
+  const valid = Number.isInteger(count) && count >= 1 && count <= 1000
+  const failed = (title: string) => ({
+    onError: (error: Error) => {
+      toast({ description: error.message, title, variant: 'destructive' })
+    },
+  })
+  let now = 'Default'
+  if (request.dailyLimit === 'unlimited') {
+    now = 'Unlimited'
+  } else if (typeof request.dailyLimit === 'number') {
+    now = `${request.dailyLimit} a day`
+  }
+  return (
+    <li className='flex flex-col gap-2 border-t border-border py-3 text-sm'>
+      <div className='flex flex-wrap items-baseline justify-between gap-x-3'>
+        <p className='font-semibold text-foreground'>{request.name}</p>
+        <p className='text-xs text-muted-foreground'>
+          {REQUEST_STATUS[request.status]}
+          {request.status === 'approved' &&
+            request.granted !== null &&
+            ` · ${request.granted} a day`}
+          {' · '}
+          <When value={request.createdAt} />
+        </p>
+      </div>
+      <p className='wrap-break-word whitespace-pre-wrap text-foreground'>
+        {request.note}
+      </p>
+      <p className='truncate text-xs text-muted-foreground'>
+        {request.email} · Now: {now}
+      </p>
+      {request.status === 'open' &&
+        (approving ? (
+          <form
+            className='flex flex-wrap items-center gap-2'
+            onSubmit={(event) => {
+              event.preventDefault()
+              if (valid) {
+                decide(
+                  { dailyLimit: count, id: request.id },
+                  failed('Could Not Approve')
+                )
+              }
+            }}>
+            <label
+              htmlFor={`songs-${request.id}`}
+              className='text-muted-foreground'>
+              Songs a Day
+            </label>
+            <Input
+              id={`songs-${request.id}`}
+              type='number'
+              inputMode='numeric'
+              min={1}
+              max={1000}
+              value={songs}
+              className='w-24'
+              onChange={(event) => {
+                setSongs(event.target.value)
+              }}
+            />
+            <Button type='submit' size='row' disabled={!valid || isPending}>
+              Approve
+            </Button>
+            <Button
+              type='button'
+              size='row'
+              variant='ghost'
+              onClick={() => {
+                setApproving(false)
+              }}>
+              Cancel
+            </Button>
+          </form>
+        ) : (
+          <div className='flex gap-2'>
+            <Button
+              size='row'
+              disabled={isPending}
+              onClick={() => {
+                setApproving(true)
+              }}>
+              Approve
+            </Button>
+            <Button
+              size='row'
+              variant='outline'
+              disabled={isPending}
+              onClick={() => {
+                decide(
+                  { dailyLimit: null, id: request.id },
+                  failed('Could Not Decline')
+                )
+              }}>
+              Decline
+            </Button>
+          </div>
+        ))}
+    </li>
+  )
+}
+
+// Requests for more songs a day, open ones first
+const RequestsPanel = () => {
+  const { data, error } = useAdminRequests()
+  if (error !== null) {
+    return error.message.includes('404') ? (
+      <p className='text-sm text-error'>Needs the Worker update.</p>
+    ) : (
+      <LoadError error={error} />
+    )
+  }
+  if (data === undefined) {
+    return <Skeleton className='h-40 w-full' />
+  }
+  if (data.requests.length === 0) {
+    return <p className='text-sm text-muted-foreground'>No requests yet</p>
+  }
+  return (
+    <ol className='flex flex-col'>
+      {data.requests.map((request) => (
+        <RequestRow key={request.id} request={request} />
+      ))}
+    </ol>
+  )
+}
+
 const TABS = [
   'songs',
   'reports',
@@ -1526,6 +1667,7 @@ const TABS = [
   'signals',
   'usage',
   'messages',
+  'requests',
 ] as const
 type Tab = (typeof TABS)[number]
 const isTab = (value: string | null): value is Tab =>
@@ -1575,6 +1717,9 @@ const AdminTabs = () => {
           <TabsTrigger value='messages' className='h-full'>
             Messages
           </TabsTrigger>
+          <TabsTrigger value='requests' className='h-full'>
+            Requests
+          </TabsTrigger>
         </TabsList>
       </div>
       <TabsContent value='songs' className='mt-4'>
@@ -1617,6 +1762,9 @@ const AdminTabs = () => {
       </TabsContent>
       <TabsContent value='messages' className='mt-4'>
         <MessagesPanel />
+      </TabsContent>
+      <TabsContent value='requests' className='mt-4'>
+        <RequestsPanel />
       </TabsContent>
     </Tabs>
   )

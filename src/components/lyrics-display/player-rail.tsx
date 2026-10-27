@@ -139,6 +139,10 @@ const shareUrl = (style: LyricsStyle) => {
   return url
 }
 
+// Bookmarks and playlists live with an account (on every device): a guest's rail leaves them out
+const forAccounts = (guest: boolean, actions: SongAction[]) =>
+  guest ? [] : actions
+
 // One of the song's own actions (bookmark, playlist, share, read), drawn as a rail button or a menu item
 interface SongAction {
   label: string
@@ -388,7 +392,8 @@ const VideoLyricsButtons = ({
 const PlayerRail = ({ inline = false }: { inline?: boolean }) => {
   const { videoId = '' } = useParams<{ videoId: string }>()
   const navigate = useNavigate()
-  const { admin } = useAccess()
+  const { admin, kind } = useAccess()
+  const guest = kind === 'guest'
   const { toast } = useToast()
   const panelRef = useRef<HTMLElement>(null)
   const open = useAtomValue(playerChromeOpenAtom)
@@ -526,8 +531,7 @@ const PlayerRail = ({ inline = false }: { inline?: boolean }) => {
     icon: <PlatformShareIcon className='size-5 shrink-0' />,
     label: shareLabel,
   }
-  const { actions: songActions, chart } = useSongActions(videoId, shareAction, [
-    likeAction,
+  const libraryActions = forAccounts(guest, [
     {
       disabled: !currentVideo,
       handleSelect: handleBookmark,
@@ -542,6 +546,10 @@ const PlayerRail = ({ inline = false }: { inline?: boolean }) => {
       icon: <ListPlusIcon className='size-5 shrink-0' />,
       label: 'Save to Playlist',
     },
+  ])
+  const { actions: songActions, chart } = useSongActions(videoId, shareAction, [
+    likeAction,
+    ...libraryActions,
     shareAction,
     // The song's lyrics as a page to read or play along without the video. The watch page has them right
     // under the video already

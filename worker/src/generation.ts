@@ -7,12 +7,17 @@
 import { Hono } from 'hono'
 import type { Context } from 'hono'
 
+import { claimGuestSong, guestDeviceKey, guestSongSpent } from './guest-song'
+import { expireStalled } from './quota'
+
 export interface GenerationEnv {
   // The generating service's URL, also the ID token's audience
   GENERATION_URL?: string
   // Secret: the JSON key of the service account allowed to invoke that service, and nothing else
   GENERATION_INVOKER_KEY?: string
   INTERNAL_SECRET: string
+  // Guests' free songs (guest-song.ts)
+  DB: D1Database
 }
 
 // Exactly the routes the generating service serves (synbox-transcribe-whisper › app.py › SERVED)
@@ -224,9 +229,78 @@ const corsHeaders = (origin: string) => ({
 
 export const generation = new Hono<{ Bindings: GenerationEnv }>()
 
+// Where the app asks whether this device's free song is still there, so Generate Lyrics can say so
+const GUEST_SONG = 'guest-song'
+
+// The backend's own refusal shapes (app.py › generation_check; a stream's error line), so the app reads it the same
+const SONG_USED = {
+  code: 'guest_song_used',
+  message: 'That’s your free song. Sign in for 5 a day',
+}
+
+const guestKeyOf = async (c: Context<{ Bindings: GenerationEnv }>) =>
+  await guestDeviceKey(
+    c.env.INTERNAL_SECRET,
+    c.req.header('cf-connecting-ip') ?? '',
+    c.req.header('x-synbox-device')
+  )
+
+const fieldsOf = (body: ArrayBuffer): Record<string, unknown> => {
+  try {
+    const parsed: unknown = JSON.parse(new TextDecoder().decode(body))
+    return typeof parsed === 'object' && parsed !== null
+      ? Object.fromEntries(Object.entries(parsed))
+      : {}
+  } catch {
+    return {}
+  }
+}
+
+// A guest (a call without the app's Authorization) gets one song, ever, per device (guest-song.ts): asking is
+// answered from the claim, and each step of a song must hold it. A token the backend can't verify makes it a guest
+// there too, and its ledger then finds no claim. False when the song is spent
+const guestMay = async (
+  c: Context<{ Bindings: GenerationEnv }>,
+  endpoint: string,
+  body: ArrayBuffer
+) => {
+  if (c.req.header('authorization') !== undefined) {
+    return true
+  }
+  const deviceKey = await guestKeyOf(c)
+  const now = new Date()
+  await expireStalled(c.env.DB, now)
+  if (endpoint === 'generation-check') {
+    return !(await guestSongSpent(c.env.DB, deviceKey, now.getTime()))
+  }
+  const { request_id: requestId, id: videoId } = fieldsOf(body)
+  return (
+    typeof requestId === 'string' &&
+    requestId !== '' &&
+    typeof videoId === 'string' &&
+    (await claimGuestSong(
+      c.env.DB,
+      { deviceKey, requestId, videoId },
+      now.getTime()
+    ))
+  )
+}
+
+const songUsed = (endpoint: string, cors: Record<string, string>) =>
+  endpoint === 'generation-check'
+    ? Response.json({ ...SONG_USED, ok: false }, { headers: cors })
+    : new Response(
+        `${JSON.stringify({ code: SONG_USED.code, data: SONG_USED.message, type: 'error' })}\n`,
+        { headers: { ...cors, 'Content-Type': 'application/x-ndjson' } }
+      )
+
 generation.options('/:endpoint', (c) => {
   const origin = appOrigin(c)
-  if (!ENDPOINTS.has(c.req.param('endpoint')) || origin === null) {
+  const endpoint = c.req.param('endpoint')
+  if (
+    !(ENDPOINTS.has(endpoint) || endpoint === GUEST_SONG) ||
+    origin === null
+  ) {
     return c.body(null, 403)
   }
   return c.body(null, 204, {
@@ -236,6 +310,22 @@ generation.options('/:endpoint', (c) => {
     'Access-Control-Allow-Methods': 'POST',
     'Access-Control-Max-Age': '600',
   })
+})
+
+// Whether this device still has its free song: `{ used }`
+generation.post(`/${GUEST_SONG}`, async (c) => {
+  const origin = appOrigin(c)
+  if (origin === null) {
+    return c.json({ code: 'forbidden' }, 403)
+  }
+  const now = new Date()
+  await expireStalled(c.env.DB, now)
+  const used = await guestSongSpent(
+    c.env.DB,
+    await guestKeyOf(c),
+    now.getTime()
+  )
+  return c.json({ used }, 200, corsHeaders(origin))
 })
 
 generation.post('/:endpoint', async (c) => {
@@ -258,6 +348,9 @@ generation.post('/:endpoint', async (c) => {
   const body = await c.req.arrayBuffer()
   if (body.byteLength > MAX_BODY) {
     return c.json({ code: 'too_large' }, 413, cors)
+  }
+  if (!(await guestMay(c, endpoint, body))) {
+    return songUsed(endpoint, cors)
   }
 
   let token: string

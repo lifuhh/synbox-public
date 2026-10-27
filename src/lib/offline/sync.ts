@@ -417,7 +417,9 @@ export const OfflineSync = () => {
     }
     const timer = setTimeout(
       () => {
-        if (online && !isPending) {
+        // Offline songs come with an account (2026-10-27). A guest saves nothing new; songs this device saved
+        // before stay readable, and a sign-in brings them back in line
+        if (online && !isPending && account === 'signed-in') {
           runOnce(sync)
         }
       },

@@ -17,7 +17,7 @@ const SECTIONS: LegalSection[] = [
       'Messages you send through Contact Me, when signed in: the subject, the message, your account and its email (where we reply), and a one-way code made from your network. Each is emailed to us.',
       'Songs you played in the last hour, by account or by a random id in your browser, so a reload is not counted twice. Signed in, every visit to a song counts; as a guest, once per song an hour.',
       'With an account: how many songs you have played, when you last played one, and when you last used the app (to within 10 minutes).',
-      'Without an account: a one-way code made from your network counts your free song.',
+      'Without an account: your one free song is kept by a one-way code made from your network and your device’s system, screen size, cores and time zone. No IP address or browser details are kept with it.',
     ],
     title: 'What We Store',
   },

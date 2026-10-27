@@ -1,7 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef } from 'react'
 
-import { markGuestSongUsed, useAccess } from '@/lib/auth'
 import { STEPS } from '@/lib/generation/plan'
 import type { Job } from '@/lib/generation/store'
 import { focusedJob, useGeneration } from '@/lib/generation/store'
@@ -42,24 +41,12 @@ const GenerationHost = () => {
   const queryClient = useQueryClient()
   // Every job that finishes refreshes its song, whichever one the panel shows, and today's song count
   const refreshed = useRef(new Set<string>())
-  const access = useAccess()
   useEffect(() => {
     for (const done of jobs) {
-      if (
-        done.status.kind === 'failed' &&
-        done.status.code === 'guest_limit' &&
-        !refreshed.current.has(done.id)
-      ) {
-        refreshed.current.add(done.id)
-        markGuestSongUsed()
-      }
       if (done.status.kind !== 'complete' || refreshed.current.has(done.id)) {
         continue
       }
       refreshed.current.add(done.id)
-      if (access.kind === 'guest' && done.mode === 'new') {
-        markGuestSongUsed()
-      }
       void queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.GET_ME] })
       for (const key of SONG_QUERIES) {
         void queryClient.resetQueries({ queryKey: [key, done.videoId] })
@@ -90,7 +77,7 @@ const GenerationHost = () => {
         void queryClient.invalidateQueries({ queryKey: [key] })
       }
     }
-  }, [access.kind, jobs, queryClient])
+  }, [jobs, queryClient])
 
   const announcement = announcementOf(job, view)
 

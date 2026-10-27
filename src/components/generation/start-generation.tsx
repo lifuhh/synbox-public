@@ -1,9 +1,18 @@
 import { LoaderCircleIcon } from 'lucide-react'
 
-import { GoogleMark } from '@/components/shared/google-mark'
 import { ToastAction } from '@/components/ui/toast'
 import { toast } from '@/components/ui/use-toast'
-import { signInWithGoogle, SIGN_IN_CODES } from '@/lib/auth'
+import {
+  markGuestSongSpent,
+  openRequestMore,
+  openSignInSheet,
+} from '@/lib/account-prompts'
+import {
+  knownGuest,
+  knownQuota,
+  SIGN_IN_CODES,
+  songsDoneText,
+} from '@/lib/auth'
 import type { GenerationRequest, PanelOpening } from '@/lib/generation/store'
 import { requestGeneration } from '@/lib/generation/store'
 import type { Refusal } from '@/lib/generation/stream'
@@ -34,11 +43,59 @@ const watchStay = () => {
   }
 }
 
-// How a press ended: the generation started, the check refused it, or the song was already being checked
+// How a press ended: the generation started, the check refused it, the song was already being checked, or the
+// sign-in sheet was shown instead (nothing for the caller to show)
 export type StartOutcome =
   | { kind: 'started' }
   | { kind: 'refused'; refusal: Refusal }
   | { kind: 'busy' }
+  | { kind: 'prompted' }
+
+// The friendly words for a refusal the app knows better than the backend's generic line: an account that added
+// today's songs hears what it did and when more come, with Request More beside it
+export const refusalOf = (
+  refusal: Refusal
+): { message: string; action: 'request_more' | null; quiet: boolean } => {
+  if (refusal.code === 'quota_exceeded') {
+    const quota = knownQuota()
+    return {
+      action: 'request_more',
+      message: quota === null ? 'More at midnight' : songsDoneText(quota),
+      quiet: true,
+    }
+  }
+  return { action: null, message: refusal.message, quiet: false }
+}
+
+// A refusal as a notice. Today's songs added is good news, not an error: what was done, when more come, and
+// Request More beside it
+const refusalToast = (refusal: Refusal) => {
+  const friendly = refusalOf(refusal)
+  if (!friendly.quiet) {
+    return {
+      action: undefined,
+      description: friendly.message,
+      icon: undefined,
+      title: "Can't Generate This Song",
+      variant: 'destructive' as const,
+    }
+  }
+  const limit = knownQuota()?.limit ?? null
+  return {
+    action: (
+      <ToastAction altText='Request More' onClick={openRequestMore}>
+        Request More
+      </ToastAction>
+    ),
+    description: 'More at midnight',
+    icon: undefined,
+    title:
+      limit === null
+        ? 'That’s Today’s Songs'
+        : `That’s ${limit} ${limit === 1 ? 'Song' : 'Songs'} Today`,
+    variant: 'default' as const,
+  }
+}
 
 // Starts a generation from a button, or says at once why it can't start. Until the checks answer, a notice
 // says the press was taken, unless the button shows that itself (`announce: false`). A refusal shows as a notice
@@ -79,28 +136,26 @@ export const startFromButton = async (
   // Started, or a second press while the first is still being checked
   if (refusal === null || refusal === 'checking') {
     notice?.dismiss()
+    // A guest's one free song is this one now
+    if (refusal === null && knownGuest()) {
+      markGuestSongSpent()
+    }
     return refusal === null ? { kind: 'started' } : { kind: 'busy' }
+  }
+  // A guest who had their free song, or signed out since the page loaded: the sign-in sheet, never an error
+  if (SIGN_IN_CODES.has(refusal.code)) {
+    notice?.dismiss()
+    if (refusal.code === 'guest_song_used') {
+      markGuestSongSpent()
+    }
+    openSignInSheet()
+    return { kind: 'prompted' }
   }
   if (quiet) {
     notice?.dismiss()
     return { kind: 'refused', refusal }
   }
-  const refused = {
-    action: SIGN_IN_CODES.has(refusal.code) ? (
-      <ToastAction
-        altText='Sign In'
-        onClick={() => {
-          void signInWithGoogle()
-        }}>
-        <GoogleMark className='mr-2 -ml-1' />
-        Sign In
-      </ToastAction>
-    ) : undefined,
-    description: refusal.message,
-    icon: undefined,
-    title: "Can't Generate This Song",
-    variant: 'destructive' as const,
-  }
+  const refused = refusalToast(refusal)
   // The notice turns into the refusal in place, rather than closing and leaving a gap before it
   if (notice === undefined) {
     toast(refused)

@@ -1,11 +1,14 @@
 import { useQuery } from '@tanstack/react-query'
 import { adminClient, jwtClient } from 'better-auth/client/plugins'
 import { createAuthClient } from 'better-auth/react'
-import { useSyncExternalStore } from 'react'
+import { useAtomValue } from 'jotai'
 import { z } from 'zod'
 
 import { toast } from '@/components/ui/use-toast'
+import { guestSongSpentAtom } from '@/lib/account-prompts'
+import { DEVICE_HEADER, deviceTraits } from '@/lib/device-traits'
 import { QUERY_KEYS } from '@/lib/react-query/query-keys'
+import { BE_ADDRESS } from '@/lib/synbox-flask/address'
 
 // Same origin: Netlify (and the dev server) pass /api/auth/* and /api/me to the auth Worker, so its
 // session cookie is first-party on synbox.io
@@ -13,15 +16,28 @@ export const authClient = createAuthClient({
   plugins: [jwtClient(), adminClient()],
 })
 
+// The account's latest "can I add more songs a day" (worker/src/requests.ts); null when it never asked
+const songRequestSchema = z.object({
+  createdAt: z.number(),
+  decidedAt: z.number().nullable(),
+  granted: z.number().nullable(),
+  status: z.enum(['open', 'approved', 'declined']),
+})
+
 const quotaSchema = z.object({
-  // null = no limit (admins)
+  // Songs a day; null = no cap (admins)
   limit: z.number().nullable(),
+  // Missing from a Worker older than the request feature
+  request: songRequestSchema.nullable().optional(),
+  // The account's next local midnight
   resetsAt: z.string(),
   used: z.number(),
 })
 
 const meSchema = z.object({
   quota: quotaSchema.optional(),
+  // The zone the account's day follows; null until the app reports one
+  timeZone: z.string().nullable().optional(),
   user: z
     .object({
       email: z.string(),
@@ -34,7 +50,16 @@ const meSchema = z.object({
 })
 
 export type Quota = z.infer<typeof quotaSchema>
+export type SongRequest = z.infer<typeof songRequestSchema>
 export type Me = z.infer<typeof meSchema>
+
+// The last answer from /api/me, for code outside React (start-generation.tsx asks whether this is a guest)
+let knownMe: Me | null = null
+
+// True only once /api/me answered that nobody is signed in
+export const knownGuest = () => knownMe !== null && knownMe.user === null
+
+export const knownQuota = () => knownMe?.quota ?? null
 
 // Who was signed in when this browser last asked: their picture's URL ('' for none), or nothing for a guest.
 // The top bar draws its account control from it before /api/me answers, about a second into a phone's load
@@ -68,6 +93,7 @@ export const fetchMe = async (): Promise<Me> => {
   }
   const me = meSchema.parse(await response.json())
   rememberAccount(me)
+  knownMe = me
   return me
 }
 
@@ -93,39 +119,38 @@ export const useMe = () =>
     staleTime: 60_000,
   })
 
-// A guest gets one new song a day per network. The backend enforces it; this only remembers, in this browser,
-// that today's is used, so the page offers sign-in instead of a song that would be refused
-const GUEST_SONG_KEY = 'synbox-guest-song-day'
-const guestListeners = new Set<() => void>()
-const utcDay = () => new Date().toISOString().slice(0, 10)
-
-const guestSongUsed = () => {
+// Whether this device's one free song is spent (worker/src/guest-song.ts, asked of the generation proxy); null when
+// unknown (no answer, or a local backend without the route), which counts as still there: the press finds out
+const fetchGuestSongUsed = async () => {
   try {
-    return localStorage.getItem(GUEST_SONG_KEY) === utcDay()
+    const response = await fetch(`${BE_ADDRESS}/guest-song`, {
+      headers: { [DEVICE_HEADER]: deviceTraits() },
+      method: 'POST',
+    })
+    const body: unknown = await response.json()
+    return typeof body === 'object' &&
+      body !== null &&
+      'used' in body &&
+      typeof body.used === 'boolean'
+      ? body.used
+      : null
   } catch {
-    return false
+    return null
   }
 }
 
-export const markGuestSongUsed = () => {
-  try {
-    localStorage.setItem(GUEST_SONG_KEY, utcDay())
-  } catch {
-    // Private windows can refuse storage; the backend still refuses a second song
-  }
-  for (const listener of guestListeners) {
-    listener()
-  }
-}
+// Asked only where a guest is about to add a song or reads about it (the hero's link, the You page), not on every page
+export const useGuestSongUsed = (ask: boolean) =>
+  useQuery({
+    enabled: ask,
+    queryFn: fetchGuestSongUsed,
+    queryKey: [QUERY_KEYS.GET_GUEST_SONG],
+    staleTime: 5 * 60_000,
+  }).data === true
 
-const subscribeGuestSong = (listener: () => void) => {
-  guestListeners.add(listener)
-  return () => {
-    guestListeners.delete(listener)
-  }
-}
-
-// What the person on the page may do. `newSong` is false only when we know a request would be refused
+// What the person on the page may do. Browsing is open to everyone; a guest adds one song, ever, and an account
+// a few a day. `newSong` is false for a guest whose song this page saw go (useGuestSongUsed asks the device's), and for an account that
+// added today's songs.
 // `ready` is false until the sign-in check answers; until then everyone looks like a guest
 export type Access =
   | { kind: 'guest'; newSong: boolean; admin: false; ready: boolean }
@@ -139,15 +164,10 @@ export type Access =
 
 export const useAccess = (): Access => {
   const { data, isPending } = useMe()
-  const guestUsed = useSyncExternalStore(subscribeGuestSong, guestSongUsed)
   const user = data?.user ?? null
+  const spent = useAtomValue(guestSongSpentAtom)
   if (user === null || data?.quota === undefined) {
-    return {
-      admin: false,
-      kind: 'guest',
-      newSong: !guestUsed,
-      ready: !isPending,
-    }
+    return { admin: false, kind: 'guest', newSong: !spent, ready: !isPending }
   }
   const { quota } = data
   return {
@@ -159,18 +179,78 @@ export const useAccess = (): Access => {
   }
 }
 
-// Refusals that signing in would fix
-export const SIGN_IN_CODES = new Set([
-  'sign_in_required',
-  'guest_limit',
-  'guests_full',
-])
+// Refusals that signing in would fix: the app opens the sign-in sheet for them (account-prompts.ts)
+export const SIGN_IN_CODES = new Set(['sign_in_required', 'guest_song_used'])
 
-// Why a signed-in user can't start a new song, for the places that hide the button
-export const noSongReason = (quota: Quota) =>
-  quota.limit === 0
-    ? 'Generating songs is invite-only for now'
-    : `You've generated ${quota.limit} songs in the last 24 hours. More at ${new Date(quota.resetsAt).toLocaleString([], { hour: 'numeric', minute: '2-digit', weekday: 'short' })}.`
+const plural = (n: number, one: string, many: string) =>
+  `${n} ${n === 1 ? one : many}`
+
+// When an account has added today's songs: what it did, and when more come. The day ends at the account's own
+// midnight, so "midnight" is exact
+export const songsDoneText = (quota: Quota) =>
+  quota.limit === null || quota.limit === 0
+    ? 'More at midnight'
+    : `That’s ${plural(quota.limit, 'song', 'songs')} today. More at midnight`
+
+// The quiet counter where songs are added (You page, account menu): "3 Songs Left Today", and once they're added,
+// when more come rather than a zero
+export const songsLeftText = (quota: Quota) => {
+  if (quota.limit === null) {
+    return 'Unlimited Songs'
+  }
+  const left = quota.limit - quota.used
+  return left > 0
+    ? `${plural(left, 'Song', 'Songs')} Left Today`
+    : songsDoneText(quota)
+}
+
+// Where the account's latest request stands, for the You page; null when there's nothing to say
+export const requestText = (request: SongRequest | null | undefined) => {
+  if (request === null || request === undefined) {
+    return null
+  }
+  if (request.status === 'open') {
+    return 'Request sent. I’ll get back to you'
+  }
+  if (request.status === 'approved') {
+    return request.granted === null
+      ? null
+      : `You now have ${plural(request.granted, 'song', 'songs')} a day`
+  }
+  return 'I couldn’t add more this time'
+}
+
+// Sends the browser's time zone when the account's day follows another one, so "midnight" is the listener's
+export const syncTimeZone = async (me: Me) => {
+  const zone = Intl.DateTimeFormat().resolvedOptions().timeZone
+  if (me.user === null || zone === '' || me.timeZone === zone) {
+    return false
+  }
+  const response = await fetch('/api/me/time-zone', {
+    body: JSON.stringify({ timeZone: zone }),
+    credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json' },
+    method: 'PUT',
+  })
+  return response.ok
+}
+
+// "Can I add more songs a day?" with a short note; false when one is already waiting
+export const sendSongRequest = async (note: string) => {
+  const response = await fetch('/api/me/quota-request', {
+    body: JSON.stringify({ note }),
+    credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json' },
+    method: 'POST',
+  })
+  if (response.status === 409) {
+    return false
+  }
+  if (!response.ok) {
+    throw new Error(`/api/me/quota-request answered ${response.status}`)
+  }
+  return true
+}
 
 const signInFailed = () => {
   toast({

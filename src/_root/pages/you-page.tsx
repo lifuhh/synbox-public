@@ -11,12 +11,22 @@ import { lazy, Suspense, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Link } from 'react-router'
 
+import { BenefitList } from '@/components/account/sign-in-sheet'
 import { BoxScrollbar } from '@/components/shared/doc-scroll'
 import { GoogleMark } from '@/components/shared/google-mark'
 import { UserAvatar } from '@/components/shared/user-avatar'
-import { quotaText } from '@/components/topbar/profile-button'
 import { Button } from '@/components/ui/button'
-import { signInWithGoogle, signOut, useMe } from '@/lib/auth'
+import { openRequestMore } from '@/lib/account-prompts'
+import {
+  requestText,
+  signInWithGoogle,
+  signOut,
+  songsLeftText,
+  useAccess,
+  useGuestSongUsed,
+  useMe,
+} from '@/lib/auth'
+import type { Quota } from '@/lib/auth'
 import { forgetMySongs } from '@/lib/offline/sync'
 import { QUERY_KEYS } from '@/lib/react-query/query-keys'
 
@@ -50,6 +60,58 @@ const LinkRow = ({
   </Link>
 )
 
+// A text button inside a line of text: its press area reaches 8px above and below the line
+const INLINE_ACTION =
+  "relative font-medium text-foreground underline underline-offset-4 after:absolute after:-inset-x-1 after:-inset-y-2 after:content-['']"
+
+const guestLine = (freeSong: boolean) =>
+  freeSong ? 'Your first song is on me' : 'Browsing stays free for everyone'
+
+// Under the name: the songs left today with Request More beside it (a quiet second step, for an account on a daily
+// number with no request waiting; none for an admin), then where the latest request stands. For a guest, their
+// free song while it's there
+const AccountLines = ({
+  user,
+  quota,
+  freeSong,
+}: {
+  user: { email: string } | null
+  quota: Quota | undefined
+  freeSong: boolean
+}) => {
+  if (user === null || quota === undefined) {
+    return (
+      <p className='text-sm text-pretty text-muted-foreground'>
+        {user === null ? guestLine(freeSong) : user.email}
+      </p>
+    )
+  }
+  const request = requestText(quota.request)
+  const canRequest = quota.limit !== null && quota.request?.status !== 'open'
+  return (
+    <>
+      <p className='text-sm text-pretty text-muted-foreground'>
+        {songsLeftText(quota)}
+        {canRequest && (
+          // The dot and the button wrap together, never a dot left at a line's end
+          <span className='whitespace-nowrap'>
+            {' · '}
+            <button
+              type='button'
+              onClick={openRequestMore}
+              className={INLINE_ACTION}>
+              Request More
+            </button>
+          </span>
+        )}
+      </p>
+      {request !== null && (
+        <p className='text-sm text-pretty text-muted-foreground'>{request}</p>
+      )}
+    </>
+  )
+}
+
 // The installed app's You tab: the account and the app's own pages. The songs are in the Library tab
 const YouPage = () => {
   const [box, setBox] = useState<HTMLElement | null>(null)
@@ -58,11 +120,9 @@ const YouPage = () => {
   const queryClient = useQueryClient()
   const { data: me } = useMe()
   const user = me?.user ?? null
-  let accountLine =
-    'Sign in to generate more songs and find them on every device'
-  if (user !== null) {
-    accountLine = me?.quota ? quotaText(me.quota) : user.email
-  }
+  const quota = me?.quota
+  const access = useAccess()
+  const guestSpent = useGuestSongUsed(access.kind === 'guest' && access.ready)
 
   return (
     <section
@@ -91,13 +151,18 @@ const YouPage = () => {
             </span>
             <div className='min-w-0'>
               <p className='truncate font-medium text-foreground'>
-                {user ? user.name : 'Not Signed In'}
+                {user ? user.name : 'Sign In for 5 Songs a Day'}
               </p>
-              <p className='text-sm text-pretty text-muted-foreground'>
-                {accountLine}
-              </p>
+              <AccountLines
+                user={user}
+                quota={quota}
+                freeSong={
+                  access.kind === 'guest' && access.newSong && !guestSpent
+                }
+              />
             </div>
           </div>
+          {user === null && <BenefitList />}
           {user ? (
             <Button
               variant='outline'

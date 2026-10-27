@@ -37,7 +37,7 @@ const FAQS = [
   },
   {
     answer:
-      'Songs already in the library are free for everyone. Adding a new song takes one free try a day; signing in gives you more.',
+      'No. Every song in the library is free to watch and sing, and your first new song is on me. Sign in to add 5 new songs a day, keep your lyric style and bookmarks on every device, and listen offline.',
     question: 'Does It Cost Anything?',
   },
   {

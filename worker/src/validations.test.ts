@@ -9,7 +9,6 @@ let db: D1Database
 let sqlite: Database
 const now = new Date('2026-10-25T10:00:00Z')
 const HOUR = 3_600_000
-const LIMITS = { guest: 1, guestTotal: 20, network: 30, user: 10 }
 const CAPS = { guest: 2, network: 3, user: 2 }
 
 const user = (id: string): Owner => ({ id, kind: 'user' })
@@ -23,7 +22,6 @@ const validate = async (
   const counted = await countValidation(
     db,
     { client: 'test', id, network, owner, videoId },
-    LIMITS,
     CAPS,
     at
   )

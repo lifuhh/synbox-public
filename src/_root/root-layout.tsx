@@ -1,6 +1,7 @@
 import React from 'react'
 import { Outlet } from 'react-router'
 
+import AccountDialogs from '@/components/account/account-dialogs'
 import GenerationHost from '@/components/generation/generation-host'
 import TabBar from '@/components/shared/tab-bar'
 import TopBar from '@/components/shared/top-bar'
@@ -32,6 +33,7 @@ const RootLayout: React.FC = () => (
       <div data-generation-host>
         <GenerationHost />
       </div>
+      <AccountDialogs />
     </div>
   </div>
 )

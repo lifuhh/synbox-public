@@ -1,6 +1,7 @@
 import { afterEach, beforeAll, expect, test } from 'bun:test'
 
 import worker from './index'
+import { migratedD1 } from './test-d1'
 
 // The Worker as Cloudflare runs it, with Google's token endpoint and the generating service faked behind fetch
 const SERVICE = 'https://generating.example.run.app'
@@ -106,7 +107,8 @@ const fake = (respond: (request: Request) => Response) => {
   return seen
 }
 
-const env = () => ({
+const env = (db: D1Database = migratedD1().db) => ({
+  DB: db,
   GENERATION_INVOKER_KEY: keyJson,
   GENERATION_URL: SERVICE,
   INTERNAL_SECRET: SECRET,
@@ -224,7 +226,7 @@ test('the stream reaches the page message by message, not when it ends', async (
       )
   )
 
-  const response = await post('validate')
+  const response = await post('validate', { Authorization: 'Bearer app-jwt' })
   const reader = response.body?.getReader()
   const first = await reader?.read()
   // The upstream has not sent its second message yet: the first arrived on its own
@@ -317,4 +319,118 @@ test("a preflight from the app's pages is answered here, others are refused", as
   expect(otherSite.status).toBe(403)
   expect(otherPath.status).toBe(403)
   expect(seen.upstream).toHaveLength(0)
+})
+
+// A guest's free song, through the proxy as the app calls it: no Authorization, the device's traits in a header
+const PHONE = 'os=ios; screen=1170x2532; dpr=3; cores=6; tz=Asia/Singapore'
+const guestCall = async (
+  db: D1Database,
+  endpoint: string,
+  { device = PHONE, ip = '203.0.113.7', requestId = 'r1', cookie = '' } = {}
+) =>
+  await call(
+    `/api/generation/${endpoint}`,
+    {
+      body: JSON.stringify({
+        id: 'abcdefghijk',
+        kind: 'new',
+        request_id: requestId,
+      }),
+      headers: {
+        'CF-Connecting-IP': ip,
+        'Content-Type': 'application/json',
+        Origin: ORIGIN,
+        'X-Synbox-Device': device,
+        ...(cookie === '' ? {} : { Cookie: cookie }),
+      },
+      method: 'POST',
+    },
+    env(db)
+  )
+
+const streams = () =>
+  fake(
+    () =>
+      new Response('{"type":"update","data":"x"}\n', {
+        headers: { 'Content-Type': 'application/x-ndjson' },
+      })
+  )
+
+const used = async (db: D1Database) => {
+  const response = await guestCall(db, 'guest-song')
+  const body: unknown = await response.json()
+  return typeof body === 'object' && body !== null && 'used' in body
+    ? body.used
+    : null
+}
+
+test('a private window or another browser on the same device gets no second free song; another device does', async () => {
+  const seen = streams()
+  const { db } = migratedD1()
+
+  expect(await used(db)).toBe(false)
+  const first = await guestCall(db, 'validate', { cookie: 'synboxBrowser=a' })
+  expect(await first.text()).toBe('{"type":"update","data":"x"}\n')
+  // The same song's next step holds the same claim
+  await guestCall(db, 'transcribev2')
+  expect(seen.upstream).toHaveLength(2)
+
+  // A private window: no cookie, no storage, the phone turned; same network, same device
+  const incognito = await guestCall(db, 'validate', {
+    device: 'os=ios; screen=2532x1170; dpr=3; cores=6; tz=Asia/Singapore',
+    requestId: 'r2',
+  })
+  expect(await incognito.text()).toBe(
+    '{"code":"guest_song_used","data":"That’s your free song. Sign in for 5 a day","type":"error"}\n'
+  )
+  const checked = await guestCall(db, 'generation-check', { requestId: 'r2' })
+  expect(await checked.json()).toEqual({
+    code: 'guest_song_used',
+    message: 'That’s your free song. Sign in for 5 a day',
+    ok: false,
+  })
+  expect(await used(db)).toBe(true)
+
+  // One home's IPv6 /64 is one network
+  const home = await guestCall(db, 'validate', {
+    ip: '2001:db8:1:2::1',
+    requestId: 'r3',
+  })
+  const sameHome = await guestCall(db, 'validate', {
+    ip: '2001:db8:1:2:aaaa::9',
+    requestId: 'r4',
+  })
+  expect(await home.text()).toContain('"update"')
+  expect(await sameHome.text()).toContain('guest_song_used')
+
+  // Another device on the first network: a laptop, then its other browser (Safari caps the cores Chrome reports)
+  const laptop = await guestCall(db, 'validate', {
+    device: 'os=macos; screen=2880x1800; dpr=2; cores=10; tz=Asia/Singapore',
+    requestId: 'r5',
+  })
+  const laptopSafari = await guestCall(db, 'validate', {
+    device: 'os=macos; screen=2880x1800; dpr=2; cores=8; tz=Asia/Singapore',
+    requestId: 'r6',
+  })
+  expect(await laptop.text()).toContain('"update"')
+  expect(await laptopSafari.text()).toContain('guest_song_used')
+  expect(seen.upstream).toHaveLength(4)
+})
+
+test("a guest's song that failed, or never started, is free again", async () => {
+  streams()
+  const { db, sqlite } = migratedD1()
+  await guestCall(db, 'validate')
+  // The backend reserved it, then the song failed
+  sqlite.run(
+    `insert into "generation" ("id", "guestKey", "videoId", "kind", "status", "utcDay", "createdAt")
+     values ('r1', 'net', 'abcdefghijk', 'new', 'failed', '2026-10-27', 0)`
+  )
+  expect(await used(db)).toBe(false)
+  const again = await guestCall(db, 'validate', { requestId: 'r2' })
+  expect(await again.text()).toContain('"update"')
+  expect(await used(db)).toBe(true)
+  // r2's check never reached a generation (a video that won't play): after a while the claim lets go
+  sqlite.run(`update "guestSong" set "updatedAt" = 0`)
+  expect(await used(db)).toBe(false)
 })

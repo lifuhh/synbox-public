@@ -9,12 +9,17 @@ import {
 } from '@/components/generation/progress-ring'
 import { RingToBell } from '@/components/generation/ring-to-bell'
 import { usePresentation } from '@/components/generation/use-presentation'
+import { AdminNoticeList } from '@/components/topbar/admin-notices'
 import { Button } from '@/components/ui/button'
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover'
+import { useMarkNoticesSeen, useAdminNotices } from '@/lib/admin-notices'
+import type { AdminNotice } from '@/lib/admin-notices'
+import { lastAccount, useAccess } from '@/lib/auth'
+import type { Access } from '@/lib/auth'
 import type { Job } from '@/lib/generation/store'
 import {
   activeCount,
@@ -110,10 +115,49 @@ const nameOf = (
   return unseen > 0 ? `Notifications: ${unseen} new` : 'Notifications'
 }
 
+// A guest adds no songs and sends no reports, so there is nothing to notify them about: no bell. Kept while a
+// song runs or finishes on screen (signed out mid-song), so its progress never vanishes. Until the sign-in check
+// answers, what this browser had last time decides, so the bell doesn't blink
+const bellHidden = (access: Access, items: number, closing: boolean) => {
+  const guest = access.ready ? access.kind === 'guest' : lastAccount() === null
+  return guest && items === 0 && !closing
+}
+
 interface PanelContent {
   job: Job | null
   jobs: readonly Job[]
   fixes: readonly Fix[]
+}
+
+// What the panel holds: an admin's notices first, then the songs and fixes, or a quiet line when there's nothing
+const PanelBody = ({
+  content,
+  notices,
+  onDismissFixes,
+}: {
+  content: PanelContent
+  notices: readonly AdminNotice[]
+  onDismissFixes: (dismissed: readonly Fix[]) => void
+}) => {
+  const songs = content.job !== null || content.fixes.length > 0
+  return (
+    <>
+      {notices.length > 0 && <AdminNoticeList notices={notices} />}
+      {songs && (
+        <GenerationPanel
+          job={content.job}
+          jobs={content.jobs}
+          fixes={content.fixes}
+          onDismissFixes={onDismissFixes}
+        />
+      )}
+      {!songs && notices.length === 0 && (
+        <p className='px-6 py-8 text-center text-sm text-muted-foreground'>
+          No Notifications
+        </p>
+      )}
+    </>
+  )
 }
 
 // While it closes, the panel keeps exactly what it showed last while open, whatever left the list as it closed
@@ -150,9 +194,12 @@ const Notifications = () => {
   const { fixes, markFixesSeen, dismissFixes } = useReportFixes()
   const unseenSongs = unseenCount(generation)
   const unseenFixes = unseenFixCount(fixes)
-  // Fixes count on the bell, never on the ring: a fix arriving mid-generation changes nothing until the ring
-  // turns back into the bell, which then counts it
-  const unseen = unseenSongs + unseenFixes
+  const access = useAccess()
+  const adminNotices = useAdminNotices(access.admin)
+  const { mutate: markNoticesSeen } = useMarkNoticesSeen()
+  // Fixes and admin notices count on the bell, never on the ring: one arriving mid-generation changes nothing
+  // until the ring turns back into the bell, which then counts it
+  const unseen = unseenSongs + unseenFixes + adminNotices.unread
   useEffect(() => {
     setOtherNotifications(fixes.length)
   }, [fixes.length])
@@ -234,7 +281,18 @@ const Notifications = () => {
       )
       void markFixesSeen()
     }
-  }, [expanded, unseenSongs, unseenFixes, fixes, markFixesSeen])
+    if (adminNotices.unread > 0) {
+      markNoticesSeen()
+    }
+  }, [
+    expanded,
+    unseenSongs,
+    unseenFixes,
+    fixes,
+    markFixesSeen,
+    adminNotices.unread,
+    markNoticesSeen,
+  ])
   // The panel closes when the last thing in it goes, as when its last song is dismissed
   const onDismissFixes = (dismissed: readonly Fix[]) => {
     void dismissFixes(dismissed)
@@ -280,6 +338,10 @@ const Notifications = () => {
         {unseen > 0 && <CountBadge count={unseen} />}
       </>
     )
+  }
+
+  if (bellHidden(access, jobs.length + fixes.length, farewell !== null)) {
+    return null
   }
 
   return (
@@ -360,18 +422,11 @@ const Notifications = () => {
           focusInside.current = false
         }}
         className='max-h-[min(38rem,calc(var(--radix-popover-content-available-height)-var(--safe-bottom)))] w-[min(25rem,calc(100vw-1rem-var(--safe-left)-var(--safe-right)))] overflow-x-hidden overflow-y-auto overscroll-contain'>
-        {content.job === null && content.fixes.length === 0 ? (
-          <p className='px-6 py-8 text-center text-sm text-muted-foreground'>
-            No Notifications
-          </p>
-        ) : (
-          <GenerationPanel
-            job={content.job}
-            jobs={content.jobs}
-            fixes={content.fixes}
-            onDismissFixes={onDismissFixes}
-          />
-        )}
+        <PanelBody
+          content={content}
+          notices={adminNotices.notices}
+          onDismissFixes={onDismissFixes}
+        />
       </PopoverContent>
     </Popover>
   )

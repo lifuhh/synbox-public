@@ -72,6 +72,8 @@ const buttonVariants = cva(
           'rounded-full text-muted-foreground hover:bg-accent hover:text-foreground',
         secondary:
           'bg-secondary text-secondary-foreground hover:bg-secondary/80',
+        // A dialog's one action in neutral high contrast (Continue With Google, Send): near-white on the dark sheet
+        solid: 'bg-foreground text-background hover:bg-foreground/90',
         // A round icon button over content (the watch page's lyrics), filled so the lines under it don't show
         // through
         'surface-icon':
