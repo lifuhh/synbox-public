@@ -66,9 +66,10 @@ const DEPLOYED: [RegExp, string][] = [
 const WEB_SCALE = 2
 
 // The unmute pill is hidden, never pressed: every driven browser stays silent (AGENTS.md). No scrollbar, as on a
-// Mac, whose scrollbars draw over the page only while it scrolls
+// Mac, whose scrollbars draw over the page only while it scrolls: neither the browser's nor the one the app draws
+// (doc-scroll.tsx), which shows while the mouse rests at the window's right edge, where mouseAway leaves it
 const QUIET =
-  '[data-unmute-pill] { display: none } html { scrollbar-width: none }'
+  '[data-unmute-pill], [data-scrollbar] { display: none } html { scrollbar-width: none }'
 
 const { positionals, values } = parseArgs({
   allowPositionals: true,

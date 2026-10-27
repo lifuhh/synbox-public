@@ -235,6 +235,9 @@ bun harness/readme/capture.ts <dir>/raw generate <videoId> --site <origin>  # a 
 bun harness/readme/capture.ts <dir>/karaoke karaoke <videoId> <start> <end> --site <origin> [--theater]
 bun harness/readme/scenes.ts <dir> [--raw <dir>/raw] [--hero <dir>/hero --hero-from <s> --hero-to <s>] \
   [--karaoke <dir>/karaoke --karaoke-from <s> --karaoke-to <s>] [--keep]
+# The same devices as separate pieces, for a page that lays them out itself
+bun harness/readme/scenes.ts <out> --portfolio --hero <dir>/hero --hero-from <s> --hero-to <s> \
+  --upright <png> --sideways <png>   # window.png + window.json (its clip box), clip/, upright.png, sideways.png
 bun harness/readme/colors.ts <out.webp>                        # one row, one card per lyric colour
 ```
 
