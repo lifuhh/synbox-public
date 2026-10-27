@@ -10,6 +10,7 @@ import type { ReactNode } from 'react'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 
 import {
+  lyricsStylePanelAtom,
   playerChromeOpenAtom,
   playerVolumeAtom,
   stageClockAtom,
@@ -319,8 +320,8 @@ export const StagePlaceholder = ({ videoId }: { videoId: string }) => (
 export interface StageLayout {
   // Controls stay hidden while dragging, so the drop position is the real one
   onDragChange: (dragging: boolean) => void
-  // A finger's tap on the lyrics, passed on to the stage as if it had landed on the video: pressStage as it
-  // lands, tapStage when it lifts without a drag
+  // A finger's tap on the lyrics, passed on to the stage: pressStage as it lands, tapStage when it lifts without a
+  // drag. A double tap there seeks as on the video; a single tap opens Lyrics Style rather than the controls
   // `across`: how far across the stage it landed, 0 to 1
   pressStage: (pointerType: string, across: number) => void
   tapStage: () => void
@@ -488,9 +489,16 @@ export const PlayerStage = ({
     () => ({ ...player, togglePlay }),
     [player, togglePlay]
   )
+  const [stylePanel, setStylePanel] = useAtom(lyricsStylePanelAtom)
   const taps = useStageTaps({
     controlsVisible,
     hideControls: sleep,
+    // The lyrics in view as they change: the controls go while Lyrics Style opens
+    openLyricsStyle: () => {
+      sleep()
+      setStylePanel('pinned')
+    },
+    revealControls: wake,
     seekBy,
     showCover,
     toggleFullscreen,
@@ -504,7 +512,9 @@ export const PlayerStage = ({
         sleep()
       }
     },
-    pressStage: taps.press,
+    pressStage: (pointerType, across) => {
+      taps.press(pointerType, across, 'lyrics')
+    },
     tapStage: taps.forward,
   }
 
@@ -694,6 +704,8 @@ export const PlayerStage = ({
         // phone on its side they keep clear of the rail's column and the notch. The floating UI at the bottom
         // draws over them and never moves them
         <div
+          // Lyrics Style open: the lyrics keep full strength, so their size and colour read as they change
+          data-styling={stylePanel !== 'closed'}
           className={cn(
             'pointer-events-none absolute inset-0 z-25 lyrics-behind-controls short:inset-x-controls-rail',
             LYRICS_TOP[fit]

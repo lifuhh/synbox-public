@@ -6,6 +6,17 @@ const MENU_POLL_MS = 100
 
 const onWatchPage = () => 'watch' in document.documentElement.dataset
 
+// A finger on the picture or the lyrics is the stage's own tap, which use-stage-taps decides once it lifts: a single
+// tap shows or hides the controls, a double tap seeks and leaves them as they are, a tap on the lyrics opens Lyrics
+// Style. So only a finger on a control counts as activity as it lands, and not one in a sheet (Lyrics Style opened
+// from the lyrics keeps the controls away, the lyrics in view)
+const CONTROL =
+  'button, a, input, select, [role="slider"], [data-player-chrome]'
+const fingerWakes = (target: EventTarget | null) =>
+  target instanceof Element &&
+  target.closest('[role="dialog"]') === null &&
+  target.closest(CONTROL) !== null
+
 // Anything marked data-player-chrome inside `root` holds the floating UI open while a menu from it is open, and
 // with a mouse also while the pointer rests on it (`hover`) or keyboard focus is inside it (`focus`). A touch
 // screen counts menus only: iOS keeps the last tapped element in :hover, and a dragged slider keeps its thumb
@@ -107,6 +118,9 @@ export const useIdle = (
       check()
     }
     const wakeFromPointer = (event: PointerEvent) => {
+      if (event.pointerType !== 'mouse' && !fingerWakes(event.target)) {
+        return
+      }
       if (inPlayer(event.target)) {
         outsideRef.current = false
         setOutside(false)

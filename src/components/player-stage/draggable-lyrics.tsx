@@ -235,8 +235,8 @@ export const DraggableLyrics = ({
     } else if (event.pointerType === 'mouse') {
       setStylePanel('pinned')
     } else {
-      // On a phone the lyrics are mostly over or beside the video, so a tap there does what a tap on the
-      // video does (show or hide the controls, double-tap to skip). The style panel opens from its button
+      // On a phone the tap goes to the stage's taps: a double tap skips as on the video, a single tap opens
+      // Lyrics Style (use-stage-taps)
       layout.tapStage()
     }
   }
