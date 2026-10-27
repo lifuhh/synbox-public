@@ -249,8 +249,8 @@ const recorded = async (page: Page): Promise<Frame[]> =>
  * On a page turned by Lock Landscape the page's down is the screen's left. When no drawn point of it takes a press
  * (the stage's input layer over it, on a touch screen), the same drag is dispatched on it as pointer events
  */
-const dragBy = async (page: Page, selector: string, dy: number) => {
-  const start = await page.evaluate((sel) => {
+const pressPoint = async (page: Page, selector: string) =>
+  await page.evaluate((sel) => {
     const handle = document.querySelector(sel)
     if (!handle) {
       return null
@@ -275,6 +275,15 @@ const dragBy = async (page: Page, selector: string, dy: number) => {
       y: r.top + r.height / 2,
     }
   }, selector)
+
+const dragBy = async (page: Page, selector: string, dy: number) => {
+  // The pointer arriving shows the stage's controls, which may then cover the handle: looked for again once they show
+  const first = await pressPoint(page, selector)
+  if (first !== null) {
+    await page.mouse.move(first.x, first.y)
+    await page.waitForTimeout(400)
+  }
+  const start = await pressPoint(page, selector)
   if (start === null) {
     throw new Error(`nothing matches ${selector} to drag`)
   }
