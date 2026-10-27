@@ -1,4 +1,4 @@
-import { CircleAlertIcon, LoaderCircleIcon, SparklesIcon } from 'lucide-react'
+import { CircleAlertIcon, LoaderCircleIcon, ArrowRightIcon } from 'lucide-react'
 import { useRef, useState } from 'react'
 
 import {
@@ -93,7 +93,7 @@ export const GenerateLabel = ({ checking }: { checking: boolean }) => (
         {forChecking ? (
           <LoaderCircleIcon className='size-5 shrink-0 motion-safe:animate-spin' />
         ) : (
-          <SparklesIcon className='size-5 shrink-0' />
+          <ArrowRightIcon className='size-5 shrink-0' />
         )}
       </span>
     ))}

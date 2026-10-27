@@ -1,4 +1,4 @@
-import { LoaderCircleIcon, SparklesIcon } from 'lucide-react'
+import { LoaderCircleIcon, ArrowRightIcon } from 'lucide-react'
 
 import { startFromButton } from '@/components/generation/start-generation'
 import { Button } from '@/components/ui/button'
@@ -55,7 +55,7 @@ export const GenerateLyricsButton = ({
               state !== current && 'invisible'
             )}>
             {state === 'idle' ? (
-              <SparklesIcon aria-hidden className='size-4 shrink-0' />
+              <ArrowRightIcon aria-hidden className='size-4 shrink-0' />
             ) : (
               <LoaderCircleIcon
                 aria-hidden

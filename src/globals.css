@@ -2438,21 +2438,21 @@ html[data-installed] *::-webkit-scrollbar {
 }
 
 /* Keyboard focus: one indicator for every control, drawn by these rules alone (no focus-visible:ring-* or
-   outline-hidden in components). Outside any layer, so no utility can hide it. 3px, 2px clear of the control, so a
-   remote's D-pad focus reads from across a room (WCAG 2.2 2.4.7, 2.4.11; the A121 TV work). A press with a mouse
-   or a finger shows nothing, decided by the last input (data-input-modality, src/lib/input-modality.ts) rather
-   than the browser alone: Chromium marks focus that a script moves after a click as :focus-visible (a menu opened
-   with the mouse focuses its content, hovering an item focuses the item), so after a press the indicator waits
-   for a navigation key. :where() keeps the specificity of a bare :focus-visible, so data-focus-proxy below still
-   overrides it. Text fields match :focus-visible on a click too, so they show it only after a key, and on their
-   field's frame ([data-focus-field]) rather than the bare input inside it */
-:where(html:not([data-input-modality='pointer']))
+   outline-hidden in components). Outside any layer, so no utility can hide it (WCAG 2.2 2.4.7, 2.4.11). Only for
+   someone using Tab (data-input-modality='keyboard', src/lib/input-modality.ts), never for a mouse or a finger,
+   rather than the browser's :focus-visible alone: Chromium marks focus that a script moves after a click as
+   :focus-visible (a menu opened with the mouse focuses its content, hovering an item focuses the item, a clicked
+   tab focuses itself), and nothing has been pressed before the first input. :where() keeps the specificity of a
+   bare :focus-visible, so data-focus-proxy below still overrides it. Text fields draw it on their field's frame
+   ([data-focus-field]) rather than the bare input inside it */
+:where(html[data-input-modality='keyboard'])
   :focus-visible:not(input, textarea, select) {
   outline: 3px solid var(--focus-ring);
   outline-offset: 2px;
 }
 
-:focus-visible:is(input, textarea, select) {
+/* The browser's own focus outline is off everywhere; the rules here draw the only one */
+:focus-visible {
   outline: none;
 }
 
@@ -2476,7 +2476,7 @@ html[data-input-modality='keyboard']
   outline: none;
 }
 
-:where(html:not([data-input-modality='pointer']))
+:where(html[data-input-modality='keyboard'])
   [data-focus-proxy]:focus-visible
   .focus-target {
   outline: 3px solid var(--focus-ring);
