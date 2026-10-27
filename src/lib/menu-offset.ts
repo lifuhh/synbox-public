@@ -34,7 +34,11 @@ const drawnBox = (button: HTMLElement): DOMRect => {
   )
   const walker = document.createTreeWalker(button, NodeFilter.SHOW_TEXT)
   for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) {
-    if ((node.textContent ?? '').trim() !== '') {
+    // Not the label over a bar button (stage-controls.tsx › ControlTip): it shows only on hover, above the button
+    if (
+      (node.textContent ?? '').trim() !== '' &&
+      (node.parentElement?.closest('.control-tip') ?? null) === null
+    ) {
       const range = document.createRange()
       range.selectNodeContents(node)
       rects.push(range.getBoundingClientRect())
