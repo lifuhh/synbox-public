@@ -688,8 +688,8 @@ const KIND_LABELS = {
 // Failures that are not faults, by the backend's errorCode: one it stopped reporting on was let go, and a
 // video that isn't a Japanese song was turned away. Any other code is the exception's name
 const QUIET_ENDS: Record<string, string> = {
-  abandoned: 'Stopped',
   NotAJapaneseSong: 'Not a Japanese Song',
+  abandoned: 'Stopped',
 }
 
 const quietEnd = (generation: AdminGeneration) =>
@@ -708,7 +708,7 @@ const statusOf = (
   if (generation.status === 'failed') {
     const quiet = quietEnd(generation)
     return quiet === undefined
-      ? { label: 'Failed', cause: generation.errorCode ?? undefined }
+      ? { cause: generation.errorCode ?? undefined, label: 'Failed' }
       : { label: quiet }
   }
   const { stage, fraction } = generation
