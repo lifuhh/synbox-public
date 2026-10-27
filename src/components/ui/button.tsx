@@ -19,28 +19,28 @@ const buttonVariants = cva(
         sm: 'gap-1.5',
       },
       size: {
-        default: 'h-10 px-4 py-2',
+        default: 'h-10 label-icons px-4 py-2',
         icon: 'h-10 w-10',
         // A small round icon button, as for a carousel's arrows
         'icon-round': 'size-9 rounded-full',
         // The action inside a field, as the landing search box's. A trailing icon's drawing starts inside its
         // box, so that side's padding is 4px less and the label and icon sit the same distance from the edges
-        inset: 'h-10 px-5 has-[>svg]:pr-4',
-        lg: 'h-11 rounded-md px-8',
+        inset: 'h-10 label-icons px-5 has-[>svg]:pr-4',
+        lg: 'h-11 label-icons rounded-md px-8',
         // A short labelled pill that sits among the top bar's icon buttons
-        pill: 'h-9 rounded-full px-3 sm:px-4',
+        pill: 'h-9 label-icons rounded-full px-3 sm:px-4',
         // A labelled pill that keeps only its icon under 360px wide, where the top bar has no room for the word
         'pill-collapse':
-          'h-9 rounded-full px-3 max-[359px]:w-9 max-[359px]:px-0 sm:px-4',
+          'h-9 rounded-full px-3 max-[359px]:w-9 max-[359px]:px-0 min-[360px]:label-icons sm:px-4',
         // A slim labelled action at the end of a list row, as the notifications panel's Play. A leading icon's
         // drawing starts inside its box, so that side's padding is 2px less
-        row: 'h-7 gap-1 rounded-md pr-2.5 pl-2',
-        sm: 'h-9 rounded-md px-3',
+        row: 'h-7 label-icons gap-1 rounded-md pr-2.5 pl-2',
+        sm: 'h-9 label-icons rounded-md px-3',
         // The hero's call to action: padding, not height, sets how tall it is
-        tall: 'h-10 px-4 py-6',
+        tall: 'h-10 label-icons px-4 py-6',
         // A quiet text action, as a panel's Reset: drawn 32px, its press area 44px on touch, reaching only above
         // and below so neighbours side by side keep their gap
-        text: "relative h-8 rounded-md px-2 touch:after:absolute touch:after:inset-x-0 touch:after:-inset-y-1.5 touch:after:content-['']",
+        text: "relative h-8 label-icons rounded-md px-2 touch:after:absolute touch:after:inset-x-0 touch:after:-inset-y-1.5 touch:after:content-['']",
       },
       variant: {
         // The one main action on a view: a tonal pill that stands out without glaring

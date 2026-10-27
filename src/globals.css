@@ -371,6 +371,18 @@
   --text-reader-translation--line-height: 1.4;
 }
 
+/* Icons on a label's optical centre. Plus Jakarta Sans' line box is centred about 0.09em above where a mixed-case
+   label's ink reads as centred (midway between its cap-height and x-height centres): the font's ascent is taller
+   than its descent. A flex row centres an icon on the line box, so beside a label it read 1.2px (WebKit) to 1.5px
+   (Chromium) high at 14-15px. Icons in a labelled control drop by that much, in the font's own unit so it holds at
+   every size. Measured by harness/bench/probes/icon-align.ts; an optically placed glyph opts out with data-optical.
+   A lone icon (a named button with no label) stays centred in its box */
+@utility label-icons {
+  &:not([aria-label]:has(> svg:only-child)) :where(svg:not([data-optical])) {
+    translate: 0 0.09em;
+  }
+}
+
 /* The offline reader's paper and ink, dark by default. The status bar strip stays dark on the light page, with
    a hard edge (a dark fade over paper reads as a smudge): an installed iPhone app draws the clock in white over
    whatever is under it */
