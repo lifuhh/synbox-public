@@ -53,7 +53,15 @@ describe('judge', () => {
       frame(3, [el(3, 6, 590)], [el(4, 450, 585, 0.4)]),
     ]
     const j = judge(frames, PARTS)
-    expect(j.counts).toEqual({ detached: 0, frame: 0, scale: 0, teleport: 0 })
+    expect(j.counts).toEqual({
+      detached: 0,
+      frame: 0,
+      overshoot: 0,
+      scale: 0,
+      settle: 0,
+      slant: 0,
+      teleport: 0,
+    })
     expect(j.flight).toBe(true)
   })
 
@@ -66,6 +74,26 @@ describe('judge', () => {
     expect(judge(frames, PARTS).notes.join('\n')).toContain(
       "2.0px down of where it keeps against box's centre line"
     )
+  })
+
+  test('a box whose sides finish before its top is slanted, and one that passes its landing overshoots', () => {
+    // The field (1) hands over to the ghost (3), which lands on the bar's field (5), drawn hidden until then
+    const bar = (o: number): Shown => ({ ...el(5, 400, 600, o), b: 40, t: 0 })
+    const ghost = (l: number, r: number, t: number): Shown => ({
+      ...el(3, l, r),
+      b: t + 40,
+      t,
+    })
+    const frames = [
+      frame(0, [el(1, 0, 800), bar(0)], []),
+      frame(1, [ghost(0, 800, 10), bar(0)], []),
+      frame(2, [ghost(380, 620, 8), bar(0)], []),
+      frame(3, [ghost(398, 602, -3), bar(0)], []),
+      frame(4, [bar(1)], []),
+    ]
+    const j = judge(frames, PARTS)
+    expect(j.counts.slant).toBeGreaterThan(0)
+    expect(j.counts.overshoot).toBeGreaterThan(0)
   })
 
   test('a pill that grows in a shrinking morph is a scale reversal', () => {
