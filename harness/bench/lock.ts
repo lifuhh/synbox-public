@@ -27,13 +27,12 @@ const WAIT_MS = 45 * 60_000
 const POLL_MS = 1000
 
 /**
- * Browser audits at once on this machine, across every session: as many as one check ran before (three), now shared
- * by every session's checks instead of one check holding the machine for its whole run. Measured on the M4 Pro
- * (14 cores, 24 GB) on 2026-10-27, with other sessions keeping the load at 45-85: the same 34 layout audits took
- * 30 s three at a time, 18 s six and 15 s eight, each audit's median flat at 2.0 s; nine took 19 s and twelve 22 s,
- * the median up to 3.1 s. So up to eight is safe; it starts at three
+ * Browser audits at once on this machine, across every session. Measured on the M4 Pro (14 cores, 24 GB) on
+ * 2026-10-27, with other sessions keeping the load at 45-85: the same 34 layout audits took 30 s three at a time,
+ * 18 s six and 15 s eight, each audit's median flat at 2.0 s; nine took 19 s and twelve 22 s, the median up to
+ * 3.1 s. Three (the first setting) left a scoped check waiting 195 s for a slot while other sessions' checks ran
  */
-export const SLOTS = 3
+export const SLOTS = 8
 
 /** An audit holds a slot for seconds (its own limit is minutes); an older slot is a reused process id, not a holder */
 const SLOT_STALE_MS = 10 * 60_000
