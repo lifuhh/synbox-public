@@ -350,14 +350,16 @@ export const LyricsPanel = ({
         className
       )}>
       {heading ? (
-        // Text Style leads, at the panel's edge by the video, so its popover opens out over the video and leaves
-        // the lines it changes in view. At least 6px in from the panel's clipped edges, so its focus ring (3px, 2px
-        // out) shows whole
-        <header className='flex h-13 shrink-0 items-center gap-1 ps-1.5 pe-4'>
-          <TextStyleButton />
+        // The title starts where the lines do (px-4); Text Style ends the row, at least 6px in from the panel's
+        // clipped edge so its focus ring (3px, 2px out) shows whole. Its popover still opens beside the header, out
+        // over the video, so the lines it changes stay in view
+        <header
+          id='lyrics-panel-header'
+          className='flex h-13 shrink-0 items-center justify-between gap-1 ps-4 pe-1.5'>
           <h2 id='lyrics-panel-title' className='text-base font-semibold'>
             Lyrics
           </h2>
+          <TextStyleButton anchor='lyrics-panel-header' />
         </header>
       ) : (
         <PanelCorner
