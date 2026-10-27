@@ -685,19 +685,31 @@ const KIND_LABELS = {
   retime: 'Retime',
 } as const
 
-// A running song shows its step and how far the whole job is, as the progress panel does; one the backend
-// stopped reporting on was let go ('abandoned') and shows as stopped
-// A running song's step and how far along it is, or where the song ended up
+// Failures that are not faults, by the backend's errorCode: one it stopped reporting on was let go, and a
+// video that isn't a Japanese song was turned away. Any other code is the exception's name
+const QUIET_ENDS: Record<string, string> = {
+  NotAJapaneseSong: 'Not a Japanese Song',
+  abandoned: 'Stopped',
+}
+
+const quietEnd = (generation: AdminGeneration) =>
+  generation.status === 'failed' && generation.errorCode !== null
+    ? QUIET_ENDS[generation.errorCode]
+    : undefined
+
+// A running song's step and how far the whole job is, as the progress panel does, or where the song ended
+// up; a failure names its cause under the label
 const statusOf = (
   generation: AdminGeneration
-): { label: string; percent?: number } => {
+): { label: string; percent?: number; cause?: string } => {
   if (generation.status === 'succeeded') {
     return { label: 'Done' }
   }
   if (generation.status === 'failed') {
-    return {
-      label: generation.errorCode === 'abandoned' ? 'Stopped' : 'Failed',
-    }
+    const quiet = quietEnd(generation)
+    return quiet === undefined
+      ? { cause: generation.errorCode ?? undefined, label: 'Failed' }
+      : { label: quiet }
   }
   const { stage, fraction } = generation
   if (!isStageId(stage)) {
@@ -714,15 +726,22 @@ const statusLabel = (generation: AdminGeneration) => {
   return percent === undefined ? label : `${label} · ${percent}%`
 }
 
-// The table's cell: the step on one line, its percent under it
+// The table's cell: the step on one line, its percent or a failure's cause under it
 const StatusCell = ({ generation }: { generation: AdminGeneration }) => {
-  const { label, percent } = statusOf(generation)
+  const { label, percent, cause } = statusOf(generation)
   return (
     <>
       <span className='block truncate'>{label}</span>
       {percent !== undefined && (
         <span className='block text-xs text-muted-foreground tabular-nums'>
           {percent}%
+        </span>
+      )}
+      {cause !== undefined && (
+        <span
+          className='block truncate text-xs text-muted-foreground'
+          title={cause}>
+          {cause}
         </span>
       )}
     </>
@@ -732,9 +751,9 @@ const StatusCell = ({ generation }: { generation: AdminGeneration }) => {
 const statusClass = (generation: AdminGeneration) =>
   cn(
     generation.status === 'failed' &&
-      (generation.errorCode === 'abandoned'
-        ? 'text-muted-foreground'
-        : 'text-error'),
+      (quietEnd(generation) === undefined
+        ? 'text-error'
+        : 'text-muted-foreground'),
     generation.status === 'succeeded' && 'text-foreground',
     (generation.status === 'reserved' || generation.status === 'running') &&
       'text-muted-foreground tabular-nums'
