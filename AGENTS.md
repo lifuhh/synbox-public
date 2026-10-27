@@ -102,7 +102,10 @@ Finished work collects in one long-lived branch, `staging`, and reaches producti
    - A commit that changes only docs (`docs/`, Markdown outside `src/` and `public/`) after a passing `check` reuses its verdict in seconds.
    - Checks from several sessions run at the same time: browser audits share the machine through slots, and only timing audits (lyric shifts, motion) take it to themselves, so don't wait for another session's check.
    - `--only <audit prefix>` while working (no verdict; names: `bun harness/bench/cli.ts list`). `--full` runs every audit; `release.ts` runs it on staging's combined tree before anything goes live, so what a scoped check can't see is still checked once per release.
-   - A failure in an audit your diff can't reach is staging's or the machine's: rerun once, and if it repeats, say so in the PR and the log entry instead of rerunning until it passes.
+   - A failing audit is read before anything is rerun (the owner's rule, 2026-10-27): its notes and, for a timing audit, the run's `frames.json` say what moved, by how much and where. Then it is one of three, and the PR and log entry say which, with that evidence:
+     - **your change caused it** (any harness or shared-code change can reach an audit the scope didn't name): fix it;
+     - **staging is broken**: report it with the evidence and file it as an ask (`bun harness/asks.ts new`), so its owner fixes it;
+     - **the audit is unreliable** (the same tree passes and fails, e.g. under machine load): file it as an ask with what varied between runs, so the audit is made reliable. Only then rerun, once, to confirm the classification. Never rerun until it passes. The harness's own retry of an audit that produced nothing (a page that never got ready) is the exception: it measured nothing, so it is run again and says so.
 
    Staging holds only finished work: anything merged there can go live at the next release, from any session.
 
