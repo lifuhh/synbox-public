@@ -28,6 +28,7 @@ import { useMediaQuery } from '@/hooks/use-media-query'
 import { openRequestMore } from '@/lib/account-prompts'
 import type { Access } from '@/lib/auth'
 import {
+  SONGS_A_DAY,
   signInWithGoogle,
   songsDoneText,
   useAccess,
@@ -79,7 +80,10 @@ const newSongNote = (access: Access, guestSpent: boolean): SongNote | null => {
   if (access.kind === 'guest') {
     return access.ready
       ? {
-          action: { handleClick: signIn, label: 'Sign In for 5 a Day' },
+          action: {
+            handleClick: signIn,
+            label: `Sign In for ${SONGS_A_DAY} a Day`,
+          },
           text:
             access.newSong && !guestSpent
               ? 'Your free song'

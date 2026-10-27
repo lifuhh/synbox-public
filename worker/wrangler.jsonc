@@ -42,12 +42,13 @@
     "LYRICS_ACCOUNT_PER_HOUR": "300",
     "BETTER_AUTH_URL": "https://synbox.io",
     "GOOGLE_CLIENT_ID": "1045990822048-sr16qerq3qlv56131g7veuh2nak6vbk8.apps.googleusercontent.com",
-    // Songs a signed-in account adds per day, from its own midnight (src/quota.ts); guests add none
-    "USER_DAILY_LIMIT": "5",
+    // Songs a signed-in account adds per day, from its own midnight (src/quota.ts); guests add none. The app's copy
+    // states it (src/lib/auth.ts › SONGS_A_DAY), so the two change together
+    "USER_DAILY_LIMIT": "3",
     "NETWORK_DAILY_LIMIT": "30",
     // Song checks (/validate downloads the song) per rolling 24 hours: five times the song limits, ten for a guest
     // (src/validations.ts)
-    "VALIDATION_USER_DAILY_LIMIT": "25",
+    "VALIDATION_USER_DAILY_LIMIT": "15",
     "VALIDATION_GUEST_DAILY_LIMIT": "10",
     "VALIDATION_NETWORK_DAILY_LIMIT": "150",
     "TRUSTED_ORIGINS": "https://synbox.io,https://www.synbox.io,https://synbox.netlify.app",
@@ -69,9 +70,9 @@
         "LYRICS_NETWORK_PER_HOUR": "300",
         "LYRICS_ACCOUNT_PER_HOUR": "300",
         "GOOGLE_CLIENT_ID": "1045990822048-sr16qerq3qlv56131g7veuh2nak6vbk8.apps.googleusercontent.com",
-        "USER_DAILY_LIMIT": "5",
+        "USER_DAILY_LIMIT": "3",
         "NETWORK_DAILY_LIMIT": "30",
-        "VALIDATION_USER_DAILY_LIMIT": "25",
+        "VALIDATION_USER_DAILY_LIMIT": "15",
         "VALIDATION_GUEST_DAILY_LIMIT": "10",
         "VALIDATION_NETWORK_DAILY_LIMIT": "150",
         "TRUSTED_ORIGINS": "http://localhost:5173",

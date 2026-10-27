@@ -8,6 +8,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion'
+import { SONGS_A_DAY } from '@/lib/auth'
 
 const STEPS = [
   {
@@ -36,8 +37,7 @@ const FAQS = [
     question: 'Which Videos Work?',
   },
   {
-    answer:
-      'No. Every song in the library is free to watch and sing, and your first new song is on me. Sign in to add 5 new songs a day, keep your lyric style and bookmarks on every device, and listen offline.',
+    answer: `No. Every song in the library is free to watch and sing, and your first new song is on me. Sign in to add ${SONGS_A_DAY} new songs a day, keep your lyric style and bookmarks on every device, and listen offline.`,
     question: 'Does It Cost Anything?',
   },
   {
