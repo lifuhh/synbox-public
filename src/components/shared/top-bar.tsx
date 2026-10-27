@@ -268,8 +268,9 @@ const TopBar = () => {
               sat here until the project went closed source) */}
           {!isVideoPlayer && <ProfileButton />}
         </div>
+        {/* In the row, so it fades with the bar's search as the bar comes and goes; placed against the header */}
+        {search.ghost}
       </nav>
-      {search.ghost}
     </header>
   )
 }

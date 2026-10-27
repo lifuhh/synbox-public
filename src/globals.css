@@ -1342,7 +1342,9 @@
 }
 
 /* Home's search in flight between its field and the top bar (search-dock.tsx sets its box and --dock-t): its edge
-   and fill blend from the field's to the bar's as --dock-t goes 0 to 1. Empty, and so not drawn, at rest */
+   and fill blend from the field's to the bar's as --dock-t goes 0 to 1. The bar's fill is see-through, made for the
+   bar's backdrop, so away from the bar the blend sits on the page's background (--dock-under, 1 to 0 as it nears the
+   bar), and the page never shows through the box as it crosses it. Empty, and so not drawn, at rest */
 @utility search-ghost {
   position: absolute;
   top: 0;
@@ -1352,11 +1354,18 @@
   pointer-events: none;
   contain: layout paint style;
   will-change: transform;
-  background: color-mix(
+  --dock-fill: color-mix(
     in oklab,
     var(--dock-to-fill) calc(var(--dock-t) * 100%),
     var(--dock-from-fill)
   );
+  background:
+    linear-gradient(var(--dock-fill), var(--dock-fill)),
+    color-mix(
+      in oklab,
+      var(--color-background) calc(var(--dock-under) * 100%),
+      transparent
+    );
   box-shadow: inset 0 0 0 1px
     color-mix(
       in oklab,
