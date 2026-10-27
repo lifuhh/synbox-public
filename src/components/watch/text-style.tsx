@@ -1,6 +1,6 @@
 import { atom, useAtom, useAtomValue } from 'jotai'
 import { ALargeSmallIcon } from 'lucide-react'
-import { useRef } from 'react'
+import { useMemo, useRef } from 'react'
 
 import { SEGMENT } from '@/components/lyrics-display/lyrics-style-scope'
 import { StyleSwitch } from '@/components/lyrics-display/style-switch'
@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import {
   Popover,
+  PopoverAnchor,
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover'
@@ -267,14 +268,17 @@ const TextStyleControls = ({
 )
 
 // How the lyrics on the page look (src/lib/offline/reader-prefs.ts), apart from Lyrics Style's over the video. Either
-// way the lyrics it changes stay in view: with a mouse a popover beside its button, out over the video (left of the
-// header's button at the panel's leading edge, above the corner's button at the panel's top); on a touch screen a
-// sheet. `corner`: the round filled button over the lines (the band, the panel under a narrow video); otherwise a
-// header's plain one. `sized`: false on the band, whose size is fixed
+// way the lyrics it changes stay in view: with a mouse a popover out over the video (left of the panel's header,
+// above the corner's button at the panel's top); on a touch screen a sheet. `corner`: the round filled button over
+// the lines (the band, the panel under a narrow video); otherwise a header's plain one, whose popover sits beside
+// `anchor` (the header's id), not beside the button at the header's far end. `sized`: false on the band, whose size
+// is fixed
 export const TextStyleButton = ({
+  anchor,
   corner = false,
   sized = true,
 }: {
+  anchor?: string
   corner?: boolean
   sized?: boolean
 }) => {
@@ -282,6 +286,17 @@ export const TextStyleButton = ({
   const touch = useMediaQuery('(pointer: coarse)')
   // Focus moves in, and back to the button on close, only for a panel opened from the keyboard
   const fromKeyboardRef = useRef(false)
+  // Read where the anchor is at each placement, so the popover follows the header as the page lays out
+  const anchorBox = useMemo(
+    () => ({
+      current: {
+        getBoundingClientRect: () =>
+          document.querySelector(`#${anchor ?? ''}`)?.getBoundingClientRect() ??
+          new DOMRect(),
+      },
+    }),
+    [anchor]
+  )
   const close = () => {
     setOpen(false)
   }
@@ -338,12 +353,13 @@ export const TextStyleButton = ({
         }
       }}>
       <PopoverTrigger asChild>{button}</PopoverTrigger>
+      {anchor !== undefined && <PopoverAnchor virtualRef={anchorBox} />}
       <PopoverContent
-        side={corner ? 'top' : 'left'}
-        align={corner ? 'end' : 'start'}
-        // Left of the header's button: 4px clear of the panel's edge (the button sits 6px inside it), and within the
-        // 12px a menu may sit from its button (detachedMenus)
-        sideOffset={corner ? MENU_GAP : MENU_GAP + 4}
+        side={anchor === undefined ? 'top' : 'left'}
+        align={anchor === undefined ? 'end' : 'start'}
+        sideOffset={MENU_GAP}
+        // The layout audit measures it against the header it opens beside (detachedMenus)
+        data-menu-anchor={anchor}
         collisionPadding={8}
         onOpenAutoFocus={(event) => {
           if (!fromKeyboardRef.current) {
