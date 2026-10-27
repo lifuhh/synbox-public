@@ -239,7 +239,7 @@ const HeroGenerateLyricsDefault = ({
     handleOpenLandingPageDialog()
   }
   const busyAttr = checking || undefined
-  // The pill's content: Generate Lyrics while that is the action or its check runs, sharing one width
+  // The pill's content: Generate Lyrics while that is the action or its check runs, each at its own width
   const pillContent = () => {
     const generating =
       checking ||

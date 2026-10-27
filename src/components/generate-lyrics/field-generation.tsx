@@ -1,5 +1,5 @@
 import { CircleAlertIcon, LoaderCircleIcon, ArrowRightIcon } from 'lucide-react'
-import { useRef, useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 
 import {
   refusalOf,
@@ -75,30 +75,77 @@ export const useFieldGeneration = (onStarted?: () => void) => {
   }
 }
 
-// The pill's label while the action is Generate Lyrics: both labels share one cell, so the pill keeps its width
-// as they swap
-export const GenerateLabel = ({ checking }: { checking: boolean }) => (
-  <span className='grid justify-items-center'>
-    {([false, true] as const).map((forChecking) => (
-      <span
-        key={String(forChecking)}
-        aria-hidden={forChecking !== checking}
-        className={cn(
-          'col-start-1 row-start-1 inline-flex items-center gap-2',
-          forChecking !== checking && 'invisible'
-        )}>
-        <span className='text-label'>
-          {forChecking ? 'Checking…' : 'Generate Lyrics'}
+// The pill's label while the action is Generate Lyrics. Each label takes its own width: on a swap the two
+// cross-fade in one cell while the cell's width eases from one label's width to the other's, so the pill resizes
+// continuously instead of jumping. The width eases like the search dock's flight (search-dock.tsx › easeOut,
+// quadratic: full speed off the mark, no tail). Under Reduce Motion only the fade runs. The wider label, fading,
+// spills half the labels' difference past each side of the cell (up to 16px), within the button's padding
+const WIDTH_EASE = 'width 200ms cubic-bezier(0.33, 0.67, 0.67, 1)'
+const REDUCED_MOTION = '(prefers-reduced-motion: reduce)'
+
+export const GenerateLabel = ({ checking }: { checking: boolean }) => {
+  const box = useRef<HTMLSpanElement>(null)
+  const idle = useRef<HTMLSpanElement>(null)
+  const busy = useRef<HTMLSpanElement>(null)
+  // The width the cell was last given; 0 until the pill is first laid out (it is hidden on phones)
+  const fitted = useRef(0)
+
+  useLayoutEffect(() => {
+    const cell = box.current
+    const label = (checking ? busy : idle).current
+    // Eases only on a swap in a cell already laid out, and not under Reduce Motion; a first layout or a font that
+    // changed the label's width sets it at once
+    const fit = (swap: boolean) => {
+      if (cell === null || label === null) {
+        return
+      }
+      // The computed width ignores the pill's scale on press; 'auto' (NaN) while the pill is hidden
+      const width = Number(getComputedStyle(label).width.replace(/px$/u, ''))
+      if (!(width > 0) || width === fitted.current) {
+        return
+      }
+      const ease =
+        swap && fitted.current > 0 && !matchMedia(REDUCED_MOTION).matches
+      fitted.current = width
+      cell.style.transition = ease ? WIDTH_EASE : ''
+      cell.style.width = `${width}px`
+    }
+    fit(true)
+    const observer = new ResizeObserver(() => {
+      fit(false)
+    })
+    if (label !== null) {
+      observer.observe(label)
+    }
+    return () => {
+      observer.disconnect()
+    }
+  }, [checking])
+
+  return (
+    <span ref={box} className='grid grid-cols-1 justify-items-center'>
+      {([false, true] as const).map((forChecking) => (
+        <span
+          key={String(forChecking)}
+          ref={forChecking ? busy : idle}
+          aria-hidden={forChecking !== checking}
+          className={cn(
+            'col-start-1 row-start-1 inline-flex w-max items-center gap-2 transition-opacity duration-150 ease-out',
+            forChecking !== checking && 'opacity-0'
+          )}>
+          <span className='text-label'>
+            {forChecking ? 'Checking…' : 'Generate Lyrics'}
+          </span>
+          {forChecking ? (
+            <LoaderCircleIcon className='size-5 shrink-0 motion-safe:animate-spin' />
+          ) : (
+            <ArrowRightIcon className='size-5 shrink-0' />
+          )}
         </span>
-        {forChecking ? (
-          <LoaderCircleIcon className='size-5 shrink-0 motion-safe:animate-spin' />
-        ) : (
-          <ArrowRightIcon className='size-5 shrink-0' />
-        )}
-      </span>
-    ))}
-  </span>
-)
+      ))}
+    </span>
+  )
+}
 
 // A text button in the status line: its press area reaches 8px above and below the line, short of the field above
 const INLINE_ACTION =
