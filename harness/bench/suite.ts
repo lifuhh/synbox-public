@@ -29,6 +29,10 @@ import {
   pressReleaseAudit,
 } from './probes/press-release'
 import { buildSize } from './probes/size'
+import {
+  THEATER_MOTION_FINDINGS,
+  theaterMotionAudit,
+} from './probes/theater-motion'
 import type { Benchmark, MetricSpec } from './types'
 
 const ms = (key: string, gate = true, floor = 30, pct = 0.1): MetricSpec => ({
@@ -371,6 +375,27 @@ export const SUITE: Benchmark[] = [
   controlShade('pwa-landscape', PWA_LANDSCAPE, false),
   controlShade('pwa-turned', PWA_PORTRAIT, true),
   lyricShift('pwa-turned', PWA_PORTRAIT, true),
+  {
+    // Theater Mode on the wide watch page, both ways, frame by frame: nothing jumps, appears from nowhere or vanishes
+    // while visible, sizes move one way, the video stays on the stage, the YouTube iframe is never rebuilt
+    // (probes/theater-motion.ts)
+    id: 'theater-motion',
+    metrics: [
+      ...THEATER_MOTION_FINDINGS.map((key) => count(key)),
+      count('droppedFrames', false),
+      count('frames', false),
+      // From the press's release to the first frame that changes, and to the last: reported, the timing is a
+      // headless browser's
+      ...['enterStartMs', 'enterDoneMs', 'exitStartMs', 'exitDoneMs'].map(
+        (key): MetricSpec => ({ ...ms(key, false, 16, 0), exact: true })
+      ),
+    ],
+    run: theaterMotionAudit,
+    runs: 1,
+    surface: WEB.surface,
+    title:
+      'Theater Mode in and out on the wide watch page (1440×900), every frame: teleports, size reversals, the video or the bar off the stage, the YouTube iframe reloaded; dropped frames reported',
+  },
   {
     // The full-screen player on an iPhone on its side, turned by CSS (rotation lock on) and rotated by iOS (lock off,
     // also reached again from the watch page): the same layout within 1px, black side bands (probes/landscape-parity.ts)

@@ -263,6 +263,29 @@ export const OPENED_STATES: Record<string, OpenedState[]> = {
       views: ['pwa-portrait'],
     },
     {
+      // Theater Mode on the wide watch page: the video across both columns, the lyrics panel under it, Up Next moved
+      // down beside the song
+      name: 'theater',
+      steps: [
+        { at: { x: 60, y: 60 }, hover: { attr: 'data-player-stage' } },
+        { press: { name: 'Theater Mode', role: 'button' } },
+        { at: { x: 60, y: 60 }, hover: { attr: 'data-player-stage' } },
+        { shows: { name: 'Default View', role: 'button' } },
+      ],
+      views: ['web'],
+    },
+    {
+      // The pointer resting on the bar's last button, where a label above it has the least room (the stage's right
+      // edge): whatever the bar shows for a hovered button must stay whole and cover no other control
+      name: 'control-tip',
+      steps: [
+        { at: { x: 60, y: 60 }, hover: { attr: 'data-player-stage' } },
+        { hover: { name: /^(?:Exit )?Full ?screen$/iu, role: 'button' } },
+        { shows: { name: /^(?:Exit )?Full ?screen$/iu, role: 'button' } },
+      ],
+      views: ['web'],
+    },
+    {
       // Playback Speed's menu: above the bar's button, or left of the right-hand column's on a touch screen's
       // full-screen player; every speed the video allows must be reachable, none under the edge
       name: 'speed-menu',
