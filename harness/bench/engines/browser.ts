@@ -16,6 +16,13 @@ import { chromium, webkit } from 'playwright'
 import type { Browser, BrowserContext, Page, Route } from 'playwright'
 
 import { isRecord, parseJson } from '../json'
+import {
+  backendOrigins,
+  benchOrigins,
+  liveLookup,
+  replayedGet,
+} from '../replay'
+import { repoAt, storeDir } from '../store'
 import type { Surface } from '../types'
 import { RECORDER } from './recorder'
 import { silenceAllMedia } from './silence'
@@ -72,6 +79,101 @@ const fromFontCache = async (route: Route, dir: string): Promise<void> => {
       'content-type': type,
     },
   })
+}
+
+interface LookupReads {
+  dir: string
+  /** The recorded address a read is replayed from, or null for a request that is not a lookup read */
+  key: (url: URL) => string | null
+}
+let lookupReads: LookupReads | null = null
+
+/**
+ * The reads that reach the lookup service, wherever the page asks for them: the service itself (a build with the live
+ * address: the dev server, the local site), the gallery's song list (`/api/library/songs`: the dev server's proxy, the
+ * local site's Netlify function) and karaoke timing from the Worker (`<api>/api/karaoke/<id>`), each keyed as the
+ * bench server records it (server.ts › proxiesFrom), so all share one set of fixtures. The dev server's own karaoke
+ * stand-in is left alone: it reads the local backend when one runs
+ */
+const readsOfLookup = (): LookupReads => {
+  if (lookupReads === null) {
+    const repo = repoAt(import.meta.dir)
+    const { lookup, api } = backendOrigins(repo.top)
+    const lookupOrigin = new URL(lookup).origin
+    const apiOrigin = new URL(api).origin
+    lookupReads = {
+      dir: storeDir(repo, 'bench', 'fixtures'),
+      key: (url) => {
+        if (url.origin === lookupOrigin) {
+          return url.href
+        }
+        // A bench server answers its own /api from the same fixtures, and is timed doing it
+        if (benchOrigins.has(url.origin)) {
+          return null
+        }
+        if (url.pathname === '/api/library/songs') {
+          return `${lookup}/library/songs${url.search}`
+        }
+        if (
+          url.origin === apiOrigin &&
+          url.pathname.startsWith('/api/karaoke/')
+        ) {
+          return url.href
+        }
+        return null
+      },
+    }
+  }
+  return lookupReads
+}
+
+const fromLookupFixtures = async (
+  route: Route,
+  reads: LookupReads
+): Promise<void> => {
+  const request = route.request()
+  const key = reads.key(new URL(request.url()))
+  const origin = await request.headerValue('origin')
+  // The page may be on another origin (localhost) and send credentials, so CORS names it rather than *
+  const cors: Record<string, string> =
+    origin === null
+      ? {}
+      : {
+          'access-control-allow-credentials': 'true',
+          'access-control-allow-origin': origin,
+          vary: 'Origin',
+        }
+  if (key === null) {
+    await route.fallback()
+  } else if (request.method() === 'OPTIONS') {
+    await route.fulfill({
+      headers: {
+        ...cors,
+        'access-control-allow-headers':
+          (await request.headerValue('access-control-request-headers')) ?? '*',
+        'access-control-allow-methods': 'GET',
+      },
+      status: 204,
+    })
+  } else if (request.method() === 'GET') {
+    const { answer } = await replayedGet(
+      reads.dir,
+      key,
+      await request.headerValue('accept'),
+      true
+    )
+    await route.fulfill({
+      body: answer.body,
+      headers: {
+        ...cors,
+        'cache-control': 'no-store',
+        'content-type': answer.contentType,
+      },
+      status: answer.status,
+    })
+  } else {
+    await route.fallback()
+  }
 }
 
 const SAFE = {
@@ -205,11 +307,16 @@ export interface Opened {
 /**
  * `cpu`: slowdown for Chromium surfaces; WebKit has no equivalent and runs at full speed. `serviceWorkers: 'block'`
  * for a caller that must see every request: a route never sees what a service worker fetches (Playwright docs,
- * BrowserContext.route)
+ * BrowserContext.route). `lookup`: the lookup service's reads come from the bench's fixtures (`replay`, unless
+ * SYNBOX_LIVE_LOOKUP=1) or from the service (`live`: the smoke test of a deployed copy)
  */
 export const open = async (
   surface: Surface,
-  opts: { cpu?: number; serviceWorkers?: 'allow' | 'block' } = {}
+  opts: {
+    cpu?: number
+    serviceWorkers?: 'allow' | 'block'
+    lookup?: 'replay' | 'live'
+  } = {}
 ): Promise<Opened> => {
   const browser = await launch(surface.engine)
   const phone = surface.kind === 'phone'
@@ -232,6 +339,17 @@ export const open = async (
       ? route.fulfill({ json: { ok: true } })
       : route.fallback())
   })
+  // The lookup service scales to zero and is billed while it is up; test runs kept it awake most of the day
+  // (2026-10-27), so a run reads what an earlier one recorded and wakes it only for a read nobody has recorded
+  if ((opts.lookup ?? (liveLookup() ? 'live' : 'replay')) === 'replay') {
+    const reads = readsOfLookup()
+    await context.route(
+      (url) => reads.key(url) !== null,
+      async (route) => {
+        await fromLookupFixtures(route, reads)
+      }
+    )
+  }
   if (fontDir !== null) {
     const dir = fontDir
     await context.route(GOOGLE_FONTS, async (route) => {
