@@ -55,6 +55,8 @@ interface DragStart {
   pointerY: number
   slop: number
   anchor: number
+  // Where the pointer asks the block to be, before `dock.confine` keeps it out of the other block
+  asked: number
   range: number
   moved: boolean
 }
@@ -71,16 +73,23 @@ interface DraggableLyricsProps {
   anchorAtom?: WritableAtom<number, [number], void>
   // Whether the block keeps clear of the home indicator; a block at the top of the stage has nothing to clear
   lifts?: boolean
-  // Karaoke Style's translation and rows, which dock together when one is let go over the other: `over` says
-  // whether they overlap where they are drawn now, `onOver` as the drag crosses onto the other or off, `onDrop` when
-  // it is let go, with whether it was over the other and its handle
+  // Karaoke Style's translation and rows, which dock together when one is let go over the other: `over` says whether
+  // the place the pointer asks for is over the other, `confine` (the translation's) where the block may stand for it
+  // (never over the rows), `onOver` as the drag crosses onto the other or off, `onDrop` when it is let go, with
+  // whether it was over the other and its handle
   dock?: Dock
   // Drawn as the drop target: the other block is dragged over this one
   targeted?: boolean
+  // False while the block is put somewhere at once (Karaoke Style's translation pulled off the rows): no ease
+  eases?: boolean
+  // Whether a drag may take it down to the edge, below the home indicator's room, settling there on the drop. Off,
+  // it stands while dragged where it will rest, so the drop moves nothing
+  dragToEdge?: boolean
 }
 
 export interface Dock {
-  over: () => boolean
+  over: (asked: number, handle: HTMLElement) => boolean
+  confine?: (asked: number, handle: HTMLElement) => number | null
   onOver: (over: boolean) => void
   onDrop: (over: boolean, handle: HTMLElement) => void
 }
@@ -129,6 +138,8 @@ export const DraggableLyrics = ({
   lifts = true,
   dock,
   targeted = false,
+  eases = true,
+  dragToEdge = true,
 }: DraggableLyricsProps) => {
   const lyricsAnchor = usePortrait()
     ? lyricsAnchorPortraitAtom
@@ -174,8 +185,10 @@ export const DraggableLyrics = ({
     // Start from where the block is drawn, which the spacers' minimum
     // heights can keep off the saved anchor
     const room = layer.clientHeight - block.offsetHeight
+    const from = room > 0 ? clamp01(block.offsetTop / room) : anchor
     dragRef.current = {
-      anchor: room > 0 ? clamp01(block.offsetTop / room) : anchor,
+      anchor: from,
+      asked: from,
       moved: false,
       pointerY: pagePoint(event).y,
       range: Math.max(1, room),
@@ -197,12 +210,13 @@ export const DraggableLyrics = ({
       drag.moved = true
       layout.onDragChange(true)
     }
-    const next = clamp01(drag.anchor + delta / drag.range)
-    setDragAnchor(next)
+    const handle = event.currentTarget
+    drag.asked = clamp01(drag.anchor + delta / drag.range)
+    // Nowhere it may stand for this place: it stays where it was drawn
+    const placed = dock?.confine ? dock.confine(drag.asked, handle) : drag.asked
+    setDragAnchor((current) => placed ?? current ?? drag.anchor)
     if (dock) {
-      // Where both are drawn now (the last move's place, a frame behind): the spacers' least heights keep a block
-      // off where its anchor alone would put it, so the anchor is no measure of it
-      const now = dock.over()
+      const now = dock.over(drag.asked, handle)
       if (now !== over) {
         setOver(now)
         dock.onOver(now)
@@ -223,8 +237,8 @@ export const DraggableLyrics = ({
       setDragged(true)
       setDragAnchor(null)
       if (dock) {
-        // Measured where it was let go, not as of the last move
-        const dropped = dock.over()
+        // Where it was let go, not as of the last move
+        const dropped = dock.over(drag.asked, event.currentTarget)
         setOver(false)
         dock.onOver(false)
         dock.onDrop(dropped, event.currentTarget)
@@ -242,7 +256,8 @@ export const DraggableLyrics = ({
   }
 
   // Never while dragging: the block follows the pointer exactly
-  const settle = dragging ? 'none' : `flex-grow ${LIFT_MS}ms ease-out`
+  const still = dragging || !eases
+  const settle = still ? 'none' : `flex-grow ${LIFT_MS}ms ease-out`
   const anchorVars: CssVars = {
     '--anchor-grow': anchor,
     '--anchor-min-h': EDGE,
@@ -255,9 +270,9 @@ export const DraggableLyrics = ({
   }
   const liftVars: CssVars = {
     '--lift-grow': 1 - anchor,
-    '--lift-min-h': liftMinHeight(lifts, dragging),
+    '--lift-min-h': liftMinHeight(lifts, dragging && dragToEdge),
     // A drop settles from the drag's edge onto the home indicator's
-    '--lift-transition': dragging
+    '--lift-transition': still
       ? 'none'
       : `min-height ${LIFT_MS}ms ease-out, ${settle}`,
   }

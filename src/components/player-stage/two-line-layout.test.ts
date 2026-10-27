@@ -1,6 +1,6 @@
 import { expect, test } from 'vite-plus/test'
 
-import { clearOfRows, upperLineFloor } from './two-line-layout'
+import { outsideOf, overBlock, upperLineFloor } from './two-line-layout'
 
 // A one-row pair is 60px tall; the rows' gap is 10px
 const home = 70
@@ -44,18 +44,35 @@ test("the upper line's romaji clears the lower line's Japanese even when its own
   expect(upperLineFloor({ gap, home, lower, upper })).toBe(100)
 })
 
-// The rows from 100 to 200; the translation 30 tall; 10 kept between them
-const rows = { bottom: 200, top: 100 }
+// The block (the rows and the docked translation's place) from 100 to 200 on a stage whose translation tops may run
+// from 0 to 370; the translation 30 tall; 10 kept between them
+const block = { bottom: 200, top: 100 }
+const room = { bottom: 370, top: 0 }
 
-test('a translation put down clear of the rows stays where it was put', () => {
-  expect(clearOfRows(210, 30, rows, 10)).toBe(210)
-  expect(clearOfRows(70, 30, rows, 10)).toBe(70)
+test('a translation asked to stand clear of the block stands there', () => {
+  expect(outsideOf(210, 30, block, room, 10)).toBe(210)
+  expect(outsideOf(60, 30, block, room, 10)).toBe(60)
 })
 
-test("a translation put down over the rows' lower edge goes below them", () => {
-  expect(clearOfRows(185, 30, rows, 10)).toBe(210)
+test('a translation asked into the block goes just past it on the nearer side', () => {
+  expect(outsideOf(185, 30, block, room, 10)).toBe(210)
+  expect(outsideOf(90, 30, block, room, 10)).toBe(60)
 })
 
-test("a translation put down over the rows' upper edge goes above them", () => {
-  expect(clearOfRows(90, 30, rows, 10)).toBe(60)
+test('with no room past the block on the nearer side it goes to the other side', () => {
+  expect(outsideOf(185, 30, block, { bottom: 205, top: 0 }, 10)).toBe(60)
+})
+
+test('with no room on either side there is nowhere for it', () => {
+  expect(outsideOf(150, 30, block, { bottom: 205, top: 65 }, 10)).toBeNull()
+})
+
+test('a translation asked past the stage stops at its edge', () => {
+  expect(outsideOf(900, 30, block, room, 10)).toBe(370)
+})
+
+test('over the block means its centre is inside the block', () => {
+  expect(overBlock(80, 30, block)).toBe(false)
+  expect(overBlock(90, 30, block)).toBe(true)
+  expect(overBlock(186, 30, block)).toBe(false)
 })
