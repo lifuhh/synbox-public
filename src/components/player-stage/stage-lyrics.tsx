@@ -370,6 +370,8 @@ const FIT_RANGE = {
 // Halvings of the gap between a size that fits and one that doesn't: from the widest gap, the whole range, to
 // within half a percent of the largest size that fits
 const FIT_STEPS = 9
+// How close the search gets to the largest size that fits: the whole range halved FIT_STEPS times
+const FIT_PRECISION = (FIT_RANGE.max - FIT_RANGE.min) / 2 ** FIT_STEPS
 // Between two tries on the copy while nothing waits for the answer: each lays out every line of the song
 const FIT_IDLE_MS = 50
 
@@ -383,7 +385,11 @@ const FIT_IDLE_MS = 50
 // sets the rows by arithmetic on the largest size that fits; trying a size on the copy lays out every line of the
 // song. `measure` runs when the stage, the song's lines or the fonts change. The rows need only one try when the
 // current size fits; the rest of the search runs one try at a time while nothing waits, or at once for a larger
-// size that needs it
+// size that needs it.
+// What a try measures (the tallest line and the gap at a size) doesn't depend on the room, so it is kept per size
+// until the copy's lines, the stage or the fonts change. A size change resizes the docked translation's place, and so
+// the room: it reads only that place and re-judges the sizes already tried, never re-laying out the song per step
+// (2026-10-27-fix-size-drag-fit)
 const fitSong = (
   grid: HTMLElement,
   lines: HTMLElement,
@@ -403,8 +409,15 @@ const fitSong = (
   let failing = Number.POSITIVE_INFINITY
   let steps = 0
   let height = 0
+  // The docked translation's place last read, already taken out of `height`
+  let slot = 0
   let measuredFor = ''
   let sizes: SongLineSizes = { shortest: -1, tallest: -1 }
+  // Each size tried on the copy: its tallest line (and which, and the shortest) and the gap between the rows
+  const tried = new Map<
+    number,
+    { tallest: number; index: number; shortest: number; gap: number }
+  >()
   let idle: ReturnType<typeof setTimeout> | undefined
   let resized: ReturnType<typeof setTimeout> | undefined
   const apply = () => {
@@ -417,11 +430,19 @@ const fitSong = (
   // Smaller type also wraps less, so the height doesn't scale with the size: try sizes on the copy, halving the
   // gap each time. The gap between the rows is in em, so it is read at each size too
   const fits = (size: number) => {
-    lines.style.setProperty('--row-fit', String(size))
-    const tallest = tallestLineOf(lines)
-    const fit =
-      tallest.height <=
-      (height - pixels(getComputedStyle(lines).rowGap)) / 2 + 1
+    let tallest = tried.get(size)
+    if (tallest === undefined) {
+      lines.style.setProperty('--row-fit', String(size))
+      const laid = tallestLineOf(lines)
+      tallest = {
+        gap: pixels(getComputedStyle(lines).rowGap),
+        index: laid.index,
+        shortest: laid.shortest,
+        tallest: laid.height,
+      }
+      tried.set(size, tallest)
+    }
+    const fit = tallest.tallest <= (height - tallest.gap) / 2 + 1
     // Which lines are tallest and shortest barely moves between nearby sizes: the last size tried that fits and could
     // be shown, or any while none does. A size above the viewer's is only tried, never shown: in a tall room the
     // search reaches the largest size, where another line wraps tallest, and the block was sized for that one
@@ -468,6 +489,64 @@ const fitSong = (
       }
     }, FIT_IDLE_MS)
   }
+  // The room changed but the copy didn't: the bounds again from the sizes already tried, with no layout. A size below
+  // a tried one wraps into no more rows, so its tallest line is at most the tried one's scaled down: every tried size
+  // vouches for the sizes under it that fit at that scale. The largest size so vouched for is the fit (never too
+  // large, so the rows never overflow); the halvings left refine it while nothing waits
+  const rebound = () => {
+    fitting = FIT_RANGE.min
+    failing = Number.POSITIVE_INFINITY
+    let at: number | null = null
+    for (const [size, line] of tried) {
+      if (line.tallest <= (height - line.gap) / 2 + 1) {
+        if (size > fitting) {
+          fitting = size
+          at = size
+        }
+      } else {
+        failing = Math.min(failing, size)
+        const vouched =
+          (size * (height / 2 + 1)) / (line.tallest + line.gap / 2)
+        if (vouched > fitting) {
+          fitting = vouched
+          at = size
+        }
+      }
+    }
+    if (fitting >= FIT_RANGE.max) {
+      fitting = Number.POSITIVE_INFINITY
+      steps = 0
+    } else if (failing === Number.POSITIVE_INFINITY) {
+      steps = FIT_STEPS + 1
+    } else {
+      steps = Math.max(
+        0,
+        Math.ceil(Math.log2((failing - fitting) / FIT_PRECISION))
+      )
+    }
+    if (at !== null) {
+      // Which lines are tallest and shortest: those of the size that vouched for the fit
+      fits(at)
+    }
+  }
+  // The docked translation's place follows the size; the song's copy doesn't. True when the room changed (the fit is
+  // then known safe, and refined while nothing waits). Nothing before the first measure: there is no room yet to move,
+  // and a fit judged on none would place the rows for a frame where they don't belong
+  const resizeSlot = () => {
+    if (measuredFor === '' || !block) {
+      return false
+    }
+    const now = dockedSlotOf(reserve)
+    if (now === slot) {
+      return false
+    }
+    height += slot - now
+    slot = now
+    block.style.setProperty('--docked-h', `${slot}px`)
+    clearTimeout(idle)
+    rebound()
+    return true
+  }
   const measure = () => {
     if (
       !(
@@ -480,9 +559,10 @@ const fitSong = (
       return
     }
     clearTimeout(idle)
+    tried.clear()
     measuredFor = `${layer.clientWidth}x${layer.clientHeight}`
     const pad = getComputedStyle(block)
-    const slot = dockedSlotOf(reserve)
+    slot = dockedSlotOf(reserve)
     // The reserve hanging over the room's top (TwoRows' hang) is the rows' own, not room for them
     const area = layer.closest<HTMLElement>('[data-lyric-rows-area]')
     const overhang =
@@ -533,20 +613,22 @@ const fitSong = (
   return {
     setScale: (next: number) => {
       scale = next
-      // A docked translation's room grows and shrinks with the size
-      if (reserve.childElementCount > 0) {
-        measure()
-      }
-      if (next > fitting && steps > 0) {
+      // A docked translation's place grows and shrinks with the size, and the room with it
+      const roomMoved = reserve.childElementCount > 0 && resizeSlot()
+      if (!roomMoved && next > fitting && steps > 0) {
         settle()
       }
       apply()
-      // The song's tallest line at the size now shown, once the slider rests (each step is arithmetic only)
+      // Once the slider rests (each step is arithmetic only): the song's tallest line at the size now shown, or the
+      // rest of the search (a moved room puts it off until then)
       clearTimeout(resized)
       resized = setTimeout(() => {
         if (steps === 0) {
           fits(Math.max(ROW_FIT_FLOOR * scale, Math.min(scale, fitting)))
           apply()
+        } else {
+          clearTimeout(idle)
+          refineLater()
         }
       }, FIT_IDLE_MS)
     },
@@ -1123,7 +1205,9 @@ const DockedTranslation = ({
 // The sung line's translation, unless it has none or it only repeats the line
 const translationOf = (
   line: ReturnType<typeof lineAt>,
-  lineKey: number
+  lineKey: number,
+  // False for fitSong's unseen copy (LyricLine's `shown`)
+  shown = true
 ): ReactNode =>
   line.translation &&
   line.text !== undefined &&
@@ -1132,6 +1216,7 @@ const translationOf = (
       key={lineKey}
       html={line.translation}
       kind='translation'
+      shown={shown}
       size={STAGGER_SIZE.translation}
       className='italic motion-safe:animate-in motion-safe:fade-in'
     />
@@ -1743,7 +1828,8 @@ export const StageLyrics = ({
         (_, index) => {
           const translation = translationOf(
             lineAt(lyrics, karaokeLines, index, english, undefined),
-            index
+            index,
+            false
           )
           return (
             translation !== undefined && (
