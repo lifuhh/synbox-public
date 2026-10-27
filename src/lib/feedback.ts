@@ -13,7 +13,7 @@ import { QUERY_KEYS } from '@/lib/react-query/query-keys'
 // The secondary line beside each way to write, in the menus: what Send Feedback is for, and how Contact Me answers
 export const WRITE_HINTS = {
   contact: 'Replies by email',
-  feedback: 'Bugs and ideas',
+  feedback: 'Bugs or ideas',
 } as const
 
 export const SUBJECT_MAX = 120
