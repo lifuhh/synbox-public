@@ -7,6 +7,8 @@ import { QUERY_KEYS } from '@/lib/react-query/query-keys'
 // songs, unread until the admin opens the bell, gone 3 days after or at Clear Read. Read on open, on focus and every
 // minute; nobody else asks
 const noticesSchema = z.object({
+  // Set by a Worker that takes POST /notices/clear; an older one leaves Clear Read out
+  clearable: z.boolean().optional(),
   notices: z.array(
     z.object({
       at: z.number(),
@@ -19,8 +21,6 @@ const noticesSchema = z.object({
     })
   ),
   unread: z.number(),
-  // Set by a Worker that takes POST /notices/clear; an older one leaves Clear Read out
-  clearable: z.boolean().optional(),
 })
 export type AdminNotice = z.infer<typeof noticesSchema>['notices'][number]
 type Notices = z.infer<typeof noticesSchema>
@@ -93,7 +93,9 @@ export const useClearReadNotices = () => {
           : { ...old, notices: old.notices.filter((n) => n.unread) }
       )
     },
-    onSettled: () => queryClient.invalidateQueries({ queryKey }),
+    onSettled: async () => {
+      await queryClient.invalidateQueries({ queryKey })
+    },
   })
 }
 

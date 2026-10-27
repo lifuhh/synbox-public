@@ -51,7 +51,7 @@ const key = (notice: { kind: string; id: string }) =>
 
 // When the admin read each of the rows: its adminNoticeRead row, else, for one that arrived before the admin last
 // opened the bell (read before adminNoticeRead existed), when it arrived. Null is unread
-const readTimes = async (db: D1Database, adminId: string, rows: Row[]) => {
+const readTimes = async (db: D1Database, adminId: string) => {
   const seen = await db
     .prepare(
       `select "seenAt", "clearedAt" from "adminNoticeSeen" where "adminId" = ?1`
@@ -79,7 +79,7 @@ export const readNotices = async (
   now: number
 ): Promise<{ notices: Notice[]; unread: number; clearable: true }> => {
   const rows = await recentRows(db)
-  const { clearedAt, readAt } = await readTimes(db, adminId, rows)
+  const { clearedAt, readAt } = await readTimes(db, adminId)
   const notices = rows
     .flatMap((row) => {
       const at = readAt(row)
@@ -107,7 +107,7 @@ export const markNoticesSeen = async (
   now: number
 ) => {
   const rows = await recentRows(db)
-  const { readAt } = await readTimes(db, adminId, rows)
+  const { readAt } = await readTimes(db, adminId)
   const unread = rows.filter((row) => row.at <= now && readAt(row) === null)
   await db.batch([
     ...unread.map((row) =>
@@ -133,7 +133,7 @@ export const clearReadNotices = async (
   now: number
 ) => {
   const rows = await recentRows(db)
-  const { readAt } = await readTimes(db, adminId, rows)
+  const { readAt } = await readTimes(db, adminId)
   // Up to the oldest notice still unread, so clearing never takes one the admin hasn't seen
   const unread = rows.filter((row) => readAt(row) === null).map((row) => row.at)
   const upTo = Math.min(now, ...unread.map((at) => at - 1))
