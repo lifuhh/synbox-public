@@ -786,6 +786,9 @@
      for it, less the docked translation's place their block always keeps, shrink to fit (stage-lyrics' fitSong) */
 @utility lyric-stagger-translation-area {
   position: absolute;
+  /* Over the rows' area: next to the rows' lines (in their block's empty top, which a mouse can grab the rows by) the
+     translation keeps its own grab. The lyrics' layer is isolated, so this never lifts it over the controls */
+  z-index: 1;
   top: var(--lyric-translation-top);
   inset-inline: 0;
   bottom: 0;

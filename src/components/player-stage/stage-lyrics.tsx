@@ -1797,7 +1797,7 @@ export const StageLyrics = ({
     <div
       ref={layerRef}
       data-lyric-layer
-      className='absolute inset-0 lyric-stagger-layer'
+      className='absolute inset-0 isolate lyric-stagger-layer'
       style={layerVars}>
       {translated && (
         <StaggerTranslation
