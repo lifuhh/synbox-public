@@ -1038,6 +1038,69 @@
   }
 }
 
+/* The control bar's labels over its buttons (stage-controls.tsx › ControlTip), as YouTube's: the button's name and its
+   key, while a mouse rests on the button or keyboard focus is on it, never on touch. Above the seek bar where it runs
+   over the buttons (--tip-lift, set by the bar). Opacity only and quick, so a label never moves, which is also all
+   Reduce Motion asks of it. It sits inside the bar, so it fades with it: while the bar fades out
+   (data-controls-hidden) a label keeps its own opacity until the bar has gone, so the two never fade apart. Escape
+   puts it away until the pointer or focus moves to another button (data-tips-off); an open menu's button shows none */
+@utility control-tip {
+  position: absolute;
+  bottom: calc(100% + var(--tip-lift, 0.5rem));
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.375rem;
+  background: rgb(28 28 28 / 0.92);
+  color: #fff;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  line-height: 1.25rem;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 100ms ease-out;
+}
+
+/* A key on a label: the key's own cap, outlined, as the shortcut lists of video players draw them */
+@utility control-key {
+  display: inline-grid;
+  place-items: center;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  padding-inline: 0.25rem;
+  border: 1px solid color-mix(in srgb, currentColor 40%, transparent);
+  border-radius: 0.25rem;
+  font-family: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  button:hover > .control-tip {
+    opacity: 1;
+  }
+}
+
+:where(html:not([data-input-modality='pointer']))
+  button:focus-visible
+  > .control-tip {
+  opacity: 1;
+}
+
+[data-tips-off] button:is(:hover, :focus-visible) > .control-tip,
+button[aria-expanded='true']:is(:hover, :focus-visible) > .control-tip {
+  opacity: 0;
+}
+
+[data-controls-hidden] .control-tip {
+  transition-duration: 0s;
+  transition-delay: var(--controls-fade);
+}
+
 /* The narrow watch page under the video (NarrowBelow): the lyrics take a share of its height */
 /* A box that takes its parent's corners: a thumbnail's picture */
 @utility rounded-inherit {

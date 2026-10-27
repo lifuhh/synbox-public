@@ -18,6 +18,7 @@ import type { ReactNode, RefObject } from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
 
+import { ariaKeys, SHORTCUTS } from '@/components/player-stage/shortcuts'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -335,9 +336,12 @@ const VideoLyricsButtons = ({
     : 'View English Translations'
   return (
     <>
-      <RailTooltip label={showLyrics ? 'Hide Lyrics' : 'Show Lyrics'}>
+      <RailTooltip
+        label={showLyrics ? 'Hide Lyrics' : 'Show Lyrics'}
+        keys={SHORTCUTS.lyrics.caps}>
         <RailButton
           label='Lyrics'
+          aria-keyshortcuts={ariaKeys('lyrics')}
           pressed={showLyrics}
           onClick={() => {
             setShowLyrics(!showLyrics)

@@ -60,12 +60,17 @@ export const RailButton = ({
 // Set while the rail's style panel is open: it covers the space the tooltips open into
 export const RailTooltipsOff = createContext(false)
 
+const NO_KEYS: readonly string[] = []
+
 export const RailTooltip = ({
   label,
+  keys = NO_KEYS,
   hidden = false,
   children,
 }: {
   label: string
+  // The keyboard shortcut, one key cap each, after the label (player-stage/shortcuts.ts)
+  keys?: readonly string[]
   hidden?: boolean
   children: ReactNode
 }) => {
@@ -90,7 +95,18 @@ export const RailTooltip = ({
       }}>
       <TooltipTrigger asChild>{children}</TooltipTrigger>
       <TooltipContent side={inline ? 'top' : 'right'} sideOffset={10}>
-        {label}
+        {keys.length === 0 ? (
+          label
+        ) : (
+          <span className='flex items-center gap-1.5'>
+            {label}
+            {keys.map((cap) => (
+              <kbd key={cap} className='control-key'>
+                {cap}
+              </kbd>
+            ))}
+          </span>
+        )}
       </TooltipContent>
     </Tooltip>
   )
