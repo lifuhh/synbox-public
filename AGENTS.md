@@ -24,6 +24,11 @@ Any UI or UX change (a screen, component, dialog, layout, copy, colour, icon, mo
   - One-line UI text ends without a full stop: descriptions, hints, notes, placeholders, empty states, menu secondary lines, toasts, badges and errors, also when it holds two short sentences ("Too long. Songs can be 1 to 8 minutes"). A question mark stays only on a real question. Prose pages (About's FAQ answers, Privacy, Terms) keep normal punctuation.
   - Nothing that reads as machine-written: "seamless", "effortless", "dive in", "journey", "elevate", "empower", "unlock", "delve", "embark", "feel free to", "don't hesitate", "we'd love to hear", "whether you're…", "in today's…", cheering exclamation marks, em-dash flourishes, lists of three adjectives.
   - Short labels at key positions (nav, buttons, pills, tabs, titles, column headers, status labels, accessible names of buttons) are Title Case; prose and tooltips are sentence case; identifier-like tokens (`iOS`) pass through as written.
+- **Motion** (the owner's rule, 2026-10-27; every animated transition, a morph of one element into another above all):
+  - Nothing teleports: no element jumps between frames, appears from nowhere or vanishes while still visible. It moves continuously, fades over at least two frames, or hands over in place to the element that takes its part (within 0.5px).
+  - Scaling goes one way per transition: in a morph that shrinks nothing grows, in one that grows nothing shrinks, and nothing shrinks and then grows back.
+  - Children stay attached to what they belong to: a button rides its field's end and text its field's edge, inside the box, never on a path of their own. A copy drawn in flight carries no CSS transition of its own (it would trail every move).
+  - Every morph has a motion audit: a `Morph` in `harness/bench/probes/motion.ts` (selectors for its parts and the passes that drive it, slow and fast, both ways), registered in `harness/bench/suite.ts`, so `check` runs it frame by frame (`motion-hero-flight-*`). Its notes name each jump, and the frames behind them are in the run's `frames.json`.
 
 ## Phones, the installed app and desktop
 

@@ -2,6 +2,7 @@
 // service is pointed at the bench server (/__lookup) so its reads are recorded and replayed like /api.
 
 import { execFile, execFileSync } from 'node:child_process'
+import { createHash } from 'node:crypto'
 import { existsSync, readFileSync, rmSync, symlinkSync } from 'node:fs'
 import path from 'node:path'
 import { promisify } from 'node:util'
@@ -41,14 +42,19 @@ const vpBuild = async (srcDir: string, outDir: string): Promise<void> => {
   )
 }
 
-/** Builds the working tree as it is (uncommitted edits included), keyed by HEAD's tree plus a dirty marker */
+/**
+ * Builds the working tree as it is (uncommitted edits included), keyed by HEAD's tree, plus, with uncommitted edits,
+ * the worktree it was built from: worktrees branched from the same commit share HEAD's tree, and the builds are shared
+ * by every worktree, so one session's edited build replaced another's under its running server (2026-10-27)
+ */
 export const buildWorkingTree = async (
   repo: Repo,
   log: (m: string) => void
 ): Promise<string> => {
+  const where = createHash('sha256').update(repo.top).digest('hex').slice(0, 8)
   const out = path.join(
     storeDir(repo, 'bench', 'builds'),
-    repo.dirty ? `${repo.tree}-dirty` : repo.tree
+    repo.dirty ? `${repo.tree}-dirty-${where}` : repo.tree
   )
   if (repo.dirty || !existsSync(path.join(out, 'index.html'))) {
     log(
