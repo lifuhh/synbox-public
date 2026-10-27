@@ -21,6 +21,7 @@ import {
 import type { Audit } from '../engines/recorder'
 import { isRecord, parseJson } from '../json'
 import type { BenchContext, Sample, Surface } from '../types'
+import { ICON_ALIGN_LIMIT_PX, iconTextOffsets } from './icon-align'
 import { pressNotes, pressScanIn, pressValues } from './press'
 
 export interface LayoutPage {
@@ -52,8 +53,8 @@ export type Step =
   | { hover: Control; at?: { x: number; y: number } }
   /** Presses a text field, which must then hold focus */
   | { focus: Control }
-  /** Types into the focused field, replacing what it held */
-  | { type: string }
+  /** Types into the focused field, replacing what it held; `paste` puts it in at once, as a paste does */
+  | { type: string; paste?: true }
   /** Waits for what the steps opened (a menu, a list, the controls) */
   | { shows: Control }
 
@@ -166,6 +167,35 @@ const SEARCH_BUTTON: OpenedState = {
  * installed app's upright player has none).
  */
 export const OPENED_STATES: Record<string, OpenedState[]> = {
+  // Home's field with something in it: its action button changes with what was typed or pasted (Search, play a
+  // song that has lyrics, Generate Lyrics for one that hasn't). The play label matches either name it has had
+  '/': [
+    {
+      name: 'field-search',
+      steps: [
+        { focus: { bench: 'hero-input' } },
+        { type: 'aimer' },
+        // The top bar has its own Search button on a phone; the field stays the hook
+        { shows: { bench: 'hero-input' } },
+      ],
+    },
+    {
+      name: 'field-play',
+      steps: [
+        { focus: { bench: 'hero-input' } },
+        { paste: true, type: `https://youtu.be/${PLAYER_SONG}` },
+        { shows: { name: /^Play (?:Video|Song)$/u, role: 'button' } },
+      ],
+    },
+    {
+      name: 'field-generate',
+      steps: [
+        { focus: { bench: 'hero-input' } },
+        { paste: true, type: 'https://youtu.be/dQw4w9WgXcQ' },
+        { shows: { name: 'Generate Lyrics', role: 'button' } },
+      ],
+    },
+  ],
   '/lyrics/:videoId': [
     {
       // The reader's text size, weight and colours, in a bar along the bottom
@@ -449,6 +479,8 @@ export const LAYOUT_PAGES: LayoutPage[] = [
       await toTitle()
     },
     route: '/',
+    // The field's states are Home's, opened from the top of the page
+    states: [],
   },
   {
     name: 'player',
@@ -669,6 +701,7 @@ export const LAYOUT_FINDINGS = [
   'actsOnReleaseOutside',
   'badPressOk',
   'staggeredActions',
+  'iconOffText',
 ] as const
 
 /** How far an open menu may sit from what can be seen of its button before the audit counts it detached */
@@ -915,7 +948,9 @@ const openState = async (
           throw new Error('no text field has focus')
         }
         // oxlint-disable-next-line eslint/no-await-in-loop -- steps run in order
-        await page.keyboard.type(step.type)
+        await (step.paste === true
+          ? page.keyboard.insertText(step.type)
+          : page.keyboard.type(step.type))
       } else if ('shows' in step) {
         // oxlint-disable-next-line eslint/no-await-in-loop -- steps run in order
         await onScreen(page, step.shows)
@@ -1136,6 +1171,8 @@ const auditOnce = async (
     }, DETACHED_MENU_PX)
     at.step = 'checking open panels for staggered buttons'
     const staggered = await page.evaluate(staggeredActions)
+    at.step = 'measuring icons against their labels'
+    const iconOff = await page.evaluate(iconTextOffsets, ICON_ALIGN_LIMIT_PX)
     at.step = 'taking the screenshot'
     await page.screenshot({ path: shot })
     // With Reduce Motion on, nothing may still scroll smoothly (a focus or a tap on the bar would glide): every
@@ -1205,6 +1242,10 @@ const auditOnce = async (
       ),
       ...detached.map((label) => `menu opened ${label}`),
       ...staggered.map((s) => `buttons out of line: ${s}`),
+      ...iconOff.map(
+        (o) =>
+          `icon ${Math.abs(o.offsetPx)}px ${o.offsetPx > 0 ? 'below' : 'above'} its label's ink centre at ${o.rect.x},${o.rect.y} ${o.rect.w}×${o.rect.h}: ${o.label}`
+      ),
       ...(audit.overflowX
         ? [`page scrolls sideways by ${audit.overflowX}px`]
         : []),
@@ -1238,6 +1279,7 @@ const auditOnce = async (
             smallTargets: audit.small.length,
             smoothScrollReduced: smooth.length,
             staggeredActions: staggered.length,
+            iconOffText: iconOff.length,
             targets: audit.targets,
             unnamedControls: audit.unnamed.length,
             unsafeTargets: audit.unsafe.length,
