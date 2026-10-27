@@ -127,6 +127,13 @@ to = "https://api.synbox.io/api/contact"
 status = 200
 force = true
 
+# Send Feedback (src/lib/feedback.ts), kept by the auth Worker
+[[redirects]]
+from = "/api/feedback"
+to = "https://api.synbox.io/api/feedback"
+status = 200
+force = true
+
 # A script or style from an earlier deploy is gone: say so, instead of index.html under the bundles' one-year
 # immutable header, which a browser would keep as that script
 [[redirects]]

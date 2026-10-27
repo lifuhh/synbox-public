@@ -3,11 +3,12 @@ import {
   ChevronRightIcon,
   CircleQuestionMarkIcon,
   MailIcon,
+  MessageSquareIcon,
   UserIcon,
   LogOutIcon,
   ShieldIcon,
 } from 'lucide-react'
-import { lazy, Suspense, useState } from 'react'
+import { lazy, Suspense, useId, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Link } from 'react-router'
 
@@ -27,12 +28,16 @@ import {
   useMe,
 } from '@/lib/auth'
 import type { Quota } from '@/lib/auth'
+import { WRITE_HINTS } from '@/lib/feedback'
 import { forgetMySongs } from '@/lib/offline/sync'
 import { QUERY_KEYS } from '@/lib/react-query/query-keys'
 
-// Its own chunk: loaded on the first press of Contact Me
+// Their own chunks: loaded on the first press of Contact Me or Send Feedback
 const ContactDialog = lazy(
   async () => await import('@/components/shared/contact-dialog')
+)
+const FeedbackDialog = lazy(
+  async () => await import('@/components/shared/feedback-dialog')
 )
 
 const ROW =
@@ -59,6 +64,41 @@ const LinkRow = ({
     />
   </Link>
 )
+
+// A row that opens a dialog: its icon, its label and a secondary line beside it, read as the row's description
+const DialogRow = ({
+  icon,
+  label,
+  hint,
+  onClick,
+}: {
+  icon: ReactNode
+  label: string
+  hint: string
+  onClick: () => void
+}) => {
+  const hintId = useId()
+  return (
+    <button
+      type='button'
+      className={ROW}
+      aria-describedby={hintId}
+      onClick={onClick}>
+      <span className='grid size-6 shrink-0 place-items-center text-muted-foreground'>
+        {icon}
+      </span>
+      <span className='flex min-w-0 flex-1 items-baseline gap-2'>
+        <span className='shrink-0 text-foreground'>{label}</span>
+        <span
+          id={hintId}
+          aria-hidden
+          className='min-w-0 truncate text-sm text-muted-foreground'>
+          {hint}
+        </span>
+      </span>
+    </button>
+  )
+}
 
 // A text button inside a line of text: its press area reaches 8px above and below the line
 const INLINE_ACTION =
@@ -117,6 +157,7 @@ const YouPage = () => {
   const [box, setBox] = useState<HTMLElement | null>(null)
   // Mounted from its first opening on, so it can animate closed
   const [contact, setContact] = useState<'closed' | 'open' | null>(null)
+  const [feedback, setFeedback] = useState<'closed' | 'open' | null>(null)
   const queryClient = useQueryClient()
   const { data: me } = useMe()
   const user = me?.user ?? null
@@ -204,25 +245,38 @@ const YouPage = () => {
             icon={<CircleQuestionMarkIcon className='size-5' />}
             label='About Synbox'
           />
-          <button
-            type='button'
-            className={ROW}
+          <DialogRow
+            icon={<MessageSquareIcon className='size-5' />}
+            label='Send Feedback'
+            hint={WRITE_HINTS.feedback}
+            onClick={() => {
+              setFeedback('open')
+            }}
+          />
+          <DialogRow
+            icon={<MailIcon className='size-5' />}
+            label='Contact Me'
+            hint={WRITE_HINTS.contact}
             onClick={() => {
               setContact('open')
-            }}>
-            <span className='grid size-6 shrink-0 place-items-center text-muted-foreground'>
-              <MailIcon className='size-5' />
-            </span>
-            <span className='min-w-0 flex-1 truncate text-foreground'>
-              Contact Me
-            </span>
-          </button>
+            }}
+          />
         </div>
         <p className='px-3 text-xs text-muted-foreground'>
           Version {__BUILD_ID__}
         </p>
       </div>
       <BoxScrollbar box={box} />
+      {feedback !== null && (
+        <Suspense>
+          <FeedbackDialog
+            open={feedback === 'open'}
+            onOpenChange={(open) => {
+              setFeedback(open ? 'open' : 'closed')
+            }}
+          />
+        </Suspense>
+      )}
       {contact !== null && (
         <Suspense>
           <ContactDialog

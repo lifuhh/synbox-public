@@ -24,9 +24,12 @@ import {
 import type { AdminNotice } from '@/lib/admin-notices'
 import { lastAccount, useAccess } from '@/lib/auth'
 import type { Access } from '@/lib/auth'
+import { useResolvedFeedback } from '@/lib/feedback'
+import type { ResolvedFeedback } from '@/lib/feedback'
 import type { Job } from '@/lib/generation/store'
 import {
   activeCount,
+  feedbackKey,
   focusedJob,
   leadJob,
   fixKey,
@@ -131,21 +134,28 @@ interface PanelContent {
   job: Job | null
   jobs: readonly Job[]
   fixes: readonly Fix[]
+  resolved: readonly ResolvedFeedback[]
 }
 
-// What the panel holds: an admin's notices first, then the songs and fixes, or a quiet line when there's nothing
+// What the panel holds: an admin's notices first, then the songs, fixes and resolved feedback, or a quiet line when
+// there's nothing
 const PanelBody = ({
   content,
   notices,
   clearable,
   onDismissFixes,
+  onDismissResolved,
 }: {
   content: PanelContent
   notices: readonly AdminNotice[]
   clearable: boolean
   onDismissFixes: (dismissed: readonly Fix[]) => void
+  onDismissResolved: (dismissed: readonly ResolvedFeedback[]) => void
 }) => {
-  const songs = content.job !== null || content.fixes.length > 0
+  const songs =
+    content.job !== null ||
+    content.fixes.length > 0 ||
+    content.resolved.length > 0
   return (
     <>
       {notices.length > 0 && (
@@ -157,6 +167,8 @@ const PanelBody = ({
           jobs={content.jobs}
           fixes={content.fixes}
           onDismissFixes={onDismissFixes}
+          resolved={content.resolved}
+          onDismissResolved={onDismissResolved}
         />
       )}
       {!songs && notices.length === 0 && (
@@ -176,7 +188,8 @@ const useShownWhileClosing = (open: boolean, live: PanelContent) => {
     open &&
     (live.job !== lastOpen.job ||
       live.jobs !== lastOpen.jobs ||
-      live.fixes !== lastOpen.fixes)
+      live.fixes !== lastOpen.fixes ||
+      live.resolved !== lastOpen.resolved)
   ) {
     setLastOpen(live)
   }
@@ -200,8 +213,11 @@ const Notifications = () => {
   const view = usePresentation(followed)
   const going = activeCount(generation)
   const { fixes, markFixesSeen, dismissFixes } = useReportFixes()
+  const { resolved, markResolvedSeen, dismissResolved } = useResolvedFeedback()
   const unseenSongs = unseenCount(generation)
-  const unseenFixes = unseenFixCount(fixes)
+  // Fixes and resolved feedback: what the listener sent us, come back
+  const unseenFixes =
+    unseenFixCount(fixes) + resolved.filter((item) => !item.seen).length
   const access = useAccess()
   const adminNotices = useAdminNotices(access.admin)
   const { mutate: markNoticesSeen } = useMarkNoticesSeen()
@@ -209,8 +225,8 @@ const Notifications = () => {
   // until the ring turns back into the bell, which then counts it
   const unseen = unseenSongs + unseenFixes + adminNotices.unread
   useEffect(() => {
-    setOtherNotifications(fixes.length)
-  }, [fixes.length])
+    setOtherNotifications(fixes.length + resolved.length)
+  }, [fixes.length, resolved.length])
 
   const [farewell, setFarewell] = useFarewell(
     going,
@@ -284,10 +300,14 @@ const Notifications = () => {
       markGenerationsSeen()
     }
     if (unseenFixes > 0) {
-      noteUnread(
-        fixes.filter((fix) => !fix.seen).map((fix) => fixKey(fix.videoId))
-      )
+      noteUnread([
+        ...fixes.filter((fix) => !fix.seen).map((fix) => fixKey(fix.videoId)),
+        ...resolved
+          .filter((item) => !item.seen)
+          .map((item) => feedbackKey(item.id)),
+      ])
       void markFixesSeen()
+      void markResolvedSeen()
     }
     if (adminNotices.unread > 0) {
       noteUnread(
@@ -301,6 +321,8 @@ const Notifications = () => {
     unseenFixes,
     fixes,
     markFixesSeen,
+    resolved,
+    markResolvedSeen,
     adminNotices.unread,
     adminNotices.notices,
     markNoticesSeen,
@@ -308,7 +330,21 @@ const Notifications = () => {
   // The panel closes when the last thing in it goes, as when its last song is dismissed
   const onDismissFixes = (dismissed: readonly Fix[]) => {
     void dismissFixes(dismissed)
-    if (jobs.length === 0 && dismissed.length === fixes.length) {
+    if (
+      jobs.length === 0 &&
+      resolved.length === 0 &&
+      dismissed.length === fixes.length
+    ) {
+      setGenerationExpanded(false)
+    }
+  }
+  const onDismissResolved = (dismissed: readonly ResolvedFeedback[]) => {
+    void dismissResolved(dismissed)
+    if (
+      jobs.length === 0 &&
+      fixes.length === 0 &&
+      dismissed.length === resolved.length
+    ) {
       setGenerationExpanded(false)
     }
   }
@@ -324,6 +360,7 @@ const Notifications = () => {
     fixes,
     job: focusedJob(generation) ?? jobs.at(-1) ?? null,
     jobs,
+    resolved,
   })
 
   const name = nameOf(going, ring ? view : null, unseen)
@@ -352,7 +389,13 @@ const Notifications = () => {
     )
   }
 
-  if (bellHidden(access, jobs.length + fixes.length, farewell !== null)) {
+  if (
+    bellHidden(
+      access,
+      jobs.length + fixes.length + resolved.length,
+      farewell !== null
+    )
+  ) {
     return null
   }
 
@@ -439,6 +482,7 @@ const Notifications = () => {
           notices={adminNotices.notices}
           clearable={adminNotices.clearable === true}
           onDismissFixes={onDismissFixes}
+          onDismissResolved={onDismissResolved}
         />
       </PopoverContent>
     </Popover>

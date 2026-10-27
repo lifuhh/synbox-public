@@ -14,6 +14,17 @@ import {
 } from './contact'
 import type { ContactEnv } from './contact'
 import { parseEvents, pruneEvents, readUsage, saveEvents } from './events'
+import {
+  changeFeedback,
+  listFeedback,
+  listResolved,
+  markResolved,
+  parseFeedback,
+  parseResolvedMarks,
+  pruneFeedbackCounts,
+  saveFeedback,
+  takeSend,
+} from './feedback'
 import { fixer } from './fixer'
 import { generation } from './generation'
 import type { GenerationEnv } from './generation'
@@ -430,6 +441,62 @@ app.post('/api/contact', async (c) => {
     emailContact(c.env.DB, c.env, id, parsed.contact, sender, Date.now)
   )
   return c.body(null, 201)
+})
+
+// Send Feedback (feedback.ts), from an account or a guest. Anonymous feedback (a guest's always is) is kept with no
+// sender at all; the account's and the network's daily limits apply to it all the same, counted apart from it. A
+// signed feedback from a request with no session is refused, so it never turns anonymous unasked. A filled hidden
+// field (a bot) is answered as sent and kept nowhere
+app.post('/api/feedback', async (c) => {
+  const parsed = parseFeedback(await c.req.json<unknown>().catch(() => null))
+  if (!parsed.ok) {
+    return parsed.code === 'trap'
+      ? c.body(null, 201)
+      : c.json({ code: parsed.code }, 400)
+  }
+  const userId = await userIdOf(c.env, c.req.raw.headers)
+  if (userId === null && !parsed.feedback.anonymous) {
+    return c.json({ code: 'unauthorized' }, 401)
+  }
+  const now = Date.now()
+  const sender = { address: c.req.header('cf-connecting-ip') ?? '', userId }
+  if (!(await takeSend(c.env.DB, sender, now))) {
+    return c.json({ code: 'too_many' }, 429)
+  }
+  await saveFeedback(c.env.DB, parsed.feedback, userId, now)
+  return c.body(null, 201)
+})
+
+// The signed-in user's resolved feedback, for their notifications; a guest has none
+app.get('/api/me/feedback', async (c) => {
+  const userId = await userIdOf(c.env, c.req.raw.headers)
+  return c.json({
+    feedback:
+      userId === null ? [] : await listResolved(c.env.DB, userId, Date.now()),
+  })
+})
+
+// Resolved feedback the user's notifications showed ({ ids, upTo }): seen counts it out of the bell's number on every
+// device, dismissed takes it off the list
+app.post('/api/me/feedback/:mark{seen|dismiss}', async (c) => {
+  const userId = await userIdOf(c.env, c.req.raw.headers)
+  if (userId === null) {
+    return c.json({ code: 'unauthorized' }, 401)
+  }
+  const marks = parseResolvedMarks(
+    await c.req.json<unknown>().catch(() => null)
+  )
+  if (marks === null) {
+    return c.json({ code: 'bad_request' }, 400)
+  }
+  await markResolved(
+    c.env.DB,
+    userId,
+    marks,
+    c.req.param('mark') === 'seen' ? 'seen' : 'dismissed',
+    Date.now()
+  )
+  return c.body(null, 204)
 })
 
 // The songs anyone played most recently, latest first. Public; browsers keep it a minute
@@ -895,6 +962,26 @@ admin.get('/messages', async (c) =>
   c.json({ messages: await listContacts(c.env.DB) })
 )
 
+// Send Feedback, open first, then newest (feedback.ts); anonymous ones carry no account
+admin.get('/feedback', async (c) =>
+  c.json({ feedback: await listFeedback(c.env.DB) })
+)
+
+// Resolve (tells a signed sender in the app), drop (tells nobody) or reopen
+admin.post('/feedback/:id/:change{resolve|drop|reopen}', async (c) => {
+  const id = Number(c.req.param('id'))
+  const change = c.req.param('change')
+  if (
+    !Number.isInteger(id) ||
+    (change !== 'resolve' && change !== 'drop' && change !== 'reopen')
+  ) {
+    return c.json({ code: 'bad_request' }, 400)
+  }
+  return (await changeFeedback(c.env.DB, id, change, Date.now()))
+    ? c.body(null, 204)
+    : c.json({ code: 'not_found' }, 404)
+})
+
 // Leads on someone working around the song limit (worker/src/signals.ts)
 admin.get('/signals', async (c) =>
   c.json(await readSignals(c.env.DB, limitsOf(c.env).user))
@@ -906,7 +993,7 @@ export default {
   fetch: app.fetch,
   // The daily cron (wrangler.jsonc): reports the fixer left open past EXPIRE_DAYS are dropped as expired, and
   // listen rows past their hour, song checks past their 24 hours, lyrics hits past their 30 days and usage events
-  // past their 90 go
+  // past their 90 go, and so do the feedback limits' counts of past days
   scheduled: (_controller, env, ctx) => {
     const now = Date.now()
     ctx.waitUntil(expireReports(env.DB, now))
@@ -915,5 +1002,6 @@ export default {
     ctx.waitUntil(pruneHits(env.DB, now))
     ctx.waitUntil(pruneEvents(env.DB, now))
     ctx.waitUntil(pruneNoticeReads(env.DB, now))
+    ctx.waitUntil(pruneFeedbackCounts(env.DB, now))
   },
 } satisfies ExportedHandler<AppEnv>

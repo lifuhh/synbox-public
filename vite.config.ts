@@ -368,6 +368,7 @@ export default defineConfig({
     proxy: {
       '/api/admin': 'http://localhost:8787',
       '/api/auth': 'http://localhost:8787',
+      '/api/feedback': 'http://localhost:8787',
       '/api/library/songs': LIBRARY_SONGS_PROXY,
       '/api/me': 'http://localhost:8787',
       '/api/recommendations': 'http://localhost:8787',

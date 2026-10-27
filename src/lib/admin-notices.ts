@@ -3,9 +3,9 @@ import { z } from 'zod'
 
 import { QUERY_KEYS } from '@/lib/react-query/query-keys'
 
-// An admin's in-app notices (worker/src/notices.ts): recent contact messages, song reports and requests for more
-// songs, unread until the admin opens the bell, gone 3 days after or at Clear Read. Read on open, on focus and every
-// minute; nobody else asks
+// An admin's in-app notices (worker/src/notices.ts): recent contact messages, song reports, requests for more songs
+// and feedback, unread until the admin opens the bell, gone 3 days after or at Clear Read. Read on open, on focus and
+// every minute; nobody else asks
 const noticesSchema = z.object({
   // Set by a Worker that takes POST /notices/clear; an older one leaves Clear Read out
   clearable: z.boolean().optional(),
@@ -13,7 +13,7 @@ const noticesSchema = z.object({
     z.object({
       at: z.number(),
       id: z.string(),
-      kind: z.enum(['message', 'report', 'request']),
+      kind: z.enum(['message', 'report', 'request', 'feedback']),
       name: z.string(),
       subject: z.string().nullable(),
       unread: z.boolean(),
@@ -105,6 +105,7 @@ export const noticeKey = (notice: AdminNotice) =>
 
 // Where each kind opens on /admin
 export const NOTICE_TAB: Record<AdminNotice['kind'], string> = {
+  feedback: 'feedback',
   message: 'messages',
   report: 'reports',
   request: 'requests',

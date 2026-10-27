@@ -15,6 +15,7 @@ const SECTIONS: LegalSection[] = [
       'Your history, saved songs, likes, playlists and settings, so they follow you to other devices.',
       'Lyrics reports you send.',
       'Messages you send through Contact Me, when signed in: the subject, the message, your account and its email (where we reply), and a one-way code made from your network. Each is emailed to us.',
+      'Feedback you send: the subject and the message, with your account unless you send it anonymously or signed out. Anonymous feedback keeps nothing about you. Daily limits are counted apart from it, by a one-way code made from your account or network.',
       'Songs you played in the last hour, by account or by a random id in your browser, so a reload is not counted twice. Signed in, every visit to a song counts; as a guest, once per song an hour.',
       'With an account: how many songs you have played, when you last played one, and when you last used the app (to within 10 minutes).',
       'Without an account: your one free song is kept by a one-way code made from your network and your device’s system, screen size, cores and time zone. No IP address or browser details are kept with it.',
@@ -79,9 +80,9 @@ const SECTIONS: LegalSection[] = [
   },
   {
     items: [
-      'Plays and song checks: up to a day.',
+      'Plays and song checks: up to a day. Feedback limits: until the next day.',
       'Usage events: 90 days.',
-      'Your account, its activity, library, reports, the songs you generated and the messages you sent through Contact Me: until you delete them or ask us to.',
+      'Your account, its activity, library, reports, the songs you generated, the messages you sent through Contact Me and the feedback you sent: until you delete them or ask us to.',
       'Sign-in sessions: until you sign out or they expire.',
       'Error reports: Sentry keeps them for a limited time.',
     ],
