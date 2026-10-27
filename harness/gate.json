@@ -1,9 +1,13 @@
 {
-  "$comment": "Read by ~/.claude/hooks/harness-gate.py. `staging`: finished work merges there; nothing but `release` reaches main (no PR, merge or push into main). `check_prs`: a PR into staging that changes any of `paths` needs a passing `command` verdict for the branch's HEAD tree in <main checkout>/.harness/verdicts/. The release runs `command` again on staging's combined tree.",
+  "$comment": "Read by ~/.claude/hooks/harness-gate.py. `staging`: finished work merges there; nothing but `release` reaches main (no PR, merge or push into main). `check_prs`: a PR into staging that changes any of `paths` needs a passing `command` verdict for the branch's HEAD tree in <main checkout>/.harness/verdicts/. A PR's check runs the browser audits its diff reaches; the release runs `command --full` on staging's combined tree. `check_prs` is overridden off for this repo by ~/.claude/hooks/harness-gate.json › skip_staging_pr_checks (since 2026-10-27).",
   "paths": [
     "src/",
     "public/",
     "index.html",
+    "netlify.toml",
+    "tsconfig.json",
+    "tsconfig.node.json",
+    "scripts/",
     "vite.config.ts",
     "package.json",
     "bun.lock",

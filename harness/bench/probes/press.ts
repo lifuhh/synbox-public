@@ -57,6 +57,8 @@ export interface PressFindings {
   /** `data-press-ok` on a control that acts */
   badPressOk: string[]
   tested: number
+  /** Controls the scan left unpressed, past MAX_TESTED */
+  untested: number
 }
 
 declare global {
@@ -64,6 +66,8 @@ declare global {
     __press?: {
       changes: string[]
       els: Element[]
+      /** Controls past MAX_TESTED that the scan didn't press */
+      untested: number
     }
   }
 }
@@ -87,7 +91,11 @@ const prepare = async (page: Page): Promise<Candidate[]> =>
         return `${role} "${name}"`
       }
       if (window.__press === undefined) {
-        const state = { changes: [] as string[], els: [] as Element[] }
+        const state = {
+          changes: [] as string[],
+          els: [] as Element[],
+          untested: 0,
+        }
         window.__press = state
         const watched = new Set([
           'aria-selected',
@@ -264,8 +272,10 @@ const prepare = async (page: Page): Promise<Candidate[]> =>
       const okFirst = [...handled, ...allowed].filter(
         (el) => pressOkOf(el) !== null
       )
-      const pressed = [...handled, ...sampled]
-        .filter((el) => pressOkOf(el) === null)
+      const pressable = [...handled, ...sampled].filter(
+        (el) => pressOkOf(el) === null
+      )
+      const pressed = pressable
         .slice(0, max)
         .toSorted(
           (a, b) => Number(b.matches(acting)) - Number(a.matches(acting))
@@ -273,6 +283,7 @@ const prepare = async (page: Page): Promise<Candidate[]> =>
       const picked = [...okFirst, ...pressed]
       const state = window.__press
       state.els = picked
+      state.untested = Math.max(0, pressable.length - max)
       return picked.map((el, n) => ({
         acting: el.matches(acting),
         handled: handled.includes(el),
@@ -474,6 +485,7 @@ const NONE: PressFindings = {
   actsOnReleaseOutside: [],
   badPressOk: [],
   tested: 0,
+  untested: 0,
 }
 
 export const pressNotes = (f: PressFindings): string[] => [
@@ -482,6 +494,11 @@ export const pressNotes = (f: PressFindings): string[] => [
     (m) => `acts though the press was taken back: ${m}`
   ),
   ...f.badPressOk.map((m) => `data-press-ok on a control that acts: ${m}`),
+  ...(f.untested > 0
+    ? [
+        `${f.untested} more controls not pressed: the scan stops at ${MAX_TESTED}`,
+      ]
+    : []),
 ]
 
 export const pressValues = (f: PressFindings) => ({
@@ -516,8 +533,10 @@ export const pressScan = async (
     actsOnReleaseOutside: [],
     badPressOk: [],
     tested: 0,
+    untested: 0,
   }
   const candidates = await prepare(page)
+  findings.untested = await page.evaluate(() => window.__press?.untested ?? 0)
   let writes: string[] = []
   const onRequest = (request: Request) => {
     const { pathname } = new URL(request.url())

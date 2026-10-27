@@ -19,7 +19,7 @@ import { reusableVerdict } from './reuse'
 import { selectBenches } from './scope'
 import type { Selection } from './scope'
 import { serveBuild } from './server'
-import { changedSince, existedAt, storeDir, writeVerdict } from './store'
+import { storeDir, writeVerdict } from './store'
 import type { Repo } from './store'
 import { SUITE } from './suite'
 import { isExact } from './types'
@@ -46,41 +46,95 @@ const readBudgets = (repo: Repo): Budgets =>
     'harness/budgets.json'
   )
 
+const gitOut = (top: string, ...args: string[]): string =>
+  execFileSync('git', ['-C', top, ...args], { encoding: 'utf-8' }).trim()
+
 /**
- * The files a branch changes against staging, as the evaluator guard sees them: package.json counts as
+ * The files `head` changes against `base`, as the evaluator guard sees them: package.json counts as
  * `package.json#scripts` when its scripts changed (they define what `check` runs), and as nothing otherwise
  * (dependencies show in bun.lock)
  */
-const changedForGuard = (repo: Repo): string[] => {
+const changedForGuard = (top: string, base: string, head: string): string[] => {
   const scripts = (ref: string): string => {
     try {
-      const text = execFileSync(
-        'git',
-        ['-C', repo.top, 'show', `${ref}:package.json`],
-        {
-          encoding: 'utf-8',
-        }
+      const value: unknown = JSON.parse(
+        gitOut(top, 'show', `${ref}:package.json`)
       )
-      const value: unknown = JSON.parse(text)
       return JSON.stringify(isRecord(value) ? value.scripts : null)
     } catch {
       return ''
     }
   }
-  return changedSince(repo, STAGING).flatMap((f) => {
-    if (f !== 'package.json') {
-      return [f]
-    }
-    const base = execFileSync(
-      'git',
-      ['-C', repo.top, 'merge-base', 'HEAD', STAGING],
-      {
-        encoding: 'utf-8',
+  return gitOut(top, 'diff', '--name-only', base, head)
+    .split('\n')
+    .filter(Boolean)
+    .flatMap((f) => {
+      if (f !== 'package.json') {
+        return [f]
       }
-    ).trim()
-    return scripts(base) === scripts('HEAD') ? [] : ['package.json#scripts']
-  })
+      return scripts(base) === scripts(head) ? [] : ['package.json#scripts']
+    })
 }
+
+const existedIn = (top: string, ref: string, file: string): boolean => {
+  try {
+    execFileSync('git', ['-C', top, 'cat-file', '-e', `${ref}:${file}`], {
+      stdio: 'ignore',
+    })
+    return true
+  } catch {
+    return false
+  }
+}
+
+interface GuardRange {
+  label: string
+  base: string
+  head: string
+}
+
+/**
+ * What the evaluator guard judges: a branch's own diff against its merge base with staging. On staging itself (the
+ * release's check) that diff is empty, so it judges each change merged since main, one at a time: a merged PR
+ * (`<merge>^1...<merge>^2`) or a commit pushed straight to staging. Their combined diff would mix an evaluator PR
+ * with an app PR that are each fine on their own
+ */
+const guardRanges = (repo: Repo): GuardRange[] => {
+  const { top } = repo
+  const base = gitOut(top, 'merge-base', 'HEAD', STAGING)
+  if (base !== repo.sha) {
+    return [{ base, head: 'HEAD', label: 'this branch' }]
+  }
+  return gitOut(top, 'rev-list', '--first-parent', 'origin/main..HEAD')
+    .split('\n')
+    .filter(Boolean)
+    .flatMap((c) => {
+      const parents = gitOut(top, 'rev-list', '--parents', '-n', '1', c)
+        .split(' ')
+        .slice(1)
+      const label = gitOut(top, 'log', '-1', '--format=%s', c)
+      if (parents.length === 2) {
+        return [
+          {
+            base: gitOut(top, 'merge-base', `${c}^1`, `${c}^2`),
+            head: `${c}^2`,
+            label,
+          },
+        ]
+      }
+      return parents.length === 1 ? [{ base: `${c}^1`, head: c, label }] : []
+    })
+}
+
+/** Each judged change that edits the evaluator and the app together, with what it touched */
+const guardProblems = (repo: Repo): string[] =>
+  guardRanges(repo).flatMap((r) => {
+    const touched = evaluatorTouched(
+      changedForGuard(repo.top, r.base, r.head),
+      (f) => existedIn(repo.top, r.base, f.replace(/#.*$/u, ''))
+    )
+    return touched === null ? [] : [`${r.label}: ${touched}`]
+  })
 
 /** Every gated metric over its budget; a metric with no budget has a budget of 0 */
 export const overBudget = (
@@ -197,6 +251,17 @@ const reuse = (repo: Repo, started: number): CheckResult | null => {
       wallMs: Date.now() - started,
     }
   }
+  // The formatter covers Markdown: the docs that changed must still pass it (a few seconds), or the run goes ahead
+  // in full and fails there
+  try {
+    execFileSync('bun', ['run', 'fmt:check'], {
+      cwd: repo.top,
+      stdio: 'ignore',
+    })
+  } catch {
+    process.stdout.write('docs changed but fmt:check fails: not reusing\n')
+    return null
+  }
   const from = found.verdict.reused?.tree ?? found.verdict.tree
   const v: Verdict = {
     ...found.verdict,
@@ -305,9 +370,8 @@ export const runCheck = async (
   const phases = async (): Promise<void> => {
     if (stamped) {
       const t = Date.now()
-      const touched = evaluatorTouched(changedForGuard(repo), (f) =>
-        existedAt(repo, STAGING, f.replace(/#.*$/u, ''))
-      )
+      const problems = guardProblems(repo)
+      const touched = problems.length === 0 ? null : problems.join('\n')
       say({
         detail: touched ?? '',
         ms: Date.now() - t,

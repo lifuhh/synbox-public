@@ -27,6 +27,8 @@ interface Entry {
   file: string
   headline: string
   kind: string
+  /** The PR: front matter `pr:` in older entries, else the merge commit of the entry's `branch:` */
+  pr: number | null
   repo: 'be' | 'fe'
 }
 
@@ -108,11 +110,50 @@ const coreChanges = (body: string) => {
   return out
 }
 
+/**
+ * Each branch's merges in the log's repo, from GitHub's merge commit subjects ("Merge pull request #N from
+ * owner/branch"), so an entry needs no commit after its PR is opened just to record the number
+ */
+const mergesOf = (dir: string): Map<string, { date: string; pr: number }[]> => {
+  const out = new Map<string, { date: string; pr: number }[]>()
+  const log = spawnSync(
+    'git',
+    ['-C', dir, 'log', '--all', '--merges', '--format=%cs%x09%s'],
+    { encoding: 'utf-8' }
+  ).stdout
+  for (const line of log.split('\n')) {
+    const m =
+      /^(?<date>\S+)\tMerge pull request #(?<pr>\d+) from [^/\s]+\/(?<branch>\S+)/u.exec(
+        line
+      )?.groups
+    if (m?.branch !== undefined && m.date !== undefined && m.pr !== undefined) {
+      out.set(m.branch, [
+        ...(out.get(m.branch) ?? []),
+        { date: m.date, pr: Number(m.pr) },
+      ])
+    }
+  }
+  return out
+}
+
+/** The PR that merged `branch`: the first merge on or after the entry's date (a branch name can be reused) */
+const prOf = (
+  merges: Map<string, { date: string; pr: number }[]>,
+  branch: string | undefined,
+  date: string
+): number | null => {
+  const found = (branch === undefined ? [] : (merges.get(branch) ?? []))
+    .filter((m) => m.date >= date)
+    .toSorted((a, b) => a.date.localeCompare(b.date) || a.pr - b.pr)
+  return found[0]?.pr ?? null
+}
+
 const readLog = (dir: string, repo: Entry['repo']): Entry[] => {
   if (!existsSync(dir)) {
     console.error(`no log at ${dir}`)
     return []
   }
+  const merges = mergesOf(dir)
   return readdirSync(dir)
     .filter((name) => /^\d{4}-\d{2}-\d{2}-.+\.md$/u.test(name))
     .map((name) => {
@@ -127,6 +168,9 @@ const readLog = (dir: string, repo: Entry['repo']): Entry[] => {
         file: path.join(dir, name),
         headline: /^# (?<h>.+)$/mu.exec(body)?.groups?.h?.trim() ?? name,
         kind: meta.get('kind') ?? '?',
+        pr: /^[1-9]\d*$/u.test(meta.get('pr') ?? '')
+          ? Number(meta.get('pr'))
+          : prOf(merges, meta.get('branch'), name.slice(0, 10)),
         repo,
       }
     })
@@ -158,8 +202,10 @@ const entries = [
 const features = readFeatures()
 const known = new Set(features.map((f) => f.slug))
 
+const prTag = (e: Entry) => (e.pr === null ? '' : `${e.repo}#${e.pr}`)
+
 const row = (e: Entry) =>
-  `${e.date}  ${e.repo}  ${e.kind.padEnd(9)}  ${e.headline}`
+  `${e.date}  ${prTag(e).padEnd(7)}  ${e.kind.padEnd(9)}  ${e.headline}`
 
 const ESCAPES: Record<string, string> = {
   '"': '&quot;',
@@ -170,7 +216,7 @@ const ESCAPES: Record<string, string> = {
 const escape = (s: string) => s.replaceAll(/["&<>]/gu, (c) => ESCAPES[c] ?? c)
 
 const item = (e: Entry) =>
-  `<li><time>${e.date}</time><span class="tag">${e.repo} · ${escape(e.kind)}</span>${escape(e.headline)}` +
+  `<li><time>${e.date}</time><span class="tag">${e.pr === null ? e.repo : prTag(e)} · ${escape(e.kind)}</span>${escape(e.headline)}` +
   `<span class="feat">${e.features.map(escape).join(' · ')}</span></li>`
 
 const html = () => {

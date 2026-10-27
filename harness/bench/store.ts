@@ -41,26 +41,6 @@ export const repoAt = (cwd: string): Repo => {
   }
 }
 
-/** Files HEAD changes against its merge base with `ref` */
-export const changedSince = (repo: Repo, ref: string): string[] => {
-  const base = git(repo.top, 'merge-base', 'HEAD', ref)
-  return git(repo.top, 'diff', '--name-only', base, 'HEAD')
-    .split('\n')
-    .filter(Boolean)
-}
-
-export const existedAt = (repo: Repo, ref: string, file: string): boolean => {
-  try {
-    const base = git(repo.top, 'merge-base', 'HEAD', ref)
-    execFileSync('git', ['-C', repo.top, 'cat-file', '-e', `${base}:${file}`], {
-      stdio: 'ignore',
-    })
-    return true
-  } catch {
-    return false
-  }
-}
-
 export const storeDir = (repo: Repo, ...parts: string[]): string => {
   const dir = path.join(repo.main, '.harness', ...parts)
   mkdirSync(dir, { recursive: true })

@@ -229,6 +229,7 @@ const lyricUndock = (name: string, view: View, turned: boolean): Benchmark => ({
   ],
   run: lyricUndockAudit(view.surface, turned),
   runs: 1,
+  scope: probe('lyric-undock', [PLAYER]),
   surface: view.surface,
   title: `Karaoke Style's docked translation in ${name} (${view.label}${turned ? ', turned by Lock Landscape' : ''}), the block dragged to the middle, the translation pulled to the bottom, the top, just under the block and onto the rows, then dragged back: the rows' lines never move, the translation never overlaps them or the block, comes off where there is room, and docks again`,
 })
