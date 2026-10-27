@@ -8,7 +8,7 @@ import { toast } from '@/components/ui/use-toast'
 import { guestSongSpentAtom } from '@/lib/account-prompts'
 import { DEVICE_HEADER, deviceTraits } from '@/lib/device-traits'
 import { QUERY_KEYS } from '@/lib/react-query/query-keys'
-import { BE_ADDRESS } from '@/lib/synbox-flask/address'
+import { BE_ADDRESS, VIA_WORKER } from '@/lib/synbox-flask/address'
 
 // Same origin: Netlify (and the dev server) pass /api/auth/* and /api/me to the auth Worker, so its
 // session cookie is first-party on synbox.io
@@ -120,7 +120,7 @@ export const useMe = () =>
   })
 
 // Whether this device's one free song is spent (worker/src/guest-song.ts, asked of the generation proxy); null when
-// unknown (no answer, or a local backend without the route), which counts as still there: the press finds out
+// unknown (no answer), which counts as still there: the press finds out
 const fetchGuestSongUsed = async () => {
   try {
     const response = await fetch(`${BE_ADDRESS}/guest-song`, {
@@ -139,10 +139,12 @@ const fetchGuestSongUsed = async () => {
   }
 }
 
-// Asked only where a guest is about to add a song or reads about it (the hero's link, the You page), not on every page
+// Asked only where a guest is about to add a song or reads about it (the hero's link, the You page), not on every page.
+// Never of a local backend called directly: it has no guest limit, and WebKit logs the refused cross-origin call as
+// an error even though it is caught
 export const useGuestSongUsed = (ask: boolean) =>
   useQuery({
-    enabled: ask,
+    enabled: ask && VIA_WORKER,
     queryFn: fetchGuestSongUsed,
     queryKey: [QUERY_KEYS.GET_GUEST_SONG],
     staleTime: 5 * 60_000,
