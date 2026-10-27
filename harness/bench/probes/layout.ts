@@ -1047,9 +1047,12 @@ const auditOnce = async (
           }
           // A popover that opens beside what it changes rather than its button names that element
           // (data-menu-anchor, an id), and is measured against it: Text Style beside the Lyrics panel
-          const anchorId = menu.getAttribute('data-menu-anchor')
+          const anchorId =
+            menu instanceof HTMLElement ? menu.dataset.menuAnchor : undefined
           const anchor =
-            anchorId === null ? null : document.getElementById(anchorId)
+            anchorId === undefined
+              ? null
+              : document.querySelector(`#${CSS.escape(anchorId)}`)
           const a =
             anchor === null ? drawn(button) : anchor.getBoundingClientRect()
           const b = menu.getBoundingClientRect()
