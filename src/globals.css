@@ -2384,6 +2384,13 @@ html[data-installed] *::-webkit-scrollbar {
     position: relative;
   }
 
+  /* Only at normal zoom: the lock also stops scrolls chaining to the visual viewport, so a pinch-zoomed page
+     could not be panned (WCAG 1.4.4, 1.4.10). data-zoomed comes from lib/zoom.ts */
+  html[data-zoomed],
+  html[data-zoomed] body {
+    overscroll-behavior: auto;
+  }
+
   /* Except a wide page that scrolls as a whole (doc-scroll: the watch page, whose video layer is placed in the
      document and scrolls with it, and Admin) */
   @media (min-width: 1000px) {
