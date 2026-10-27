@@ -176,7 +176,12 @@ const SpeedMenu = ({
           type='button'
           aria-label={`Playback Speed ${rate}×`}
           className={className}>
-          {rate}×
+          {/* One grid item, so the sign stays on the digits' line. Its ink centres 0.1em under theirs (Plus Jakarta Sans:
+              3.8 vs 5.2px above the baseline at 14px) */}
+          <span>
+            {rate}
+            <span className='relative -top-[0.1em]'>×</span>
+          </span>
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent
