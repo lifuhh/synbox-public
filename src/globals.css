@@ -1075,7 +1075,8 @@
   padding-inline: 0.25rem;
   border: 1px solid color-mix(in srgb, currentColor 40%, transparent);
   border-radius: 0.25rem;
-  font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-family:
+    ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   font-feature-settings: 'case' 1;
   font-size: 0.75rem;
   font-weight: 600;
