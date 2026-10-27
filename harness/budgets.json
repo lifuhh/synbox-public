@@ -7,21 +7,21 @@
     "theater-motion": "teleports 16 and detachments 2 on 2026-10-27 (chore/eval-theater-motion): Theater Mode snaps today, so eight parts jump in one frame each way and the video's layer lands a frame after the stage; the next PR (feat/watch-theater-tooltips) animates it and sets both back to 0. Never raised to let a jump through.",
     "lyric-shift-*": "0 from the start (owner, 2026-10-25: a Two Lines line change moves as little as it can). Not to be raised to let a shift through: fix the layout (src/components/player-stage/stage-lyrics.tsx › TwoRows, two-line-layout.ts).",
     "lyric-undock-*": "0 from the start (owner, 2026-10-27: taking Karaoke Style's docked translation off the rows, or putting it back, never moves the rows, and the translation never overlaps them). Not to be raised: fix the dock (src/components/player-stage/stage-lyrics.tsx › useTranslationDock, DockedTranslation).",
-    "motion-hero-flight-*": "Added 2026-10-27 (chore/motion-audit) with staging's own counts as the ceiling, about 20% over what staging measured (web: teleports 53-55, detachments 101-102, scale reversals 4; safari-portrait: 73-75, 93-95, 8; safari-landscape: 67-72, 97-100, 4), so the audit could land before the fix it judges. fix/hero-flight removes these entries: 0 from then on, and never raised to let a jump through (fix the motion: src/components/topbar/search-dock.tsx)."
+    "motion-hero-flight-*": "Added 2026-10-27 (chore/motion-audit) with staging's own counts as the ceiling, about 20% over what staging measured (web: teleports 53-55, detachments 101-102, scale reversals 4; safari-portrait: 73-75, 93-95, 8; safari-landscape: 67-72, 97-100, 4), so the audit could land before the fix it judges. Detachments raised the same day (chore/motion-input-timing) when attached parts became locked to their box every frame: staging measured web 110-159, safari-portrait 238-248, safari-landscape 153-156; ceilings 200, 310, 200. fix/hero-flight removes these entries: 0 from then on, and never raised to let a jump through (fix the motion: src/components/topbar/search-dock.tsx)."
   },
   "motion-hero-flight-web": {
     "teleports": 66,
-    "detachments": 122,
+    "detachments": 200,
     "scaleReversals": 4
   },
   "motion-hero-flight-safari-portrait": {
     "teleports": 90,
-    "detachments": 114,
+    "detachments": 310,
     "scaleReversals": 8
   },
   "motion-hero-flight-safari-landscape": {
     "teleports": 86,
-    "detachments": 120,
+    "detachments": 200,
     "scaleReversals": 4
   },
   "size": {
