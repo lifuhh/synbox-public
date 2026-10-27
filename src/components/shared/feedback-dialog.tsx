@@ -127,7 +127,7 @@ export const FeedbackDialog = ({
       <DialogContent className='max-w-md'>
         <DialogHeader>
           <DialogTitle>Send Feedback</DialogTitle>
-          <DialogDescription>Tell us what to fix or add</DialogDescription>
+          <DialogDescription>Tell me what to fix or add</DialogDescription>
         </DialogHeader>
         {/* A fresh form each opening: sent feedback, or the last choice of Send Anonymously, doesn't come back */}
         {open && !isPending && (
