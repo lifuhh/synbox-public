@@ -14,6 +14,8 @@ import {
 import type { View } from './engines/browser'
 import { cdpPerf } from './engines/cdp'
 import { controlShadeAudit } from './probes/control-shade'
+import { sizeDragAudit } from './probes/drag-perf'
+import type { DragCase } from './probes/drag-perf'
 import { homeVisit } from './probes/home'
 import { keyboardAudit } from './probes/keyboard'
 import { landscapeParityAudit } from './probes/landscape-parity'
@@ -300,6 +302,38 @@ const motion = (morph: Morph, view: View, minFlights: number): Benchmark => ({
   title: `${morph.name} in ${view.name} (${view.label}), each way, slow and fast: teleports, scale against the morph's way, detached parts, passes with no flight, parts never shown, frames of the morph over 34ms of main-thread work (over 25ms reported)`,
 })
 
+/**
+ * Lyrics Style's size slider dragged back and forth by a real pointer, every frame timed (probes/drag-perf.ts): no
+ * drag step may re-lay out the song. Karaoke Style where the view has it (not upright), and one line; an upright
+ * phone's slider is on the full-screen player only
+ */
+const sizeDrag = (view: View, cases: DragCase[]): Benchmark => ({
+  id: `drag-lyrics-size-${view.name}`,
+  metrics: [
+    count('slowDrags'),
+    { ...ms('blockedPerMoveMs', false, 1, 0), exact: true },
+    count('slowFrames', false),
+    { ...ms('worstFrameMs', false, 16, 0), exact: true },
+    count('redos', false),
+  ],
+  run: sizeDragAudit(view.surface, cases),
+  runs: 1,
+  scope: probe('drag-perf', [PLAYER]),
+  surface: view.surface,
+  timing: true,
+  title: `Lyrics Size dragged in ${view.name} (${view.label}): ${cases.map((c) => c.label).join(', ')}; frames over 50ms and main-thread time per move against the budgets in probes/drag-perf.ts`,
+})
+const KARAOKE_DRAG: DragCase = {
+  fullscreen: false,
+  label: 'Karaoke Style',
+  layout: 'karaoke',
+}
+const ONE_LINE_DRAG: DragCase = {
+  fullscreen: false,
+  label: 'one line',
+  layout: 'one-line',
+}
+
 /** A page's audits in its views: at rest, then each state it opens in that view */
 const layouts = (page: LayoutPage, views: View[]): Benchmark[] =>
   views.flatMap((v) => [
@@ -428,6 +462,11 @@ export const SUITE: Benchmark[] = [
   controlShade('pwa-landscape', PWA_LANDSCAPE, false),
   controlShade('pwa-turned', PWA_PORTRAIT, true),
   lyricShift('pwa-turned', PWA_PORTRAIT, true),
+  sizeDrag(WEB, [KARAOKE_DRAG, ONE_LINE_DRAG]),
+  sizeDrag(PWA_LANDSCAPE, [KARAOKE_DRAG, ONE_LINE_DRAG]),
+  sizeDrag(PWA_PORTRAIT, [
+    { fullscreen: true, label: 'one line, full screen', layout: 'one-line' },
+  ]),
   {
     // Theater Mode on the wide watch page, both ways, frame by frame: nothing jumps, appears from nowhere or vanishes
     // while visible, sizes move one way, the video stays on the stage, the YouTube iframe is never rebuilt
