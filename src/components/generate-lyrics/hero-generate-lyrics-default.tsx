@@ -4,7 +4,7 @@ import {
   LoaderCircleIcon,
   PlayIcon,
   SearchIcon,
-  SparklesIcon,
+  ArrowRightIcon,
 } from 'lucide-react'
 import { useId, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
@@ -218,7 +218,7 @@ const HeroGenerateLyricsDefault = ({
     return existingLyrics ? (
       <PlayIcon className='size-5 shrink-0 fill-current' />
     ) : (
-      <SparklesIcon className='size-5 shrink-0' />
+      <ArrowRightIcon className='size-5 shrink-0' />
     )
   }
 

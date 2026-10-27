@@ -1,16 +1,7 @@
-// Whether the last input was a key or a pointer, on <html data-input-modality>. A text field matches :focus-visible
-// even when clicked, so its keyboard focus indicator (globals.css) shows only while the last input was a key: Tab,
-// the arrows (a TV remote's D-pad) or Enter. Typing into the field doesn't count, or a click into it then a letter
-// would light it up
-const NAVIGATION_KEYS = new Set([
-  'Tab',
-  'ArrowUp',
-  'ArrowDown',
-  'ArrowLeft',
-  'ArrowRight',
-  'Enter',
-  'Escape',
-])
+// Whether someone is driving the page with the keyboard, on <html data-input-modality>. The focus ring (globals.css)
+// draws only while it reads 'keyboard', which only Tab sets: a mouse or touch user never sees it, not on load, not
+// after a phone keyboard's Go (an Enter), not after Escape closes a dialog. Any pointer press turns it off again
+const NAVIGATION_KEYS = new Set(['Tab'])
 
 export const trackInputModality = () => {
   const root = document.documentElement
