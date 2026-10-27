@@ -72,6 +72,17 @@ export interface Benchmark {
    * itself: no other session's browser audits beside it (lock.ts)
    */
   timing?: true
+  /**
+   * What a PR's scoped `check` runs it for (scope.ts): the routes of src/app.tsx it visits and its probe module
+   * (a change to either runs it), or 'always'. Without one it always runs
+   */
+  scope?: BenchScope | 'always'
+}
+
+export interface BenchScope {
+  routes: string[]
+  /** Repo-relative path of the module that runs it; everything it imports counts as the probe */
+  probe: string
 }
 
 /** Every metric is exact: the benchmark belongs to `check`, not `trend` */
@@ -119,6 +130,17 @@ export interface Verdict {
   summary: string
   wallMs: number
   steps: { name: string; ms: number; status: Status; detail: string }[]
+  /**
+   * Which audits ran and why. `full`: all of them (`--full`, the release, a clean checkout of staging). `scoped`:
+   * those the branch's diff against `base` reaches. Absent on verdicts from before scoping, which ran everything
+   */
+  scope?: {
+    mode: 'full' | 'scoped'
+    base: string | null
+    why: string[]
+    ran: Record<string, string>
+    skipped: number
+  }
   /** Stamped without a run: only docs changed since the passing verdict of `tree` (commit `sha`) */
   reused?: { tree: string; sha: string; files: string[] }
 }

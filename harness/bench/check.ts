@@ -1,10 +1,9 @@
 // `check`: the exact checks a change must pass before it goes into staging, and staging before it ships. Nothing
 // here is compared with a baseline: typecheck, lint, tests and format, bytes shipped against harness/budgets.json,
 // and browser audits of the app's routes (harness/routes.json says which are skipped) on desktop and phone screens
-// against the same budgets. Browser audits share the machine with other sessions' through slots (lock.ts); timing
-// audits run last with the machine to themselves. A docs-only commit after a passing verdict reuses it (reuse.ts).
-// It stops at the first failure, prints each step's seconds, and stamps a verdict for the committed tree only when
-// every expected step ran.
+// against the same budgets. A PR's check runs the browser audits its diff can affect (scope.ts); `--full`, which
+// the release uses, runs them all. It stops at the first failure, prints each step's seconds, and stamps a verdict
+// for the committed tree only when every selected step ran. A docs-only commit after a passing verdict reuses it.
 
 import { execFileSync, spawn } from 'node:child_process'
 import { readFileSync } from 'node:fs'
@@ -15,8 +14,10 @@ import { closeBrowsers, replayFonts } from './engines/browser'
 import { evaluatorTouched } from './gate'
 import { isRecord, parseJson } from './json'
 import { holdMachine, holdSlot } from './lock'
-import { routeProblems } from './probes/layout'
+import { appRoutes, routeConfig, routeProblems } from './probes/layout'
 import { reusableVerdict } from './reuse'
+import { selectBenches } from './scope'
+import type { Selection } from './scope'
 import { serveBuild } from './server'
 import { changedSince, existedAt, storeDir, writeVerdict } from './store'
 import type { Repo } from './store'
@@ -138,6 +139,43 @@ export interface CheckResult {
   reused: string | null
 }
 
+/** Every audit route: what the scope maps a change to (routes.json › skip gets no audit) */
+const auditedRoutes = (): string[] => {
+  const { skip } = routeConfig()
+  return appRoutes().filter((r) => !(r in skip))
+}
+
+/** The selection, grouped by reason, so a reviewer sees what ran and why without 150 lines */
+const describe = (selection: Selection, total: number): string => {
+  const byWhy = new Map<string, number>()
+  for (const why of selection.run.values()) {
+    byWhy.set(why, (byWhy.get(why) ?? 0) + 1)
+  }
+  const head =
+    selection.mode === 'full'
+      ? `scope: full, all ${total} checks`
+      : `scope: ${selection.run.size} of ${total} checks, from the diff against ${selection.base?.slice(0, 8) ?? '?'} (merge base with staging)`
+  return [
+    head,
+    ...selection.why.map((w) => `  ${w}`),
+    ...[...byWhy].map(([why, n]) => `  ${String(n).padStart(3)} × ${why}`),
+  ].join('\n')
+}
+
+/** What a scoped check would run in this working tree, and why each, without running anything (`cli.ts scope`) */
+export const scopeReport = (repo: Repo): string => {
+  const exact = SUITE.filter(isExact)
+  const selection = selectBenches(repo, exact, {
+    audited: auditedRoutes(),
+    full: false,
+  })
+  return [
+    describe(selection, exact.length),
+    '',
+    ...[...selection.run].map(([id, why]) => `${id.padEnd(44)} ${why}`),
+  ].join('\n')
+}
+
 /**
  * A docs-only commit after a passing verdict: stamp this tree with that verdict, noting where it came from, and run
  * nothing. Null when there is nothing to reuse
@@ -180,6 +218,57 @@ const reuse = (repo: Repo, started: number): CheckResult | null => {
   }
 }
 
+/** The benchmarks this run measures: `--only`'s prefixes (no selection, no verdict), else the scope's selection */
+const choose = (
+  repo: Repo,
+  exact: Benchmark[],
+  opts: { only: string[] | null; full: boolean }
+): { selection: Selection | null; selected: Benchmark[] } => {
+  const { only } = opts
+  if (only !== null) {
+    return {
+      selected: exact.filter((b) => only.some((o) => b.id.startsWith(o))),
+      selection: null,
+    }
+  }
+  const selection = selectBenches(repo, exact, {
+    audited: auditedRoutes(),
+    full: opts.full,
+  })
+  process.stdout.write(`${describe(selection, exact.length)}\n`)
+  return { selected: exact.filter((b) => selection.run.has(b.id)), selection }
+}
+
+const scopeOf = (
+  selection: Selection | null,
+  total: number
+): Verdict['scope'] =>
+  selection === null
+    ? undefined
+    : {
+        base: selection.base,
+        mode: selection.mode,
+        ran: Object.fromEntries(selection.run),
+        skipped: total - selection.run.size,
+        why: selection.why,
+      }
+
+const summaryOf = (
+  steps: Step[],
+  selection: Selection | null,
+  total: number
+): string => {
+  const failures = steps.filter((s) => s.status === 'fail')
+  if (failures.length > 0) {
+    return failures
+      .map((s) => `${s.name}: ${s.detail.split('\n')[0]}`)
+      .join('; ')
+  }
+  return selection?.mode === 'scoped'
+    ? `all checks pass (scoped: ${selection.run.size} of ${total})`
+    : 'all checks pass'
+}
+
 export const runCheck = async (
   repo: Repo,
   opts: {
@@ -193,7 +282,8 @@ export const runCheck = async (
     throw new Error(`--jobs must be a positive whole number, not ${opts.jobs}`)
   }
   const started = Date.now()
-  // `--only`: the named audits, while working, no verdict. Otherwise everything, stamped; `--full` never reuses
+  // `--only`: the named audits, while working, no verdict. Otherwise every static check, and the audits the scope
+  // selects (all of them with --full)
   const stamped = opts.only === null
   if (stamped && !opts.full) {
     const reused = reuse(repo, started)
@@ -209,9 +299,8 @@ export const runCheck = async (
     )
   }
   const failed = () => steps.some((s) => s.status === 'fail')
-  const selected = SUITE.filter(isExact).filter(
-    (b) => opts.only === null || opts.only.some((o) => b.id.startsWith(o))
-  )
+  const exact = SUITE.filter(isExact)
+  const { selection, selected } = choose(repo, exact, opts)
 
   const phases = async (): Promise<void> => {
     if (stamped) {
@@ -441,16 +530,11 @@ export const runCheck = async (
       kind: 'check',
       repo: 'synbox',
       schema: 'harness/verdict@1',
+      scope: scopeOf(selection, exact.length),
       sha: repo.sha,
       status,
       steps,
-      summary:
-        status === 'pass'
-          ? 'all checks pass'
-          : steps
-              .filter((s) => s.status === 'fail')
-              .map((s) => `${s.name}: ${s.detail.split('\n')[0]}`)
-              .join('; '),
+      summary: summaryOf(steps, selection, exact.length),
       tree: repo.tree,
       wallMs,
     }

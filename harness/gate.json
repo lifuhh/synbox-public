@@ -11,7 +11,7 @@
     "harness/"
   ],
   "command": "bun harness/bench/cli.ts check",
-  "cost": "about 4 minutes; about a second for a docs-only commit after a pass",
+  "cost": "1 to 4 minutes: every static check and the browser audits the branch's diff reaches; about a second for a docs-only commit after a pass",
   "check_prs": true,
   "staging": "staging",
   "release": "bun harness/release.ts"

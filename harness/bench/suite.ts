@@ -34,7 +34,7 @@ import {
   THEATER_MOTION_FINDINGS,
   theaterMotionAudit,
 } from './probes/theater-motion'
-import type { Benchmark, MetricSpec } from './types'
+import type { Benchmark, BenchScope, MetricSpec } from './types'
 
 const ms = (key: string, gate = true, floor = 30, pct = 0.1): MetricSpec => ({
   better: 'lower',
@@ -90,6 +90,15 @@ const count = (key: string, gate = true): MetricSpec => ({
 
 const DESKTOP = WEB.surface
 const BUSY_PAGES = new Set(['home', 'gallery', 'player', 'search'])
+
+/** The route of the player, which most probes play a song on */
+const PLAYER = '/v/:videoId'
+
+/** A check's scope (scope.ts): the routes it visits, and its module in probes/ */
+const probe = (name: string, routes: string[]): BenchScope => ({
+  probe: `harness/bench/probes/${name}.ts`,
+  routes,
+})
 
 /**
  * Lighthouse's mobile lab: a mid-range phone on slow 4G, where load regressions show first. The service worker is
@@ -156,6 +165,7 @@ const layout = (
   ],
   run: layoutAudit(page, surface, state),
   runs: 1,
+  scope: probe('layout', [page.route]),
   surface,
   title: `Layout of ${page.name} (${page.path})${state ? ` with ${state.name} open` : ''} in ${name} (${label}): target sizes, covered targets, overflow, safe areas, painted insets, pan, zooming fields, clipped text, page and console errors`,
 })
@@ -174,6 +184,7 @@ const lyricShift = (name: string, view: View, turned: boolean): Benchmark => ({
   ],
   run: lyricShiftAudit(view.surface, turned),
   runs: 1,
+  scope: probe('lyric-shift', [PLAYER]),
   surface: view.surface,
   timing: true,
   title: `Two Lines on the player, translation docked, in ${name} (${view.label}${turned ? ', turned by Lock Landscape' : ''}): moves of the other line, the lower line's romaji and the docked translation on each line change`,
@@ -194,6 +205,7 @@ const lyricDock = (name: string, view: View): Benchmark => ({
   ],
   run: lyricDockAudit(view.surface),
   runs: 1,
+  scope: probe('lyric-dock', [PLAYER]),
   surface: view.surface,
   title: `Karaoke Style's rows and translation in ${name} (${view.label}): the rows' text reaches the top with the translation moved down and with it below them, a translation let go at the foot below the rows neither docks nor rests over them (and doesn't move them when there's room), the rows dropped onto the translation dock, a layout saved overlapped loads usable`,
 })
@@ -234,6 +246,7 @@ const controlShade = (
   metrics: [count('shadedControls'), count('controls', false)],
   run: controlShadeAudit(view.surface, turned),
   runs: 1,
+  scope: probe('control-shade', [PLAYER]),
   surface: view.surface,
   title: `The player's controls in ${name} (${view.label}${turned ? ', turned by Lock Landscape' : ''}), shown: controls sitting in a shade band many times their size`,
 })
@@ -248,6 +261,7 @@ const pressRelease = (view: View): Benchmark => ({
   metrics: PRESS_RELEASE_FINDINGS.map((key) => count(key)),
   run: pressReleaseAudit(view.surface),
   runs: 1,
+  scope: probe('press-release', ['/privacy']),
   surface: view.surface,
   title: `Real presses on the top bar in ${view.name} (${view.label}): tabs, the account menu and a dialog button act on release, and a press taken back does nothing`,
 })
@@ -273,6 +287,7 @@ const motion = (morph: Morph, view: View, minFlights: number): Benchmark => ({
   ],
   run: motionAudit(morph, view.surface, minFlights),
   runs: 1,
+  scope: probe('motion', [morph.path]),
   surface: view.surface,
   timing: true,
   title: `${morph.name} in ${view.name} (${view.label}), each way, slow and fast: teleports, scale against the morph's way, detached parts, passes with no flight, parts never shown, frames of the morph over 34ms of main-thread work (over 25ms reported)`,
@@ -320,6 +335,7 @@ export const SUITE: Benchmark[] = [
     metrics: [kb('initialJsKB'), kb('cssKB'), kb('allJsKB')],
     run: buildSize,
     runs: 1,
+    scope: 'always',
     surface: null,
     title: 'Bytes shipped (brotli): first-load JS and CSS, all JS',
   },
@@ -422,6 +438,7 @@ export const SUITE: Benchmark[] = [
     ],
     run: theaterMotionAudit,
     runs: 1,
+    scope: probe('theater-motion', [PLAYER]),
     surface: WEB.surface,
     timing: true,
     title:
@@ -439,6 +456,7 @@ export const SUITE: Benchmark[] = [
     ],
     run: landscapeParityAudit(),
     runs: 1,
+    scope: probe('landscape-parity', [PLAYER]),
     surface: PWA_LANDSCAPE.surface,
     title:
       'The full-screen player on an iPhone on its side, turned by Full Screen with rotation lock on vs rotated by iOS: element boxes within 1px, safe-area bands black',
@@ -456,6 +474,7 @@ export const SUITE: Benchmark[] = [
     ],
     run: keyboardAudit(),
     runs: 1,
+    scope: probe('keyboard', ['/', PLAYER, '/search']),
     surface: WEB.surface,
     title:
       'Keyboard only at 1920×1080: every journey step reachable by Tab/Enter/Escape, a visible focus indicator at every stop, focus never lost',

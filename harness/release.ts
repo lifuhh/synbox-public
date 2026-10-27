@@ -161,8 +161,8 @@ const gatePaths = (dir: string): string[] => {
 
 /**
  * Runs the full `check` on staging's tree, every release: the combined tree is what ships, and each PR's own
- * verdict judged a different tree. `--full` never reuses a verdict, and a reused one (stamped on the same tree by a
- * docs-only commit) doesn't count: the release always runs it. Skipped only when
+ * verdict judged a different tree, with only the audits its own diff reached. `--full` runs every audit, and a
+ * verdict that isn't full (a scoped or reused one stamped on the same tree) doesn't count. Skipped only when
  * nothing it checks differs from main.
  */
 const checkStaging = (dir: string) => {
@@ -181,7 +181,7 @@ const checkStaging = (dir: string) => {
     say(`check: a release runs it on staging's tree ${repo.tree.slice(0, 8)}`)
     return
   }
-  say('check: running on staging')
+  say('check: running on staging, every audit (--full)')
   const result = spawnSync('bun', ['harness/bench/cli.ts', 'check', '--full'], {
     cwd: dir,
     stdio: 'inherit',
@@ -192,12 +192,12 @@ const checkStaging = (dir: string) => {
       `check: ${verdict?.summary ?? 'no verdict'}. Fix it in a PR into staging, then release again`
     )
   }
-  if (verdict.reused !== undefined) {
+  if (verdict.scope?.mode !== 'full' || verdict.reused !== undefined) {
     throw new Error(
       `check: staging's verdict is not a full run (${verdict.summary}); run \`bun harness/bench/cli.ts check --full\` in ${dir}`
     )
   }
-  say(`check: pass in ${Math.round(verdict.wallMs / 1000)}s`)
+  say(`check: pass in ${Math.round(verdict.wallMs / 1000)}s, every audit`)
 }
 
 // A page's text, or '' when the request fails: mid-deploy, Netlify can drop a connection, which is a reason to
