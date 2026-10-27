@@ -30,7 +30,7 @@ This repository is the web app and its auth Worker. The service that makes the l
 ## Karaoke
 
 <p align="center">
-  <img src="docs/readme/showcase/karaoke.webp" alt="A lyric line filling syllable by syllable as it is sung, with furigana, romaji and an English translation" width="100%" />
+  <img src="docs/readme/showcase/karaoke.webp" alt="Karaoke Style in Theater Mode: two rows of lyrics, left then right, filling syllable by syllable as they are sung, with furigana, romaji and the English translation above" width="100%" />
 </p>
 
 - **Timed to every syllable**, like a karaoke machine.
@@ -49,16 +49,12 @@ Paste a link to a song that isn't in the library. Synbox transcribes it and alig
 ## Made for Phones
 
 <p align="center">
-  <img src="docs/readme/showcase/phones.webp" alt="Synbox installed on an iPhone: home page, player and lyrics reader" width="100%" />
-</p>
-
-<p align="center">
-  <img src="docs/readme/showcase/karaoke-phone.webp" alt="Full Screen on an iPhone: the video with one karaoke line under it, filling as it is sung" width="34%" />
+  <img src="docs/readme/showcase/phones.webp" alt="Synbox installed on an iPhone: the player on its side, the home page with the song in the mini player, and the upright player's lyrics filling as they are sung" width="100%" />
 </p>
 
 - **Installs as an app** on iPhone and Android, with a tab bar.
-- **Full Screen:** the video and one line at a time.
-- **Sideways:** the video fills the screen with lyrics on top. Lock Landscape keeps it there.
+- **Upright:** the video above the lyrics, which follow the song.
+- **Full Screen** turns the player on its side: the video fills the screen with the lyrics on top. Lock Landscape keeps it there.
 - **Lock Screen** ignores stray taps until you unlock.
 - **Double-tap** to skip 10 seconds.
 - **Offline reading** for songs you open, bookmark or generate.
@@ -66,10 +62,14 @@ Paste a link to a song that isn't in the library. Synbox transcribes it and alig
 ## Your Style
 
 <p align="center">
-  <img src="docs/readme/showcase/style.webp" alt="The Lyrics Style panel: size, Two Lines, colour presets and backdrop" width="100%" />
+  <img src="docs/readme/showcase/style.webp" alt="The Lyrics Style panel: size, Karaoke Style and colour presets" width="100%" />
 </p>
 
-Size, seven colour presets or your own, and a backdrop that keeps lyrics readable on any video. Two Lines shows the next line early. Styles apply to every song or just one, and follow you across devices when you sign in.
+<p align="center">
+  <img src="docs/readme/showcase/colors.webp" alt="The eight lyric colours, each on a line part way sung: Frost, Cinema, Amethyst, Sunset, Matcha, Lemon, Sakura and Custom" width="100%" />
+</p>
+
+Size, seven colour presets or your own. Karaoke Style sets the lyrics in two rows, like a karaoke machine: one on the left, the next on the right, the translation above. Styles apply to every song or just one, and follow you across devices when you sign in.
 
 ## Find Something to Sing
 

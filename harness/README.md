@@ -216,21 +216,30 @@ bun harness/asks.ts import <transcript.jsonl>                       # backfill a
 
 ## README images: `readme/`
 
-The repository README's phone scene and colour strip, rebuilt after a redesign. Every browser opens through `bench/engines/browser.ts` › `open`, silent and headless, with the bench's recorded fonts (WebKit stalls on the live Japanese font, and the app holds lyrics until it loads).
+The repository README's seven images, rebuilt after a redesign. Every browser opens through `bench/engines/browser.ts` › `open`, silent and headless, with the bench's recorded fonts (WebKit stalls on the live Japanese font, and the app holds lyrics until it loads).
 
 ```sh
-bun harness/readme/moments.ts <videoId>                       # the song's short, verified lines: times only, never lyric text
+bun harness/readme/moments.ts [videoId]                       # short, verified lines: times only, never lyric text
 bun harness/readme/capture.ts <dir> scout <videoId> 0 --site <origin>      # the song on its side at each moment, to pick from
-bun harness/readme/capture.ts <dir>/raw home <videoId> <sec>               # Home, the song in the mini player (live site)
+# Made for Phones
+bun harness/readme/capture.ts <dir>/raw home <videoId> <sec> --site <origin>
 bun harness/readme/capture.ts <dir>/raw sideways <videoId> <sec> --site <origin> --other-fit
 bun harness/readme/capture.ts <dir>/upright upright <videoId> <start> <end> --site <origin>
 bun harness/readme/compose.ts <out.webp> --sideways <png> --home <png> --upright <dir> --from <s> --to <s> [--keep]
+# Hero, Lyrics Style, Search, generation and the karaoke clip
+bun harness/readme/capture.ts <dir>/raw player <videoId> <sec> --site <origin>
+bun harness/readme/capture.ts <dir>/raw search "<query>" --site <origin>
+bun harness/readme/capture.ts <dir>/raw generate <videoId> --site <origin>  # a song not in the library
+bun harness/readme/capture.ts <dir>/karaoke karaoke <videoId> <start> <end> --site <origin> [--theater]
+bun harness/readme/scenes.ts <dir> --raw <dir>/raw --karaoke <dir>/karaoke --from <s> --to <s> [--keep]
 bun harness/readme/colors.ts <out.webp>                        # one row, one card per lyric colour
 ```
 
-- **The player shots come from staging** (`--site` a `wt serve` address), with karaoke and YouTube reads answered from the deployed services, which the dev server's stand-ins can't reach without the backend's keys. Home comes from https://synbox.io, whose recommendations and charts are real.
-- **The upright clip plays, at 0.25×,** and is shot as fast as WebKit allows (about 14 frames a second of song): a pause or a seek brings up YouTube's own centre button and the app's controls. Only the video and lyric card are shot each frame; `base.png` is the rest of the screen.
-- **`--other-fit`** switches the video's fit, for a music video whose own captions the default crop cuts in half.
+- **Shots come from staging** (`--site` a `wt serve` address), with karaoke, recommendations, search and YouTube reads answered from the deployed services, which the dev server's stand-ins can't reach without the backend's keys.
+- **The clips play, at 0.25×,** and are shot as fast as the engine allows (about 14 frames a second of song in WebKit): a pause or a seek brings up YouTube's own centre button and the app's controls. Only the moving region is shot each frame; `base.png` is the rest of the screen. The stills don't seek either (in WebKit the video is still black after one when the line comes): the page opens 30 s before the line, and the shot fails if the song passed it while images loaded.
+- **`generate` is staged:** a signed-in test listener (`probes/layout.ts` › `signIn`) and the backend's generation streams answered in the page, held part way through. No request reaches the backend.
+- **`--other-fit`** switches the video's fit, for a music video whose own captions the default crop cuts in half. **`--theater`** shoots the karaoke clip in Theater, whose lyrics default to Karaoke Style's two rows.
+- **Lyrics stay at the default size and style**, as a first-time listener sees them.
 - **Pick moments by eye and by line:** pretty art, and a line that reads well in English. Lyrics stay out of the repo; the images show a line or two, as the app does.
 
 ## Known limits
