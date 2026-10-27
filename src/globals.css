@@ -945,14 +945,16 @@
   }
 }
 
-/* Full screen, the lyrics step back while the controls show, so the middle -10s / play / +10s and the bar read
-   over them instead of tangling with them (owner, 2026-10-27; YouTube and Netflix dim the picture under their
-   controls the same way). Opacity only: the lyrics never move, and the fade keeps the controls' own timing */
+/* Full screen, the lyrics step back a little while the controls show, so the middle -10s / play / +10s and the bar
+   read over them (YouTube and Netflix dim the picture under their controls the same way). Slightly: at 45% the
+   lyrics read as switched off. Not while Lyrics Style is open (data-styling), where their size and colour are being
+   judged. Opacity only: the lyrics never move, and the fade keeps the controls' own timing */
 @utility lyrics-behind-controls {
   transition: opacity 300ms ease-out;
 
-  [data-player-stage]:has([data-full-screen-controls]) & {
-    opacity: 0.45;
+  [data-player-stage]:has([data-full-screen-controls])
+    &:not([data-styling='true']) {
+    opacity: 0.88;
   }
 }
 

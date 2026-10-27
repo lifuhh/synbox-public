@@ -15,8 +15,11 @@ type Side = 'back' | 'forward'
 
 // A double tap on the left half skips back, on the right half forward (owner, 2026-10-25)
 const sideAt = (x: number): Side => (x < 1 / 2 ? 'back' : 'forward')
-// What a single tap does, decided as it lands, while the controls still show what was there before it
-type TapIntent = 'toggle' | 'hide' | 'reveal'
+// What a single tap does, decided as it lands, while the controls still show what was there before it: `style` is a
+// finger's tap on the lyrics, which opens Lyrics Style rather than the controls
+type TapIntent = 'toggle' | 'hide' | 'reveal' | 'style'
+// Where a press landed: the stage (the picture) or the lyrics over it, which pass their taps on to it
+export type TapTarget = 'stage' | 'lyrics'
 
 export interface SeekFlash {
   side: Side
@@ -30,21 +33,26 @@ interface StageTapOptions {
   showCover: boolean
   controlsVisible: boolean
   togglePlay: () => void
+  revealControls: () => void
   hideControls: () => void
+  openLyricsStyle: () => void
   seekBy: (seconds: number) => void
   toggleFullscreen: () => void
 }
 
 // A click toggles playback and a double click toggles fullscreen. On a touch screen a tap shows the
-// controls, or hides them when they are already up, and plays from a paused song's cover; a double tap
-// on the left or right half skips back or forward, and each further quick tap there skips again, as in
-// YouTube's own app. A tap on a side waits a moment for its second tap, so a double tap never also
-// flashes the controls
+// controls, or hides them when they are already up, and plays from a paused song's cover; a tap on the lyrics opens
+// Lyrics Style instead; a double tap on the left or right half (the lyrics included) skips back or forward, and each
+// further quick tap there skips again, as in YouTube's own app. A tap waits a moment for its second tap, and a finger
+// landing on the stage shows nothing by itself (use-idle › fingerWakes), so a double tap never also brings up the
+// controls
 export const useStageTaps = ({
   showCover,
   controlsVisible,
   togglePlay,
+  revealControls,
   hideControls,
+  openLyricsStyle,
   seekBy,
   toggleFullscreen,
 }: StageTapOptions) => {
@@ -70,14 +78,21 @@ export const useStageTaps = ({
   )
 
   const runSingleTap = (intent: TapIntent) => {
-    if (intent === 'toggle') {
-      togglePlay()
-    } else if (intent === 'hide') {
-      hideControls()
+    const actions: Record<TapIntent, () => void> = {
+      hide: hideControls,
+      reveal: revealControls,
+      style: openLyricsStyle,
+      toggle: togglePlay,
     }
+    actions[intent]()
   }
 
   const skip = (side: Side) => {
+    // A seek brings up YouTube's own centre button, which the controls stay up to cover; skipping with them away
+    // keeps them away (hideControls: dismissed), and our centre disc alone covers it (center-play-button.tsx)
+    if (!controlsVisible) {
+      hideControls()
+    }
     seekBy(side === 'back' ? -TAP_SEEK_SEC : TAP_SEEK_SEC)
     streakRef.current = { side, until: Date.now() + STREAK_MS }
     setFlash((current) => ({
@@ -92,10 +107,16 @@ export const useStageTaps = ({
     }, STREAK_MS)
   }
 
-  const press = (pointerType: string, across: number) => {
+  const press = (
+    pointerType: string,
+    across: number,
+    target: TapTarget = 'stage'
+  ) => {
     pointerRef.current = pointerType
     if (pointerType === 'mouse' || showCover) {
       intentRef.current = 'toggle'
+    } else if (target === 'lyrics') {
+      intentRef.current = 'style'
     } else {
       intentRef.current = controlsVisible ? 'hide' : 'reveal'
     }
