@@ -4,17 +4,21 @@
 //
 // - teleport: nothing jumps between frames. An element's opacity changes by at most POP_STEP a frame (one not there
 //   counts as 0), unless another element of the same part takes over in the same place, within HANDOVER_PX (the real
-//   field handing over to its copy in flight); a part attached to another moves with it, its anchored edge shifting
-//   no more than STEP_PX against the container's in one frame; a free part's edge never steps more than the page's
-//   own scroll plus FREE_STEP_PX. POP_STEP and FREE_STEP_PX are per 60Hz frame: a frame that came late may move
-//   that much for each frame it took (a stalled headless WebKit frame is a late frame, not a jump).
+//   field handing over to its copy in flight), or it is off screen in the other frame; a part attached to another
+//   moves with it, its anchored edge shifting no more than STEP_PX against the container's in one frame; a free
+//   part's edge never steps more than the page's own scroll plus FREE_STEP_PX. POP_STEP, STEP_PX and FREE_STEP_PX are
+//   per 60Hz frame: a frame that came late may move that much for each frame it took (a stalled headless frame is a
+//   late frame, not a jump).
 // - scale: in a morph that grows nothing shrinks, and in one that shrinks nothing grows: every element's width and
 //   height move the morph's way only (beyond NOISE_PX); in a part that keeps its size, they never turn back.
 // - detached: an attached part stays inside its container's box (within NOISE_PX), and drifts from its anchor no
 //   more than its own `drift`, when it has one.
-// - frame: while anything moves, no frame takes the page over FRAME_MS of main-thread work (from the frame's start
-//   to its layout). The gap between frames is reported too (`late`), not judged: a headless browser's frame clock is
-//   uneven, and an idle page shows the same gaps (2026-10-27: 8% of idle frames on desktop Chromium over 25ms).
+// - frame: from the morph's first hand-over to its last, no frame takes the page over DROP_MS of main-thread work
+//   (from the frame's start to its layout): two frames' budget, so it drops at least one whatever else runs. Frames
+//   over FRAME_MS (`slow`) and gaps between frames over FRAME_MS (`late`) are reported, not judged: alone, a desktop
+//   flight's frames take under 15ms, but with three audits at once (as `check` runs them) the page's own work during
+//   the scroll put one frame in nine runs at 26ms; and a headless frame clock is uneven (8% of idle frames on desktop
+//   Chromium came over 25ms). Frames before and after the morph, the page scrolling, are the page's, not the morph's.
 //
 // Thresholds, from the hero flight measured frame by frame (2026-10-27, desktop Chromium and iPhone WebKit): a
 // critically damped 0.45 s spring across ~330px moves a box at most ~30px a frame, so FREE_STEP_PX (40, on top of the
@@ -38,6 +42,7 @@ const STEP_PX = 3
 const FREE_STEP_PX = 40
 const NOISE_PX = 1
 const FRAME_MS = 25
+const DROP_MS = 34
 const VSYNC_MS = 1000 / 60
 /** An element this faint, or with no area left on screen, isn't shown */
 const SHOWN_OPACITY = 0.02
@@ -90,7 +95,7 @@ export interface Shown {
   b: number
   /** Opacity, through every ancestor */
   o: number
-  /** Area left on screen once its clipping ancestors and the viewport cut it */
+  /** Area left on screen once its clipping ancestors and the viewport cut it, however faint */
   a: number
 }
 
@@ -111,7 +116,7 @@ const startRecording = async (
   scroller: string
 ): Promise<void> => {
   await page.evaluate(
-    ({ list, scrollerSelector, shownOpacity }) => {
+    ({ list, scrollerSelector }) => {
       const ids = new WeakMap<Element, number>()
       let next = 1
       const idOf = (el: Element) => {
@@ -236,7 +241,7 @@ const startRecording = async (
                 : { b: box.bottom, l: box.left, r: box.right, t: box.top }
             return [
               {
-                a: o >= shownOpacity ? round(shownArea(el, box)) : 0,
+                a: round(shownArea(el, box)),
                 b: round(at.b),
                 id: idOf(el),
                 l: round(at.l),
@@ -289,7 +294,6 @@ const startRecording = async (
         text: p.text,
       })),
       scrollerSelector: scroller,
-      shownOpacity: SHOWN_OPACITY,
     }
   )
 }
@@ -347,7 +351,12 @@ const recorded = async (page: Page): Promise<Frame[]> =>
     return found.frames as Frame[]
   })
 
-/** Scrolls `scroller` to `to` over `ms`, eased in and out as a flick is, one step per frame */
+/**
+ * Scrolls `scroller` to `to` over `ms`, eased in and out as a flick is, one step per frame. Each step lands between
+ * frames, as a wheel or a finger's scroll does: the frame starts with the new offset, its scroll events, then its
+ * animation callbacks. A step taken inside an animation callback landed after the page's own callbacks had read the
+ * layout in some frames, so a box following the scroll trailed it by a step and caught up in one jump
+ */
 export const easedScroll = async (
   page: Page,
   scroller: string,
@@ -364,20 +373,25 @@ export const easedScroll = async (
       const start = performance.now()
       // oxlint-disable-next-line promise/avoid-new -- the scroll's frames as one promise
       await new Promise<void>((resolve) => {
-        const step = (now: number) => {
-          const k = Math.min((now - start) / duration, 1)
+        const step = () => {
+          const k = Math.min((performance.now() - start) / duration, 1)
           const eased = k * k * (3 - 2 * k)
           box.scrollTo({
             behavior: 'instant',
             top: from + (target - from) * eased,
           })
           if (k < 1) {
-            requestAnimationFrame(step)
+            // Once this frame is painted, before the next one begins
+            requestAnimationFrame(() => {
+              setTimeout(step, 0)
+            })
           } else {
             resolve()
           }
         }
-        requestAnimationFrame(step)
+        requestAnimationFrame(() => {
+          setTimeout(step, 0)
+        })
       })
     },
     { duration: ms, selector: scroller, target: to }
@@ -461,24 +475,6 @@ const steps = (frames: Frame[]): Step[] =>
         ]
   })
 
-const movedBetween = (parts: MorphPart[], a: Frame, b: Frame) =>
-  parts.some((p) => {
-    const x = shownOf(a, p.name)
-    const y = shownOf(b, p.name)
-    return (
-      x.length !== y.length ||
-      x.some((e, i) => {
-        const o = y[i]
-        return (
-          o === undefined ||
-          o.id !== e.id ||
-          !sameBox(e, o, 0.1) ||
-          Math.abs(e.o - o.o) > 0.005
-        )
-      })
-    )
-  })
-
 /** Two boxes the same within a hand-over's tolerance */
 const meets = (a: Shown, b: Shown) => sameBox(a, b, HANDOVER_PX)
 
@@ -490,9 +486,37 @@ const jumpText = (from: Shown, to: Shown) => {
 }
 
 /**
- * Showing and hiding go by a ramp of opacity, or by a hand-over: another element of the part shows in the same
- * place, where the one before was last drawn or, still there unseen, where it is now (both riding a moving bar)
+ * An element shown or hidden at once is fine when another element of its part takes over in the same place (where
+ * the one before was last drawn or, still there unseen, where it is now: both riding a moving bar), or when it was
+ * off screen in the other frame (hidden as it left the screen, shown as it came back: its opacity was never seen)
  */
+const excused = (
+  appearing: boolean,
+  before: Shown | undefined,
+  after: Shown | undefined,
+  others: Shown[],
+  nowOf: (id: number) => Shown | undefined
+) => {
+  if (appearing) {
+    return (
+      after !== undefined &&
+      ((before !== undefined && before.a < 1) ||
+        others.some((q) => {
+          const there = nowOf(q.id)
+          return meets(q, after) || (there !== undefined && meets(there, after))
+        }))
+    )
+  }
+  return (
+    before !== undefined &&
+    ((after !== undefined && after.a < 1) ||
+      others.some(
+        (q) => meets(before, q) || (after !== undefined && meets(after, q))
+      ))
+  )
+}
+
+/** Showing and hiding go by a ramp of opacity, unless `excused` */
 const judgePops = (p: MorphPart, { n, prev, cur, span }: Step, flag: Flag) => {
   const was = prev.parts[p.name] ?? []
   const now = cur.parts[p.name] ?? []
@@ -506,21 +530,11 @@ const judgePops = (p: MorphPart, { n, prev, cur, span }: Step, flag: Flag) => {
     const to = after?.o ?? 0
     const appearing = to > from
     const others = (appearing ? wasShown : nowShown).filter((q) => q.id !== id)
-    const handedOver = appearing
-      ? after !== undefined &&
-        others.some((q) => {
-          const there = nowOf(q.id)
-          return meets(q, after) || (there !== undefined && meets(there, after))
-        })
-      : before !== undefined &&
-        others.some(
-          (q) => meets(before, q) || (after !== undefined && meets(after, q))
-        )
     const at = appearing ? after : before
     if (
       at !== undefined &&
       Math.abs(to - from) > POP_STEP * span &&
-      !handedOver
+      !excused(appearing, before, after, others, nowOf)
     ) {
       const [other] = others
       const there =
@@ -567,7 +581,11 @@ const judgeFreeSteps = (
 }
 
 /** An attached part moves with its container's edge, frame to frame, and stays inside its box */
-const judgeAttached = (p: MorphPart, { n, prev, cur }: Step, flag: Flag) => {
+const judgeAttached = (
+  p: MorphPart,
+  { n, prev, cur, span }: Step,
+  flag: Flag
+) => {
   if (p.within === undefined) {
     return
   }
@@ -594,7 +612,7 @@ const judgeAttached = (p: MorphPart, { n, prev, cur }: Step, flag: Flag) => {
     for (const axis of ['x', 'y'] as const) {
       const edge = p.within[axis]
       const step = along(e, c1, axis, edge) - along(before, c0, axis, edge)
-      if (Math.abs(step) > STEP_PX) {
+      if (Math.abs(step) > STEP_PX * span) {
         flag(
           'teleport',
           p.name,
@@ -712,8 +730,10 @@ const judgeScale = (frames: Frame[], parts: MorphPart[], flag: Flag) => {
 
 export interface Judged {
   counts: Record<Rule, number>
-  /** Frames over FRAME_MS after the one before, while moving: reported, not judged (see the top of this file) */
+  /** Frames over FRAME_MS after the one before, in the morph: reported, not judged (see the top of this file) */
   late: number
+  /** Frames in the morph with over FRAME_MS of main-thread work: reported; over DROP_MS they count as dropped */
+  slow: number
   /** The morph's own part was drawn by more than one element: it handed over, so the pass flew */
   flight: boolean
   seen: Set<string>
@@ -740,16 +760,32 @@ export const judge = (frames: Frame[], parts: MorphPart[]): Judged => {
     }
   }
   let late = 0
+  let slow = 0
+  const [root] = parts
+  // Frames are judged from the morph's first hand-over to its last (the field to the ghost, the ghost to the bar):
+  // the page scrolling before and after is the page's own business
+  const ids = frames.map((f) =>
+    root === undefined ? null : (primary(f, root.name)?.id ?? null)
+  )
+  const turns = ids.flatMap((id, n) => (n > 0 && id !== ids[n - 1] ? [n] : []))
+  const [first] = turns
+  const last = turns.at(-1)
   for (const s of steps(frames)) {
-    if (movedBetween(parts, s.prev, s.cur)) {
-      if (s.cur.work > FRAME_MS) {
+    if (
+      first !== undefined &&
+      last !== undefined &&
+      s.n >= first &&
+      s.n <= last
+    ) {
+      if (s.cur.work > DROP_MS) {
         flag(
           'frame',
           'page',
           s.n,
-          `${s.cur.work.toFixed(1)}ms of main-thread work in one frame while moving`
+          `${s.cur.work.toFixed(1)}ms of main-thread work in one frame of the morph`
         )
       }
+      slow += s.cur.work > FRAME_MS ? 1 : 0
       late += s.cur.t - s.prev.t > FRAME_MS ? 1 : 0
     }
     for (const p of parts) {
@@ -765,7 +801,6 @@ export const judge = (frames: Frame[], parts: MorphPart[]): Judged => {
     judgeDrift(frames, p, flag)
   }
   judgeScale(frames, parts, flag)
-  const [root] = parts
   const seen = new Set(
     parts
       .filter((p) => frames.some((f) => shownOf(f, p.name).length > 0))
@@ -776,7 +811,7 @@ export const judge = (frames: Frame[], parts: MorphPart[]): Judged => {
       root === undefined ? [] : shownOf(f, root.name).map((e) => e.id)
     )
   )
-  return { counts, flight: rootIds.size > 1, late, notes, seen }
+  return { counts, flight: rootIds.size > 1, late, notes, seen, slow }
 }
 
 const RULES: Rule[] = ['teleport', 'scale', 'detached', 'frame']
@@ -831,6 +866,7 @@ const runMotion = async (
     const seen = new Set<string>()
     let flights = 0
     let late = 0
+    let slow = 0
     for (const cut of cuts) {
       // From the frame before the pass starts, so its first step is judged
       const j = judge(
@@ -845,8 +881,9 @@ const runMotion = async (
       }
       flights += j.flight ? 1 : 0
       late += j.late
+      slow += j.slow
       notes.push(
-        `${cut.name}: ${cut.to - cut.from} frames, ${j.flight ? 'flew' : 'no flight'}; teleport ${j.counts.teleport}, scale ${j.counts.scale}, detached ${j.counts.detached}, over ${FRAME_MS}ms of work ${j.counts.frame}, late ${j.late}`,
+        `${cut.name}: ${cut.to - cut.from} frames, ${j.flight ? 'flew' : 'no flight'}; teleport ${j.counts.teleport}, scale ${j.counts.scale}, detached ${j.counts.detached}, over ${FRAME_MS}ms of work ${j.slow} (over ${DROP_MS}ms ${j.counts.frame}), late ${j.late}`,
         ...j.notes.map((line) => `  ${line}`)
       )
     }
@@ -863,6 +900,7 @@ const runMotion = async (
         lateFrames: late,
         missingFlights: Math.max(minFlights - flights, 0),
         scaleReversals: counts.scale,
+        slowFrames: slow,
         teleports: counts.teleport,
         unseenParts: unseen.length,
       },

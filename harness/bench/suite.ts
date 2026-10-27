@@ -268,13 +268,14 @@ const motion = (morph: Morph, view: View, minFlights: number): Benchmark => ({
     count('unseenParts'),
     count('droppedFrames', view.surface.engine === 'chromium'),
     count('lateFrames', false),
+    count('slowFrames', false),
     count('flights', false),
   ],
   run: motionAudit(morph, view.surface, minFlights),
   runs: 1,
   surface: view.surface,
   timing: true,
-  title: `${morph.name} in ${view.name} (${view.label}), each way, slow and fast: teleports, scale against the morph's way, detached parts, passes with no flight, parts never shown, frames over 25ms of main-thread work`,
+  title: `${morph.name} in ${view.name} (${view.label}), each way, slow and fast: teleports, scale against the morph's way, detached parts, passes with no flight, parts never shown, frames of the morph over 34ms of main-thread work (over 25ms reported)`,
 })
 
 /** A page's audits in its views: at rest, then each state it opens in that view */
