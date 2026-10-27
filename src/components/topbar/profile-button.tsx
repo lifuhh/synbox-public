@@ -33,6 +33,7 @@ import {
 } from '@/components/ui/tooltip'
 import { openRequestMore } from '@/lib/account-prompts'
 import {
+  SONGS_A_DAY,
   lastAccount,
   signInWithGoogle,
   signOut,
@@ -113,7 +114,9 @@ const SignInButton = () => {
         </TooltipTrigger>
         <TooltipContent side='bottom' align='end' sideOffset={10}>
           <div className='flex flex-col gap-0.5'>
-            <span>5 new songs a day, your style on every device</span>
+            <span>
+              {SONGS_A_DAY} new songs a day, your style on every device
+            </span>
             <span className='text-muted-foreground'>
               Signing in accepts our Privacy Policy
             </span>

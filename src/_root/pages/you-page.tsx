@@ -19,6 +19,7 @@ import { UserAvatar } from '@/components/shared/user-avatar'
 import { Button } from '@/components/ui/button'
 import { openRequestMore } from '@/lib/account-prompts'
 import {
+  SONGS_A_DAY,
   requestText,
   signInWithGoogle,
   signOut,
@@ -192,7 +193,7 @@ const YouPage = () => {
             </span>
             <div className='min-w-0'>
               <p className='truncate font-medium text-foreground'>
-                {user ? user.name : 'Sign In for 5 Songs a Day'}
+                {user ? user.name : `Sign In for ${SONGS_A_DAY} Songs a Day`}
               </p>
               <AccountLines
                 user={user}

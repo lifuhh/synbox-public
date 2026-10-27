@@ -10,11 +10,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { signInWithGoogle, useAccess } from '@/lib/auth'
+import { SONGS_A_DAY, signInWithGoogle, useAccess } from '@/lib/auth'
 
 // What an account adds, the same three lines wherever sign-in is offered
 export const SIGN_IN_BENEFITS = [
-  { icon: SparklesIcon, text: '5 new songs a day, on me' },
+  { icon: SparklesIcon, text: `${SONGS_A_DAY} new songs a day, on me` },
   { icon: BookmarkIcon, text: 'Your style and bookmarks, everywhere' },
   { icon: DownloadIcon, text: 'Your songs, offline' },
 ] as const

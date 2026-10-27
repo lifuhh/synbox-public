@@ -79,7 +79,7 @@ import type {
   SignalFlag,
   SongsBy,
 } from '@/lib/admin-console'
-import { useAccess, useMe } from '@/lib/auth'
+import { SONGS_A_DAY, useAccess, useMe } from '@/lib/auth'
 import { isStageId, overallAt, stepOf } from '@/lib/generation/plan'
 import { applyWaitingUpdate } from '@/lib/pwa'
 import { useGetSongInfoBySongId } from '@/lib/react-query/queries-and-mutations'
@@ -337,7 +337,7 @@ const LimitControl = ({
         autoFocus
         aria-label={`Songs a Day for ${user.name}`}
         inputMode='numeric'
-        placeholder='5'
+        placeholder={String(SONGS_A_DAY)}
         value={draft}
         className='h-9 w-full'
         onChange={(event) => {
