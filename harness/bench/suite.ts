@@ -21,6 +21,7 @@ import { LAYOUT_FINDINGS, layoutAudit, layoutPages } from './probes/layout'
 import type { LayoutPage, OpenedState } from './probes/layout'
 import { lyricDockAudit } from './probes/lyric-dock'
 import { lyricShiftAudit } from './probes/lyric-shift'
+import { lyricUndockAudit } from './probes/lyric-undock'
 import { HERO_FLIGHT, motionAudit } from './probes/motion'
 import type { Morph } from './probes/motion'
 import { playerSession } from './probes/player'
@@ -194,6 +195,29 @@ const lyricDock = (name: string, view: View): Benchmark => ({
   runs: 1,
   surface: view.surface,
   title: `Karaoke Style's rows and translation in ${name} (${view.label}): the rows' text reaches the top with the translation moved down and with it below them, a translation let go at the foot below the rows neither docks nor rests over them (and doesn't move them when there's room), the rows dropped onto the translation dock, a layout saved overlapped loads usable`,
+})
+
+/**
+ * Karaoke Style's docked translation dragged off the rows and back, by real pointer drags, every frame sampled
+ * (probes/lyric-undock.ts): the rows never move, and the translation never overlaps them. On desktop, the installed app
+ * on its side and upright turned by Lock Landscape: Karaoke Style is off upright
+ */
+const lyricUndock = (name: string, view: View, turned: boolean): Benchmark => ({
+  id: `lyric-undock-${name}`,
+  metrics: [
+    count('undockRowsMoved'),
+    count('undockOverlap'),
+    count('undockRefused'),
+    count('undockEndedInside'),
+    count('redockRowsMoved'),
+    count('redockFailed'),
+    count('rowsMovedMaxPx', false),
+    count('overlapMaxPx', false),
+  ],
+  run: lyricUndockAudit(view.surface, turned),
+  runs: 1,
+  surface: view.surface,
+  title: `Karaoke Style's docked translation in ${name} (${view.label}${turned ? ', turned by Lock Landscape' : ''}), the block dragged to the middle, the translation pulled to the bottom, the top, just under the block and onto the rows, then dragged back: the rows' lines never move, the translation never overlaps them or the block, comes off where there is room, and docks again`,
 })
 
 /**
@@ -372,6 +396,9 @@ export const SUITE: Benchmark[] = [
   lyricShift('pwa-landscape', PWA_LANDSCAPE, false),
   lyricDock('web', WEB),
   lyricDock('pwa-landscape', PWA_LANDSCAPE),
+  lyricUndock('web', WEB, false),
+  lyricUndock('pwa-landscape', PWA_LANDSCAPE, false),
+  lyricUndock('pwa-turned', PWA_PORTRAIT, true),
   controlShade('pwa-landscape', PWA_LANDSCAPE, false),
   controlShade('pwa-turned', PWA_PORTRAIT, true),
   lyricShift('pwa-turned', PWA_PORTRAIT, true),
