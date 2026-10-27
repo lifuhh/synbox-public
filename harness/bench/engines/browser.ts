@@ -308,23 +308,37 @@ export interface Opened {
  * `cpu`: slowdown for Chromium surfaces; WebKit has no equivalent and runs at full speed. `serviceWorkers: 'block'`
  * for a caller that must see every request: a route never sees what a service worker fetches (Playwright docs,
  * BrowserContext.route). `lookup`: the lookup service's reads come from the bench's fixtures (`replay`, unless
- * SYNBOX_LIVE_LOOKUP=1) or from the service (`live`: the smoke test of a deployed copy)
+ * SYNBOX_LIVE_LOOKUP=1) or from the service (`live`: the smoke test of a deployed copy). `scale` overrides the device scale (README captures want 2× desktop); `video` records the
+ * page into that folder as WebM, at the viewport size times `video.scale`
  */
 export const open = async (
   surface: Surface,
   opts: {
     cpu?: number
-    serviceWorkers?: 'allow' | 'block'
     lookup?: 'replay' | 'live'
+    scale?: number
+    serviceWorkers?: 'allow' | 'block'
+    video?: { dir: string; scale: number }
   } = {}
 ): Promise<Opened> => {
   const browser = await launch(surface.engine)
   const phone = surface.kind === 'phone'
   const viewport = phone ? VIEWPORTS[phoneKey(surface)] : VIEWPORTS.desktop
   const context = await browser.newContext({
-    deviceScaleFactor: phone ? 3 : 1,
+    deviceScaleFactor: opts.scale ?? (phone ? 3 : 1),
     hasTouch: phone,
     isMobile: phone,
+    ...(opts.video === undefined
+      ? {}
+      : {
+          recordVideo: {
+            dir: opts.video.dir,
+            size: {
+              height: viewport.height * opts.video.scale,
+              width: viewport.width * opts.video.scale,
+            },
+          },
+        }),
     serviceWorkers: opts.serviceWorkers ?? 'allow',
     viewport,
   })
