@@ -12,7 +12,9 @@
 // - scale: in a morph that grows nothing shrinks, and in one that shrinks nothing grows: every element's width and
 //   height move the morph's way only (beyond NOISE_PX); in a part that keeps its size, they never turn back.
 // - detached: an attached part stays inside its container's box (within NOISE_PX), and drifts from its anchor no
-//   more than its own `drift`, when it has one.
+//   more than its own `drift` on any frame (on each axis it names), from where it first showed against its
+//   anchor, scaled with the container: a pill keeps its centre on its field's centre line and its gap to the field's
+//   end, every frame, never a path of its own.
 // - frame: from the morph's first hand-over to its last, no frame takes the page over DROP_MS of main-thread work
 //   (from the frame's start to its layout): two frames' budget, so it drops at least one whatever else runs. Frames
 //   over FRAME_MS (`slow`) and gaps between frames over FRAME_MS (`late`) are reported, not judged: alone, a desktop
@@ -62,10 +64,15 @@ export interface MorphPart {
   /** Judge the text's own extent (an input's value or placeholder, or the element's text), not its box */
   text?: true
   /**
-   * The part it belongs to and moves with: the edge it keeps to on each axis, and how far it may drift from where
-   * it first showed against that edge
+   * The part it belongs to and moves with: the edge it keeps to on each axis, and on each axis given in `drift`, how
+   * far it may stray, on any frame, from where it first showed against that edge, scaled with the container
    */
-  within?: { part: string; x: Edge; y: Edge; drift?: number }
+  within?: {
+    part: string
+    x: Edge
+    y: Edge
+    drift?: { x?: number; y?: number }
+  }
 }
 
 export interface MorphPass {
@@ -630,28 +637,34 @@ const judgeDrift = (frames: Frame[], p: MorphPart, flag: Flag) => {
   if (p.within === undefined || drift === undefined) {
     return
   }
-  const { part, x, y } = p.within
-  const first = new Map<number, { x: number; y: number }>()
+  const { part } = p.within
+  // Where the part first showed against its container's edges, and the container's height then: from there its
+  // offsets scale with the container (a gap of 5px in a 50px field is 4px in a 40px one)
+  let first: { x: number; y: number; h: number } | null = null
   for (const [n, f] of frames.entries()) {
     const c = primary(f, part)
-    for (const e of c === null ? [] : shownOf(f, p.name)) {
-      const at =
-        c === null ? null : { x: along(e, c, 'x', x), y: along(e, c, 'y', y) }
-      const from = first.get(e.id)
-      if (at !== null && from === undefined) {
-        first.set(e.id, at)
+    if (c === null) {
+      continue
+    }
+    for (const e of shownOf(f, p.name)) {
+      const h = c.b - c.t
+      first ??= {
+        h,
+        x: along(e, c, 'x', p.within.x),
+        y: along(e, c, 'y', p.within.y),
       }
-      const off =
-        at === null || from === undefined
-          ? 0
-          : Math.max(Math.abs(at.x - from.x), Math.abs(at.y - from.y))
-      if (off > drift) {
-        flag(
-          'detached',
-          p.name,
-          n,
-          `${off.toFixed(1)}px from where it showed against ${part}'s ${EDGE_NAMES.x[x]} and ${EDGE_NAMES.y[y]} (allowed ${drift}px)`
-        )
+      for (const axis of ['x', 'y'] as const) {
+        const allowed = drift[axis]
+        const off =
+          along(e, c, axis, p.within[axis]) - (first[axis] * h) / first.h
+        if (allowed !== undefined && Math.abs(off) > allowed) {
+          flag(
+            'detached',
+            p.name,
+            n,
+            `${Math.abs(off).toFixed(1)}px ${WAYS[axis][off < 0 ? 0 : 1]} of where it keeps against ${part}'s ${EDGE_NAMES[axis][p.within[axis]]} (allowed ${allowed}px)`
+          )
+        }
       }
     }
   }
@@ -971,17 +984,17 @@ export const HERO_FLIGHT: Morph = {
       name: 'text',
       selector: `[data-bench=hero-input], .search-ghost input, ${BAR_SLOT} input`,
       text: true,
-      within: { part: 'field', x: 'start', y: 'centre' },
+      within: { drift: { y: 1 }, part: 'field', x: 'start', y: 'centre' },
     },
     {
       name: 'icon',
       selector: `${BAR_SLOT} svg, .search-ghost svg:not(button[type=submit] svg)`,
-      within: { part: 'field', x: 'start', y: 'centre' },
+      within: { drift: { y: 1 }, part: 'field', x: 'start', y: 'centre' },
     },
     {
       name: 'pill',
       selector: `${HERO_FIELD} button[type=submit], .search-ghost button[type=submit]`,
-      within: { drift: 4, part: 'field', x: 'end', y: 'centre' },
+      within: { drift: { x: 1, y: 1 }, part: 'field', x: 'end', y: 'centre' },
     },
   ],
   passes: [
