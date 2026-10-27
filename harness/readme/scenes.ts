@@ -11,7 +11,13 @@
 // Clips are trimmed by song time.
 
 import { spawnSync } from 'node:child_process'
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import {
+  copyFileSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { parseArgs } from 'node:util'
@@ -27,6 +33,11 @@ const BESIDE = 0.78
 const STAGE_RADIUS = 16
 // A clip's last frame holds a little before the loop starts again
 const HOLD_MS = 700
+// The browser window's width in a scene, in CSS px
+const WINDOW_WIDTH = 1120
+// --portfolio: the window comes out this wide, and room is left around each piece for its shadow
+const PORTFOLIO_WIDTH = 1800
+const SHADOW_ROOM = 100
 
 const { positionals, values } = parseArgs({
   allowPositionals: true,
@@ -39,7 +50,11 @@ const { positionals, values } = parseArgs({
     'karaoke-to': { type: 'string' },
     // Keep the rendered pages and frames beside the output, to look at before they go anywhere
     keep: { default: false, type: 'boolean' },
+    // The pieces of a scene laid out elsewhere (a portfolio page): window, clip, upright and sideways phones
+    portfolio: { default: false, type: 'boolean' },
     raw: { type: 'string' },
+    sideways: { type: 'string' },
+    upright: { type: 'string' },
   },
 })
 const [outDir] = positionals
@@ -129,7 +144,6 @@ const pair = (
 ): Scene => {
   const width = 1280
   const height = 800
-  const windowWidth = 1120
   const phoneX = side === 'right' ? width - phoneSize.width : 0
   const layers =
     web.clip === undefined
@@ -142,8 +156,8 @@ const pair = (
         ? {}
         : { clip: { box: web.clip, id: 'web-clip', src: web.src } }),
       src: web.src,
-      width: windowWidth,
-      x: side === 'right' ? 0 : width - windowWidth,
+      width: WINDOW_WIDTH,
+      x: side === 'right' ? 0 : width - WINDOW_WIDTH,
       y: 0,
     })}
 ${phone({ id: name, layers, scale: BESIDE, x: phoneX, y: height - phoneSize.height })}`,
@@ -185,19 +199,39 @@ const encode = (args: string[]) => {
   }
 }
 
-/** One still: the scene shot once, as a WebP */
-const still = async (scene: Scene) => {
-  const { page: tab, close } = await open(WEB.surface, {
-    scale: OUT_WIDTH / scene.width,
-  })
+/**
+ * The scene shot once at `scale` into a transparent PNG; with `measure`, the box of that element in the PNG's pixels
+ */
+const shoot = async (
+  scene: Scene,
+  scale: number,
+  png: string,
+  measure?: string
+): Promise<Box | null> => {
+  const { page: tab, close } = await open(WEB.surface, { scale })
   await tab.goto(page(scene), { waitUntil: 'load' })
-  const png = path.join(work, `${scene.name}.png`)
   await tab.screenshot({
     clip: { height: scene.height, width: scene.width, x: 0, y: 0 },
     omitBackground: true,
     path: png,
   })
+  const box =
+    measure === undefined ? null : await tab.locator(measure).boundingBox()
   await close()
+  return box === null
+    ? null
+    : {
+        height: Math.round(box.height * scale),
+        width: Math.round(box.width * scale),
+        x: Math.round(box.x * scale),
+        y: Math.round(box.y * scale),
+      }
+}
+
+/** One still: the scene shot once, as a WebP */
+const still = async (scene: Scene) => {
+  const png = path.join(work, `${scene.name}.png`)
+  await shoot(scene, OUT_WIDTH / scene.width, png)
   const out = path.join(outDir, `${scene.name}.webp`)
   encode(['cwebp', '-quiet', '-q', '88', '-m', '6', png, '-o', out])
   console.log(out)
@@ -286,7 +320,7 @@ if (values.raw !== undefined) {
   }
 }
 
-if (values.hero !== undefined) {
+if (values.hero !== undefined && !values.portfolio) {
   const from = values['hero-from']
   const to = values['hero-to']
   const web = readClip(path.join(values.hero, 'web'), from, to)
@@ -333,6 +367,83 @@ if (values.karaoke !== undefined) {
       images: { clip: frame.src },
       ms: ms[i] ?? HOLD_MS,
     }))
+  )
+}
+
+// The pieces of a scene laid out elsewhere, each on its own with room for its shadow, all at one scale so the devices
+// keep their sizes: window.png with its clip region filled by the clip's first frame, window.json giving that region
+// in window.png's pixels, clip/ the region's frames (frames.json as capture.ts writes it), upright.png, sideways.png
+if (values.portfolio) {
+  const { hero, sideways, upright } = values
+  if (hero === undefined || upright === undefined || sideways === undefined) {
+    console.error(
+      '--portfolio needs --hero, --upright <png> and --sideways <png>'
+    )
+    process.exit(1)
+  }
+  const webDir = path.join(hero, 'web')
+  const web = readClip(webDir, values['hero-from'], values['hero-to'])
+  const scale = PORTFOLIO_WIDTH / WINDOW_WIDTH
+  const room = SHADOW_ROOM
+  const box = await shoot(
+    {
+      height: Math.ceil(browserHeight(WINDOW_WIDTH)) + 2 * room,
+      html: browser({
+        clip: { box: web.clip, id: 'web-clip', src: web.frames[0]?.src ?? '' },
+        src: web.base,
+        width: WINDOW_WIDTH,
+        x: room,
+        y: room,
+      }),
+      name: 'window',
+      width: WINDOW_WIDTH + 2 * room,
+    },
+    scale,
+    path.join(outDir, 'window.png'),
+    '#web-clip'
+  )
+  writeFileSync(
+    path.join(outDir, 'window.json'),
+    `${JSON.stringify({ clip: box }, null, 1)}\n`
+  )
+  const clipDir = path.join(outDir, 'clip')
+  rmSync(clipDir, { force: true, recursive: true })
+  mkdirSync(clipDir, { recursive: true })
+  const frames = web.frames.map((frame, i) => {
+    const name = `f${String(i).padStart(3, '0')}.png`
+    copyFileSync(path.join(webDir, frame.file), path.join(clipDir, name))
+    return { file: name, songSec: frame.songSec }
+  })
+  writeFileSync(
+    path.join(clipDir, 'frames.json'),
+    `${JSON.stringify({ clip: web.clip, frames }, null, 1)}\n`
+  )
+  for (const [name, src, land] of [
+    ['upright', upright, false],
+    ['sideways', sideways, true],
+  ] as const) {
+    const size = outer(land)
+    // oxlint-disable-next-line eslint/no-await-in-loop -- one piece after another
+    await shoot(
+      {
+        height: Math.ceil(size.height * BESIDE) + 2 * room,
+        html: phone({
+          id: name,
+          land,
+          layers: [{ src: file(src) }],
+          scale: BESIDE,
+          x: room,
+          y: room,
+        }),
+        name,
+        width: Math.ceil(size.width * BESIDE) + 2 * room,
+      },
+      scale,
+      path.join(outDir, `${name}.png`)
+    )
+  }
+  console.log(
+    `${outDir}: window.png (clip at ${JSON.stringify(box)}), clip/ (${frames.length} frames), upright.png, sideways.png`
   )
 }
 
