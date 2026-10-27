@@ -61,18 +61,39 @@ export const textSpansOf = (line: HTMLElement, box: HTMLElement) => {
   })
 }
 
-// The translation placed on its own never rests over the rows: put down overlapping them, it goes past them on the
-// side its centre is on. In layout units within the lyrics' layer
-export const clearOfRows = (
+export interface Span {
+  top: number
+  bottom: number
+}
+
+// Where a box `height` tall, asked to stand at `top`, may go so it stays out of `block` by `gap` and inside `room`
+// (its top's span): where asked when that is clear, else just past the block on the nearer side that has room for it,
+// else null (there is nowhere outside the block for it). In layout units within the lyrics' layer
+export const outsideOf = (
   top: number,
   height: number,
-  rows: { top: number; bottom: number },
+  block: Span,
+  room: Span,
   gap: number
-) => {
-  if (top >= rows.bottom || top + height <= rows.top) {
-    return top
+): number | null => {
+  const inRoom = (at: number) => at >= room.top - 0.5 && at <= room.bottom + 0.5
+  const asked = Math.min(room.bottom, Math.max(room.top, top))
+  if (asked >= block.bottom + gap || asked + height <= block.top - gap) {
+    return asked
   }
-  return top + height / 2 >= (rows.top + rows.bottom) / 2
-    ? rows.bottom + gap
-    : rows.top - gap - height
+  const above = block.top - gap - height
+  const below = block.bottom + gap
+  if (!inRoom(above)) {
+    return inRoom(below) ? below : null
+  }
+  if (!inRoom(below)) {
+    return above
+  }
+  return Math.abs(above - top) <= Math.abs(below - top) ? above : below
+}
+
+// Whether a box asked to stand at `top` is over the block: its centre inside it, where letting go docks
+export const overBlock = (top: number, height: number, block: Span) => {
+  const centre = top + height / 2
+  return centre >= block.top && centre <= block.bottom
 }

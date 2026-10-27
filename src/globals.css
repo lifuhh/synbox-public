@@ -752,38 +752,15 @@
 
 /* Where Two Lines' translation hangs: under the top bar, and under Tap to Unmute while that shows. On a phone on
    its side the bar shows only with the controls and draws over the lyrics, so the translation sits just under the
-   status bar whether the bar shows or not (--lyric-translation-top).
-   --lyric-stagger-top, the top bar's bottom whether it shows or not, sets where the two rooms split, so neither
-   room resizes as the controls come and go */
+   status bar whether the bar shows or not (--lyric-translation-top), so its room doesn't resize as the controls come
+   and go */
 @utility lyric-stagger-layer {
-  --lyric-stagger-top: calc(
-    var(--topbar-h) + var(--notices-h, 0px) + var(--preview-banner-h, 0px) +
-      0.5rem
-  );
   --lyric-translation-top: calc(
     var(--topbar-h) + var(--notices-h, 0px) + var(--preview-banner-h, 0px) +
       0.25rem
   );
-  /* Where the translation's room ends and the rows' begins: past three of the translation's lines, and never
-     above 36% of the stage. A phone on its side has no height to spare: there it is 30% or three lines, whichever
-     reaches further down, plus 0.5rem, so a bigger size moves it down */
-  --stagger-split: max(
-    36%,
-    calc(
-      var(--lyric-stagger-top) + 3 * --theme(--text-lyric-stagger-translation) +
-        1rem
-    )
-  );
-  /* Out of reach of both, centred on the split: half a lyric line, so it grows and shrinks with the lyrics' size
-     (a bigger size keeps the two further apart, a smaller one lets each reach further). Between their drawn boxes:
-     the blocks drop their padding on the sides that face each other */
-  --stagger-gap: calc(--theme(--text-lyric-stagger) / 2);
 
   [data-player-stage]:has([data-unmute-pill]) & {
-    --lyric-stagger-top: calc(
-      var(--topbar-h) + var(--notices-h, 0px) + var(--preview-banner-h, 0px) +
-        3.25rem
-    );
     --lyric-translation-top: calc(
       var(--topbar-h) + var(--notices-h, 0px) + var(--preview-banner-h, 0px) +
         3.5rem
@@ -791,17 +768,6 @@
   }
 
   @variant short {
-    --stagger-split: calc(
-      max(
-          30%,
-          calc(
-            var(--lyric-stagger-top) + 3 *
-              --theme(--text-lyric-stagger-translation) + 0.5rem
-          )
-        ) +
-        0.5rem
-    );
-
     [data-player-stage]:not(:has([data-unmute-pill])) & {
       --lyric-translation-top: calc(
         var(--safe-top) + var(--notices-h, 0px) + var(--preview-banner-h, 0px) +
@@ -813,14 +779,11 @@
 
 /* Two Lines' rooms:
    - The translation's: from just under the top edge (or the top bar, or Tap to Unmute) down to the floor. It
-     rests at the top, its home, unless dragged down the stage, below the rows included (let go over the rows it
-     docks under them: stage-lyrics › useTranslationDock). Its text is centred and narrower than the stage, clear of
-     the corner buttons.
-   - The rows', from the split under the translation's home, plus half the gap, down to the floor. Rows that wrap
-     too tall for it shrink to fit (stage-lyrics' fitSong), so they never reach up into that home. With the
-     translation docked under them (data-docked), the whole stage, as the translation's.
-   The half gap is the rows' own spacer (DraggableLyrics' EDGE elsewhere), not the room's edge, so a size change
-   doesn't resize the room: the rows' fit re-measures only when its room does */
+     rests at the top, its home, unless dragged elsewhere on the stage, never into the rows' block (let go over the
+     block it docks under the rows: stage-lyrics › useTranslationDock). Its text is centred and narrower than the
+     stage, clear of the corner buttons.
+   - The rows', the whole stage too (lyric-stagger-area[data-translated]), docked or not. Rows that wrap too tall
+     for it, less the docked translation's place their block always keeps, shrink to fit (stage-lyrics' fitSong) */
 @utility lyric-stagger-translation-area {
   position: absolute;
   top: var(--lyric-translation-top);
@@ -832,7 +795,7 @@
     transition: none;
   }
 
-  /* Two lines' height, as its home keeps (--stagger-split), with a one-line translation centred in it: a change
+  /* Two lines' height, with a one-line translation centred in it: a change
      between one and two lines grows and shrinks about the middle, and nothing around it moves. As wide as
      reads well: 85% of the stage, up to about 65 characters (34 of its sizes) */
   & [data-lyrics-style-toggle] {
@@ -921,23 +884,11 @@
     }
   }
 
-  /* Nothing above the rows (the translation away from its home, or docked under them): their block's empty
-     reserve (two of the song's tallest lines, over a one-row pair) may hang over the top, so the lines themselves
-     reach it (stage-lyrics › TwoRows' hang sets --rows-overhang) */
-  &[data-docked] {
+  /* With the translation shown, the whole stage, docked or not, so docking never changes where the rows are. Their
+     block's empty reserve (two of the song's tallest lines, over a one-row pair) may hang over the top, so the lines
+     themselves reach it (stage-lyrics › TwoRows' hang sets --rows-overhang) */
+  &[data-translated] {
     top: calc(var(--lyric-translation-top) - var(--rows-overhang, 0px));
-  }
-
-  &[data-translation] {
-    top: var(--stagger-split);
-
-    & .anchor-spacer {
-      min-height: calc(var(--stagger-gap) / 2);
-    }
-
-    & .player-lyrics-overlay {
-      padding-top: 0;
-    }
   }
 
   @variant short {

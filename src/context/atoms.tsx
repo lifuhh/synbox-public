@@ -401,11 +401,7 @@ export const showSharedLyricsStyleAtom = atom(
 // Reset Positions: the lyrics, their upright place and Karaoke Style's translation back where they start (rows at the
 // foot, the translation at the top, undocked), wherever the changes go. Always one tap out of a layout that got stuck.
 // Returns its Undo
-// When positions were last reset (performance.now()): the rows then go where the reset puts them, not back to where
-// they were across the room change it makes (stage-lyrics › useTranslationDock)
-export const positionsResetAtAtom = atom(0)
 export const resetLyricsPositionsAtom = atom(null, (get, set) => {
-  set(positionsResetAtAtom, performance.now())
   const before = {
     anchor: get(lyricsAnchorAtom),
     anchorPortrait: get(lyricsAnchorPortraitAtom),
