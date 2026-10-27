@@ -43,6 +43,8 @@ const JUMP_SHARE = 0.35
 const POP_STEP = 0.5
 const NOISE_PX = 1
 const SHOWN = 0.02
+/** A part's two snapshots (each at least 0.1 opaque, in the recorder) starting further apart: two places at once */
+const HANDOVER_PX = 1
 /** Frames in a row with nothing moving: the transition is over */
 const QUIET_FRAMES = 24
 const MAX_RECORD_MS = 4000
@@ -56,6 +58,11 @@ const PARTS: Record<string, string> = {
   shelves: '.watch-main > :last-child',
   'side-lyrics': '.watch-side > section',
   song: '.watch-main > :first-child',
+  // The song's own rows under the video: its title, the channel's line and the action row (YouTube's link, the
+  // lyrics toggles, like, share, report)
+  'song-actions': '.watch-main nav[aria-label="Player Controls"]',
+  'song-meta': '.watch-main > :first-child h1 + div > :first-child',
+  'song-title': '.watch-main > :first-child h1',
   stage: '.watch-stage',
   'under-lyrics': '.watch-main > section',
   video: '[data-stage-video]',
@@ -79,6 +86,8 @@ interface Box {
   r: number
   b: number
   o: number
+  /** Drawn by both snapshots of a view transition at once, this far apart (0: one place) */
+  split?: number
 }
 interface Frame {
   t: number
@@ -257,20 +266,41 @@ const installRecorder = (parts: Record<string, string>) => {
     if (g === null) {
       return null
     }
-    const [fx, fy, fw, fh] = snapped.at
-    const w0 = g.r - g.l
-    const h0 = g.b - g.t
+    const groupW = Number(pseudo('group', name).width.replace('px', ''))
+    const groupH = Number(pseudo('group', name).height.replace('px', ''))
+    // Where one snapshot draws the part: its share of the snapshot, the snapshot's share of the group (a snapshot
+    // at its own size, from the group's top left, is not stretched to it), through the group's drawn box
+    const drawnBy = (kind: 'old' | 'new', at: Snapped['at']) => {
+      const image = pseudo(kind, name)
+      const sx = Number(image.width.replace('px', '')) / groupW
+      const sy = Number(image.height.replace('px', '')) / groupH
+      const [fx, fy, fw, fh] = at
+      const w0 = (g.r - g.l) * (Number.isFinite(sx) ? sx : 1)
+      const h0 = (g.b - g.t) * (Number.isFinite(sy) ? sy : 1)
+      return {
+        b: g.t + (fy + fh) * h0,
+        l: g.l + fx * w0,
+        r: g.l + (fx + fw) * w0,
+        t: g.t + fy * h0,
+      }
+    }
     const oldO =
       before?.name === name ? Number(pseudo('old', name).opacity) * before.o : 0
     const newO =
       now?.name === name ? Number(pseudo('new', name).opacity) * now.o : 0
-    return {
-      b: g.t + (fy + fh) * h0,
-      l: g.l + fx * w0,
-      o: g.o * Math.max(oldO, newO),
-      r: g.l + (fx + fw) * w0,
-      t: g.t + fy * h0,
+    const oldBox = before?.name === name ? drawnBy('old', before.at) : null
+    const newBox = now?.name === name ? drawnBy('new', now.at) : null
+    const shown = newO >= oldO ? (newBox ?? oldBox) : (oldBox ?? newBox)
+    if (shown === null) {
+      return null
     }
+    // Both snapshots drawing it at once, starting in different places: a cross-fade between two places, not a move.
+    // Where it starts, not its size: a box that only grows wider cross-fades in place
+    const split =
+      oldBox !== null && newBox !== null && Math.min(oldO, newO) > 0.1
+        ? Math.max(Math.abs(oldBox.l - newBox.l), Math.abs(oldBox.t - newBox.t))
+        : 0
+    return { ...shown, o: g.o * Math.max(oldO, newO), split }
   }
   // A part drawn by its element. In a transition, one with no named box of its own is drawn in the root's snapshots:
   // at its end, fading in
@@ -488,6 +518,15 @@ class Judgement {
       this.note(
         'teleport',
         `${part} jumped ${Math.round(Math.max(...steps))}px in one frame (frame ${i}: ${Math.round(a.l)},${Math.round(a.t)} ${Math.round(a.r - a.l)}×${Math.round(a.b - a.t)} → ${Math.round(b.l)},${Math.round(b.t)} ${Math.round(b.r - b.l)}×${Math.round(b.b - b.t)})`
+      )
+    }
+    // Two copies at once in different places: the old snapshot fading out where it was and the new fading in where it
+    // ends. Not a move, a jump through a cross-fade
+    if ((b.split ?? 0) > HANDOVER_PX) {
+      this.out.teleports.add(part)
+      this.note(
+        'teleport',
+        `${part} drawn in two places ${Math.round(b.split ?? 0)}px apart (frame ${i}: the old snapshot fading out, the new fading in)`
       )
     }
     this.size(part, i, { h: b.b - b.t, w: b.r - b.l })
