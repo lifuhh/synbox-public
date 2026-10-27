@@ -2533,6 +2533,34 @@ html[data-transition='zoom'] [data-player-stage] {
   view-transition-name: player-stage;
 }
 
+/* Theater Mode's transition (src/components/watch/theater-transition.ts names the parts and moves them): every part's
+   group rests at its new box, with the browser's own animations off, and the script moves it there from the old one
+   by transform from its top left. A part that grows draws both snapshots across its whole box as it scales; one that
+   slides keeps them at their own size */
+html[data-theater-move='move']::view-transition-group(*.theater) {
+  animation: none;
+  transform-origin: 0 0;
+}
+
+html[data-theater-move='move']::view-transition-old(*.theater),
+html[data-theater-move='move']::view-transition-new(*.theater) {
+  animation: none;
+}
+
+html[data-theater-move='move']::view-transition-old(*.grow),
+html[data-theater-move='move']::view-transition-new(*.grow) {
+  width: 100%;
+  height: 100%;
+}
+
+html[data-theater-move='move']::view-transition-old(*.slide),
+html[data-theater-move='move']::view-transition-new(*.slide),
+html[data-theater-move='move']::view-transition-old(*.panel),
+html[data-theater-move='move']::view-transition-new(*.panel) {
+  width: auto;
+  height: auto;
+}
+
 html[data-transition^='turn']::view-transition-old(root),
 html[data-transition^='turn']::view-transition-new(root),
 html[data-transition='flip']::view-transition-old(root),

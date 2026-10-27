@@ -329,6 +329,12 @@ const stopGlide = () => {
   glide?.cancel()
   glide = null
 }
+// The placement in force, redone now rather than at the next ResizeObserver report: a layout change inside a view
+// transition (watch/theater-transition.ts) has the video where it ends before the new state is snapshotted
+export const placeEngineNow = () => {
+  stopGlide()
+  placed?.()
+}
 
 // Where the video showed when its last placement ended, so the next one flies it from there: the player's stage
 // down into the mini bar, and back. A placement left hidden counts only briefly (the next one is the same hand-over);
@@ -474,7 +480,14 @@ export const placeEngine = (
       visibility: 'visible',
       width: `${outer.width}px`,
     })
+    // A video that fills its stage takes the stage's corners itself (the layer's, from globals.css), so a view
+    // transition that snapshots the video alone (watch/theater-transition.ts) draws it as it shows. Beside black
+    // bands (Theater's wider stage) its corners stay square
+    const fills =
+      Math.abs(inner.width - outer.width) < 1 &&
+      Math.abs(inner.height - outer.height) < 1
     Object.assign(parts.frame.style, {
+      borderRadius: fills ? 'inherit' : '',
       height: `${inner.height}px`,
       left: `${inner.left - outer.left}px`,
       top: `${inner.top - outer.top}px`,

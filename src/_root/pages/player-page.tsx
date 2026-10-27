@@ -20,6 +20,7 @@ import { StageLyrics } from '@/components/player-stage/stage-lyrics'
 import type { StagePlayer } from '@/components/player-stage/use-you-tube-player'
 import { DEFAULT_YOUTUBE_QUIRKS } from '@/components/player-stage/youtube-quirks'
 import { NotInLibrary } from '@/components/watch/not-in-library'
+import { transitionTheater } from '@/components/watch/theater-transition'
 import { WatchPage } from '@/components/watch/watch-page'
 import {
   chartSongAtom,
@@ -149,7 +150,9 @@ const useTheater = (surface: 'stage' | 'watch', wide: boolean) => {
   const toggleTheater =
     surface === 'watch' && wide
       ? () => {
-          setLayout(layout === 'theater' ? 'default' : 'theater')
+          transitionTheater(() => {
+            setLayout(layout === 'theater' ? 'default' : 'theater')
+          })
         }
       : undefined
   const theaterShown = surface === 'watch' && wide && layout === 'theater'
