@@ -988,7 +988,8 @@ const auditOnce = async (
     )
     // An open menu or popover sits next to what can be seen of its button: the button's box when it paints a
     // surface, else its icons and text (a bare glyph's box is mostly empty). Farther than DETACHED_MENU_PX reads as
-    // a pane from nowhere (owner, 2026-10-26, and on a turned page 2026-10-25)
+    // a pane from nowhere (owner, 2026-10-26, and on a turned page 2026-10-25). A popover that names an anchor
+    // (data-menu-anchor) is measured against that instead
     at.step = 'measuring open menus against their buttons'
     const detached: string[] = await page.evaluate((limit) => {
       // oxlint-disable-next-line unicorn/consistent-function-scoping -- runs in the page, where nothing outside this function exists
@@ -1044,7 +1045,16 @@ const auditOnce = async (
           if (button === null) {
             return []
           }
-          const a = drawn(button)
+          // A popover that opens beside what it changes rather than its button names that element
+          // (data-menu-anchor, an id), and is measured against it: Text Style beside the Lyrics panel
+          const anchorId =
+            menu instanceof HTMLElement ? menu.dataset.menuAnchor : undefined
+          const anchor =
+            anchorId === undefined
+              ? null
+              : document.querySelector(`#${CSS.escape(anchorId)}`)
+          const a =
+            anchor === null ? drawn(button) : anchor.getBoundingClientRect()
           const b = menu.getBoundingClientRect()
           const gap = Math.max(
             b.left - a.right,
