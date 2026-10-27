@@ -9,41 +9,18 @@ import { reducedMotion } from '@/lib/reduced-motion'
 import { cn } from '@/utils/cn'
 
 // Home has its own search field. Once it scrolls under the top bar it flies up into the bar and becomes the bar's
-// search (the field on a wide screen, the button on a phone); scrolled back, it flies home. One spring, 0 at the
-// page's field and 1 in the bar, drives a ghost drawn between the two live boxes, so a flight turned around
-// midway keeps its speed, and a flight home lands on the field wherever the scroll has taken it.
+// search (the field on a wide screen, the button on a phone); scrolled back, it flies home.
 //
-// The ghost is one box whose every edge moves from the field's to the bar's, and everything inside it keeps to the
-// edge it belongs to: the text to the left edge, sliding from the field's inset to the bar's at its own size; the
-// bar's search icon at the bar's inset from the left edge, fading in; the field's action pill at the right end,
-// shrinking with the box and fading in place. Scrolled back, the same frames run in reverse
+// The ghost is one box that leaves from where it is (frozen as the flight starts) for the live box it lands on (the
+// bar's search, or the field wherever the scroll has taken it), every edge on one progress, so the box never leans.
+// Everything inside keeps to the edge it belongs to: the text to the left edge, sliding from the field's inset to
+// the bar's at its own size; the bar's search icon at the bar's inset from the left edge, fading in; the field's
+// action pill at the right end, shrinking with the box and fading in place. Scrolled back, the same frames reverse
 
-// A critically damped spring: no bounce, settled in about 0.45 s, the feel of iOS's own transitions (motion's
-// `visualDuration: 0.45, bounce: 0`). Hand-rolled: motion's animate() would bring its whole animation engine into
-// the first load, where the top bar sits
-const OMEGA = (2 * Math.PI) / 0.45
-// A frame longer than this (a hidden tab, a stall) counts as this long, so the ghost never leaps
-const MAX_STEP_S = 1 / 30
-
-interface Spring {
-  value: number
-  velocity: number
-  goal: number
-}
-
-// The spring's exact motion over `dt` seconds, so a long frame can't make it overshoot
-const step = (spring: Spring, dt: number) => {
-  const offset = spring.value - spring.goal
-  const lead = spring.velocity + OMEGA * offset
-  const decay = Math.exp(-OMEGA * dt)
-  spring.value = spring.goal + (offset + lead * dt) * decay
-  spring.velocity = (spring.velocity - OMEGA * lead * dt) * decay
-}
-
-// At rest within 0.1px of a 330px flight, so the real search takes over from the ghost with no step
-const resting = (spring: Spring) =>
-  Math.abs(spring.value - spring.goal) < 3e-4 &&
-  Math.abs(spring.velocity) < 1e-2
+// One timed ease-out: it starts at full speed and stops dead on its target, with no overshoot and no tail creeping
+// the last pixels in (a spring's settle read as a bounce)
+const FLIGHT_MS = 260
+const easeOut = (x: number) => 1 - (1 - x) * (1 - x)
 // How far below the bar the page's field must come back before the search leaves the bar, so a scroll resting
 // at the edge doesn't send it back and forth
 const RETURN_PX = 16
@@ -216,31 +193,53 @@ const actionOf = (field: HTMLElement) =>
 
 interface Flight {
   shell: HTMLElement
-  // Flying up, the page's end of the flight stays under the bar while the field scrolls on past it
-  stick: number
+  // The bar search's height, where the pill ends up
+  barH: number
   page: Words | null
   bar: Words | null
   icon: Pinned | null
   pill: Pinned | null
 }
 
-const flightOf = (
-  field: HTMLElement,
-  shell: HTMLElement,
-  stick: number
-): Flight => {
+const flightOf = (field: HTMLElement, shell: HTMLElement): Flight => {
   const from = field.getBoundingClientRect()
   const to = shell.getBoundingClientRect()
   const icon = iconOf(shell)
   const action = actionOf(field)
   return {
     bar: wordsOf(shell, to),
+    barH: to.height,
     icon: icon === null ? null : pinned(icon, to, 'left'),
     page: wordsOf(field, from),
     pill: action === null ? null : pinned(action, from, 'right'),
     shell,
-    stick,
   }
+}
+
+interface Box {
+  left: number
+  right: number
+  top: number
+  bottom: number
+}
+
+const boxOf = (r: DOMRect): Box => ({
+  bottom: r.bottom,
+  left: r.left,
+  right: r.right,
+  top: r.top,
+})
+
+// One leg of a flight: from where the ghost was when it set off to where it lands, `at` (0 at the field, 1 in the
+// bar) going from `from` to `goal` on the same eased progress as the box
+interface Leg {
+  depart: Box
+  // What it sets off from, read again in the first frame (a bar still sliding in has moved since the scroll that
+  // started the flight); none for a flight turned around, which sets off from where its box was drawn
+  leaving: HTMLElement | null
+  from: number
+  goal: number
+  start: number | null
 }
 
 // Each part of the ghost at `at` (0 at the field, 1 in the bar), in a box `width` × `height`
@@ -252,13 +251,14 @@ const drawParts = (
 ) => {
   const { page, bar, icon, pill } = flight
   const mid = height / 2
-  // The pill keeps its gap to the right end, scaled with the box's height, shrinking to 60% as it fades out over the
-  // first half of the flight
+  // The pill keeps its gap to the right end, scaled with the box's height, and fades out over the first half of the
+  // flight. Its size goes straight from full at the field to 60% of the bar's height in the bar, in step with the box,
+  // so neither of its edges ever runs past where it ends up
   let reserve = 0
   if (pill !== null) {
     const k = height / pill.of
     const gone = ramp(at, 0, 0.5)
-    const scale = k * mix(1, 0.6, gone)
+    const scale = mix(1, (0.6 * flight.barH) / pill.of, at)
     const right = width - pill.gap * k
     reserve = width - right + pill.w * scale
     pill.el.style.transform = `translate(${right - pill.w}px, ${mid + pill.dy * k - pill.h / 2}px) scale(${scale})`
@@ -297,7 +297,10 @@ const dock = (
   ghost: HTMLElement,
   setStage: (stage: DockStage) => void
 ) => {
-  const t: Spring = { goal: 0, value: 0, velocity: 0 }
+  // Where the search is, 0 at the field and 1 in the bar, and the box last drawn
+  let at = 0
+  let drawnBox: Box | null = null
+  let leg: Leg | null = null
   let frame = 0
   let docked = false
   let flight: Flight | null = null
@@ -340,19 +343,28 @@ const dock = (
     return typing || top <= barBottom() + RETURN_PX
   }
 
-  const draw = () => {
-    if (flight === null) {
+  // The ghost at progress `p` of the current leg: every edge the same share of the way from where it set off to the
+  // live box it lands on, and every part placed from that box in the same frame
+  const draw = (p: number) => {
+    if (flight === null || leg === null) {
       return
     }
-    const at = t.value
+    at = mix(leg.from, leg.goal, p)
     const origin = header.getBoundingClientRect()
-    const from = field.getBoundingClientRect()
-    const to = flight.shell.getBoundingClientRect()
-    const left = mix(from.left, to.left, at)
-    const width = mix(from.right, to.right, at) - left
-    const height = mix(from.height, to.height, at)
-    const top = mix(Math.max(from.top, flight.stick), to.top, at)
-    ghost.style.transform = `translate(${left - origin.left}px, ${top - origin.top}px)`
+    const land = boxOf(
+      (leg.goal === 1 ? flight.shell : field).getBoundingClientRect()
+    )
+    const { depart } = leg
+    const box: Box = {
+      bottom: mix(depart.bottom, land.bottom, p),
+      left: mix(depart.left, land.left, p),
+      right: mix(depart.right, land.right, p),
+      top: mix(depart.top, land.top, p),
+    }
+    drawnBox = box
+    const width = box.right - box.left
+    const height = box.bottom - box.top
+    ghost.style.transform = `translate(${box.left - origin.left}px, ${box.top - origin.top}px)`
     ghost.style.width = `${width}px`
     ghost.style.height = `${height}px`
     ghost.style.setProperty('--dock-t', String(at))
@@ -384,6 +396,8 @@ const dock = (
     // The real search shows in the same frame the ghost goes
     show(docked ? 'bar' : 'ready')
     flight = null
+    leg = null
+    drawnBox = null
     ghost.replaceChildren()
     if (!docked) {
       field.style.opacity = ''
@@ -411,12 +425,18 @@ const dock = (
     ghost.style.setProperty('--dock-from-fill', from.fill)
     ghost.style.setProperty('--dock-to-edge', to.edge)
     ghost.style.setProperty('--dock-to-fill', to.fill)
-    // A flight turned around keeps the copies it has; a new one copies both ends as they are now
-    flight ??= flightOf(
-      field,
-      shell,
-      Math.min(field.getBoundingClientRect().top, barBottom())
-    )
+    // A flight turned around keeps the copies it has and sets off from where its box is; a new one copies both ends
+    // and sets off from where the search shows now (the field, the bar's search)
+    const setOff = docked ? field : shell
+    const leaving = drawnBox === null ? setOff : null
+    flight ??= flightOf(field, shell)
+    leg = {
+      depart: drawnBox ?? boxOf((leaving ?? field).getBoundingClientRect()),
+      from: at,
+      goal: docked ? 1 : 0,
+      leaving,
+      start: null,
+    }
     const { page, bar, icon, pill } = flight
     const text = document.createElement('div')
     text.className = 'search-ghost-text'
@@ -427,31 +447,37 @@ const dock = (
     )
     // The ghost carries the search from here, in the frame the real one hides
     field.style.opacity = '0'
-    t.goal = docked ? 1 : 0
     if (quiet) {
       cancelAnimationFrame(frame)
       frame = 0
-      t.value = t.goal
-      t.velocity = 0
+      at = leg.goal
       settle()
       return
     }
-    draw()
-    // A flight under way just turns: its frames already run, and its speed carries over. A new one shows its first
-    // frame where it starts, exactly over the field it takes over from
+    draw(0)
+    // The first frame shows the ghost where it sets off, exactly over what it takes over from; the last shows it
+    // exactly on what it lands on, and the next hands over to it
     if (frame === 0) {
-      let last: number | null = null
+      let landed = false
       const tick = (now: number) => {
-        step(t, last === null ? 0 : Math.min((now - last) / 1000, MAX_STEP_S))
-        last = now
-        if (resting(t)) {
-          t.value = t.goal
-          t.velocity = 0
+        if (leg === null) {
+          frame = 0
+          return
+        }
+        if (landed) {
           frame = 0
           settle()
           return
         }
-        draw()
+        if (leg.start === null) {
+          leg.start = now
+          if (leg.leaving !== null) {
+            leg.depart = boxOf(leg.leaving.getBoundingClientRect())
+          }
+        }
+        const x = Math.min((now - leg.start) / FLIGHT_MS, 1)
+        draw(easeOut(x))
+        landed = x === 1
         frame = requestAnimationFrame(tick)
       }
       frame = requestAnimationFrame(tick)
@@ -469,8 +495,7 @@ const dock = (
   // A page that opens already scrolled starts with the search in the bar
   docked = wants()
   if (docked) {
-    t.value = 1
-    t.goal = 1
+    at = 1
     field.style.opacity = '0'
   }
   shown = docked ? 'bar' : 'page'

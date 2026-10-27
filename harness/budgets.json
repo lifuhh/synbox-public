@@ -7,20 +7,7 @@
     "theater-motion": "teleports 16 and detachments 2 on 2026-10-27 (chore/eval-theater-motion): Theater Mode snaps today, so eight parts jump in one frame each way and the video's layer lands a frame after the stage; the next PR (feat/watch-theater-tooltips) animates it and sets both back to 0. Never raised to let a jump through.",
     "lyric-shift-*": "0 from the start (owner, 2026-10-25: a Two Lines line change moves as little as it can). Not to be raised to let a shift through: fix the layout (src/components/player-stage/stage-lyrics.tsx › TwoRows, two-line-layout.ts).",
     "lyric-undock-*": "0 from the start (owner, 2026-10-27: taking Karaoke Style's docked translation off the rows, or putting it back, never moves the rows, and the translation never overlaps them). Not to be raised: fix the dock (src/components/player-stage/stage-lyrics.tsx › useTranslationDock, DockedTranslation).",
-    "motion-hero-flight-*": "0 since 2026-10-27 (fix/hero-flight, the one continuous box). chore/motion-audit (#564) and chore/motion-input-timing (#578) landed with staging's own counts as ceilings (web: teleports 53-55, detachments 101-159, scale reversals 4; safari-portrait: 73-75, 93-248, 8; safari-landscape: 67-72, 97-156, 4) so the audit could merge before the fix. Not to be raised to let a jump through: fix the motion (src/components/topbar/search-dock.tsx). chore/motion-overshoot-slant added overshoots, slants and settles with staging's spring as the ceiling (web: settles 4; safari-portrait: settles 2, slants 4; safari-landscape: settles 2, slants 11, overshoots 2, with headroom); fix/hero-flight-decisive removes them."
-  },
-  "motion-hero-flight-web": {
-    "settles": 6
-  },
-  "motion-hero-flight-safari-portrait": {
-    "settles": 4,
-    "slants": 20,
-    "overshoots": 4
-  },
-  "motion-hero-flight-safari-landscape": {
-    "settles": 4,
-    "slants": 30,
-    "overshoots": 4
+    "motion-hero-flight-*": "0 since 2026-10-27 (fix/hero-flight, the one continuous box). chore/motion-audit (#564) and chore/motion-input-timing (#578) landed with staging's own counts as ceilings (web: teleports 53-55, detachments 101-159, scale reversals 4; safari-portrait: 73-75, 93-248, 8; safari-landscape: 67-72, 97-156, 4) so the audit could merge before the fix. Not to be raised to let a jump through: fix the motion (src/components/topbar/search-dock.tsx). Overshoots, slants and settles (chore/motion-overshoot-slant, #584, landed over staging's spring: settles 2-4, slants up to 11, overshoots 2) are 0 since fix/hero-flight-decisive's ease-out."
   },
   "size": {
     "initialJsKB": 350,
