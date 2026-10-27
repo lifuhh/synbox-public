@@ -1051,7 +1051,7 @@
   display: flex;
   align-items: center;
   gap: 0.375rem;
-  padding: 0.25rem 0.5rem;
+  padding: 0.3125rem 0.5rem;
   border-radius: 0.375rem;
   background: rgb(28 28 28 / 0.92);
   color: #fff;
@@ -1064,7 +1064,9 @@
   transition: opacity 100ms ease-out;
 }
 
-/* A key on a label: the key's own cap, outlined, as the shortcut lists of video players draw them */
+/* A key on a label: the key's own cap, outlined, as the shortcut lists of video players draw them. In the system's
+   UI font, as the keyboard's own legends are, with its case-sensitive forms ('case'), which raise < and > to the
+   capitals' centre: in the app's font they sat 1.75px under the cap's centre, the letters 0.5px */
 @utility control-key {
   display: inline-grid;
   place-items: center;
@@ -1073,7 +1075,8 @@
   padding-inline: 0.25rem;
   border: 1px solid color-mix(in srgb, currentColor 40%, transparent);
   border-radius: 0.25rem;
-  font-family: inherit;
+  font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-feature-settings: 'case' 1;
   font-size: 0.75rem;
   font-weight: 600;
   line-height: 1;
