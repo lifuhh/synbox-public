@@ -1,4 +1,4 @@
-import { Check, Play, RotateCcw, X } from 'lucide-react'
+import { Check, MessageSquare, Play, RotateCcw, X } from 'lucide-react'
 import {
   AnimatePresence,
   motion,
@@ -16,11 +16,13 @@ import { GoogleMark } from '@/components/shared/google-mark'
 import { MarqueeText } from '@/components/shared/marquee-text'
 import { Button } from '@/components/ui/button'
 import { SIGN_IN_CODES, signInWithGoogle, useAccess } from '@/lib/auth'
+import type { ResolvedFeedback } from '@/lib/feedback'
 import { overallValue } from '@/lib/generation/progress'
 import type { Job } from '@/lib/generation/store'
 import {
   dismissFinishedGenerations,
   dismissGeneration,
+  feedbackKey,
   fixKey,
   focusGeneration,
   isActive,
@@ -268,18 +270,27 @@ const RowAction = ({ job, title }: { job: Job; title: string }) => {
   return null
 }
 
-// Clears every finished song and every fix at once; songs still going stay, and the panel closes when none are
-// left. Shown only once there are two to clear
+// Clears every finished song, fix and resolved feedback at once; songs still going stay, and the panel closes when
+// none are left. Shown only once there are two to clear
 const DismissAll = ({
   jobs,
   fixes,
   onDismissFixes,
+  resolved,
+  onDismissResolved,
 }: {
   jobs: readonly Job[]
   fixes: readonly Fix[]
   onDismissFixes: (fixes: readonly Fix[]) => void
+  resolved: readonly ResolvedFeedback[]
+  onDismissResolved: (resolved: readonly ResolvedFeedback[]) => void
 }) => {
-  if (jobs.filter((job) => !isActive(job)).length + fixes.length < 2) {
+  if (
+    jobs.filter((job) => !isActive(job)).length +
+      fixes.length +
+      resolved.length <
+    2
+  ) {
     return null
   }
   return (
@@ -288,8 +299,16 @@ const DismissAll = ({
         variant='overlay-muted'
         size='sm'
         onClick={() => {
-          onDismissFixes(fixes)
+          if (fixes.length > 0) {
+            onDismissFixes(fixes)
+          }
+          if (resolved.length > 0) {
+            onDismissResolved(resolved)
+          }
           dismissFinishedGenerations()
+          if (!jobs.some(isActive)) {
+            setGenerationExpanded(false)
+          }
         }}>
         Dismiss All
       </Button>
@@ -636,6 +655,78 @@ const FixList = ({
   </section>
 )
 
+// Feedback the listener sent that an admin resolved: its subject and when. Nothing to open, so its X is in view, as a
+// failed song's is; a swipe dismisses it on touch too
+const ResolvedRow = ({
+  item,
+  onDismiss,
+}: {
+  item: ResolvedFeedback
+  onDismiss: (resolved: readonly ResolvedFeedback[]) => void
+}) => {
+  const dismiss = () => {
+    onDismiss([item])
+  }
+  const unread = useUnread(feedbackKey(item.id))
+  return (
+    <SwipeRow
+      name={item.subject}
+      unread={unread}
+      finished
+      hoverDismiss={false}
+      onDismiss={dismiss}
+      main={
+        <div className={ROW_MAIN}>
+          <span className='grid h-8 w-[57px] shrink-0 place-items-center rounded bg-secondary text-muted-foreground'>
+            <MessageSquare className='size-4' aria-hidden />
+          </span>
+          <span className='flex min-w-0 flex-1 flex-col'>
+            {unread && UNREAD_LABEL}
+            <MarqueeText className='min-w-0 text-sm text-foreground'>
+              {item.subject}
+            </MarqueeText>
+            <Stamp at={item.resolvedAt} />
+          </span>
+        </div>
+      }
+      action={
+        <Button
+          variant='overlay-icon'
+          size='icon'
+          className='size-8 shrink-0 touch:size-11'
+          aria-label={`Dismiss ${item.subject}`}
+          onClick={dismiss}>
+          <X className='size-4' aria-hidden />
+        </Button>
+      }
+    />
+  )
+}
+
+// Under the fixes, for the same reason
+const ResolvedList = ({
+  resolved,
+  onDismiss,
+}: {
+  resolved: readonly ResolvedFeedback[]
+  onDismiss: (resolved: readonly ResolvedFeedback[]) => void
+}) => (
+  <section aria-labelledby='resolved-heading' className='flex flex-col gap-1'>
+    <h3
+      id='resolved-heading'
+      className='text-xs font-medium tracking-wide text-muted-foreground uppercase'>
+      Feedback Resolved
+    </h3>
+    <ul aria-label='Feedback Resolved' className='-mx-3 flex flex-col gap-0.5'>
+      <AnimatePresence initial={false}>
+        {resolved.map((item) => (
+          <ResolvedRow key={item.id} item={item} onDismiss={onDismiss} />
+        ))}
+      </AnimatePresence>
+    </ul>
+  </section>
+)
+
 // Every song in the queue, shared by all tabs, oldest first; picking one opens its details under its row, which
 // is their header: the song isn't drawn a second time. Not a list item of its own (role none), so the list still
 // counts songs
@@ -809,15 +900,19 @@ interface GenerationPanelProps {
   jobs: readonly Job[]
   fixes: readonly Fix[]
   onDismissFixes: (fixes: readonly Fix[]) => void
+  resolved: readonly ResolvedFeedback[]
+  onDismissResolved: (resolved: readonly ResolvedFeedback[]) => void
 }
 
 // The top bar panel's body: every song in the queue with the picked one's steps under its row (one song: its
-// header and steps), then the reported songs fixed
+// header and steps), then the reported songs fixed, then the feedback resolved
 const GenerationPanel = ({
   job,
   jobs,
   fixes,
   onDismissFixes,
+  resolved,
+  onDismissResolved,
 }: GenerationPanelProps) => {
   const view = usePresentation(job)
   const listed = job !== null && jobs.length > 1
@@ -827,7 +922,13 @@ const GenerationPanel = ({
     ) : null
   return (
     <div className='flex flex-col gap-4 p-4'>
-      <DismissAll jobs={jobs} fixes={fixes} onDismissFixes={onDismissFixes} />
+      <DismissAll
+        jobs={jobs}
+        fixes={fixes}
+        onDismissFixes={onDismissFixes}
+        resolved={resolved}
+        onDismissResolved={onDismissResolved}
+      />
       {listed ? (
         <SongQueue
           jobs={jobs}
@@ -842,6 +943,9 @@ const GenerationPanel = ({
         detail
       )}
       {fixes.length > 0 && <FixList fixes={fixes} onDismiss={onDismissFixes} />}
+      {resolved.length > 0 && (
+        <ResolvedList resolved={resolved} onDismiss={onDismissResolved} />
+      )}
     </div>
   )
 }

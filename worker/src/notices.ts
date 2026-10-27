@@ -1,9 +1,9 @@
-// Admins' in-app notices: the latest contact messages, song reports and requests for more songs. A notice is unread
-// until the admin opens the bell on it (adminNoticeRead keeps when), and leaves the bell READ_DAYS after that, or at
-// Clear Read (adminNoticeSeen.clearedAt). Derived from the rows themselves, so there is nothing to keep in step when
-// one is resolved or deleted; /admin lists them all regardless
+// Admins' in-app notices: the latest contact messages, song reports, requests for more songs and feedback. A notice
+// is unread until the admin opens the bell on it (adminNoticeRead keeps when), and leaves the bell READ_DAYS after
+// that, or at Clear Read (adminNoticeSeen.clearedAt). Derived from the rows themselves, so there is nothing to keep in
+// step when one is resolved or deleted; /admin lists them all regardless
 
-export type NoticeKind = 'message' | 'report' | 'request'
+export type NoticeKind = 'message' | 'report' | 'request' | 'feedback'
 
 export interface Notice {
   kind: NoticeKind
@@ -11,7 +11,8 @@ export interface Notice {
   id: string
   at: number
   unread: boolean
-  // Who sent it ('' for a guest or a deleted account); the song for a report; a message's subject
+  // Who sent it ('' for a guest, anonymous feedback or a deleted account); the song for a report; a message's or
+  // feedback's subject
   name: string
   videoId: string | null
   subject: string | null
@@ -39,6 +40,9 @@ const recentRows = async (db: D1Database) => {
          union all
          select 'request', cast(q."id" as text), q."createdAt", coalesce(u."name", ''), null, null
          from "quotaRequest" q left join "user" u on u."id" = q."userId"
+         union all
+         select 'feedback', cast(f."id" as text), f."createdAt", coalesce(u."name", ''), null, f."subject"
+         from "feedback" f left join "user" u on u."id" = f."userId"
        ) order by "at" desc limit ?1`
     )
     .bind(SCAN)

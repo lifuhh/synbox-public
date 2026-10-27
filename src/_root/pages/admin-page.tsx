@@ -46,8 +46,11 @@ import {
   MANUAL_DROP_REASONS,
   DROP_REASONS,
   dropReasonLabel,
+  feedbackState,
   reportState,
+  useAdminFeedback,
   useAdminGenerations,
+  useChangeFeedback,
   useAdminMessages,
   useAdminRequests,
   useDecideRequest,
@@ -62,7 +65,10 @@ import {
   useChangeReport,
 } from '@/lib/admin-console'
 import type {
+  AdminFeedback,
   AdminGeneration,
+  FeedbackChange,
+  FeedbackState,
   AdminMessage,
   AdminRequest,
   AdminReport,
@@ -1125,6 +1131,49 @@ const ReportItem = ({ report }: { report: AdminReport }) => {
   )
 }
 
+// One state of a list at a time (Reports, Feedback), each with its count: segmented buttons in a radio group
+const StatePicker = <T extends string>({
+  label,
+  options,
+  count,
+  value,
+  onChange,
+}: {
+  label: string
+  options: readonly { id: T; name: string }[]
+  count: (id: T) => number
+  value: T
+  onChange: (id: T) => void
+}) => (
+  <div
+    role='radiogroup'
+    aria-label={label}
+    className='no-scrollbar inline-flex max-w-full gap-1 self-start overflow-x-auto rounded-lg bg-secondary p-1'>
+    {options.map((option) => (
+      <button
+        key={option.id}
+        type='button'
+        // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- segmented buttons in an ARIA radio group, like the lyrics style scope
+        role='radio'
+        aria-checked={value === option.id}
+        onClick={() => {
+          onChange(option.id)
+        }}
+        className={cn(
+          'h-7 shrink-0 rounded-md px-3 text-sm font-medium whitespace-nowrap transition-colors touch:h-9 touch:px-4',
+          value === option.id
+            ? 'bg-background text-foreground shadow-sm'
+            : 'text-muted-foreground hover:text-foreground'
+        )}>
+        {option.name}
+        <span className='ml-2 text-muted-foreground tabular-nums'>
+          {count(option.id)}
+        </span>
+      </button>
+    ))}
+  </div>
+)
+
 const REPORT_STATES: { id: ReportState; name: string; empty: string }[] = [
   { empty: 'No open reports', id: 'open', name: 'Open' },
   { empty: 'Nothing waiting', id: 'review', name: 'Needs Review' },
@@ -1154,36 +1203,15 @@ const ReportsList = () => {
   const shown = reports.filter((report) => reportState(report) === shownState)
   return (
     <div className='flex flex-col gap-3'>
-      <div
-        role='radiogroup'
-        aria-label='Report State'
-        className='no-scrollbar inline-flex max-w-full gap-1 self-start overflow-x-auto rounded-lg bg-secondary p-1'>
-        {REPORT_STATES.map((option) => (
-          <button
-            key={option.id}
-            type='button'
-            // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- segmented buttons in an ARIA radio group, like the lyrics style scope
-            role='radio'
-            aria-checked={shownState === option.id}
-            onClick={() => {
-              setShownState(option.id)
-            }}
-            className={cn(
-              'h-7 shrink-0 rounded-md px-3 text-sm font-medium whitespace-nowrap transition-colors touch:h-9 touch:px-4',
-              shownState === option.id
-                ? 'bg-background text-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-foreground'
-            )}>
-            {option.name}
-            <span className='ml-2 text-muted-foreground tabular-nums'>
-              {
-                reports.filter((report) => reportState(report) === option.id)
-                  .length
-              }
-            </span>
-          </button>
-        ))}
-      </div>
+      <StatePicker
+        label='Report State'
+        options={REPORT_STATES}
+        count={(id) =>
+          reports.filter((report) => reportState(report) === id).length
+        }
+        value={shownState}
+        onChange={setShownState}
+      />
       {shown.length === 0 ? (
         <p className='py-6 text-center text-sm text-muted-foreground'>
           {REPORT_STATES.find((option) => option.id === shownState)?.empty}
@@ -1518,6 +1546,164 @@ const MessagesPanel = () => {
   )
 }
 
+// Resolve tells a signed sender in the app; Drop tells nobody; Reopen undoes either, so none asks first
+const FeedbackAction = ({ feedback }: { feedback: AdminFeedback }) => {
+  const { toast } = useToast()
+  const { isPending, mutate } = useChangeFeedback()
+  const state = feedbackState(feedback)
+  const change = (next: FeedbackChange, failure: string) => {
+    mutate(
+      { change: next, id: feedback.id },
+      {
+        onError: (error) => {
+          toast({
+            description: error.message,
+            title: failure,
+            variant: 'destructive',
+          })
+        },
+      }
+    )
+  }
+  if (state !== 'open') {
+    return (
+      <div className='ml-auto flex shrink-0 items-center gap-2'>
+        <span
+          className={cn(
+            'text-xs whitespace-nowrap',
+            state === 'resolved' ? 'text-success' : 'text-muted-foreground'
+          )}>
+          {state === 'resolved' ? 'Resolved' : 'Dropped'}
+        </span>
+        <Button
+          size='row'
+          variant='outline'
+          disabled={isPending}
+          className={ROW_BUTTON}
+          onClick={() => {
+            change('reopen', 'Could Not Reopen')
+          }}>
+          <Undo2Icon className='size-3.5' />
+          Reopen
+        </Button>
+      </div>
+    )
+  }
+  return (
+    <div className='ml-auto flex shrink-0 items-center gap-2'>
+      <Button
+        size='row'
+        variant='outline'
+        disabled={isPending}
+        className={ROW_BUTTON}
+        onClick={() => {
+          change('drop', 'Could Not Drop')
+        }}>
+        <BanIcon className='size-3.5' />
+        Drop
+      </Button>
+      <Button
+        size='row'
+        variant='outline'
+        disabled={isPending}
+        className={ROW_BUTTON}
+        onClick={() => {
+          change('resolve', 'Could Not Resolve')
+        }}>
+        <CheckIcon className='size-3.5' />
+        Resolve
+      </Button>
+    </div>
+  )
+}
+
+const isAnonymous = (feedback: AdminFeedback) =>
+  feedback.anonymous === 1 || feedback.anonymous === true
+
+const FeedbackItem = ({ feedback }: { feedback: AdminFeedback }) => {
+  const open = feedbackState(feedback) === 'open'
+  let from = feedback.name ?? 'Deleted Account'
+  if (isAnonymous(feedback)) {
+    from = 'Anonymous'
+  } else if (feedback.email !== null) {
+    from = `${from} · ${feedback.email}`
+  }
+  return (
+    <li className='flex flex-col gap-1.5 border-t border-border py-3 text-sm'>
+      <p className='font-semibold text-pretty text-foreground'>
+        {feedback.subject}
+      </p>
+      <p
+        className={cn(
+          'wrap-break-word whitespace-pre-wrap',
+          open ? 'text-foreground' : 'text-muted-foreground'
+        )}>
+        {feedback.message}
+      </p>
+      {/* Who and when wraps whole rather than giving way to the actions; they drop under it when it's long */}
+      <div className='flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5'>
+        <p className='min-w-0 text-xs text-pretty wrap-break-word text-muted-foreground'>
+          {from} · <When value={feedback.createdAt} />
+        </p>
+        <FeedbackAction feedback={feedback} />
+      </div>
+    </li>
+  )
+}
+
+const FEEDBACK_STATES: { id: FeedbackState; name: string; empty: string }[] = [
+  { empty: 'No open feedback', id: 'open', name: 'Open' },
+  { empty: 'No resolved feedback', id: 'resolved', name: 'Resolved' },
+  { empty: 'No dropped feedback', id: 'dropped', name: 'Dropped' },
+]
+
+// Send Feedback, one state at a time, open first (worker/src/feedback.ts). Anonymous feedback has no sender to show
+const FeedbackPanel = () => {
+  const { data, error } = useAdminFeedback()
+  const [shownState, setShownState] = useState<FeedbackState>('open')
+  if (error !== null) {
+    return error.message.includes('404') ? (
+      <p className='text-sm text-error'>Needs the Worker update</p>
+    ) : (
+      <LoadError error={error} />
+    )
+  }
+  if (data === undefined) {
+    return <Skeleton className='h-40 w-full' />
+  }
+  if (data.feedback.length === 0) {
+    return <p className='text-sm text-muted-foreground'>No feedback yet</p>
+  }
+  const shown = data.feedback.filter(
+    (feedback) => feedbackState(feedback) === shownState
+  )
+  return (
+    <div className='flex flex-col gap-3'>
+      <StatePicker
+        label='Feedback State'
+        options={FEEDBACK_STATES}
+        count={(id) =>
+          data.feedback.filter((feedback) => feedbackState(feedback) === id)
+            .length
+        }
+        value={shownState}
+        onChange={setShownState}
+      />
+      {shown.length === 0 ? (
+        <p className='py-6 text-center text-sm text-muted-foreground'>
+          {FEEDBACK_STATES.find((option) => option.id === shownState)?.empty}
+        </p>
+      ) : (
+        <ul>
+          {shown.map((feedback) => (
+            <FeedbackItem key={feedback.id} feedback={feedback} />
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
 const REQUEST_STATUS = {
   approved: 'Approved',
   declined: 'Declined',
@@ -1666,6 +1852,7 @@ const TABS = [
   'accounts',
   'signals',
   'usage',
+  'feedback',
   'messages',
   'requests',
 ] as const
@@ -1714,6 +1901,9 @@ const AdminTabs = () => {
           <TabsTrigger value='usage' className='h-full'>
             Usage
           </TabsTrigger>
+          <TabsTrigger value='feedback' className='h-full'>
+            Feedback
+          </TabsTrigger>
           <TabsTrigger value='messages' className='h-full'>
             Messages
           </TabsTrigger>
@@ -1759,6 +1949,9 @@ const AdminTabs = () => {
       </TabsContent>
       <TabsContent value='usage' className='mt-4'>
         <UsagePanel />
+      </TabsContent>
+      <TabsContent value='feedback' className='mt-4'>
+        <FeedbackPanel />
       </TabsContent>
       <TabsContent value='messages' className='mt-4'>
         <MessagesPanel />

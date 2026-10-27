@@ -397,6 +397,61 @@ export const useAdminMessages = () =>
     retry,
   })
 
+// Send Feedback, open first, then newest (worker/src/feedback.ts). An anonymous one has no name or email
+const feedbackSchema = z.object({
+  feedback: z.array(
+    z.object({
+      // SQLite's boolean
+      anonymous: z.union([z.number(), z.boolean()]),
+      createdAt: z.number(),
+      droppedAt: z.number().nullable(),
+      email: z.string().nullable(),
+      id: z.number(),
+      message: z.string(),
+      name: z.string().nullable(),
+      resolvedAt: z.number().nullable(),
+      subject: z.string(),
+    })
+  ),
+})
+export type AdminFeedback = z.infer<typeof feedbackSchema>['feedback'][number]
+export type FeedbackState = 'open' | 'resolved' | 'dropped'
+export type FeedbackChange = 'resolve' | 'drop' | 'reopen'
+
+export const feedbackState = (feedback: AdminFeedback): FeedbackState => {
+  if (feedback.resolvedAt !== null) {
+    return 'resolved'
+  }
+  return feedback.droppedAt === null ? 'open' : 'dropped'
+}
+
+export const useAdminFeedback = () =>
+  useQuery({
+    queryFn: async () => await fetchParsed(feedbackSchema, '/feedback'),
+    queryKey: [QUERY_KEYS.GET_ADMIN_FEEDBACK],
+    retry,
+  })
+
+// Resolve (a signed sender hears of it in the app), drop (nobody does) or reopen; each one press, undone by Reopen
+export const useChangeFeedback = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({
+      id,
+      change,
+    }: {
+      id: number
+      change: FeedbackChange
+    }) =>
+      await call(`/feedback/${id}/${change}`, { body: '{}', method: 'POST' }),
+    onSettled: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.GET_ADMIN_FEEDBACK],
+      })
+    },
+  })
+}
+
 // Requests for more songs a day, open ones first (worker/src/requests.ts)
 const requestsSchema = z.object({
   requests: z.array(

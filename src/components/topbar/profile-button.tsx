@@ -4,13 +4,15 @@ import {
   EllipsisVerticalIcon,
   LoaderCircleIcon,
   MailIcon,
+  MessageSquareIcon,
   ShieldIcon,
   LogOutIcon,
   MonitorDownIcon,
   SparklesIcon,
   UserIcon,
 } from 'lucide-react'
-import { lazy, Suspense, useMemo, useState } from 'react'
+import { lazy, Suspense, useId, useMemo, useState } from 'react'
+import type { ReactNode } from 'react'
 import { Link } from 'react-router'
 
 import { GoogleMark } from '@/components/shared/google-mark'
@@ -37,6 +39,7 @@ import {
   songsLeftText,
   useMe,
 } from '@/lib/auth'
+import { WRITE_HINTS } from '@/lib/feedback'
 import { forgetMySongs } from '@/lib/offline/sync'
 import { useInstallMethod } from '@/lib/pwa'
 import { QUERY_KEYS } from '@/lib/react-query/query-keys'
@@ -49,9 +52,20 @@ import { Button } from '../ui/button'
 const InstallGuideDialog = lazy(
   async () => await import('./install-guide-dialog')
 )
-// Its own chunk too: loaded on the first press of Contact Me
+// Their own chunks too: loaded on the first press of Contact Me or Send Feedback
 const ContactDialog = lazy(
   async () => await import('@/components/shared/contact-dialog')
+)
+const FeedbackDialog = lazy(
+  async () => await import('@/components/shared/feedback-dialog')
+)
+
+// A menu item's secondary line, on its label's line: read as the item's description (aria-describedby), so its
+// accessible name stays the label alone
+const MenuHint = ({ id, children }: { id: string; children: ReactNode }) => (
+  <span id={id} aria-hidden className='ml-2 text-xs text-muted-foreground'>
+    {children}
+  </span>
 )
 
 // Google is the only way in, so Sign In goes straight to it: no panel to wait for. It shows it is on its way at
@@ -168,6 +182,8 @@ const ProfileButtonDropdown = () => {
   // Mounted from its first opening on, so it can animate closed
   const [guide, setGuide] = useState<'closed' | 'open' | null>(null)
   const [contact, setContact] = useState<'closed' | 'open' | null>(null)
+  const [feedback, setFeedback] = useState<'closed' | 'open' | null>(null)
+  const hintId = useId()
   const queryClient = useQueryClient()
   const { data: me, isPending } = useMe()
   const user = me?.user ?? null
@@ -230,11 +246,27 @@ const ProfileButtonDropdown = () => {
             </DropdownMenuItem>
             <DropdownMenuItem
               className='cursor-pointer'
+              aria-describedby={`${hintId}-feedback`}
+              onClick={() => {
+                setFeedback('open')
+              }}>
+              <MessageSquareIcon className='mr-2 size-5 shrink-0' />
+              <span>Send Feedback</span>
+              <MenuHint id={`${hintId}-feedback`}>
+                {WRITE_HINTS.feedback}
+              </MenuHint>
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              className='cursor-pointer'
+              aria-describedby={`${hintId}-contact`}
               onClick={() => {
                 setContact('open')
               }}>
               <MailIcon className='mr-2 size-5 shrink-0' />
               <span>Contact Me</span>
+              <MenuHint id={`${hintId}-contact`}>
+                {WRITE_HINTS.contact}
+              </MenuHint>
             </DropdownMenuItem>
             {install.kind !== 'installed' && (
               <DropdownMenuItem
@@ -269,6 +301,16 @@ const ProfileButtonDropdown = () => {
           </p>
         </DropdownMenuContent>
       </DropdownMenu>
+      {feedback !== null && (
+        <Suspense>
+          <FeedbackDialog
+            open={feedback === 'open'}
+            onOpenChange={(open) => {
+              setFeedback(open ? 'open' : 'closed')
+            }}
+          />
+        </Suspense>
+      )}
       {contact !== null && (
         <Suspense>
           <ContactDialog

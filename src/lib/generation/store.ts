@@ -716,6 +716,7 @@ export const noteUnread = (keys: readonly string[]) => {
   }
 }
 export const fixKey = (videoId: string) => `fix:${videoId}`
+export const feedbackKey = (id: number) => `feedback:${id}`
 
 const isFinished = (job: Job) => !isActive(job)
 

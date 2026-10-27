@@ -1,4 +1,4 @@
-import { FlagIcon, MailIcon, MusicIcon } from 'lucide-react'
+import { FlagIcon, MailIcon, MessageSquareIcon, MusicIcon } from 'lucide-react'
 import { Link } from 'react-router'
 
 import {
@@ -13,6 +13,7 @@ import { useGetSongInfoBySongId } from '@/lib/react-query/queries-and-mutations'
 import { cn } from '@/utils/cn'
 
 const ICONS = {
+  feedback: MessageSquareIcon,
   message: MailIcon,
   report: FlagIcon,
   request: MusicIcon,
@@ -41,6 +42,9 @@ const NoticeTitle = ({ notice }: { notice: AdminNotice }) => {
   }
   if (notice.kind === 'request') {
     return <>{notice.name || 'Someone'} asked for more songs</>
+  }
+  if (notice.kind === 'feedback') {
+    return <>New feedback from {notice.name || 'Anonymous'}</>
   }
   return <>New message from {notice.name || 'a guest'}</>
 }
@@ -77,8 +81,8 @@ const NoticeRow = ({ notice }: { notice: AdminNotice }) => {
   )
 }
 
-// The admin's part of the bell: one row per recent contact message, report or request, opening its /admin tab.
-// Clear Read only where the Worker keeps it (`clearable`), and only once something is read
+// The admin's part of the bell: one row per recent contact message, report, request or feedback, opening its /admin
+// tab. Clear Read only where the Worker keeps it (`clearable`), and only once something is read
 export const AdminNoticeList = ({
   notices,
   clearable,

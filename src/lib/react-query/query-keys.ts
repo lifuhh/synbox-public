@@ -30,4 +30,6 @@ export enum QUERY_KEYS {
   GET_LYRICS_SONG = 'getLyricsSong',
   GET_REPORT_FIXES = 'getReportFixes',
   GET_MY_REPORT = 'getMyReport',
+  GET_RESOLVED_FEEDBACK = 'getResolvedFeedback',
+  GET_ADMIN_FEEDBACK = 'getAdminFeedback',
 }
