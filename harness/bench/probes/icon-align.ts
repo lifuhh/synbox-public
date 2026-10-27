@@ -1,0 +1,225 @@
+// Icon beside text, on one centre line: in every visible control (button, link, tab, menu item, option, radio,
+// switch) that holds an icon (svg) and a one-line label side by side, the icon's vertical centre against the
+// label's ink centre. AGENTS.md › "Measure alignment" allows 1px.
+//
+// The ink centre is not the text box's centre: a font's line box reserves its ascender and descender, which are
+// rarely even (Plus Jakarta Sans' ascent is taller than its descent), so a label centred by its box draws its
+// letters off the box's middle. What reads as the label's middle (its optical centre):
+// - capitals and digits only ("OK", "0.75×"): half the cap height above the baseline;
+// - mixed case ("Play Song"): halfway between the cap-height centre and the x-height centre, as most of its ink is
+//   lower-case letters. Centred on the capitals alone, an icon reads high (about 1px at 15px);
+// - lower case only: half the x-height; CJK: the middle of the label's own ink.
+// Measured as:
+// - the baseline: a zero-size inline-block at `vertical-align: baseline` placed right before the text, in the
+//   text's own line (an empty inline-block's baseline is its bottom edge, so its box sits on the line's baseline).
+//   When the text's parent is a flex or grid box, the text is its own anonymous item; it is wrapped in a span for
+//   the measurement so the marker shares its line instead of becoming a second item. The DOM is put back before
+//   the function returns, in the same task, so nothing is painted or seen by the app;
+// - the cap height and x-height: canvas `measureText` in the text's computed font (`actualBoundingBoxAscent` of "H"
+//   or "x"), which reads the same loaded font file the page draws with.
+//
+// A deliberately off-centre glyph that is optically right carries `data-optical="<why>"` on the svg (or a parent
+// inside the control) and is left out. A page turned by Lock Landscape is measured along its own vertical axis.
+// Runs in the page: everything it needs is inside the function.
+
+/** One label and icon off their shared centre line by more than `limitPx` */
+export interface IconOffset {
+  label: string
+  /** The icon's centre minus the label's ink centre, along the content's vertical axis: positive = icon lower */
+  offsetPx: number
+  rect: { x: number; y: number; w: number; h: number }
+}
+
+export const ICON_ALIGN_LIMIT_PX = 1
+
+export const iconTextOffsets = (limitPx: number): IconOffset[] => {
+  const CONTROL =
+    'button, a[href], [role="button"], [role="link"], [role="tab"], [role="menuitem"], [role="menuitemradio"], [role="menuitemcheckbox"], [role="option"], [role="radio"], [role="switch"]'
+  const turned = Object.hasOwn(
+    document.documentElement.dataset,
+    'landscapeLock'
+  )
+  // The content's vertical position of a point on screen: y, or x on a page turned a quarter
+  const along = (r: DOMRect) =>
+    turned ? r.left + r.width / 2 : r.top + r.height / 2
+  // oxlint-disable-next-line unicorn/consistent-function-scoping -- runs in the page, where nothing outside this function exists
+  const seen = (el: Element): boolean => {
+    const r = el.getBoundingClientRect()
+    if (
+      r.width < 1 ||
+      r.height < 1 ||
+      r.bottom <= 0 ||
+      r.right <= 0 ||
+      r.top >= innerHeight ||
+      r.left >= innerWidth
+    ) {
+      return false
+    }
+    if (getComputedStyle(el).visibility === 'hidden') {
+      return false
+    }
+    let opacity = 1
+    for (let p: Element | null = el; p; p = p.parentElement) {
+      opacity *= Number(getComputedStyle(p).opacity)
+    }
+    return opacity > 0.5
+  }
+  const canvas = document.createElement('canvas').getContext('2d')
+  if (canvas === null) {
+    return []
+  }
+  // The label's ink centre above its baseline, in px
+  const inkAbove = (el: Element, text: string): number => {
+    const cs = getComputedStyle(el)
+    canvas.font = `${cs.fontStyle} ${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`
+    if (/[　-鿿＀-￯]/u.test(text)) {
+      const m = canvas.measureText(text)
+      return (m.actualBoundingBoxAscent - m.actualBoundingBoxDescent) / 2
+    }
+    const cap = canvas.measureText('H').actualBoundingBoxAscent
+    const ex = canvas.measureText('x').actualBoundingBoxAscent
+    // Capitals and digits only: the cap centre. With lower case the eye takes the middle of the cap and x-height
+    // centres (a label centred on its capitals alone reads high next to its icon)
+    if (!/\p{Ll}/u.test(text)) {
+      return cap / 2
+    }
+    return /[\p{Lu}\p{N}]/u.test(text) ? (cap + ex) / 4 : ex / 2
+  }
+  // The baseline of a text node's line, on screen (content's vertical axis); the DOM is restored before it returns
+  const baselineOf = (node: Text): number => {
+    const parent = node.parentElement
+    if (parent === null) {
+      return Number.NaN
+    }
+    const { display } = getComputedStyle(parent)
+    const itemized = /flex|grid/u.test(display)
+    const marker = document.createElement('span')
+    marker.style.cssText =
+      'display:inline-block;width:0;height:0;margin:0;padding:0;border:0;vertical-align:baseline'
+    let wrap: HTMLSpanElement | null = null
+    if (itemized) {
+      wrap = document.createElement('span')
+      node.before(wrap)
+      wrap.append(marker, node)
+    } else {
+      node.before(marker)
+    }
+    const r = marker.getBoundingClientRect()
+    const y = turned ? r.left : r.bottom
+    if (wrap === null) {
+      marker.remove()
+    } else {
+      wrap.before(node)
+      wrap.remove()
+    }
+    return y
+  }
+  interface Label {
+    node: Text
+    rect: DOMRect
+    text: string
+  }
+  // A control's own one-line texts (not those of a control nested inside it), or none when its text runs on
+  // several lines: a song row's title over its artist, or a card, is a layout, not an icon and its label
+  const labelsOf = (control: Element): Label[] => {
+    const texts: Label[] = []
+    const walker = document.createTreeWalker(control, NodeFilter.SHOW_TEXT)
+    for (let n = walker.nextNode(); n !== null; n = walker.nextNode()) {
+      const text = (n.textContent ?? '').trim()
+      const parent = n.parentElement
+      if (
+        text !== '' &&
+        n instanceof Text &&
+        parent !== null &&
+        parent.closest(CONTROL) === control &&
+        parent.closest('svg') === null &&
+        seen(parent)
+      ) {
+        const range = document.createRange()
+        range.selectNodeContents(n)
+        const lines = [...range.getClientRects()].filter(
+          (r) => r.width > 1 && r.height > 1
+        )
+        if (lines.length !== 1) {
+          return []
+        }
+        const [rect] = lines
+        texts.push({ node: n, rect, text })
+      }
+    }
+    const spans = texts.map(({ rect }) =>
+      turned ? [rect.left, rect.right] : [rect.top, rect.bottom]
+    )
+    const oneLine =
+      Math.max(...spans.map(([a]) => a)) < Math.min(...spans.map(([, z]) => z))
+    return oneLine ? texts : []
+  }
+  // The label beside an icon: across its centre line, apart from it along the other axis, the nearest within 24px
+  const labelBeside = (ir: DOMRect, texts: Label[]): Label | undefined => {
+    const centre = along(ir)
+    return texts
+      .filter(({ rect }) =>
+        turned
+          ? rect.left < centre &&
+            rect.right > centre &&
+            (rect.bottom <= ir.top + 1 || rect.top >= ir.bottom - 1)
+          : rect.top < centre &&
+            rect.bottom > centre &&
+            (rect.right <= ir.left + 1 || rect.left >= ir.right - 1)
+      )
+      .map((t) => ({
+        gap: turned
+          ? Math.max(t.rect.top - ir.bottom, ir.top - t.rect.bottom)
+          : Math.max(t.rect.left - ir.right, ir.left - t.rect.right),
+        t,
+      }))
+      .filter(({ gap }) => gap <= 24)
+      .toSorted((a, z) => a.gap - z.gap)
+      .at(0)?.t
+  }
+  const found: IconOffset[] = []
+  for (const control of document.querySelectorAll(CONTROL)) {
+    // Its own icons, at icon size (lucide's run 12-28px; anything larger is artwork)
+    const icons = seen(control)
+      ? [...control.querySelectorAll('svg')].filter((svg) => {
+          const r = svg.getBoundingClientRect()
+          return (
+            svg.closest(CONTROL) === control &&
+            svg.closest('[data-optical]') === null &&
+            Math.max(r.width, r.height) <= 32 &&
+            seen(svg)
+          )
+        })
+      : []
+    const texts = icons.length === 0 ? [] : labelsOf(control)
+    for (const svg of texts.length === 0 ? [] : icons) {
+      const ir = svg.getBoundingClientRect()
+      const beside = labelBeside(ir, texts)
+      const parent = beside?.node.parentElement
+      if (beside === undefined || parent === null || parent === undefined) {
+        continue
+      }
+      const baseline = baselineOf(beside.node)
+      // Which way the content's "down" points on screen: the text's box lies above its baseline
+      const down = along(beside.rect) < baseline ? 1 : -1
+      const ink = baseline - down * inkAbove(parent, beside.text)
+      const offset = down * (along(ir) - ink)
+      if (Number.isFinite(offset) && Math.abs(offset) > limitPx) {
+        const r = control.getBoundingClientRect()
+        found.push({
+          label: (control.getAttribute('aria-label') ?? beside.text)
+            .trim()
+            .slice(0, 40),
+          offsetPx: Math.round(offset * 10) / 10,
+          rect: {
+            h: Math.round(r.height),
+            w: Math.round(r.width),
+            x: Math.round(r.x),
+            y: Math.round(r.y),
+          },
+        })
+      }
+    }
+  }
+  return found
+}

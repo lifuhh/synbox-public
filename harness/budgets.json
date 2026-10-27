@@ -7,7 +7,9 @@
     "theater-motion": "0 again since 2026-10-27 (fix/theater-song-row: the song's title, channel line and action row slide as their own parts). Before: teleports 6 on 2026-10-27 (chore/eval-theater-song-row): the audit now also follows the song's title, channel line and action row, which Theater Mode's transition draws in two places at once (cross-faded inside the song's snapshot, 16-24px apart), each way; fix/theater-song-row moves them as their own parts and sets it back to 0. Before: 0 since 2026-10-27 (feat/watch-theater-tooltips: Theater Mode moves as one view transition). Before it, 16 teleports and 2 detachments, the snap (chore/eval-theater-motion). Never raised to let a jump through: fix the motion (src/components/watch/theater-transition.ts).",
     "lyric-shift-*": "0 from the start (owner, 2026-10-25: a Two Lines line change moves as little as it can). Not to be raised to let a shift through: fix the layout (src/components/player-stage/stage-lyrics.tsx › TwoRows, two-line-layout.ts).",
     "lyric-undock-*": "0 from the start (owner, 2026-10-27: taking Karaoke Style's docked translation off the rows, or putting it back, never moves the rows, and the translation never overlaps them). Not to be raised: fix the dock (src/components/player-stage/stage-lyrics.tsx › useTranslationDock, DockedTranslation).",
-    "motion-hero-flight-*": "0 since 2026-10-27 (fix/hero-flight, the one continuous box). chore/motion-audit (#564) and chore/motion-input-timing (#578) landed with staging's own counts as ceilings (web: teleports 53-55, detachments 101-159, scale reversals 4; safari-portrait: 73-75, 93-248, 8; safari-landscape: 67-72, 97-156, 4) so the audit could merge before the fix. Not to be raised to let a jump through: fix the motion (src/components/topbar/search-dock.tsx). Overshoots, slants and settles (chore/motion-overshoot-slant, #584, landed over staging's spring: settles 2-4, slants up to 11, overshoots 2) are 0 since fix/hero-flight-decisive's ease-out."
+    "motion-hero-flight-*": "0 since 2026-10-27 (fix/hero-flight, the one continuous box). chore/motion-audit (#564) and chore/motion-input-timing (#578) landed with staging's own counts as ceilings (web: teleports 53-55, detachments 101-159, scale reversals 4; safari-portrait: 73-75, 93-248, 8; safari-landscape: 67-72, 97-156, 4) so the audit could merge before the fix. Not to be raised to let a jump through: fix the motion (src/components/topbar/search-dock.tsx). Overshoots, slants and settles (chore/motion-overshoot-slant, #584, landed over staging's spring: settles 2-4, slants up to 11, overshoots 2) are 0 since fix/hero-flight-decisive's ease-out.",
+    "layout-*.iconOffText": "Temporary, 2026-10-27 (chore/icon-align-audit): the icon/label alignment audit (probes/icon-align.ts) is new, and on staging every icon beside a mixed-case label sits 1.2-1.5px above the label's optical centre. Each audit's current count is accepted here so the audit lands on its own; fix/icon-align removes these entries with the fix.",
+    "layout-home-*+field-generate.smallTargets": "1 from the start (2026-10-27): Home's field status line holds an inline text action (Sign In for 5 a Day) inside its sentence, WCAG 2.5.8's inline exception; its press area reaches 8px above and below the 17px line through ::after, which the box measurement does not see."
   },
   "size": {
     "initialJsKB": 350,
@@ -23,5 +25,306 @@
     "otherLineMoves": 0,
     "lowerRomajiMoves": 0,
     "dockedTranslationMoves": 0
+  },
+  "layout-about-safari-portrait": {
+    "iconOffText": 1
+  },
+  "layout-about-web": {
+    "iconOffText": 1
+  },
+  "layout-gallery-web": {
+    "iconOffText": 1
+  },
+  "layout-home-pwa-landscape": {
+    "iconOffText": 1
+  },
+  "layout-home-pwa-landscape+field-generate": {
+    "iconOffText": 1,
+    "smallTargets": 1
+  },
+  "layout-home-pwa-landscape+field-play": {
+    "iconOffText": 1
+  },
+  "layout-home-pwa-landscape+field-search": {
+    "iconOffText": 1
+  },
+  "layout-home-pwa-portrait+field-generate": {
+    "smallTargets": 1
+  },
+  "layout-home-safari-landscape": {
+    "iconOffText": 2
+  },
+  "layout-home-safari-landscape+field-generate": {
+    "iconOffText": 2,
+    "smallTargets": 1
+  },
+  "layout-home-safari-landscape+field-play": {
+    "iconOffText": 2
+  },
+  "layout-home-safari-landscape+field-search": {
+    "iconOffText": 2
+  },
+  "layout-home-safari-narrow+field-generate": {
+    "smallTargets": 1
+  },
+  "layout-home-safari-portrait": {
+    "iconOffText": 1
+  },
+  "layout-home-safari-portrait+field-generate": {
+    "iconOffText": 1,
+    "smallTargets": 1
+  },
+  "layout-home-safari-portrait+field-play": {
+    "iconOffText": 1
+  },
+  "layout-home-safari-portrait+field-search": {
+    "iconOffText": 1
+  },
+  "layout-home-web": {
+    "iconOffText": 2
+  },
+  "layout-home-web+field-generate": {
+    "iconOffText": 2,
+    "smallTargets": 1
+  },
+  "layout-home-web+field-play": {
+    "iconOffText": 2
+  },
+  "layout-home-web+field-search": {
+    "iconOffText": 2
+  },
+  "layout-library-pwa-landscape": {
+    "iconOffText": 1
+  },
+  "layout-library-pwa-portrait": {
+    "iconOffText": 1
+  },
+  "layout-library-safari-narrow": {
+    "iconOffText": 1
+  },
+  "layout-library-safari-portrait": {
+    "iconOffText": 2
+  },
+  "layout-library-web": {
+    "iconOffText": 2
+  },
+  "layout-player-pwa-landscape+speed-menu": {
+    "iconOffText": 1
+  },
+  "layout-player-pwa-portrait+speed-menu": {
+    "iconOffText": 1
+  },
+  "layout-player-safari-landscape+speed-menu": {
+    "iconOffText": 1
+  },
+  "layout-player-safari-narrow+speed-menu": {
+    "iconOffText": 1
+  },
+  "layout-player-safari-portrait": {
+    "iconOffText": 1
+  },
+  "layout-player-safari-portrait+controls": {
+    "iconOffText": 1
+  },
+  "layout-player-safari-portrait+lyrics-expanded": {
+    "iconOffText": 1
+  },
+  "layout-player-safari-portrait+search-button": {
+    "iconOffText": 1
+  },
+  "layout-player-safari-portrait+speed-menu": {
+    "iconOffText": 2
+  },
+  "layout-player-safari-portrait+text-style": {
+    "iconOffText": 1
+  },
+  "layout-player-web": {
+    "iconOffText": 1
+  },
+  "layout-player-web+control-tip": {
+    "iconOffText": 1
+  },
+  "layout-player-web+controls": {
+    "iconOffText": 1
+  },
+  "layout-player-web+search-field": {
+    "iconOffText": 1
+  },
+  "layout-player-web+speed-menu": {
+    "iconOffText": 2
+  },
+  "layout-player-web+speed-slowed": {
+    "iconOffText": 1
+  },
+  "layout-player-web+style": {
+    "iconOffText": 1
+  },
+  "layout-player-web+style-own": {
+    "iconOffText": 1
+  },
+  "layout-player-web+text-style": {
+    "iconOffText": 1
+  },
+  "layout-player-web+theater": {
+    "iconOffText": 1
+  },
+  "layout-playlists-pwa-landscape": {
+    "iconOffText": 1
+  },
+  "layout-playlists-pwa-portrait": {
+    "iconOffText": 1
+  },
+  "layout-playlists-safari-narrow": {
+    "iconOffText": 1
+  },
+  "layout-playlists-safari-portrait": {
+    "iconOffText": 2
+  },
+  "layout-playlists-web": {
+    "iconOffText": 2
+  },
+  "layout-privacy-pwa-landscape": {
+    "iconOffText": 1
+  },
+  "layout-privacy-pwa-landscape+contact": {
+    "iconOffText": 2
+  },
+  "layout-privacy-pwa-landscape+feedback": {
+    "iconOffText": 1
+  },
+  "layout-privacy-pwa-landscape+more": {
+    "iconOffText": 4
+  },
+  "layout-privacy-pwa-landscape+search-field": {
+    "iconOffText": 1
+  },
+  "layout-privacy-pwa-portrait": {
+    "iconOffText": 1
+  },
+  "layout-privacy-pwa-portrait+contact": {
+    "iconOffText": 2
+  },
+  "layout-privacy-pwa-portrait+feedback": {
+    "iconOffText": 1
+  },
+  "layout-privacy-pwa-portrait+more": {
+    "iconOffText": 4
+  },
+  "layout-privacy-pwa-portrait+search-button": {
+    "iconOffText": 1
+  },
+  "layout-privacy-safari-narrow+contact": {
+    "iconOffText": 1
+  },
+  "layout-privacy-safari-narrow+more": {
+    "iconOffText": 4
+  },
+  "layout-privacy-safari-portrait": {
+    "iconOffText": 1
+  },
+  "layout-privacy-safari-portrait+contact": {
+    "iconOffText": 2
+  },
+  "layout-privacy-safari-portrait+feedback": {
+    "iconOffText": 1
+  },
+  "layout-privacy-safari-portrait+more": {
+    "iconOffText": 5
+  },
+  "layout-privacy-safari-portrait+search-button": {
+    "iconOffText": 1
+  },
+  "layout-privacy-web": {
+    "iconOffText": 1
+  },
+  "layout-privacy-web+contact": {
+    "iconOffText": 2
+  },
+  "layout-privacy-web+feedback": {
+    "iconOffText": 1
+  },
+  "layout-privacy-web+more": {
+    "iconOffText": 5
+  },
+  "layout-privacy-web+search-field": {
+    "iconOffText": 1
+  },
+  "layout-search-pwa-landscape": {
+    "iconOffText": 1
+  },
+  "layout-search-pwa-landscape+typed": {
+    "iconOffText": 1
+  },
+  "layout-search-pwa-portrait": {
+    "iconOffText": 2
+  },
+  "layout-search-pwa-portrait+typed": {
+    "iconOffText": 2
+  },
+  "layout-search-rest-pwa-landscape": {
+    "iconOffText": 1
+  },
+  "layout-search-rest-safari-portrait": {
+    "iconOffText": 1
+  },
+  "layout-search-rest-web": {
+    "iconOffText": 2
+  },
+  "layout-search-safari-landscape": {
+    "iconOffText": 2
+  },
+  "layout-search-safari-landscape+typed": {
+    "iconOffText": 2
+  },
+  "layout-search-safari-portrait": {
+    "iconOffText": 3
+  },
+  "layout-search-safari-portrait+typed": {
+    "iconOffText": 3
+  },
+  "layout-search-web": {
+    "iconOffText": 4
+  },
+  "layout-search-web+typed": {
+    "iconOffText": 4
+  },
+  "layout-terms-pwa-landscape": {
+    "iconOffText": 1
+  },
+  "layout-terms-pwa-portrait": {
+    "iconOffText": 1
+  },
+  "layout-terms-safari-portrait": {
+    "iconOffText": 1
+  },
+  "layout-terms-web": {
+    "iconOffText": 1
+  },
+  "layout-v-versions-pwa-landscape": {
+    "iconOffText": 1
+  },
+  "layout-v-versions-pwa-portrait": {
+    "iconOffText": 1
+  },
+  "layout-v-versions-safari-portrait": {
+    "iconOffText": 1
+  },
+  "layout-v-versions-web": {
+    "iconOffText": 1
+  },
+  "layout-you-pwa-landscape": {
+    "iconOffText": 1
+  },
+  "layout-you-pwa-portrait": {
+    "iconOffText": 4
+  },
+  "layout-you-safari-narrow": {
+    "iconOffText": 4
+  },
+  "layout-you-safari-portrait": {
+    "iconOffText": 5
+  },
+  "layout-you-web": {
+    "iconOffText": 2
   }
 }
