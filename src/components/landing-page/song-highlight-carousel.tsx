@@ -95,7 +95,8 @@ const CardSkeleton = ({ active }: { active: boolean }) => (
 
 // One slide centred with its neighbours peeking in, looping both ways. Touch drags glide on by how hard
 // they were flicked; trackpads, Shift+wheel, the arrow keys (once the row has focus) and the buttons move it
-// too (useLoopingCarousel)
+// too (useLoopingCarousel). The wheel stays native, not wheelSideways: a row that loops has no end to hand the
+// wheel back to the page at
 const SongHighlightCarousel = () => {
   const {
     data: playlistData,
