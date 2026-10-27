@@ -104,11 +104,14 @@ test("an admin's own report isn't a notice to them; a guest's and another admin'
        ('own', 'abcdefghijk', 'mine', 'admin', null, 10),
        ('guest', 'abcdefghijk', 'theirs', null, 'g1', 20)`
   )
-  const ids = async (adminId: string) =>
-    (await readNotices(db, adminId, 100)).notices.map((n) => n.id)
-  expect(await ids('admin')).toEqual(['guest'])
-  expect(await ids('admin2')).toEqual(['guest', 'own'])
+  expect(await noticeIds('admin')).toEqual(['guest'])
+  expect(await noticeIds('admin2')).toEqual(['guest', 'own'])
 })
+
+const noticeIds = async (adminId: string) => {
+  const { notices } = await readNotices(db, adminId, 100)
+  return notices.map((n) => n.id)
+}
 
 const DAY = 86_400_000
 
