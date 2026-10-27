@@ -19,7 +19,7 @@ const AppLogo: React.FC = () => {
       return
     }
 
-    // Home already: back to its top, or a fresh page once there, as a tap on the bar does
+    // Home already: back to its top, or refreshed once there, as the dock's Home tab and a tap on the bar do
     event.preventDefault()
     topTap()
   }
