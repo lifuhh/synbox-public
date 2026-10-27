@@ -21,6 +21,8 @@ import { LAYOUT_FINDINGS, layoutAudit, layoutPages } from './probes/layout'
 import type { LayoutPage, OpenedState } from './probes/layout'
 import { lyricDockAudit } from './probes/lyric-dock'
 import { lyricShiftAudit } from './probes/lyric-shift'
+import { HERO_FLIGHT, motionAudit } from './probes/motion'
+import type { Morph } from './probes/motion'
 import { playerSession } from './probes/player'
 import {
   PRESS_RELEASE_FINDINGS,
@@ -221,6 +223,30 @@ const pressRelease = (view: View): Benchmark => ({
   title: `Real presses on the top bar in ${view.name} (${view.label}): tabs, the account menu and a dialog button act on release, and a press taken back does nothing`,
 })
 
+/**
+ * One element turning into another, driven for real and judged frame by frame (probes/motion.ts): nothing teleports,
+ * nothing scales against the morph's way, attached parts stay attached, and at least `minFlights` passes are seen to
+ * fly (so an audit can't pass on a morph that stopped happening). The page's own frame work gates in Chromium;
+ * WebKit's headless frame timing is reported, not judged
+ */
+const motion = (morph: Morph, view: View, minFlights: number): Benchmark => ({
+  id: `motion-${morph.name}-${view.name}`,
+  metrics: [
+    count('teleports'),
+    count('scaleReversals'),
+    count('detachments'),
+    count('missingFlights'),
+    count('unseenParts'),
+    count('droppedFrames', view.surface.engine === 'chromium'),
+    count('lateFrames', false),
+    count('flights', false),
+  ],
+  run: motionAudit(morph, view.surface, minFlights),
+  runs: 1,
+  surface: view.surface,
+  title: `${morph.name} in ${view.name} (${view.label}), each way, slow and fast: teleports, scale against the morph's way, detached parts, passes with no flight, parts never shown, frames over 25ms of main-thread work`,
+})
+
 /** A page's audits in its views: at rest, then each state it opens in that view */
 const layouts = (page: LayoutPage, views: View[]): Benchmark[] =>
   views.flatMap((v) => [
@@ -332,6 +358,13 @@ export const SUITE: Benchmark[] = [
     ])
   ),
   ...ALL_VIEWS.map(pressRelease),
+  // Home's search flies into the top bar in a browser: on desktop every pass, both ways at both speeds; in iPhone
+  // Safari (both ways up) at least the flights home, since a bar that has slid away by the time the field leaves
+  // takes it in unseen. The installed app's top bar has no search on Home (measured: no flight in pwa-portrait or
+  // pwa-landscape)
+  motion(HERO_FLIGHT, WEB, 4),
+  motion(HERO_FLIGHT, SAFARI_PORTRAIT, 2),
+  motion(HERO_FLIGHT, SAFARI_LANDSCAPE, 2),
   lyricShift('pwa-landscape', PWA_LANDSCAPE, false),
   lyricDock('web', WEB),
   lyricDock('pwa-landscape', PWA_LANDSCAPE),
