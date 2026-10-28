@@ -44,7 +44,7 @@
     "GOOGLE_CLIENT_ID": "1045990822048-sr16qerq3qlv56131g7veuh2nak6vbk8.apps.googleusercontent.com",
     // Songs a signed-in account adds per day, from its own midnight (src/quota.ts); guests add none. The app's copy
     // states it (src/lib/auth.ts › SONGS_A_DAY), so the two change together
-    "USER_DAILY_LIMIT": "3",
+    "USER_DAILY_LIMIT": "5",
     "NETWORK_DAILY_LIMIT": "30",
     // Songs a day site-wide: every generation (new, regenerate, retime; accounts and guests) since the later of UTC
     // midnight and the last Resume Generation. The request that would pass it pauses generation for everyone but
@@ -52,7 +52,7 @@
     "SITE_DAILY_LIMIT": "100",
     // Song checks (/validate downloads the song) per rolling 24 hours: five times the song limits, ten for a guest
     // (src/validations.ts)
-    "VALIDATION_USER_DAILY_LIMIT": "15",
+    "VALIDATION_USER_DAILY_LIMIT": "25",
     "VALIDATION_GUEST_DAILY_LIMIT": "10",
     "VALIDATION_NETWORK_DAILY_LIMIT": "150",
     "TRUSTED_ORIGINS": "https://synbox.io,https://www.synbox.io,https://synbox.netlify.app",
@@ -74,11 +74,11 @@
         "LYRICS_NETWORK_PER_HOUR": "300",
         "LYRICS_ACCOUNT_PER_HOUR": "300",
         "GOOGLE_CLIENT_ID": "1045990822048-sr16qerq3qlv56131g7veuh2nak6vbk8.apps.googleusercontent.com",
-        "USER_DAILY_LIMIT": "3",
+        "USER_DAILY_LIMIT": "5",
         "NETWORK_DAILY_LIMIT": "30",
         // As above: the site-wide ceiling that pauses generation automatically
         "SITE_DAILY_LIMIT": "100",
-        "VALIDATION_USER_DAILY_LIMIT": "15",
+        "VALIDATION_USER_DAILY_LIMIT": "25",
         "VALIDATION_GUEST_DAILY_LIMIT": "10",
         "VALIDATION_NETWORK_DAILY_LIMIT": "150",
         "TRUSTED_ORIGINS": "http://localhost:5173",

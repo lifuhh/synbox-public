@@ -18,7 +18,7 @@ export const authClient = createAuthClient({
 
 // Songs a day for an account with no override, as the copy states it; the Worker enforces it
 // (worker/wrangler.jsonc › USER_DAILY_LIMIT), so the two change together
-export const SONGS_A_DAY = 3
+export const SONGS_A_DAY = 5
 
 // The account's latest "can I add more songs a day" (worker/src/requests.ts); null when it never asked
 const songRequestSchema = z.object({
