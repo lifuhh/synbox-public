@@ -21,6 +21,8 @@
 //   bun harness/readme/capture.ts <outDir> search <query>                  the website's Search results
 //   bun harness/readme/capture.ts <outDir> generate <videoId>              a generation part way through, on the
 //                                                                           website and the upright installed app
+//   --karaoke-style   lyrics in Karaoke Style (two rows) on every screen, as the listener's own default would set
+//   --lyrics-size <n> Karaoke Style's size (lyricsFontSizeTwoLines; 0.6 to 1.05 on a phone on its side)
 //   --site <origin>   the app to shoot (default https://synbox.io). A local `wt serve` shows staging's code; its
 //                     karaoke, recommendations and YouTube reads are answered from the deployed services, which the
 //                     dev server's stand-ins can't reach without the backend's keys
@@ -75,6 +77,8 @@ const { positionals, values } = parseArgs({
   allowPositionals: true,
   options: {
     // Sideways: switch the video's fit (Zoom to Fill / Fit), for a video whose own captions the default crop cuts
+    'karaoke-style': { default: false, type: 'boolean' },
+    'lyrics-size': { type: 'string' },
     'other-fit': { default: false, type: 'boolean' },
     site: { default: 'https://synbox.io', type: 'string' },
     theater: { default: false, type: 'boolean' },
@@ -175,6 +179,24 @@ const visit = async (view: View) => {
   })
   if (!site.startsWith('https://synbox.io')) {
     await fromDeployed(opened.context)
+  }
+  if (values['karaoke-style']) {
+    // My Default's picks, stored before the app reads them (src/context/atoms.tsx › lyricsTwoLines,
+    // lyricsFontSizeTwoLines); phones and Full Screen follow the default view's pick
+    const size =
+      values['lyrics-size'] === undefined ? null : Number(values['lyrics-size'])
+    await opened.context.addInitScript((twoLinesSize) => {
+      localStorage.setItem(
+        'lyricsTwoLines',
+        JSON.stringify({ default: true, theater: true })
+      )
+      if (twoLinesSize !== null) {
+        localStorage.setItem(
+          'lyricsFontSizeTwoLines',
+          JSON.stringify(twoLinesSize)
+        )
+      }
+    }, size)
   }
   await opened.context.addInitScript((css) => {
     document.addEventListener('DOMContentLoaded', () => {
@@ -460,7 +482,8 @@ if (shot === 'home') {
   await page.screenshot({ path: path.join(outDir, 'home.png') })
   await close()
 } else if (shot === 'sideways') {
-  const { page, close } = await player(PWA_LANDSCAPE)
+  // Opened 30 s ahead and played to the line, never seeked: in WebKit a seek leaves the video black for seconds
+  const { page, close } = await player(PWA_LANDSCAPE, 30)
   if (values['other-fit']) {
     // The controls sit under the stage's touch layer while hidden, so the toggle gets its click directly
     await page
@@ -468,8 +491,7 @@ if (shot === 'home') {
       .first()
       .dispatchEvent('click')
   }
-  // Five seconds of play hides the controls (a seek by the embed's API is no activity); then most of the line is lit
-  await youtube(page, 'seekTo', [start - 5, true])
+  // The lead's play hides the controls; then most of the line is lit
   await waitForSong(page, start + 1.4)
   await page.screenshot({ path: path.join(outDir, 'sideways.png') })
   await close()
