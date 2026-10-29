@@ -201,7 +201,8 @@ const onlyNeighbours = async (context: BrowserContext, kept: Set<string>) => {
     // The lookup service's own reads, and the site's cached copy of its song list (/api/library/songs)
     (url) =>
       url.pathname.startsWith('/api/library/') ||
-      (url.origin !== new URL(site).origin && url.pathname.includes('/library/')),
+      (url.origin !== new URL(site).origin &&
+        url.pathname.includes('/library/')),
     async (route) => {
       const url = new URL(route.request().url())
       const pathname = url.pathname.replace(/^\/api\/library\//u, '/library/')
