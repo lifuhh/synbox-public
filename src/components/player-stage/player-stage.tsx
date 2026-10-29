@@ -683,8 +683,10 @@ export const PlayerStage = ({
       style={stageVars}
       className={cn(
         // --video-cy is the video's vertical centre: the middle of the stage, in portrait too, with the lyrics
-        // in the space below it. The video and the black around it are youtube-engine's layer, under the stage
-        '[container-type:size] relative size-full overflow-hidden [--video-cy:50cqh]',
+        // in the space below it. The video and the black around it are youtube-engine's layer, under the stage.
+        // Clipped, not hidden: a hidden box still scrolls when a menu hands focus back to its trigger, and then the
+        // lyrics stay that far up
+        '[container-type:size] relative size-full overflow-clip [--video-cy:50cqh]',
         !controlsVisible && 'cursor-none',
         className
       )}>
