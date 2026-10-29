@@ -106,10 +106,12 @@ export const parseLyricsText = (data: unknown): LyricsText => {
   const result = lyricsTextSchema.safeParse(data)
   return result.success ? result.data : {}
 }
-// Everything the overlay draws runs this far ahead of the player's clock: on a device the lyrics read
-// 100–200 ms behind the voice, from the embed reporting its time late and the frame it takes to paint. That delay is
-// real time, so slowed playback covers less of the song in it (lyricsLead)
-const LYRICS_LEAD_SEC = 0.15
+// Everything the overlay draws runs this far ahead of the player's clock. With FILL_LEAD it puts a phrase's first mora
+// half lit on the voice's onset: measured 2026-10-29 on sOiMD45QGLs, Qp3b-RXtz4w, ZRtdQ81jPUQ and 4DxL6IKmXx4 (149
+// phrase onsets in the vocal stems; the aligned starts already run a median 30 ms early), with the fill clock within
+// 1 ms of the iframe's own video time in Chromium and WebKit. 150 ms filled a median 95 ms before the voice. The lead
+// covers real time (the frame it takes to paint), so slowed playback covers less of the song in it (lyricsLead)
+const LYRICS_LEAD_SEC = 0.06
 export const lyricsLead = (rate: number) => LYRICS_LEAD_SEC * rate
 
 const findLineIndex = (lines: TimedLyrics['lines'], time: number) =>
