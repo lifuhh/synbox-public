@@ -22,6 +22,13 @@ interface ProbeSample {
 // [epoch ms, video.currentTime, playing]
 type VideoSample = [number, number, boolean]
 
+declare global {
+  interface Window {
+    __clockLag?: VideoSample[]
+    __synboxTimingProbe?: { samples: ProbeSample[] }
+  }
+}
+
 const { positionals, values } = parseArgs({
   allowPositionals: true,
   options: {
@@ -38,7 +45,7 @@ if (videoId === undefined) {
 const surface = values.view === 'pwa-portrait' ? PWA_PORTRAIT : WEB
 
 const quantile = (xs: number[], q: number) => {
-  const sorted = xs.toSorted((a, b) => a - b)
+  const sorted = [...xs].sort((a, b) => a - b)
   return sorted[Math.min(sorted.length - 1, Math.floor(q * sorted.length))] ?? Number.NaN
 }
 const describe = (xs: number[]) =>
@@ -55,8 +62,8 @@ if (frame === undefined) {
 await frame.waitForFunction(() => document.querySelector('video') !== null)
 await frame.evaluate(() => {
   const video = document.querySelector('video')
-  const out: [number, number, boolean][] = []
-  Reflect.set(window, '__clockLag', out)
+  const out: VideoSample[] = []
+  window.__clockLag = out
   const tick = () => {
     if (video) {
       out.push([performance.timeOrigin + performance.now(), video.currentTime, !video.paused])
@@ -68,10 +75,8 @@ await frame.evaluate(() => {
 const parentOrigin = await page.evaluate(() => performance.timeOrigin)
 const from = await page.evaluate(() => performance.now() + 1000)
 await page.waitForTimeout(Number(values.seconds) * 1000)
-const video: VideoSample[] = await frame.evaluate(() => Reflect.get(window, '__clockLag'))
-const samples: ProbeSample[] = await page.evaluate(
-  () => Reflect.get(Reflect.get(window, '__synboxTimingProbe'), 'samples')
-)
+const video = await frame.evaluate(() => window.__clockLag ?? [])
+const samples = await page.evaluate(() => window.__synboxTimingProbe?.samples ?? [])
 
 const clockLag: number[] = []
 const reportedLag: number[] = []
