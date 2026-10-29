@@ -50,18 +50,21 @@ const pixels = (value: string) => Number.parseFloat(value) || 0
 const textOf = (element: Element) =>
   element.querySelector('p, .lyric-karaoke-line') ?? element
 
-// How tall one line's shown rows stand at a Japanese size of `japanese` px, given each row's width in ems
+// A row's text as the widths in ems of its parts: one, or one per part of a translation split in rows ("\n")
+export type RowEms = Record<Row, readonly number[]>
+
+// How tall one line's shown rows stand at a Japanese size of `japanese` px
 const lineHeight = (
-  ems: Record<Row, number>,
+  ems: RowEms,
   rows: readonly Row[],
   japanese: number,
   room: number
 ) => {
   let height = 0
   for (const row of rows) {
-    if (ems[row] > 0) {
-      const size = Math.max(FLOOR_PX, japanese * ROW_SHARE[row])
-      const wraps = Math.max(1, Math.ceil((ems[row] * size) / room))
+    const size = Math.max(FLOOR_PX, japanese * ROW_SHARE[row])
+    for (const part of ems[row]) {
+      const wraps = Math.max(1, Math.ceil((part * size) / room))
       height += wraps * size * ROW_LEADING[row]
     }
   }
@@ -71,7 +74,7 @@ const lineHeight = (
 // The largest boost up to `wanted` at which most of the song's lines, with only the shown rows, stand no taller
 // than the same line with all three rows at the plain size: what the size slider already allows
 export const boostWithin = (
-  lines: Record<Row, number>[],
+  lines: RowEms[],
   shown: readonly Row[],
   wanted: number,
   japanese: number,
@@ -105,8 +108,8 @@ interface BoostOptions {
 // Measures the song's lines and keeps --lyric-line-boost set on `layer` until the returned cleanup
 const watch = (layer: HTMLElement, { texts, shown, wanted }: BoostOptions) => {
   const context = document.createElement('canvas').getContext('2d')
-  const widths = new Map<string, number[]>()
-  // Each line's width in ems of its row's type, in the row's drawn font
+  const widths = new Map<string, number[][]>()
+  // Each line's parts' widths in ems of its row's type, in the row's drawn font; none for a line without text
   const emsOf = (row: Row, font: string, spacing: number) => {
     const key = `${row}|${font}|${spacing}`
     const known = widths.get(key)
@@ -115,11 +118,15 @@ const watch = (layer: HTMLElement, { texts, shown, wanted }: BoostOptions) => {
     }
     context.font = font
     const ems = texts[row].map((text) =>
-      text.trim() === ''
-        ? 0
-        : (context.measureText(text).width + spacing * text.length) /
-          PROBE_PX /
-          SAFETY
+      text
+        .split('\n')
+        .filter((part) => part.trim() !== '')
+        .map(
+          (part) =>
+            (context.measureText(part).width + spacing * part.length) /
+            PROBE_PX /
+            SAFETY
+        )
     )
     widths.set(key, ems)
     return ems
@@ -184,9 +191,9 @@ const watch = (layer: HTMLElement, { texts, shown, wanted }: BoostOptions) => {
       translation: emsFor('translation'),
     }
     const lines = texts.japanese.map((_, index) => ({
-      japanese: perRow.japanese[index] ?? 0,
-      romaji: perRow.romaji[index] ?? 0,
-      translation: perRow.translation[index] ?? 0,
+      japanese: perRow.japanese[index] ?? [],
+      romaji: perRow.romaji[index] ?? [],
+      translation: perRow.translation[index] ?? [],
     }))
     const next = boostWithin(lines, shown, wanted, japanese, room)
     if (next !== boost) {

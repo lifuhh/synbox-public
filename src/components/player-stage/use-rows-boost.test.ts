@@ -2,11 +2,17 @@ import { describe, expect, test } from 'vite-plus/test'
 
 import { boostWithin } from './use-rows-boost'
 
-// A line's rows as widths in ems of their own type
-const line = (japanese: number, romaji: number, translation: number) => ({
-  japanese,
-  romaji,
-  translation,
+// A line's rows as widths in ems of their own type; 0 for a row without text, a list for a translation in parts
+const parts = (ems: number | number[]) =>
+  (Array.isArray(ems) ? ems : [ems]).filter((part) => part > 0)
+const line = (
+  japanese: number,
+  romaji: number,
+  translation: number | number[]
+) => ({
+  japanese: parts(japanese),
+  romaji: parts(romaji),
+  translation: parts(translation),
 })
 
 describe('boostWithin', () => {
@@ -36,5 +42,14 @@ describe('boostWithin', () => {
       line(0, 30, 0),
     ]
     expect(boostWithin(lines, ['romaji'], 1.25, 25, 600)).toBeCloseTo(1.25)
+  })
+
+  test('a translation split in two rows stands two rows, though it would fit one', () => {
+    // Two 12em parts at 17.5px are 210px each: one 24em line (420px) would fit 600px, but split it draws as two
+    // rows. Budget 50 + 27.2 + 47.6px; shown, 50b + 47.6b, so the boost stops at 1.27 (one row would allow 1.36)
+    const lines = Array.from({ length: 10 }, () => line(4, 20, [12, 12]))
+    expect(
+      boostWithin(lines, ['japanese', 'translation'], 1.5, 25, 600)
+    ).toBeCloseTo(1.27, 2)
   })
 })
