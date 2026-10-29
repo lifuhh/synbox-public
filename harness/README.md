@@ -241,7 +241,7 @@ bun harness/readme/capture.ts <dir>/hero hero <videoId> <start> <end> --site <or
 bun harness/readme/capture.ts <dir>/raw player <videoId> <sec> --site <origin>             # the same as stills, and Lyrics Style
 bun harness/readme/capture.ts <dir>/raw search "<query>" --site <origin>
 bun harness/readme/capture.ts <dir>/raw generate <videoId> --site <origin>  # a song not in the library
-bun harness/readme/capture.ts <dir>/karaoke karaoke <videoId> <start> <end> --site <origin> [--theater]
+bun harness/readme/capture.ts <dir>/karaoke karaoke <videoId> <start> <end> --site <origin> --karaoke-style [--theater]
 bun harness/readme/scenes.ts <dir> [--raw <dir>/raw] [--hero <dir>/hero --hero-from <s> --hero-to <s>] \
   [--karaoke <dir>/karaoke --karaoke-from <s> --karaoke-to <s>] [--keep]
 # The same devices as separate pieces, for a page that lays them out itself
@@ -256,6 +256,7 @@ bun harness/readme/colors.ts <out.webp>                        # one row, one ca
 - **`--other-fit`** switches the video's fit, for a music video whose own captions the default crop cuts in half. **`--theater`** shoots the karaoke clip in Theater, whose lyrics default to Karaoke Style's two rows.
 - **Lyrics stay at the default size and style**, as a first-time listener sees them, unless a shot asks otherwise: `--karaoke-style` stores Karaoke Style as the listener's default before the app loads (two rows on every screen), and `--lyrics-size <n>` its size (0.6 to 1.05 on a phone on its side). The portfolio's sideways phone uses both, so its lyric reads at a small size: `capture.ts <dir>/raw sideways dy90tA3TT1c 144.2 --karaoke-style --lyrics-size 1.05`.
 - **Pick moments by eye and by line:** pretty art, and a line that reads well in English. Lyrics stay out of the repo; the images show a line or two, as the app does.
+- **A showcase sells the product, not a fandom:** scenery with no characters on screen (FO3kzc0dNXA lines 7, 20–21, 31 and 37 are the current set), and the song lists beside the video limited to neutral songs with `--neighbours <ids>` (live shows, scenery, live-action videos; the shots in this README and the portfolio use `L0ULpfyZxfo,Fd25HP4PL-A,ysdtX8kRTuQ,GuIkxXiVHps,4D3Xn0MmQmg,rZxR9bpsYLU,fmDB-HyPNYc,gTlpo5HIIZE,O3HwZncopUo,K1Tz2yNmamI`). Theater's stage is wider than a 16:9 video, which leaves black bands at its sides: shoot the karaoke clip in the watch page with `--karaoke-style`.
 - **Judge a scene as a whole, over the whole clip:** the devices' screens share one palette (Made for Phones: aqua, dark blue-grey and blue, hues 180° to 213°). Look at composed frames across the loop (`--keep`), not each shot alone; a clip that cuts to a clashing colour (red, saturated orange) is the wrong moment.
 - **A phone on its side needs a full-frame video:** a music video with black bars built in (wider than 16:9: 「怪物」, 「海のまにまに」) keeps a strip at the top and bottom under Zoom to Fill, and its straight edge cuts across the screen's round corners. Check the shot's top and bottom rows, and look for lyrics the video draws itself (「藍悼花」, 「好きだから。」). `moments.ts --all` lists every song with clean lines.
 
