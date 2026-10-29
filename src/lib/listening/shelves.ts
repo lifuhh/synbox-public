@@ -7,12 +7,10 @@ import { useGallerySongs } from '@/lib/react-query/queries-and-mutations'
 import { useRecentListens } from '@/lib/song-stats'
 
 import type { ListSong } from './model'
+import { sameArtist } from './next-filter'
 
 // How many songs the More From and Recently Played rows hold
 const SHELF = 20
-
-const sameArtist = (a: string, b: string) =>
-  a.trim().toLowerCase() === b.trim().toLowerCase()
 
 // The artist's other library songs. The artist is the library's name for the song when it is in the library,
 // else its channel, which is often the artist's own

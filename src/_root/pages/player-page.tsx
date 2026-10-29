@@ -181,7 +181,7 @@ const useSongSteps = (videoId: string) => {
   const autoplay = useAtomValue(autoplayAtom)
   const history = useAtomValue(historyAtom)
   const current = useAtomValue(currentVideoAtom)
-  const { songs } = useNextList(videoId)
+  const { all, songs } = useNextList(videoId)
   const recent = history.slice(0, 20).map((item) => item.videoId)
   const open = (song: ListSong, by?: OpenedBy) => {
     void navigate(songPath(song.videoId), {
@@ -189,13 +189,11 @@ const useSongSteps = (videoId: string) => {
     })
   }
   const forward = (pressed: boolean) => {
-    const next = nextSong(
-      { autoplay, context, queue },
-      videoId,
-      songs,
-      recent,
-      pressed
-    )
+    const state = { autoplay, context, queue }
+    // A chip whose songs were all played lately hands over to the whole list rather than stopping
+    const next =
+      nextSong(state, videoId, songs, recent, pressed) ??
+      nextSong(state, videoId, all, recent, pressed)
     return next === null
       ? undefined
       : () => {

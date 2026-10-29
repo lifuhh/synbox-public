@@ -4,6 +4,8 @@ import { useLayoutEffect, useRef, useState } from 'react'
 
 import { YouTubeIcon } from '@/components/svgicons'
 import { chartSongAtom, stageClockAtom } from '@/context/atoms'
+import { ALL, filterLabel } from '@/lib/listening/next-filter'
+import { useNextList } from '@/lib/listening/recommendations'
 import { useGetSongInfoBySongId } from '@/lib/react-query/queries-and-mutations'
 import { compactCount, listensText, useSongStats } from '@/lib/song-stats'
 import type { CssVars } from '@/types'
@@ -128,6 +130,45 @@ const useFactsWidth = () => {
   return { box, line, width }
 }
 
+// The artist's name turns Up Next's chip for them on and off, when they have other songs to list. On, it wears the
+// chip's own picked look; the text stays where it was either way
+const ArtistToggle = ({
+  videoId,
+  author,
+}: {
+  videoId: string
+  author: string
+}) => {
+  const { filter, filters, setFilter } = useNextList(videoId)
+  const chip = filters.find((option) => option.kind === 'artist')
+  const name = (
+    <span className={cn('min-w-0 truncate', bracketStart(author))}>
+      {author}
+    </span>
+  )
+  if (chip === undefined) {
+    return <span className='flex min-w-0 font-medium'>{name}</span>
+  }
+  const on = filter.kind === 'artist'
+  return (
+    <button
+      type='button'
+      aria-pressed={on}
+      aria-label={filterLabel(chip)}
+      onClick={() => {
+        setFilter(on ? ALL : chip)
+      }}
+      className={cn(
+        "relative -mx-1.5 flex min-w-0 rounded-md px-1.5 font-medium transition-colors after:absolute after:inset-y-0 after:left-1/2 after:w-[max(100%,2.75rem)] after:-translate-x-1/2 after:content-[''] touch:after:-inset-y-3.5",
+        on
+          ? 'bg-foreground text-background'
+          : 'mouse:hover:text-foreground mouse:hover:underline mouse:hover:underline-offset-4'
+      )}>
+      {name}
+    </button>
+  )
+}
+
 // The line under the song's title, as YouTube's: the channel, then the facts, muted, then YouTube's logo. One line
 // at any width: the facts that fit beside 6em of channel show whole, the channel takes the rest and is cut with an
 // ellipsis, and facts that don't fit go from the end (Added, then likes, then listens). Each fact carries its own
@@ -146,10 +187,7 @@ export const SongMeta = ({
       data-song-meta
       className='flex min-w-0 items-center gap-3 text-sm text-muted-foreground'>
       <p ref={line} className='flex min-w-0 flex-1'>
-        <span
-          className={cn('min-w-0 truncate font-medium', bracketStart(author))}>
-          {author}
-        </span>
+        <ArtistToggle videoId={videoId} author={author} />
         <span
           ref={box}
           style={
