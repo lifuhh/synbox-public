@@ -90,7 +90,7 @@ Each view gets the same audit `check` runs (`probes/layout.ts` › `auditPage`, 
 
 ```sh
 bun harness/clock-lag.ts sOiMD45QGLs                           # desktop Chromium, on https://synbox.io
-bun harness/clock-lag.ts sOiMD45QGLs --view pwa-portrait --origin http://localhost:5174
+bun harness/clock-lag.ts sOiMD45QGLs --view pwa-landscape --origin http://localhost:5174
 ```
 
 Plays a song with `?timingProbe=1` and reads the YouTube iframe's own `<video>.currentTime` beside the fill clock on one timeline: how far the clock trails the video, before `stage-lyrics.tsx` › `LYRICS_LEAD_SEC`. Run it before retuning the lead. Audio output latency (Bluetooth) and the display's delay are not in it; those need a phone.

@@ -2,7 +2,7 @@
 // on one timeline in both frames. Read-only. Use it before retuning stage-lyrics.tsx › LYRICS_LEAD_SEC: the lead
 // should cover only what this and the paint leave behind.
 //
-//   bun harness/clock-lag.ts <videoId> [--view web|pwa-portrait] [--origin https://synbox.io] [--seconds 25]
+//   bun harness/clock-lag.ts <videoId> [--view web|pwa-landscape] [--origin https://synbox.io] [--seconds 25]
 //
 // Prints the median and spread of video time minus the fill clock and minus the raw reported time, in ms.
 // Headless and silenced (engines/browser.ts › open). Not measured here: audio output latency (speakers, Bluetooth)
@@ -10,7 +10,7 @@
 
 import { parseArgs } from 'node:util'
 
-import { mark, open, PWA_PORTRAIT, WEB } from './bench/engines/browser'
+import { ALL_VIEWS, mark, open } from './bench/engines/browser'
 
 interface ProbeSample {
   now: number
@@ -39,13 +39,17 @@ const { positionals, values } = parseArgs({
 })
 const [videoId] = positionals
 if (videoId === undefined) {
-  console.error('usage: bun harness/clock-lag.ts <videoId> [--view web|pwa-portrait] [--origin URL] [--seconds N]')
+  console.error('usage: bun harness/clock-lag.ts <videoId> [--view web|pwa-landscape] [--origin URL] [--seconds N]')
   process.exit(1)
 }
-const surface = values.view === 'pwa-portrait' ? PWA_PORTRAIT : WEB
+const chosen = ALL_VIEWS.find((v) => v.name === values.view)
+if (chosen === undefined) {
+  throw new Error(`--view: one of ${ALL_VIEWS.map((v) => v.name).join(', ')}`)
+}
+const { surface } = chosen
 
 const quantile = (xs: number[], q: number) => {
-  const sorted = [...xs].sort((a, b) => a - b)
+  const sorted = xs.toSorted((a, b) => a - b)
   return sorted[Math.min(sorted.length - 1, Math.floor(q * sorted.length))] ?? Number.NaN
 }
 const describe = (xs: number[]) =>
@@ -102,5 +106,12 @@ for (const s of samples) {
 console.log(`${values.view} ${videoId}, ${values.seconds} s of playback`)
 console.log(`  video - fill clock (ms): ${describe(clockLag)}`)
 console.log(`  video - reported (ms):   ${describe(reportedLag)}`)
+if (clockLag.length === 0) {
+  const playingVideo = video.filter((v) => v[2]).length
+  const playingClock = samples.filter((s) => s.playing).length
+  console.log(
+    `  nothing to compare: ${video.length} video reads (${playingVideo} playing), ${samples.length} clock samples (${playingClock} playing)`
+  )
+}
 // Closing the context can wait on the YouTube iframe for minutes; nothing is left to save
 process.exit(clockLag.length > 0 ? 0 : 2)
