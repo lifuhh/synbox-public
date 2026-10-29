@@ -86,6 +86,15 @@ bun harness/views.ts /privacy --state search-button            # with an opened 
 
 Each view gets the same audit `check` runs (`probes/layout.ts` › `auditPage`, `pageAt`: it waits for the page as its route's audit does, `/` as home, and uses the same safe areas and installed emulation), and one line per view: `ok`, or the counts over 0 and the offending elements. It writes `.reports/YYYY-MM-DD-views-<slug>/index.html`, the screenshots side by side on a dark page (one row per view with `--compare`), prints its path, and exits 3 when a view has a finding. Without `--port`, the build is served the way `check` serves it, with the same replayed API data.
 
+## The lyrics' clock: `clock-lag.ts`
+
+```sh
+bun harness/clock-lag.ts sOiMD45QGLs                           # desktop Chromium, on https://synbox.io
+bun harness/clock-lag.ts sOiMD45QGLs --view pwa-landscape --origin http://localhost:5174
+```
+
+Plays a song with `?timingProbe=1` and reads the YouTube iframe's own `<video>.currentTime` beside the fill clock on one timeline: how far the clock trails the video, before `stage-lyrics.tsx` › `LYRICS_LEAD_SEC`. Run it before retuning the lead. Audio output latency (Bluetooth) and the display's delay are not in it; those need a phone.
+
 ## On a deployed copy: `smoke.ts`
 
 ```sh

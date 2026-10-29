@@ -12,6 +12,7 @@
   },
   "include": [
     "asks.ts",
+    "clock-lag.ts",
     "bench",
     "history.ts",
     "readme",
