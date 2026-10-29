@@ -185,7 +185,7 @@ export type Access =
 
 export const useAccess = (): Access => {
   const { data, isPending } = useMe()
-  const remembered = useMemo(rememberedMe, [])
+  const remembered = useMemo(() => rememberedMe(), [])
   const me = isPending ? remembered : (data ?? null)
   const user = me?.user ?? null
   const spent = useAtomValue(guestSongSpentAtom)
