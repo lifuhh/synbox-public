@@ -61,6 +61,8 @@ import {
 } from '@/lib/react-query/queries-and-mutations'
 import type { ProbeSample } from '@/lib/timing-probe'
 import { summarizeProbe, timingProbeEnabled } from '@/lib/timing-probe'
+import type { TranslationSpan } from '@/lib/translation-spans'
+import { translationSpans } from '@/lib/translation-spans'
 import type { CssVars, KaraokeDocLine } from '@/types'
 import { spaceDashes } from '@/utils'
 import { cn } from '@/utils/cn'
@@ -130,14 +132,14 @@ const plainText = (html: string) =>
     .replaceAll(/<(?<tag>rt|rp)>.*?<\/\k<tag>>/gu, '')
     .replaceAll(/<[^>]*>/gu, '')
 
-// Every line's text per row, for useRowsBoost
+// Every line's text per row, for useRowsBoost; a line's translation is its span's, as it shows under it
 const rowTextsOf = (
   lyrics: TimedLyrics | null,
   karaokeLines: KaraokeDocLine[] | null,
-  english: boolean,
+  spans: TranslationSpan[],
   count: number
 ) => {
-  const translations = (english ? lyrics?.eng : lyrics?.chi) ?? []
+  const translations = spans.map((span) => span.text)
   return {
     japanese: Array.from({ length: count }, (_, index) =>
       plainText(karaokeLines?.[index]?.text ?? lyrics?.lines[index]?.text ?? '')
@@ -216,21 +218,35 @@ const LyricLine = ({
   )
 }
 
+// A line with its span's translation ('' when it has none or it only repeats the span's lines), and the span's first
+// line: every line of a span shows the same translation, kept mounted under that key
 const lineAt = (
   lyrics: TimedLyrics | null,
   karaokeLines: KaraokeDocLine[] | null,
+  spans: TranslationSpan[],
   index: number,
-  english: boolean,
   placeholder: string | undefined
 ) => {
+  const textAt = (at: number) =>
+    karaokeLines?.[at]?.text ?? lyrics?.lines[at]?.text
   const karaokeLine = karaokeLines?.[index]
-  const line = lyrics?.lines[index]
-  const text = karaokeLine?.text ?? line?.text ?? placeholder
-  const translation = spaceDashes(
-    (english ? lyrics?.eng : lyrics?.chi)?.[index] ?? ''
-  )
-  const romaji = lyrics?.romaji[index] ?? ''
-  return { karaokeLine, romaji, text, translation }
+  const text = textAt(index) ?? placeholder
+  // None between lines (index -1)
+  const span: TranslationSpan | undefined = spans[index]
+  if (span === undefined) {
+    return { karaokeLine, romaji: '', spanKey: index, text, translation: '' }
+  }
+  const translation = spaceDashes(span.text)
+  const sung = Array.from({ length: span.last - span.first + 1 }, (_, at) =>
+    textAt(span.first + at)
+  ).join(' ')
+  return {
+    karaokeLine,
+    romaji: lyrics?.romaji[index] ?? '',
+    spanKey: span.first,
+    text,
+    translation: sameText(translation, sung) ? '' : translation,
+  }
 }
 
 interface ShownRows {
@@ -302,7 +318,8 @@ const LineRows = ({
             />
           )
         ))}
-      {shown.translation && translation && !sameText(translation, text) && (
+      {/* A span's lines all show its text; the same text keeps its row, so it stays put across the span */}
+      {shown.translation && translation && (
         <LyricLine
           html={translation}
           kind='translation'
@@ -1148,18 +1165,16 @@ const DockedTranslation = ({
   )
 }
 
-// The sung line's translation, unless it has none or it only repeats the line
+// The sung line's span's translation, unless it has none or it only repeats the lines. Keyed by the span, so it fades
+// in when a span starts and stays, unchanged, while the sung line moves within it
 const translationOf = (
   line: ReturnType<typeof lineAt>,
-  lineKey: number,
   // False for fitSong's unseen copy (LyricLine's `shown`)
   shown = true
 ): ReactNode =>
-  line.translation &&
-  line.text !== undefined &&
-  !sameText(line.translation, line.text) ? (
+  line.translation && line.text !== undefined ? (
     <LyricLine
-      key={lineKey}
+      key={line.spanKey}
       html={line.translation}
       kind='translation'
       shown={shown}
@@ -1657,6 +1672,16 @@ export const StageLyrics = ({
   const showRomaji = useAtomValue(romajiVisibilityAtom)
   const showTranslation = useAtomValue(translationVisibilityAtom)
   const english = useAtomValue(translationIsEnglishAtom)
+  // Each line's translation span: the timing doc's spans when its lines are these lyrics', else one per line
+  const spans = useMemo(
+    () =>
+      translationSpans(
+        (english ? lyrics?.eng : lyrics?.chi) ?? [],
+        karaokeLines?.length ?? lyrics?.lines.length ?? 0,
+        karaokeLines && karaokeDoc?.translations[english ? 'en' : 'zh']?.spans
+      ),
+    [lyrics, karaokeLines, karaokeDoc, english]
+  )
   const surface = useLyricsSurface()
   const oneLineSize = useAtomValue(fontSizeMultiplierAtom)
   const twoLinesSize = useAtomValue(lyricsFontSizeTwoLinesAtom)
@@ -1770,7 +1795,7 @@ export const StageLyrics = ({
   const rowShown = twoLines ? { ...shown, translation: false } : shown
   // Nothing between lines: DraggableLyrics keeps its block mounted but hidden
   const rowsOf = (index: number) => {
-    const line = lineAt(lyrics, karaokeLines, index, english, placeholder)
+    const line = lineAt(lyrics, karaokeLines, spans, index, placeholder)
     return line.text === undefined ? undefined : (
       <LineRows
         line={{ ...line, text: line.text }}
@@ -1786,7 +1811,7 @@ export const StageLyrics = ({
   // A line as Two Lines lays it out, untimed: for measuring, and for the room each row keeps
   const quietRowsOf = useCallback(
     (index: number) => {
-      const line = lineAt(lyrics, karaokeLines, index, english, undefined)
+      const line = lineAt(lyrics, karaokeLines, spans, index, undefined)
       return (
         line.text !== undefined && (
           <LineRows
@@ -1803,7 +1828,7 @@ export const StageLyrics = ({
         )
       )
     },
-    [lyrics, karaokeLines, english, showLyrics, showRomaji]
+    [lyrics, karaokeLines, spans, showLyrics, showRomaji]
   )
   const songLines = useMemo(
     () =>
@@ -1816,19 +1841,18 @@ export const StageLyrics = ({
       )),
     [twoLines, lineCount, quietRowsOf]
   )
+  // Each span's translation once, at its first line
   const songTranslations = useMemo(
     () =>
       Array.from(
         { length: twoLines && showTranslation ? lineCount : 0 },
         (_, index) => {
-          const translation = translationOf(
-            lineAt(lyrics, karaokeLines, index, english, undefined),
-            index,
-            false
-          )
+          const line = lineAt(lyrics, karaokeLines, spans, index, undefined)
+          const translation =
+            line.spanKey === index ? translationOf(line, false) : undefined
           return (
             translation !== undefined && (
-              // Lines are positional and never reorder
+              // Spans are positional and never reorder
               // oxlint-disable-next-line no-array-index-key
               <div
                 key={index}
@@ -1841,14 +1865,14 @@ export const StageLyrics = ({
           )
         }
       ),
-    [twoLines, showTranslation, lineCount, lyrics, karaokeLines, english]
+    [twoLines, showTranslation, lineCount, lyrics, karaokeLines, spans]
   )
   // Rows hidden, the rows still shown grow: one line's only as far as the song's lines stay within what all three
   // rows take (useRowsBoost); two lines' as far as fitSong finds room for them
   const layerRef = useRef<HTMLDivElement>(null)
   const rowTexts = useMemo(
-    () => rowTextsOf(lyrics, karaokeLines, english, lineCount),
-    [lyrics, karaokeLines, english, lineCount]
+    () => rowTextsOf(lyrics, karaokeLines, spans, lineCount),
+    [lyrics, karaokeLines, spans, lineCount]
   )
   useRowsBoost(layerRef, {
     enabled: !twoLines,
@@ -1865,8 +1889,7 @@ export const StageLyrics = ({
   // Karaoke Style's translation: in its room at the top, or docked under the rows
   const translated = twoLines && showTranslation
   const translationLine = translationOf(
-    lineAt(lyrics, karaokeLines, view.active, english, placeholder),
-    view.active
+    lineAt(lyrics, karaokeLines, spans, view.active, placeholder)
   )
   const dock = useTranslationDock(layerRef, translated, twoLines, view.active)
   const underRows = translated && (

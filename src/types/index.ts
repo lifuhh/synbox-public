@@ -82,10 +82,20 @@ export interface KaraokeDocLine {
   tokens: KaraokeToken[]
 }
 
+// Lines `first` to `last` (both included, up to three) share one translation, `text`
+export interface KaraokeTranslationSpan {
+  first: number
+  last: number
+  text: string
+}
+
 export interface KaraokeTranslation {
   source: 'uploader' | 'llm'
   script: string | null
+  // Per line: a span's text on its first line, '' on the others
   lines: string[]
+  // Every line in exactly one span, in order. Absent in docs made before spans: each line is then its own
+  spans?: KaraokeTranslationSpan[]
 }
 
 export interface KaraokeDoc {
