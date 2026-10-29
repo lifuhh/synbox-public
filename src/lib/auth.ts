@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { adminClient, jwtClient } from 'better-auth/client/plugins'
 import { createAuthClient } from 'better-auth/react'
 import { useAtomValue } from 'jotai'
+import { useMemo } from 'react'
 import { z } from 'zod'
 
 import { toast } from '@/components/ui/use-toast'
@@ -65,28 +66,41 @@ export const knownGuest = () => knownMe !== null && knownMe.user === null
 
 export const knownQuota = () => knownMe?.quota ?? null
 
-// Who was signed in when this browser last asked: their picture's URL ('' for none), or nothing for a guest.
-// The top bar draws its account control from it before /api/me answers, about a second into a phone's load
-const LAST_ACCOUNT_KEY = 'synboxLastAccount'
+// This browser's last answer from /api/me while someone was signed in, or nothing for a guest. The page draws the
+// account from it before /api/me answers (about a second into a phone's load) instead of a guest's page that
+// then turns into theirs. Only the look: the server checks every request on its own
+const LAST_ME_KEY = 'synboxLastMe'
+// Held only the picture's URL, before the whole answer was kept (2026-10-29)
+const OLD_LAST_ACCOUNT_KEY = 'synboxLastAccount'
 
-export const lastAccount = (): { image: string | null } | null => {
+const rememberedMe = (): Me | null => {
   try {
-    const image = localStorage.getItem(LAST_ACCOUNT_KEY)
-    return image === null ? null : { image: image === '' ? null : image }
+    const stored = localStorage.getItem(LAST_ME_KEY)
+    const parsed =
+      stored === null ? null : meSchema.safeParse(JSON.parse(stored))
+    return parsed?.success === true && parsed.data.user !== null
+      ? parsed.data
+      : null
   } catch {
     return null
   }
 }
 
-const rememberAccount = ({ user }: Me) => {
+export const lastAccount = (): { image: string | null } | null => {
+  const user = rememberedMe()?.user ?? null
+  return user === null ? null : { image: user.image }
+}
+
+const rememberAccount = (me: Me) => {
   try {
-    if (user === null) {
-      localStorage.removeItem(LAST_ACCOUNT_KEY)
+    localStorage.removeItem(OLD_LAST_ACCOUNT_KEY)
+    if (me.user === null) {
+      localStorage.removeItem(LAST_ME_KEY)
     } else {
-      localStorage.setItem(LAST_ACCOUNT_KEY, user.image ?? '')
+      localStorage.setItem(LAST_ME_KEY, JSON.stringify(me))
     }
   } catch {
-    // Storage blocked: the bar waits for the answer instead
+    // Storage blocked: the page waits for the answer instead
   }
 }
 
@@ -157,7 +171,8 @@ export const useGuestSongUsed = (ask: boolean) =>
 // What the person on the page may do. Browsing is open to everyone; a guest adds one song, ever, and an account
 // a few a day. `newSong` is false for a guest whose song this page saw go (useGuestSongUsed asks the device's), and for an account that
 // added today's songs.
-// `ready` is false until the sign-in check answers; until then everyone looks like a guest
+// `ready` is false until the sign-in check answers; until then it is whoever this browser last saw signed in
+// (rememberedMe), else a guest
 export type Access =
   | { kind: 'guest'; newSong: boolean; admin: false; ready: boolean }
   | {
@@ -165,23 +180,25 @@ export type Access =
       newSong: boolean
       admin: boolean
       quota: Quota
-      ready: true
+      ready: boolean
     }
 
 export const useAccess = (): Access => {
   const { data, isPending } = useMe()
-  const user = data?.user ?? null
+  const remembered = useMemo(rememberedMe, [])
+  const me = isPending ? remembered : (data ?? null)
+  const user = me?.user ?? null
   const spent = useAtomValue(guestSongSpentAtom)
-  if (user === null || data?.quota === undefined) {
+  if (user === null || me?.quota === undefined) {
     return { admin: false, kind: 'guest', newSong: !spent, ready: !isPending }
   }
-  const { quota } = data
+  const { quota } = me
   return {
     admin: user.role === 'admin',
     kind: 'user',
     newSong: quota.limit === null || quota.used < quota.limit,
     quota,
-    ready: true,
+    ready: !isPending,
   }
 }
 

@@ -22,7 +22,7 @@ import {
   useAdminNotices,
 } from '@/lib/admin-notices'
 import type { AdminNotice } from '@/lib/admin-notices'
-import { lastAccount, useAccess } from '@/lib/auth'
+import { useAccess } from '@/lib/auth'
 import type { Access } from '@/lib/auth'
 import { useResolvedFeedback } from '@/lib/feedback'
 import type { ResolvedFeedback } from '@/lib/feedback'
@@ -123,10 +123,10 @@ const nameOf = (
 }
 
 // A guest adds no songs and sends no reports, so there is nothing to notify them about: no bell. Kept while a
-// song runs or finishes on screen (signed out mid-song), so its progress never vanishes. Until the sign-in check
-// answers, what this browser had last time decides, so the bell doesn't blink
+// song runs or finishes on screen (signed out mid-song), so its progress never vanishes.
+// useAccess draws the account this browser last saw until the sign-in check answers, so the bell doesn't blink
 const bellHidden = (access: Access, items: number, closing: boolean) => {
-  const guest = access.ready ? access.kind === 'guest' : lastAccount() === null
+  const guest = access.kind === 'guest'
   return guest && items === 0 && !closing
 }
 
