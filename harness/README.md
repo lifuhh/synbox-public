@@ -256,6 +256,7 @@ bun harness/readme/colors.ts <out.webp>                        # one row, one ca
 - **`--other-fit`** switches the video's fit, for a music video whose own captions the default crop cuts in half. **`--theater`** shoots the karaoke clip in Theater, whose lyrics default to Karaoke Style's two rows.
 - **Lyrics stay at the default size and style**, as a first-time listener sees them, unless a shot asks otherwise: `--karaoke-style` stores Karaoke Style as the listener's default before the app loads (two rows on every screen), and `--lyrics-size <n>` its size (0.6 to 1.05 on a phone on its side). The portfolio's sideways phone uses both, so its lyric reads at a small size: `capture.ts <dir>/raw sideways dy90tA3TT1c 144.2 --karaoke-style --lyrics-size 1.05`.
 - **Pick moments by eye and by line:** pretty art, and a line that reads well in English. Lyrics stay out of the repo; the images show a line or two, as the app does.
+- **Judge a scene as a whole, over the whole clip:** the devices' screens share one palette (Made for Phones: aqua, dark blue-grey and blue, hues 180° to 213°). Look at composed frames across the loop (`--keep`), not each shot alone; a clip that cuts to a clashing colour (red, saturated orange) is the wrong moment.
 
 ## Known limits
 
