@@ -257,6 +257,7 @@ bun harness/readme/colors.ts <out.webp>                        # one row, one ca
 - **Lyrics stay at the default size and style**, as a first-time listener sees them, unless a shot asks otherwise: `--karaoke-style` stores Karaoke Style as the listener's default before the app loads (two rows on every screen), and `--lyrics-size <n>` its size (0.6 to 1.05 on a phone on its side). The portfolio's sideways phone uses both, so its lyric reads at a small size: `capture.ts <dir>/raw sideways dy90tA3TT1c 144.2 --karaoke-style --lyrics-size 1.05`.
 - **Pick moments by eye and by line:** pretty art, and a line that reads well in English. Lyrics stay out of the repo; the images show a line or two, as the app does.
 - **Judge a scene as a whole, over the whole clip:** the devices' screens share one palette (Made for Phones: aqua, dark blue-grey and blue, hues 180° to 213°). Look at composed frames across the loop (`--keep`), not each shot alone; a clip that cuts to a clashing colour (red, saturated orange) is the wrong moment.
+- **A phone on its side needs a full-frame video:** a music video with black bars built in (wider than 16:9: 「怪物」, 「海のまにまに」) keeps a strip at the top and bottom under Zoom to Fill, and its straight edge cuts across the screen's round corners. Check the shot's top and bottom rows, and look for lyrics the video draws itself (「藍悼花」, 「好きだから。」). `moments.ts --all` lists every song with clean lines.
 
 ## Known limits
 
