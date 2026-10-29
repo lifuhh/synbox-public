@@ -66,6 +66,10 @@ export const filterKey = (filter: NextFilter): string => {
   }
 }
 
+// The library and YouTube don't always agree on an artist's capitals or spaces
+export const sameArtist = (a: string, b: string) =>
+  a.trim().toLowerCase() === b.trim().toLowerCase()
+
 const matches = (
   filter: NextFilter,
   song: ListSong,
@@ -76,7 +80,7 @@ const matches = (
       return true
     }
     case 'artist': {
-      return song.author === filter.artist
+      return sameArtist(song.author, filter.artist)
     }
     case 'mood': {
       return facets?.mood === filter.mood

@@ -9,7 +9,14 @@ import {
 
 import type { ListSong } from './model'
 import type { NextFilter, SongFacets } from './next-filter'
-import { ALL, applyFilter, filterKey, nextFilters } from './next-filter'
+import {
+  ALL,
+  applyFilter,
+  filterKey,
+  nextFilters,
+  sameArtist,
+} from './next-filter'
+import { useArtistSongs } from './shelves'
 
 // How many songs the watch page lists beside the video and under it
 const RECOMMENDATIONS = 30
@@ -60,15 +67,17 @@ export const useRecommendations = (videoId: string) => {
   }, [similar.data, similar.isLoading, library, videoId])
 }
 
-// The chip picked over the list, for the song it was picked on; a new song starts at All
+// The chip picked over the list, for the song it was picked on. A new song starts at All, unless the artist's chip
+// was picked and the new song is theirs too: that chip stays until the listener turns it off
 const nextFilterAtom = atom<{ videoId: string; filter: NextFilter } | null>(
   null
 )
 
 // The list beside the video as the listener filtered it. Autoplay reads the same list, so the song at its top
-// is the one that plays next
+// is the one that plays next. The artist's chip lists their library songs too, not only those recommended
 export const useNextList = (videoId: string) => {
   const { current, facets, loading, songs } = useRecommendations(videoId)
+  const { songs: byArtist } = useArtistSongs(videoId)
   const video = useAtomValue(currentVideoAtom)
   const [chosen, setChosen] = useAtom(nextFilterAtom)
   // A song outside the library has no tags, but its channel still finds the artist's other songs
@@ -77,8 +86,20 @@ export const useNextList = (videoId: string) => {
     (video?.videoId === videoId && video.author !== ''
       ? { artist: video.author, mood: null, vocal: 'unknown' }
       : null)
-  const filters = nextFilters(playing, songs, facets)
-  const picked = chosen?.videoId === videoId ? chosen.filter : ALL
+  const listed = new Set(songs.map((song) => song.videoId))
+  const withArtist = [
+    ...songs,
+    ...byArtist.filter((song) => !listed.has(song.videoId)),
+  ]
+  const filters = nextFilters(playing, withArtist, facets)
+  const stillTheirs =
+    chosen?.filter.kind === 'artist' &&
+    playing !== null &&
+    sameArtist(chosen.filter.artist, playing.artist)
+  const carried: NextFilter = stillTheirs
+    ? { artist: playing.artist, kind: 'artist' }
+    : ALL
+  const picked = chosen?.videoId === videoId ? chosen.filter : carried
   const filter =
     filters.find((option) => filterKey(option) === filterKey(picked)) ?? ALL
   return {
@@ -89,6 +110,7 @@ export const useNextList = (videoId: string) => {
     setFilter: (next: NextFilter) => {
       setChosen({ filter: next, videoId })
     },
-    songs: applyFilter(filter, songs, facets),
+    songs:
+      filter.kind === 'all' ? songs : applyFilter(filter, withArtist, facets),
   }
 }
