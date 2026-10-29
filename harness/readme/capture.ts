@@ -6,7 +6,8 @@
 //                                                                           mini player
 //   bun harness/readme/capture.ts <outDir> sideways <videoId> <startSec>   the installed app on its side (it opens
 //                                                                           the player in Full Screen), most of the
-//                                                                           line at startSec lit
+//                                                                           line at startSec lit; with <endSec>, one
+//                                                                           frame per step as the lines are sung
 //   bun harness/readme/capture.ts <outDir> upright <videoId> <startSec> <endSec>
 //                                                                           the upright player, one frame per step as
 //                                                                           the line from startSec to endSec is sung
@@ -480,6 +481,14 @@ if (shot === 'home') {
   await imagesLoaded(page)
   await page.waitForTimeout(2000)
   await page.screenshot({ path: path.join(outDir, 'home.png') })
+  await close()
+} else if (shot === 'sideways' && endArg !== undefined) {
+  // As the upright clip: no pause and no seek, the song slowed well before the lines; the whole screen moves
+  const { page, close } = await player(PWA_LANDSCAPE, 10)
+  await slowDown(page, true)
+  await waitForSong(page, start - 0.5)
+  const { height, width } = page.viewportSize() ?? VIEWPORTS.landscape
+  await shootClip(page, { height, width, x: 0, y: 0 }, Number(endArg))
   await close()
 } else if (shot === 'sideways') {
   // Opened 30 s ahead and played to the line, never seeked: in WebKit a seek leaves the video black for seconds

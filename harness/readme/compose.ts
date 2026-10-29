@@ -1,10 +1,11 @@
 // The README's Made for Phones scene, from capture.ts's shots: the app on its side, large, at the back; the installed
-// Home and the upright player in front, bottom left and right; the upright player's lyric card filling as it is sung.
-// One animated WebP with a transparent background, so it sits on GitHub's light and dark themes alike.
+// Home in front at the left; in front at the bottom right, another song on its side in Karaoke Style, its two rows
+// filling as they are sung (the hero already shows the upright player). One animated WebP with a transparent
+// background, so it sits on GitHub's light and dark themes alike.
 //
-//   bun harness/readme/compose.ts <out.webp> --sideways <png> --home <png> --upright <dir> --from <sec> --to <sec>
+//   bun harness/readme/compose.ts <out.webp> --sideways <png> --home <png> --karaoke <dir> --from <sec> --to <sec>
 //
-// <dir> is capture.ts's upright output (frames.json, base.png, fNNN.png); --from/--to trim the clip by song time.
+// <dir> is capture.ts's sideways clip (frames.json, fNNN.png); --from/--to trim the clip by song time.
 
 import { spawnSync } from 'node:child_process'
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
@@ -19,6 +20,9 @@ import { CSS, outer, phone } from './devices'
 const SCENE = { height: 700, width: 1400 }
 const BACK = 1.32
 const FRONT = 0.76
+// The phone on its side in front, and the back phone moved left of centre to leave its lyric in view beside it
+const SIDE = 0.72
+const BACK_SHIFT = 60
 const INSET = 40
 // The last frame holds a little before the loop starts again
 const HOLD_MS = 700
@@ -28,23 +32,23 @@ const { positionals, values } = parseArgs({
   options: {
     from: { type: 'string' },
     home: { type: 'string' },
+    karaoke: { type: 'string' },
     // Keep the rendered frames beside the output, to look at before it goes anywhere
     keep: { default: false, type: 'boolean' },
     sideways: { type: 'string' },
     to: { type: 'string' },
-    upright: { type: 'string' },
   },
 })
 const [out] = positionals
-const { home, sideways, upright } = values
+const { home, karaoke, sideways } = values
 if (
   out === undefined ||
   home === undefined ||
-  sideways === undefined ||
-  upright === undefined
+  karaoke === undefined ||
+  sideways === undefined
 ) {
   console.error(
-    'Usage: bun harness/readme/compose.ts <out.webp> --sideways <png> --home <png> --upright <dir> [--from s] [--to s]'
+    'Usage: bun harness/readme/compose.ts <out.webp> --sideways <png> --home <png> --karaoke <dir> [--from s] [--to s]'
   )
   process.exit(1)
 }
@@ -61,7 +65,7 @@ const isFrame = (value: unknown): value is Frame =>
   'songSec' in value &&
   typeof value.songSec === 'number'
 const captured: unknown = JSON.parse(
-  readFileSync(path.join(upright, 'frames.json'), 'utf-8')
+  readFileSync(path.join(karaoke, 'frames.json'), 'utf-8')
 )
 const all =
   typeof captured === 'object' &&
@@ -87,17 +91,17 @@ const frontTop = (SCENE.height - front.height * FRONT) / 2
 const backTop = (SCENE.height - back.height * BACK) / 2
 const html = `<!doctype html><meta charset="utf-8"><style>${CSS}</style>
 <body><div id="scene" style="position:relative;width:${SCENE.width}px;height:${SCENE.height}px">
-${phone({ id: 'sideways', land: true, layers: [{ src: file(sideways) }], scale: BACK, x: (SCENE.width - back.width * BACK) / 2, y: backTop })}
+${phone({ id: 'sideways', land: true, layers: [{ src: file(sideways) }], scale: BACK, x: (SCENE.width - back.width * BACK) / 2 - BACK_SHIFT, y: backTop })}
 ${phone({ id: 'home', layers: [{ src: file(home) }], scale: FRONT, x: INSET, y: frontTop })}
 ${phone({
-  id: 'upright',
+  id: 'karaoke',
+  land: true,
   layers: [
-    { src: file(path.join(upright, 'base.png')) },
-    { id: 'clip', src: file(path.join(upright, frames[0]?.file ?? '')) },
+    { id: 'clip', src: file(path.join(karaoke, frames[0]?.file ?? '')) },
   ],
-  scale: FRONT,
-  x: SCENE.width - INSET - front.width * FRONT,
-  y: frontTop,
+  scale: SIDE,
+  x: SCENE.width - INSET - back.width * SIDE,
+  y: frontTop + front.height * FRONT - back.height * SIDE,
 })}
 </div></body>`
 
@@ -120,7 +124,7 @@ for (const [i, frame] of frames.entries()) {
         await image.decode()
       }
     },
-    file(path.join(upright, frame.file))
+    file(path.join(karaoke, frame.file))
   )
   const shot = path.join(work, `s${String(i).padStart(3, '0')}.png`)
   // oxlint-disable-next-line eslint/no-await-in-loop -- one frame drawn, then shot, then the next

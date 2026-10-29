@@ -49,12 +49,12 @@ Paste a link to a song that isn't in the library. Synbox transcribes it and alig
 ## Made for Phones
 
 <p align="center">
-  <img src="docs/readme/showcase/phones.webp" alt="Synbox installed on an iPhone: the player on its side, the home page with the song in the mini player, and the upright player's lyrics filling as they are sung" width="100%" />
+  <img src="docs/readme/showcase/phones.webp" alt="Synbox installed on an iPhone: the player on its side, the home page with the song in the mini player, and another song on its side in Karaoke Style, two rows filling as they are sung" width="100%" />
 </p>
 
 - **Installs as an app** on iPhone and Android, with a tab bar.
 - **Upright:** the video above the lyrics, which follow the song.
-- **Full Screen** turns the player on its side: the video fills the screen with the lyrics on top. Lock Landscape keeps it there.
+- **Full Screen** turns the player on its side: the video fills the screen with the lyrics on top, in one line or Karaoke Style's two rows. Lock Landscape keeps it there.
 - **Lock Screen** ignores stray taps until you unlock.
 - **Double-tap** to skip 10 seconds.
 - **Offline reading** for songs you open, bookmark or generate.
