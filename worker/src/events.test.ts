@@ -100,6 +100,18 @@ test('usage counts active people per day, signed in apart, and drops events past
     { active: 0, day: '2026-10-24', signedIn: 0, songOpens: 0 },
   ])
   expect(usage.week).toEqual({ active: 2, signedIn: 1 })
+  sqlite.run(
+    `insert into "user" ("id", "name", "email", "emailVerified", "createdAt", "updatedAt", "role")
+     values ('a', 'A', 'a@example.com', 1, ?1, ?1, 'admin')`,
+    [now]
+  )
+  const withoutAdmin = await readUsage(db, now, 3)
+  expect(withoutAdmin.days[0]).toMatchObject({
+    active: 1,
+    signedIn: 0,
+    songOpens: 1,
+  })
+  expect(withoutAdmin.week).toEqual({ active: 1, signedIn: 0 })
   await pruneEvents(db, now)
   expect(actors()).not.toContain('d:old')
   expect(actors()).toHaveLength(4)

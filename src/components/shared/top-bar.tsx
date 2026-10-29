@@ -5,7 +5,7 @@ import { useLocation, useMatch } from 'react-router'
 import { playerChromeOpenAtom, playerSurfaceAtom } from '@/context/atoms'
 import { useArmed } from '@/hooks/use-armed'
 import { useMediaQuery } from '@/hooks/use-media-query'
-import { lastAccount, useAccess } from '@/lib/auth'
+import { useAccess } from '@/lib/auth'
 import { onEmptyBar, topTap } from '@/lib/top-tap'
 import { cn } from '@/utils/cn'
 
@@ -121,7 +121,7 @@ const TopBar = () => {
   const armed = useArmed(iconsShown)
   // Until the sign-in check answers, what this browser had last time decides, so the buttons don't blink
   const access = useAccess()
-  const guest = access.ready ? access.kind === 'guest' : lastAccount() === null
+  const guest = access.kind === 'guest'
 
   // At the top of a page the bar is clear over the page glow, so the two read as one surface. Scrolling down
   // slides it away; scrolling up brings it back over the top scrim (root-layout.tsx), which paints the page's own
