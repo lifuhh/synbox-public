@@ -24,6 +24,9 @@
 //                                                                           website and the upright installed app
 //   --karaoke-style   lyrics in Karaoke Style (two rows) on every screen, as the listener's own default would set
 //   --lyrics-size <n> Karaoke Style's size (lyricsFontSizeTwoLines; 0.6 to 1.05 on a phone on its side)
+//   --neighbours <ids> the only songs (video ids, comma-separated) the page's song lists show: Up Next, More Like
+//                     This and the rows under the song, from the deployed lookup service's own answers. A showcase
+//                     picks neutral neighbours, as a demo account would
 //   --site <origin>   the app to shoot (default https://synbox.io). A local `wt serve` shows staging's code; its
 //                     karaoke, recommendations and YouTube reads are answered from the deployed services, which the
 //                     dev server's stand-ins can't reach without the backend's keys
@@ -80,6 +83,7 @@ const { positionals, values } = parseArgs({
     // Sideways: switch the video's fit (Zoom to Fill / Fit), for a video whose own captions the default crop cuts
     'karaoke-style': { default: false, type: 'boolean' },
     'lyrics-size': { type: 'string' },
+    neighbours: { type: 'string' },
     'other-fit': { default: false, type: 'boolean' },
     site: { default: 'https://synbox.io', type: 'string' },
     theater: { default: false, type: 'boolean' },
@@ -171,6 +175,50 @@ const fromDeployed = async (context: BrowserContext) => {
   )
 }
 
+// Every list of songs in a lookup answer (arrays of objects with a video_id), down to the kept songs
+const keepSongs = (value: unknown, kept: Set<string>): unknown => {
+  if (Array.isArray(value)) {
+    return value
+      .filter(
+        (item) =>
+          !isRecord(item) ||
+          typeof item.video_id !== 'string' ||
+          kept.has(item.video_id)
+      )
+      .map((item) => keepSongs(item, kept))
+  }
+  return isRecord(value)
+    ? Object.fromEntries(
+        Object.entries(value).map(([key, item]) => [key, keepSongs(item, kept)])
+      )
+    : value
+}
+
+// The page's library reads from the deployed lookup service, their song lists down to the kept songs
+const onlyNeighbours = async (context: BrowserContext, kept: Set<string>) => {
+  const { lookup } = backendOrigins(repoAt(process.cwd()).top)
+  await context.route(
+    // The lookup service's own reads, and the site's cached copy of its song list (/api/library/songs)
+    (url) =>
+      url.pathname.startsWith('/api/library/') ||
+      (url.origin !== new URL(site).origin && url.pathname.includes('/library/')),
+    async (route) => {
+      const url = new URL(route.request().url())
+      const pathname = url.pathname.replace(/^\/api\/library\//u, '/library/')
+      try {
+        const answer = await route.fetch({
+          url: `${lookup}${pathname}${url.search}`,
+        })
+        await route.fulfill({ json: keepSongs(await answer.json(), kept) })
+      } catch {
+        await route.abort().catch(() => {
+          // The page is gone
+        })
+      }
+    }
+  )
+}
+
 // A page of the site in one view: the deployed reads, the pill hidden, the embed's song time kept on window
 const visit = async (view: View) => {
   // The library and recommendations as listeners see them, not the bench's recorded answers
@@ -180,6 +228,12 @@ const visit = async (view: View) => {
   })
   if (!site.startsWith('https://synbox.io')) {
     await fromDeployed(opened.context)
+  }
+  if (values.neighbours !== undefined) {
+    await onlyNeighbours(
+      opened.context,
+      new Set([subject, ...values.neighbours.split(',')])
+    )
   }
   if (values['karaoke-style']) {
     // My Default's picks, stored before the app reads them (src/context/atoms.tsx › lyricsTwoLines,

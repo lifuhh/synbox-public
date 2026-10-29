@@ -30,7 +30,7 @@ This repository is the web app and its auth Worker. The service that makes the l
 ## Karaoke
 
 <p align="center">
-  <img src="docs/readme/showcase/karaoke.webp" alt="Karaoke Style in Theater Mode: two rows of lyrics, left then right, filling syllable by syllable as they are sung, with furigana, romaji and the English translation above" width="100%" />
+  <img src="docs/readme/showcase/karaoke.webp" alt="Karaoke Style over the music video: two rows of lyrics, left then right, filling syllable by syllable as they are sung, with furigana, romaji and the English translation above" width="100%" />
 </p>
 
 - **Timed to every syllable**, like a karaoke machine.
@@ -49,7 +49,7 @@ Paste a link to a song that isn't in the library. Synbox transcribes it and alig
 ## Made for Phones
 
 <p align="center">
-  <img src="docs/readme/showcase/phones.webp" alt="Synbox installed on an iPhone: the player on its side, the home page with the song in the mini player, and another song on its side in Karaoke Style, two rows filling as they are sung" width="100%" />
+  <img src="docs/readme/showcase/phones.webp" alt="Synbox installed on an iPhone: the player on its side, the home page with the song in the mini player, and the player on its side again in Karaoke Style, two rows filling as they are sung" width="100%" />
 </p>
 
 - **Installs as an app** on iPhone and Android, with a tab bar.
