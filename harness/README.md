@@ -234,8 +234,8 @@ bun harness/readme/capture.ts <dir> scout <videoId> 0 --site <origin>      # the
 # Made for Phones
 bun harness/readme/capture.ts <dir>/raw home <videoId> <sec> --site <origin>
 bun harness/readme/capture.ts <dir>/raw sideways <videoId> <sec> --site <origin> --other-fit
-bun harness/readme/capture.ts <dir>/upright upright <videoId> <start> <end> --site <origin>
-bun harness/readme/compose.ts <out.webp> --sideways <png> --home <png> --upright <dir> --from <s> --to <s> [--keep]
+bun harness/readme/capture.ts <dir>/karaoke sideways <videoId> <start> <end> --karaoke-style --lyrics-size 1.05   # as a clip
+bun harness/readme/compose.ts <out.webp> --sideways <png> --home <png> --karaoke <dir> --from <s> --to <s> [--keep]
 # Hero, Lyrics Style, Search, generation and the karaoke clip
 bun harness/readme/capture.ts <dir>/hero hero <videoId> <start> <end> --site <origin>      # website + upright app, as a clip
 bun harness/readme/capture.ts <dir>/raw player <videoId> <sec> --site <origin>             # the same as stills, and Lyrics Style
