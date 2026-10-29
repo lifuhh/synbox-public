@@ -39,7 +39,9 @@ const { positionals, values } = parseArgs({
 })
 const [videoId] = positionals
 if (videoId === undefined) {
-  console.error('usage: bun harness/clock-lag.ts <videoId> [--view web|pwa-landscape] [--origin URL] [--seconds N]')
+  console.error(
+    'usage: bun harness/clock-lag.ts <videoId> [--view web|pwa-landscape] [--origin URL] [--seconds N]'
+  )
   process.exit(1)
 }
 const chosen = ALL_VIEWS.find((v) => v.name === values.view)
@@ -50,16 +52,23 @@ const { surface } = chosen
 
 const quantile = (xs: number[], q: number) => {
   const sorted = xs.toSorted((a, b) => a - b)
-  return sorted[Math.min(sorted.length - 1, Math.floor(q * sorted.length))] ?? Number.NaN
+  return (
+    sorted[Math.min(sorted.length - 1, Math.floor(q * sorted.length))] ??
+    Number.NaN
+  )
 }
 const describe = (xs: number[]) =>
   `n=${xs.length} p10=${quantile(xs, 0.1).toFixed(0)} p50=${quantile(xs, 0.5).toFixed(0)} p90=${quantile(xs, 0.9).toFixed(0)}`
 
 const { page } = await open(surface, { lookup: 'live' })
-await page.goto(`${values.origin}/v/${videoId}?timingProbe=1`, { waitUntil: 'commit' })
+await page.goto(`${values.origin}/v/${videoId}?timingProbe=1`, {
+  waitUntil: 'commit',
+})
 await mark(page, 'player-iframe', 30_000)
 await mark(page, 'phase-playing', 60_000)
-const frame = page.frames().find((f) => /youtube(?:-nocookie)?\.com\/embed/u.test(f.url()))
+const frame = page
+  .frames()
+  .find((f) => /youtube(?:-nocookie)?\.com\/embed/u.test(f.url()))
 if (frame === undefined) {
   throw new Error('no YouTube iframe')
 }
@@ -70,7 +79,11 @@ await frame.evaluate(() => {
   window.__clockLag = out
   const tick = () => {
     if (video) {
-      out.push([performance.timeOrigin + performance.now(), video.currentTime, !video.paused])
+      out.push([
+        performance.timeOrigin + performance.now(),
+        video.currentTime,
+        !video.paused,
+      ])
     }
     requestAnimationFrame(tick)
   }
@@ -80,7 +93,9 @@ const parentOrigin = await page.evaluate(() => performance.timeOrigin)
 const from = await page.evaluate(() => performance.now() + 1000)
 await page.waitForTimeout(Number(values.seconds) * 1000)
 const video = await frame.evaluate(() => window.__clockLag ?? [])
-const samples = await page.evaluate(() => window.__synboxTimingProbe?.samples ?? [])
+const samples = await page.evaluate(
+  () => window.__synboxTimingProbe?.samples ?? []
+)
 
 const clockLag: number[] = []
 const reportedLag: number[] = []
@@ -96,7 +111,15 @@ for (const s of samples) {
   const a = video[j]
   const b = video[j + 1]
   // Only between two playing reads of a running clock (no seek, stall or loop between them)
-  if (a === undefined || b === undefined || a[0] > t || !a[2] || !b[2] || b[1] < a[1] || b[1] - a[1] > 0.2) {
+  if (
+    a === undefined ||
+    b === undefined ||
+    a[0] > t ||
+    !a[2] ||
+    !b[2] ||
+    b[1] < a[1] ||
+    b[1] - a[1] > 0.2
+  ) {
     continue
   }
   const v = a[1] + ((b[1] - a[1]) * (t - a[0])) / (b[0] - a[0])
