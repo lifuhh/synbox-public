@@ -1,7 +1,7 @@
 // The clean moments for README captures: short, verified karaoke lines with a short English translation, across the
 // library. Prints where each one is (video id, line, start, end) and never the lyric text, which stays out of the repo.
 //
-//   bun harness/readme/moments.ts            the best moments, most per song first
+//   bun harness/readme/moments.ts            the best moments, most per song first (12 songs; --all for every one)
 //   bun harness/readme/moments.ts <videoId>  that song's moments only
 
 const LIBRARY = 'https://synbox.io/api/library/songs'
@@ -88,7 +88,8 @@ export const momentsOf = async (videoId: string): Promise<Moment[]> => {
 }
 
 if (import.meta.main) {
-  const only = process.argv.at(2)
+  const all = process.argv.includes('--all')
+  const only = process.argv.slice(2).find((arg) => arg !== '--all')
   const ids = only === undefined ? await libraryIds() : [only]
   const found: Moment[][] = []
   for (let i = 0; i < ids.length; i += 6) {
@@ -102,7 +103,7 @@ if (import.meta.main) {
     .filter((moments) => moments.length > 0)
     .toSorted((a, b) => b.length - a.length)
   console.log(`${ranked.length} of ${ids.length} songs have moments`)
-  for (const moments of ranked.slice(0, 12)) {
+  for (const moments of all ? ranked : ranked.slice(0, 12)) {
     const times = moments.map(
       (m) => `${m.line}@${m.start.toFixed(1)}-${m.end.toFixed(1)}`
     )
