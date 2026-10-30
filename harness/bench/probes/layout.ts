@@ -67,7 +67,7 @@ export interface OpenedState {
   views?: string[]
   /** Opened as a signed-in listener (SIGNED_IN), for controls a guest doesn't get */
   signedIn?: true
-  /** With a song generating, held part way through refinement (holdGeneration) */
+  /** With a song generating, held part way through translation (holdGeneration) */
   generating?: true
   steps: Step[]
 }
@@ -112,8 +112,8 @@ export const PLAYER_SONG = '6rG_irmOQsM'
 
 /**
  * A song generating, as a reload finds it: its job in the stored queue (src/lib/generation/queue.ts › STORAGE_KEY),
- * running the translate phase, and its /translate-annotate stream answered in the page. The stream replays the draft
- * done and refinement a third of the way, then holds with a heartbeat every 5 s, as the backend does. No request
+ * running the translate phase, and its /translate-annotate stream answered in the page. The stream replays the
+ * translation call reporting 60 %, then holds with a heartbeat every 5 s, as the backend does. No request
  * reaches the backend, and nothing is saved
  */
 export const holdGeneration = async (page: Page) => {
@@ -146,11 +146,8 @@ export const holdGeneration = async (page: Page) => {
       const progress = (stage: string, extra: object) =>
         `${JSON.stringify({ data: { stage, ...extra }, type: 'progress' })}\n`
       const replay = [
-        progress('translate', { expected_s: 330, fraction: 0 }),
+        progress('translate', { expected_s: 380, fraction: 0 }),
         progress('translate', { fraction: 0.6 }),
-        progress('translate', { fraction: 1 }),
-        progress('refine', { expected_s: 140, fraction: 0 }),
-        progress('refine', { fraction: 0.35 }),
       ]
       const encoder = new TextEncoder()
       const held = () =>
