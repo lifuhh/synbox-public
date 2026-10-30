@@ -24,8 +24,11 @@ const keepBalanced = (element: HTMLElement) => {
       // oxlint-disable-next-line unicorn/prefer-number-coercion -- the value ends in px, which Number() rejects
       Number.parseFloat(getComputedStyle(element).fontSize) * 0.75
     let narrow = 0
-    // Fractional: offsetWidth rounds down, and a line exactly that wide would wrap
-    let wide = pageWidth(element)
+    // Fractional: offsetWidth rounds down, and a line exactly that wide would wrap. The layout width, which the
+    // widths tried below are in, not the drawn one: the docked translation shrinks into its place by a scale on a box
+    // around it, and a width read through that scale squeezed it into four narrow rows
+    // oxlint-disable-next-line unicorn/prefer-number-coercion -- the value ends in px, which Number() rejects
+    let wide = Number.parseFloat(getComputedStyle(element).width)
     while (wide - narrow > 1) {
       const middle = (narrow + wide) / 2
       style.inlineSize = `${middle}px`

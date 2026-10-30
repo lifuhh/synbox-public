@@ -3,16 +3,22 @@ import { describe, expect, test } from 'vite-plus/test'
 import { boostWithin } from './use-rows-boost'
 
 // A line's rows as widths in ems of their own type; 0 for a row without text, a list for a translation in parts
-const parts = (ems: number | number[]) =>
-  (Array.isArray(ems) ? ems : [ems]).filter((part) => part > 0)
+// (the whole is the parts and a space between them, about 0.26em)
+const ems = (width: number | number[]) => {
+  const parts = (Array.isArray(width) ? width : [width]).filter(
+    (part) => part > 0
+  )
+  const spaces = Math.max(0, parts.length - 1) * 0.26
+  return { parts, whole: parts.reduce((sum, part) => sum + part, spaces) }
+}
 const line = (
   japanese: number,
   romaji: number,
   translation: number | number[]
 ) => ({
-  japanese: parts(japanese),
-  romaji: parts(romaji),
-  translation: parts(translation),
+  japanese: ems(japanese),
+  romaji: ems(romaji),
+  translation: ems(translation),
 })
 
 describe('boostWithin', () => {
@@ -44,12 +50,16 @@ describe('boostWithin', () => {
     expect(boostWithin(lines, ['romaji'], 1.25, 25, 600)).toBeCloseTo(1.25)
   })
 
-  test('a translation split in two rows stands two rows, though it would fit one', () => {
-    // Two 12em parts at 17.5px are 210px each: one 24em line (420px) would fit 600px, but split it draws as two
-    // rows. Budget 50 + 27.2 + 47.6px; shown, 50b + 47.6b, so the boost stops at 1.27 (one row would allow 1.36)
+  test('a split translation counts one row where its whole fits, two where it does not', () => {
+    // Two 12em parts at 17.5px, the whole 24.26em (425px). In 600px it fits one row: budget 50 + 27.2 + 23.8px,
+    // shown 50b + 23.8b, so 1.36 (and at 1.36 the whole, 577px, still fits). In 400px it draws as its two parts:
+    // budget 50 + 27.2 + 47.6px, shown 50b + 47.6b, so 1.27
     const lines = Array.from({ length: 10 }, () => line(4, 20, [12, 12]))
     expect(
       boostWithin(lines, ['japanese', 'translation'], 1.5, 25, 600)
+    ).toBeCloseTo(1.36, 2)
+    expect(
+      boostWithin(lines, ['japanese', 'translation'], 1.5, 25, 400)
     ).toBeCloseTo(1.27, 2)
   })
 })

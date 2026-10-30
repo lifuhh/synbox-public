@@ -3,6 +3,10 @@ import { useImperativeHandle, useRef } from 'react'
 
 import type { KaraokeLineHandle } from '@/components/lyrics-display/karaoke-line'
 import { RubyText } from '@/components/lyrics-display/ruby-text'
+import {
+  translationParts,
+  TranslationRows,
+} from '@/components/lyrics-display/translation-rows'
 import type { OfflineLine } from '@/lib/offline/song'
 import { spaceDashes } from '@/utils'
 import { cn } from '@/utils/cn'
@@ -182,13 +186,13 @@ export const LyricLineBlock = ({
           lang={prefs.language}
           className={cn(
             prefs.language === 'zh' ? 'font-reader-zh' : 'font-reader',
-            // Its own rows when split ("\n"), else even rows, never a one-word last row
-            'text-reader-translation text-balance whitespace-pre-line italic',
+            // Even rows, never a one-word last row; a split one ("\n") breaks there when it needs two rows
+            'text-reader-translation text-balance italic',
             // A little apart, so the romaji reads as part of the Japanese above it
             source && 'pt-1',
             prefs.bold ? 'font-medium' : 'font-normal'
           )}>
-          {translation}
+          <TranslationRows parts={translationParts(translation)} />
         </p>
       )}
     </div>
