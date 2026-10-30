@@ -216,27 +216,20 @@ describe('a step', () => {
     expect(stepView(runs, STEPS[1], 3 * S).state).toBe('active')
   })
 
-  test('whose stage never arrives completes when a later one does, or when the job ends', () => {
-    const refinement = STEPS.find((step) => step.id === 'refine')
-    if (!refinement) {
-      throw new Error('no Refinement step')
+  test('whose last stage never arrives completes when the job ends', () => {
+    const translation = STEPS.find((step) => step.id === 'translate')
+    if (!translation) {
+      throw new Error('no Translation step')
     }
-    // Refinement off: no refine event, the draft closes and saving begins
-    let runs = beginStage({}, 'translate', 0, { expectedS: 300 })
-    runs = reportFraction(runs, 'translate', 1, 300 * S)
-    expect(stepView(runs, refinement, 300 * S).state).toBe('pending')
-    runs = beginStage(runs, 'save', 301 * S)
-    expect(stepView(runs, refinement, 301 * S)).toMatchObject({
+    // The translation call closes and no save event follows: the step waits on Saving until the job ends
+    let runs = beginStage({}, 'translate', 0, { expectedS: 380 })
+    runs = reportFraction(runs, 'translate', 1, 380 * S)
+    expect(stepView(runs, translation, 380 * S)).toMatchObject({
       detail: 'Saving',
       state: 'active',
     })
-    // The job's stream ends with no further progress: every stage of its phase is done
-    const ended = completePhase(
-      beginStage({}, 'translate', 0, { expectedS: 300 }),
-      'translate',
-      320 * S
-    )
-    expect(stepView(ended, refinement, 320 * S + FINISH_MS)).toMatchObject({
+    const ended = completePhase(runs, 'translate', 400 * S)
+    expect(stepView(ended, translation, 400 * S + FINISH_MS)).toMatchObject({
       fraction: 1,
       state: 'done',
     })
