@@ -155,8 +155,10 @@ const rowTextsOf = (
   }
 }
 
-const sameText = (a: string, b: string) =>
-  a.trim().toLowerCase() === b.trim().toLowerCase()
+// A translation's row break ("\n") counts as a space
+const foldSpace = (text: string) =>
+  text.trim().replaceAll(/\s+/gu, ' ').toLowerCase()
+const sameText = (a: string, b: string) => foldSpace(a) === foldSpace(b)
 
 // Lyrics scale with the stage, but never below a size a phone can read
 // Sizes step down as on the reader: the Japanese, then its romaji (read with it, so close in size), then the
@@ -203,6 +205,8 @@ const LyricLine = ({
       ref={shown ? balanceWrap : undefined}
       className={cn(
         'lyric-text-line mx-auto text-center',
+        // A translation may come split in two rows ("\n")
+        kind === 'translation' && 'whitespace-pre-line',
         size,
         className,
         // Room above a Japanese line for its furigana when it wraps
