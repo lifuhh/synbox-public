@@ -135,6 +135,36 @@ describe('real fractions', () => {
     )
   })
 
+  test('clock fractions from a polled call never move the bar faster than its own ease', () => {
+    // The backend's pulse (services/progress.py › Stages.pulse) while the draft is polled, every 5 s, sent when it
+    // has risen 2 %: 0.9 × (1 − e^(−ln5·t/E)). Re-basing on each of them filled the bar to 99 % by 300 s of 330
+    const expectedS = 330
+    const pulse = (s: number) =>
+      0.9 * (1 - Math.exp((-Math.log(5) * s) / expectedS))
+    let runs = beginStage({}, 'translate', 0, { expectedS })
+    const alone = beginStage({}, 'translate', 0, { expectedS })
+    let sent = 0
+    let last = 0
+    for (let s = 0; s <= 900; s += 5) {
+      if (pulse(s) - sent >= 0.02) {
+        sent = pulse(s)
+        runs = reportFraction(runs, 'translate', sent, s * S)
+      }
+      const shown = stageValue(runs.translate, s * S)
+      expect(shown).toBeGreaterThanOrEqual(last)
+      expect(shown).toBeCloseTo(stageValue(alone.translate, s * S), 9)
+      last = shown
+    }
+    expect(stageValue(runs.translate, expectedS * S)).toBeCloseTo(0.8 * CAP, 2)
+  })
+
+  test('a clock fraction replayed to a bar that started late lifts it to its share', () => {
+    // The page reloaded mid-draft: the replayed stream begins the stage now, with the latest pulse
+    let runs = beginStage({}, 'translate', 0, { expectedS: 330 })
+    runs = reportFraction(runs, 'translate', 0.6, 0)
+    expect(stageValue(runs.translate, 0)).toBeCloseTo(0.6 * MEASURED_SHARE, 9)
+  })
+
   test('a stage that works on after its last report does not sit at 99 %', () => {
     // Separation on a 5.5-minute song: the last segment reports 97 %, then the vocals are written and uploaded
     let runs = beginStage({}, 'separate', 0, { expectedS: 160 })
@@ -184,6 +214,32 @@ describe('a step', () => {
     runs = beginStage(runs, 'download', 3 * S)
     expect(stepView(runs, STEPS[0], 3 * S).state).toBe('done')
     expect(stepView(runs, STEPS[1], 3 * S).state).toBe('active')
+  })
+
+  test('whose stage never arrives completes when a later one does, or when the job ends', () => {
+    const refinement = STEPS.find((step) => step.id === 'refine')
+    if (!refinement) {
+      throw new Error('no Refinement step')
+    }
+    // Refinement off: no refine event, the draft closes and saving begins
+    let runs = beginStage({}, 'translate', 0, { expectedS: 300 })
+    runs = reportFraction(runs, 'translate', 1, 300 * S)
+    expect(stepView(runs, refinement, 300 * S).state).toBe('pending')
+    runs = beginStage(runs, 'save', 301 * S)
+    expect(stepView(runs, refinement, 301 * S)).toMatchObject({
+      detail: 'Saving',
+      state: 'active',
+    })
+    // The job's stream ends with no further progress: every stage of its phase is done
+    const ended = completePhase(
+      beginStage({}, 'translate', 0, { expectedS: 300 }),
+      'translate',
+      320 * S
+    )
+    expect(stepView(ended, refinement, 320 * S + FINISH_MS)).toMatchObject({
+      fraction: 1,
+      state: 'done',
+    })
   })
 
   test('stays active between two of its stages', () => {
