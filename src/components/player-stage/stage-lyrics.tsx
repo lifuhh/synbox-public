@@ -109,11 +109,13 @@ export const parseLyricsText = (data: unknown): LyricsText => {
   return result.success ? result.data : {}
 }
 // Everything the overlay draws runs this far ahead of the player's clock. With FILL_LEAD it puts a phrase's first mora
-// half lit on the voice's onset: measured 2026-10-29 on sOiMD45QGLs, Qp3b-RXtz4w, ZRtdQ81jPUQ and 4DxL6IKmXx4 (149
-// phrase onsets in the vocal stems; the aligned starts already run a median 30 ms early), with the fill clock within
-// 1 ms of the iframe's own video time in Chromium and WebKit. 150 ms filled a median 95 ms before the voice. The lead
-// covers real time (the frame it takes to paint), so slowed playback covers less of the song in it (lyricsLead)
-const LYRICS_LEAD_SEC = 0.06
+// half lit on the voice's onset: measured 2026-10-30 with the backend's `services.lyrics.onset_bias` on 12 songs
+// aligned by timing v2 (380 phrase onsets in the vocal stems; aligned starts a median 25 ms early, as the old aligner
+// had them), with a 25 ms paint assumed: the lead that does it is 80 ms pooled, 90 ms the median song (38 to 181 ms
+// per song). At 60 ms (tuned on 4 of those songs) the mora was half lit a median 20 ms late. The fill clock is within
+// 1 ms of the iframe's own video time in Chromium and WebKit (harness/clock-lag.ts). The lead covers real time (the
+// frame it takes to paint), so slowed playback covers less of the song in it (lyricsLead)
+const LYRICS_LEAD_SEC = 0.085
 export const lyricsLead = (rate: number) => LYRICS_LEAD_SEC * rate
 
 const findLineIndex = (lines: TimedLyrics['lines'], time: number) =>
