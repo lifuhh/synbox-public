@@ -33,7 +33,47 @@ const GOOGLE_FONTS = /^https:\/\/fonts\.(?:googleapis|gstatic)\.com\//u
 const SITE_COUNTERS = /\/api\/(?:songs\/[\w-]{11}\/listen|events)(?:\?|$)/u
 export const YOUTUBE_IFRAME_API =
   /^https:\/\/www\.youtube\.com\/(?:iframe_api(?:\?|$)|s\/player\/[\w-]+\/www-widgetapi\.vflset\/)/u
+/** On a relayed YouTube script the bench could not fetch: why, for the player's wait to report (probes/layout.ts) */
+export const RELAY_ERROR = 'x-bench-relay-error'
 let fontDir: string | null = null
+
+/**
+ * A YouTube iframe API script fetched with Bun's fetch and handed to the page. Not `route.fetch()`: Playwright's
+ * fetch runs on node:http, whose parser refuses response headers over 16 KB, and youtube.com adds a 6 KB
+ * `content-security-policy-report-only` header to about half its answers (17.4 KB of headers in all, 2026-10-30).
+ * Each such answer failed the relay, WebKit reported "Blocked by Web Inspector", the app's loadYouTubeIframeApi
+ * rejected and the player stayed loading: 9 of 20 player pages in pwa-landscape. A fetch that fails answers 502 with
+ * its reason in RELAY_ERROR, so the wait names it instead of reading as a script that arrived
+ */
+const relayYouTubeScript = async (route: Route): Promise<void> => {
+  const request = route.request()
+  const headers = new Headers()
+  for (const name of ['accept', 'accept-language', 'referer', 'user-agent']) {
+    // oxlint-disable-next-line eslint/no-await-in-loop -- four header reads of one request
+    const value = await request.headerValue(name)
+    if (value !== null) {
+      headers.set(name, value)
+    }
+  }
+  const answer = await fetch(request.url(), { headers })
+    .then(async (response) => ({
+      body: Buffer.from(await response.arrayBuffer()),
+      headers: {
+        'content-type':
+          response.headers.get('content-type') ?? 'text/javascript',
+      },
+      status: response.status,
+    }))
+    .catch((error: unknown) => {
+      const [reason = ''] = String(error).split('\n')
+      return {
+        body: '',
+        headers: { [RELAY_ERROR]: reason.replaceAll(/[^ -~]/gu, '?') },
+        status: 502,
+      }
+    })
+  await route.fulfill(answer)
+}
 
 /**
  * Google Fonts answered from a local copy, recorded on first use. Live, Playwright's WebKit stalled on the ~60
@@ -373,17 +413,12 @@ export const open = async (
     })
   }
   // The YouTube iframe API's two scripts (iframe_api, then the www-widgetapi.js it names) are all the player needs to
-  // put its iframe in the page (`player-iframe`). In WebKit they come through Playwright's network stack, as smoke.ts
-  // does for the API's reads: in one full check (2026-10-27) every WebKit player page for ~3 minutes, retries
-  // included, never got the iframe within 30 s while the same views had it in ~5 s before, and the page under a
-  // load of 32 had it in 1.5 s, so the wait was on WebKit's own connection to youtube.com, not the machine's load
+  // put its iframe in the page (`player-iframe`). In WebKit the bench fetches them: in one full check (2026-10-27)
+  // every WebKit player page for ~3 minutes, retries included, never got the iframe within 30 s while the same views
+  // had it in ~5 s before, and the page under a load of 32 had it in 1.5 s, so the wait was on WebKit's own
+  // connection to youtube.com, not the machine's load
   if (surface.engine === 'webkit') {
-    await context.route(YOUTUBE_IFRAME_API, async (route) => {
-      const response = await route.fetch().catch(() => null)
-      await (response === null
-        ? route.abort('failed')
-        : route.fulfill({ response }))
-    })
+    await context.route(YOUTUBE_IFRAME_API, relayYouTubeScript)
   }
   // Before anything else, so no frame plays a sound: WebKit has no --mute-audio
   await context.addInitScript(silenceAllMedia)

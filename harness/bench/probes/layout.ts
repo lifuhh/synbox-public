@@ -8,12 +8,13 @@ import { readFileSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 
-import type { Locator, Page } from 'playwright'
+import type { Locator, Page, Request } from 'playwright'
 
 import {
   ALL_VIEWS,
   mark,
   open,
+  RELAY_ERROR,
   SAFARI_LANDSCAPE,
   SAFARI_NARROW,
   SAFARI_PORTRAIT,
@@ -448,38 +449,58 @@ export const OPENED_STATES: Record<string, OpenedState[]> = {
   ],
 }
 
+const scriptName = (url: string) =>
+  new URL(url).pathname.split('/').at(-1) ?? url
+
 /**
  * The player's YouTube iframe (mark `player-iframe`). It needs only the iframe API's scripts from youtube.com, so a
- * wait that runs out says which of them were still unanswered: the network's wait, not the page's
+ * wait that runs out says which of them were still unanswered and which failed (the bench's relay names its reason,
+ * engines/browser.ts › RELAY_ERROR): the network's wait, not the page's. The app doesn't load a failed script again
  */
 const iframeMark = async (page: Page): Promise<void> => {
   const pending = new Map<string, number>()
-  const started = (r: { url: () => string }) => {
+  const failed = new Map<string, string>()
+  const started = (r: Request) => {
     if (YOUTUBE_IFRAME_API.test(r.url())) {
       pending.set(r.url(), Date.now())
     }
   }
-  const ended = (r: { url: () => string }) => {
-    pending.delete(r.url())
+  const finished = async (r: Request) => {
+    if (pending.delete(r.url())) {
+      const response = await r.response()
+      if (response !== null && !response.ok()) {
+        const reason = await response.headerValue(RELAY_ERROR)
+        failed.set(
+          scriptName(r.url()),
+          `${response.status()}${reason === null ? '' : `, ${reason}`}`
+        )
+      }
+    }
+  }
+  const errored = (r: Request) => {
+    if (pending.delete(r.url())) {
+      failed.set(scriptName(r.url()), r.failure()?.errorText ?? 'failed')
+    }
   }
   page.on('request', started)
-  page.on('requestfinished', ended)
-  page.on('requestfailed', ended)
+  page.on('requestfinished', finished)
+  page.on('requestfailed', errored)
   try {
     await mark(page, 'player-iframe', 30_000)
   } catch (error) {
     const waits = [...pending].map(
       ([url, at]) =>
-        `${new URL(url).pathname.split('/').at(-1) ?? url} for ${((Date.now() - at) / 1000).toFixed(0)}s`
+        `${scriptName(url)} for ${((Date.now() - at) / 1000).toFixed(0)}s`
     )
+    const failures = [...failed].map(([script, why]) => `${script} (${why})`)
     throw new Error(
-      `${error instanceof Error ? error.message : String(error)}; YouTube API scripts unanswered: ${waits.join(', ') || 'none'}`,
+      `${error instanceof Error ? error.message : String(error)}; YouTube API scripts unanswered: ${waits.join(', ') || 'none'}; failed: ${failures.join(', ') || 'none'}`,
       { cause: error }
     )
   } finally {
     page.off('request', started)
-    page.off('requestfinished', ended)
-    page.off('requestfailed', ended)
+    page.off('requestfinished', finished)
+    page.off('requestfailed', errored)
   }
 }
 
