@@ -1,6 +1,7 @@
 import type { RefObject } from 'react'
 import { useLayoutEffect } from 'react'
 
+import { translationParts } from '@/components/lyrics-display/translation-rows'
 import type { ShownLyricRows } from '@/lib/lyrics-style'
 
 export interface RowTexts {
@@ -50,8 +51,29 @@ const pixels = (value: string) => Number.parseFloat(value) || 0
 const textOf = (element: Element) =>
   element.querySelector('p, .lyric-karaoke-line') ?? element
 
-// A row's text as the widths in ems of its parts: one, or one per part of a translation split in rows ("\n")
-export type RowEms = Record<Row, readonly number[]>
+// A row's text in ems of its type: the whole, and its parts (the whole, or a translation's split at its "\n"); no
+// parts for a row without text
+export interface TextEms {
+  whole: number
+  parts: readonly number[]
+}
+export type RowEms = Record<Row, TextEms>
+const NO_TEXT: TextEms = { parts: [], whole: 0 }
+
+// How many rows a text takes at `size` px in `room` (translation-rows.tsx › TranslationRows): one if the whole
+// fits, else each part on its own rows
+const rowsOf = ({ whole, parts }: TextEms, size: number, room: number) => {
+  if (parts.length === 0) {
+    return 0
+  }
+  if (whole * size <= room) {
+    return 1
+  }
+  return parts.reduce(
+    (rows, part) => rows + Math.max(1, Math.ceil((part * size) / room)),
+    0
+  )
+}
 
 // How tall one line's shown rows stand at a Japanese size of `japanese` px
 const lineHeight = (
@@ -63,10 +85,7 @@ const lineHeight = (
   let height = 0
   for (const row of rows) {
     const size = Math.max(FLOOR_PX, japanese * ROW_SHARE[row])
-    for (const part of ems[row]) {
-      const wraps = Math.max(1, Math.ceil((part * size) / room))
-      height += wraps * size * ROW_LEADING[row]
-    }
+    height += rowsOf(ems[row], size, room) * size * ROW_LEADING[row]
   }
   return height
 }
@@ -108,8 +127,8 @@ interface BoostOptions {
 // Measures the song's lines and keeps --lyric-line-boost set on `layer` until the returned cleanup
 const watch = (layer: HTMLElement, { texts, shown, wanted }: BoostOptions) => {
   const context = document.createElement('canvas').getContext('2d')
-  const widths = new Map<string, number[][]>()
-  // Each line's parts' widths in ems of its row's type, in the row's drawn font; none for a line without text
+  const widths = new Map<string, TextEms[]>()
+  // Each line's widths in ems of its row's type, in the row's drawn font
   const emsOf = (row: Row, font: string, spacing: number) => {
     const key = `${row}|${font}|${spacing}`
     const known = widths.get(key)
@@ -117,17 +136,14 @@ const watch = (layer: HTMLElement, { texts, shown, wanted }: BoostOptions) => {
       return known ?? []
     }
     context.font = font
-    const ems = texts[row].map((text) =>
-      text
-        .split('\n')
-        .filter((part) => part.trim() !== '')
-        .map(
-          (part) =>
-            (context.measureText(part).width + spacing * part.length) /
-            PROBE_PX /
-            SAFETY
-        )
-    )
+    const width = (text: string) =>
+      (context.measureText(text).width + spacing * text.length) /
+      PROBE_PX /
+      SAFETY
+    const ems = texts[row].map((text) => {
+      const parts = translationParts(text)
+      return { parts: parts.map(width), whole: width(parts.join(' ')) }
+    })
     widths.set(key, ems)
     return ems
   }
@@ -191,9 +207,9 @@ const watch = (layer: HTMLElement, { texts, shown, wanted }: BoostOptions) => {
       translation: emsFor('translation'),
     }
     const lines = texts.japanese.map((_, index) => ({
-      japanese: perRow.japanese[index] ?? [],
-      romaji: perRow.romaji[index] ?? [],
-      translation: perRow.translation[index] ?? [],
+      japanese: perRow.japanese[index] ?? NO_TEXT,
+      romaji: perRow.romaji[index] ?? NO_TEXT,
+      translation: perRow.translation[index] ?? NO_TEXT,
     }))
     const next = boostWithin(lines, shown, wanted, japanese, room)
     if (next !== boost) {

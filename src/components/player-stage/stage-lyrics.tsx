@@ -15,6 +15,10 @@ import { KaraokeLine } from '@/components/lyrics-display/karaoke-line'
 import { KaraokeRomajiLine } from '@/components/lyrics-display/karaoke-romaji-line'
 import { RubyText } from '@/components/lyrics-display/ruby-text'
 import {
+  translationParts,
+  TranslationRows,
+} from '@/components/lyrics-display/translation-rows'
+import {
   fontSizeMultiplierAtom,
   lyricsFontSizeTwoLinesAtom,
   lyricsCustomHueAtom,
@@ -197,7 +201,14 @@ const LyricLine = ({
   // re-balancing every line of the song on each size change is hundreds of layouts a frame
   shown?: boolean
 }) => {
-  const segments = useMemo(() => parseRubyHtml(html), [html])
+  // A translation in parts ("\n", its preferred break), each its own segments
+  const parts = useMemo(
+    () =>
+      (kind === 'translation' ? translationParts(html) : [html]).map(
+        parseRubyHtml
+      ),
+    [html, kind]
+  )
   const latin = kind !== 'japanese' || isLatinOnly(html)
   return (
     <p
@@ -207,8 +218,6 @@ const LyricLine = ({
       ref={shown ? balanceWrap : undefined}
       className={cn(
         'lyric-text-line mx-auto text-center',
-        // A translation may come split in two rows ("\n")
-        kind === 'translation' && 'whitespace-pre-line',
         size,
         className,
         // Room above a Japanese line for its furigana when it wraps
@@ -218,7 +227,12 @@ const LyricLine = ({
       )}>
       {/* Inline, so only the drawn text takes a press */}
       <span>
-        <RubyText segments={segments} />
+        <TranslationRows
+          parts={parts.map((segments, index) => (
+            // oxlint-disable-next-line no-array-index-key
+            <RubyText key={index} segments={segments} />
+          ))}
+        />
       </span>
     </p>
   )
