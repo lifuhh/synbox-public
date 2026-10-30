@@ -188,6 +188,7 @@ const LyricLine = ({
   size = LINE_SIZE[kind],
   className,
   row,
+  span,
   shown = true,
 }: {
   html: string
@@ -196,6 +197,8 @@ const LyricLine = ({
   className?: string
   // Which of a line's rows this is, for the one-line spacing (lyric-line-rows)
   row?: keyof typeof LINE_SIZE
+  // A translation's span (its first line), which finds its unseen docked copy (dockedPlaceOf)
+  span?: number
   // False for a copy laid out only to be measured: the bench's first-lyric hook is for drawn lines, and the copy
   // keeps a plain wrap. Balancing never changes a line's count of rows, which is all fitSong reads, and
   // re-balancing every line of the song on each size change is hundreds of layouts a frame
@@ -215,6 +218,7 @@ const LyricLine = ({
       key={html}
       data-bench={shown ? 'lyrics-line' : undefined}
       data-row={row}
+      data-span={span}
       ref={shown ? balanceWrap : undefined}
       className={cn(
         'lyric-text-line mx-auto text-center',
@@ -854,7 +858,9 @@ const TwoRows = ({
       <div
         aria-hidden
         className='pointer-events-none invisible absolute inset-x-0 top-0 h-0 overflow-hidden [--row-fit:1]'>
-        <div ref={reserveRef}>{songTranslations}</div>
+        <div ref={reserveRef} data-docked-reserve>
+          {songTranslations}
+        </div>
       </div>
     </div>
   )
@@ -898,15 +904,19 @@ const StaggerTranslation = ({
 )
 
 // How far the docked translation must be pulled off the rows, up or down, to come away: a share of the stage's
-// height, never less than a fingertip's travel. Short of it the translation springs back
-const pullToTear = (stageHeight: number) => Math.max(40, 0.1 * stageHeight)
+// height, never less than a fingertip's travel, and no more than a deliberate pull with a mouse (a tenth of a
+// 1440px-high stage was 144px: let go short of it, the translation sprang back onto the rows). Short of it the
+// translation springs back
+const pullToTear = (stageHeight: number) =>
+  Math.max(40, Math.min(64, 0.1 * stageHeight))
 // How long after Karaoke Style is switched the rows keep their centre while their size settles
 const SETTLE_HOLD_MS = 1000
 const TAP_SLOP_PX = { mouse: 4, touch: 10 }
 
 // The least gap kept between the translation placed on its own and the rows' block: like DraggableLyrics' EDGE, a
-// share of the stage with a floor
-const clearGap = (stageHeight: number) => Math.max(8, 0.02 * stageHeight)
+// share of the stage with a floor, and a cap, so it stays a small gap on a large monitor
+const clearGap = (stageHeight: number) =>
+  Math.max(8, Math.min(24, 0.02 * stageHeight))
 
 // The rows' handle (their drawn block, the docked translation's place included), and the translation's in its room
 const rowsHandleOf = (layer: HTMLElement) =>
@@ -958,10 +968,27 @@ const rowsTextOf = (layer: HTMLElement): Span | null => {
   }
 }
 
+// How tall the translation now on its own would stand docked: its unseen docked copy (TwoRows' reserve)
+const ownDockedHeightOf = (layer: HTMLElement) => {
+  const span = layer.querySelector<HTMLElement>(
+    '[data-lyric-translation] p[data-span]'
+  )?.dataset.span
+  const copy =
+    span === undefined
+      ? null
+      : layer
+          .querySelector(`[data-docked-reserve] p[data-span="${span}"]`)
+          ?.closest<HTMLElement>('.docked-translation')
+  return copy?.offsetHeight ?? null
+}
+
 // The docked translation's place under the rows' floor, open or not (UnderRows), within the lyrics' layer: where letting
-// go docks the translation. Shut, only where it fits above the foot's room; rows nearer the foot than that would rise
-// to dock, and a translation let go at the foot under them is put there, not docked
-const dockedPlaceOf = (layer: HTMLElement): Span | null => {
+// go docks the translation, and (`filled`) how far down the translation now on its own would fill it. Shut, only where
+// it fits above the foot's room; rows nearer the foot than that would rise to dock, and a translation let go at the
+// foot under them is put there, not docked
+const dockedPlaceOf = (
+  layer: HTMLElement
+): (Span & { filled: number }) | null => {
   const slot = layer.querySelector<HTMLElement>(
     '[data-lyric-rows-area] [data-docked-slot]'
   )
@@ -982,21 +1009,38 @@ const dockedPlaceOf = (layer: HTMLElement): Span | null => {
         room.clientHeight -
         pixels(getComputedStyle(lift).minHeight)
       : Number.POSITIVE_INFINITY
-  return open || top + place <= foot + 1 ? { bottom: top + place, top } : null
+  const own = ownDockedHeightOf(layer)
+  return open || top + place <= foot + 1
+    ? { bottom: top + place, filled: top + Math.min(place, own ?? place), top }
+    : null
 }
 
-// The block the translation on its own keeps out of: the rows' drawn lines and the docked place under them
-// (dockedPlaceOf), so it never stands where letting go would dock it
-const blockAreaOf = (layer: HTMLElement): Span | null => {
+// How far the translation's text stands under its handle's top: the handle is two rows high, its text centred in it
+const textInsetOf = (handle: HTMLElement) => {
+  const text = handle.querySelector('p')
+  return text && text.offsetParent === handle.offsetParent
+    ? Math.max(0, text.offsetTop - handle.offsetTop)
+    : 0
+}
+
+// The block the translation on its own (`handle`) keeps out of: the rows' drawn lines and the docked place under them
+// (dockedPlaceOf), so its text never stands where letting go would dock it. The handle's empty top may reach into the
+// place where the place is empty (below where the translation would stand docked): kept out by its whole box, a
+// translation dragged up from below stopped a further 34px short of the rows on a 1440px-high stage
+const blockAreaOf = (
+  layer: HTMLElement,
+  handle: HTMLElement | null
+): Span | null => {
   const lines = rowsTextOf(layer)
   if (lines === null) {
     return null
   }
   const place = dockedPlaceOf(layer)
+  const inset = handle ? textInsetOf(handle) : 0
   return place === null
     ? lines
     : {
-        bottom: Math.max(lines.bottom, place.bottom),
+        bottom: Math.max(lines.bottom, place.filled, place.bottom - inset),
         top: Math.min(lines.top, place.top),
       }
 }
@@ -1197,6 +1241,7 @@ const translationOf = (
       key={line.spanKey}
       html={line.translation}
       kind='translation'
+      span={line.spanKey}
       shown={shown}
       size={STAGGER_SIZE.translation}
       className='italic motion-safe:animate-in motion-safe:fade-in'
@@ -1214,7 +1259,7 @@ const keepOutOfBlock = (
   dock: () => void
 ) => {
   const observer = new ResizeObserver(() => {
-    const block = blockAreaOf(layer)
+    const block = blockAreaOf(layer, handle)
     const track = roomOf(handle, layer)
     if (!(block && track) || handle.offsetHeight === 0) {
       return
@@ -1416,7 +1461,7 @@ const useTranslationDock = (
     if (docked || centre === null || !(layer && handle && track)) {
       return
     }
-    const block = blockAreaOf(layer)
+    const block = blockAreaOf(layer, handle)
     const asked = centre - handle.offsetHeight / 2
     const top =
       block === null
@@ -1519,7 +1564,7 @@ const useTranslationDock = (
   const asking = (asked: number, handle: HTMLElement) => {
     const layer = layerRef.current
     const track = layer && roomOf(handle, layer)
-    const block = layer && blockAreaOf(layer)
+    const block = layer && blockAreaOf(layer, handle)
     return layer && track && block
       ? { block, layer, top: track.base + asked * track.free, track }
       : null
@@ -1566,7 +1611,7 @@ const useTranslationDock = (
     onOver: setRowsOffered,
     over: () => {
       const layer = layerRef.current
-      const block = layer && blockAreaOf(layer)
+      const block = layer && blockAreaOf(layer, translationHandleOf(layer))
       const own = translationBox()
       return (
         block !== null &&
