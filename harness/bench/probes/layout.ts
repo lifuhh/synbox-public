@@ -138,54 +138,57 @@ export const holdGeneration = async (page: Page) => {
     videoId: PLAYER_SONG,
   }
   /* oxlint-disable unicorn/consistent-function-scoping -- runs in the page: nothing outside this function is there */
-  await page.addInitScript((stored) => {
-    if (localStorage.getItem('synbox:generations') === null) {
-      localStorage.setItem('synbox:generations', stored)
-    }
-    const progress = (stage: string, extra: object) =>
-      `${JSON.stringify({ data: { stage, ...extra }, type: 'progress' })}\n`
-    const replay = [
-      progress('translate', { expected_s: 330, fraction: 0 }),
-      progress('translate', { fraction: 0.6 }),
-      progress('translate', { fraction: 1 }),
-      progress('refine', { expected_s: 140, fraction: 0 }),
-      progress('refine', { fraction: 0.35 }),
-    ]
-    const encoder = new TextEncoder()
-    const held = () =>
-      new Response(
-        new ReadableStream({
-          start(controller) {
-            for (const line of replay) {
-              controller.enqueue(encoder.encode(line))
-            }
-            setInterval(() => {
-              controller.enqueue(
-                encoder.encode('{"type":"heartbeat","data":null}\n')
-              )
-            }, 5000)
-          },
-        }),
-        { headers: { 'content-type': 'application/x-ndjson' }, status: 200 }
-      )
-    const real = window.fetch.bind(window)
-    const urlOf = (input: RequestInfo | URL) => {
-      if (typeof input === 'string') {
-        return input
+  await page.addInitScript(
+    (stored) => {
+      if (localStorage.getItem('synbox:generations') === null) {
+        localStorage.setItem('synbox:generations', stored)
       }
-      return input instanceof URL ? input.href : input.url
-    }
-    // Defined, not assigned: the harness's types are Bun's, whose fetch has more members than a browser's
-    Object.defineProperty(window, 'fetch', {
-      configurable: true,
-      value: async (input: RequestInfo | URL, init?: RequestInit) =>
-        new URL(urlOf(input), location.href).pathname.endsWith(
-          '/translate-annotate'
+      const progress = (stage: string, extra: object) =>
+        `${JSON.stringify({ data: { stage, ...extra }, type: 'progress' })}\n`
+      const replay = [
+        progress('translate', { expected_s: 330, fraction: 0 }),
+        progress('translate', { fraction: 0.6 }),
+        progress('translate', { fraction: 1 }),
+        progress('refine', { expected_s: 140, fraction: 0 }),
+        progress('refine', { fraction: 0.35 }),
+      ]
+      const encoder = new TextEncoder()
+      const held = () =>
+        new Response(
+          new ReadableStream({
+            start(controller) {
+              for (const line of replay) {
+                controller.enqueue(encoder.encode(line))
+              }
+              setInterval(() => {
+                controller.enqueue(
+                  encoder.encode('{"type":"heartbeat","data":null}\n')
+                )
+              }, 5000)
+            },
+          }),
+          { headers: { 'content-type': 'application/x-ndjson' }, status: 200 }
         )
-          ? held()
-          : await real(input, init),
-    })
-  }, JSON.stringify({ jobs: [job], v: 1 }))
+      const real = window.fetch.bind(window)
+      const urlOf = (input: RequestInfo | URL) => {
+        if (typeof input === 'string') {
+          return input
+        }
+        return input instanceof URL ? input.href : input.url
+      }
+      // Defined, not assigned: the harness's types are Bun's, whose fetch has more members than a browser's
+      Object.defineProperty(window, 'fetch', {
+        configurable: true,
+        value: async (input: RequestInfo | URL, init?: RequestInit) =>
+          new URL(urlOf(input), location.href).pathname.endsWith(
+            '/translate-annotate'
+          )
+            ? held()
+            : await real(input, init),
+      })
+    },
+    JSON.stringify({ jobs: [job], v: 1 })
+  )
   /* oxlint-enable unicorn/consistent-function-scoping */
 }
 
