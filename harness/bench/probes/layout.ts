@@ -67,6 +67,8 @@ export interface OpenedState {
   views?: string[]
   /** Opened as a signed-in listener (SIGNED_IN), for controls a guest doesn't get */
   signedIn?: true
+  /** With a song generating, held part way through refinement (holdGeneration) */
+  generating?: true
   steps: Step[]
 }
 
@@ -107,6 +109,88 @@ export const signIn = async (page: Page) => {
 }
 
 export const PLAYER_SONG = '6rG_irmOQsM'
+
+/**
+ * A song generating, as a reload finds it: its job in the stored queue (src/lib/generation/queue.ts › STORAGE_KEY),
+ * running the translate phase, and its /translate-annotate stream answered in the page. The stream replays the draft
+ * done and refinement a third of the way, then holds with a heartbeat every 5 s, as the backend does. No request
+ * reaches the backend, and nothing is saved
+ */
+export const holdGeneration = async (page: Page) => {
+  const job = {
+    ahead: 0,
+    id: 'bench-generation',
+    mode: 'new',
+    reconnectingSince: null,
+    requestId: 'bench-generation',
+    runs: {},
+    seen: false,
+    skipUploaderLyrics: false,
+    startedAt: Date.now(),
+    status: { kind: 'running', phase: 'translate' },
+    title: 'Bench Song',
+    video: {
+      channel: 'Bench',
+      durationS: 240,
+      thumbnail: `https://i.ytimg.com/vi/${PLAYER_SONG}/hqdefault.jpg`,
+      title: 'Bench Song',
+    },
+    videoId: PLAYER_SONG,
+  }
+  /* oxlint-disable unicorn/consistent-function-scoping -- runs in the page: nothing outside this function is there */
+  await page.addInitScript(
+    (stored) => {
+      if (localStorage.getItem('synbox:generations') === null) {
+        localStorage.setItem('synbox:generations', stored)
+      }
+      const progress = (stage: string, extra: object) =>
+        `${JSON.stringify({ data: { stage, ...extra }, type: 'progress' })}\n`
+      const replay = [
+        progress('translate', { expected_s: 330, fraction: 0 }),
+        progress('translate', { fraction: 0.6 }),
+        progress('translate', { fraction: 1 }),
+        progress('refine', { expected_s: 140, fraction: 0 }),
+        progress('refine', { fraction: 0.35 }),
+      ]
+      const encoder = new TextEncoder()
+      const held = () =>
+        new Response(
+          new ReadableStream({
+            start(controller) {
+              for (const line of replay) {
+                controller.enqueue(encoder.encode(line))
+              }
+              setInterval(() => {
+                controller.enqueue(
+                  encoder.encode('{"type":"heartbeat","data":null}\n')
+                )
+              }, 5000)
+            },
+          }),
+          { headers: { 'content-type': 'application/x-ndjson' }, status: 200 }
+        )
+      const real = window.fetch.bind(window)
+      const urlOf = (input: RequestInfo | URL) => {
+        if (typeof input === 'string') {
+          return input
+        }
+        return input instanceof URL ? input.href : input.url
+      }
+      // Defined, not assigned: the harness's types are Bun's, whose fetch has more members than a browser's
+      Object.defineProperty(window, 'fetch', {
+        configurable: true,
+        value: async (input: RequestInfo | URL, init?: RequestInit) =>
+          new URL(urlOf(input), location.href).pathname.endsWith(
+            '/translate-annotate'
+          )
+            ? held()
+            : await real(input, init),
+      })
+    },
+    JSON.stringify({ jobs: [job], v: 1 })
+  )
+  /* oxlint-enable unicorn/consistent-function-scoping */
+}
 
 /** Waits for the layout to rest (recorder.ts › settle); a page that never rests is audited as it is, with a note */
 const settle = async (page: Page): Promise<string | null> =>
@@ -216,6 +300,16 @@ export const OPENED_STATES: Record<string, OpenedState[]> = {
     {
       // The bell and the Library menu are a signed-in listener's
       name: 'notifications',
+      signedIn: true,
+      steps: [
+        { press: { name: /^Notifications/u, role: 'button' } },
+        { shows: { name: 'Notifications', role: 'dialog' } },
+      ],
+    },
+    {
+      // The same panel with a song generating (holdGeneration): its step drum, on a phone on its side too
+      generating: true,
+      name: 'generating',
       signedIn: true,
       steps: [
         { press: { name: /^Notifications/u, role: 'button' } },
@@ -1088,6 +1182,9 @@ const auditOnce = async (
   try {
     if (state?.signedIn === true) {
       await signIn(page)
+    }
+    if (state?.generating === true) {
+      await holdGeneration(page)
     }
     at.step = 'loading the page'
     await page.goto(url, { waitUntil: 'commit' })
