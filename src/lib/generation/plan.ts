@@ -51,11 +51,21 @@ export const STAGES = [
     phase: 'transcribe',
     weight: 10,
   },
+  // The draft: gpt-6.1-sol at high effort, polled in background mode, typically 230–500 s (up to 1200 s, then
+  // Claude stands in)
   {
     id: 'translate',
     label: 'Translating',
     phase: 'translate',
-    weight: 45,
+    weight: 320,
+  },
+  // The whole-song revision (100–130 s) and Claude's gate (10–30 s). With LYRICS_REFINE=off the backend closes
+  // it at once
+  {
+    id: 'refine',
+    label: 'Refining',
+    phase: 'translate',
+    weight: 140,
   },
   { id: 'save', label: 'Saving', phase: 'translate', weight: 4 },
 ] as const
@@ -77,7 +87,8 @@ export const STEPS = [
   { id: 'vocals', stages: ['separate'], title: 'Vocal Analysis' },
   { id: 'transcribe', stages: ['listen', 'lyrics'], title: 'Transcription' },
   { id: 'sync', stages: ['align', 'verify'], title: 'Timing Sync' },
-  { id: 'translate', stages: ['translate', 'save'], title: 'Translation' },
+  { id: 'translate', stages: ['translate'], title: 'Translation' },
+  { id: 'refine', stages: ['refine', 'save'], title: 'Refinement' },
 ] as const satisfies readonly {
   id: string
   title: string

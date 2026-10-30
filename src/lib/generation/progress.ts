@@ -1,9 +1,9 @@
 import type { Phase, StageId, Step } from './plan'
 import { stageIndex, STAGES } from './plan'
 
-// How a stage's bar moves. A real fraction from the backend is the floor; between reports, and for stages
-// that report nothing, the bar eases from that floor towards CAP of what is left, covering 80 % of the way
-// in the stage's expected time (Harrison et al., "Faster Progress Bars", CHI 2010: fast early, then slow).
+// How a stage's bar moves. A fraction from the backend that is above the bar is the new floor; between
+// reports, and for stages that report nothing, the bar eases from that floor towards CAP of what is left,
+// covering 80 % of the way in the stage's expected time (Harrison et al., "Faster Progress Bars", CHI 2010: fast early, then slow).
 // The value is recomputed from the run on every frame, and reports only ever raise the floor, so a bar
 // never moves backwards.
 export const CAP = 0.95
@@ -163,11 +163,19 @@ export const reportFraction = (
   if (fraction >= 1) {
     return { ...next, [id]: close(run, now) }
   }
+  const floor = MEASURED_SHARE * fraction
+  const shown = stageValue(run, now)
+  // A report below the bar leaves its ease alone. Re-basing there restarts the ease at full speed from the
+  // bar's own guess: the backend's clock fractions for a polled LLM call (services/progress.py › Stages.pulse),
+  // one every few seconds, filled the draft's bar to 99 % by 250 s of 330
+  if (floor <= shown && run.confirmed) {
+    return run.reported ? next : { ...next, [id]: { ...run, reported: true } }
+  }
   return {
     ...next,
     [id]: {
       ...run,
-      base: Math.max(MEASURED_SHARE * fraction, stageValue(run, now)),
+      base: Math.max(floor, shown),
       baseAt: now,
       confirmed: true,
       reported: true,
