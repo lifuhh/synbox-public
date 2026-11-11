@@ -16,7 +16,8 @@ Listeners read what changed on the What's New page (`/whats-new`), from the prof
 ```
 
 - `id`: lowercase words joined by `-`, unique. The bell and links use it (`/whats-new#smoother-starts`).
-- `date`: `null` for the entry the next release ships. `bun harness/release.ts` stamps it with the ship date. Never type a future date.
+- `date`: `null` for the entry the next release ships. `bun harness/release.ts` stamps it with the ship date (this machine's calendar) and pushes that to staging before its check. An entry already dated the ship day ships as it is. Never type a future date.
+- `release.ts` stops before anything runs when staging changes `src/`, `public/` or `index.html` (the entries file aside) and the top entry is neither undated nor dated today; it prints the entry to add. `--dry-run` prints the entry that would ship.
 - One undated entry at most, always at the top. A PR that adds to the next release adds lines to that entry instead of starting another.
 - `title`: Title Case, 2 to 4 words, what the release is about for a listener.
 - A release that only fixes and speeds things up gets the single line `Bug fixes and performance improvements` (`BUG_FIXES` in `src/lib/whats-new/model.ts`).
