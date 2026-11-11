@@ -12,6 +12,7 @@ import {
   GenerateLabel,
   SubmissionStatus,
   useFieldGeneration,
+  useWarmGeneration,
 } from '@/components/generate-lyrics/field-generation'
 import { startFromButton } from '@/components/generation/start-generation'
 import {
@@ -183,6 +184,11 @@ const LinkedVideo = ({ videoId }: { videoId: string }) => {
   const video = useYoutubeVideo(videoId)
   const lyrics = useGetLyricsBySongId(videoId)
   const { checking, generate, submission } = useFieldGeneration()
+  useWarmGeneration(
+    video.data !== undefined && !lyrics.isLoading && !lyrics.data
+      ? videoId
+      : null
+  )
   if (video.error) {
     return video.error.message.startsWith('No video found') ? (
       <Notice>No video at this link. Paste another one</Notice>

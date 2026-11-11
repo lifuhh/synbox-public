@@ -1,12 +1,23 @@
 import { CircleAlertIcon, LoaderCircleIcon, ArrowRightIcon } from 'lucide-react'
-import { useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 
 import {
   refusalOf,
   startFromButton,
 } from '@/components/generation/start-generation'
 import { openRequestMore } from '@/lib/account-prompts'
+import { warmGeneration } from '@/lib/generation/stream'
 import { cn } from '@/utils/cn'
+
+// A field holding a link to a new song (null otherwise) starts the backend before Generate Lyrics is pressed
+// (stream.ts › warmGeneration)
+export const useWarmGeneration = (videoId: string | null) => {
+  useEffect(() => {
+    if (videoId !== null) {
+      warmGeneration(videoId)
+    }
+  }, [videoId])
+}
 
 // A press on a link field's Generate Lyrics (Home's field, the Search page's pasted link), from the press to its
 // answer. The check runs here, at the field (the backend's account check and the video's, store.ts ›

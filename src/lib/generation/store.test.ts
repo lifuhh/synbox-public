@@ -317,6 +317,36 @@ test("a started song carries YouTube's title before the backend sends its own", 
   expect(job?.title).toBe('A Song')
 })
 
+test('a press after the link warmed a cold backend waits for that one check and starts the song', async () => {
+  vi.resetModules()
+  const store = await import('./store')
+  const { warmGeneration } = await import('./stream')
+  const videoId = 'w'.repeat(11)
+  const checks: ((answer: Response) => void)[] = []
+  vi.stubGlobal('fetch', async (url: string, init: RequestInit) =>
+    // oxlint-disable-next-line promise/avoid-new -- answered by the test, or ends when aborted
+    await new Promise<Response>((resolve, reject) => {
+      if (url.endsWith('/generation-check')) {
+        checks.push(resolve)
+      }
+      init.signal?.addEventListener('abort', () => {
+        reject(new DOMException('Aborted', 'AbortError'))
+      })
+    })
+  )
+  warmGeneration(videoId)
+  const pressed = store.requestGeneration({ mode: 'new', videoId })
+  await vi.waitFor(() => {
+    expect(checks).toHaveLength(1)
+  })
+  checks[0](Response.json({ ok: true }))
+  expect(await pressed).toBeNull()
+  expect(checks).toHaveLength(1)
+  expect(
+    store.getGenerationState().jobs.some((job) => job.videoId === videoId)
+  ).toBe(true)
+})
+
 const done = (id: number, at: number): Job =>
   jobAt(id, at - 60_000, {
     at,
