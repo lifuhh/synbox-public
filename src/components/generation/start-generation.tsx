@@ -18,8 +18,26 @@ import { requestGeneration } from '@/lib/generation/store'
 import { NEW_SONGS_PAUSED } from '@/lib/generation/stream'
 import type { Refusal } from '@/lib/generation/stream'
 
-// A check answered this fast needs no notice; one that waits on a backend starting up (up to 20 s) does
+// A check answered this fast needs no notice; one that waits on a backend starting up does
 const STARTING_NOTICE_DELAY_MS = 400
+// A warm backend answers within about 3 s, so a check still going after this waits on one starting up from idle
+// (25 to 33 s, stream.ts › CHECK_MS), and says so instead of looking stuck
+export const SLOW_CHECK_MS = 5000
+export const STARTING_UP = 'Starting Synbox, up to 30 s'
+
+// What is happening: the server is asked whether it can take the song
+const checkingNotice = (description?: string) => ({
+  description,
+  duration: Infinity,
+  icon: (
+    <LoaderCircleIcon
+      aria-hidden
+      className='size-5 shrink-0 animate-spin text-primary-text motion-reduce:animate-none'
+    />
+  ),
+  title: 'Checking Song',
+  variant: 'progress' as const,
+})
 
 // Input that means the listener carried on: a press, a scroll, a key. The press that started the song came before
 const MOVING_ON = ['pointerdown', 'wheel', 'touchmove', 'keydown'] as const
@@ -126,19 +144,17 @@ export const startFromButton = async (
   let notice: ReturnType<typeof toast> | undefined
   const timer = announce
     ? setTimeout(() => {
-        notice = toast({
-          duration: Infinity,
-          icon: (
-            <LoaderCircleIcon
-              aria-hidden
-              className='size-5 shrink-0 animate-spin text-primary-text motion-reduce:animate-none'
-            />
-          ),
-          // What is happening: the server is asked whether it can take the song
-          title: 'Checking Song',
-          variant: 'progress',
-        })
+        notice = toast(checkingNotice())
       }, STARTING_NOTICE_DELAY_MS)
+    : undefined
+  const slowTimer = announce
+    ? setTimeout(() => {
+        notice?.update({
+          ...checkingNotice(STARTING_UP),
+          id: notice.id,
+          open: true,
+        })
+      }, SLOW_CHECK_MS)
     : undefined
   const watch = watchStay()
   const refusal = await requestGeneration(
@@ -147,6 +163,7 @@ export const startFromButton = async (
     opening
   ).finally(watch.stop)
   clearTimeout(timer)
+  clearTimeout(slowTimer)
   // Started, or a second press while the first is still being checked
   if (refusal === null || refusal === 'checking') {
     notice?.dismiss()

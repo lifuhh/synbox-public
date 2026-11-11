@@ -3,7 +3,9 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 
 import {
   refusalOf,
+  SLOW_CHECK_MS,
   startFromButton,
+  STARTING_UP,
 } from '@/components/generation/start-generation'
 import { openRequestMore } from '@/lib/account-prompts'
 import { warmGeneration } from '@/lib/generation/stream'
@@ -167,6 +169,27 @@ export const GenerateLabel = ({ checking }: { checking: boolean }) => {
 const INLINE_ACTION =
   "relative font-semibold text-foreground underline underline-offset-4 after:absolute after:-inset-x-1 after:-inset-y-2 after:content-['']"
 
+// The check's line, which says the backend is starting once the wait outlasts a warm answer (start-generation.tsx ›
+// SLOW_CHECK_MS). Fades in, keyed, so the swap reads as a new line rather than a jump
+const CheckingStatus = () => {
+  const [slow, setSlow] = useState(false)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSlow(true)
+    }, SLOW_CHECK_MS)
+    return () => {
+      clearTimeout(timer)
+    }
+  }, [])
+  return (
+    <p
+      key={String(slow)}
+      className='text-muted-foreground motion-safe:animate-in motion-safe:duration-200 motion-safe:fade-in-0'>
+      {slow ? STARTING_UP : 'Checking the song…'}
+    </p>
+  )
+}
+
 // The answer under the field, in its polite status line: what is being checked, why the song was refused (with
 // Sign In when that is the way past it). Null otherwise
 export const SubmissionStatus = ({
@@ -175,7 +198,7 @@ export const SubmissionStatus = ({
   submission: Submission
 }) => {
   if (submission.kind === 'checking') {
-    return <p className='text-muted-foreground'>Checking the song…</p>
+    return <CheckingStatus />
   }
   if (submission.kind === 'refused' && submission.quiet) {
     return (
