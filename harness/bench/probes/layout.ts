@@ -118,13 +118,13 @@ export const PLAYER_SONG = '6rG_irmOQsM'
 export const PLAYER_LINE_SEC = 15
 
 /**
- * Where the player's layout audits open PLAYER_SONG (`?t=`): inside its longest early line (62.6 s to 73.5 s), so the
- * player draws a line from the moment it is built and keeps it for 10 s of playback, past most audits. Opened at the
- * top, the first line waited for 15 s of playback. Not PLAYER_LINE_SEC: opened at 15 s, WebKit's video stayed
- * `starting` for about 13 s in 13 of 19 pages, against 2 of 16 at 63 s (2026-11-11), and a start that comes
- * mid-audit wakes the controls and lifts the cover
+ * Where the player's layout audits open PLAYER_SONG (`?t=`): inside its line from about 26 s to 34 s, so the player
+ * draws a line from the moment it is built and keeps it for 7 s of playback, past most audits. Opened at the top,
+ * the first line waited for 15 s of playback. The start is picked for WebKit, whose video stalls in `starting` for
+ * some starts and then errors: at 15 s in 13 of 19 pages, at 63 s (the longest early line) in 11 of 70, at 27 s and
+ * 30 s in none of 29, from the top in none of 22 (2026-11-11/12). A stalled player draws no Previous, Play and Next
  */
-export const PLAYER_AUDIT_SEC = 63
+export const PLAYER_AUDIT_SEC = 27
 
 /**
  * Karaoke Style's two rows on the player's stage, held still, on a page opened at PLAYER_LINE_SEC once the player is
