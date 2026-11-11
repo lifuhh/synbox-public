@@ -15,7 +15,7 @@ import type { Page } from 'playwright'
 
 import { open, PWA_LANDSCAPE, PWA_PORTRAIT } from '../engines/browser'
 import type { BenchContext, Sample, Surface } from '../types'
-import { LAYOUT_PAGES, PLAYER_SONG } from './layout'
+import { LAYOUT_PAGES, PLAYER_SONG, tapControlsUp } from './layout'
 
 const LIMIT_MS = 180_000
 /** Boxes this close are the same layout */
@@ -105,7 +105,7 @@ const showControls = async (page: Page) => {
   if (centre === null) {
     throw new Error('no player stage')
   }
-  await page.touchscreen.tap(centre.x, centre.y)
+  await tapControlsUp(page, centre)
   await page.waitForTimeout(600)
 }
 

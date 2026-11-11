@@ -118,6 +118,15 @@ export const PLAYER_SONG = '6rG_irmOQsM'
 export const PLAYER_LINE_SEC = 15
 
 /**
+ * Where the player's layout audits open PLAYER_SONG (`?t=`): inside its line from about 26 s to 34 s, so the player
+ * draws a line from the moment it is built and keeps it for 7 s of playback, past most audits. Opened at the top,
+ * the first line waited for 15 s of playback. The start is picked for WebKit, whose video stalls in `starting` for
+ * some starts and then errors: at 15 s in 13 of 19 pages, at 63 s (the longest early line) in 11 of 70, at 27 s and
+ * 30 s in none of 29, from the top in none of 22 (2026-11-11/12). A stalled player draws no Previous, Play and Next
+ */
+export const PLAYER_AUDIT_SEC = 27
+
+/**
  * Karaoke Style's two rows on the player's stage, held still, on a page opened at PLAYER_LINE_SEC once the player is
  * ready: two rows on the stage for half a second (the time reads the start, then 0, then the start again as the
  * player begins). From then on, whenever the player plays it is paused from inside the page, by a click on the
@@ -282,6 +291,17 @@ const BENIGN_CONSOLE: RegExp[] = [
 
 // The player's passing states; the audit waits until it is out of them
 const PASSING_PHASES = ['loading', 'starting', 'buffering']
+
+/**
+ * Where a state's pointer goes on the player's stage to bring the controls back, from its top-left corner: bare stage
+ * in every view, controls shown or not (measured 2026-11-12). Off the video's centre, where the YouTube frame would
+ * take its moves. It was (60, 60) until then, which on a phone on its side is the rail floating over the stage: the
+ * move counted as leaving the player, so the controls showed only when something else had just woken them (the
+ * video starting, A231)
+ */
+const STAGE_POINT = { x: 200, y: 60 }
+/** The same on an upright phone's full-screen player, whose rail is a row across its top (y 47 to 99) while it shows */
+const FULL_SCREEN_POINT = { x: 200, y: 160 }
 
 // The top bar's search: a field in the bar from 768px wide, a button that opens the field over the bar on a phone
 // upright. Both open the instant results list once something is typed
@@ -450,7 +470,7 @@ export const OPENED_STATES: Record<string, OpenedState[]> = {
       // pointer stays off the video's centre, where the YouTube frame would take its moves
       name: 'controls',
       steps: [
-        { at: { x: 60, y: 60 }, hover: { attr: 'data-player-stage' } },
+        { at: STAGE_POINT, hover: { attr: 'data-player-stage' } },
         { shows: { name: 'Next', role: 'button' } },
       ],
     },
@@ -460,9 +480,9 @@ export const OPENED_STATES: Record<string, OpenedState[]> = {
       // over the controls there)
       name: 'lock-landscape',
       steps: [
-        { at: { x: 60, y: 60 }, hover: { attr: 'data-player-stage' } },
+        { at: STAGE_POINT, hover: { attr: 'data-player-stage' } },
         { press: { name: 'Fullscreen', role: 'button' } },
-        { at: { x: 60, y: 60 }, hover: { attr: 'data-player-stage' } },
+        { at: FULL_SCREEN_POINT, hover: { attr: 'data-player-stage' } },
         { press: { name: 'Lock Landscape', role: 'button' } },
         { shows: { name: 'Exit Fullscreen', role: 'button' } },
       ],
@@ -473,9 +493,9 @@ export const OPENED_STATES: Record<string, OpenedState[]> = {
       // down beside the song
       name: 'theater',
       steps: [
-        { at: { x: 60, y: 60 }, hover: { attr: 'data-player-stage' } },
+        { at: STAGE_POINT, hover: { attr: 'data-player-stage' } },
         { press: { name: 'Theater Mode', role: 'button' } },
-        { at: { x: 60, y: 60 }, hover: { attr: 'data-player-stage' } },
+        { at: STAGE_POINT, hover: { attr: 'data-player-stage' } },
         { shows: { name: 'Default View', role: 'button' } },
       ],
       views: ['web'],
@@ -485,7 +505,7 @@ export const OPENED_STATES: Record<string, OpenedState[]> = {
       // edge): whatever the bar shows for a hovered button must stay whole and cover no other control
       name: 'control-tip',
       steps: [
-        { at: { x: 60, y: 60 }, hover: { attr: 'data-player-stage' } },
+        { at: STAGE_POINT, hover: { attr: 'data-player-stage' } },
         { hover: { name: /^(?:Exit )?Full ?screen$/iu, role: 'button' } },
         { shows: { name: /^(?:Exit )?Full ?screen$/iu, role: 'button' } },
       ],
@@ -496,7 +516,7 @@ export const OPENED_STATES: Record<string, OpenedState[]> = {
       // full-screen player; every speed the video allows must be reachable, none under the edge
       name: 'speed-menu',
       steps: [
-        { at: { x: 60, y: 60 }, hover: { attr: 'data-player-stage' } },
+        { at: STAGE_POINT, hover: { attr: 'data-player-stage' } },
         { press: { name: /^Playback Speed/u, role: 'button' } },
         { shows: { name: /^Playback Speed/u, role: 'menu' } },
       ],
@@ -507,10 +527,10 @@ export const OPENED_STATES: Record<string, OpenedState[]> = {
       // the bar's box overlaps there (2026-10-26, not this button's doing: the bar's box is the same at 1×)
       name: 'speed-slowed',
       steps: [
-        { at: { x: 60, y: 60 }, hover: { attr: 'data-player-stage' } },
+        { at: STAGE_POINT, hover: { attr: 'data-player-stage' } },
         { press: { name: /^Playback Speed/u, role: 'button' } },
         { press: { name: '0.75×', role: 'menuitemradio' } },
-        { at: { x: 60, y: 60 }, hover: { attr: 'data-player-stage' } },
+        { at: STAGE_POINT, hover: { attr: 'data-player-stage' } },
         { shows: { name: 'Playback Speed 0.75×', role: 'button' } },
       ],
       views: ['web', 'pwa-portrait', 'pwa-landscape'],
@@ -540,7 +560,7 @@ export const OPENED_STATES: Record<string, OpenedState[]> = {
       // On its side the rail floats over the video and shows with the controls
       name: 'style-floating',
       steps: [
-        { at: { x: 60, y: 60 }, hover: { attr: 'data-player-stage' } },
+        { at: STAGE_POINT, hover: { attr: 'data-player-stage' } },
         { shows: { name: 'Lyrics Style', role: 'button' } },
         { press: { name: 'Lyrics Style', role: 'button' } },
         { shows: { name: 'Lyrics Style', role: 'dialog' } },
@@ -552,9 +572,9 @@ export const OPENED_STATES: Record<string, OpenedState[]> = {
       // axis and any pinned part follow the turn (owner, 2026-10-26: its sticky footer floated mid-panel there)
       name: 'lock-landscape-style',
       steps: [
-        { at: { x: 60, y: 60 }, hover: { attr: 'data-player-stage' } },
+        { at: STAGE_POINT, hover: { attr: 'data-player-stage' } },
         { press: { name: 'Fullscreen', role: 'button' } },
-        { at: { x: 60, y: 60 }, hover: { attr: 'data-player-stage' } },
+        { at: FULL_SCREEN_POINT, hover: { attr: 'data-player-stage' } },
         { press: { name: 'Lock Landscape', role: 'button' } },
         { shows: { name: 'Exit Fullscreen', role: 'button' } },
         { press: { name: 'Lyrics Style', role: 'button' } },
@@ -580,7 +600,7 @@ export const OPENED_STATES: Record<string, OpenedState[]> = {
       // The same on a phone on its side, where the rail floats over the video
       name: 'style-floating-own',
       steps: [
-        { at: { x: 60, y: 60 }, hover: { attr: 'data-player-stage' } },
+        { at: STAGE_POINT, hover: { attr: 'data-player-stage' } },
         { shows: { name: 'Lyrics Style', role: 'button' } },
         { press: { name: 'Lyrics Style', role: 'button' } },
         { shows: { name: 'Lyrics Style', role: 'dialog' } },
@@ -600,6 +620,95 @@ export const OPENED_STATES: Record<string, OpenedState[]> = {
       views: ['pwa-portrait', 'safari-portrait'],
     },
   ],
+}
+
+/** How long the player's phase and its lyric line must hold before the audit takes them as settled */
+const HOLD_MS = 500
+
+/**
+ * The player out of PASSING_PHASES for HOLD_MS, read from the recorder's log of every phase change. Not a single
+ * look: on its way to `starting` the player passes through `ready` for 20 to 90 ms (2026-11-11). WebKit in Playwright
+ * may never play the video, so after 10 s the page is audited in whatever phase it is in; the phase is in the notes
+ */
+const phaseHeld = async (page: Page): Promise<void> => {
+  await page
+    .waitForFunction(
+      ({ passing, holdMs }) => {
+        const last = window.__bench.phases.at(-1)
+        return (
+          last !== undefined &&
+          !passing.includes(last.phase) &&
+          performance.now() - last.t >= holdMs
+        )
+      },
+      { holdMs: HOLD_MS, passing: PASSING_PHASES },
+      { polling: 50, timeout: 10_000 }
+    )
+    .catch(() => {
+      // A player stuck loading or starting is audited as it is
+    })
+}
+
+/** In the page: whether the line lineHeld waits for is drawn, and what was found */
+const currentLine = () => {
+  const stage = document.querySelector<HTMLElement>('[data-player-stage]')
+  if (stage === null) {
+    return { drawn: false, layer: false, lines: 0, phase: 'none' }
+  }
+  const layer = stage.querySelector('[data-lyric-layer]')
+  const found = [
+    ...(layer === null
+      ? document.querySelectorAll(
+          '[data-bench=lyrics-text][data-phase=current]'
+        )
+      : layer.querySelectorAll('[data-bench=lyrics-line]')),
+  ]
+  const drawn = found.some((el) => {
+    const r = el.getBoundingClientRect()
+    return (
+      r.width > 0 &&
+      r.height > 0 &&
+      r.bottom > 0 &&
+      r.top < window.innerHeight &&
+      (el.textContent ?? '').trim() !== ''
+    )
+  })
+  return {
+    drawn,
+    layer: layer !== null,
+    lines: found.length,
+    phase: stage.dataset.phase ?? 'none',
+  }
+}
+
+/**
+ * A lyric line drawn where the player shows the current one, with text, on screen, for HOLD_MS: the stage's lyrics
+ * layer, or on a narrow watch page (no lyrics over the video) the lyrics panel's current line. Not the recorder's
+ * `lyrics-line` mark: that fires on any line, and the lyrics panel draws the whole song about 0.6 s after navigation,
+ * before the stage has a line (web and an upright phone, 2026-11-11). Held, because the line drops for about 200 ms as
+ * playback begins (the time reads the link's start, then 0, then the start again)
+ */
+const lineHeld = async (page: Page): Promise<void> => {
+  const timeoutMs = 30_000
+  const start = Date.now()
+  let since: number | null = null
+  // Looked at from here every 50 ms, so the page keeps no state for the wait
+  for (;;) {
+    // oxlint-disable-next-line eslint/no-await-in-loop -- one look per poll
+    const seen = await page.evaluate(currentLine)
+    const now = Date.now()
+    since = seen.drawn ? (since ?? now) : null
+    if (since !== null && now - since >= HOLD_MS) {
+      return
+    }
+    if (now - start > timeoutMs) {
+      throw new Error(
+        `no lyric line drawn for ${HOLD_MS}ms within ${timeoutMs / 1000}s (${seen.layer ? 'stage lyrics' : 'lyrics panel'}: ${seen.lines} lines, none on screen with text; player ${seen.phase})`
+      )
+    }
+    // oxlint-disable-next-line eslint/no-await-in-loop -- the next look
+    await page.waitForTimeout(50)
+  }
 }
 
 const scriptName = (url: string) =>
@@ -657,6 +766,58 @@ const iframeMark = async (page: Page): Promise<void> => {
   }
 }
 
+/**
+ * The player built and settled, with or without a lyric line: its YouTube iframe, then its phase held. The player
+ * page's `ready` waits for a line on top of this; a probe that needs no line (and would see the karaoke fill move
+ * every frame once one shows) waits for this alone
+ */
+export const playerUp = async (
+  page: Page,
+  note?: (wait: string) => void
+): Promise<void> => {
+  note?.('the YouTube iframe (mark player-iframe)')
+  await iframeMark(page)
+  note?.(`the player out of loading, starting and buffering for ${HOLD_MS}ms`)
+  await phaseHeld(page)
+}
+
+/**
+ * The player's controls brought up by a finger's tap at (x, y) on the screen. A tap toggles them, so one that lands
+ * while they still show hides them: first wait for them to go (1.8 s after the last input on a touch screen; the
+ * player page's `ready` ends with the pointer on the stage, which shows them). Ones still up after 5 s are held
+ * (a paused player) and get no tap
+ */
+export const tapControlsUp = async (
+  page: Page,
+  at: { x: number; y: number }
+): Promise<void> => {
+  const hidden = await page
+    .waitForFunction(
+      () =>
+        document.querySelector('[data-player-stage] [data-controls-hidden]') !==
+        null,
+      null,
+      { polling: 100, timeout: 5000 }
+    )
+    .then(
+      () => true,
+      () => false
+    )
+  if (hidden) {
+    await page.touchscreen.tap(at.x, at.y)
+  }
+}
+
+/** The pointer onto the stage's corner, which brings the controls back */
+export const pointerOnStage = async (page: Page): Promise<void> => {
+  await page
+    .locator('[data-player-stage]')
+    .hover({ force: true, position: { x: 40, y: 40 } })
+    .catch(() => {
+      // The hover only brings the controls back; audit the page either way
+    })
+}
+
 /** Pages with their own readiness; every other route in src/app.tsx is audited once settled */
 export const LAYOUT_PAGES: LayoutPage[] = [
   {
@@ -694,50 +855,13 @@ export const LAYOUT_PAGES: LayoutPage[] = [
   },
   {
     name: 'player',
-    path: `/v/${PLAYER_SONG}`,
+    path: `/v/${PLAYER_SONG}?t=${PLAYER_AUDIT_SEC}`,
     ready: async (page, note) => {
-      note?.('the YouTube iframe (mark player-iframe)')
-      await iframeMark(page)
-      note?.('the player out of loading, starting and buffering')
-      // WebKit in Playwright may never play the video; audit whatever the player settled into, controls shown
-      await page
-        .waitForFunction(
-          (passing) =>
-            !passing.includes(
-              document.querySelector<HTMLElement>('[data-player-stage]')
-                ?.dataset.phase ?? 'loading'
-            ),
-          PASSING_PHASES,
-          { timeout: 10_000 }
-        )
-        .catch(() => {
-          // A player stuck loading is audited as it is; its phase is in the notes
-        })
-      // On a phone on its side the stage shows only the current lines, so the song's intro (about 14 s here) held
-      // the audit back. The player's own shortcut skips ahead 5 s a press until a line shows
-      for (let skips = 0; skips < 4; skips += 1) {
-        note?.(`a lyrics line, skip ${skips + 1} of 4`)
-        // oxlint-disable-next-line eslint/no-await-in-loop -- one press, then a look
-        const shown = await mark(page, 'lyrics-line', 1000).then(
-          () => true,
-          () => false
-        )
-        if (shown) {
-          break
-        }
-        note?.(`ArrowRight to skip ahead, ${skips + 1} of 4`)
-        // oxlint-disable-next-line eslint/no-await-in-loop -- one press at a time
-        await page.keyboard.press('ArrowRight')
-      }
-      note?.('a lyrics line (mark lyrics-line)')
-      await mark(page, 'lyrics-line', 30_000)
+      await playerUp(page, note)
+      note?.(`a lyric line drawn for ${HOLD_MS}ms`)
+      await lineHeld(page)
       note?.('the pointer onto the stage')
-      await page
-        .locator('[data-player-stage]')
-        .hover({ force: true, position: { x: 40, y: 40 } })
-        .catch(() => {
-          // The hover only brings the controls back; audit the page either way
-        })
+      await pointerOnStage(page)
     },
     route: '/v/:videoId',
   },
@@ -1129,6 +1253,20 @@ const onScreen = async (
   }
 }
 
+/** In the page: what is drawn at `at` from the element's top-left corner, when it is not the element ('' when it is) */
+const coveredAt = (el: Element, at: { x: number; y: number }): string => {
+  const r = el.getBoundingClientRect()
+  const hit = document.elementFromPoint(r.left + at.x, r.top + at.y)
+  if (hit === null) {
+    return 'nothing (off screen)'
+  }
+  if (el.contains(hit)) {
+    return ''
+  }
+  const label = hit.getAttribute('aria-label')
+  return `<${hit.tagName.toLowerCase()}${label === null ? '' : ` "${label}"`}>`
+}
+
 /** Opens a state: each step in turn, as a person would (a tap on a phone, a click with a mouse) */
 const openState = async (
   page: Page,
@@ -1167,6 +1305,25 @@ const openState = async (
       } else if ('hover' in step) {
         // oxlint-disable-next-line eslint/no-await-in-loop -- steps run in order
         const l = await onScreen(page, step.hover)
+        if (step.at !== undefined) {
+          // A point covered by something else moves the pointer onto that instead, and the step does nothing it says.
+          // Polled: during a view transition (Theater Mode) the page's root covers everything
+          const deadline = Date.now() + STEP_TIMEOUT_MS
+          for (;;) {
+            // oxlint-disable-next-line eslint/no-await-in-loop -- polled until the point is clear
+            const covered = await l.evaluate(coveredAt, step.at)
+            if (covered === '') {
+              break
+            }
+            if (Date.now() > deadline) {
+              throw new Error(
+                `the point (${step.at.x}, ${step.at.y}) is covered by ${covered}`
+              )
+            }
+            // oxlint-disable-next-line eslint/no-await-in-loop -- the next look
+            await page.waitForTimeout(100)
+          }
+        }
         // oxlint-disable-next-line eslint/no-await-in-loop -- steps run in order
         await l.hover({
           force: true,
