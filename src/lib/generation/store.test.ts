@@ -323,16 +323,18 @@ test('a press after the link warmed a cold backend waits for that one check and 
   const { warmGeneration } = await import('./stream')
   const videoId = 'w'.repeat(11)
   const checks: ((answer: Response) => void)[] = []
-  vi.stubGlobal('fetch', async (url: string, init: RequestInit) =>
-    // oxlint-disable-next-line promise/avoid-new -- answered by the test, or ends when aborted
-    await new Promise<Response>((resolve, reject) => {
-      if (url.endsWith('/generation-check')) {
-        checks.push(resolve)
-      }
-      init.signal?.addEventListener('abort', () => {
-        reject(new DOMException('Aborted', 'AbortError'))
+  vi.stubGlobal(
+    'fetch',
+    async (url: string, init: RequestInit) =>
+      // oxlint-disable-next-line promise/avoid-new -- answered by the test, or ends when aborted
+      await new Promise<Response>((resolve, reject) => {
+        if (url.endsWith('/generation-check')) {
+          checks.push(resolve)
+        }
+        init.signal?.addEventListener('abort', () => {
+          reject(new DOMException('Aborted', 'AbortError'))
+        })
       })
-    })
   )
   warmGeneration(videoId)
   const pressed = store.requestGeneration({ mode: 'new', videoId })

@@ -361,8 +361,7 @@ const askGeneration = async (
   }
 }
 
-let warming: { videoId: string; answer: Promise<Refusal | null> } | null =
-  null
+let warming: { videoId: string; answer: Promise<Refusal | null> } | null = null
 let warmedAt = Number.NEGATIVE_INFINITY
 
 // Asks the check as soon as a new song's link is in a field, so a cold backend starts while the listener reads
@@ -373,12 +372,15 @@ export const warmGeneration = (videoId: string) => {
   }
   warmedAt = Date.now()
   const answer = askGeneration(videoId, 'new')
-  warming = { answer, videoId }
-  void answer.finally(() => {
-    if (warming?.answer === answer) {
+  const current = { answer, videoId }
+  warming = current
+  const settle = async () => {
+    await answer
+    if (warming === current) {
       warming = null
     }
-  })
+  }
+  void settle()
 }
 
 // Whether the backend would refuse this generation, asked when its button is pressed so the refusal shows
