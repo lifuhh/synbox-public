@@ -1,8 +1,9 @@
-import { CheckIcon, CloudOffIcon, WifiIcon } from 'lucide-react'
+import { CloudOffIcon, MegaphoneIcon, WifiIcon } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useMatch } from 'react-router'
+import { Link, useMatch } from 'react-router'
 
 import { appJustUpdated, useOnline } from '@/lib/pwa'
+import { LATEST_ENTRY, whatsNewPath } from '@/lib/whats-new'
 import { cn } from '@/utils/cn'
 
 const pill =
@@ -10,21 +11,25 @@ const pill =
 
 // How long the note about a connection change stays up
 const NOTICE_MS = 2000
-// How long the note that the app just updated itself stays up
-const UPDATED_MS = 2500
+// How long the note that the app just updated itself stays up: long enough to read it and reach for it, as it opens
+// What's New. A pointer resting on it or focus inside holds it
+const UPDATED_MS = 8000
 
-// True for UPDATED_MS on the first load of a new version
-const useUpdatedNotice = () => {
+// True for UPDATED_MS on the first load of a new version, held while `held`; false once pressed
+const useUpdatedNotice = (held: boolean) => {
   const [shown, setShown] = useState(appJustUpdated)
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setShown(false)
-    }, UPDATED_MS)
+    const timer =
+      shown && !held
+        ? setTimeout(() => {
+            setShown(false)
+          }, UPDATED_MS)
+        : undefined
     return () => {
       clearTimeout(timer)
     }
-  }, [])
-  return shown
+  }, [shown, held])
+  return [shown, setShown] as const
 }
 
 type ConnectionNotice = 'offline' | 'online' | null
@@ -57,11 +62,14 @@ const useConnectionNotice = () => {
 }
 
 // Notes under the top bar. Its height is published as --notices-h so the toasts open below it rather than
-// over it. None over the lyrics reader: it works the same without a connection, and nothing should cover it
+// over it. None over the lyrics reader: it works the same without a connection, and nothing should cover it.
+// The update note opens the newest What's New entry; its press area reaches 6px above and below the pill (44px)
 const AppNotices = () => {
   const notice = useConnectionNotice()
-  const updated = useUpdatedNotice()
+  const [held, setHeld] = useState(false)
+  const [updated, setUpdated] = useUpdatedNotice(held)
   const onReader = useMatch('/lyrics/:videoId') !== null
+  const onWhatsNew = useMatch('/whats-new') !== null
   const publishHeight = useCallback((stack: HTMLDivElement) => {
     const root = document.documentElement
     const observer = new ResizeObserver(() => {
@@ -74,10 +82,11 @@ const AppNotices = () => {
     }
   }, [])
 
+  const showUpdated = !onReader && !onWhatsNew && updated
   const said = onReader
     ? []
     : [
-        updated && 'App Updated',
+        showUpdated && 'Updated. See What’s New',
         notice === 'offline' && 'Lost Connection',
         notice === 'online' && 'Reconnected',
       ].filter((text) => text !== false)
@@ -90,22 +99,45 @@ const AppNotices = () => {
       </p>
       <div
         ref={publishHeight}
-        aria-hidden
         className='pointer-events-none fixed inset-x-0 top-(--topbar-h) z-100 flex flex-col items-center gap-2 px-4 empty:hidden [&:not(:empty)]:pt-2'>
-        {!onReader && updated && (
-          <div className={cn(pill, 'bg-primary-subtle')}>
-            <CheckIcon className='size-3.5 shrink-0 text-primary-text' />
-            App Updated
-          </div>
+        {showUpdated && (
+          <Link
+            to={whatsNewPath(LATEST_ENTRY)}
+            data-bench='updated-notice'
+            onClick={() => {
+              setUpdated(false)
+            }}
+            onPointerEnter={() => {
+              setHeld(true)
+            }}
+            onPointerLeave={() => {
+              setHeld(false)
+            }}
+            onFocus={() => {
+              setHeld(true)
+            }}
+            onBlur={() => {
+              setHeld(false)
+            }}
+            className={cn(
+              pill,
+              "relative bg-primary-subtle transition-colors after:absolute after:inset-x-0 after:-inset-y-1.5 after:content-[''] hover:bg-primary-subtle/80"
+            )}>
+            <MegaphoneIcon
+              aria-hidden
+              className='size-3.5 shrink-0 text-primary-text'
+            />
+            Updated · See What’s New
+          </Link>
         )}
         {!onReader && notice === 'offline' && (
-          <div className={pill}>
+          <div aria-hidden className={pill}>
             <CloudOffIcon className='size-3.5 shrink-0 text-primary-text' />
             Lost Connection
           </div>
         )}
         {!onReader && notice === 'online' && (
-          <div className={pill}>
+          <div aria-hidden className={pill}>
             <WifiIcon className='size-3.5 shrink-0 text-primary-text' />
             Reconnected
           </div>
