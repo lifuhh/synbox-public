@@ -542,12 +542,14 @@ export const pressScan = async (
     const { pathname } = new URL(request.url())
     // The app's own writes: the YouTube player's frame posts its own stats and logs as it plays, and Sentry's
     // envelopes (tunnelled through /api/<project>/envelope/) and the usage events' batches (/api/events, sent on a
-    // timer) report, they don't act
+    // timer) report, they don't act. /generation-check only asks whether a song would be taken, and a field holding
+    // a new song's link sends it on its own to start the backend (src/lib/generation/stream.ts › warmGeneration),
+    // whenever the link's lookup answers, press or not
     if (
       request.frame() === page.mainFrame() &&
       request.method() !== 'GET' &&
       request.method() !== 'HEAD' &&
-      !/\/envelope\/?$|^\/api\/events$/u.test(pathname)
+      !/\/envelope\/?$|^\/api\/events$|\/generation-check$/u.test(pathname)
     ) {
       writes.push(`${request.method()} ${pathname}`)
     }
