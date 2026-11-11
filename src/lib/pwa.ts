@@ -113,9 +113,11 @@ export const useOnline = () =>
 // arrived: a page change, a reopen or a reload (AppNotices shows it). The build last seen is kept per browser; a
 // first visit and a development build say nothing
 const LAST_BUILD_KEY = 'synboxLastBuild'
+let previousBuild: string | null = null
 const isNewBuild = () => {
   try {
     const previous = localStorage.getItem(LAST_BUILD_KEY)
+    previousBuild = previous
     localStorage.setItem(LAST_BUILD_KEY, __BUILD_ID__)
     return (
       previous !== null && previous !== __BUILD_ID__ && __BUILD_ID__ !== 'local'
@@ -126,6 +128,9 @@ const isNewBuild = () => {
   }
 }
 export const appJustUpdated = isNewBuild()
+// This browser ran Synbox before this page load (any version): What's New tells it what changed
+// (lib/whats-new › whatsNewUnread); someone new isn't told
+export const returningVisitor = previousBuild !== null
 
 // A page from one deploy asks for a part it hasn't loaded yet (a route opened for the first time) after a later
 // deploy deleted it. Loading the page again gets the current deploy. Once a minute at most, so a part that is

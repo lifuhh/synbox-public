@@ -1,0 +1,27 @@
+[
+  {
+    "id": "smoother-starts",
+    "date": null,
+    "title": "Smoother Starts",
+    "items": [
+      "What's New: this page",
+      "No more \"Couldn't reach Synbox\" on your first song of the day. A \"Starting Synbox\" note shows while it wakes up",
+      "Shared translations show under every line in the lyrics reader",
+      "A translation you drag no longer covers the lyrics"
+    ]
+  },
+  {
+    "id": "better-lyrics-and-translations",
+    "date": "2026-10-30",
+    "title": "Better Lyrics and Translations",
+    "items": [
+      "Karaoke highlight follows the singer more closely",
+      "Short lines that finish each other's sentence share one translation",
+      "More natural translations",
+      "Sung lines missing from the published lyrics now show",
+      "Lines sung in another language no longer get wrong lyrics",
+      "Videos that aren't Japanese songs say so instead of failing",
+      "Tap the artist's name for more of their songs"
+    ]
+  }
+]

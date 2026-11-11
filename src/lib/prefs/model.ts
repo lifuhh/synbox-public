@@ -23,6 +23,8 @@ const SYNCED_KEYS = new Set([
   // The reader, and whether a song's end plays the next one
   'offlineReader',
   'listeningAutoplay',
+  // The newest What's New entry the listener has seen (lib/whats-new)
+  'whatsNewSeen',
 ])
 // A song's own lyrics style
 const SONG_STYLE = /^lyricsStyle:[\w-]{6,64}$/u

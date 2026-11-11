@@ -10,6 +10,10 @@ import {
 import { RingToBell } from '@/components/generation/ring-to-bell'
 import { usePresentation } from '@/components/generation/use-presentation'
 import { AdminNoticeList } from '@/components/topbar/admin-notices'
+import {
+  whatsNewKey,
+  WhatsNewNotice,
+} from '@/components/topbar/whats-new-notice'
 import { Button } from '@/components/ui/button'
 import {
   Popover,
@@ -43,6 +47,8 @@ import {
 import { MENU_GAP, menuOffset } from '@/lib/menu-offset'
 import type { Fix } from '@/lib/report-fixes'
 import { unseenFixCount, useReportFixes } from '@/lib/report-fixes'
+import { useWhatsNew } from '@/lib/whats-new'
+import type { WhatsNewEntry } from '@/lib/whats-new'
 import { cn } from '@/utils/cn'
 
 // The ring turning into the bell after the last song in progress ends
@@ -131,6 +137,8 @@ const bellHidden = (access: Access, items: number, closing: boolean) => {
 }
 
 interface PanelContent {
+  // The newest What's New entry while it is news, or while the open panel is reading it
+  news: WhatsNewEntry | null
   job: Job | null
   jobs: readonly Job[]
   fixes: readonly Fix[]
@@ -158,6 +166,7 @@ const PanelBody = ({
     content.resolved.length > 0
   return (
     <>
+      {content.news !== null && <WhatsNewNotice entry={content.news} />}
       {notices.length > 0 && (
         <AdminNoticeList notices={notices} clearable={clearable} />
       )}
@@ -171,7 +180,7 @@ const PanelBody = ({
           onDismissResolved={onDismissResolved}
         />
       )}
-      {!songs && notices.length === 0 && (
+      {!songs && notices.length === 0 && content.news === null && (
         <p className='px-6 py-8 text-center text-sm text-muted-foreground'>
           No Notifications
         </p>
@@ -189,11 +198,26 @@ const useShownWhileClosing = (open: boolean, live: PanelContent) => {
     (live.job !== lastOpen.job ||
       live.jobs !== lastOpen.jobs ||
       live.fixes !== lastOpen.fixes ||
-      live.resolved !== lastOpen.resolved)
+      live.resolved !== lastOpen.resolved ||
+      live.news !== lastOpen.news)
   ) {
     setLastOpen(live)
   }
   return open ? live : lastOpen
+}
+
+// The newest What's New entry as the bell lists it: while it is news, and while the open panel that read it stays
+// open (`unreadKeys`: GenerationState.unread)
+const useNewsRow = (unreadKeys: readonly string[]) => {
+  const { latest, unread, markSeen } = useWhatsNew()
+  const reading =
+    latest !== undefined && unreadKeys.includes(whatsNewKey(latest))
+  return {
+    latest,
+    markSeen,
+    news: latest !== undefined && (unread || reading) ? latest : null,
+    unread,
+  }
 }
 
 // The top bar's one place for lyrics generations. While songs generate it is a ring with the head of the
@@ -221,12 +245,21 @@ const Notifications = () => {
   const access = useAccess()
   const adminNotices = useAdminNotices(access.admin)
   const { mutate: markNoticesSeen } = useMarkNoticesSeen()
+  // The newest release, listed while it is news and while the panel that read it stays open
+  const {
+    latest: latestNews,
+    news,
+    unread: newsUnread,
+    markSeen: markNewsSeen,
+  } = useNewsRow(generation.unread)
   // Fixes and admin notices count on the bell, never on the ring: one arriving mid-generation changes nothing
   // until the ring turns back into the bell, which then counts it
-  const unseen = unseenSongs + unseenFixes + adminNotices.unread
+  const unseen =
+    unseenSongs + unseenFixes + adminNotices.unread + (newsUnread ? 1 : 0)
+  const listedNews = news === null ? 0 : 1
   useEffect(() => {
-    setOtherNotifications(fixes.length + resolved.length)
-  }, [fixes.length, resolved.length])
+    setOtherNotifications(fixes.length + resolved.length + listedNews)
+  }, [fixes.length, resolved.length, listedNews])
 
   const [farewell, setFarewell] = useFarewell(
     going,
@@ -315,7 +348,14 @@ const Notifications = () => {
       )
       markNoticesSeen()
     }
+    if (newsUnread && latestNews !== undefined) {
+      noteUnread([whatsNewKey(latestNews)])
+      markNewsSeen()
+    }
   }, [
+    newsUnread,
+    latestNews,
+    markNewsSeen,
     expanded,
     unseenSongs,
     unseenFixes,
@@ -360,6 +400,7 @@ const Notifications = () => {
     fixes,
     job: focusedJob(generation) ?? jobs.at(-1) ?? null,
     jobs,
+    news,
     resolved,
   })
 
@@ -392,7 +433,7 @@ const Notifications = () => {
   if (
     bellHidden(
       access,
-      jobs.length + fixes.length + resolved.length,
+      jobs.length + fixes.length + resolved.length + listedNews,
       farewell !== null
     )
   ) {

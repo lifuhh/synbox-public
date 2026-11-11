@@ -37,6 +37,7 @@ const pageImports = {
   search: async () => await import('./_root/pages/search-page'),
   terms: async () => await import('./_root/pages/terms-page'),
   versions: async () => await import('./_root/pages/versions-page'),
+  whatsNew: async () => await import('./_root/pages/whats-new-page'),
   you: async () => await import('./_root/pages/you-page'),
 }
 const AboutPage = lazy(pageImports.about)
@@ -50,6 +51,7 @@ const ReaderPage = lazy(pageImports.reader)
 const SearchPage = lazy(pageImports.search)
 const TermsPage = lazy(pageImports.terms)
 const VersionsPage = lazy(pageImports.versions)
+const WhatsNewPage = lazy(pageImports.whatsNew)
 // Not prefetched: only admins open it
 const AdminPage = lazy(async () => await import('./_root/pages/admin-page'))
 
@@ -67,6 +69,7 @@ const PAGE_OF_PATH: [RegExp, keyof typeof pageImports][] = [
   [/^\/about/u, 'about'],
   [/^\/privacy/u, 'privacy'],
   [/^\/terms/u, 'terms'],
+  [/^\/whats-new/u, 'whatsNew'],
   [/^\/playlists\/./u, 'playlist'],
   [/^\/playlists/u, 'playlists'],
 ]
@@ -174,6 +177,14 @@ const App = () => {
             element={
               <Suspense fallback={<TextPageSkeleton docScroll={false} />}>
                 <TermsPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path='/whats-new'
+            element={
+              <Suspense fallback={<TextPageSkeleton docScroll={false} />}>
+                <WhatsNewPage />
               </Suspense>
             }
           />

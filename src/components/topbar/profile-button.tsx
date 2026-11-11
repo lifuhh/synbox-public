@@ -4,6 +4,7 @@ import {
   EllipsisVerticalIcon,
   LoaderCircleIcon,
   MailIcon,
+  MegaphoneIcon,
   MessageSquareIcon,
   ShieldIcon,
   LogOutIcon,
@@ -16,6 +17,7 @@ import type { ReactNode } from 'react'
 import { Link } from 'react-router'
 
 import { GoogleMark } from '@/components/shared/google-mark'
+import { NewDot } from '@/components/shared/new-dot'
 import { UserAvatar } from '@/components/shared/user-avatar'
 import {
   DropdownMenu,
@@ -45,6 +47,7 @@ import { forgetMySongs } from '@/lib/offline/sync'
 import { useInstallMethod } from '@/lib/pwa'
 import { QUERY_KEYS } from '@/lib/react-query/query-keys'
 import { newTabHandlers } from '@/lib/selectable-links'
+import { useWhatsNew, whatsNewPath } from '@/lib/whats-new'
 import { cn } from '@/utils/cn'
 
 import { Button } from '../ui/button'
@@ -188,6 +191,7 @@ const ProfileButtonDropdown = () => {
   const [feedback, setFeedback] = useState<'closed' | 'open' | null>(null)
   const hintId = useId()
   const queryClient = useQueryClient()
+  const whatsNew = useWhatsNew()
   const { data: me, isPending } = useMe()
   const user = me?.user ?? null
 
@@ -245,6 +249,13 @@ const ProfileButtonDropdown = () => {
               <Link to='/about'>
                 <CircleQuestionMarkIcon className='mr-2 size-5 shrink-0' />
                 <span>About Synbox</span>
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild className='cursor-pointer'>
+              <Link to={whatsNewPath()}>
+                <MegaphoneIcon className='mr-2 size-5 shrink-0' />
+                <span>What’s New</span>
+                {whatsNew.unread && <NewDot className='ml-2' />}
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem

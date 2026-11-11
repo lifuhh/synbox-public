@@ -3,6 +3,7 @@ import {
   ChevronRightIcon,
   CircleQuestionMarkIcon,
   MailIcon,
+  MegaphoneIcon,
   MessageSquareIcon,
   UserIcon,
   LogOutIcon,
@@ -15,6 +16,7 @@ import { Link } from 'react-router'
 import { BenefitList } from '@/components/account/sign-in-sheet'
 import { BoxScrollbar } from '@/components/shared/doc-scroll'
 import { GoogleMark } from '@/components/shared/google-mark'
+import { NewDot } from '@/components/shared/new-dot'
 import { UserAvatar } from '@/components/shared/user-avatar'
 import { Button } from '@/components/ui/button'
 import { openRequestMore } from '@/lib/account-prompts'
@@ -32,6 +34,7 @@ import type { Quota } from '@/lib/auth'
 import { WRITE_HINTS } from '@/lib/feedback'
 import { forgetMySongs } from '@/lib/offline/sync'
 import { QUERY_KEYS } from '@/lib/react-query/query-keys'
+import { useWhatsNew, whatsNewPath } from '@/lib/whats-new'
 
 // Their own chunks: loaded on the first press of Contact Me or Send Feedback
 const ContactDialog = lazy(
@@ -49,16 +52,22 @@ const LinkRow = ({
   to,
   icon,
   label,
+  unread = false,
 }: {
   to: string
   icon: ReactNode
   label: string
+  // A dot after the label: something there the listener hasn't seen (What's New)
+  unread?: boolean
 }) => (
   <Link to={to} className={ROW}>
     <span className='grid size-6 shrink-0 place-items-center text-muted-foreground'>
       {icon}
     </span>
-    <span className='min-w-0 flex-1 truncate text-foreground'>{label}</span>
+    <span className='flex min-w-0 flex-1 items-center gap-2 text-foreground'>
+      <span className='truncate'>{label}</span>
+      {unread && <NewDot />}
+    </span>
     <ChevronRightIcon
       className='size-5 shrink-0 text-muted-foreground'
       aria-hidden
@@ -160,6 +169,7 @@ const YouPage = () => {
   const [contact, setContact] = useState<'closed' | 'open' | null>(null)
   const [feedback, setFeedback] = useState<'closed' | 'open' | null>(null)
   const queryClient = useQueryClient()
+  const whatsNew = useWhatsNew()
   const { data: me } = useMe()
   const user = me?.user ?? null
   const quota = me?.quota
@@ -245,6 +255,12 @@ const YouPage = () => {
             to='/about'
             icon={<CircleQuestionMarkIcon className='size-5' />}
             label='About Synbox'
+          />
+          <LinkRow
+            to={whatsNewPath()}
+            icon={<MegaphoneIcon className='size-5' />}
+            label='What’s New'
+            unread={whatsNew.unread}
           />
           <DialogRow
             icon={<MessageSquareIcon className='size-5' />}
