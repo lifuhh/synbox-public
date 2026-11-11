@@ -103,10 +103,97 @@ export const linePhase = (
   return index < lit ? 'past' : 'upcoming'
 }
 
+// A line's place in its translation span (lineSpans): up to three short lines read as one unit, set close
+// together, with their one translation after the last
+export interface LineInSpan {
+  // Before the span's last line: no translation of its own, and only the span's gap below
+  continues: boolean
+  // After the span's first line: never a stanza break above it
+  continued: boolean
+  // The span holds more than one line
+  shared: boolean
+  // When the span's first line is sung: a tap on its translation plays from there
+  start: number
+  // The translation's own phase: lit while any line of the span is
+  phase: LinePhase | null
+}
+
+export const lineInSpan = (
+  lines: readonly OfflineLine[],
+  spans: readonly { first: number; last: number }[],
+  index: number,
+  lit: number,
+  started: boolean
+): LineInSpan => {
+  const { first, last } = spans[index] ?? { first: index, last: index }
+  let phase: LinePhase | null = null
+  if (started) {
+    if (lit >= first && lit <= last) {
+      phase = 'current'
+    } else {
+      phase = lit > last ? 'past' : 'upcoming'
+    }
+  }
+  return {
+    continued: index > first,
+    continues: index < last,
+    phase,
+    shared: last > first,
+    start: lines[first]?.start ?? 0,
+  }
+}
+
+const LineTranslation = ({
+  text,
+  show,
+  apart,
+  lit,
+  ref,
+}: {
+  text: string
+  show: LineShow
+  apart: boolean
+  lit: boolean
+  ref: Ref<HTMLParagraphElement>
+}) => (
+  <p
+    ref={ref}
+    lang={show.language}
+    data-lit={lit || undefined}
+    className={cn(
+      show.language === 'zh' ? 'font-reader-zh' : 'font-reader',
+      // Even rows, never a one-word last row; a split one ("\n") breaks there when it needs two rows
+      'text-reader-translation text-balance italic',
+      // A little apart, so the romaji reads as part of the Japanese above it
+      apart && 'pt-1',
+      show.bold ? 'font-medium' : 'font-normal'
+    )}>
+    <TranslationRows parts={translationParts(text)} />
+  </p>
+)
+
+// The room around a line: a span's lines sit as close as a line's own translation sits to it, so the span reads
+// as one unit, and with no Japanese or romaji shown the lines before its translation take no room at all. A
+// stanza break never falls inside a span
+const lineRoom = ({
+  span,
+  source,
+  stanza,
+}: {
+  span: LineInSpan
+  source: boolean
+  stanza: boolean
+}) =>
+  cn(
+    span.continues ? source && 'pb-reader-span' : 'pb-reader-line',
+    stanza && !span.continued && 'pt-reader-stanza'
+  )
+
 export const LyricLineBlock = ({
   show: prefs,
   line,
   first,
+  span,
   synced,
   phase,
   blockRef,
@@ -116,6 +203,7 @@ export const LyricLineBlock = ({
   show: LineShow
   line: OfflineLine
   first: boolean
+  span: LineInSpan
   synced: boolean
   phase: LinePhase | null
   blockRef: (element: HTMLDivElement | null) => void
@@ -123,8 +211,11 @@ export const LyricLineBlock = ({
   onSeek?: (time: number) => void
 }) => {
   const seeks = synced && onSeek !== undefined
-  const translation = spaceDashes(prefs.language === 'en' ? line.en : line.zh)
+  const translation = span.continues
+    ? ''
+    : spaceDashes(prefs.language === 'en' ? line.en : line.zh)
   const source = prefs.japanese || (prefs.romaji && line.romaji !== '')
+  const translationRef = useRef<HTMLParagraphElement>(null)
   // The clock drives one handle per line; it fills the Japanese and the romaji together
   const japanese = useRef<KaraokeLineHandle>(null)
   const romaji = useRef<KaraokeLineHandle>(null)
@@ -142,14 +233,20 @@ export const LyricLineBlock = ({
       data-phase={phase ?? undefined}
       onClick={
         seeks
-          ? () => {
-              onSeek(line.start)
+          ? (event) => {
+              // A span's translation is the whole span's: it plays from the span's first line
+              const target = event.target instanceof Node ? event.target : null
+              onSeek(
+                translationRef.current?.contains(target) === true
+                  ? span.start
+                  : line.start
+              )
             }
           : undefined
       }
       className={cn(
-        'grid gap-y-0.5 pb-reader-line transition-opacity duration-300',
-        line.stanza && !first && 'pt-reader-stanza',
+        'grid gap-y-0.5 transition-opacity duration-300',
+        lineRoom({ source, span, stanza: line.stanza && !first }),
         // Only the drawn text seeks: a thumb landing beside or between lines while scrolling must not jump
         // the song
         seeks &&
@@ -159,7 +256,8 @@ export const LyricLineBlock = ({
         // A line to come dims piece by piece: its karaoke text already draws unsung at the strength the rest
         // dims to (globals.css, reader-karaoke-part) and stays as it is when the line is reached; only the
         // other text brightens then
-        '*:transition-opacity *:duration-300 data-[phase=upcoming]:*:not-has-[.reader-karaoke-part]:opacity-(--reader-dim)'
+        // A span's translation stays bright while any of its lines is sung (data-lit)
+        '*:transition-opacity *:duration-300 data-[phase=upcoming]:*:not-has-[.reader-karaoke-part]:not-data-lit:opacity-(--reader-dim)'
       )}>
       {source && (
         <div>
@@ -182,18 +280,13 @@ export const LyricLineBlock = ({
         </div>
       )}
       {prefs.translation && translation !== '' && (
-        <p
-          lang={prefs.language}
-          className={cn(
-            prefs.language === 'zh' ? 'font-reader-zh' : 'font-reader',
-            // Even rows, never a one-word last row; a split one ("\n") breaks there when it needs two rows
-            'text-reader-translation text-balance italic',
-            // A little apart, so the romaji reads as part of the Japanese above it
-            source && 'pt-1',
-            prefs.bold ? 'font-medium' : 'font-normal'
-          )}>
-          <TranslationRows parts={translationParts(translation)} />
-        </p>
+        <LineTranslation
+          ref={translationRef}
+          text={translation}
+          show={prefs}
+          apart={source}
+          lit={span.shared && span.phase === 'current'}
+        />
       )}
     </div>
   )

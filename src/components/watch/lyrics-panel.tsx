@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 
 import type { KaraokeLineHandle } from '@/components/lyrics-display/karaoke-line'
 import {
+  lineInSpan,
   linePhase,
   LyricLineBlock,
 } from '@/components/offline/lyric-line-block'
@@ -25,7 +26,7 @@ import { currentLineIndex, karaokeMatchesLyrics } from '@/lib/karaoke'
 import { RateLimitedError } from '@/lib/lyrics-api'
 import { parseLyricsDocument } from '@/lib/lyrics-document'
 import type { OfflineLine } from '@/lib/offline/song'
-import { offlineLines } from '@/lib/offline/song'
+import { lineSpans, offlineLines } from '@/lib/offline/song'
 import {
   useGetKaraokeById,
   useGetLyricsBySongId,
@@ -64,11 +65,12 @@ const useSongLines = (videoId: string, version: number | null) => {
       return NO_LINES
     }
     const plain = parseLyricsText(data).plain_lyrics
-    const karaoke =
+    return offlineLines(
+      lyrics,
       karaokeDoc && karaokeMatchesLyrics(karaokeDoc.lines, plain)
-        ? karaokeDoc.lines
+        ? karaokeDoc
         : null
-    return offlineLines(lyrics, karaoke)
+    )
   }, [data, karaokeDoc])
   return {
     limited: error instanceof RateLimitedError,
@@ -260,6 +262,10 @@ export const LyricsPanel = ({
     '--reader-scale': scale,
   }
   const show = useTextLines()
+  const spans = useMemo(
+    () => lineSpans(lines, show.language, show.translation),
+    [lines, show.language, show.translation]
+  )
 
   const [active, setActive] = useState(-1)
   // The last line reached, which stays lit and followed through an instrumental gap; -1 before the first
@@ -291,6 +297,7 @@ export const LyricsPanel = ({
       resumes: !band,
       // The lit line, not the last reached: that one moves on half a second before a line starts, while the one
       // before it is still sung. Before the first line, the first line waits in its place
+      span: spans[Math.max(lit, 0)],
       target: Math.max(lit, 0),
     })
   useEffect(
@@ -401,6 +408,7 @@ export const LyricsPanel = ({
                 show={show}
                 line={line}
                 first={index === 0}
+                span={lineInSpan(lines, spans, index, lit, true)}
                 synced
                 // Under a video the lines are always karaoke: nothing reads as sung until it is sung, even
                 // before the song starts
