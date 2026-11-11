@@ -1,8 +1,6 @@
 # What's New
 
-Listeners read what changed on the What's New page (`/whats-new`), from the profile menu, the You page, the bell and
-the "Updated · See What's New" note after an update. Every release that changes anything a listener sees gets an
-entry. Write it in the same PR as the change, or in the last PR before the release.
+Listeners read what changed on the What's New page (`/whats-new`), from the profile menu, the You page, the bell and the "Updated · See What's New" note after an update. Every release that changes anything a listener sees gets an entry. Write it in the same PR as the change, or in the last PR before the release.
 
 ## Where entries live
 
@@ -18,23 +16,18 @@ entry. Write it in the same PR as the change, or in the last PR before the relea
 ```
 
 - `id`: lowercase words joined by `-`, unique. The bell and links use it (`/whats-new#smoother-starts`).
-- `date`: `null` for the entry the next release ships. `bun harness/release.ts` stamps it with the ship date. Never
-  type a future date.
-- One undated entry at most, always at the top. A PR that adds to the next release adds lines to that entry instead
-  of starting another.
+- `date`: `null` for the entry the next release ships. `bun harness/release.ts` stamps it with the ship date. Never type a future date.
+- One undated entry at most, always at the top. A PR that adds to the next release adds lines to that entry instead of starting another.
 - `title`: Title Case, 2 to 4 words, what the release is about for a listener.
-- A release that only fixes and speeds things up gets the single line `Bug fixes and performance improvements`
-  (`BUG_FIXES` in `src/lib/whats-new/model.ts`).
+- A release that only fixes and speeds things up gets the single line `Bug fixes and performance improvements` (`BUG_FIXES` in `src/lib/whats-new/model.ts`).
 
 ## What goes in
 
-Only what a listener would notice and care about, in their words. Use common sense: if they wouldn't miss it, leave
-it out.
+Only what a listener would notice and care about, in their words. Use common sense: if they wouldn't miss it, leave it out.
 
 Never:
 
-- **Developer words:** sync, PWA, iframe, 1080p, cache, audit, harness, check, bench, API, worker, backend, deploy,
-  span, doc, stage names.
+- **Developer words:** sync, PWA, iframe, 1080p, cache, audit, harness, check, bench, API, worker, backend, deploy, span, doc, stage names.
 - **Accounts:** limits, quotas, usage logging, counting or tracking.
 - **Admin-only changes:** the admin page, reports review, notices for the admin.
 - **Internals:** tests, tooling, the change log, performance budgets, refactors.
@@ -42,14 +35,12 @@ Never:
 
 ## How to write a line
 
-- One short line per change, sentence case, no full stop at the end. Two short sentences are fine when one can't
-  say it.
+- One short line per change, sentence case, no full stop at the end. Two short sentences are fine when one can't say it.
 - Say what the listener gets: "Playback Speed: 1×, 0.75×, 0.5×", not "Added a playback speed feature".
 - Name controls as the app names them (Text Style, Lyrics Style, Generate Lyrics).
 - Curly quotes and apostrophes (’ “ ”).
 - No hype: no "seamless", "powerful", "exciting", "we're thrilled", and no exclamation marks.
-- Before writing a line, check the change does what the line says, in the app. A line that describes the wrong design
-  is worse than no line.
+- Before writing a line, check the change does what the line says, in the app. A line that describes the wrong design is worse than no line.
 
 ## Examples
 
