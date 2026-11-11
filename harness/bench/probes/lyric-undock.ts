@@ -22,7 +22,12 @@ import type { Page } from 'playwright'
 
 import { open } from '../engines/browser'
 import type { BenchContext, Sample, Surface } from '../types'
-import { LAYOUT_PAGES, PLAYER_SONG } from './layout'
+import {
+  LAYOUT_PAGES,
+  PLAYER_LINE_SEC,
+  PLAYER_SONG,
+  twoRowsHeld,
+} from './layout'
 
 /** Past this a move is a move; below it, subpixel rounding */
 const MOVED_PX = 1
@@ -382,26 +387,13 @@ const dockedPage = async (
   await opened.context.addInitScript(installMeter)
   const { page } = opened
   try {
-    await page.goto(url, { waitUntil: 'commit' })
+    await page.goto(`${url}?t=${PLAYER_LINE_SEC}`, { waitUntil: 'commit' })
     await player.ready(page)
+    // The rows are waited for after turning, which mounts the player again (lyric-shift.ts › twoLines)
     if (turned) {
       await turnPage(page)
     }
-    for (let skips = 0; skips < 8; skips += 1) {
-      // oxlint-disable-next-line eslint/no-await-in-loop -- one look, then a press
-      if ((await page.locator('[data-lyric-row]').count()) === 2) {
-        break
-      }
-      // oxlint-disable-next-line eslint/no-await-in-loop -- the player skips 5 s a press
-      await page.keyboard.press('ArrowRight')
-      // oxlint-disable-next-line eslint/no-await-in-loop -- the rows settle
-      await page.waitForTimeout(1200)
-    }
-    if ((await page.locator('[data-lyric-row]').count()) !== 2) {
-      throw new Error("Karaoke Style's two rows never showed")
-    }
-    await page.keyboard.press('k')
-    await page.waitForTimeout(800)
+    await twoRowsHeld(page)
     if ((await page.locator(DOCKED_TEXT).count()) !== 1) {
       throw new Error('the docked translation never showed')
     }

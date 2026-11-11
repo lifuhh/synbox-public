@@ -10,7 +10,7 @@ import { readFileSync } from 'node:fs'
 import path from 'node:path'
 
 import { buildWorkingTree } from './build'
-import { closeBrowsers, replayFonts } from './engines/browser'
+import { closeBrowsers, replayFonts, replayYouTubeApi } from './engines/browser'
 import { evaluatorTouched } from './gate'
 import { isRecord, parseJson } from './json'
 import { holdMachine, holdSlot } from './lock'
@@ -442,6 +442,7 @@ export const runCheck = async (
       repoTop: repo.top,
     })
     replayFonts(storeDir(repo, 'bench', 'fixtures', 'fonts'))
+    replayYouTubeApi(storeDir(repo, 'bench', 'fixtures', 'youtube'))
     const runId = `check-${new Date().toISOString().replaceAll(/[:.]/gu, '-').slice(0, 19)}`
     const measureOne = async (bench: Benchmark): Promise<void> => {
       const artifactDir = storeDir(repo, 'bench', 'runs', runId, bench.id)

@@ -109,6 +109,68 @@ export const signIn = async (page: Page) => {
 }
 
 export const PLAYER_SONG = '6rG_irmOQsM'
+/**
+ * A start inside PLAYER_SONG's first line (14.8 s to 19.6 s in its karaoke timing), for a link's `?t=`: the player
+ * reports a link's start from the moment it is built, before any video arrives, so the stage shows that line without
+ * the video playing or a seek landing. The first line is where the audits always measured: their 5 s skips landed
+ * there. A player that starts playing there reaches the next line 4.6 s later
+ */
+export const PLAYER_LINE_SEC = 15
+
+/**
+ * Karaoke Style's two rows on the player's stage, held still, on a page opened at PLAYER_LINE_SEC once the player is
+ * ready: two rows on the stage for half a second (the time reads the start, then 0, then the start again as the
+ * player begins). From then on, whenever the player plays it is paused from inside the page, by a click on the
+ * controls' own Play/Pause (its togglePlay; no pointer or key, which would show the controls), within 50 ms: the
+ * video starts whenever it arrives, 2 s to 16 s after the page opens (Chromium the slower), and at most once per
+ * page. Until then a player still starting holds the link's start.
+ *
+ * Not by skipping ahead: 5 s presses from the intro (about 14 s here) reached a line only once YouTube had landed the
+ * seek before (it holds a seek asked for while one is still loading) and played the rest. On 2026-11-11, under load,
+ * a seek took 10 s to land and playback then stalled at 13 s for 30 s more, so 3 of 6 pages had no rows after 8
+ * presses. Nor by waiting for the video to play before pausing it: that is most of a page's time in Chromium
+ */
+export const twoRowsHeld = async (page: Page): Promise<void> => {
+  await page.evaluate(() => {
+    setInterval(() => {
+      const phase = document.querySelector<HTMLElement>('[data-player-stage]')
+        ?.dataset.phase
+      if (phase === 'playing' || phase === 'buffering') {
+        document
+          .querySelector<HTMLButtonElement>(
+            '[data-player-chrome] button[aria-label=Pause], [data-player-chrome] button[aria-label=Play]'
+          )
+          ?.click()
+      }
+    }, 50)
+  })
+  await page
+    .waitForFunction(
+      (holdMs) => {
+        // Since when the two rows have been on the stage, kept across the polls
+        const held = document.documentElement.dataset
+        if (document.querySelectorAll('[data-lyric-row]').length !== 2) {
+          delete held.benchRowsSince
+          return false
+        }
+        held.benchRowsSince ??= String(performance.now())
+        return performance.now() - Number(held.benchRowsSince) >= holdMs
+      },
+      500,
+      { polling: 50, timeout: 10_000 }
+    )
+    .catch(async () => {
+      const seen = await page.evaluate(() => ({
+        phase:
+          document.querySelector<HTMLElement>('[data-player-stage]')?.dataset
+            .phase ?? 'none',
+        rows: document.querySelectorAll('[data-lyric-row]').length,
+      }))
+      throw new Error(
+        `Karaoke Style's two rows never showed (${seen.rows} rows, player ${seen.phase})`
+      )
+    })
+}
 
 /**
  * A song generating, as a reload finds it: its job in the stored queue (src/lib/generation/queue.ts › STORAGE_KEY),
