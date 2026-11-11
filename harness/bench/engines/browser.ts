@@ -8,12 +8,13 @@ import {
   mkdirSync,
   readFileSync,
   renameSync,
+  statSync,
   writeFileSync,
 } from 'node:fs'
 import path from 'node:path'
 
 import { chromium, webkit } from 'playwright'
-import type { Browser, BrowserContext, Page, Route } from 'playwright'
+import type { Browser, BrowserContext, Page, Request, Route } from 'playwright'
 
 import { isRecord, parseJson } from '../json'
 import {
@@ -45,8 +46,7 @@ let fontDir: string | null = null
  * rejected and the player stayed loading: 9 of 20 player pages in pwa-landscape. A fetch that fails answers 502 with
  * its reason in RELAY_ERROR, so the wait names it instead of reading as a script that arrived
  */
-const relayYouTubeScript = async (route: Route): Promise<void> => {
-  const request = route.request()
+const forwardedHeaders = async (request: Request): Promise<Headers> => {
   const headers = new Headers()
   for (const name of ['accept', 'accept-language', 'referer', 'user-agent']) {
     // oxlint-disable-next-line eslint/no-await-in-loop -- four header reads of one request
@@ -55,7 +55,18 @@ const relayYouTubeScript = async (route: Route): Promise<void> => {
       headers.set(name, value)
     }
   }
-  const answer = await fetch(request.url(), { headers })
+  return headers
+}
+
+const fetchYouTubeScript = async (
+  url: string,
+  headers: Headers
+): Promise<{
+  body: Buffer
+  headers: Record<string, string>
+  status: number
+}> =>
+  await fetch(url, { headers })
     .then(async (response) => ({
       body: Buffer.from(await response.arrayBuffer()),
       headers: {
@@ -67,12 +78,97 @@ const relayYouTubeScript = async (route: Route): Promise<void> => {
     .catch((error: unknown) => {
       const [reason = ''] = String(error).split('\n')
       return {
-        body: '',
+        body: Buffer.alloc(0),
         headers: { [RELAY_ERROR]: reason.replaceAll(/[^ -~]/gu, '?') },
         status: 502,
       }
     })
-  await route.fulfill(answer)
+
+const relayYouTubeScript = async (route: Route): Promise<void> => {
+  const request = route.request()
+  await route.fulfill(
+    await fetchYouTubeScript(request.url(), await forwardedHeaders(request))
+  )
+}
+
+let youtubeDir: string | null = null
+/** How long a recorded `iframe_api` is answered as it is; past this it is still answered, and fetched again behind it */
+const IFRAME_API_FRESH_MS = 24 * 60 * 60 * 1000
+/** Copies being fetched again, so pages asking at once start one fetch */
+const refreshing = new Set<string>()
+
+/**
+ * The YouTube iframe API's two scripts answered from a local copy, recorded on first use, in both engines (set by
+ * `check`; the smoke test, `views.ts` and `trend` keep the live scripts). On 2026-11-11 this machine's connection to
+ * www.youtube.com stalled at times: Chromium waited 9 to 15 s for the 9 KB www-widgetapi.js in 3 of 46 player pages
+ * (its headers in 0.2 s, then the body), a check's player audits waited 28 s for it (`player-iframe never fired`), and
+ * curl took 0.5 s and then 4.1 s for iframe_api. The iframe is all these scripts make, so its wait was measuring the
+ * network, not the app. www-widgetapi.js is named by its player version and served immutable (max-age one year), so
+ * a copy is kept for good. iframe_api names the current version (YouTube rotates a few) and is served max-age=0: a
+ * copy older than IFRAME_API_FRESH_MS is still answered, and fetched again behind it. Once recorded, no page waits on
+ * the network for them. A first fetch that fails answers 502 with its reason in RELAY_ERROR
+ */
+export const replayYouTubeApi = (dir: string): void => {
+  mkdirSync(dir, { recursive: true })
+  youtubeDir = dir
+}
+
+/** The script fetched into `file`; null once it is there, else the failed answer */
+const recordYouTubeScript = async (
+  url: string,
+  headers: Headers,
+  file: string
+): Promise<{ status: number; headers: Record<string, string> } | null> => {
+  const answer = await fetchYouTubeScript(url, headers)
+  if (answer.status !== 200) {
+    return { headers: answer.headers, status: answer.status }
+  }
+  writeFileSync(`${file}.tmp`, answer.body)
+  renameSync(`${file}.tmp`, file)
+  return null
+}
+
+/** A copy fetched again behind the page; one that fails stays as it is, for a later page to try again */
+const refreshYouTubeScript = async (
+  url: string,
+  headers: Headers,
+  file: string
+): Promise<void> => {
+  refreshing.add(file)
+  try {
+    await recordYouTubeScript(url, headers, file)
+  } catch {
+    // The copy stays
+  } finally {
+    refreshing.delete(file)
+  }
+}
+
+const fromYouTubeCache = async (route: Route, dir: string): Promise<void> => {
+  const request = route.request()
+  const url = request.url()
+  const headers = await forwardedHeaders(request)
+  const file = path.join(
+    dir,
+    createHash('sha256').update(url).digest('hex').slice(0, 24)
+  )
+  if (!existsSync(file)) {
+    const failed = await recordYouTubeScript(url, headers, file)
+    if (failed !== null) {
+      await route.fulfill({ ...failed, body: '' })
+      return
+    }
+  } else if (
+    new URL(url).pathname.endsWith('/iframe_api') &&
+    Date.now() - statSync(file).mtimeMs > IFRAME_API_FRESH_MS &&
+    !refreshing.has(file)
+  ) {
+    void refreshYouTubeScript(url, headers, file)
+  }
+  await route.fulfill({
+    body: readFileSync(file),
+    headers: { 'content-type': 'text/javascript; charset=utf-8' },
+  })
 }
 
 /**
@@ -416,8 +512,14 @@ export const open = async (
   // put its iframe in the page (`player-iframe`). In WebKit the bench fetches them: in one full check (2026-10-27)
   // every WebKit player page for ~3 minutes, retries included, never got the iframe within 30 s while the same views
   // had it in ~5 s before, and the page under a load of 32 had it in 1.5 s, so the wait was on WebKit's own
-  // connection to youtube.com, not the machine's load
-  if (surface.engine === 'webkit') {
+  // connection to youtube.com, not the machine's load. In `check` both engines get them from a local copy instead
+  // (replayYouTubeApi)
+  if (youtubeDir !== null) {
+    const dir = youtubeDir
+    await context.route(YOUTUBE_IFRAME_API, async (route) => {
+      await fromYouTubeCache(route, dir)
+    })
+  } else if (surface.engine === 'webkit') {
     await context.route(YOUTUBE_IFRAME_API, relayYouTubeScript)
   }
   // Before anything else, so no frame plays a sound: WebKit has no --mute-audio

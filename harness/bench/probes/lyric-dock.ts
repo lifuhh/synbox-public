@@ -19,7 +19,12 @@ import type { Page } from 'playwright'
 
 import { open } from '../engines/browser'
 import type { BenchContext, Sample, Surface } from '../types'
-import { LAYOUT_PAGES, PLAYER_SONG } from './layout'
+import {
+  LAYOUT_PAGES,
+  PLAYER_LINE_SEC,
+  PLAYER_SONG,
+  twoRowsHeld,
+} from './layout'
 
 /** How far under the translation home's top the rows may stop and still count as at the top */
 const TOP_SLACK_PX = 32
@@ -173,7 +178,7 @@ const dispatchDrag = async (page: Page, selector: string, dy: number) => {
   await page.waitForTimeout(900)
 }
 
-/** The player with Karaoke Style's two rows on the stage, playing paused so the lines hold */
+/** The player with Karaoke Style's two rows on the stage, held still (twoRowsHeld) */
 const karaokePage = async (
   surface: Surface,
   url: string,
@@ -189,24 +194,16 @@ const karaokePage = async (
       localStorage.setItem(key, value)
     }
   }, prefs)
-  await opened.page.goto(url, { waitUntil: 'commit' })
-  await player.ready(opened.page)
-  for (let skips = 0; skips < 8; skips += 1) {
-    // oxlint-disable-next-line eslint/no-await-in-loop -- one look, then a press
-    if ((await opened.page.locator('[data-lyric-row]').count()) === 2) {
-      break
-    }
-    // oxlint-disable-next-line eslint/no-await-in-loop -- the player skips 5 s a press
-    await opened.page.keyboard.press('ArrowRight')
-    // oxlint-disable-next-line eslint/no-await-in-loop -- the rows settle
-    await opened.page.waitForTimeout(1200)
-  }
-  if ((await opened.page.locator('[data-lyric-row]').count()) !== 2) {
+  try {
+    await opened.page.goto(`${url}?t=${PLAYER_LINE_SEC}`, {
+      waitUntil: 'commit',
+    })
+    await player.ready(opened.page)
+    await twoRowsHeld(opened.page)
+  } catch (error) {
     await opened.close()
-    throw new Error("Karaoke Style's two rows never showed")
+    throw error
   }
-  await opened.page.keyboard.press('k')
-  await opened.page.waitForTimeout(800)
   return opened
 }
 
