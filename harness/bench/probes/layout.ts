@@ -1277,13 +1277,22 @@ const openState = async (
         // oxlint-disable-next-line eslint/no-await-in-loop -- steps run in order
         const l = await onScreen(page, step.hover)
         if (step.at !== undefined) {
-          // A point covered by something else moves the pointer onto that instead, and the step does nothing it says
-          // oxlint-disable-next-line eslint/no-await-in-loop -- steps run in order
-          const covered = await l.evaluate(coveredAt, step.at)
-          if (covered !== '') {
-            throw new Error(
-              `the point (${step.at.x}, ${step.at.y}) is covered by ${covered}`
-            )
+          // A point covered by something else moves the pointer onto that instead, and the step does nothing it says.
+          // Polled: during a view transition (Theater Mode) the page's root covers everything
+          const deadline = Date.now() + STEP_TIMEOUT_MS
+          for (;;) {
+            // oxlint-disable-next-line eslint/no-await-in-loop -- polled until the point is clear
+            const covered = await l.evaluate(coveredAt, step.at)
+            if (covered === '') {
+              break
+            }
+            if (Date.now() > deadline) {
+              throw new Error(
+                `the point (${step.at.x}, ${step.at.y}) is covered by ${covered}`
+              )
+            }
+            // oxlint-disable-next-line eslint/no-await-in-loop -- the next look
+            await page.waitForTimeout(100)
           }
         }
         // oxlint-disable-next-line eslint/no-await-in-loop -- steps run in order
