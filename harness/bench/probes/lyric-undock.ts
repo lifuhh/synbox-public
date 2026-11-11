@@ -13,8 +13,10 @@
 // - pulled to the bottom or the top with room there for it, it comes off (a fix that never lets it go passes nothing);
 // - let go inside the block, it ends docked or outside the block;
 // - dragged back onto the block, it docks.
-// At the default size and the largest. Each failing case counts 1 in its metric; `check` gates each at 0. The
-// largest row move and overlap in pixels are reported beside them.
+// At the default size and the largest on the song's first line (two rows), and at the largest on a one-row line
+// (LINE_ONE_ROW_SEC), where the translation pulled up against the rows overlapped them by 1px (2026-11-11). Each
+// failing case counts 1 in its metric; `check` gates each at 0. The largest row move and overlap in pixels are
+// reported beside them.
 
 import path from 'node:path'
 
@@ -44,10 +46,14 @@ const TRANSLATION = '[data-lyric-translation] [data-lyrics-style-toggle]'
 const DOCKED_TEXT =
   '[data-docked-translation="docked"] .docked-translation-text'
 
-/** The default Karaoke size, and the largest the slider gives */
-const SIZES = [
-  { label: 'default size', pref: null },
-  { label: 'largest size', pref: '1.1' },
+/** A start inside PLAYER_SONG's line at 77.7 s to 85.2 s, for a link's `?t=`: one row of lines, the other empty */
+const LINE_ONE_ROW_SEC = 80
+
+/** The default Karaoke size and the largest the slider gives, on the first line; the largest on a one-row line */
+const CASES = [
+  { label: 'default size', pref: null, sec: PLAYER_LINE_SEC },
+  { label: 'largest size', pref: '1.1', sec: PLAYER_LINE_SEC },
+  { label: 'largest size, one-row line', pref: '1.1', sec: LINE_ONE_ROW_SEC },
 ] as const
 
 const KARAOKE = {
@@ -370,7 +376,7 @@ const dockedPage = async (
   surface: Surface,
   turned: boolean,
   url: string,
-  size: string | null
+  { pref, sec }: (typeof CASES)[number]
 ) => {
   const player = LAYOUT_PAGES.find((p) => p.name === 'player')
   if (player === undefined) {
@@ -378,7 +384,7 @@ const dockedPage = async (
   }
   const opened = await open(surface)
   const prefs: Record<string, string> =
-    size === null ? KARAOKE : { ...KARAOKE, lyricsFontSizeTwoLines: size }
+    pref === null ? KARAOKE : { ...KARAOKE, lyricsFontSizeTwoLines: pref }
   await opened.context.addInitScript((stored) => {
     for (const [key, value] of Object.entries(stored)) {
       localStorage.setItem(key, value)
@@ -387,7 +393,7 @@ const dockedPage = async (
   await opened.context.addInitScript(installMeter)
   const { page } = opened
   try {
-    await page.goto(`${url}?t=${PLAYER_LINE_SEC}`, { waitUntil: 'commit' })
+    await page.goto(`${url}?t=${sec}`, { waitUntil: 'commit' })
     await player.ready(page)
     // The rows are waited for after turning, which mounts the player again (lyric-shift.ts › twoLines)
     if (turned) {
@@ -624,17 +630,17 @@ const undockOnce = async (
   }
 }
 
-/** The owner's case in one view at one size: the docked block to the middle of the stage, then each target and back */
+/** The owner's case in one view, at one size on one line: the docked block to the middle of the stage, then each target and back */
 const undockAtSize = async (
   surface: Surface,
   turned: boolean,
   url: string,
-  size: (typeof SIZES)[number],
+  setup: (typeof CASES)[number],
   tally: Tally,
   notes: string[],
   shot: string
 ) => {
-  const { page, close } = await dockedPage(surface, turned, url, size.pref)
+  const { page, close } = await dockedPage(surface, turned, url, setup)
   try {
     const first = await measure(page)
     if (first.block === null) {
@@ -648,7 +654,7 @@ const undockAtSize = async (
     await page.waitForTimeout(SETTLE_MS)
     for (const target of TARGETS) {
       // oxlint-disable-next-line eslint/no-await-in-loop -- one drag at a time, each from where the last left things
-      await undockOnce(page, target, size.label, tally, notes)
+      await undockOnce(page, target, setup.label, tally, notes)
     }
     await page.screenshot({ path: shot })
   } finally {
@@ -673,13 +679,13 @@ const undockAudit = async (
     undockRowsMoved: 0,
   }
   const notes: string[] = []
-  for (const [index, size] of SIZES.entries()) {
+  for (const [index, setup] of CASES.entries()) {
     // oxlint-disable-next-line eslint/no-await-in-loop -- one page at a time
     await undockAtSize(
       surface,
       turned,
       url,
-      size,
+      setup,
       tally,
       notes,
       path.join(artifactDir, `screen-${index}.png`)
