@@ -871,7 +871,7 @@
   &[data-torn] .docked-translation-text {
     background: oklch(0 0 0 / 0.6);
     outline: 2px solid oklch(1 0 0 / 0.75);
-    scale: 1.05;
+    scale: var(--torn-scale);
   }
 
   @media (prefers-reduced-motion: reduce) {

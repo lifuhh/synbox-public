@@ -57,7 +57,7 @@ import {
 } from '@/lib/lyrics-style'
 import { getLyricsThemeColors } from '@/lib/lyrics-themes'
 import type { LyricsThemeColors } from '@/lib/lyrics-themes'
-import { pagePoint } from '@/lib/page-turn'
+import { pageBox, pagePoint } from '@/lib/page-turn'
 import {
   useGetKaraokeById,
   useGetLyricsBySongId,
@@ -909,6 +909,8 @@ const StaggerTranslation = ({
 // translation springs back
 const pullToTear = (stageHeight: number) =>
   Math.max(40, Math.min(64, 0.1 * stageHeight))
+// How much larger the docked translation's text draws once pulled past pullToTear (globals.css › docked-translation)
+const TORN_SCALE = 1.05
 // How long after Karaoke Style is switched the rows keep their centre while their size settles
 const SETTLE_HOLD_MS = 1000
 const TAP_SLOP_PX = { mouse: 4, touch: 10 }
@@ -951,13 +953,16 @@ const drawnTopIn = (element: HTMLElement, layer: HTMLElement) => {
   return top
 }
 
-// The rows' drawn lines within the lyrics' layer: their boxes, not their block, which also holds the docked place
-const rowsTextOf = (layer: HTMLElement): Span | null => {
-  const rows = [
+const shownRowsOf = (layer: HTMLElement) =>
+  [
     ...layer.querySelectorAll<HTMLElement>(
       '[data-lyric-rows-area] [data-lyric-row]'
     ),
   ].filter((row) => row.offsetHeight > 0)
+
+// The rows' drawn lines within the lyrics' layer: their boxes, not their block, which also holds the docked place
+const rowsTextOf = (layer: HTMLElement): Span | null => {
+  const rows = shownRowsOf(layer)
   if (rows.length === 0) {
     return null
   }
@@ -966,6 +971,25 @@ const rowsTextOf = (layer: HTMLElement): Span | null => {
     bottom: Math.max(...rows.map((row, at) => tops[at] + row.offsetHeight)),
     top: Math.min(...tops),
   }
+}
+
+// An element's drawn span within the lyrics' layer, to the subpixel (offsets round to whole pixels): its box as drawn,
+// transforms included, in the page's axes
+const drawnSpanIn = (element: Element, layer: Element): Span => {
+  const box = pageBox(element.getBoundingClientRect())
+  const base = pageBox(layer.getBoundingClientRect()).top
+  return { bottom: box.bottom - base, top: box.top - base }
+}
+
+// The rows' drawn lines within the lyrics' layer, to the subpixel: what a pulled translation stops short of
+const rowsDrawnIn = (layer: HTMLElement): Span | null => {
+  const spans = shownRowsOf(layer).map((row) => drawnSpanIn(row, layer))
+  return spans.length === 0
+    ? null
+    : {
+        bottom: Math.max(...spans.map((span) => span.bottom)),
+        top: Math.min(...spans.map((span) => span.top)),
+      }
 }
 
 // How tall the translation now on its own would stand docked: its unseen docked copy (TwoRows' reserve)
@@ -1101,15 +1125,19 @@ const DockedTranslation = ({
     element.setPointerCapture(event.pointerId)
     const stage = element.closest('[data-player-stage]')
     const layer = element.closest<HTMLElement>('[data-lyric-layer]')
-    const from = layer ? drawnTopIn(element, layer) : 0
-    const lines = layer && rowsTextOf(layer)
+    // To the subpixel: rounded offsets put the text up to a pixel over the lines it stops under
+    const text = layer ? drawnSpanIn(element, layer) : null
+    const from = text?.top ?? 0
+    const tall = text ? text.bottom - text.top : element.offsetHeight
+    const lines = layer && rowsDrawnIn(layer)
     const height = layer?.clientHeight ?? 0
     press.current = {
       from,
-      height: element.offsetHeight,
-      // Its place under the lines counts as clear, however close the lines come to it
+      height: tall,
+      // Its place under the lines counts as clear, however close the lines come to it. Under them it stops where its
+      // text, grown about its centre to TORN_SCALE, still clears them
       keepOut: lines && {
-        bottom: Math.min(lines.bottom, from),
+        bottom: Math.min(lines.bottom + ((TORN_SCALE - 1) * tall) / 2, from),
         top: lines.top - clearGap(height),
       },
       moved: false,
@@ -1169,6 +1197,7 @@ const DockedTranslation = ({
   const vars: CssVars = {
     '--dock-pull': `${pull.px}px`,
     '--dock-reach': reach,
+    '--torn-scale': TORN_SCALE,
   }
   // A translation longer than its place shrinks into it, from its top, rather than pushing the rows up
   const placeRef = useRef<HTMLDivElement>(null)
