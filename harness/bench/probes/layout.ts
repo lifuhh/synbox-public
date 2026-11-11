@@ -300,6 +300,8 @@ const PASSING_PHASES = ['loading', 'starting', 'buffering']
  * video starting, A231)
  */
 const STAGE_POINT = { x: 200, y: 60 }
+/** The same on an upright phone's full-screen player, whose rail is a row across its top (y 47 to 99) while it shows */
+const FULL_SCREEN_POINT = { x: 200, y: 160 }
 
 // The top bar's search: a field in the bar from 768px wide, a button that opens the field over the bar on a phone
 // upright. Both open the instant results list once something is typed
@@ -480,7 +482,7 @@ export const OPENED_STATES: Record<string, OpenedState[]> = {
       steps: [
         { at: STAGE_POINT, hover: { attr: 'data-player-stage' } },
         { press: { name: 'Fullscreen', role: 'button' } },
-        { at: STAGE_POINT, hover: { attr: 'data-player-stage' } },
+        { at: FULL_SCREEN_POINT, hover: { attr: 'data-player-stage' } },
         { press: { name: 'Lock Landscape', role: 'button' } },
         { shows: { name: 'Exit Fullscreen', role: 'button' } },
       ],
@@ -572,7 +574,7 @@ export const OPENED_STATES: Record<string, OpenedState[]> = {
       steps: [
         { at: STAGE_POINT, hover: { attr: 'data-player-stage' } },
         { press: { name: 'Fullscreen', role: 'button' } },
-        { at: STAGE_POINT, hover: { attr: 'data-player-stage' } },
+        { at: FULL_SCREEN_POINT, hover: { attr: 'data-player-stage' } },
         { press: { name: 'Lock Landscape', role: 'button' } },
         { shows: { name: 'Exit Fullscreen', role: 'button' } },
         { press: { name: 'Lyrics Style', role: 'button' } },
