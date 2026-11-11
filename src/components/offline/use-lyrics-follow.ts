@@ -53,6 +53,9 @@ const observeSize = (elements: Element[], onResize: () => void) => {
 interface LyricsFollowOptions {
   // The line to keep in view: the one being sung, or the last one reached through an instrumental gap
   target: number
+  // The target's translation span, whose one translation shows after its last line: kept in view with the target
+  // where it fits. Absent or one line when the target stands alone
+  span?: { first: number; last: number }
   // Synced lyrics only; plain lyrics never follow anything
   enabled: boolean
   // How far down the box the followed line sits, as a share of its height
@@ -67,6 +70,49 @@ interface LyricsFollowOptions {
   glideMs?: number
 }
 
+// The followed line's span as offsets from the line's top: where its first line starts (<= 0) and where its last
+// line, with the translation, ends. null when the line stands alone
+const spanAround = (
+  line: HTMLElement,
+  first: HTMLElement | null | undefined,
+  last: HTMLElement | null | undefined
+) => {
+  if (!first || !last || first === last) {
+    return null
+  }
+  const { top } = line.getBoundingClientRect()
+  return {
+    end: last.getBoundingClientRect().bottom - top,
+    start: first.getBoundingClientRect().top - top,
+  }
+}
+
+// How far below the box's top the followed line's top sits. A line alone: at followAt, or centred. A line in a
+// span, centred: the whole span is centred when it fits, so the box holds still while its lines are sung. At
+// followAt: the line moves up as far as the span's translation needs to show, never above the box's top
+const followOffset = ({
+  box,
+  line,
+  span,
+  centred,
+  followAt,
+}: {
+  box: number
+  line: number
+  span: { start: number; end: number } | null
+  centred: boolean
+  followAt: number
+}) => {
+  if (centred) {
+    const whole = span === null ? Infinity : span.end - span.start
+    return whole <= box && span !== null
+      ? (box - whole) / 2 - span.start
+      : Math.max(0, (box - line) / 2)
+  }
+  const at = box * followAt
+  return span === null ? at : Math.max(0, Math.min(at, box - span.end))
+}
+
 // The browser's own smooth scroll moves one line in about 120 ms on WebKit, a jump rather than a glide
 const GLIDE_MS = 450
 
@@ -79,6 +125,7 @@ const easeInOut = (t: number) =>
 // change height (`content` resizes), the line being read stays where it was
 export const useLyricsFollow = <Content extends HTMLElement = HTMLDivElement>({
   target,
+  span,
   enabled,
   followAt,
   centred = false,
@@ -86,6 +133,8 @@ export const useLyricsFollow = <Content extends HTMLElement = HTMLDivElement>({
   isPlaying,
   glideMs = GLIDE_MS,
 }: LyricsFollowOptions) => {
+  const spanFirst = span?.first ?? target
+  const spanLast = span?.last ?? target
   const [following, setFollowing] = useState(true)
   const followingRef = useRef(following)
   useLayoutEffect(() => {
@@ -111,9 +160,17 @@ export const useLyricsFollow = <Content extends HTMLElement = HTMLDivElement>({
         return
       }
       stopGlide()
-      const offset = centred
-        ? Math.max(0, (box.clientHeight - block.offsetHeight) / 2)
-        : box.clientHeight * followAt
+      const offset = followOffset({
+        box: box.clientHeight,
+        centred,
+        followAt,
+        line: block.offsetHeight,
+        span: spanAround(
+          block,
+          blocks.current[spanFirst],
+          blocks.current[spanLast]
+        ),
+      })
       const from = box.scrollTop
       const to = Math.min(
         Math.max(
@@ -145,7 +202,7 @@ export const useLyricsFollow = <Content extends HTMLElement = HTMLDivElement>({
       }
       glide.current = requestAnimationFrame(step)
     },
-    [target, followAt, centred, glideMs, stopGlide]
+    [target, spanFirst, spanLast, followAt, centred, glideMs, stopGlide]
   )
 
   useEffect(() => {

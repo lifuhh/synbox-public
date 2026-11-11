@@ -10,10 +10,11 @@ import {
   SunIcon,
   TvMinimalPlayIcon,
 } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router'
 
 import {
+  lineInSpan,
   linePhase,
   LyricLineBlock,
 } from '@/components/offline/lyric-line-block'
@@ -33,7 +34,7 @@ import {
   readerPrefsAtom,
 } from '@/lib/offline/reader-prefs'
 import type { OfflineLine, OfflineSong } from '@/lib/offline/song'
-import { OFFLINE_SONG_VERSION } from '@/lib/offline/song'
+import { isTimed, lineSpans } from '@/lib/offline/song'
 import { useLyricsSong } from '@/lib/offline/sync'
 import { useOnline } from '@/lib/pwa'
 import type { CssVars } from '@/types'
@@ -295,9 +296,14 @@ const ReaderPage = () => {
   const root = useRef<HTMLDivElement>(null)
   useThemeColor(root)
 
-  // Songs saved before timing was kept read as plain text until the next sync fetches them again
-  const timed = song?.version === OFFLINE_SONG_VERSION
+  const timed = song !== undefined && song !== null && isTimed(song)
   const synced = timed && prefs.mode === 'synced'
+  const show = useTextLines()
+  const lines = song?.lines ?? NO_LINES
+  const spans = useMemo(
+    () => lineSpans(lines, show.language, show.translation),
+    [lines, show.language, show.translation]
+  )
   const {
     lit,
     duration,
@@ -312,7 +318,7 @@ const ReaderPage = () => {
     followHandlers,
     seek,
     togglePlay,
-  } = useSyncedLyrics(song?.lines ?? NO_LINES, synced)
+  } = useSyncedLyrics(lines, spans, synced)
   const {
     barsShown,
     onPageTap,
@@ -332,7 +338,6 @@ const ReaderPage = () => {
     setBarsShown(true)
     setPrefs({ mode: prefs.mode === 'synced' ? 'reader' : 'synced' })
   }
-  const show = useTextLines()
   const video = useVideoColor()
   const readerVars: CssVars = {
     '--reader-accent':
@@ -404,6 +409,7 @@ const ReaderPage = () => {
                 show={show}
                 line={line}
                 first={index === 0}
+                span={lineInSpan(lines, spans, index, lit, started)}
                 synced={synced}
                 phase={linePhase(index, lit, started)}
                 blockRef={(element) => {

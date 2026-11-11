@@ -14,7 +14,7 @@ import { parseLyricsDocument } from '@/lib/lyrics-document'
 import { useOnline } from '@/lib/pwa'
 import { QUERY_KEYS } from '@/lib/react-query/query-keys'
 import { getKaraoke } from '@/lib/synbox-flask/api'
-import type { KaraokeDocLine } from '@/types'
+import type { KaraokeDoc } from '@/types'
 
 import type { OfflineSong } from './song'
 import { OFFLINE_SONG_VERSION, offlineLines, romanizeTitle } from './song'
@@ -168,12 +168,10 @@ const lyricsRows = async (videoIds: string[]) => {
 const fetchKaraoke = async (
   videoId: string,
   row: Record<string, unknown>
-): Promise<KaraokeDocLine[] | null> => {
+): Promise<KaraokeDoc | null> => {
   const doc = await getKaraoke(videoId, null)
   const plain = typeof row.plain_lyrics === 'string' ? row.plain_lyrics : ''
-  return doc !== null && karaokeMatchesLyrics(doc.lines, plain)
-    ? doc.lines
-    : null
+  return doc !== null && karaokeMatchesLyrics(doc.lines, plain) ? doc : null
 }
 
 // One song in the saved shape, from its lyrics row, its karaoke timing and thumbnail (fetched here), and its
@@ -188,7 +186,7 @@ const buildSong = async (
     return null
   }
   const title = known?.title ?? videoId
-  let karaoke: KaraokeDocLine[] | null = null
+  let karaoke: KaraokeDoc | null = null
   let timingPending = false
   try {
     karaoke = await fetchKaraoke(videoId, found.row)
