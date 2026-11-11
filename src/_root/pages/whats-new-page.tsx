@@ -50,10 +50,14 @@ const WhatsNewPage = () => {
                 {entryDate(entry.date)}
               </p>
             </header>
-            {/* Block, not flex: a flex item is no longer a list item, and loses its bullet */}
-            <ul className='list-disc space-y-2 pl-4 text-sm text-pretty text-muted-foreground'>
+            <ul className='flex flex-col gap-2 text-sm text-pretty text-muted-foreground'>
               {entry.items.map((item) => (
-                <li key={item}>{item}</li>
+                // A drawn dot, centred on the first line (text-sm: 20px lines, a 4px dot 8px down)
+                <li
+                  key={item}
+                  className="relative pl-4 before:absolute before:top-2 before:left-1 before:size-1 before:rounded-full before:bg-current before:content-['']">
+                  {item}
+                </li>
               ))}
             </ul>
           </section>
