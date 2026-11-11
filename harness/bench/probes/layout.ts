@@ -781,6 +781,33 @@ export const playerUp = async (
   await phaseHeld(page)
 }
 
+/**
+ * The player's controls brought up by a finger's tap at (x, y) on the screen. A tap toggles them, so one that lands
+ * while they still show hides them: first wait for them to go (1.8 s after the last input on a touch screen; the
+ * player page's `ready` ends with the pointer on the stage, which shows them). Ones still up after 5 s are held
+ * (a paused player) and get no tap
+ */
+export const tapControlsUp = async (
+  page: Page,
+  at: { x: number; y: number }
+): Promise<void> => {
+  const hidden = await page
+    .waitForFunction(
+      () =>
+        document.querySelector('[data-player-stage] [data-controls-hidden]') !==
+        null,
+      null,
+      { polling: 100, timeout: 5000 }
+    )
+    .then(
+      () => true,
+      () => false
+    )
+  if (hidden) {
+    await page.touchscreen.tap(at.x, at.y)
+  }
+}
+
 /** The pointer onto the stage's corner, which brings the controls back */
 export const pointerOnStage = async (page: Page): Promise<void> => {
   await page

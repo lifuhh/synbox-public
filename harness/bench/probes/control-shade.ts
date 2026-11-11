@@ -12,7 +12,7 @@ import type { Page } from 'playwright'
 
 import { open } from '../engines/browser'
 import type { BenchContext, Sample, Surface } from '../types'
-import { LAYOUT_PAGES, PLAYER_SONG } from './layout'
+import { LAYOUT_PAGES, PLAYER_SONG, tapControlsUp } from './layout'
 
 const LIMIT_MS = 90_000
 /** A layer this many times a control's area, or more, is a band, not the control's own disc or pill */
@@ -66,8 +66,19 @@ const shadeAudit = async (
     if (centre === null) {
       throw new Error('no player stage')
     }
-    await page.touchscreen.tap(centre.x, centre.y)
+    await tapControlsUp(page, centre)
     await page.waitForTimeout(600)
+    // With the controls away there is nothing to judge, and the count would pass on nothing
+    if (
+      await page.evaluate(
+        () =>
+          document.querySelector(
+            '[data-player-stage] [data-controls-hidden]'
+          ) !== null
+      )
+    ) {
+      throw new Error('the controls never showed')
+    }
     const found = await page.evaluate(
       ({ bandFactor, coverShare }) => {
         // oxlint-disable-next-line unicorn/consistent-function-scoping -- runs in the page: nothing outside this function is there
