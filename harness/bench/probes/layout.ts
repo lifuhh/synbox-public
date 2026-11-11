@@ -853,8 +853,9 @@ export const tapControlsUp = async (
 
 /**
  * For a page without the bench's recorder (`openPlainChromium`): the player's stage built and its phase out of
- * PASSING_PHASES for HOLD_MS, polled from here. Returns the phase it settled in, 'none' when the page has no player
- * stage after `timeoutMs` (a /v/ page for a video outside the library has none), or the phase it was stuck in
+ * PASSING_PHASES and `error` (YouTube's own screen, none of the player's controls) for HOLD_MS, polled from here.
+ * Unsettled after `timeoutMs`, it returns the phase it was in: 'none' for a page with no player stage (a /v/ page
+ * for a video outside the library; it may show the player, errored, while it checks)
  */
 export const playerSettled = async (
   page: Page,
@@ -871,7 +872,7 @@ export const playerSettled = async (
     )
     const now = Date.now()
     since =
-      phase !== 'none' && !PASSING_PHASES.includes(phase)
+      phase !== 'none' && phase !== 'error' && !PASSING_PHASES.includes(phase)
         ? (since ?? now)
         : null
     if (since !== null && now - since >= HOLD_MS) {
