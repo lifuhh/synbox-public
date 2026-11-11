@@ -292,6 +292,15 @@ const BENIGN_CONSOLE: RegExp[] = [
 // The player's passing states; the audit waits until it is out of them
 const PASSING_PHASES = ['loading', 'starting', 'buffering']
 
+/**
+ * Where a state's pointer goes on the player's stage to bring the controls back, from its top-left corner: bare stage
+ * in every view, controls shown or not (measured 2026-11-12). Off the video's centre, where the YouTube frame would
+ * take its moves. It was (60, 60) until then, which on a phone on its side is the rail floating over the stage: the
+ * move counted as leaving the player, so the controls showed only when something else had just woken them (the
+ * video starting, A231)
+ */
+const STAGE_POINT = { x: 200, y: 60 }
+
 // The top bar's search: a field in the bar from 768px wide, a button that opens the field over the bar on a phone
 // upright. Both open the instant results list once something is typed
 const SEARCH_FIELD: OpenedState = {
@@ -459,7 +468,7 @@ export const OPENED_STATES: Record<string, OpenedState[]> = {
       // pointer stays off the video's centre, where the YouTube frame would take its moves
       name: 'controls',
       steps: [
-        { at: { x: 60, y: 60 }, hover: { attr: 'data-player-stage' } },
+        { at: STAGE_POINT, hover: { attr: 'data-player-stage' } },
         { shows: { name: 'Next', role: 'button' } },
       ],
     },
@@ -469,9 +478,9 @@ export const OPENED_STATES: Record<string, OpenedState[]> = {
       // over the controls there)
       name: 'lock-landscape',
       steps: [
-        { at: { x: 60, y: 60 }, hover: { attr: 'data-player-stage' } },
+        { at: STAGE_POINT, hover: { attr: 'data-player-stage' } },
         { press: { name: 'Fullscreen', role: 'button' } },
-        { at: { x: 60, y: 60 }, hover: { attr: 'data-player-stage' } },
+        { at: STAGE_POINT, hover: { attr: 'data-player-stage' } },
         { press: { name: 'Lock Landscape', role: 'button' } },
         { shows: { name: 'Exit Fullscreen', role: 'button' } },
       ],
@@ -482,9 +491,9 @@ export const OPENED_STATES: Record<string, OpenedState[]> = {
       // down beside the song
       name: 'theater',
       steps: [
-        { at: { x: 60, y: 60 }, hover: { attr: 'data-player-stage' } },
+        { at: STAGE_POINT, hover: { attr: 'data-player-stage' } },
         { press: { name: 'Theater Mode', role: 'button' } },
-        { at: { x: 60, y: 60 }, hover: { attr: 'data-player-stage' } },
+        { at: STAGE_POINT, hover: { attr: 'data-player-stage' } },
         { shows: { name: 'Default View', role: 'button' } },
       ],
       views: ['web'],
@@ -494,7 +503,7 @@ export const OPENED_STATES: Record<string, OpenedState[]> = {
       // edge): whatever the bar shows for a hovered button must stay whole and cover no other control
       name: 'control-tip',
       steps: [
-        { at: { x: 60, y: 60 }, hover: { attr: 'data-player-stage' } },
+        { at: STAGE_POINT, hover: { attr: 'data-player-stage' } },
         { hover: { name: /^(?:Exit )?Full ?screen$/iu, role: 'button' } },
         { shows: { name: /^(?:Exit )?Full ?screen$/iu, role: 'button' } },
       ],
@@ -505,7 +514,7 @@ export const OPENED_STATES: Record<string, OpenedState[]> = {
       // full-screen player; every speed the video allows must be reachable, none under the edge
       name: 'speed-menu',
       steps: [
-        { at: { x: 60, y: 60 }, hover: { attr: 'data-player-stage' } },
+        { at: STAGE_POINT, hover: { attr: 'data-player-stage' } },
         { press: { name: /^Playback Speed/u, role: 'button' } },
         { shows: { name: /^Playback Speed/u, role: 'menu' } },
       ],
@@ -516,10 +525,10 @@ export const OPENED_STATES: Record<string, OpenedState[]> = {
       // the bar's box overlaps there (2026-10-26, not this button's doing: the bar's box is the same at 1×)
       name: 'speed-slowed',
       steps: [
-        { at: { x: 60, y: 60 }, hover: { attr: 'data-player-stage' } },
+        { at: STAGE_POINT, hover: { attr: 'data-player-stage' } },
         { press: { name: /^Playback Speed/u, role: 'button' } },
         { press: { name: '0.75×', role: 'menuitemradio' } },
-        { at: { x: 60, y: 60 }, hover: { attr: 'data-player-stage' } },
+        { at: STAGE_POINT, hover: { attr: 'data-player-stage' } },
         { shows: { name: 'Playback Speed 0.75×', role: 'button' } },
       ],
       views: ['web', 'pwa-portrait', 'pwa-landscape'],
@@ -549,7 +558,7 @@ export const OPENED_STATES: Record<string, OpenedState[]> = {
       // On its side the rail floats over the video and shows with the controls
       name: 'style-floating',
       steps: [
-        { at: { x: 60, y: 60 }, hover: { attr: 'data-player-stage' } },
+        { at: STAGE_POINT, hover: { attr: 'data-player-stage' } },
         { shows: { name: 'Lyrics Style', role: 'button' } },
         { press: { name: 'Lyrics Style', role: 'button' } },
         { shows: { name: 'Lyrics Style', role: 'dialog' } },
@@ -561,9 +570,9 @@ export const OPENED_STATES: Record<string, OpenedState[]> = {
       // axis and any pinned part follow the turn (owner, 2026-10-26: its sticky footer floated mid-panel there)
       name: 'lock-landscape-style',
       steps: [
-        { at: { x: 60, y: 60 }, hover: { attr: 'data-player-stage' } },
+        { at: STAGE_POINT, hover: { attr: 'data-player-stage' } },
         { press: { name: 'Fullscreen', role: 'button' } },
-        { at: { x: 60, y: 60 }, hover: { attr: 'data-player-stage' } },
+        { at: STAGE_POINT, hover: { attr: 'data-player-stage' } },
         { press: { name: 'Lock Landscape', role: 'button' } },
         { shows: { name: 'Exit Fullscreen', role: 'button' } },
         { press: { name: 'Lyrics Style', role: 'button' } },
@@ -589,7 +598,7 @@ export const OPENED_STATES: Record<string, OpenedState[]> = {
       // The same on a phone on its side, where the rail floats over the video
       name: 'style-floating-own',
       steps: [
-        { at: { x: 60, y: 60 }, hover: { attr: 'data-player-stage' } },
+        { at: STAGE_POINT, hover: { attr: 'data-player-stage' } },
         { shows: { name: 'Lyrics Style', role: 'button' } },
         { press: { name: 'Lyrics Style', role: 'button' } },
         { shows: { name: 'Lyrics Style', role: 'dialog' } },
@@ -1215,6 +1224,20 @@ const onScreen = async (
   }
 }
 
+/** In the page: what is drawn at `at` from the element's top-left corner, when it is not the element ('' when it is) */
+const coveredAt = (el: Element, at: { x: number; y: number }): string => {
+  const r = el.getBoundingClientRect()
+  const hit = document.elementFromPoint(r.left + at.x, r.top + at.y)
+  if (hit === null) {
+    return 'nothing (off screen)'
+  }
+  if (el.contains(hit)) {
+    return ''
+  }
+  const label = hit.getAttribute('aria-label')
+  return `<${hit.tagName.toLowerCase()}${label === null ? '' : ` "${label}"`}>`
+}
+
 /** Opens a state: each step in turn, as a person would (a tap on a phone, a click with a mouse) */
 const openState = async (
   page: Page,
@@ -1253,6 +1276,16 @@ const openState = async (
       } else if ('hover' in step) {
         // oxlint-disable-next-line eslint/no-await-in-loop -- steps run in order
         const l = await onScreen(page, step.hover)
+        if (step.at !== undefined) {
+          // A point covered by something else moves the pointer onto that instead, and the step does nothing it says
+          // oxlint-disable-next-line eslint/no-await-in-loop -- steps run in order
+          const covered = await l.evaluate(coveredAt, step.at)
+          if (covered !== '') {
+            throw new Error(
+              `the point (${step.at.x}, ${step.at.y}) is covered by ${covered}`
+            )
+          }
+        }
         // oxlint-disable-next-line eslint/no-await-in-loop -- steps run in order
         await l.hover({
           force: true,
