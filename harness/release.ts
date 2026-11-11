@@ -8,6 +8,10 @@
 //                                       live, smoke-test https://synbox.io: 2 Netlify builds
 //   bun harness/release.ts --no-preview the same without the deploy preview, once the local smoke passed: 1 build
 //
+// What's New (docs/whats-new.md): a release that changes what listeners see ships the undated entry at the top of
+// src/lib/whats-new/entries.json, stamped with the ship date; without one it stops before anything runs. --dry-run
+// prints the entry.
+//
 // Netlify build minutes are scarce: the local smoke (harness/local-site.ts, Netlify's own runtime on this machine)
 // runs first, so a broken staging stops the release with no build spent.
 //
@@ -18,6 +22,8 @@ import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { parseArgs } from 'node:util'
 
+import { BUG_FIXES, parseEntries } from '../src/lib/whats-new/model'
+import type { WhatsNewEntry } from '../src/lib/whats-new/model'
 import { isRecord, parseJson } from './bench/json'
 import { readVerdict, repoAt, storeDir } from './bench/store'
 
@@ -349,6 +355,69 @@ const smokeBeforeBuilding = (dir: string) => {
   }
 }
 
+// What's New (docs/whats-new.md): staging's entries, and what a listener can see change
+const ENTRIES = 'src/lib/whats-new/entries.json'
+const SEEN_BY_LISTENERS = ['src/', 'public/', 'index.html']
+
+// The ship date, on this machine's calendar: the day the owner releases
+const today = () => new Intl.DateTimeFormat('en-CA').format(new Date())
+
+/**
+ * The What's New entry this release ships: the undated one at the top of staging's entries. A release that changes
+ * what listeners see and has none is refused, with the entry to add. Without --dry-run the entry's date is stamped
+ * with today's and pushed to staging, so the check, the build and the site all carry it. Null when nothing a listener
+ * sees changed.
+ */
+const whatsNew = (dir: string): WhatsNewEntry | null => {
+  const seen = git('diff', '--name-only', 'origin/main', `origin/${STAGING}`)
+    .split('\n')
+    .filter((file) => file !== '' && file !== ENTRIES)
+    .some((file) =>
+      SEEN_BY_LISTENERS.some((p) => file === p || file.startsWith(p))
+    )
+  if (!seen) {
+    say('whats-new: nothing a listener sees changed; no entry needed')
+    return null
+  }
+  const file = path.join(dir, ENTRIES)
+  const raw = readFileSync(file, 'utf-8')
+  const [next] = parseEntries(JSON.parse(raw))
+  const date = today()
+  // Dated today by hand already: it ships as it is
+  if (next?.date === date) {
+    say(`whats-new: ships "${next.title}" (${next.id}), dated ${date}`)
+    return next
+  }
+  if (next?.date !== null) {
+    throw new Error(
+      [
+        `whats-new: staging changes what listeners see, but ${ENTRIES} has no undated entry at the top.`,
+        'Add one by docs/whats-new.md in a PR into staging, then release again. For fixes only:',
+        `  { "id": "fixes-${today()}", "date": null, "title": "Fixes", "items": ["${BUG_FIXES}"] }`,
+      ].join('\n')
+    )
+  }
+  say(`whats-new: ships "${next.title}" (${next.id})`)
+  for (const item of next.items) {
+    say(`  - ${item}`)
+  }
+  if (flags['dry-run'] === true) {
+    say(`whats-new: a release stamps it ${date}`)
+    return next
+  }
+  writeFileSync(file, raw.replace(/"date": null/u, `"date": "${date}"`))
+  run('git', ['-C', dir, 'add', ENTRIES], dir)
+  run(
+    'git',
+    ['-C', dir, 'commit', '--quiet', '-m', `What's New: ship date ${date}`],
+    dir
+  )
+  run('git', ['-C', dir, 'push', '--quiet', 'origin', `HEAD:${STAGING}`], dir)
+  git('fetch', '--quiet', 'origin')
+  say(`whats-new: stamped ${date} and pushed to staging`)
+  return { ...next, date }
+}
+
 const release = () => {
   git('fetch', '--quiet', 'origin')
   const ahead = git('rev-list', '--count', `origin/main..origin/${STAGING}`)
@@ -362,6 +431,10 @@ const release = () => {
     say(`  #${pr.number} ${pr.title}`)
   }
   const dir = stagingWorktree()
+  // A deploy preview ships nothing, so nothing is stamped for one
+  if (flags.preview !== true) {
+    whatsNew(dir)
+  }
   checkStaging(dir)
   if (flags['dry-run'] === true) {
     say(
