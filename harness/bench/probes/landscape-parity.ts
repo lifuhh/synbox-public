@@ -15,7 +15,12 @@ import type { Page } from 'playwright'
 
 import { open, PWA_LANDSCAPE, PWA_PORTRAIT } from '../engines/browser'
 import type { BenchContext, Sample, Surface } from '../types'
-import { LAYOUT_PAGES, PLAYER_SONG, tapControlsUp } from './layout'
+import {
+  controlsAtRest,
+  LAYOUT_PAGES,
+  PLAYER_SONG,
+  tapControlsUp,
+} from './layout'
 
 const LIMIT_MS = 180_000
 /** Boxes this close are the same layout */
@@ -94,7 +99,7 @@ const press = async (page: Page, label: string) => {
   await page.waitForTimeout(1200)
 }
 
-/** The controls show on a tap on the stage, in the screen's axes */
+/** The controls show on a tap on the stage, in the screen's axes; returns once they are shown and at rest */
 const showControls = async (page: Page) => {
   const centre = await page.evaluate(() => {
     const r = document
@@ -106,7 +111,6 @@ const showControls = async (page: Page) => {
     throw new Error('no player stage')
   }
   await tapControlsUp(page, centre)
-  await page.waitForTimeout(600)
 }
 
 const measure = async (
@@ -275,6 +279,11 @@ const reach = async (
     }
     await showControls(page)
     const m = await measure(page)
+    // A capture of controls on their way in or out compares half-drawn boxes (2026-11-12: the rail at 8px of 55)
+    const moved = await page.evaluate(controlsAtRest)
+    if (moved !== '') {
+      throw new Error(`the controls moved during the capture: ${moved}`)
+    }
     const png = await page.screenshot({ path: shot })
     return { ...m, bands: await bandColours(page, m.bands, png) }
   } finally {

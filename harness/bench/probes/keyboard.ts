@@ -11,7 +11,7 @@ import type { Page } from 'playwright'
 import { openPlainChromium } from '../engines/browser'
 import { isRecord } from '../json'
 import type { BenchContext, Sample } from '../types'
-import { PLAYER_SONG } from './layout'
+import { PLAYER_SONG, playerSettled } from './layout'
 
 const LIMIT_MS = 150_000
 /** Tab presses allowed to reach one step's target */
@@ -208,7 +208,31 @@ export const journey = async (origin: string): Promise<Journey> => {
         waitUntil: 'domcontentloaded',
       })
     }
-    await page.waitForTimeout(2500)
+    // The player's controls exist once its stage is built and settled, not after a fixed wait. Home's first carousel
+    // slide is a random song from the replayed recommendations (recorded 2026-10-22), which still list a song whose
+    // lyrics row is gone: its page is Not on Synbox, with no player, and Tab never finds Play/Pause (VyvhvlYvRnc, 2
+    // of 109 journeys run alone on 2026-11-12). Tab reached a song, which is that step; the player's steps then run on
+    // the bench's song
+    let player = await playerSettled(page, 20_000)
+    if (player.phase === 'none') {
+      const id = new URL(page.url()).pathname.slice(3)
+      j.steps.push({
+        reached: true,
+        step: `song ${id} has no player (not in the library): the player's steps use ${PLAYER_SONG}`,
+        tabs: 0,
+      })
+      await page.goto(`${origin}/v/${PLAYER_SONG}`, {
+        waitUntil: 'domcontentloaded',
+      })
+      player = await playerSettled(page, 20_000)
+    }
+    if (!player.settled) {
+      j.steps.push({
+        reached: false,
+        step: `song: the player settled (stuck ${player.phase})`,
+        tabs: 0,
+      })
+    }
     if (await tabTo(page, j, 'song: Play/Pause', (f) => PLAY.test(f.name))) {
       await page.keyboard.press('Enter')
       await page.waitForTimeout(400)

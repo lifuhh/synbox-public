@@ -782,10 +782,40 @@ export const playerUp = async (
 }
 
 /**
- * The player's controls brought up by a finger's tap at (x, y) on the screen. A tap toggles them, so one that lands
- * while they still show hides them: first wait for them to go (1.8 s after the last input on a touch screen; the
- * player page's `ready` ends with the pointer on the stage, which shows them). Ones still up after 5 s are held
- * (a paused player) and get no tap
+ * In the page: the player's controls shown and at rest, '' when they are; else what is not. Shown: the control bar
+ * has no `data-controls-hidden`. At rest: no animation or transition runs on anything in the stage or the rail
+ * (`[data-player-chrome]`): the controls fade and the rails slide in for 300 ms, and a capture in between finds
+ * them half way (2026-11-12)
+ */
+export const controlsAtRest = (): string => {
+  const stage = document.querySelector('[data-player-stage]')
+  if (stage === null) {
+    return 'no player stage'
+  }
+  if (stage.querySelector('[data-controls-hidden]') !== null) {
+    return 'the controls are hidden'
+  }
+  const moving = document.getAnimations().filter((a) => {
+    const target = a.effect instanceof KeyframeEffect ? a.effect.target : null
+    return (
+      a.playState === 'running' &&
+      target instanceof Element &&
+      (stage.contains(target) ||
+        target.closest('[data-player-chrome]') !== null)
+    )
+  })
+  return moving.length === 0
+    ? ''
+    : `${moving.length} animations still running on the controls`
+}
+
+/**
+ * The player's controls brought up by a finger's tap at (x, y) on the screen, and settled. A tap toggles them, so
+ * one that lands while they still show hides them: first wait for them to go (1.8 s after the last input on a touch
+ * screen; the player page's `ready` ends with the pointer on the stage, which shows them). Ones still up after 5 s
+ * are held (a paused player) and get no tap. Then wait until they are shown and at rest (`controlsAtRest`): the tap
+ * shows them only once the double-tap window (280 ms) has passed, and they slide in over 300 ms more, so a fixed
+ * wait after the tap caught them half way on a loaded machine. They hide again 1.8 s after the tap: capture at once
  */
 export const tapControlsUp = async (
   page: Page,
@@ -805,6 +835,53 @@ export const tapControlsUp = async (
     )
   if (hidden) {
     await page.touchscreen.tap(at.x, at.y)
+  }
+  const deadline = Date.now() + 5000
+  for (;;) {
+    // oxlint-disable-next-line eslint/no-await-in-loop -- one look per poll
+    const why = await page.evaluate(controlsAtRest)
+    if (why === '') {
+      return
+    }
+    if (Date.now() > deadline) {
+      throw new Error(`the controls never came up at rest: ${why}`)
+    }
+    // oxlint-disable-next-line eslint/no-await-in-loop -- the next look
+    await page.waitForTimeout(50)
+  }
+}
+
+/**
+ * For a page without the bench's recorder (`openPlainChromium`): the player's stage built and its phase out of
+ * PASSING_PHASES for HOLD_MS, polled from here. Returns the phase it settled in, 'none' when the page has no player
+ * stage after `timeoutMs` (a /v/ page for a video outside the library has none), or the phase it was stuck in
+ */
+export const playerSettled = async (
+  page: Page,
+  timeoutMs: number
+): Promise<{ settled: boolean; phase: string }> => {
+  const start = Date.now()
+  let since: number | null = null
+  for (;;) {
+    // oxlint-disable-next-line eslint/no-await-in-loop -- one look per poll
+    const phase = await page.evaluate(
+      () =>
+        document.querySelector<HTMLElement>('[data-player-stage]')?.dataset
+          .phase ?? 'none'
+    )
+    const now = Date.now()
+    since =
+      phase !== 'none' && !PASSING_PHASES.includes(phase)
+        ? (since ?? now)
+        : null
+    if (since !== null && now - since >= HOLD_MS) {
+      return { phase, settled: true }
+    }
+    if (now - start > timeoutMs) {
+      return { phase, settled: false }
+    }
+    // oxlint-disable-next-line eslint/no-await-in-loop -- the next look
+    await page.waitForTimeout(50)
   }
 }
 
