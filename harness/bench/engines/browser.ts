@@ -32,6 +32,7 @@ const GOOGLE_FONTS = /^https:\/\/fonts\.(?:googleapis|gstatic)\.com\//u
 // The writes a plain visit makes to the site's counters, on any origin (a local build proxies /api to the live
 // Worker): a song's listen (src/lib/song-stats.ts › countListen) and the usage events (src/lib/usage.ts)
 const SITE_COUNTERS = /\/api\/(?:songs\/[\w-]{11}\/listen|events)(?:\?|$)/u
+const GENERATION_CHECK = /\/generation-check(?:\?|$)/u
 export const YOUTUBE_IFRAME_API =
   /^https:\/\/www\.youtube\.com\/(?:iframe_api(?:\?|$)|s\/player\/[\w-]+\/www-widgetapi\.vflset\/)/u
 /** On a relayed YouTube script the bench could not fetch: why, for the player's wait to report (probes/layout.ts) */
@@ -490,6 +491,23 @@ export const open = async (
     await (route.request().method() === 'POST'
       ? route.fulfill({ json: { ok: true } })
       : route.fallback())
+  })
+  // A field holding a new song's link asks the generation service whether it takes the song, to start it early
+  // (src/lib/generation/stream.ts › warmGeneration). Answered "yes" here, as smoke.ts › WRITE_RULES does: a run
+  // never starts the billed service, and a local build's backend address has nothing behind it, which WebKit
+  // reports as a page error
+  await context.route(GENERATION_CHECK, async (route) => {
+    const request = route.request()
+    const cors = {
+      'access-control-allow-headers':
+        (await request.headerValue('access-control-request-headers')) ?? '',
+      'access-control-allow-methods': 'POST, OPTIONS',
+      'access-control-allow-origin':
+        (await request.headerValue('origin')) ?? '*',
+    }
+    await (request.method() === 'OPTIONS'
+      ? route.fulfill({ headers: cors, status: 204 })
+      : route.fulfill({ headers: cors, json: { ok: true } }))
   })
   // The lookup service scales to zero and is billed while it is up; test runs kept it awake most of the day
   // (2026-10-27), so a run reads what an earlier one recorded and wakes it only for a read nobody has recorded
