@@ -12,7 +12,12 @@ import type { Page } from 'playwright'
 
 import { open } from '../engines/browser'
 import type { BenchContext, Sample, Surface } from '../types'
-import { LAYOUT_PAGES, PLAYER_SONG, tapControlsUp } from './layout'
+import {
+  controlsAtRest,
+  LAYOUT_PAGES,
+  PLAYER_SONG,
+  tapControlsUp,
+} from './layout'
 
 const LIMIT_MS = 90_000
 /** A layer this many times a control's area, or more, is a band, not the control's own disc or pill */
@@ -66,19 +71,8 @@ const shadeAudit = async (
     if (centre === null) {
       throw new Error('no player stage')
     }
+    // Shown and at rest, or it throws: with the controls away or half way there is nothing true to judge
     await tapControlsUp(page, centre)
-    await page.waitForTimeout(600)
-    // With the controls away there is nothing to judge, and the count would pass on nothing
-    if (
-      await page.evaluate(
-        () =>
-          document.querySelector(
-            '[data-player-stage] [data-controls-hidden]'
-          ) !== null
-      )
-    ) {
-      throw new Error('the controls never showed')
-    }
     const found = await page.evaluate(
       ({ bandFactor, coverShare }) => {
         // oxlint-disable-next-line unicorn/consistent-function-scoping -- runs in the page: nothing outside this function is there
@@ -156,6 +150,10 @@ const shadeAudit = async (
       },
       { bandFactor: BAND_FACTOR, coverShare: COVER_SHARE }
     )
+    const moved = await page.evaluate(controlsAtRest)
+    if (moved !== '') {
+      throw new Error(`the controls moved during the capture: ${moved}`)
+    }
     await page.screenshot({ path: screenshot })
     if (found.controls === 0) {
       return { errors: ["the player's controls never showed"], samples: [] }
