@@ -325,9 +325,13 @@ export const UNREACHABLE: Refusal = {
   message: "Couldn't reach Synbox. Check your connection and try again",
 }
 
-// Whether the backend would refuse this generation, asked when its button is pressed so the refusal shows
-// there. null when it would go ahead
-export const checkGeneration = async (
+// A cold generation service answers in 25 to 33 s (logs, 2026-10-28 to 2026-11-11: about 23 s of it is the app's
+// import); a warm one in 1 s. The check waits about twice the slowest start before it calls the backend unreachable
+const CHECK_MS = 60_000
+// A started instance stays up for several idle minutes, so one warm-up covers the links pasted in that time
+const WARM_MS = 5 * 60_000
+
+const askGeneration = async (
   videoId: string,
   kind: 'new' | 'regenerate'
 ): Promise<Refusal | null> => {
@@ -340,8 +344,7 @@ export const checkGeneration = async (
         ...callerHeaders(token),
       },
       method: 'POST',
-      // A cold backend takes several seconds to start
-      signal: AbortSignal.timeout(20_000),
+      signal: AbortSignal.timeout(CHECK_MS),
     })
     const body: unknown = await response.json()
     if (
@@ -357,6 +360,38 @@ export const checkGeneration = async (
     return UNREACHABLE
   }
 }
+
+let warming: { videoId: string; answer: Promise<Refusal | null> } | null = null
+let warmedAt = Number.NEGATIVE_INFINITY
+
+// Asks the check as soon as a new song's link is in a field, so a cold backend starts while the listener reads
+// and presses. The press then shares the answer still on its way instead of waiting a whole start of its own
+export const warmGeneration = (videoId: string) => {
+  if (Date.now() - warmedAt < WARM_MS) {
+    return
+  }
+  warmedAt = Date.now()
+  const answer = askGeneration(videoId, 'new')
+  const current = { answer, videoId }
+  warming = current
+  const settle = async () => {
+    await answer
+    if (warming === current) {
+      warming = null
+    }
+  }
+  void settle()
+}
+
+// Whether the backend would refuse this generation, asked when its button is pressed so the refusal shows
+// there. null when it would go ahead
+export const checkGeneration = async (
+  videoId: string,
+  kind: 'new' | 'regenerate'
+): Promise<Refusal | null> =>
+  await (kind === 'new' && warming?.videoId === videoId
+    ? warming.answer
+    : askGeneration(videoId, kind))
 
 // `regenerate` redoes everything but vocal separation; `skipUploaderLyrics` leaves the uploader's subtitles
 // out while YouTube Music, LRCLIB and the audio still count

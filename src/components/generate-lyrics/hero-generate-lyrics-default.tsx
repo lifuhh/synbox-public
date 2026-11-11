@@ -13,6 +13,7 @@ import {
   GenerateLabel,
   SubmissionStatus,
   useFieldGeneration,
+  useWarmGeneration,
 } from '@/components/generate-lyrics/field-generation'
 import { Button } from '@/components/ui/button'
 import { ClearFieldButton } from '@/components/ui/clear-field-button'
@@ -154,6 +155,7 @@ const HeroGenerateLyricsDefault = ({
     !isSearch && validationSuccess && !isCheckingLyrics && !existingLyrics
   const note = useNewSongNote(access, newSong)
   const blocked = newSong && access.kind === 'user' && !access.newSong
+  useWarmGeneration(newSong && !blocked ? extractedVideoId : null)
 
   const handleOpenLandingPageDialog = () => {
     if (ownPath !== null) {
