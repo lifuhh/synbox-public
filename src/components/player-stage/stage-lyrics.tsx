@@ -911,6 +911,10 @@ const pullToTear = (stageHeight: number) =>
   Math.max(40, Math.min(64, 0.1 * stageHeight))
 // How much larger the docked translation's text draws once pulled past pullToTear (globals.css › docked-translation)
 const TORN_SCALE = 1.05
+// The lifted card's outline: its gap from the box, in the text's em, and its width once torn (globals.css ›
+// docked-translation). A pulled translation stops under the rows with the whole card clear of them, not only its text
+const LIFT_OFFSET_EM = 0.15
+const TORN_OUTLINE_PX = 2
 // How long after Karaoke Style is switched the rows keep their centre while their size settles
 const SETTLE_HOLD_MS = 1000
 const TAP_SLOP_PX = { mouse: 4, touch: 10 }
@@ -1131,13 +1135,18 @@ const DockedTranslation = ({
     const tall = text ? text.bottom - text.top : element.offsetHeight
     const lines = layer && rowsDrawnIn(layer)
     const height = layer?.clientHeight ?? 0
+    // How far the torn card (fill and outline, grown about its centre to TORN_SCALE) reaches above its box
+    const ring =
+      LIFT_OFFSET_EM * pixels(getComputedStyle(element).fontSize) +
+      TORN_OUTLINE_PX
+    const cardAbove = ((TORN_SCALE - 1) * tall) / 2 + TORN_SCALE * ring
     press.current = {
       from,
       height: tall,
       // Its place under the lines counts as clear, however close the lines come to it. Under them it stops where its
-      // text, grown about its centre to TORN_SCALE, still clears them
+      // card still clears them
       keepOut: lines && {
-        bottom: Math.min(lines.bottom + ((TORN_SCALE - 1) * tall) / 2, from),
+        bottom: Math.min(lines.bottom + cardAbove, from),
         top: lines.top - clearGap(height),
       },
       moved: false,
@@ -1197,6 +1206,8 @@ const DockedTranslation = ({
   const vars: CssVars = {
     '--dock-pull': `${pull.px}px`,
     '--dock-reach': reach,
+    '--lift-offset': `${LIFT_OFFSET_EM}em`,
+    '--torn-outline': `${TORN_OUTLINE_PX}px`,
     '--torn-scale': TORN_SCALE,
   }
   // A translation longer than its place shrinks into it, from its top, rather than pushing the rows up
