@@ -87,30 +87,46 @@ const spanAround = (
   }
 }
 
-// How far below the box's top the followed line's top sits. A line alone: at followAt, or centred. A line in a
-// span, centred: the whole span is centred when it fits, so the box holds still while its lines are sung. At
-// followAt: the line moves up as far as the span's translation needs to show, never above the box's top
+// How far below the box's top the followed line's top sits. A line alone: at followAt, or centred, as before
+// spans. A line in a span, centred, when the whole span fits the box's clear part (inside its scroll-padding, which
+// its faded edges set): the span is centred, so the box holds still while its lines are sung. Otherwise the line
+// moves up only as far as the span's translation needs to come into the clear part, and only if that brings it in
 const followOffset = ({
   box,
+  clear,
   line,
   span,
   centred,
   followAt,
 }: {
   box: number
+  clear: { top: number; bottom: number }
   line: number
   span: { start: number; end: number } | null
   centred: boolean
   followAt: number
 }) => {
-  if (centred) {
-    const whole = span === null ? Infinity : span.end - span.start
-    return whole <= box && span !== null
-      ? (box - whole) / 2 - span.start
-      : Math.max(0, (box - line) / 2)
+  const preferred = centred ? Math.max(0, (box - line) / 2) : box * followAt
+  if (span === null) {
+    return preferred
   }
-  const at = box * followAt
-  return span === null ? at : Math.max(0, Math.min(at, box - span.end))
+  const room = box - clear.top - clear.bottom
+  const whole = span.end - span.start
+  if (centred && whole <= room) {
+    return clear.top + (room - whole) / 2 - span.start
+  }
+  const fit = box - clear.bottom - span.end
+  return fit >= clear.top ? Math.min(preferred, fit) : preferred
+}
+
+// The box's scroll-padding: its edges a line can sit under but not be read through (a faded edge)
+const clearOf = (box: HTMLElement) => {
+  const style = getComputedStyle(box)
+  return {
+    // A length in px, or 'auto' (none)
+    bottom: Number(style.scrollPaddingBottom.replace('px', '')) || 0,
+    top: Number(style.scrollPaddingTop.replace('px', '')) || 0,
+  }
 }
 
 // The browser's own smooth scroll moves one line in about 120 ms on WebKit, a jump rather than a glide
@@ -163,6 +179,7 @@ export const useLyricsFollow = <Content extends HTMLElement = HTMLDivElement>({
       const offset = followOffset({
         box: box.clientHeight,
         centred,
+        clear: clearOf(box),
         followAt,
         line: block.offsetHeight,
         span: spanAround(

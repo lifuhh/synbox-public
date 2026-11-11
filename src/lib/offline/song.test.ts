@@ -12,11 +12,12 @@ const doc: unknown = karaokeV2Spans
 if (!(isKaraokeDoc(doc) && doc.translations.en)) {
   throw new Error('the spans fixture is not a karaoke doc with English')
 }
+const english = doc.translations.en
 
 // The lyrics row for the doc's lines: the per-line form, a span's text on its first line and '' after it
 const lyrics: TimedLyrics = {
   chi: doc.lines.map(() => ''),
-  eng: doc.translations.en.lines,
+  eng: english.lines,
   lines: doc.lines.map((line) => ({
     endSeconds: line.end,
     startSeconds: line.start,
@@ -69,7 +70,7 @@ describe('offlineLines', () => {
     ]
     const lines = offlineLines(repeated, {
       ...doc,
-      translations: { en: { ...doc.translations.en, spans } },
+      translations: { en: { ...english, spans } },
     })
     expect(lines[2].en).toBe('')
     expect(lineSpans(lines, 'en', true)[1]).toEqual({ first: 1, last: 1 })

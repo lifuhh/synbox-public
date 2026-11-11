@@ -1242,6 +1242,8 @@ button[aria-expanded='true']:is(:hover, :focus-visible) > .control-tip {
     #000 calc(100% - 2rem),
     transparent
   );
+  /* The faded edges: use-lyrics-follow keeps a translation span's lines and translation inside them */
+  scroll-padding-block: 2rem;
   user-select: none;
   -webkit-touch-callout: none;
 
