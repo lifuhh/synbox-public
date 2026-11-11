@@ -38,7 +38,7 @@ import type { Page } from 'playwright'
 
 import { open } from '../engines/browser'
 import type { BenchContext, Sample } from '../types'
-import { LAYOUT_PAGES, PLAYER_SONG } from './layout'
+import { PLAYER_SONG, playerUp, pointerOnStage } from './layout'
 import { REDOS, stallLimit, stallText } from './motion'
 import type { Stall } from './motion'
 
@@ -707,15 +707,14 @@ export const theaterRun = async (
   url: string,
   artifactDir: string
 ): Promise<Sample> => {
-  const player = LAYOUT_PAGES.find((p) => p.name === 'player')
-  if (player === undefined) {
-    throw new Error('no player page in LAYOUT_PAGES')
-  }
   const { page, close } = await open({ engine: 'chromium', kind: 'desktop' })
   try {
     await page.addInitScript(installRecorder, PARTS)
     await page.goto(url, { waitUntil: 'commit' })
-    await player.ready(page)
+    // In the song's intro, where it always ran: the toggles are judged on the page's parts, not the lyrics, and the
+    // player page's `ready` would wait about 16 s of playback for the first line
+    await playerUp(page)
+    await pointerOnStage(page)
     // The iframe the page built, marked, and every time the page takes it out of the document (a move reloads it
     // too) or points it elsewhere counted. Its own load events are not: the embed navigates inside itself as it
     // plays, toggle or not

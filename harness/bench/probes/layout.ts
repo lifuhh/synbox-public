@@ -118,6 +118,15 @@ export const PLAYER_SONG = '6rG_irmOQsM'
 export const PLAYER_LINE_SEC = 15
 
 /**
+ * Where the player's layout audits open PLAYER_SONG (`?t=`): inside its longest early line (62.6 s to 73.5 s), so the
+ * player draws a line from the moment it is built and keeps it for 10 s of playback, past most audits. Opened at the
+ * top, the first line waited for 15 s of playback. Not PLAYER_LINE_SEC: opened at 15 s, WebKit's video stayed
+ * `starting` for about 13 s in 13 of 19 pages, against 2 of 16 at 63 s (2026-11-11), and a start that comes
+ * mid-audit wakes the controls and lifts the cover
+ */
+export const PLAYER_AUDIT_SEC = 63
+
+/**
  * Karaoke Style's two rows on the player's stage, held still, on a page opened at PLAYER_LINE_SEC once the player is
  * ready: two rows on the stage for half a second (the time reads the start, then 0, then the start again as the
  * player begins). From then on, whenever the player plays it is paused from inside the page, by a click on the
@@ -602,6 +611,95 @@ export const OPENED_STATES: Record<string, OpenedState[]> = {
   ],
 }
 
+/** How long the player's phase and its lyric line must hold before the audit takes them as settled */
+const HOLD_MS = 500
+
+/**
+ * The player out of PASSING_PHASES for HOLD_MS, read from the recorder's log of every phase change. Not a single
+ * look: on its way to `starting` the player passes through `ready` for 20 to 90 ms (2026-11-11). WebKit in Playwright
+ * may never play the video, so after 10 s the page is audited in whatever phase it is in; the phase is in the notes
+ */
+const phaseHeld = async (page: Page): Promise<void> => {
+  await page
+    .waitForFunction(
+      ({ passing, holdMs }) => {
+        const last = window.__bench.phases.at(-1)
+        return (
+          last !== undefined &&
+          !passing.includes(last.phase) &&
+          performance.now() - last.t >= holdMs
+        )
+      },
+      { holdMs: HOLD_MS, passing: PASSING_PHASES },
+      { polling: 50, timeout: 10_000 }
+    )
+    .catch(() => {
+      // A player stuck loading or starting is audited as it is
+    })
+}
+
+/** In the page: whether the line lineHeld waits for is drawn, and what was found */
+const currentLine = () => {
+  const stage = document.querySelector<HTMLElement>('[data-player-stage]')
+  if (stage === null) {
+    return { drawn: false, layer: false, lines: 0, phase: 'none' }
+  }
+  const layer = stage.querySelector('[data-lyric-layer]')
+  const found = [
+    ...(layer === null
+      ? document.querySelectorAll(
+          '[data-bench=lyrics-text][data-phase=current]'
+        )
+      : layer.querySelectorAll('[data-bench=lyrics-line]')),
+  ]
+  const drawn = found.some((el) => {
+    const r = el.getBoundingClientRect()
+    return (
+      r.width > 0 &&
+      r.height > 0 &&
+      r.bottom > 0 &&
+      r.top < window.innerHeight &&
+      (el.textContent ?? '').trim() !== ''
+    )
+  })
+  return {
+    drawn,
+    layer: layer !== null,
+    lines: found.length,
+    phase: stage.dataset.phase ?? 'none',
+  }
+}
+
+/**
+ * A lyric line drawn where the player shows the current one, with text, on screen, for HOLD_MS: the stage's lyrics
+ * layer, or on a narrow watch page (no lyrics over the video) the lyrics panel's current line. Not the recorder's
+ * `lyrics-line` mark: that fires on any line, and the lyrics panel draws the whole song about 0.6 s after navigation,
+ * before the stage has a line (web and an upright phone, 2026-11-11). Held, because the line drops for about 200 ms as
+ * playback begins (the time reads the link's start, then 0, then the start again)
+ */
+const lineHeld = async (page: Page): Promise<void> => {
+  const timeoutMs = 30_000
+  const start = Date.now()
+  let since: number | null = null
+  // Looked at from here every 50 ms, so the page keeps no state for the wait
+  for (;;) {
+    // oxlint-disable-next-line eslint/no-await-in-loop -- one look per poll
+    const seen = await page.evaluate(currentLine)
+    const now = Date.now()
+    since = seen.drawn ? (since ?? now) : null
+    if (since !== null && now - since >= HOLD_MS) {
+      return
+    }
+    if (now - start > timeoutMs) {
+      throw new Error(
+        `no lyric line drawn for ${HOLD_MS}ms within ${timeoutMs / 1000}s (${seen.layer ? 'stage lyrics' : 'lyrics panel'}: ${seen.lines} lines, none on screen with text; player ${seen.phase})`
+      )
+    }
+    // oxlint-disable-next-line eslint/no-await-in-loop -- the next look
+    await page.waitForTimeout(50)
+  }
+}
+
 const scriptName = (url: string) =>
   new URL(url).pathname.split('/').at(-1) ?? url
 
@@ -657,6 +755,31 @@ const iframeMark = async (page: Page): Promise<void> => {
   }
 }
 
+/**
+ * The player built and settled, with or without a lyric line: its YouTube iframe, then its phase held. The player
+ * page's `ready` waits for a line on top of this; a probe that needs no line (and would see the karaoke fill move
+ * every frame once one shows) waits for this alone
+ */
+export const playerUp = async (
+  page: Page,
+  note?: (wait: string) => void
+): Promise<void> => {
+  note?.('the YouTube iframe (mark player-iframe)')
+  await iframeMark(page)
+  note?.(`the player out of loading, starting and buffering for ${HOLD_MS}ms`)
+  await phaseHeld(page)
+}
+
+/** The pointer onto the stage's corner, which brings the controls back */
+export const pointerOnStage = async (page: Page): Promise<void> => {
+  await page
+    .locator('[data-player-stage]')
+    .hover({ force: true, position: { x: 40, y: 40 } })
+    .catch(() => {
+      // The hover only brings the controls back; audit the page either way
+    })
+}
+
 /** Pages with their own readiness; every other route in src/app.tsx is audited once settled */
 export const LAYOUT_PAGES: LayoutPage[] = [
   {
@@ -694,50 +817,13 @@ export const LAYOUT_PAGES: LayoutPage[] = [
   },
   {
     name: 'player',
-    path: `/v/${PLAYER_SONG}`,
+    path: `/v/${PLAYER_SONG}?t=${PLAYER_AUDIT_SEC}`,
     ready: async (page, note) => {
-      note?.('the YouTube iframe (mark player-iframe)')
-      await iframeMark(page)
-      note?.('the player out of loading, starting and buffering')
-      // WebKit in Playwright may never play the video; audit whatever the player settled into, controls shown
-      await page
-        .waitForFunction(
-          (passing) =>
-            !passing.includes(
-              document.querySelector<HTMLElement>('[data-player-stage]')
-                ?.dataset.phase ?? 'loading'
-            ),
-          PASSING_PHASES,
-          { timeout: 10_000 }
-        )
-        .catch(() => {
-          // A player stuck loading is audited as it is; its phase is in the notes
-        })
-      // On a phone on its side the stage shows only the current lines, so the song's intro (about 14 s here) held
-      // the audit back. The player's own shortcut skips ahead 5 s a press until a line shows
-      for (let skips = 0; skips < 4; skips += 1) {
-        note?.(`a lyrics line, skip ${skips + 1} of 4`)
-        // oxlint-disable-next-line eslint/no-await-in-loop -- one press, then a look
-        const shown = await mark(page, 'lyrics-line', 1000).then(
-          () => true,
-          () => false
-        )
-        if (shown) {
-          break
-        }
-        note?.(`ArrowRight to skip ahead, ${skips + 1} of 4`)
-        // oxlint-disable-next-line eslint/no-await-in-loop -- one press at a time
-        await page.keyboard.press('ArrowRight')
-      }
-      note?.('a lyrics line (mark lyrics-line)')
-      await mark(page, 'lyrics-line', 30_000)
+      await playerUp(page, note)
+      note?.(`a lyric line drawn for ${HOLD_MS}ms`)
+      await lineHeld(page)
       note?.('the pointer onto the stage')
-      await page
-        .locator('[data-player-stage]')
-        .hover({ force: true, position: { x: 40, y: 40 } })
-        .catch(() => {
-          // The hover only brings the controls back; audit the page either way
-        })
+      await pointerOnStage(page)
     },
     route: '/v/:videoId',
   },
