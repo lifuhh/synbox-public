@@ -50,7 +50,8 @@ const WhatsNewPage = () => {
                 {entryDate(entry.date)}
               </p>
             </header>
-            <ul className='flex list-disc flex-col gap-2 pl-5 text-sm text-pretty text-muted-foreground marker:text-muted-foreground/60'>
+            {/* Block, not flex: a flex item is no longer a list item, and loses its bullet */}
+            <ul className='list-disc space-y-2 pl-4 text-sm text-pretty text-muted-foreground'>
               {entry.items.map((item) => (
                 <li key={item}>{item}</li>
               ))}
