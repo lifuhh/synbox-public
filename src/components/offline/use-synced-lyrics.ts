@@ -11,12 +11,8 @@ import { useSilentPlayback } from './use-silent-playback'
 const FOLLOW_AT = 0.3
 
 // Synced lyrics on the reader page: the silent clock, the karaoke fill of the line being sung, and the page
-// following that line, and its span's translation, until the reader scrolls it themselves
-export const useSyncedLyrics = (
-  lines: OfflineLine[],
-  spans: readonly { first: number; last: number }[],
-  synced: boolean
-) => {
+// following that line until the reader scrolls it themselves
+export const useSyncedLyrics = (lines: OfflineLine[], synced: boolean) => {
   const duration = useMemo(() => {
     let end = 0
     for (const line of lines) {
@@ -44,16 +40,14 @@ export const useSyncedLyrics = (
 
   // The page follows the line being sung until the reader scrolls it themselves; a pause in their scrolling,
   // Current Line, a seek or a tap on a line picks it back up
-  const target = Math.max(active >= 0 ? active : reached, 0)
   const { blocks, content, follow, following, handlers, scroller } =
     useLyricsFollow<HTMLElement>({
       enabled: synced,
       followAt: FOLLOW_AT,
       isPlaying: () => playback.playing,
-      span: spans[target],
       // The line being sung, and the last one reached only through a gap (lineFollowed): never the next line
       // while this one is still sung. Before the first line, the first line waits in its place
-      target,
+      target: Math.max(active >= 0 ? active : reached, 0),
     })
 
   const seek = (to: number) => {

@@ -6,18 +6,14 @@ import type { TimedLyrics } from '@/lib/lyrics-document'
 import { translationSpans } from '@/lib/translation-spans'
 import type { KaraokeDoc, KaraokeDocLine } from '@/types'
 
-type Language = 'en' | 'zh'
-
 // One sung line as the reader shows it: the Japanese with its furigana, then romaji and both translations
 export interface OfflineLine {
   ruby: RubySegment[]
   romaji: string
-  // The translation shown after this line: its span's, on the span's last line, '' on the lines before it
+  // The translation shown under this line: its span's, so every line of a span (up to three short lines that
+  // share one translation) shows the whole of it
   en: string
   zh: string
-  // The next line is in the same translation span (up to three short lines share one translation). Missing on
-  // songs saved before spans: each line is then its own
-  continues?: Record<Language, boolean>
   // A pause of STANZA_GAP_SEC or more before it, so the reader starts a new paragraph
   stanza: boolean
   // When it is sung, in seconds: the karaoke timing's when it matches the lyrics, else the lyrics row's
@@ -27,9 +23,9 @@ export interface OfflineLine {
   karaoke: KaraokeDocLine | null
 }
 
-// Bumped when the saved shape changes; a sync fetches every song saved under an older one again. 3 added
-// translation spans (`continues`)
-export const OFFLINE_SONG_VERSION = 3
+// Bumped when the saved shape changes; a sync fetches every song saved under an older one again. 4: a translation
+// span's text under each of its lines (3 put it once, after the last)
+export const OFFLINE_SONG_VERSION = 4
 // Saved songs carry karaoke timing from this version on
 const TIMED_SINCE_VERSION = 2
 
@@ -108,10 +104,10 @@ const trimSegments = (segments: RubySegment[]) =>
 const foldSpace = (text: string) =>
   text.trim().replaceAll(/\s+/gu, ' ').toLowerCase()
 
-// Each shown line's translation in one language, and whether the next shown line shares it. `shown` are the
-// lyrics' indices of the lines the reader shows (blank ones are left out), in order. A span's text goes after its
-// last shown line. A run's translation that only repeats its lines (sung in English) is dropped, as the player
-// drops it; a single line's is kept, as it always was here
+// Each shown line's translation in one language: its span's text, under every line of the span, as the player's
+// One Line shows it. `shown` are the lyrics' indices of the lines the reader shows (blank ones are left out). A
+// run's translation that only repeats its lines (sung in English) is dropped, as the player drops it; a single
+// line's is kept, as it always was here
 const translationsOf = (
   perLine: readonly string[],
   docSpans: unknown,
@@ -119,26 +115,22 @@ const translationsOf = (
   sungText: (index: number) => string
 ) => {
   const spans = translationSpans(perLine, perLine.length, docSpans)
-  return shown.map((index, at) => {
+  return shown.map((index) => {
     const span = spans[index]
-    const next = shown[at + 1]
     if (span === undefined) {
-      return { continues: false, text: '' }
-    }
-    if (next !== undefined && next <= span.last) {
-      return { continues: true, text: '' }
+      return ''
     }
     const sung = Array.from({ length: span.last - span.first + 1 }, (_, i) =>
       sungText(span.first + i)
     ).join(' ')
     const repeats =
       span.last > span.first && foldSpace(span.text) === foldSpace(sung)
-    return { continues: false, text: repeats ? '' : span.text }
+    return repeats ? '' : span.text
   })
 }
 
 // `doc` is the song's karaoke timing when its lines are these lyrics' (karaokeMatchesLyrics), else null: its lines
-// time the karaoke fill and its spans group the translations
+// time the karaoke fill and its spans say which lines share a translation
 export const offlineLines = (
   lyrics: TimedLyrics,
   doc: Pick<KaraokeDoc, 'lines' | 'translations'> | null
@@ -177,43 +169,16 @@ export const offlineLines = (
       lastEnd !== null && line.startSeconds - lastEnd >= STANZA_GAP_SEC
     lastEnd = line.endSeconds
     return {
-      continues: { en: en[at].continues, zh: zh[at].continues },
-      en: en[at].text,
+      en: en[at],
       end: timed?.end ?? line.endSeconds,
       karaoke: timed,
       romaji: lyrics.romaji[index] ?? '',
       ruby: rubies[index],
       stanza,
       start: timed?.start ?? line.startSeconds,
-      zh: zh[at].text,
+      zh: zh[at],
     }
   })
-}
-
-// Where each line's translation span starts and ends among `lines`, by index, in the language shown. Without the
-// translation shown, or with an empty one, nothing ties lines together and each is its own
-export const lineSpans = (
-  lines: readonly OfflineLine[],
-  language: Language,
-  translation: boolean
-) => {
-  const spans: { first: number; last: number }[] = []
-  let first = 0
-  for (const [index, line] of lines.entries()) {
-    if (!(translation && line.continues?.[language] === true)) {
-      const last = index
-      const shared = translation && line[language].trim() !== ''
-      for (let at = first; at <= last; at += 1) {
-        spans.push(shared ? { first, last } : { first: at, last: at })
-      }
-      first = index + 1
-    }
-  }
-  // A run cut off by the song's end (never in a valid doc) stands line by line
-  for (let at = first; at < lines.length; at += 1) {
-    spans.push({ first: at, last: at })
-  }
-  return spans
 }
 
 export const lineText = (line: OfflineLine) => textOf(line.ruby)
