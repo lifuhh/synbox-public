@@ -864,13 +864,13 @@
     z-index: 2;
     background: oklch(0 0 0 / 0.45);
     outline: 1px solid oklch(1 0 0 / calc(0.2 + 0.35 * var(--dock-reach, 0)));
-    outline-offset: 0.15em;
+    outline-offset: var(--lift-offset);
     scale: calc(1 + 0.03 * var(--dock-reach, 0));
   }
 
   &[data-torn] .docked-translation-text {
     background: oklch(0 0 0 / 0.6);
-    outline: 2px solid oklch(1 0 0 / 0.75);
+    outline: var(--torn-outline) solid oklch(1 0 0 / 0.75);
     scale: var(--torn-scale);
   }
 
