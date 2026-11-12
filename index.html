@@ -93,12 +93,25 @@
       #static-home a {
         color: #f0a6c8;
       }
+      /* A visitor sees this page only when the app didn't start (no connection, a script that failed to load), and
+         the installed app has no browser reload: this is the way out. 44px tall */
+      #static-home .reload {
+        display: inline-block;
+        padding: 0.6rem 1.25rem;
+        border-radius: 999px;
+        background: #f0a6c8;
+        color: #1a1216;
+        font-weight: 600;
+        text-decoration: none;
+      }
     </style>
   </head>
   <body>
     <div id="root">
       <main id="static-home">
         <h1>Synbox</h1>
+        <!-- An empty href loads this same address again -->
+        <p>Not loading? <a class="reload" href="">Reload</a></p>
         <p>
           Japanese karaoke for any YouTube video. Paste a link, and Synbox
           transcribes the song, times its lyrics word by word, and shows them
