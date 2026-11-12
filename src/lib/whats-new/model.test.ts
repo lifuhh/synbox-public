@@ -1,7 +1,20 @@
 import { describe, expect, test } from 'vite-plus/test'
 
 import raw from './entries.json'
-import { parseEntries, whatsNewUnread } from './model'
+import { parseEntries, recentCount, whatsNewUnread } from './model'
+
+describe('recentCount', () => {
+  const ids = ['d', 'c', 'b', 'a']
+  test('the entries a listener missed go above the divider, at least the newest', () => {
+    // Back after missing three releases
+    expect(recentCount(ids, 'a')).toBe(3)
+    // Read the newest already, or never opened the page
+    expect(recentCount(ids, 'd')).toBe(1)
+    expect(recentCount(ids, null)).toBe(1)
+    // Their last read entry was since removed
+    expect(recentCount(ids, 'gone')).toBe(1)
+  })
+})
 
 describe('whatsNewUnread', () => {
   test('a listener who knew Synbox before hears about the newest release once', () => {
