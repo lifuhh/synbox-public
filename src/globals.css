@@ -2182,19 +2182,20 @@ html[data-installed] *::-webkit-scrollbar {
   }
 
   /* The tabs step back while the page is read, as Instagram's do: scrolling down (the top bar slides away,
-     data-topbar-state) zooms the pill out about its centre to --tab-compact and fades its labels, each icon and
+     data-topbar-state) zooms the pill out to --tab-compact and fades its labels, each icon and
      its label moving down together until the icon sits at the tab's centre; scrolling up zooms it back, in the
      same frame and over the same 300ms as the top bar. The icons zoom out less than the pill (to 7/8), so the
      room the labels leave goes with them. Icon and label move as one, so the label fades on the same curve with
      no delay and never crosses its icon. The labels only fade, so each tab keeps its name for assistive tech.
      Keyboard focus inside restores it. With reduced motion only the labels fade.
-     The whole dock zooms, the mini bar with the pill, as one transform about the pill's centre (the dock's foot less
-     half the pill's 4rem): one animation, nothing in it scaled on a clock of its own, and the frosted surfaces never
-     carry the animated transform themselves. The mini bar's video, laid over it from outside, glides along on the
-     same timing (mini-bar.tsx › followZoom) */
+     The whole dock zooms, the mini bar with the pill, as one transform about its bottom centre, as Instagram's
+     does: its foot stays put over the home indicator at either size, and only its top and sides move. One
+     animation, nothing in it scaled on a clock of its own, and the frosted surfaces never carry the animated
+     transform themselves. The mini bar's video, laid over it from outside, glides along on the same timing
+     (mini-bar.tsx › followZoom) */
   [data-tabbar-root] {
     --tab-compact: 0.78;
-    transform-origin: 50% calc(100% - 2rem);
+    transform-origin: 50% 100%;
     transition: scale 300ms var(--ease-out);
     /* Its own layer before the first zoom, so the zoom's first frame doesn't wait on one being made */
     will-change: scale;
