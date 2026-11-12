@@ -105,8 +105,8 @@ export const noticeKey = (notice: AdminNotice) =>
 
 // Where each kind opens on /admin
 export const NOTICE_TAB: Record<AdminNotice['kind'], string> = {
-  feedback: 'feedback',
-  message: 'messages',
+  feedback: 'inbox',
+  message: 'inbox',
   report: 'reports',
-  request: 'requests',
+  request: 'inbox',
 }
