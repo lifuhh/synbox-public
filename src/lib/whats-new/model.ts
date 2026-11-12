@@ -62,6 +62,12 @@ export const whatsNewUnread = (
   returning: boolean
 ) => latest !== null && latest !== seen && (seen !== null || returning)
 
+// How many entries, newest first, the What's New page shows above Earlier Updates: those newer than the last one
+// the listener had seen when they opened it (several, for someone back after a few releases), and at least the
+// newest. An id no longer listed counts as nothing seen
+export const recentCount = (ids: readonly string[], seen: string | null) =>
+  Math.max(1, ids.indexOf(seen ?? ''))
+
 // "12 Nov 2026"; an entry not yet shipped (a local or staging build) reads "Next Update"
 export const entryDate = (date: string | null) =>
   date === null

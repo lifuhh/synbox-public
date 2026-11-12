@@ -9,7 +9,7 @@ import raw from './entries.json'
 import { parseEntries, whatsNewUnread } from './model'
 import type { WhatsNewEntry } from './model'
 
-export { BUG_FIXES, entryDate } from './model'
+export { BUG_FIXES, entryDate, recentCount } from './model'
 export type { WhatsNewEntry } from './model'
 
 export const WHATS_NEW: readonly WhatsNewEntry[] = parseEntries(raw)
