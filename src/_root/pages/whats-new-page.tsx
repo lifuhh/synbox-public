@@ -39,6 +39,7 @@ const WhatsNewPage = () => {
   const { hash } = useLocation()
   const { markSeen, seen } = useWhatsNew()
   // Read before markSeen below moves it to the newest
+  // oxlint-disable-next-line react/hook-use-state -- fixed on the first render, never set: the split mustn't move once the visit reads the newest
   const [recent] = useState(() =>
     recentCount(
       WHATS_NEW.map((entry) => entry.id),
