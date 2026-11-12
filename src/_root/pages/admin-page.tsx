@@ -69,7 +69,6 @@ import type {
   AdminFeedback,
   AdminGeneration,
   FeedbackChange,
-  FeedbackState,
   AdminMessage,
   AdminRequest,
   AdminReport,
@@ -1199,7 +1198,7 @@ const ReportItem = ({ report }: { report: AdminReport }) => {
   )
 }
 
-// One state of a list at a time (Reports, Feedback), each with its count: segmented buttons in a radio group
+// One state of a list at a time (Reports), each with its count: segmented buttons in a radio group
 const StatePicker = <T extends string>({
   label,
   options,
@@ -1562,59 +1561,42 @@ const messageFrom = (message: AdminMessage) =>
     ? 'Guest'
     : message.sender)
 
-// Contact form messages, newest first (worker/src/contact.ts): each was also emailed, unless it says why not
-const MessagesPanel = () => {
-  const { data, error } = useAdminMessages()
-  if (error !== null) {
-    return error.message.includes('404') ? (
-      <p className='text-sm text-error'>Needs the Worker update</p>
-    ) : (
-      <LoadError error={error} />
-    )
-  }
-  if (data === undefined) {
-    return <Skeleton className='h-40 w-full' />
-  }
-  if (data.messages.length === 0) {
-    return <p className='text-sm text-muted-foreground'>No messages yet</p>
-  }
-  return (
-    <ol className='flex flex-col'>
-      {data.messages.map((message) => (
-        <li
-          key={message.id}
-          className='flex flex-col gap-1 border-t border-border py-3 text-sm'>
-          <div className='flex flex-wrap items-baseline justify-between gap-x-3'>
-            <p className='font-semibold text-foreground'>{message.subject}</p>
-            <p className='text-xs text-muted-foreground'>
-              <When value={message.createdAt} />
-            </p>
-          </div>
-          <p className='wrap-break-word whitespace-pre-wrap text-foreground'>
-            {message.message}
-          </p>
-          <p className='text-xs text-muted-foreground'>
-            {message.replyTo === null ? (
-              messageFrom(message)
-            ) : (
-              <a
-                href={`mailto:${message.replyTo}`}
-                className='underline underline-offset-2 hover:text-foreground'>
-                {message.replyTo}
-              </a>
-            )}
-            {message.emailError !== null && (
-              <span className='text-error'>
-                {' '}
-                · Not Emailed: {message.emailError}
-              </span>
-            )}
-          </p>
-        </li>
-      ))}
-    </ol>
-  )
-}
+// What an Inbox row is, above its title: the three kinds share one list
+const KindLabel = ({ kind }: { kind: 'Feedback' | 'Message' | 'Request' }) => (
+  <div className='flex'>
+    <Badge tone='neutral'>{kind}</Badge>
+  </div>
+)
+
+// A Contact Me message (worker/src/contact.ts): it was also emailed, unless it says why not
+const MessageItem = ({ message }: { message: AdminMessage }) => (
+  <li className='flex flex-col gap-1.5 border-t border-border py-3 text-sm'>
+    <KindLabel kind='Message' />
+    <div className='flex flex-wrap items-baseline justify-between gap-x-3'>
+      <p className='font-semibold text-foreground'>{message.subject}</p>
+      <p className='text-xs text-muted-foreground'>
+        <When value={message.createdAt} />
+      </p>
+    </div>
+    <p className='wrap-break-word whitespace-pre-wrap text-foreground'>
+      {message.message}
+    </p>
+    <p className='text-xs text-muted-foreground'>
+      {message.replyTo === null ? (
+        messageFrom(message)
+      ) : (
+        <a
+          href={`mailto:${message.replyTo}`}
+          className='underline underline-offset-2 hover:text-foreground'>
+          {message.replyTo}
+        </a>
+      )}
+      {message.emailError !== null && (
+        <span className='text-error'> · Not Emailed: {message.emailError}</span>
+      )}
+    </p>
+  </li>
+)
 
 // Resolve tells a signed sender in the app; Drop tells nobody; Reopen undoes either, so none asks first
 const FeedbackAction = ({ feedback }: { feedback: AdminFeedback }) => {
@@ -1700,6 +1682,7 @@ const FeedbackItem = ({ feedback }: { feedback: AdminFeedback }) => {
   }
   return (
     <li className='flex flex-col gap-1.5 border-t border-border py-3 text-sm'>
+      <KindLabel kind='Feedback' />
       <p className='font-semibold text-pretty text-foreground'>
         {feedback.subject}
       </p>
@@ -1718,59 +1701,6 @@ const FeedbackItem = ({ feedback }: { feedback: AdminFeedback }) => {
         <FeedbackAction feedback={feedback} />
       </div>
     </li>
-  )
-}
-
-const FEEDBACK_STATES: { id: FeedbackState; name: string; empty: string }[] = [
-  { empty: 'No open feedback', id: 'open', name: 'Open' },
-  { empty: 'No resolved feedback', id: 'resolved', name: 'Resolved' },
-  { empty: 'No dropped feedback', id: 'dropped', name: 'Dropped' },
-]
-
-// Send Feedback, one state at a time, open first (worker/src/feedback.ts). Anonymous feedback has no sender to show
-const FeedbackPanel = () => {
-  const { data, error } = useAdminFeedback()
-  const [shownState, setShownState] = useState<FeedbackState>('open')
-  if (error !== null) {
-    return error.message.includes('404') ? (
-      <p className='text-sm text-error'>Needs the Worker update</p>
-    ) : (
-      <LoadError error={error} />
-    )
-  }
-  if (data === undefined) {
-    return <Skeleton className='h-40 w-full' />
-  }
-  if (data.feedback.length === 0) {
-    return <p className='text-sm text-muted-foreground'>No feedback yet</p>
-  }
-  const shown = data.feedback.filter(
-    (feedback) => feedbackState(feedback) === shownState
-  )
-  return (
-    <div className='flex flex-col gap-3'>
-      <StatePicker
-        label='Feedback State'
-        options={FEEDBACK_STATES}
-        count={(id) =>
-          data.feedback.filter((feedback) => feedbackState(feedback) === id)
-            .length
-        }
-        value={shownState}
-        onChange={setShownState}
-      />
-      {shown.length === 0 ? (
-        <p className='py-6 text-center text-sm text-muted-foreground'>
-          {FEEDBACK_STATES.find((option) => option.id === shownState)?.empty}
-        </p>
-      ) : (
-        <ul>
-          {shown.map((feedback) => (
-            <FeedbackItem key={feedback.id} feedback={feedback} />
-          ))}
-        </ul>
-      )}
-    </div>
   )
 }
 
@@ -1801,7 +1731,8 @@ const RequestRow = ({ request }: { request: AdminRequest }) => {
     now = `${request.dailyLimit} a day`
   }
   return (
-    <li className='flex flex-col gap-2 border-t border-border py-3 text-sm'>
+    <li className='flex flex-col gap-1.5 border-t border-border py-3 text-sm'>
+      <KindLabel kind='Request' />
       <div className='flex flex-wrap items-baseline justify-between gap-x-3'>
         <p className='font-semibold text-foreground'>{request.name}</p>
         <p className='text-xs text-muted-foreground'>
@@ -1890,28 +1821,74 @@ const RequestRow = ({ request }: { request: AdminRequest }) => {
   )
 }
 
-// Requests for more songs a day, open ones first
-const RequestsPanel = () => {
-  const { data, error } = useAdminRequests()
-  if (error !== null) {
-    return error.message.includes('404') ? (
-      <p className='text-sm text-error'>Needs the Worker update</p>
-    ) : (
-      <LoadError error={error} />
-    )
-  }
-  if (data === undefined) {
+type InboxItem =
+  | { kind: 'feedback'; at: number; item: AdminFeedback }
+  | { kind: 'message'; at: number; item: AdminMessage }
+  | { kind: 'request'; at: number; item: AdminRequest }
+
+// Everything people sent: Send Feedback (worker/src/feedback.ts), Contact Me messages and requests for more songs
+// a day, in one list newest first, each labelled with its kind. A source that fails says so above the rest
+const InboxPanel = () => {
+  const feedback = useAdminFeedback()
+  const messages = useAdminMessages()
+  const requests = useAdminRequests()
+  const sources = [feedback, messages, requests]
+  if (
+    sources.some((source) => source.data === undefined && source.error === null)
+  ) {
     return <Skeleton className='h-40 w-full' />
   }
-  if (data.requests.length === 0) {
-    return <p className='text-sm text-muted-foreground'>No requests yet</p>
-  }
+  const items: InboxItem[] = [
+    ...(feedback.data?.feedback ?? []).map((item) => ({
+      at: item.createdAt,
+      item,
+      kind: 'feedback' as const,
+    })),
+    ...(messages.data?.messages ?? []).map((item) => ({
+      at: item.createdAt,
+      item,
+      kind: 'message' as const,
+    })),
+    ...(requests.data?.requests ?? []).map((item) => ({
+      at: item.createdAt,
+      item,
+      kind: 'request' as const,
+    })),
+  ].toSorted((a, b) => b.at - a.at)
+  const errors = sources.flatMap((source) =>
+    source.error === null ? [] : [source.error]
+  )
   return (
-    <ol className='flex flex-col'>
-      {data.requests.map((request) => (
-        <RequestRow key={request.id} request={request} />
-      ))}
-    </ol>
+    <div className='flex flex-col gap-3'>
+      {errors.map((error) =>
+        error.message.includes('404') ? (
+          <p key={error.message} className='text-sm text-error'>
+            Needs the Worker update
+          </p>
+        ) : (
+          <LoadError key={error.message} error={error} />
+        )
+      )}
+      {items.length === 0 && errors.length === 0 ? (
+        <p className='text-sm text-muted-foreground'>Nothing yet</p>
+      ) : (
+        <ol className='flex flex-col'>
+          {items.map((entry) => {
+            if (entry.kind === 'feedback') {
+              return (
+                <FeedbackItem key={`f${entry.item.id}`} feedback={entry.item} />
+              )
+            }
+            if (entry.kind === 'message') {
+              return (
+                <MessageItem key={`m${entry.item.id}`} message={entry.item} />
+              )
+            }
+            return <RequestRow key={`r${entry.item.id}`} request={entry.item} />
+          })}
+        </ol>
+      )}
+    </div>
   )
 }
 
@@ -1922,20 +1899,26 @@ const TABS = [
   'accounts',
   'signals',
   'usage',
-  'feedback',
-  'messages',
-  'requests',
+  'inbox',
 ] as const
 type Tab = (typeof TABS)[number]
 const isTab = (value: string | null): value is Tab =>
   TABS.some((tab) => tab === value)
+// The tabs Inbox replaced, so an older link still lands on what it pointed at
+const INBOX_ALIASES = new Set(['feedback', 'messages', 'requests'])
+const tabOf = (value: string | null): Tab => {
+  if (isTab(value)) {
+    return value
+  }
+  return value !== null && INBOX_ALIASES.has(value) ? 'inbox' : 'songs'
+}
 
 // One list at a time, each of which can run long. The tab and the Songs filter live in the address, so a
 // reload, a shared link or a requester's name (ByLink) lands on the same view
 const AdminTabs = () => {
   const [params, setParams] = useSearchParams()
   const tabParam = params.get('tab')
-  const tab = isTab(tabParam) ? tabParam : 'songs'
+  const tab = tabOf(tabParam)
   const by = params.get('user')
   const show = (next: Tab, user: SongsBy = null) => {
     setParams(user === null ? { tab: next } : { tab: next, user }, {
@@ -1973,14 +1956,8 @@ const AdminTabs = () => {
           <TabsTrigger value='usage' className='h-full'>
             Usage
           </TabsTrigger>
-          <TabsTrigger value='feedback' className='h-full'>
-            Feedback
-          </TabsTrigger>
-          <TabsTrigger value='messages' className='h-full'>
-            Messages
-          </TabsTrigger>
-          <TabsTrigger value='requests' className='h-full'>
-            Requests
+          <TabsTrigger value='inbox' className='h-full'>
+            Inbox
           </TabsTrigger>
         </TabsList>
       </div>
@@ -2022,14 +1999,8 @@ const AdminTabs = () => {
       <TabsContent value='usage' className='mt-4'>
         <UsagePanel />
       </TabsContent>
-      <TabsContent value='feedback' className='mt-4'>
-        <FeedbackPanel />
-      </TabsContent>
-      <TabsContent value='messages' className='mt-4'>
-        <MessagesPanel />
-      </TabsContent>
-      <TabsContent value='requests' className='mt-4'>
-        <RequestsPanel />
+      <TabsContent value='inbox' className='mt-4'>
+        <InboxPanel />
       </TabsContent>
     </Tabs>
   )
