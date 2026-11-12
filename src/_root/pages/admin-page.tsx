@@ -1592,10 +1592,7 @@ const MessageItem = ({ message }: { message: AdminMessage }) => (
         </a>
       )}
       {message.emailError !== null && (
-        <span className='text-error'>
-          {' '}
-          · Not Emailed: {message.emailError}
-        </span>
+        <span className='text-error'> · Not Emailed: {message.emailError}</span>
       )}
     </p>
   </li>
@@ -1836,7 +1833,9 @@ const InboxPanel = () => {
   const messages = useAdminMessages()
   const requests = useAdminRequests()
   const sources = [feedback, messages, requests]
-  if (sources.some((source) => source.data === undefined && source.error === null)) {
+  if (
+    sources.some((source) => source.data === undefined && source.error === null)
+  ) {
     return <Skeleton className='h-40 w-full' />
   }
   const items: InboxItem[] = [
