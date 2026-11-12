@@ -1,9 +1,14 @@
-import { CloudOffIcon, MegaphoneIcon, WifiIcon } from 'lucide-react'
+import {
+  CircleCheckIcon,
+  CloudOffIcon,
+  MegaphoneIcon,
+  WifiIcon,
+} from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useMatch } from 'react-router'
 
 import { appJustUpdated, useOnline } from '@/lib/pwa'
-import { LATEST_ENTRY, whatsNewPath } from '@/lib/whats-new'
+import { LATEST_ENTRY, useWhatsNew, whatsNewPath } from '@/lib/whats-new'
 import { cn } from '@/utils/cn'
 
 const pill =
@@ -11,25 +16,40 @@ const pill =
 
 // How long the note about a connection change stays up
 const NOTICE_MS = 2000
-// How long the note that the app just updated itself stays up: long enough to read it and reach for it, as it opens
-// What's New. A pointer resting on it or focus inside holds it
-const UPDATED_MS = 8000
+// How long the note that opens What's New stays up: long enough to read it and reach for it. A pointer resting on it
+// or focus inside holds it
+const NEWS_MS = 8000
 
-// True for UPDATED_MS on the first load of a new version, held while `held`; false once pressed
+// The note on the first load of a new version. `news` links to What's New while its newest entry is unread by this
+// listener (lib/whats-new › whatsNewUnread), so a release that added no entry says only `updated` to someone who read
+// the last one, and someone back after a while hears of what they missed whatever the last release changed
+type UpdatedNotice = 'news' | 'updated' | null
+
+// Decided once, on the load: reading the entry while the note shows doesn't turn it into another note. Shown for
+// NEWS_MS (held while `held`) or NOTICE_MS; null once pressed
 const useUpdatedNotice = (held: boolean) => {
-  const [shown, setShown] = useState(appJustUpdated)
+  const { unread } = useWhatsNew()
+  const [notice, setNotice] = useState<UpdatedNotice>(() => {
+    if (!appJustUpdated) {
+      return null
+    }
+    return unread ? 'news' : 'updated'
+  })
   useEffect(() => {
     const timer =
-      shown && !held
-        ? setTimeout(() => {
-            setShown(false)
-          }, UPDATED_MS)
+      notice !== null && !held
+        ? setTimeout(
+            () => {
+              setNotice(null)
+            },
+            notice === 'news' ? NEWS_MS : NOTICE_MS
+          )
         : undefined
     return () => {
       clearTimeout(timer)
     }
-  }, [shown, held])
-  return [shown, setShown] as const
+  }, [notice, held])
+  return [notice, setNotice] as const
 }
 
 type ConnectionNotice = 'offline' | 'online' | null
@@ -63,7 +83,7 @@ const useConnectionNotice = () => {
 
 // Notes under the top bar. Its height is published as --notices-h so the toasts open below it rather than
 // over it. None over the lyrics reader: it works the same without a connection, and nothing should cover it.
-// The update note opens the newest What's New entry; its press area reaches 6px above and below the pill (44px)
+// The update note with news opens the newest What's New entry; its press area reaches 6px above and below the pill (44px)
 const AppNotices = () => {
   const notice = useConnectionNotice()
   const [held, setHeld] = useState(false)
@@ -82,11 +102,12 @@ const AppNotices = () => {
     }
   }, [])
 
-  const showUpdated = !onReader && !onWhatsNew && updated
+  const showUpdated = onReader || onWhatsNew ? null : updated
   const said = onReader
     ? []
     : [
-        showUpdated && 'Updated. See What’s New',
+        showUpdated === 'news' && 'Updated. See What’s New',
+        showUpdated === 'updated' && 'Updated',
         notice === 'offline' && 'Lost Connection',
         notice === 'online' && 'Reconnected',
       ].filter((text) => text !== false)
@@ -100,12 +121,12 @@ const AppNotices = () => {
       <div
         ref={publishHeight}
         className='pointer-events-none fixed inset-x-0 top-(--topbar-h) z-100 flex flex-col items-center gap-2 px-4 empty:hidden [&:not(:empty)]:pt-2'>
-        {showUpdated && (
+        {showUpdated === 'news' && (
           <Link
             to={whatsNewPath(LATEST_ENTRY)}
             data-bench='updated-notice'
             onClick={() => {
-              setUpdated(false)
+              setUpdated(null)
             }}
             onPointerEnter={() => {
               setHeld(true)
@@ -129,6 +150,12 @@ const AppNotices = () => {
             />
             Updated · See What’s New
           </Link>
+        )}
+        {showUpdated === 'updated' && (
+          <div aria-hidden data-bench='updated-notice' className={pill}>
+            <CircleCheckIcon className='size-3.5 shrink-0 text-primary-text' />
+            Updated
+          </div>
         )}
         {!onReader && notice === 'offline' && (
           <div aria-hidden className={pill}>
