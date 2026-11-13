@@ -8,8 +8,11 @@
 
 import { useSyncExternalStore } from 'react'
 
+import { lastAccount } from '@/lib/auth'
+import { getVideoFacts } from '@/lib/youtube/api'
 import { playsOutsideYouTube } from '@/lib/youtube/embed-check'
 
+import { fetchAccountGenerations, mergeAccount } from './account'
 import { GenerationError } from './failure'
 import type { Phase } from './plan'
 import { checkVideo } from './preflight'
@@ -478,6 +481,89 @@ const pump = () => {
   }
 }
 
+// The account's list (account.ts), asked by the leading tab: this often while a song is going here or anywhere on the
+// account, so a song another device started shows within seconds and moves with the backend's reports; this often
+// otherwise; and at once when the page comes back (resume.ts)
+const ACCOUNT_BUSY_MS = 5000
+const ACCOUNT_IDLE_MS = 60_000
+let accountTimer: ReturnType<typeof setTimeout> | undefined
+// The last answer listed a song still going
+let accountBusy = false
+// Songs shown from the account whose title was asked of YouTube
+const named = new Set<string>()
+
+// A song from the account comes with no title: YouTube's names it, once
+const nameMirror = async (id: string, videoId: string) => {
+  try {
+    const facts = await getVideoFacts(videoId)
+    if (facts !== null) {
+      updateJob(id, (current) => ({ ...current, title: facts.title }))
+    }
+  } catch {
+    // The panel shows the song without its title
+  }
+}
+
+const nameMirrors = () => {
+  for (const job of state.jobs) {
+    if (job.mirror === true && job.title === '' && !named.has(job.id)) {
+      named.add(job.id)
+      void nameMirror(job.id, job.videoId)
+    }
+  }
+}
+
+const readAccount = async () => {
+  // Signed out: the account's songs aren't this browser's to show
+  if (lastAccount() === null) {
+    accountBusy = false
+    if (state.jobs.some((job) => job.mirror === true && isActive(job))) {
+      set(
+        withJobs(
+          state.jobs.filter((job) => !(job.mirror === true && isActive(job)))
+        )
+      )
+    }
+    return
+  }
+  try {
+    const rows = await fetchAccountGenerations(AbortSignal.timeout(10_000))
+    if (leading) {
+      accountBusy = rows.some(
+        (row) => row.status === 'reserved' || row.status === 'running'
+      )
+      const jobs = mergeAccount(state.jobs, rows, Date.now())
+      if (jobs !== state.jobs) {
+        set(withJobs(jobs))
+        nameMirrors()
+      }
+    }
+  } catch {
+    // Offline or the Worker didn't answer: the list stays as it was until the next ask
+  }
+}
+
+const syncAccount = async () => {
+  clearTimeout(accountTimer)
+  accountTimer = undefined
+  if (!leading) {
+    return
+  }
+  await readAccount()
+  clearTimeout(accountTimer)
+  // Signed out, the next look asks nothing of the network: it is soon, so a sign-in finds its songs within seconds
+  const soon =
+    accountBusy || state.jobs.some(isActive) || lastAccount() === null
+  accountTimer = leading
+    ? setTimeout(
+        () => {
+          void syncAccount()
+        },
+        soon ? ACCOUNT_BUSY_MS : ACCOUNT_IDLE_MS
+      )
+    : undefined
+}
+
 // What the leading tab does with a command, from any tab
 const apply = (command: Command) => {
   set(withJobs(applyCommand(state.jobs, command)))
@@ -504,7 +590,11 @@ const lead = () => {
     )
   )
   for (const job of state.jobs) {
-    if (job.status.kind === 'running' && !controllers.has(job.id)) {
+    if (
+      job.status.kind === 'running' &&
+      job.mirror !== true &&
+      !controllers.has(job.id)
+    ) {
       // The backend began it, so a dropped connection is a reconnect to its job
       if (Object.values(job.runs).some((stage) => stage?.confirmed)) {
         heardAt.set(job.id, now)
@@ -514,6 +604,7 @@ const lead = () => {
   }
   pump()
   save()
+  void syncAccount()
 }
 
 // Another tab took the queue over: this one stops its streams (the backend jobs run on) and shows the copy
@@ -521,6 +612,8 @@ const follow = () => {
   leading = false
   clearTimeout(saveTimer)
   saveTimer = undefined
+  clearTimeout(accountTimer)
+  accountTimer = undefined
   for (const controller of controllers.values()) {
     controller.abort()
   }
@@ -560,6 +653,12 @@ if (typeof window !== 'undefined') {
   })
   // The last progress reaches storage before the next tab takes over
   window.addEventListener('pagehide', save)
+  // Back on screen: the account's songs may have moved on while this page was away
+  onResume(() => {
+    if (leading) {
+      void syncAccount()
+    }
+  })
 }
 
 // Applies a command here at once, so this tab's panel answers the press, and has the leading tab apply it
@@ -675,6 +774,9 @@ export const retryGeneration = (id: string) => {
     ...failed,
     ahead: 0,
     id: crypto.randomUUID(),
+    // Run from here, whichever device started it: asked again by its request id, the backend hands back a song it
+    // finished after all
+    mirror: false,
     reconnectingSince: null,
     runs: {},
     seen: false,

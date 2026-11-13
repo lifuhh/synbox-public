@@ -738,6 +738,41 @@ export const reserveGeneration = async (
   })
 }
 
+// How long a finished song stays in an account's list for its other tabs and devices to hear how it ended
+export const ACCOUNT_FINISHED_MS = 60 * 60_000
+
+export interface AccountGeneration {
+  id: string
+  videoId: string
+  kind: string
+  status: 'reserved' | 'running' | 'succeeded' | 'failed'
+  stage: string | null
+  fraction: number | null
+  createdAt: number
+  finishedAt: number | null
+  errorCode: string | null
+}
+
+// One account's songs still going and those that ended in the last hour, oldest first: what every tab and device of
+// the account shows in its progress panel, whichever one asked for the song
+export const accountGenerations = async (
+  db: D1Database,
+  userId: string,
+  now = new Date()
+) => {
+  await expireStalled(db, now)
+  const { results } = await db
+    .prepare(
+      `select "id", "videoId", "kind", "status", "stage", "fraction", "createdAt", "finishedAt", "errorCode"
+       from "generation"
+       where "userId" = ?1 and ("status" in ('reserved', 'running') or "finishedAt" > ?2)
+       order by "createdAt" limit 20`
+    )
+    .bind(userId, now.getTime() - ACCOUNT_FINISHED_MS)
+    .all<AccountGeneration>()
+  return results
+}
+
 // A finished generation, or a running one's progress (`running` with its stage and fraction)
 export const finishGeneration = async (
   db: D1Database,

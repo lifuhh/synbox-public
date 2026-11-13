@@ -6,6 +6,7 @@ import type { EmailSender } from './contact'
 import { claimGuestSong } from './guest-song'
 import type { Owner, SiteTrip } from './quota'
 import {
+  accountGenerations,
   checkGeneration,
   finishGeneration,
   getQuota,
@@ -491,5 +492,40 @@ describe("the site's daily ceiling", () => {
     expect(await reserveUnder(2, 'r5', user('u1'), at('11:02:00'))).toEqual({
       outcome: 'generation_paused',
     })
+  })
+})
+
+describe('accountGenerations', () => {
+  test('lists the account’s songs going and those ended within the hour, not other accounts’ or older ones', async () => {
+    const twoHoursAgo = new Date(now.getTime() - 2 * 60 * 60_000)
+    await reserve('going')
+    await reserve('other', 'admin')
+    await reserve('done-now')
+    await finishGeneration(db, 'done-now', { status: 'succeeded' }, now)
+    await reserve('done-long-ago')
+    await finishGeneration(
+      db,
+      'done-long-ago',
+      { status: 'succeeded' },
+      twoHoursAgo
+    )
+    await finishGeneration(
+      db,
+      'going',
+      { fraction: 0.4, stage: 'separate', status: 'running' },
+      now
+    )
+    const rows = await accountGenerations(db, 'u1', now)
+    expect(rows.map((row) => [row.id, row.status, row.stage])).toEqual([
+      ['going', 'running', 'separate'],
+      ['done-now', 'succeeded', null],
+    ])
+  })
+
+  test('a song silent past the stall limit shows as stopped', async () => {
+    await reserve('silent')
+    const silentSince = new Date(now.getTime() + 16 * 60_000)
+    const [row] = await accountGenerations(db, 'u1', silentSince)
+    expect([row.status, row.errorCode]).toEqual(['failed', 'abandoned'])
   })
 })

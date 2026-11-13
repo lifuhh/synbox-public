@@ -42,6 +42,7 @@ import {
 } from './notices'
 import { applyPrefOps, parsePrefOps, readPrefs } from './prefs'
 import {
+  accountGenerations,
   checkGeneration,
   expireStalled,
   finishGeneration,
@@ -230,6 +231,20 @@ app.get('/api/me/songs', async (c) => {
     .bind(session.user.id)
     .all()
   return c.json({ songs: results })
+})
+
+// The signed-in user's songs being generated and just finished, from any device, so every tab and device shows the
+// same progress; a guest has none
+app.get('/api/me/generations', async (c) => {
+  const session = await createAuth(c.env).api.getSession({
+    headers: c.req.raw.headers,
+  })
+  if (!session) {
+    return c.json({ generations: [] })
+  }
+  return c.json({
+    generations: await accountGenerations(c.env.DB, session.user.id),
+  })
 })
 
 // The signed-in user's history, bookmarks and playlists, so a new device or a reinstalled app starts with them
