@@ -43,7 +43,7 @@ const d1 = (sql: string): Record<string, unknown>[] => {
   const results =
     Array.isArray(printed) && isRecord(printed[0]) ? printed[0].results : null
   if (!Array.isArray(results)) {
-    throw new Error('wrangler printed no results')
+    throw new TypeError('wrangler printed no results')
   }
   return results.filter(isRecord)
 }
@@ -53,9 +53,9 @@ interface Arrival {
   first: number
 }
 
-// Guests whose first event has BURST_SIZE - 1 other guests' first events within BURST_WINDOW_MS
-export const burstActors = (arrivals: readonly Arrival[]) => {
-  const sorted = arrivals.toSorted((a, b) => a.first - b.first)
+// Guests whose first event has BURST_SIZE - 1 other guests' first events within BURST_WINDOW_MS. `sorted`: oldest
+// first, as the query orders them
+export const burstActors = (sorted: readonly Arrival[]) => {
   const burst = new Set<string>()
   let start = 0
   for (let end = 0; end < sorted.length; end += 1) {
@@ -73,8 +73,8 @@ export const burstActors = (arrivals: readonly Arrival[]) => {
 
 if (import.meta.main) {
   const purge = process.argv.includes('--purge')
-  const arrivals = d1(
-    `select "actor", min("at") as "first" from "event" where "actor" like 'd:%' group by "actor"`
+  const arrivals: Arrival[] = d1(
+    `select "actor", min("at") as "first" from "event" where "actor" like 'd:%' group by "actor" order by "first"`
   ).flatMap(({ actor, first }) =>
     typeof actor === 'string' && typeof first === 'number'
       ? [{ actor, first }]
@@ -89,9 +89,7 @@ if (import.meta.main) {
     days.set(day, row)
   }
   console.log('day (UTC)    guests alone   guests in bursts')
-  for (const [day, row] of [...days].toSorted(([a], [b]) =>
-    a.localeCompare(b)
-  )) {
+  for (const [day, row] of days) {
     console.log(
       `${day}   ${String(row.alone).padStart(12)}   ${String(row.burst).padStart(16)}`
     )
