@@ -52,6 +52,8 @@ test('songs past the running limit wait, and start when a slot frees', () => {
 
 vi.mock('@/lib/auth', () => ({
   backendToken: async () => await Promise.resolve(null),
+  // A guest: the account's list is never asked
+  lastAccount: () => null,
 }))
 
 // YouTube's details for the video checks at the button (preflight.ts): this id is a 10-minute video

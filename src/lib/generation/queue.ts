@@ -57,6 +57,9 @@ export interface Job extends Required<GenerationRequest> {
   reconnectingSince: number | null
   // Its result was on screen in the panel; a finished job not yet seen counts on the top bar's bell
   seen: boolean
+  // Started elsewhere (another device, or this browser before its list was lost) and shown from the account's
+  // list (account.ts): this browser opens no stream for it, so it never asks the backend to run anything
+  mirror?: boolean
 }
 
 // Not finished yet: running, or waiting for a free slot
@@ -180,6 +183,7 @@ const isJob = (value: unknown): value is Job =>
   typeof value.startedAt === 'number' &&
   typeof value.ahead === 'number' &&
   typeof value.seen === 'boolean' &&
+  (value.mirror === undefined || typeof value.mirror === 'boolean') &&
   (value.reconnectingSince === null ||
     typeof value.reconnectingSince === 'number') &&
   isRecord(value.runs) &&
