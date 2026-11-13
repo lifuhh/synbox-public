@@ -59,6 +59,7 @@ const COVERED_PHASES = new Set<StagePhase['kind']>([
   'ready',
   'starting',
   'ended',
+  'stalled',
 ])
 
 // A pause leaves the frame in view: with controls=0 YouTube draws nothing over a paused video
@@ -316,6 +317,28 @@ const StageCover = ({
     </div>
   )
 }
+
+// The video never got going, even on a player built again (use-you-tube-player.ts › STALL_MS): the spinner gives way
+// to this, centred on the video and above the stage's own input layer
+const StallRetry = ({
+  phase,
+  onRetry,
+}: {
+  phase: StagePhase
+  onRetry: () => void
+}) =>
+  phase.kind === 'stalled' ? (
+    <button
+      type='button'
+      data-bench='stall-retry'
+      onClick={() => {
+        onRetry()
+      }}
+      className='absolute top-(--video-cy) left-1/2 z-40 flex -translate-1/2 items-center gap-2.5 rounded-full bg-black/60 px-5 py-2.5 text-base font-medium whitespace-nowrap text-white shadow-lg backdrop-blur-md transition duration-300 hover:bg-black/80 enabled:active:scale-[0.96]'>
+      <RotateCwIcon className='size-5' aria-hidden='true' />
+      Try Again
+    </button>
+  ) : null
 
 // The stage while the page still checks what the video is (player-page.tsx): the cover the stage itself opens with,
 // in the video's 16:9 box, so the stage taking over changes nothing on screen
@@ -730,6 +753,13 @@ export const PlayerStage = ({
 
       {taps.flash && <SeekFlashBadge flash={taps.flash} />}
       <PlayFlash flash={playFlash} />
+
+      <StallRetry
+        phase={phase}
+        onRetry={() => {
+          player.retry()
+        }}
+      />
 
       {autoplayMuted && (
         // In a narrow watch page's small video the controls' middle row stands where the pill does: while they
