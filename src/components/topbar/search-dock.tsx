@@ -337,9 +337,11 @@ const dock = (
     if (!docked) {
       // Under a bar that has slid away (globals.css hides its row on this rule) the ghost would fly unseen, so the
       // field docks once it has left the screen whole: it never vanishes in view
-      const barGone = document.documentElement.matches(
-        "[data-topbar-state='hidden']:not(:has([data-generation-panel]))"
-      )
+      // Spelled out, not as `:has()`: matches() throws on browsers without it (Chrome before 105), which took the
+      // page down
+      const barGone =
+        document.documentElement.dataset.topbarState === 'hidden' &&
+        document.querySelector('[data-generation-panel]') === null
       return barGone ? bottom < 0 : top < barBottom()
     }
     // A search being typed into in the bar stays there
