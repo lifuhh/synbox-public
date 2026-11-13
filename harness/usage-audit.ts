@@ -5,7 +5,7 @@
 //
 //   bun harness/usage-audit.ts                 report the last 90 days (read-only)
 //   bun harness/usage-audit.ts --purge         also delete the burst guests' events, after saving them to
-//                                              docs/private/usage-purge-<date>.json in the main checkout
+//                                              docs/private/usage-purge-<time>.json in the main checkout (one per run)
 //
 // Since 2026-11-13 the Worker stores no event or listen from a driven browser or a crawler (index.ts ›
 // automatedClient), so new bursts should not appear; this finds what came before, or anything that slips past.
@@ -122,11 +122,12 @@ if (import.meta.main) {
     )
     const dir = path.join(main, 'docs/private')
     mkdirSync(dir, { recursive: true })
+    // One file per run, never written over: a second purge the same day once replaced the first one's backup
     const file = path.join(
       dir,
-      `usage-purge-${new Date().toISOString().slice(0, 10)}.json`
+      `usage-purge-${new Date().toISOString().replaceAll(':', '-')}.json`
     )
-    writeFileSync(file, JSON.stringify(rows))
+    writeFileSync(file, JSON.stringify(rows), { flag: 'wx' })
     console.log(`saved ${rows.length} events to ${file}`)
     for (let i = 0; i < list.length; i += 200) {
       d1(
