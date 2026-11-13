@@ -362,6 +362,18 @@ const usageSchema = z.object({
   events: z.array(
     z.object({ actors: z.number(), count: z.number(), name: z.string() })
   ),
+  // The latest song opens, newest first: who (an account's name, or "Guest" and its browser's short id) and when.
+  // Missing from a Worker older than 2026-11-13
+  plays: z
+    .array(
+      z.object({
+        at: z.number(),
+        by: z.string(),
+        guest: z.boolean(),
+        videoId: z.string(),
+      })
+    )
+    .default([]),
   songs: z.array(z.object({ listens: z.number(), videoId: z.string() })),
   week: z.object({ active: z.number(), signedIn: z.number() }),
 })

@@ -34,10 +34,11 @@ export interface Signals {
 const WEEK_MS = 7 * 86_400_000
 const DAY_MS = 86_400_000
 
-// Clients a person in a browser doesn't send: headless browsers, browser drivers and HTTP libraries. An empty
-// user agent counts too. `[webdriver]` is what the backend adds when the page reported navigator.webdriver
+// Clients a person in a browser doesn't send: headless browsers, browser drivers, HTTP libraries, and crawlers and
+// page testers that name themselves (Googlebot/2.1, bingbot/2.0, AhrefsBot/7.0, Lighthouse). An empty user agent
+// counts too. `[webdriver]` is what the backend adds when the page reported navigator.webdriver
 const AUTOMATION =
-  /HeadlessChrome|PhantomJS|Playwright|Puppeteer|Selenium|webdriver|python-requests|python-httpx|aiohttp|curl\/|Wget|node-fetch|undici|axios|Go-http-client|okhttp|Java\/|libwww|Scrapy|\bbot\b|spider|crawler/iu
+  /HeadlessChrome|PhantomJS|Playwright|Puppeteer|Selenium|webdriver|python-requests|python-httpx|aiohttp|curl\/|Wget|node-fetch|undici|axios|Go-http-client|okhttp|Java\/|libwww|Scrapy|\bbot\b|bot\/|spider|crawler|facebookexternalhit|Lighthouse|Google-InspectionTool|Slurp/iu
 
 export const isAutomated = (client: string | null) =>
   client !== null && (client.trim() === '' || AUTOMATION.test(client))

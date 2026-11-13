@@ -11,6 +11,9 @@ import {
 } from './reports'
 import { migratedD1 } from './test-d1'
 
+const BROWSER =
+  'Mozilla/5.0 (iPhone; CPU iPhone OS 26_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.1 Mobile/15E148 Safari/604.1'
+
 // The Worker as Cloudflare runs it: its fetch and scheduled handlers, over a migrated database
 const TOKEN = 'fixer-test-token'
 const DAY = 86_400_000
@@ -47,8 +50,18 @@ const setup = async () => {
       waits.push(promise)
     },
   } as unknown as ExecutionContext
-  const call = async (path: string, init: RequestInit = {}) =>
-    await worker.fetch(new Request(`http://localhost${path}`, init), env, ctx)
+  // A person's browser unless a test says otherwise: an empty user agent counts as automated (signals.ts)
+  const call = async (path: string, init: RequestInit = {}) => {
+    const headers = new Headers(init.headers)
+    if (!headers.has('user-agent')) {
+      headers.set('user-agent', BROWSER)
+    }
+    return await worker.fetch(
+      new Request(`http://localhost${path}`, { ...init, headers }),
+      env,
+      ctx
+    )
+  }
   const fixer = async (
     path: string,
     { body, auth = `Bearer ${TOKEN}` }: { body?: unknown; auth?: string } = {}
