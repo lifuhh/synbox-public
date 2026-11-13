@@ -32,6 +32,8 @@ export type StagePhase =
   | { kind: 'paused' }
   | { kind: 'ended' }
   | { kind: 'error'; code: number }
+  // Never got going, even on a player built again (STALL_MS): waits for Try Again
+  | { kind: 'stalled' }
 
 export interface PlayerVolume {
   level: number
@@ -93,6 +95,10 @@ const VERIFY_TRIES = 3
 
 // A play YouTube has not answered at all by then: no buffering, no playing, no refusal
 const START_CHECK_MS = 1500
+// A song still loading, or buffering towards its first frame, this long has an embed that stopped trying (YouTube
+// retries a dropped connection within seconds on its own): the player is built again once, then the stage stops
+// spinning and offers Try Again
+const STALL_MS = 10_000
 
 const STATE_NAMES: Record<YTStateCode, string> = {
   [YTState.Unstarted]: 'UNSTARTED',
@@ -301,6 +307,44 @@ export const useYouTubePlayer = ({
     [log, rebuild]
   )
 
+  // A song stuck loading or starting is built again once; still stuck, it stops spinning (STALL_MS). Kept per song
+  const stallRebuiltRef = useRef(false)
+  const stalledKind =
+    phase.kind === 'loading' || phase.kind === 'starting' ? phase.kind : null
+  const onStall = useCallback(
+    (kind: 'loading' | 'starting') => {
+      if (stallRebuiltRef.current) {
+        log(`stalled ${kind}`)
+        setPhase({ kind: 'stalled' })
+        return
+      }
+      stallRebuiltRef.current = true
+      log(`stalled ${kind}, rebuilding`)
+      // A song that was starting plays again on the new player, as it was asked to; one still loading is
+      // started by whatever was waiting for it to be ready
+      rebuild(kind === 'starting' ? { muted: silentPlayRef.current } : null)
+    },
+    [log, rebuild]
+  )
+  useEffect(() => {
+    if (stalledKind === null) {
+      return
+    }
+    const timer = setTimeout(() => {
+      onStall(stalledKind)
+    }, STALL_MS)
+    // oxlint-disable-next-line consistent-return -- the timer's cleanup; nothing to clean up while not stuck
+    return () => {
+      clearTimeout(timer)
+    }
+  }, [stalledKind, onStall])
+
+  // Try Again after a stall: a new player, which plays once cued
+  const retry = useCallback(() => {
+    log('retry')
+    rebuild({ muted: false })
+  }, [log, rebuild])
+
   useLayoutEffect(() => {
     refusedRef.current = () => {
       if (silentPlayRef.current) {
@@ -323,6 +367,7 @@ export const useYouTubePlayer = ({
       )
     }
     let settleTimer: ReturnType<typeof setTimeout> | undefined
+    stallRebuiltRef.current = false
     // A song going on from the mini bar that YouTube pauses by itself straight away (WebKit stops a muted autoplay
     // when the video moves to its stage) plays on: the listener never asked for that pause
     const held = heldSong()
@@ -435,7 +480,7 @@ export const useYouTubePlayer = ({
   useEffect(() => {
     const handleOnline = () => {
       const { kind } = phaseRef.current
-      if (kind === 'loading' || kind === 'error') {
+      if (kind === 'loading' || kind === 'error' || kind === 'stalled') {
         rebuild(null)
       }
     }
@@ -543,10 +588,12 @@ export const useYouTubePlayer = ({
     // which also gives the browser the user gesture an unmuted start needs
     if (kind === 'playing' || kind === 'buffering') {
       pause()
+    } else if (kind === 'stalled') {
+      retry()
     } else {
       play()
     }
-  }, [pause, play])
+  }, [pause, play, retry])
 
   // Call inside a tap or key handler. The unmute, and a play YouTube passes straight to its <video>, reach
   // the element while the browser still counts the tap, which lets it make sound for the rest of the visit
@@ -588,6 +635,7 @@ export const useYouTubePlayer = ({
     pause,
     phase,
     play,
+    retry,
     seek,
     stageRef,
     subscribeFrame,
