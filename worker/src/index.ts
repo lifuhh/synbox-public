@@ -89,7 +89,7 @@ import {
   parseRequestNote,
   sendRequest,
 } from './requests'
-import { readSignals } from './signals'
+import { isAutomated, readSignals } from './signals'
 import {
   addListen,
   isVideoId,
@@ -146,6 +146,14 @@ const userIdOf = async (env: AppEnv, headers: Headers) => {
 }
 
 // The signed-in account and whether it is an admin, whose own visits count in no metric (listens, usage events)
+// Listens and usage events count people only: a page driven by a test or a script says so (the app sends
+// `automated` when navigator.webdriver is set, as every browser driver sets it), and crawlers name themselves in
+// their user agent. Answered as usual, stored nowhere
+const automatedClient = (
+  c: Context<{ Bindings: AppEnv }>,
+  body: Record<string, unknown> | null
+) => body?.automated === true || isAutomated(c.req.header('user-agent') ?? '')
+
 const viewerOf = async (env: AppEnv, headers: Headers) => {
   const session = await createAuth(env).api.getSession({ headers })
   return {
@@ -412,7 +420,7 @@ app.post('/api/songs/:videoId/listen', async (c) => {
     return c.json(refused.body, refused.status)
   }
   const now = Date.now()
-  if (!admin) {
+  if (!admin && !automatedClient(c, body)) {
     await addListen(c.env.DB, videoId, listener, now)
   }
   if (userId !== null) {
@@ -437,7 +445,12 @@ app.post('/api/events', async (c) => {
   }
   const { admin, userId } = await viewerOf(c.env, c.req.raw.headers)
   const actor = listenerOf(userId, device)
-  if (!admin && actor !== null && events.length > 0) {
+  if (
+    !admin &&
+    !automatedClient(c, body) &&
+    actor !== null &&
+    events.length > 0
+  ) {
     await saveEvents(c.env.DB, actor, events, now)
   }
   return c.body(null, 204)

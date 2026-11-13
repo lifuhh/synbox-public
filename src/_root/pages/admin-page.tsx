@@ -1422,6 +1422,19 @@ const UsageCell = ({ children }: { children: number | string }) => (
 
 // How the app is used: people active, what they open and press, and what the server records anyway
 // (worker/src/events.ts › readUsage). Counting began with the usage events, so earlier days read 0 people
+// A song by its title (its id until the title loads, or for a song not in the library), linking to its page
+const SongName = ({ videoId }: { videoId: string }) => {
+  const { data: songInfo } = useGetSongInfoBySongId(videoId)
+  return (
+    <Link
+      to={`/v/${videoId}`}
+      title={videoId}
+      className='min-w-0 truncate text-foreground hover:underline'>
+      {songInfo?.title ?? videoId}
+    </Link>
+  )
+}
+
 const UsagePanel = () => {
   const { data, error } = useAdminUsage()
   if (error !== null) {
@@ -1530,6 +1543,27 @@ const UsagePanel = () => {
       </section>
       <section className='flex flex-col gap-2'>
         <h2 className='text-base font-semibold text-foreground'>
+          Recent Plays
+        </h2>
+        {data.plays.length === 0 ? (
+          <p className='text-muted-foreground'>No plays yet</p>
+        ) : (
+          <ol data-bench='usage-plays'>
+            {data.plays.map((play) => (
+              <li
+                key={`${play.at}-${play.by}-${play.videoId}`}
+                className='flex items-center justify-between gap-3 border-t border-border px-3 py-2'>
+                <SongName videoId={play.videoId} />
+                <span className='shrink-0 text-muted-foreground'>
+                  {play.by} · <When value={play.at} />
+                </span>
+              </li>
+            ))}
+          </ol>
+        )}
+      </section>
+      <section className='flex flex-col gap-2'>
+        <h2 className='text-base font-semibold text-foreground'>
           Most Listened
         </h2>
         <ol>
@@ -1537,12 +1571,8 @@ const UsagePanel = () => {
             <li
               key={song.videoId}
               className='flex items-center justify-between gap-3 border-t border-border px-3 py-2'>
-              <Link
-                to={`/v/${song.videoId}`}
-                className='font-mono text-foreground hover:underline'>
-                {song.videoId}
-              </Link>
-              <span className='text-muted-foreground tabular-nums'>
+              <SongName videoId={song.videoId} />
+              <span className='shrink-0 text-muted-foreground tabular-nums'>
                 {song.listens} listens
               </span>
             </li>

@@ -37,7 +37,13 @@ const optedOut = () => {
 let waiting: (UsageEvent & { at: number })[] = []
 let timer = 0
 
-const body = () => JSON.stringify({ device: deviceId(), events: waiting })
+const body = () =>
+  JSON.stringify({
+    // A page driven by a test or a script (every browser driver sets navigator.webdriver): the Worker stores none
+    ...(navigator.webdriver ? { automated: true } : {}),
+    device: deviceId(),
+    events: waiting,
+  })
 
 const post = async (payload: string) => {
   try {

@@ -42,7 +42,12 @@ export const countListen = (videoId: string) => {
     try {
       // The Worker counts an account's every visit (not a reload within a minute) and a guest's once per song an hour (worker/src/songs.ts)
       await fetch(`/api/songs/${videoId}/listen`, {
-        body: JSON.stringify({ device: deviceId() }),
+        // A page driven by a test or a script still sends it (the smoke test counts the request), marked so the
+        // Worker doesn't count it
+        body: JSON.stringify({
+          ...(navigator.webdriver ? { automated: true } : {}),
+          device: deviceId(),
+        }),
         credentials: 'same-origin',
         headers: { 'content-type': 'application/json' },
         keepalive: true,

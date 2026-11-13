@@ -13,6 +13,9 @@ import { migratedD1 } from './test-d1'
 const one = (name: 'app_open' | 'song_open', at: number) => [
   { at, name, props: {}, videoId: null },
 ]
+const open = (videoId: string, at: number) => [
+  { at, name: 'song_open' as const, props: {}, videoId },
+]
 
 let db: D1Database
 let sqlite: Database
@@ -115,4 +118,31 @@ test('usage counts active people per day, signed in apart, and drops events past
   await pruneEvents(db, now)
   expect(actors()).not.toContain('d:old')
   expect(actors()).toHaveLength(4)
+})
+
+test('recent plays name each song and who opened it, newest first, admins left out', async () => {
+  sqlite.run(
+    `insert into "user" ("id", "name", "email", "emailVerified", "createdAt", "updatedAt", "role")
+     values ('l', 'Listener', 'l@example.com', 1, ?1, ?1, 'user'), ('a', 'A', 'a@example.com', 1, ?1, ?1, 'admin')`,
+    [now]
+  )
+  await saveEvents(
+    db,
+    'd:0f8b3c3e-6a1e-4c62-9d2a-5b7d1f0c9e11',
+    open('6rG_irmOQsM', now - 2000),
+    now
+  )
+  await saveEvents(db, 'u:l', open('EaA6NlH80wg', now - 1000), now)
+  await saveEvents(db, 'u:a', open('I5eu4XMWZR8', now), now)
+  await saveEvents(db, 'u:l', one('app_open', now), now)
+  const { plays } = await readUsage(db, now, 3)
+  expect(plays).toEqual([
+    { at: now - 1000, by: 'Listener', guest: false, videoId: 'EaA6NlH80wg' },
+    {
+      at: now - 2000,
+      by: 'Guest 0f8b3c',
+      guest: true,
+      videoId: '6rG_irmOQsM',
+    },
+  ])
 })

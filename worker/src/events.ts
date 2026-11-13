@@ -229,13 +229,16 @@ const countByDay = (dates: (number | string)[], from: number) => {
   return counts
 }
 
+// How many of the latest song opens the Usage tab lists
+export const RECENT_PLAYS = 100
+
 // The admin's Usage tab: the last `days` UTC days, newest first (active people, signed in or not, song opens, new
 // accounts, generations started and failed, reports), the past 7 days' totals and each event's count, and the
 // most listened songs. Built from the events and the tables the server keeps anyway
 export const readUsage = async (db: D1Database, now: number, days = 14) => {
   const from = dayStart(now) - (days - 1) * DAY_MS
   const weekFrom = now - 7 * DAY_MS
-  const [activity, accounts, generations, reports, week, events, songs] =
+  const [activity, accounts, generations, reports, week, events, songs, plays] =
     await Promise.all([
       db
         .prepare(
@@ -284,6 +287,21 @@ export const readUsage = async (db: D1Database, now: number, days = 14) => {
           `select "videoId", "listens" from "songStat" order by "listens" desc limit 20`
         )
         .all<{ videoId: string; listens: number }>(),
+      // Each song opened lately and by whom: an account by its name, a guest by its browser id (one id, one browser)
+      db
+        .prepare(
+          `select e."at", e."videoId", u."name", e."actor" from "event" e
+           left join "user" u on 'u:' || u."id" = e."actor"
+           where e."name" = 'song_open' and e."videoId" is not null and ${NOT_ADMIN}
+           order by e."at" desc limit ?1`
+        )
+        .bind(RECENT_PLAYS)
+        .all<{
+          at: number
+          videoId: string
+          name: string | null
+          actor: string
+        }>(),
     ])
   const newAccounts = countByDay(
     accounts.results.map((row) => row.createdAt),
@@ -303,6 +321,17 @@ export const readUsage = async (db: D1Database, now: number, days = 14) => {
       )
     ),
     events: events.results,
+    plays: plays.results.map((play) => {
+      const guest = play.actor.startsWith('d:')
+      return {
+        at: play.at,
+        by: guest
+          ? `Guest ${play.actor.slice(2, 8)}`
+          : (play.name ?? 'Account'),
+        guest,
+        videoId: play.videoId,
+      }
+    }),
     songs: songs.results,
     week: { active: week?.active ?? 0, signedIn: week?.signedIn ?? 0 },
   }

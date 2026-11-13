@@ -7,6 +7,8 @@ import { migratedD1, sessionCookie } from './test-d1'
 const SONG = '6rG_irmOQsM'
 const NOT_A_SONG = 'plN7JMbadRg'
 const DEVICE = '0f8b3c3e-6a1e-4c62-9d2a-5b7d1f0c9e11'
+const BROWSER =
+  'Mozilla/5.0 (iPhone; CPU iPhone OS 26_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.1 Mobile/15E148 Safari/604.1'
 
 afterEach(() => {
   mock.restore()
@@ -55,8 +57,18 @@ const setup = async () => {
   }
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the handlers never call it on these routes
   const ctx = { waitUntil: () => null } as unknown as ExecutionContext
-  const call = async (path: string, init: RequestInit = {}) =>
-    await worker.fetch(new Request(`http://localhost${path}`, init), env, ctx)
+  // A person's browser unless a test says otherwise: an empty user agent counts as automated (signals.ts)
+  const call = async (path: string, init: RequestInit = {}) => {
+    const headers = new Headers(init.headers)
+    if (!headers.has('user-agent')) {
+      headers.set('user-agent', BROWSER)
+    }
+    return await worker.fetch(
+      new Request(`http://localhost${path}`, { ...init, headers }),
+      env,
+      ctx
+    )
+  }
   const listens = async (videoId: string) => {
     const row = await db
       .prepare(`select "listens" from "songStat" where "videoId" = ?1`)
@@ -131,6 +143,34 @@ test('a replayed listen counts once; a listen from neither an account nor a devi
   ])
   // The device once, the account once
   expect(await listens(SONG)).toBe(2)
+})
+
+test('a listen from a driven browser or a crawler is answered and not counted', async () => {
+  appwrite('up')
+  const { call, listens } = await setup()
+  const send = async (
+    device: string,
+    userAgent: string,
+    extra: Record<string, unknown> = {}
+  ) =>
+    await call(`/api/songs/${SONG}/listen`, {
+      body: JSON.stringify({ device, ...extra }),
+      headers: { 'content-type': 'application/json', 'user-agent': userAgent },
+      method: 'POST',
+    })
+  const statuses = [
+    // The app under Playwright or Selenium: navigator.webdriver
+    await send(crypto.randomUUID(), BROWSER, { automated: true }),
+    await send(
+      crypto.randomUUID(),
+      'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)'
+    ),
+    await send(crypto.randomUUID(), 'Mozilla/5.0 HeadlessChrome/120.0'),
+  ].map((response) => response.status)
+  expect(statuses).toEqual([204, 204, 204])
+  expect(await listens(SONG)).toBe(0)
+  await send(crypto.randomUUID(), BROWSER)
+  expect(await listens(SONG)).toBe(1)
 })
 
 test("a guest can't like: refused without writing, and the stats count no like", async () => {
