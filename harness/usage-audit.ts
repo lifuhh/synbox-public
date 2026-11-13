@@ -19,7 +19,11 @@ const repo = path.resolve(import.meta.dirname, '..')
 const wrangler = path.join(repo, 'worker/node_modules/.bin/wrangler')
 const config = path.join(repo, 'worker/wrangler.jsonc')
 
-const d1 = <T>(sql: string): T[] => {
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null
+
+// The rows of one statement, as wrangler prints them ([{results: [...]}])
+const d1 = (sql: string): Record<string, unknown>[] => {
   const run = Bun.spawnSync([
     wrangler,
     'd1',
@@ -35,8 +39,13 @@ const d1 = <T>(sql: string): T[] => {
   if (run.exitCode !== 0) {
     throw new Error(`wrangler failed: ${run.stderr.toString().slice(0, 500)}`)
   }
-  const [result] = JSON.parse(run.stdout.toString()) as [{ results: T[] }]
-  return result.results
+  const printed: unknown = JSON.parse(run.stdout.toString())
+  const results =
+    Array.isArray(printed) && isRecord(printed[0]) ? printed[0].results : null
+  if (!Array.isArray(results)) {
+    throw new Error('wrangler printed no results')
+  }
+  return results.filter(isRecord)
 }
 
 interface Arrival {
@@ -46,7 +55,7 @@ interface Arrival {
 
 // Guests whose first event has BURST_SIZE - 1 other guests' first events within BURST_WINDOW_MS
 export const burstActors = (arrivals: readonly Arrival[]) => {
-  const sorted = [...arrivals].sort((a, b) => a.first - b.first)
+  const sorted = arrivals.toSorted((a, b) => a.first - b.first)
   const burst = new Set<string>()
   let start = 0
   for (let end = 0; end < sorted.length; end += 1) {
@@ -64,8 +73,12 @@ export const burstActors = (arrivals: readonly Arrival[]) => {
 
 if (import.meta.main) {
   const purge = process.argv.includes('--purge')
-  const arrivals = d1<Arrival>(
+  const arrivals = d1(
     `select "actor", min("at") as "first" from "event" where "actor" like 'd:%' group by "actor"`
+  ).flatMap(({ actor, first }) =>
+    typeof actor === 'string' && typeof first === 'number'
+      ? [{ actor, first }]
+      : []
   )
   const burst = burstActors(arrivals)
   const days = new Map<string, { alone: number; burst: number }>()
@@ -76,7 +89,9 @@ if (import.meta.main) {
     days.set(day, row)
   }
   console.log('day (UTC)    guests alone   guests in bursts')
-  for (const [day, row] of [...days].sort()) {
+  for (const [day, row] of [...days].toSorted(([a], [b]) =>
+    a.localeCompare(b)
+  )) {
     console.log(
       `${day}   ${String(row.alone).padStart(12)}   ${String(row.burst).padStart(16)}`
     )
@@ -90,7 +105,7 @@ if (import.meta.main) {
     // D1 takes a bounded statement; a few hundred ids at a time
     for (let i = 0; i < list.length; i += 200) {
       rows.push(
-        ...d1<Record<string, unknown>>(
+        ...d1(
           `select * from "event" where "actor" in (${list.slice(i, i + 200).join(',')})`
         )
       )
