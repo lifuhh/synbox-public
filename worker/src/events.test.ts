@@ -108,19 +108,20 @@ test('usage counts active people per day, signed in apart, and drops events past
      values ('a', 'A', 'a@example.com', 1, ?1, ?1, 'admin')`,
     [now]
   )
-  const withoutAdmin = await readUsage(db, now, 3)
-  expect(withoutAdmin.days[0]).toMatchObject({
-    active: 1,
-    signedIn: 0,
-    songOpens: 1,
+  // The owner's own visits count like anyone's
+  const withAdmin = await readUsage(db, now, 3)
+  expect(withAdmin.days[0]).toMatchObject({
+    active: 2,
+    signedIn: 1,
+    songOpens: 2,
   })
-  expect(withoutAdmin.week).toEqual({ active: 1, signedIn: 0 })
+  expect(withAdmin.week).toEqual({ active: 2, signedIn: 1 })
   await pruneEvents(db, now)
   expect(actors()).not.toContain('d:old')
   expect(actors()).toHaveLength(4)
 })
 
-test('recent plays name each song and who opened it, newest first, admins left out', async () => {
+test('recent plays name each song and who opened it, newest first, the owner included', async () => {
   sqlite.run(
     `insert into "user" ("id", "name", "email", "emailVerified", "createdAt", "updatedAt", "role")
      values ('l', 'Listener', 'l@example.com', 1, ?1, ?1, 'user'), ('a', 'A', 'a@example.com', 1, ?1, ?1, 'admin')`,
@@ -137,6 +138,7 @@ test('recent plays name each song and who opened it, newest first, admins left o
   await saveEvents(db, 'u:l', one('app_open', now), now)
   const { plays } = await readUsage(db, now, 3)
   expect(plays).toEqual([
+    { at: now, by: 'A', guest: false, videoId: 'I5eu4XMWZR8' },
     { at: now - 1000, by: 'Listener', guest: false, videoId: 'EaA6NlH80wg' },
     {
       at: now - 2000,

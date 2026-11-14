@@ -145,22 +145,13 @@ const userIdOf = async (env: AppEnv, headers: Headers) => {
   return session?.user.id ?? null
 }
 
-// The signed-in account and whether it is an admin, whose own visits count in no metric (listens, usage events)
-// Listens and usage events count people only: a page driven by a test or a script says so (the app sends
-// `automated` when navigator.webdriver is set, as every browser driver sets it), and crawlers name themselves in
-// their user agent. Answered as usual, stored nowhere
+// Listens and usage events count people only, the owner's own visits included: a page driven by a test or a script
+// says so (the app sends `automated` when navigator.webdriver is set, as every browser driver sets it), and crawlers
+// name themselves in their user agent. Answered as usual, stored nowhere
 const automatedClient = (
   c: Context<{ Bindings: AppEnv }>,
   body: Record<string, unknown> | null
 ) => body?.automated === true || isAutomated(c.req.header('user-agent') ?? '')
-
-const viewerOf = async (env: AppEnv, headers: Headers) => {
-  const session = await createAuth(env).api.getSession({ headers })
-  return {
-    admin: session?.user.role === 'admin',
-    userId: session?.user.id ?? null,
-  }
-}
 
 app.on(
   ['GET', 'POST'],
@@ -404,13 +395,13 @@ const refusedSong = async (env: AppEnv, videoId: string) => {
 }
 
 // A visit to a song's player page ({ device } for a guest): one more listen, unless the same account counted one of
-// the song in the last minute, or the same guest device in the last hour (songs.ts)
-// (songs.ts › addListen), or it is an admin's. A listen that doesn't count still answers 204
+// the song in the last minute, or the same guest device in the last hour (songs.ts › addListen), or it is a test's
+// or a crawler's (automatedClient). A listen that doesn't count still answers 204
 app.post('/api/songs/:videoId/listen', async (c) => {
   const videoId = c.req.param('videoId')
   const body = await c.req.json<Record<string, unknown>>().catch(() => null)
   const device = typeof body?.device === 'string' ? body.device : null
-  const { admin, userId } = await viewerOf(c.env, c.req.raw.headers)
+  const userId = await userIdOf(c.env, c.req.raw.headers)
   const listener = listenerOf(userId, device)
   if (!isVideoId(videoId) || listener === null) {
     return c.json({ code: 'bad_request' }, 400)
@@ -420,7 +411,7 @@ app.post('/api/songs/:videoId/listen', async (c) => {
     return c.json(refused.body, refused.status)
   }
   const now = Date.now()
-  if (!admin && !automatedClient(c, body)) {
+  if (!automatedClient(c, body)) {
     await addListen(c.env.DB, videoId, listener, now)
   }
   if (userId !== null) {
@@ -443,14 +434,8 @@ app.post('/api/events', async (c) => {
   if (events === null) {
     return c.json({ code: 'bad_request' }, 400)
   }
-  const { admin, userId } = await viewerOf(c.env, c.req.raw.headers)
-  const actor = listenerOf(userId, device)
-  if (
-    !admin &&
-    !automatedClient(c, body) &&
-    actor !== null &&
-    events.length > 0
-  ) {
+  const actor = listenerOf(await userIdOf(c.env, c.req.raw.headers), device)
+  if (!automatedClient(c, body) && actor !== null && events.length > 0) {
     await saveEvents(c.env.DB, actor, events, now)
   }
   return c.body(null, 204)
