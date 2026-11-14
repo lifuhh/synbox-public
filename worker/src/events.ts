@@ -173,7 +173,6 @@ export const pruneEvents = async (db: D1Database, now: number) => {
     .run()
 }
 
-
 const dayOf = (column: string) =>
   `strftime('%Y-%m-%d', ${column} / 1000, 'unixepoch')`
 
