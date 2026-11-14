@@ -173,10 +173,6 @@ export const pruneEvents = async (db: D1Database, now: number) => {
     .run()
 }
 
-// An admin's own use counts nowhere. New events from an admin are not saved (index.ts › /api/events); this drops the
-// ones saved before that, and those of an account made admin later
-const NOT_ADMIN = `"actor" not in (select 'u:' || "id" from "user" where "role" = 'admin')`
-
 const dayOf = (column: string) =>
   `strftime('%Y-%m-%d', ${column} / 1000, 'unixepoch')`
 
@@ -245,7 +241,7 @@ export const readUsage = async (db: D1Database, now: number, days = 14) => {
           `select ${dayOf('"at"')} as "day", count(distinct "actor") as "active",
              count(distinct case when "actor" like 'u:%' then "actor" end) as "signedIn",
              sum(case when "name" = 'song_open' then 1 else 0 end) as "songOpens"
-           from "event" where "at" >= ?1 and ${NOT_ADMIN} group by "day"`
+           from "event" where "at" >= ?1 group by "day"`
         )
         .bind(from)
         .all<Seen & { day: string }>(),
@@ -271,14 +267,14 @@ export const readUsage = async (db: D1Database, now: number, days = 14) => {
         .prepare(
           `select count(distinct "actor") as "active",
              count(distinct case when "actor" like 'u:%' then "actor" end) as "signedIn"
-           from "event" where "at" >= ?1 and ${NOT_ADMIN}`
+           from "event" where "at" >= ?1`
         )
         .bind(weekFrom)
         .first<{ active: number; signedIn: number }>(),
       db
         .prepare(
           `select "name", count(*) as "count", count(distinct "actor") as "actors"
-           from "event" where "at" >= ?1 and ${NOT_ADMIN} group by "name" order by "count" desc`
+           from "event" where "at" >= ?1 group by "name" order by "count" desc`
         )
         .bind(weekFrom)
         .all<{ name: string; count: number; actors: number }>(),
@@ -292,7 +288,7 @@ export const readUsage = async (db: D1Database, now: number, days = 14) => {
         .prepare(
           `select e."at", e."videoId", u."name", e."actor" from "event" e
            left join "user" u on 'u:' || u."id" = e."actor"
-           where e."name" = 'song_open' and e."videoId" is not null and ${NOT_ADMIN}
+           where e."name" = 'song_open' and e."videoId" is not null
            order by e."at" desc limit ?1`
         )
         .bind(RECENT_PLAYS)
