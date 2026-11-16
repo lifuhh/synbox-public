@@ -16,6 +16,7 @@ import { THUMB_RADIUS_PX } from '@/components/shared/mini-bar-view'
 import { historyIdx, returnTab } from '@/components/shared/tab-bar'
 import { GROW_MS, runGrow } from '@/lib/grow'
 import { openedBy } from '@/lib/listening/store'
+import { skipNextNavTransition } from '@/lib/nav/app-router'
 import { reducedMotion } from '@/lib/reduced-motion'
 
 // A finger moving this far, mostly downwards, starts the drag; sideways first, it is left to the stage
@@ -385,6 +386,8 @@ const minimiseTo = (navigate: NavigateFunction) => {
   setTimeout(() => {
     delete root.dataset.minimised
   }, LANDED_MS)
+  // The video's flight into the bar is this page change's motion
+  skipNextNavTransition()
   const tab = returnTab()
   const idx = historyIdx()
   if (tab !== null && tab.idx < idx) {

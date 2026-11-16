@@ -6,7 +6,7 @@ import * as React from 'react'
 import { cn } from '@/utils/cn'
 
 const buttonVariants = cva(
-  'inline-flex items-center justify-center rounded-md text-sm font-medium whitespace-nowrap ring-offset-background transition duration-150 ease-out disabled:pointer-events-none disabled:opacity-50 motion-safe:enabled:active:scale-96',
+  'inline-flex items-center justify-center rounded-md text-sm font-medium whitespace-nowrap ring-offset-background transition duration-150 ease-out disabled:pointer-events-none disabled:opacity-50 motion-safe:not-disabled:active:scale-96',
   {
     defaultVariants: {
       size: 'default',

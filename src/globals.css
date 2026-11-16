@@ -2516,6 +2516,18 @@ html[data-installed] *::-webkit-scrollbar {
     -webkit-user-drag: none;
   }
 
+  /* A pressed link dims at once, as a row or card does under a finger in a phone's own apps, and the browser's grey
+     tap flash is off: every control draws its own pressed state. Buttons scale instead (ui/button.tsx). Not while
+     the press is on a button inside the link's own box (`button` named: a :has() of a bare pseudo-class restyles
+     the whole page on every insertion, style-invalidation.test.ts) */
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  a[href]:active:not(:has(button:active)) {
+    opacity: 0.6;
+  }
+
   /* Pinch zoom stays; double-tap zoom goes, so double-tapping the stage only toggles fullscreen */
   * {
     touch-action: manipulation;
@@ -2551,9 +2563,10 @@ html[data-installed] *::-webkit-scrollbar {
    :focus-visible (a menu opened with the mouse focuses its content, hovering an item focuses the item, a clicked
    tab focuses itself), and nothing has been pressed before the first input. :where() keeps the specificity of a
    bare :focus-visible, so data-focus-proxy below still overrides it. Text fields draw it on their field's frame
-   ([data-focus-field]) rather than the bare input inside it */
+   ([data-focus-field]) rather than the bare input inside it. The page's own box, where a page change rests focus
+   (route-arrival.tsx), is no control and draws none: the next Tab shows it on the page's first control */
 :where(html[data-input-modality='keyboard'])
-  :focus-visible:not(input, textarea, select) {
+  :focus-visible:not(input, textarea, select, [data-page-content]) {
   outline: 3px solid var(--focus-ring);
   outline-offset: 2px;
 }
@@ -2719,6 +2732,112 @@ html[data-transition='flip']::view-transition-new(root) {
 @keyframes flip-in {
   from {
     transform: rotate(-180deg);
+  }
+}
+
+/* Page changes (src/lib/nav/app-router.tsx sets html[data-nav] to the kind transition-kind.ts picks, for the
+   length of one view transition). `fade`: the whole screen cross-fades in 150ms, so what stays (the bars) holds
+   still and only what differs changes. `push` and `pop`, touch screens only: the page alone slides, a deeper one
+   in from the right over the page it came from and back off again, while the bars stay where they are above it.
+   Each bar is its own snapshot for that: the page's snapshot would otherwise be drawn over them. Reduce Motion
+   never gets here with a slide (it is given `fade`) */
+html[data-nav]::view-transition-old(root),
+html[data-nav]::view-transition-new(root) {
+  animation-duration: 150ms;
+  animation-timing-function: ease-out;
+}
+
+html:is([data-nav='push'], [data-nav='pop']) {
+  [data-page-content] {
+    view-transition-name: nav-page;
+  }
+
+  [data-status-scrim] {
+    view-transition-name: nav-scrim;
+  }
+
+  [data-topbar] {
+    view-transition-name: nav-topbar;
+  }
+
+  [data-tabbar-root] {
+    view-transition-name: nav-dock;
+  }
+
+  [data-generation-host] {
+    view-transition-name: nav-generation;
+  }
+
+  &::view-transition-group(*) {
+    animation-duration: 380ms;
+    animation-timing-function: cubic-bezier(0.32, 0.72, 0, 1);
+  }
+
+  /* A bar on both pages holds still as itself: no cross-fade with its own copy, which dims glass mid-way. One
+     that only the old page had (the tabs, leaving for a page without them) keeps the browser's fade out */
+  &::view-transition-old(nav-scrim):not(:only-child),
+  &::view-transition-old(nav-topbar):not(:only-child),
+  &::view-transition-old(nav-dock):not(:only-child),
+  &::view-transition-old(nav-generation):not(:only-child) {
+    display: none;
+  }
+
+  &::view-transition-new(nav-scrim):not(:only-child),
+  &::view-transition-new(nav-topbar):not(:only-child),
+  &::view-transition-new(nav-dock):not(:only-child),
+  &::view-transition-new(nav-generation):not(:only-child) {
+    animation: none;
+    mix-blend-mode: normal;
+  }
+
+  /* Both pages are opaque while they overlap, so one never shows through the other */
+  &::view-transition-old(nav-page),
+  &::view-transition-new(nav-page) {
+    animation: 380ms cubic-bezier(0.32, 0.72, 0, 1) both;
+    mix-blend-mode: normal;
+    background: var(--background);
+  }
+}
+
+html[data-nav='push']::view-transition-old(nav-page) {
+  animation-name: nav-under-out;
+}
+
+html[data-nav='push']::view-transition-new(nav-page) {
+  animation-name: nav-over-in;
+}
+
+html[data-nav='pop']::view-transition-old(nav-page) {
+  z-index: 1;
+  animation-name: nav-over-out;
+}
+
+html[data-nav='pop']::view-transition-new(nav-page) {
+  animation-name: nav-under-in;
+}
+
+/* The page on top travels the screen's width; the one under it a third as far, as iOS's own pages do */
+@keyframes nav-over-in {
+  from {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes nav-over-out {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes nav-under-out {
+  to {
+    transform: translateX(-30%);
+  }
+}
+
+@keyframes nav-under-in {
+  from {
+    transform: translateX(-30%);
   }
 }
 

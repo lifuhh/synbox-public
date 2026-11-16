@@ -3,11 +3,11 @@ import './instrument'
 import { reactErrorHandler } from '@sentry/react'
 import { MotionConfig } from 'motion/react'
 import ReactDOM from 'react-dom/client'
-import { BrowserRouter } from 'react-router'
 
 import App from './app'
 import ErrorBoundary from './components/shared/error-boundary'
 import { trackInputModality } from './lib/input-modality'
+import AppRouter from './lib/nav/app-router'
 import { QueryProvider } from './lib/react-query/query-provider'
 import { trackAppOpenLater } from './lib/usage-later'
 import { trackZoom } from './lib/zoom'
@@ -27,7 +27,7 @@ ReactDOM.createRoot(rootElement, {
   onRecoverableError: reactErrorHandler(),
   onUncaughtError: reactErrorHandler(),
 }).render(
-  <BrowserRouter>
+  <AppRouter>
     <QueryProvider>
       <ErrorBoundary>
         {/* Reduce Motion on the device keeps motion's fades and drops its moves and scales */}
@@ -36,7 +36,7 @@ ReactDOM.createRoot(rootElement, {
         </MotionConfig>
       </ErrorBoundary>
     </QueryProvider>
-  </BrowserRouter>
+  </AppRouter>
 )
 
 // How the app was opened, for its owner (lib/usage.ts); loaded after the first render, so the first load doesn't
