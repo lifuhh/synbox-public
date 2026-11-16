@@ -1,6 +1,8 @@
 import type { QueryClient } from '@tanstack/react-query'
 import { queryOptions, useMutation, useQuery } from '@tanstack/react-query'
 
+import type { formattedYoutubeVideoItemForCarousel } from '@/types'
+
 import { getSongInfoBySongId } from '../appwrite/api'
 import { justMade } from '../generation/store'
 import { fetchLyricsRow, RateLimitedError } from '../lyrics-api'
@@ -36,10 +38,40 @@ const notYetStale = (videoId: string) => (justMade(videoId) ? 0 : NOT_YET_MS)
 const askAgainIfJustMade = (videoId: string, data: unknown) =>
   data === null && justMade(videoId) ? JUST_MADE_RETRY_MS : false
 
+// A list fetched again while it is on screen keeps the order it is shown in: its songs with their new details,
+// songs that left dropped, new ones after them. Each fetch comes back shuffled, and the app opens on the list kept
+// from the last visit (persist.ts) while it asks again, so the answer must not reorder what is being read. A new
+// order comes from a launch and from Home's refresh (home-refresh.tsx), which sets the list itself
+export const inShownOrder = <Song extends { videoId: string }>(
+  shown: readonly Song[] | undefined,
+  fetched: Song[]
+) => {
+  if (shown === undefined) {
+    return fetched
+  }
+  const byId = new Map(fetched.map((song) => [song.videoId, song]))
+  const kept = shown.flatMap((song) => {
+    const now = byId.get(song.videoId)
+    byId.delete(song.videoId)
+    return now === undefined ? [] : [now]
+  })
+  return [...kept, ...byId.values()]
+}
+
+const landingPagePlaylistKey = [QUERY_KEYS.GET_LANDING_PAGE_PLAYLIST]
+
 export const useGetLandingPagePlaylist = () =>
   useQuery({
-    queryFn: async () => await getLandingPagePlaylist(),
-    queryKey: [QUERY_KEYS.GET_LANDING_PAGE_PLAYLIST],
+    // An hour, like the charts: Back from a song returns to the list as it was left
+    gcTime: HOUR_MS,
+    queryFn: async ({ client }) =>
+      inShownOrder(
+        client.getQueryData<formattedYoutubeVideoItemForCarousel[]>(
+          landingPagePlaylistKey
+        ),
+        await getLandingPagePlaylist()
+      ),
+    queryKey: landingPagePlaylistKey,
     // One retry, so a rejected API key shows the error and its Retry button in seconds, not ~7s
     retry: 1,
     // A day, like the gallery and charts: each fetch reshuffles, so refetching on every return would reorder the
@@ -61,7 +93,12 @@ export const useGetChartsPlaylist = (enabled = true) =>
 // A day, so the shuffled order holds while the user browses and a tab left open still gets other people's new
 // songs (this tab's own new songs go in at once: setLibrarySong)
 export const librarySongs = queryOptions({
-  queryFn: getLibrarySongs,
+  gcTime: HOUR_MS,
+  queryFn: async ({ client }): Promise<LibraryListSong[]> =>
+    inShownOrder(
+      client.getQueryData<LibraryListSong[]>([QUERY_KEYS.GET_GALLERY_SONGS]),
+      await getLibrarySongs()
+    ),
   queryKey: [QUERY_KEYS.GET_GALLERY_SONGS],
   retry: LIBRARY_SONGS_RETRIES,
   retryDelay: libraryRetryDelay,

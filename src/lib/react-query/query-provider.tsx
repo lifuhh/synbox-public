@@ -1,9 +1,7 @@
-import {
-  QueryClient,
-  QueryClientProvider,
-  focusManager,
-} from '@tanstack/react-query'
+import { QueryClientProvider, focusManager } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
+
+import { queryClient } from './query-client'
 
 // "The app came to the front": the tab becoming visible (React Query's only signal by default) or the window taking
 // focus. Side-by-side windows never hide the tab, so returning to one only fires `focus`. Stale queries refetch then,
@@ -28,8 +26,6 @@ focusManager.setEventListener((setFocused) => {
     window.removeEventListener('blur', onBlur)
   }
 })
-
-const queryClient = new QueryClient()
 
 export const QueryProvider = ({ children }: { children: ReactNode }) => (
   <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
