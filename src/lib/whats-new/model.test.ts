@@ -38,16 +38,17 @@ const entry = (id: string, date: string | null) => ({
   title: 'Fixes',
 })
 
+const long = (date: string | null) => ({
+  ...entry('long', date),
+  items: ['a', 'b', 'c', 'd', 'e', 'f'],
+})
+
 describe('parseEntries', () => {
   test('the shipped entries are well formed, newest first', () => {
     expect(parseEntries(raw).length).toBeGreaterThan(0)
   })
 
   test('an entry is a summary: a sixth line is refused, older entries keep theirs', () => {
-    const long = (date: string | null) => ({
-      ...entry('long', date),
-      items: ['a', 'b', 'c', 'd', 'e', 'f'],
-    })
     expect(() => parseEntries([long(null)])).toThrow(/5 at most/u)
     expect(() => parseEntries([long('2026-11-16')])).toThrow(/5 at most/u)
     expect(parseEntries([long('2026-10-30')])).toHaveLength(1)
