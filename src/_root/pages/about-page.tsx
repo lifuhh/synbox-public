@@ -99,7 +99,7 @@ const AboutPage = () => {
       className='relative flex flex-1 flex-col overflow-y-auto pt-(--topbar-h) page-x pb-page-bottom-sm'>
       <title>About · Synbox</title>
 
-      <div className='mx-auto flex w-full max-w-2xl flex-col gap-10 pt-8 sm:pt-12'>
+      <div className='mx-auto flex w-full max-w-2xl flex-col gap-10 pt-8 select-text sm:pt-12'>
         <header className='flex flex-col gap-3'>
           <h1 className='text-3xl font-bold tracking-tight'>About Synbox</h1>
           <p className='text-lg text-pretty text-muted-foreground'>

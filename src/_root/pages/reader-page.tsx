@@ -387,7 +387,9 @@ const ReaderPage = () => {
             onClick={onPageTap}
             className='mx-auto max-w-xl px-5 font-reader'>
             <header className='pb-5'>
-              <h1 className='text-reader-title font-semibold'>{song.title}</h1>
+              <h1 className='text-reader-title font-semibold select-text'>
+                {song.title}
+              </h1>
               {song.author !== '' && (
                 <p className='pt-0.5 text-xs text-(--reader-muted)'>
                   {song.author}
