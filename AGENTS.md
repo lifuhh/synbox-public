@@ -30,6 +30,7 @@ Any UI or UX change (a screen, component, dialog, layout, copy, colour, icon, mo
   - It lands decisively: no edge passes where it lands and comes back (0.5px), no tail creeps the last pixels in, and a box's edges move on one shared progress (never one edge leading, so it never looks slanted).
   - Children stay attached to what they belong to: a button rides its field's end and text its field's edge, inside the box, never on a path of their own. A copy drawn in flight carries no CSS transition of its own (it would trail every move).
   - Every morph has a motion audit: a `Morph` in `harness/bench/probes/motion.ts` (selectors for its parts and the passes that drive it, slow and fast, both ways), registered in `harness/bench/suite.ts`, so `check` runs it frame by frame (`motion-hero-flight-*`). Its notes name each jump, and the frames behind them are in the run's `frames.json`.
+  - Page changes have one too (`nav-motion`, `harness/bench/probes/nav-motion.ts`): the push and pop slide and the tab fade in the installed app, each frame's snapshot styles judged against the curve in `src/globals.css` › `html[data-nav]`. A retuned duration, easing or travel there is repeated in the probe's constants, in its own PR.
 
 ## Phones, the installed app and desktop
 

@@ -26,6 +26,7 @@ import { lyricShiftAudit } from './probes/lyric-shift'
 import { lyricUndockAudit } from './probes/lyric-undock'
 import { HERO_FLIGHT, motionAudit } from './probes/motion'
 import type { Morph } from './probes/motion'
+import { NAV_MOTION_FINDINGS, navMotionAudit } from './probes/nav-motion'
 import { playerSession } from './probes/player'
 import {
   PRESS_RELEASE_FINDINGS,
@@ -109,6 +110,16 @@ const probe = (
 
 /** The top bar: it floats over the player's stage, so audits of the stage's chrome and morphs into it observe it */
 const TOP_BAR = 'src/components/shared/top-bar.tsx'
+/**
+ * What runs and rides a page change besides the root layout and the stylesheet (which reach every audit): the router
+ * that picks and starts the transition, the bars the page slides under, and what moves focus when a page arrives
+ */
+const PAGE_CHANGE = [
+  'src/lib/nav/app-router.tsx',
+  TOP_BAR,
+  'src/components/shared/tab-bar.tsx',
+  'src/components/shared/route-arrival.tsx',
+]
 
 /**
  * Lighthouse's mobile lab: a mid-range phone on slow 4G, where load regressions show first. The service worker is
@@ -499,6 +510,36 @@ export const SUITE: Benchmark[] = [
     timing: true,
     title:
       'Theater Mode in and out on the wide watch page (1440×900), every frame: teleports, size reversals, the video or the bar off the stage, the YouTube iframe reloaded; dropped frames reported',
+  },
+  {
+    // Page changes in the installed app, frame by frame: You → About slides in (push), Back slides it off (pop), a
+    // tab cross-fades. Judged on the snapshots' computed styles, against the curve (probes/nav-motion.ts)
+    id: 'nav-motion',
+    metrics: [
+      ...NAV_MOTION_FINDINGS.map((key) => count(key)),
+      // On the animations' clock, from the first drawn frame: reported beside the rule that judges them
+      ...['pushMs', 'popMs', 'fadeMs', 'fadeHeldMs'].map((key): MetricSpec => ({
+        ...ms(key, false, 16, 0),
+        exact: true,
+      })),
+      // The worst margins: the largest step as a share of its budget, the pages' and bars' largest offsets
+      count('stepBudgetPct', false),
+      count('endOffMaxPx', false),
+      count('barMoveMaxPx', false),
+      count('opacityMinPct', false),
+      count('fadeOffCurvePct', false),
+      count('droppedFrames', false),
+      count('frames', false),
+      count('stalledFrames', false),
+      count('redos', false),
+    ],
+    run: navMotionAudit,
+    runs: 1,
+    scope: probe('nav-motion', ['/you', '/about', '/search'], PAGE_CHANGE),
+    surface: PWA_PORTRAIT.surface,
+    timing: true,
+    title:
+      'Page changes in the installed app (WebKit, 390×844), every frame: the push and pop slide and the tab fade against their curves: teleports, a page off its path or its ends, a page not opaque, a bar that moves, the wrong kind or html[data-nav] left behind, the wrong length; margins reported',
   },
   {
     // The full-screen player on an iPhone on its side, turned by CSS (rotation lock on) and rotated by iOS (lock off,
