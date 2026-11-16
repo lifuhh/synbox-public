@@ -22,8 +22,14 @@ const entrySchema = z.object({
 })
 export type WhatsNewEntry = z.infer<typeof entrySchema>
 
+// An entry is a summary a listener reads in one look, not a list of everything that merged: five lines at most.
+// Entries from before the rule keep their length
+export const MAX_ITEMS = 5
+const MAX_ITEMS_SINCE = '2026-11-16'
+
 // The entries as written, checked once: unique ids, newest first, at most one undated (the one shipping next) and
-// only at the top. Throws on a malformed file, so a bad entry fails the build's tests rather than the page
+// only at the top, and no entry longer than a summary. Throws on a malformed file, so a bad entry fails the
+// build's tests rather than the page
 export const parseEntries = (raw: unknown): WhatsNewEntry[] => {
   const parsed = z.array(entrySchema).safeParse(raw)
   if (!parsed.success) {
@@ -36,6 +42,14 @@ export const parseEntries = (raw: unknown): WhatsNewEntry[] => {
     throw new Error('whats-new entries.json: ids must be unique')
   }
   for (const [index, entry] of entries.entries()) {
+    if (
+      (entry.date === null || entry.date >= MAX_ITEMS_SINCE) &&
+      entry.items.length > MAX_ITEMS
+    ) {
+      throw new Error(
+        `whats-new entries.json: "${entry.id}" has ${entry.items.length} lines; ${MAX_ITEMS} at most. Merge related lines and drop what a listener wouldn't miss (docs/whats-new.md)`
+      )
+    }
     if (entry.date === null && index !== 0) {
       throw new Error(
         'whats-new entries.json: only the newest entry may be undated'

@@ -43,6 +43,16 @@ describe('parseEntries', () => {
     expect(parseEntries(raw).length).toBeGreaterThan(0)
   })
 
+  test('an entry is a summary: a sixth line is refused, older entries keep theirs', () => {
+    const long = (date: string | null) => ({
+      ...entry('long', date),
+      items: ['a', 'b', 'c', 'd', 'e', 'f'],
+    })
+    expect(() => parseEntries([long(null)])).toThrow(/5 at most/u)
+    expect(() => parseEntries([long('2026-11-16')])).toThrow(/5 at most/u)
+    expect(parseEntries([long('2026-10-30')])).toHaveLength(1)
+  })
+
   test('only the newest entry may wait for its ship date', () => {
     expect(() =>
       parseEntries([entry('b', '2026-11-12'), entry('a', null)])
