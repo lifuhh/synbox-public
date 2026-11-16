@@ -45,7 +45,7 @@ const Title = ({ title, className }: { title: string; className: string }) => {
     <span
       ref={text}
       className={cn(
-        'block',
+        'block select-text',
         // Pretty wrapping balances the last lines, so the cut and the whole title broke their first two lines in
         // different places, and expanding moved words that were already showing. A title that is cut wraps plainly
         cut ? !expanded && 'line-clamp-2' : 'line-clamp-2 text-pretty',

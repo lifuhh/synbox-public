@@ -69,7 +69,7 @@ const WhatsNewPage = () => {
       className='relative flex flex-1 flex-col overflow-y-auto pt-(--topbar-h) page-x pb-page-bottom-sm'>
       <title>What’s New · Synbox</title>
 
-      <div className='mx-auto flex w-full max-w-2xl flex-col gap-8 pt-8 lg:pt-4'>
+      <div className='mx-auto flex w-full max-w-2xl flex-col gap-8 pt-8 select-text lg:pt-4'>
         <h1 className='text-center text-3xl font-bold'>What’s New</h1>
 
         {WHATS_NEW.slice(0, recent).map((entry) => (

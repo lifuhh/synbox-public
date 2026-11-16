@@ -1371,10 +1371,11 @@ button[aria-expanded='true']:is(:hover, :focus-visible) > .control-tip {
 
   /* The app installed on a phone selects no text under a held finger, as a phone's own apps don't: iOS answered
      a long press anywhere by selecting the text around it, up to the whole screen. Fields stay editable, and
-     text that asks to be copied (select-text, select-all: a link in a note) still selects, being utilities.
-     The website keeps its selectable text (a drag with a mouse) */
+     text that asks to be copied still selects, being a utility (select-text, select-all): a song's title on
+     its own page, and the pages that are text to read (About, What's New, Privacy, Terms), links included.
+     Lyrics never select. The website keeps its selectable text (a drag with a mouse) */
   @media (pointer: coarse) {
-    html[data-installed] :is(body, a) {
+    html[data-installed] :is(body, a:not(.select-text a)) {
       -webkit-user-select: none;
       user-select: none;
     }
