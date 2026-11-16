@@ -56,6 +56,12 @@ for = "/synbox-logo-*"
 [headers.values]
 Cache-Control = "public, max-age=31536000, immutable"
 
+# iPhone launch images: each name carries its content hash (scripts/pwa-icons.ts › publishLaunch)
+[[headers]]
+for = "/launch/*"
+[headers.values]
+Cache-Control = "public, max-age=31536000, immutable"
+
 # Vite's bundles have content hashes in their names; public/assets/ (icons) does not, so only these
 [[headers]]
 for = "/assets/*.js"
