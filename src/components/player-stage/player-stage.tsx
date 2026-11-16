@@ -187,11 +187,8 @@ const useFullscreen = () => {
     fullscreen,
     immersive,
     setImmersive,
-    // On a phone on its side the player is full screen unless the watch page was asked for there
-    shown:
-      fullscreen ||
-      immersive ||
-      (phone && (landscape.held || (onItsSide && !landscape.sideWatch))),
+    // On a phone on its side the player is always full screen
+    shown: fullscreen || immersive || (phone && (landscape.held || onItsSide)),
     toggleFullscreen,
   }
 }

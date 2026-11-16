@@ -1,7 +1,8 @@
-import { atom, useAtom, useAtomValue, useSetAtom } from 'jotai'
+import { atom, useAtom, useAtomValue } from 'jotai'
 import { useEffect, useLayoutEffect, useRef } from 'react'
 import { flushSync } from 'react-dom'
 
+import { toast } from '@/components/ui/use-toast'
 import { LANDSCAPE_FLIP_ATTR, LANDSCAPE_LOCK_ATTR } from '@/lib/page-turn'
 import { phonePosture } from '@/lib/phone-posture'
 import { transitionLayout } from '@/lib/view-transition'
@@ -32,10 +33,6 @@ const holdAtom = atom<Hold | null>(null)
 // A turned page the other way round, top to the screen's left, for a phone held top to the right: the system
 // won't turn it while its rotation lock holds the screen upright
 const landscapeFlipAtom = atom(false)
-// On a phone on its side, the watch page instead of the full-screen player: asked for with Exit Fullscreen there,
-// as Full Screen upright asks for the player on its side (owner, 2026-10-25). Until the phone is turned upright,
-// or Full Screen is pressed again
-const sideWatchAtom = atom(false)
 
 // How long the screen must stay upright before that counts as the phone turned upright. A phone set down on a dock,
 // or tilted on the way, can turn the screen upright and back within a moment; that must not end Full Screen or
@@ -64,8 +61,6 @@ export const followUpright = (
     landscape.removeEventListener('change', onChange)
   }
 }
-
-export const useSideWatch = () => useAtomValue(sideWatchAtom)
 
 export const usePageTurned = () => useAtomValue(holdAtom)?.mode === 'turned'
 export const useLandscapeHeld = () => useAtomValue(holdAtom) !== null
@@ -189,18 +184,6 @@ const follow = (hold: Hold, setHold: SetHold) =>
 export const useLandscapeHold = (active: boolean) => {
   const [hold, setHold] = useAtom(holdAtom)
   const flipped = useAtomValue(landscapeFlipAtom)
-  const setSideWatch = useSetAtom(sideWatchAtom)
-
-  // The watch page asked for on its side lasts until the phone is turned upright, and the player page is left
-  useEffect(() => {
-    const stop = followUpright(() => {
-      setSideWatch(false)
-    })
-    return () => {
-      stop()
-      setSideWatch(false)
-    }
-  }, [setSideWatch])
 
   // Fullscreen ending ends the hold that entered it, whatever ended it (the browser lets go of the orientation
   // with it)
@@ -258,7 +241,6 @@ const clearHold = (setHold: SetHold) => () => {
 export const useLandscapeLock = () => {
   const [hold, setHold] = useAtom(holdAtom)
   const [flipped, setFlipped] = useAtom(landscapeFlipAtom)
-  const [sideWatch, setSideWatch] = useAtom(sideWatchAtom)
 
   const release = (current: Hold) => {
     letGo(current)
@@ -286,7 +268,6 @@ export const useLandscapeLock = () => {
       }
       const next: Hold = { entered, mode: 'system', reason, sideways: true }
       const show = () => {
-        setSideWatch(false)
         setHold(next)
       }
       if (entered) {
@@ -338,19 +319,25 @@ export const useLandscapeLock = () => {
     setHold({ ...hold, mode: 'turned', reason: 'lock' })
   }
 
-  // On a phone on its side the full-screen player is up whether the phone was turned or Full Screen held it there:
-  // the button leaves it for the watch page (a turned page excepted, whose screen stands upright: leaving turns it
-  // back upright)
-  const onItsSide = landscapeNow() && !sideWatch && hold?.mode !== 'turned'
+  // Outside full screen the player is upright only: a phone on its side shows the full-screen player and nothing
+  // else, whether the phone was turned or Full Screen held it there. So with the screen on its side the button
+  // can't leave it; it lets go of whatever held the player (the browser's fullscreen, an orientation lock) and
+  // says how to leave: turned upright, the watch page is there. A turned page is excepted: its screen stands
+  // upright already, and leaving turns the page back
+  const onItsSide = landscapeNow() && hold?.mode !== 'turned'
   const toggleFullscreen = async () => {
     if (onItsSide) {
       if (hold !== null) {
         letGo(hold)
-      }
-      transitionLayout('zoom', () => {
         setHold(null)
-        setSideWatch(true)
-      })
+      }
+      // Once the screen has had time to turn back by itself (an orientation lock just let go of, on a phone
+      // held upright): only a phone still on its side is told
+      setTimeout(() => {
+        if (landscapeNow()) {
+          toast({ duration: 2000, title: 'Turn Phone Upright' })
+        }
+      }, UPRIGHT_SETTLE_MS)
     } else if (hold === null) {
       await take('fullscreen')
     } else {
@@ -368,7 +355,7 @@ export const useLandscapeLock = () => {
     flip,
     held: hold !== null,
     locked: hold?.reason === 'lock',
-    sideWatch,
+
     toggleFullscreen,
     toggleLock,
     turned: hold?.mode === 'turned',
