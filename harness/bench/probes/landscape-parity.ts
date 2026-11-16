@@ -4,10 +4,10 @@
 // turn, page-turn.ts), with the upright screen's safe areas swapped onto the page's sides; rotation lock off, iOS
 // turns the screen and reports landscape safe areas. Both are measured in the page's own axes (the turned page's
 // boxes mapped back through its transform): the stage, the video, every control shown on the stage and the rail,
-// the seek bar, the top bar. Every box must match within 1px, in the default Zoom and in Fit, and the real-landscape
-// player reached again from the watch page (Exit Fullscreen, then Full Screen) too. In Fit, and on the watch page on
-// its side, the side safe-area bands must be black on screen (read from a screenshot's pixels); Zoom runs the video
-// through them. No control may reach into a side or bottom safe area in any of them.
+// the seek bar, the top bar. Every box must match within 1px, in the default Zoom and in Fit. In Fit the side
+// safe-area bands must be black on screen (read from a screenshot's pixels); Zoom runs the video through them. No
+// control may reach into a side or bottom safe area in any of them. (Until 2026-11-16 it also measured a watch page
+// laid out on a phone on its side; outside full screen the player is upright only, so that page is gone.)
 
 import path from 'node:path'
 
@@ -232,7 +232,7 @@ const measure = async (
     }
   })
 
-type Path = 'turned' | 'rotated' | 'rotated-again' | 'side-watch'
+type Path = 'turned' | 'rotated'
 
 /** The full-screen player on a phone on its side, reached one way, in Fit or the default Zoom, controls shown,
  * measured */
@@ -255,15 +255,6 @@ const reach = async (
       // Rotation lock on: Full Screen from upright turns the page
       await showControls(page)
       await press(page, 'Fullscreen')
-    } else if (how === 'rotated-again') {
-      // Rotation lock off: the watch page on its side, then Full Screen
-      await showControls(page)
-      await press(page, 'Exit Fullscreen')
-      await press(page, 'Fullscreen')
-    } else if (how === 'side-watch') {
-      // Rotation lock off: the watch page on its side
-      await showControls(page)
-      await press(page, 'Exit Fullscreen')
     }
     // A phone on its side fills by default (video-fit.ts); Fit is the whole picture inside the side safe areas
     if (
@@ -382,18 +373,6 @@ const parity = async (
     'rotated',
     path.join(dir, 'rotated.png')
   )
-  const again = await reach(
-    PWA_LANDSCAPE.surface,
-    url,
-    'rotated-again',
-    path.join(dir, 'rotated-again.png')
-  )
-  const watch = await reach(
-    PWA_LANDSCAPE.surface,
-    url,
-    'side-watch',
-    path.join(dir, 'side-watch.png')
-  )
   const turnedFit = await reach(
     PWA_PORTRAIT.surface,
     url,
@@ -411,19 +390,15 @@ const parity = async (
   const runs: [Measure, string][] = [
     [turned, 'turned'],
     [rotated, 'rotated'],
-    [again, 'rotated, from the watch page'],
-    [watch, 'watch page on its side'],
     [turnedFit, 'turned, Fit'],
     [rotatedFit, 'rotated, Fit'],
   ]
   const diffs = [
     ...compare(turned, rotated, 'rotated'),
-    ...compare(turned, again, 'rotated, from the watch page'),
     ...compare(turnedFit, rotatedFit, 'rotated, Fit'),
   ]
-  // Zoom runs the video edge to edge, through the bands; Fit and the watch page leave them to black
+  // Zoom runs the video edge to edge, through the bands; Fit leaves them to black
   const bands = [
-    ...bandProblems(watch, 'watch page on its side'),
     ...bandProblems(turnedFit, 'turned, Fit'),
     ...bandProblems(rotatedFit, 'rotated, Fit'),
   ]
