@@ -1,5 +1,15 @@
 [
   {
+    "id": "smoother-pages",
+    "date": null,
+    "title": "Smoother Pages",
+    "items": [
+      "Pages slide and fade into each other instead of snapping",
+      "Back returns to where you were on the page, and each tab remembers its place",
+      "Songs and links dim under your finger when pressed"
+    ]
+  },
+  {
     "id": "smoother-starts",
     "date": "2026-11-12",
     "title": "Smoother Starts",

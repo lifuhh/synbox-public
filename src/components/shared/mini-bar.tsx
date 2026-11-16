@@ -32,6 +32,7 @@ import {
   songPath,
   songState,
 } from '@/lib/listening/store'
+import { skipNextNavTransition } from '@/lib/nav/app-router'
 import { countListen } from '@/lib/song-stats'
 import type { YTPlayer } from '@/lib/youtube/iframe-api'
 import { YTState } from '@/lib/youtube/iframe-api'
@@ -347,6 +348,7 @@ const MiniPlayer = ({
           event.preventDefault()
           // In a transition, so React renders the player page in slices between the grow's frames
           growFromBar(el, () => {
+            skipNextNavTransition()
             startTransition(() => {
               void navigate(songPath(song.videoId), {
                 state: songState(song.videoId, 'resume'),

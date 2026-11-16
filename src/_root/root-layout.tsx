@@ -3,6 +3,7 @@ import { Outlet } from 'react-router'
 
 import AccountDialogs from '@/components/account/account-dialogs'
 import GenerationHost from '@/components/generation/generation-host'
+import RouteArrival, { focusPage } from '@/components/shared/route-arrival'
 import TabBar from '@/components/shared/tab-bar'
 import TopBar from '@/components/shared/top-bar'
 
@@ -23,9 +24,19 @@ const RootLayout: React.FC = () => (
         data-status-scrim
         className='top-scrim fixed inset-x-0 top-0 z-40 bg-background page-glow'
       />
+      {/* The first Tab stop: past the bars, straight to the page (WCAG 2.4.1). Seen only while focused */}
+      <button
+        type='button'
+        onClick={focusPage}
+        className='sr-only rounded-full bg-card px-4 text-sm font-medium text-foreground shadow-lg focus-visible:not-sr-only focus-visible:fixed focus-visible:top-[calc(var(--safe-top)+0.5rem)] focus-visible:left-2 focus-visible:z-50 focus-visible:h-11'>
+        Skip to Content
+      </button>
       <TopBar />
+      <RouteArrival />
+      {/* Focus lands here on a page change (route-arrival.tsx); the box itself draws no ring, its controls do */}
       <section
         data-page-content
+        tabIndex={-1}
         className='flex h-full flex-1 doc-scroll:h-auto'>
         <Outlet />
       </section>
