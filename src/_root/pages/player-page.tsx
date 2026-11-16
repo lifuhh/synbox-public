@@ -36,7 +36,6 @@ import {
   PHONE_QUERY,
   UPRIGHT_SETTLE_MS,
   useLandscapeHeld,
-  useSideWatch,
   useLandscapeHold,
 } from '@/hooks/use-landscape-lock'
 import { useLyricsReady } from '@/hooks/use-lyrics-ready'
@@ -110,11 +109,9 @@ const usePlayerSurface = (
     '(orientation: landscape) and (max-height: 500px)'
   )
   const held = useLandscapeHeld()
-  const sideWatch = useSideWatch()
   const onItsSide = useSettledShort(short)
   const surface =
-    (playable || checking) &&
-    ((fullscreen && !phone) || (onItsSide && !sideWatch) || held)
+    (playable || checking) && ((fullscreen && !phone) || onItsSide || held)
       ? 'stage'
       : 'watch'
   const setSurface = useSetAtom(playerSurfaceAtom)
