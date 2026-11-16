@@ -41,6 +41,7 @@ export const UserAvatar = ({
       </span>
       {lastSrc !== null && !failed && (
         <img
+          decoding='async'
           key={lastSrc}
           src={lastSrc}
           alt=''

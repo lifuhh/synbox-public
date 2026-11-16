@@ -235,6 +235,7 @@ const LinkedVideo = ({ videoId }: { videoId: string }) => {
       <div className='relative aspect-video w-full overflow-hidden rounded-lg bg-input sm:w-64 sm:shrink-0'>
         {video.data !== undefined && (
           <img
+            decoding='async'
             src={video.data.thumbnail}
             alt=''
             className='absolute inset-0 h-full w-full object-cover'
@@ -593,6 +594,7 @@ const SearchPage = () => {
           <Input
             ref={field}
             name='q'
+            data-search-key
             value={typed}
             onChange={(e) => {
               setTyped(e.target.value)

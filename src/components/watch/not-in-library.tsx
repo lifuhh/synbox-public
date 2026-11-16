@@ -28,6 +28,7 @@ export const NotInLibrary = ({ videoId }: { videoId: string }) => {
         ) : (
           video !== undefined && (
             <img
+              decoding='async'
               src={video.thumbnail}
               alt=''
               className='aspect-video w-full rounded-xl bg-card object-cover'

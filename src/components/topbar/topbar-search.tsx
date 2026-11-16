@@ -66,6 +66,7 @@ const RowBody = ({
     return (
       <>
         <img
+          decoding='async'
           src={row.song.thumbnailUrl}
           alt=''
           loading='lazy'
@@ -409,6 +410,7 @@ export const TopbarSearch = ({ variant }: { variant: 'inline' | 'button' }) => {
         ref={inputRef}
         data-dock-shell
         type='search'
+        data-search-key
         role='combobox'
         aria-label='Search Songs'
         aria-expanded={open}

@@ -45,6 +45,7 @@ export const MiniBarView = ({
         data-mini-thumb
         className='aspect-video h-11 shrink-0'>
         <img
+          decoding='async'
           src={song.thumbnailUrl}
           alt=''
           className='size-full rounded-lg object-cover'

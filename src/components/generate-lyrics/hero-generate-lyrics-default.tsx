@@ -356,6 +356,7 @@ const HeroGenerateLyricsDefault = ({
             className='relative'>
             <Input
               ref={field}
+              data-search-key
               value={inputValue}
               onChange={handleInputChange}
               readOnly={checking}

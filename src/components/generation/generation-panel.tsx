@@ -108,6 +108,7 @@ const SongHeader = ({ job }: { job: Job }) => {
       {unread && <UnreadDot className='top-1/2 -left-3 -translate-y-1/2' />}
       <span className='h-10 w-[71px] shrink-0 overflow-hidden rounded-md bg-thumbnail-placeholder'>
         <img
+          decoding='async'
           key={thumbnailOf(job)}
           src={thumbnailOf(job)}
           alt=''
@@ -497,6 +498,7 @@ const ROW_MAIN =
 const RowThumbnail = ({ src }: { src: string }) => (
   <span className='h-8 w-[57px] shrink-0 overflow-hidden rounded bg-thumbnail-placeholder'>
     <img
+      decoding='async'
       src={src}
       alt=''
       onError={hideBrokenImage}

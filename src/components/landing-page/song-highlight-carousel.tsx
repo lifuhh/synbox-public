@@ -52,6 +52,7 @@ const Card = ({
         centred slide keeps a scale (100%), so a slide changing place restyles without laying out the row */}
     <span className='relative aspect-video overflow-hidden rounded-xl bg-thumbnail-placeholder transition-opacity duration-150 group-data-[active=false]:opacity-40'>
       <img
+        decoding='async'
         src={item.thumbnailUrl}
         alt=''
         width='480'
@@ -180,6 +181,7 @@ const SongHighlightCarousel = () => {
           {/* The centred song's picture, blurred, glowing under its card; a new one fades in as the row moves */}
           {centred && (
             <img
+              decoding='async'
               key={centred.videoId}
               // YouTube's 320x180 picture: already soft when stretched to the card, so the glow stays a glow
               // even where the blur isn't drawn

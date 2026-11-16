@@ -12,6 +12,7 @@ import { Toaster } from '@/components/ui/toaster'
 import { LibrarySync } from '@/lib/library/sync'
 import { OfflineSync } from '@/lib/offline/sync'
 import { PrefsSync } from '@/lib/prefs/sync'
+import { listenForSearchKey } from '@/lib/search-key'
 
 import LandingPage from './_root/pages/landing-page'
 import RootLayout from './_root/root-layout'
@@ -117,6 +118,7 @@ const App = () => {
       }
     }
   }, [])
+  useEffect(listenForSearchKey, [])
 
   return (
     <main className='flex h-(--app-h) doc-scroll:h-auto doc-scroll:pr-(--doc-gutter)'>
