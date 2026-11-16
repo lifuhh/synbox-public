@@ -118,7 +118,7 @@ export const TabNav = ({
 )
 
 // The tab page shown last and its place in the history (React Router's `idx`), which minimising the player goes back to
-let lastTab: { path: string; idx: number } | null = null
+let lastTab: { path: string; search: string; idx: number } | null = null
 export const returnTab = () => lastTab
 export const historyIdx = () => {
   const state: unknown = window.history.state
@@ -134,7 +134,7 @@ export const historyIdx = () => {
 // home indicator, with the mini player above them. The website (and the app on a computer) keeps the top bar.
 // While the page scrolls down the pill shrinks and drops its labels, and comes back on the way up (globals.css)
 const TabBar = () => {
-  const { pathname } = useLocation()
+  const { pathname, search, key } = useLocation()
   const [song] = useAtom(resumeSongAtom)
   const shown = isInstalledPhone() && TAB_PAGES.test(pathname)
   const resume = shown && song !== null
@@ -144,9 +144,9 @@ const TabBar = () => {
 
   useEffect(() => {
     if (shown) {
-      lastTab = { idx: historyIdx(), path: pathname }
+      lastTab = { idx: historyIdx(), path: pathname, search }
     }
-  }, [shown, pathname])
+  }, [shown, pathname, search, key])
 
   useEffect(() => {
     const root = document.documentElement

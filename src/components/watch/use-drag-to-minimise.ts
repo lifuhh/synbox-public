@@ -393,7 +393,7 @@ const minimiseTo = (navigate: NavigateFunction) => {
   if (tab !== null && tab.idx < idx) {
     void navigate(tab.idx - idx)
   } else {
-    void navigate(tab?.path ?? '/')
+    void navigate(tab === null ? '/' : `${tab.path}${tab.search}`)
   }
 }
 
