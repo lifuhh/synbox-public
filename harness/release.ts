@@ -332,6 +332,25 @@ const waitForLive = (sha: string) => {
   )
 }
 
+/**
+ * The public copy follows every release: rebuilt from staging and pushed when its own checks pass
+ * (harness/public/export.ts). Until 2026-11-17 this was a step to remember, and the copy sat 19 days behind.
+ * A failing check stops the push, never the release, which is already live
+ */
+const publicCopy = (dir: string) => {
+  say('public copy: rebuilding from staging and checking it')
+  const pushed =
+    spawnSync('bun', ['harness/public/export.ts', '--push'], {
+      cwd: dir,
+      stdio: 'inherit',
+    }).status === 0
+  say(
+    pushed
+      ? 'public copy: updated'
+      : 'public copy: NOT updated (the findings are above). Clear each with a rule in harness/public/ or at its source, in a PR into staging, then run: bun harness/public/export.ts --push'
+  )
+}
+
 /** The local smoke, before anything is built on Netlify; says how many builds the rest will spend */
 const smokeBeforeBuilding = (dir: string) => {
   if (flags.preview === true && flags['no-preview'] === true) {
@@ -517,6 +536,7 @@ const release = () => {
       ].join('\n')
     )
   }
+  publicCopy(dir)
 }
 
 // A release always runs the release script staging has now, never the copy it was started from. The main checkout
