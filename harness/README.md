@@ -154,6 +154,8 @@ bun harness/smoke.ts --local       # the smoke alone, on a local production buil
 bun harness/smoke.ts <url>         # the smoke alone, on any deployed copy
 ```
 
+A release runs the release script staging has now, wherever it is started. The copy that is started takes the lock, brings the release worktree (`../synbox-release`) to staging's tip and runs that tree's `harness/release.ts` with the same arguments; its first line is `release: running staging's own harness/release.ts (<sha>)`. The main checkout is not where work happens, so it falls behind: on 2026-11-16 it was 130 commits behind, and a release started there ran a copy from before the What's New step and shipped an undated entry. `wt.ts start` and `finish` also fast-forward the main checkout to `origin/main` while it is on `main`, so the other tools run from there (`asks.ts`, `history.ts`, `wt.ts` itself) stay current.
+
 A release, in order, each step stopping it on a failure (fix it in a PR into staging and release again):
 
 1. `check --full` on staging's tree, every time: every audit, whatever each PR's scope was (per-PR verdicts judged other trees). A reused verdict stops the release. The evaluator guard judges each PR merged since `main` on its own (`check.ts` › `guardRanges`), since staging's own diff is empty there. Skipped only when nothing in `harness/gate.json` › `paths` (which include `netlify.toml`, the tsconfigs and `scripts/`) differs from `main`. Four to eight minutes, with other sessions' checks running.
