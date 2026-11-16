@@ -1,18 +1,13 @@
 [
   {
     "id": "smoother-pages",
-    "date": null,
+    "date": "2026-11-16",
     "title": "Smoother Pages",
     "items": [
-      "Pages slide and fade into each other instead of snapping",
-      "Back returns to where you were on the page, and each tab remembers its place",
-      "Songs and links dim under your finger when pressed",
-      "A link that leads nowhere says so, instead of opening Home",
-      "Press / to jump to search",
-      "Follows your device’s Reduce Transparency and Increase Contrast settings",
-      "The iPhone app opens on a Synbox screen instead of a blank one",
-      "The app opens on the songs it last showed instead of loading placeholders",
-      "With your phone on its side the player stays full screen. Turn it upright for the song’s page"
+      "Pages slide and fade into each other, and Back returns to where you were",
+      "The app opens on your last songs instead of a blank screen",
+      "With your phone on its side, the player stays full screen",
+      "Minimizing the player keeps your search results"
     ]
   },
   {
