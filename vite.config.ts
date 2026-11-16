@@ -274,7 +274,8 @@ export default defineConfig({
         directoryIndex: '',
         // The app shell only. Lyrics, songs and videos always come from the network
         // The logo's 270KB source SVG (scripts/pwa-icons.ts draws the icons from it); the app shows the WebP
-        globIgnores: ['assets/icons/Synbox_logo_dark_1.svg'],
+        // 404.html answers a missing script (netlify.toml); the app never opens it
+        globIgnores: ['assets/icons/Synbox_logo_dark_1.svg', '404.html'],
         globPatterns: ['**/*.{js,css,html,png,svg,webp,woff2}'],
         // Pages from the network, so opening or reloading a tab shows the latest deploy (a precached page kept
         // the deploy the worker was built with until a hard reload). Offline, the shell in the precache answers:
