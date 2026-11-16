@@ -1369,6 +1369,22 @@ button[aria-expanded='true']:is(:hover, :focus-visible) > .control-tip {
     user-select: text;
   }
 
+  /* The app installed on a phone selects no text under a held finger, as a phone's own apps don't: iOS answered
+     a long press anywhere by selecting the text around it, up to the whole screen. Fields stay editable, and
+     text that asks to be copied (select-text, select-all: a link in a note) still selects, being utilities.
+     The website keeps its selectable text (a drag with a mouse) */
+  @media (pointer: coarse) {
+    html[data-installed] :is(body, a) {
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    html[data-installed] :is(input, textarea, [contenteditable='true']) {
+      -webkit-user-select: text;
+      user-select: text;
+    }
+  }
+
   /* Tailwind v4 resets buttons to cursor: default; this keeps the v3 pointer, for every control a press acts on:
      buttons, menu rows, list options, tabs, radios, switches and checkboxes, a slider's knob, a summary and a
      label for a control. Not when disabled */

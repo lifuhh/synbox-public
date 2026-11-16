@@ -1,7 +1,7 @@
 [
   {
     "id": "smoother-pages",
-    "date": null,
+    "date": "2026-11-16",
     "title": "Smoother Pages",
     "items": [
       "Pages slide and fade into each other instead of snapping",
@@ -12,7 +12,8 @@
       "Follows your device’s Reduce Transparency and Increase Contrast settings",
       "The iPhone app opens on a Synbox screen instead of a blank one",
       "The app opens on the songs it last showed instead of loading placeholders",
-      "With your phone on its side the player stays full screen. Turn it upright for the song’s page"
+      "With your phone on its side the player stays full screen. Turn it upright for the song’s page",
+      "In the installed app, a long press no longer selects the whole screen"
     ]
   },
   {
