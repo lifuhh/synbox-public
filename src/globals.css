@@ -2747,6 +2747,12 @@ html[data-nav]::view-transition-new(root) {
   animation-timing-function: ease-out;
 }
 
+/* The root's group ends with its cross-fade: left at the browser's 250ms, it kept the snapshots up (and the page
+   deaf to a press) 100ms after the fade was done */
+html[data-nav='fade']::view-transition-group(root) {
+  animation-duration: 150ms;
+}
+
 html:is([data-nav='push'], [data-nav='pop']) {
   [data-page-content] {
     view-transition-name: nav-page;
@@ -2793,7 +2799,12 @@ html:is([data-nav='push'], [data-nav='pop']) {
   /* Both pages are opaque while they overlap, so one never shows through the other */
   &::view-transition-old(nav-page),
   &::view-transition-new(nav-page) {
-    animation: 380ms cubic-bezier(0.32, 0.72, 0, 1) both;
+    /* Longhands, not the `animation` shorthand without a name: the build's minifier writes that as
+       `animation: none`, and the pages then swap in one frame (the dev server doesn't minify; nav-motion audits
+       the built page) */
+    animation-duration: 380ms;
+    animation-timing-function: cubic-bezier(0.32, 0.72, 0, 1);
+    animation-fill-mode: both;
     mix-blend-mode: normal;
     background: var(--background);
   }
