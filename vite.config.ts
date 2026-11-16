@@ -264,6 +264,31 @@ export default defineConfig({
           },
         ],
         short_name: 'Synbox',
+        // A long press on the installed app's icon (Android, and the Dock or taskbar on a computer) offers these
+        shortcuts: [
+          {
+            icons: [
+              {
+                sizes: '96x96',
+                src: 'pwa-96x96-77e08a5a.png',
+                type: 'image/png',
+              },
+            ],
+            name: 'Search',
+            url: '/search',
+          },
+          {
+            icons: [
+              {
+                sizes: '96x96',
+                src: 'pwa-96x96-77e08a5a.png',
+                type: 'image/png',
+              },
+            ],
+            name: 'Library',
+            url: '/library',
+          },
+        ],
         start_url: '/',
         theme_color: '#0e0c0c',
       },
@@ -275,7 +300,14 @@ export default defineConfig({
         // The app shell only. Lyrics, songs and videos always come from the network
         // The logo's 270KB source SVG (scripts/pwa-icons.ts draws the icons from it); the app shows the WebP
         // 404.html answers a missing script (netlify.toml); the app never opens it
-        globIgnores: ['assets/icons/Synbox_logo_dark_1.svg', '404.html'],
+        // iPhone launch images (public/launch/) and the shortcuts' icon: the system fetches the one it needs
+        // itself, and the app never shows them, so precaching them would only make every install download more
+        globIgnores: [
+          'assets/icons/Synbox_logo_dark_1.svg',
+          '404.html',
+          'launch/**',
+          'pwa-96x96-*.png',
+        ],
         globPatterns: ['**/*.{js,css,html,png,svg,webp,woff2}'],
         // Pages from the network, so opening or reloading a tab shows the latest deploy (a precached page kept
         // the deploy the worker was built with until a hard reload). Offline, the shell in the precache answers:
