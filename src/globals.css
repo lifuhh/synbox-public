@@ -2518,12 +2518,13 @@ html[data-installed] *::-webkit-scrollbar {
 
   /* A pressed link dims at once, as a row or card does under a finger in a phone's own apps, and the browser's grey
      tap flash is off: every control draws its own pressed state. Buttons scale instead (ui/button.tsx). Not while
-     the press is on a control inside the link's own box */
+     the press is on a button inside the link's own box (`button` named: a :has() of a bare pseudo-class restyles
+     the whole page on every insertion, style-invalidation.test.ts) */
   html {
     -webkit-tap-highlight-color: transparent;
   }
 
-  a[href]:active:not(:has(:active)) {
+  a[href]:active:not(:has(button:active)) {
     opacity: 0.6;
   }
 
