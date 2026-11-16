@@ -130,9 +130,9 @@ const LAUNCH_BACKGROUND = '#0e0c0c'
 // The square the logo is drawn in, as a share of the screen's width: the bars span about a third of the screen
 const LAUNCH_LOGO = 0.4
 const LAUNCH_DIR = 'launch'
-const LAUNCH_FILE = /^launch-\d+x\d+(-[0-9a-f]{8})?\.png$/u
+const LAUNCH_FILE = /^launch-\d+x\d+(?:-[0-9a-f]{8})?\.png$/u
 const LAUNCH_LINKS =
-  /( *)<!-- launch-images:start[^>]*-->[\s\S]*?<!-- launch-images:end -->/u
+  /(?<indent> *)<!-- launch-images:start[^>]*-->[\s\S]*?<!-- launch-images:end -->/u
 
 const launchName = ({ height, ratio, width }: Screen) =>
   `launch-${width * ratio}x${height * ratio}`
@@ -343,7 +343,7 @@ const publishLaunch = (
   if (block === null) {
     throw new Error('index.html: no launch-images:start … launch-images:end')
   }
-  const [, indent] = block
+  const indent = block.groups?.indent ?? ''
   const lines = [
     '<!-- launch-images:start (written by scripts/pwa-icons.ts: edit SCREENS there) -->',
     ...links.flat(),
