@@ -134,7 +134,7 @@ export const historyIdx = () => {
 // home indicator, with the mini player above them. The website (and the app on a computer) keeps the top bar.
 // While the page scrolls down the pill shrinks and drops its labels, and comes back on the way up (globals.css)
 const TabBar = () => {
-  const { pathname, search, key } = useLocation()
+  const { pathname, search } = useLocation()
   const [song] = useAtom(resumeSongAtom)
   const shown = isInstalledPhone() && TAB_PAGES.test(pathname)
   const resume = shown && song !== null
@@ -146,7 +146,7 @@ const TabBar = () => {
     if (shown) {
       lastTab = { idx: historyIdx(), path: pathname, search }
     }
-  }, [shown, pathname, search, key])
+  }, [shown, pathname, search])
 
   useEffect(() => {
     const root = document.documentElement
