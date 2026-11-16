@@ -7,7 +7,9 @@
       "Pages slide and fade into each other instead of snapping",
       "Back returns to where you were on the page, and each tab remembers its place",
       "Songs and links dim under your finger when pressed",
-      "A link that leads nowhere says so, instead of opening Home"
+      "A link that leads nowhere says so, instead of opening Home",
+      "Press / to jump to search",
+      "Follows your device’s Reduce Transparency and Increase Contrast settings"
     ]
   },
   {

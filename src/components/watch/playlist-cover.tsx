@@ -25,6 +25,7 @@ export const PlaylistCover = ({
       ) : (
         pictures.slice(0, pictures.length >= 4 ? 4 : 1).map((src, index) => (
           <img
+            decoding='async'
             // The pictures are positional in a fixed grid
             // oxlint-disable-next-line no-array-index-key
             key={index}

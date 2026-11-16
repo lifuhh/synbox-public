@@ -2925,3 +2925,35 @@ html:has([data-player-stage]):not([data-watch])
     --safe-right: 0px;
   }
 }
+
+/* Selected text takes the theme's magenta rather than the browser's blue, with the text kept at full strength */
+::selection {
+  background: color-mix(in oklch, var(--primary) 45%, transparent);
+  color: var(--foreground);
+}
+
+/* The device's Reduce Transparency setting (iOS, macOS): the floating glass (the tab dock, the mini player,
+   notices) becomes a solid surface with nothing showing or blurring through it. The pills over the video keep
+   theirs: seeing the video through them is their point */
+@media (prefers-reduced-transparency: reduce) {
+  :root {
+    --glass: oklch(0.27 0.004 350);
+  }
+
+  .bg-glass {
+    backdrop-filter: none;
+  }
+}
+
+/* The device's Increase Contrast setting: secondary text moves most of the way to the main text's colour, and
+   the glass goes solid as above, so no label depends on what scrolls behind it */
+@media (prefers-contrast: more) {
+  :root {
+    --muted-foreground: color-mix(
+      in oklch,
+      var(--graphite-11),
+      var(--graphite-12) 60%
+    );
+    --glass: oklch(0.27 0.004 350);
+  }
+}

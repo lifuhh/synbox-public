@@ -12,6 +12,7 @@ const Thumbnail = ({ src }: { src: string }) => (
   <div className='relative aspect-video w-full overflow-hidden rounded-lg bg-input'>
     {src !== '' && (
       <img
+        decoding='async'
         src={src}
         // The card's title names the song; the picture would say it twice
         alt=''
