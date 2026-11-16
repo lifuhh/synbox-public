@@ -66,6 +66,26 @@ const mainCheckout = () =>
     )
   )
 
+// Every session runs the harness from the main checkout (asks, history, this tool), but no one works in it, so
+// nothing moved it forward: on 2026-11-16 it was 130 commits behind and a release ran a release script from before
+// a step it needed. Starting and finishing a task now bring it up to origin/main, by fast-forward only and only
+// while it is on main: local edits there make git refuse, and that is said, not forced
+const keepMainCurrent = (main: string) => {
+  if (git(main, 'rev-parse', '--abbrev-ref', 'HEAD') !== 'main') {
+    return
+  }
+  const merge = spawnSync(
+    'git',
+    ['-C', main, 'merge', '--ff-only', '--quiet', 'origin/main'],
+    { encoding: 'utf-8' }
+  )
+  if (merge.status !== 0) {
+    console.error(
+      `note: ${main} could not be fast-forwarded to origin/main, so its harness may be out of date: ${(merge.stderr ?? '').trim().split('\n')[0] ?? ''}`
+    )
+  }
+}
+
 const worktreePath = (slug: string) =>
   path.join(path.dirname(mainCheckout()), `synbox-${slug}`)
 
@@ -141,6 +161,7 @@ const start = (branch: string | undefined) => {
     stop(`${dir} already exists: pick another slug, or finish that task first`)
   }
   git(main, 'fetch', 'origin')
+  keepMainCurrent(main)
   git(
     main,
     'worktree',
@@ -209,6 +230,7 @@ const finish = async (slug: string | undefined) => {
     )
   }
   git(main, 'fetch', 'origin')
+  keepMainCurrent(main)
   const merged =
     spawnSync('git', [
       '-C',

@@ -519,9 +519,33 @@ const release = () => {
   }
 }
 
+// A release always runs the release script staging has now, never the copy it was started from. The main checkout
+// is not kept current (work happens in worktrees), and on 2026-11-16 a release started from one 130 commits behind
+// ran a copy from before the What's New step: the entry shipped undated and nothing said so. So the copy that is
+// started only takes the lock, brings the release worktree to staging's tip and runs that tree's release.ts with
+// the same arguments; that one, marked by CURRENT, does the release
+const CURRENT = 'SYNBOX_RELEASE_CURRENT'
+const runCurrent = () => {
+  git('fetch', '--quiet', 'origin')
+  const dir = stagingWorktree()
+  const sha = run('git', ['-C', dir, 'rev-parse', '--short', 'HEAD'], dir)
+  say(`release: running staging's own harness/release.ts (${sha})`)
+  const result = spawnSync(
+    'bun',
+    [path.join(dir, 'harness', 'release.ts'), ...process.argv.slice(2)],
+    { cwd: dir, env: { ...process.env, [CURRENT]: '1' }, stdio: 'inherit' }
+  )
+  process.exitCode = result.status ?? 1
+}
+
 try {
-  takeLock()
-  release()
+  if (process.env[CURRENT] === '1') {
+    // Started by runCurrent, which holds the lock
+    release()
+  } else {
+    takeLock()
+    runCurrent()
+  }
 } catch (error) {
   console.error(error instanceof Error ? error.message : String(error))
   process.exitCode = 1
