@@ -15,6 +15,7 @@ import { evaluatorTouched } from './gate'
 import { isRecord, parseJson } from './json'
 import { holdMachine, holdSlot } from './lock'
 import { appRoutes, routeConfig, routeProblems } from './probes/layout'
+import { pruneBenchStore } from './retention'
 import { reusableVerdict } from './reuse'
 import { selectBenches } from './scope'
 import type { Selection } from './scope'
@@ -347,6 +348,7 @@ export const runCheck = async (
     throw new Error(`--jobs must be a positive whole number, not ${opts.jobs}`)
   }
   const started = Date.now()
+  pruneBenchStore(repo, opts.log)
   // `--only`: the named audits, while working, no verdict. Otherwise every static check, and the audits the scope
   // selects (all of them with --full)
   const stamped = opts.only === null
