@@ -3,7 +3,13 @@
 
 import { execFile, execFileSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { existsSync, readFileSync, rmSync, symlinkSync } from 'node:fs'
+import {
+  existsSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  utimesSync,
+} from 'node:fs'
 import path from 'node:path'
 import { promisify } from 'node:util'
 
@@ -61,6 +67,10 @@ export const buildWorkingTree = async (
       `building ${repo.dirty ? 'working tree (uncommitted changes)' : repo.tree.slice(0, 8)}`
     )
     await vpBuild(repo.top, out)
+  } else {
+    // Marks the build as in use, so retention.ts keeps a cached build that is still being checked
+    const now = new Date()
+    utimesSync(out, now, now)
   }
   return out
 }
