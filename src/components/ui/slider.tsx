@@ -20,7 +20,7 @@ const alongTurnedPage = (event: React.PointerEvent<HTMLSpanElement>) => {
 }
 
 // How the slider looks. `block`: the panels' slider, a slim 4px line and a 16px knob (20px to a finger). `seek`: a player's seek line, as
-// YouTube's: 3px, a little thicker under the pointer, with a small dot that shows only while the pointer is over
+// YouTube's: 3px with a 1px dark edge (so the unplayed part reads over a white frame), a little thicker under the pointer, with a small dot that shows only while the pointer is over
 // it, the keyboard is on it or it is dragged (always, on a touch screen). `volume`: YouTube's volume line, 3px of
 // white with a small white knob that always shows. The thin ones keep a tall box, so they are as easy to hit
 type SliderLook = 'block' | 'seek' | 'volume'
@@ -41,7 +41,7 @@ const LOOKS: Record<
     thumb:
       'size-3 bg-primary opacity-0 transition-opacity duration-150 group-hover/slider:opacity-100 group-active/slider:opacity-100 focus-visible:opacity-100 touch:size-3.5 touch:opacity-100',
     track:
-      "transition-[height] duration-150 data-[orientation='horizontal']:h-0.75 data-[orientation='horizontal']:w-full group-hover/slider:data-[orientation='horizontal']:h-1.25 touch:data-[orientation='horizontal']:h-1",
+      "shadow-track-edge transition-[height] duration-150 data-[orientation='horizontal']:h-0.75 data-[orientation='horizontal']:w-full group-hover/slider:data-[orientation='horizontal']:h-1.25 touch:data-[orientation='horizontal']:h-1",
   },
   volume: {
     range: 'bg-white',

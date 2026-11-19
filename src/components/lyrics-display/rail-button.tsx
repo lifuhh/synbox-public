@@ -23,21 +23,24 @@ export const STAGE_DISC =
 // it instead of to its side
 export const RailInline = createContext(false)
 
+// A toggle that is on: a lighter neutral disc at full ink, inline and on the stage alike. Not magenta: the toggles
+// start on, and the brand colour is kept for the seek bar and the karaoke fill
+const PRESSED = 'bg-toggle-on text-foreground hover:bg-toggle-on-hover'
+
 // Floating on the stage, a dark glass disc of its own, as the stage's centre and Previous/Next buttons are (no
 // panel behind the rail: owner, 2026-10-25). Inline under the video, a round button of its own, spaced from the
-// next, as YouTube's row under a video is
+// next, as YouTube's row under a video is. Off, an inline toggle drops its disc and dims; on the stage it keeps
+// the disc, which is what holds the glyph over a bright frame
 const railButtonClass = (inline: boolean, pressed: boolean | undefined) =>
   inline
     ? cn(
         'grid size-10 shrink-0 place-items-center rounded-full bg-card text-foreground transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-30 watch-narrow:w-full',
-        pressed === true &&
-          'bg-primary-subtle text-primary-text hover:bg-primary-subtle-hover',
-        pressed === false && 'text-muted-foreground'
+        pressed === true && PRESSED,
+        pressed === false && 'bg-transparent text-muted-foreground'
       )
     : cn(
         STAGE_DISC,
-        pressed === true &&
-          'bg-primary-subtle text-primary-text hover:bg-primary-subtle-hover',
+        pressed === true && PRESSED,
         // On the disc's glass over a white frame, the brightest video
         pressed === false && 'text-white/70'
       )
