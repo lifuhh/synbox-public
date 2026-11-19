@@ -65,9 +65,13 @@ const FeedbackDialog = lazy(
 )
 
 // A menu item's secondary line, on its label's line: read as the item's description (aria-describedby), so its
-// accessible name stays the label alone
+// accessible name stays the label alone. A trailing column, so the hints end on one edge rather than trailing
+// labels of different lengths
 const MenuHint = ({ id, children }: { id: string; children: ReactNode }) => (
-  <span id={id} aria-hidden className='ml-2 text-xs text-muted-foreground'>
+  <span
+    id={id}
+    aria-hidden
+    className='ml-auto pl-4 text-xs text-muted-foreground'>
     {children}
   </span>
 )
@@ -163,7 +167,7 @@ const ProfileTrigger = ({
             <UserAvatar
               className='size-6'
               src={image === '' ? null : image}
-              fallback={<UserIcon className='size-6 shrink-0 fill-current' />}
+              fallback={<UserIcon className='size-5 shrink-0' />}
             />
             <span className='sr-only'>Account</span>
           </Button>
@@ -172,7 +176,7 @@ const ProfileTrigger = ({
         <>
           <DropdownMenuTrigger asChild>
             <Button variant='toolbar' size='icon'>
-              <EllipsisVerticalIcon className='h-6 w-6 shrink-0' />
+              <EllipsisVerticalIcon className='size-5 shrink-0' />
               <span className='sr-only'>More</span>
             </Button>
           </DropdownMenuTrigger>

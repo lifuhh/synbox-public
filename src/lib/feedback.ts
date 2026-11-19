@@ -10,9 +10,10 @@ import { z } from 'zod'
 import { useMe } from '@/lib/auth'
 import { QUERY_KEYS } from '@/lib/react-query/query-keys'
 
-// The secondary line beside each way to write, in the menus: what Send Feedback is for, and how Contact Me answers
+// The secondary line beside each way to write, in the menus: what Send Feedback is for, and how Contact Me answers.
+// Both Title Case, as the owner set "Bugs or Ideas" (one case per element type)
 export const WRITE_HINTS = {
-  contact: 'Replies by email',
+  contact: 'Replies by Email',
   feedback: 'Bugs or Ideas',
 } as const
 

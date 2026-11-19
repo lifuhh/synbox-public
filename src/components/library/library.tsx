@@ -234,7 +234,8 @@ type Library = ReturnType<typeof useLibrary>
 const STATUS_SHOWN_MS = 4000
 
 // The offline copy's state. Saving, offline and errors stay; the settled "N songs saved" line shows for a few
-// seconds, then folds away so the list starts higher
+// seconds, then folds away so the list starts higher. With nothing saved, a settled line has nothing to report
+// ("0 songs saved for offline · Updated just now"), so it stays folded
 export const SyncStatusLine = ({
   library: { status, online, savedCount },
   className,
@@ -256,7 +257,7 @@ export const SyncStatusLine = ({
       clearTimeout(timer)
     }
   }, [state, lasting])
-  const shown = lasting || folded !== state
+  const shown = lasting || (savedCount > 0 && folded !== state)
   return (
     <div data-folded={shown ? undefined : true} className='fold'>
       <p

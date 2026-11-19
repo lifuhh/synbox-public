@@ -83,10 +83,12 @@ export const ContactDialog = ({
       <DialogContent className='max-w-md'>
         <DialogHeader>
           <DialogTitle>Contact Me</DialogTitle>
+          {/* What differs for each: an account's reply address; for a guest, that signing in brings the form (the
+              address below says the rest) */}
           {!isPending && (
             <DialogDescription className='wrap-break-word'>
               {email === null ? (
-                'Email me'
+                'Sign in to write here'
               ) : (
                 <>
                   I’ll reply to{' '}

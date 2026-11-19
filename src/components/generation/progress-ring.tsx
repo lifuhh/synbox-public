@@ -1,14 +1,17 @@
 import type { CssVars } from '@/types'
 import { cn } from '@/utils/cn'
 
-// A 28 px ring in the same 40 px box as the top bar's icons, as light as their 24 px glyphs. The dot at the
-// ring's tip is R from the centre; --ring-dot-x and --ring-dot-y place its 4 px box's corner, 2 px off
+// A 28 px ring in the same 40 px box as the top bar's icons, around its number. The dot at the ring's tip is R from
+// the centre; --ring-dot-x and --ring-dot-y place its 4 px box's corner, 2 px off
 const BOX = 40
 const STROKE = 2
 const R = (28 - STROKE) / 2
 const C = 2 * Math.PI * R
 // Trims the line box to the digits' cap height, so they center on the ring rather than on the font's box
 const CAP_CENTERED = '[text-box:trim-both_cap_alphabetic] leading-none'
+
+// The bell's drawn size, as the top bar's other glyphs (DESIGN.md §6); ring-to-bell.tsx lands on it
+export const BELL_PX = 20
 
 // Lucide's bell, drawn here so the ring can bend into exactly this outline (ring-to-bell.tsx)
 export const BELL_BODY =
@@ -18,7 +21,9 @@ export const BELL_CLAPPER = 'M10.268 21a2 2 0 0 0 3.464 0'
 export const BellGlyph = ({ className }: { className?: string }) => (
   <svg
     viewBox='0 0 24 24'
-    className={cn('size-6 shrink-0', className)}
+    width={BELL_PX}
+    height={BELL_PX}
+    className={cn('shrink-0', className)}
     fill='none'
     stroke='currentColor'
     strokeWidth={2}

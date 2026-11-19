@@ -532,7 +532,7 @@ export const TopbarSearch = ({ variant }: { variant: 'inline' | 'button' }) => {
           inputRef.current?.focus()
           setOverlay(true)
         }}>
-        <SearchIcon className='h-6 w-6 shrink-0' />
+        <SearchIcon className='size-5 shrink-0' />
       </Button>
       {/* In the body's top layer: the bar's slide and fade, and the tab bar rule that hides its buttons, never
           reach it. It floats under the status bar and inside the side insets, and ends above the keyboard */}

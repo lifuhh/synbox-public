@@ -6,6 +6,7 @@ import {
   UnreadDot,
 } from '@/components/generation/generation-panel'
 import { Button } from '@/components/ui/button'
+import { FLOAT_SECTION_LABEL } from '@/components/ui/float'
 import type { AdminNotice } from '@/lib/admin-notices'
 import { NOTICE_TAB, noticeKey, useClearReadNotices } from '@/lib/admin-notices'
 import { useGeneration } from '@/lib/generation/store'
@@ -96,9 +97,7 @@ export const AdminNoticeList = ({
       aria-labelledby='admin-notices-heading'
       className='flex flex-col gap-1 p-2'>
       <div className='flex min-h-8 items-center justify-between gap-2 pl-4'>
-        <h2
-          id='admin-notices-heading'
-          className='text-xs font-medium tracking-wide text-muted-foreground uppercase'>
+        <h2 id='admin-notices-heading' className={FLOAT_SECTION_LABEL}>
           Admin
         </h2>
         {clearable && notices.some((notice) => !notice.unread) && (
