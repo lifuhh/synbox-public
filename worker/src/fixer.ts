@@ -59,7 +59,7 @@ fixer.use(async (c, next) => {
   return c.res
 })
 
-// Open reports not handed to a human, oldest first
+// Open reports, oldest first; "reviewAt" set on those handed to a human
 fixer.get('/reports', async (c) =>
   c.json({ reports: await listOpenReports(c.env.DB) })
 )
