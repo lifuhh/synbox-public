@@ -4,11 +4,9 @@
     "/v/:videoId/versions": "/v/6rG_irmOQsM/versions"
   },
   "skip": {
-    "/admin": "admins only; the lab has no session",
     "/lab/stage": "development builds only",
     "/lyrics": "redirects to /library",
     "/offline": "redirects to /library",
-    "/offline/:videoId": "redirects to /lyrics/:videoId",
-    "/playlists/:playlistId": "a playlist lives in the browser's storage, and a fresh lab context has none"
+    "/offline/:videoId": "redirects to /lyrics/:videoId"
   }
 }
