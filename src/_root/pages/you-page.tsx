@@ -21,7 +21,6 @@ import { UserAvatar } from '@/components/shared/user-avatar'
 import { Button } from '@/components/ui/button'
 import { openRequestMore } from '@/lib/account-prompts'
 import {
-  SONGS_A_DAY,
   requestText,
   signInWithGoogle,
   signOut,
@@ -45,7 +44,7 @@ const FeedbackDialog = lazy(
 )
 
 const ROW =
-  'flex min-h-12 items-center gap-3 rounded-xl px-3 text-left label-icons transition-colors hover:bg-accent'
+  'flex min-h-12 items-center gap-3 rounded-xl px-4 text-left label-icons transition-colors hover:bg-accent'
 
 // A row that opens a page: its icon, its label, a chevron
 const LinkRow = ({
@@ -115,7 +114,7 @@ const INLINE_ACTION =
   "relative font-medium text-foreground underline underline-offset-4 after:absolute after:-inset-x-1 after:-inset-y-2 after:content-['']"
 
 const guestLine = (freeSong: boolean) =>
-  freeSong ? 'Your first song is on me' : 'Browsing stays free for everyone'
+  freeSong ? 'Your first song is free' : 'Browsing stays free for everyone'
 
 // Under the name: the songs left today with Request More beside it (a quiet second step, for an account on a daily
 // number with no request waiting; none for an admin), then where the latest request stands. For a guest, their
@@ -180,10 +179,10 @@ const YouPage = () => {
     <section
       ref={setBox}
       data-scroll-top
-      className='flex flex-1 flex-col overflow-y-auto px-4 pt-(--topbar-h) pb-page-bottom'>
+      className='flex flex-1 flex-col overflow-y-auto pt-(--topbar-h) page-x pb-page-bottom'>
       <title>You · Synbox</title>
-      <div className='mx-auto flex w-full max-w-xl flex-col gap-6 pt-4'>
-        <h1 className='px-2 text-3xl font-semibold tracking-tight text-foreground'>
+      <div className='mx-auto flex w-full max-w-xl flex-col gap-6 pt-6 short:gap-4 short:pt-4'>
+        <h1 className='text-2xl font-semibold tracking-tight text-foreground sm:text-3xl'>
           You
         </h1>
 
@@ -203,7 +202,7 @@ const YouPage = () => {
             </span>
             <div className='min-w-0'>
               <p className='truncate font-medium text-foreground'>
-                {user ? user.name : `Sign In for ${SONGS_A_DAY} Songs a Day`}
+                {user ? user.name : 'Guest'}
               </p>
               <AccountLines
                 user={user}
@@ -214,7 +213,7 @@ const YouPage = () => {
               />
             </div>
           </div>
-          {user === null && <BenefitList />}
+          {user === null && <BenefitList className='short:hidden' />}
           {user ? (
             <Button
               variant='outline'
@@ -280,7 +279,7 @@ const YouPage = () => {
             }}
           />
         </div>
-        <p className='px-3 text-xs text-muted-foreground'>
+        <p className='px-4 text-xs text-muted-foreground'>
           Version {__BUILD_ID__}
         </p>
       </div>

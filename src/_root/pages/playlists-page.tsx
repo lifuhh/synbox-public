@@ -24,7 +24,7 @@ const PlaylistsPage = () => {
       className='flex flex-1 flex-col overflow-y-auto pt-(--topbar-h) page-x pb-page-bottom'>
       <title>Playlists · Synbox</title>
       <div className='mx-auto flex w-full max-w-3xl flex-col gap-6 pt-6'>
-        <h1 className='text-3xl font-semibold tracking-tight text-foreground'>
+        <h1 className='text-2xl font-semibold tracking-tight text-foreground sm:text-3xl'>
           Playlists
         </h1>
         <form
@@ -40,22 +40,22 @@ const PlaylistsPage = () => {
                 setName(event.target.value)
               }}
               aria-label='New Playlist Name'
-              placeholder='New Playlist'
+              placeholder='Playlist Name'
               variant='bare'
             />
             <Button type='submit' variant='hero' size='inset' gap='sm'>
               <PlusIcon className='size-5' aria-hidden />
-              <span className='text-label'>New Playlist</span>
+              <span className='text-label'>Create</span>
             </Button>
           </InputField>
         </form>
         {playlists.length === 0 ? (
-          <div className='flex flex-col items-center gap-2 py-12 text-center'>
+          <div className='flex flex-col items-center gap-2 py-12 text-center short:py-2'>
             <p className='text-lg font-medium text-foreground'>
               No Playlists Yet
             </p>
             <p className='max-w-sm text-sm text-pretty text-muted-foreground'>
-              Or make one while saving a song from its menu
+              A song’s menu can start one too
             </p>
           </div>
         ) : (

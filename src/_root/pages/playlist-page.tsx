@@ -1,4 +1,5 @@
 import {
+  ArrowUpDownIcon,
   ChevronLeftIcon,
   EllipsisIcon,
   ListEndIcon,
@@ -34,6 +35,7 @@ import { SongRow } from '@/components/watch/song-row'
 import { SortableList } from '@/components/watch/sortable-list'
 import type { ListSong, Playlist } from '@/lib/listening/model'
 import { useListening, usePlaylists } from '@/lib/listening/store'
+import { cn } from '@/utils/cn'
 
 // A song's menu inside a playlist: queue it, or take it out of the playlist
 const PlaylistSongMenu = ({
@@ -137,7 +139,8 @@ const RenameDialog = ({
 
 const songCount = (count: number) => (count === 1 ? '1 song' : `${count} songs`)
 
-// One playlist: play it from the top or from any song, drag songs into order, rename or delete it
+// One playlist: play it from the top or from any song, drag songs into order (on touch, after Reorder Songs), rename
+// or delete it
 const PlaylistPage = () => {
   const [box, setBox] = useState<HTMLElement | null>(null)
   const { playlistId = '' } = useParams<{ playlistId: string }>()
@@ -146,6 +149,8 @@ const PlaylistPage = () => {
   const { deletePlaylist, moveInPlaylist, playPlaylist, startPlaylistAt } =
     useListening()
   const [renaming, setRenaming] = useState(false)
+  // Touch only: the rows' grips show (a mouse always has them)
+  const [reordering, setReordering] = useState(false)
 
   return (
     <section
@@ -165,78 +170,108 @@ const PlaylistPage = () => {
           </div>
         ) : (
           <>
+            {/* The label's 20px line in a 44px press area; the negative margins keep the spacing the line had */}
             <Link
               to='/playlists'
-              className='-mb-3 flex w-fit items-center gap-1 rounded-md text-sm text-muted-foreground transition-colors hover:text-foreground'>
+              className='-mt-3 -mb-6 flex min-h-11 w-fit label-icons items-center gap-1 rounded-md text-sm text-muted-foreground transition-colors hover:text-foreground'>
               <ChevronLeftIcon className='size-4' aria-hidden />
               All Playlists
             </Link>
-            <header className='flex items-end gap-4'>
+            {/* The cover beside the name; the actions under both on a phone, under the name from sm. One height and
+                one shape for all three: 40px, 44px on touch, round */}
+            <header className='grid grid-cols-[auto_minmax(0,1fr)] items-end gap-4 sm:grid-rows-[1fr_auto]'>
               <PlaylistCover
                 playlist={playlist}
-                className='size-28 sm:size-40'
+                className='size-28 sm:row-span-2 sm:size-40 short:size-20'
               />
-              <div className='flex min-w-0 flex-1 flex-col gap-3'>
-                <div className='min-w-0'>
-                  <h1 className='line-clamp-2 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl'>
-                    {playlist.name}
-                  </h1>
-                  <p className='text-sm text-muted-foreground'>
-                    {songCount(playlist.songs.length)}
-                  </p>
-                </div>
-                <div className='flex items-center gap-2'>
+              <div className='min-w-0'>
+                <h1 className='line-clamp-2 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl'>
+                  {playlist.name}
+                </h1>
+                <p className='text-sm text-muted-foreground'>
+                  {songCount(playlist.songs.length)}
+                </p>
+              </div>
+              <div className='col-span-2 flex items-center gap-2 sm:col-span-1'>
+                {reordering ? (
+                  // While the grips show on touch, the one way back takes Play's place
                   <Button
                     variant='hero'
                     size='inset'
-                    gap='sm'
-                    disabled={playlist.songs.length === 0}
+                    className='flex-1 sm:flex-none touch:h-11'
                     onClick={() => {
-                      playPlaylist(playlist.id)
+                      setReordering(false)
                     }}>
-                    <PlayIcon className='size-5 fill-current' aria-hidden />
-                    <span className='text-label'>Play</span>
+                    <span className='text-label'>Done</span>
                   </Button>
-                  <Button
-                    variant='outline'
-                    size='inset'
-                    gap='sm'
-                    disabled={playlist.songs.length === 0}
-                    onClick={() => {
-                      playPlaylist(playlist.id, true)
-                    }}>
-                    <ShuffleIcon className='size-5' aria-hidden />
-                    <span className='text-label'>Shuffle</span>
-                  </Button>
-                  <DropdownMenu modal={false}>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant='outline'
-                        size='icon-round'
-                        aria-label='Playlist Actions'>
-                        <EllipsisIcon className='size-5' />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align='start' className='w-48'>
+                ) : (
+                  <>
+                    <Button
+                      variant='hero'
+                      size='inset'
+                      gap='sm'
+                      className='flex-1 sm:flex-none touch:h-11'
+                      disabled={playlist.songs.length === 0}
+                      onClick={() => {
+                        playPlaylist(playlist.id)
+                      }}>
+                      <PlayIcon className='size-5 fill-current' aria-hidden />
+                      <span className='text-label'>Play</span>
+                    </Button>
+                    <Button
+                      variant='outline-round'
+                      size='inset'
+                      gap='sm'
+                      className='flex-1 sm:flex-none touch:h-11'
+                      disabled={playlist.songs.length === 0}
+                      onClick={() => {
+                        playPlaylist(playlist.id, true)
+                      }}>
+                      <ShuffleIcon className='size-5' aria-hidden />
+                      <span className='text-label'>Shuffle</span>
+                    </Button>
+                  </>
+                )}
+                <DropdownMenu modal={false}>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant='outline-round'
+                      size='icon'
+                      className='shrink-0 touch:size-11'
+                      aria-label='Playlist Actions'>
+                      <EllipsisIcon className='size-5' />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align='end' className='w-48'>
+                    {playlist.songs.length > 1 && (
                       <DropdownMenuItem
+                        className='mouse:hidden'
+                        disabled={reordering}
                         onSelect={() => {
-                          setRenaming(true)
+                          setReordering(true)
                         }}>
-                        <PencilIcon className='mr-2 size-5 shrink-0' />
-                        Rename
+                        <ArrowUpDownIcon className='mr-2 size-5 shrink-0' />
+                        Reorder Songs
                       </DropdownMenuItem>
-                      <DropdownMenuItem
-                        variant='destructive'
-                        onSelect={() => {
-                          deletePlaylist(playlist.id)
-                          void navigate('/playlists', { replace: true })
-                        }}>
-                        <Trash2Icon className='mr-2 size-5 shrink-0' />
-                        Delete Playlist
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
+                    )}
+                    <DropdownMenuItem
+                      onSelect={() => {
+                        setRenaming(true)
+                      }}>
+                      <PencilIcon className='mr-2 size-5 shrink-0' />
+                      Rename
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      variant='destructive'
+                      onSelect={() => {
+                        deletePlaylist(playlist.id)
+                        void navigate('/playlists', { replace: true })
+                      }}>
+                      <Trash2Icon className='mr-2 size-5 shrink-0' />
+                      Delete Playlist
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </header>
             {playlist.songs.length === 0 ? (
@@ -244,7 +279,11 @@ const PlaylistPage = () => {
                 Save songs here from their menu
               </p>
             ) : (
+              // The rows' 8px padding hangs into the gutter so the thumbnails start on the cover's edge; with a mouse
+              // on a wide page the grip hangs there too. On touch the grip shows only while reordering, so it never
+              // takes a phone row's width; each row's menu has Move Up and Move Down besides
               <SortableList
+                className='-mx-2 mouse:md:-ms-11'
                 items={playlist.songs}
                 keyOf={(song) => song.videoId}
                 labelOf={(song) => song.title}
@@ -255,7 +294,15 @@ const PlaylistPage = () => {
                   <SongRow
                     as='div'
                     song={song}
-                    lead={grip}
+                    lead={
+                      <span
+                        className={cn(
+                          'contents',
+                          !reordering && 'touch:hidden'
+                        )}>
+                        {grip}
+                      </span>
+                    }
                     onOpen={() => {
                       startPlaylistAt(playlist.id, {
                         from: index,

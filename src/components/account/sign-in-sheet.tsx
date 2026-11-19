@@ -11,6 +11,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { SONGS_A_DAY, signInWithGoogle, useAccess } from '@/lib/auth'
+import { cn } from '@/utils/cn'
 
 // What an account adds, the same three lines wherever sign-in is offered
 export const SIGN_IN_BENEFITS = [
@@ -19,12 +20,15 @@ export const SIGN_IN_BENEFITS = [
   { icon: DownloadIcon, text: 'Your songs, offline' },
 ] as const
 
-// One line each: a bare icon, no disc behind it
-export const BenefitList = () => (
-  <ul className='flex flex-col gap-3'>
+// One line each: a bare icon, no disc behind it, in the same 24px box as the You tab's row icons so the text
+// starts on the rows' edge
+export const BenefitList = ({ className }: { className?: string }) => (
+  <ul className={cn('flex flex-col gap-3', className)}>
     {SIGN_IN_BENEFITS.map(({ icon: Icon, text }) => (
       <li key={text} className='flex items-center gap-3 text-foreground'>
-        <Icon className='size-4 shrink-0 text-muted-foreground' aria-hidden />
+        <span className='grid size-6 shrink-0 place-items-center text-muted-foreground'>
+          <Icon className='size-4' aria-hidden />
+        </span>
         <span className='truncate'>{text}</span>
       </li>
     ))}

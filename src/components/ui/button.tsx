@@ -58,6 +58,10 @@ const buttonVariants = cva(
         link: 'text-primary-text underline-offset-4 hover:underline',
         // A secondary action: a neutral fill, no outline
         outline: 'bg-secondary hover:bg-accent hover:text-accent-foreground',
+        // The outline's fill as a pill, for the second actions beside a hero pill (a playlist's Shuffle and Playlist
+        // Actions), so the row has one shape
+        'outline-round':
+          'rounded-full bg-secondary hover:bg-accent hover:text-accent-foreground',
         // Ghost buttons on the dark glass of a floating panel
         overlay: 'text-white/80 hover:bg-white/10 hover:text-accent-foreground',
         'overlay-icon':
