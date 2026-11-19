@@ -3,9 +3,7 @@ import { PauseIcon, PlayIcon } from 'lucide-react'
 import type { CssVars } from '@/types'
 import { formatClock } from '@/utils'
 
-// Spotify's lyrics controls: a scrubbable bar with elapsed and remaining time over one large play button. On a short
-// screen (a phone on its side) one row, the times at the bar's ends and a 44px button after them, so the lyrics keep
-// the height. Either way the bar comes before the button, as it is read
+// Spotify's lyrics controls: a scrubbable bar with elapsed and remaining time over one large play button
 export const PlaybackBar = ({
   time,
   duration,
@@ -24,7 +22,7 @@ export const PlaybackBar = ({
     '--range-fill': `${duration > 0 ? (time / duration) * 100 : 0}%`,
   }
   return (
-    <div className='mx-auto grid w-full max-w-xl grid-cols-[auto_1fr_auto] items-center gap-x-3 gap-y-1 px-5 pt-3 pb-2 short:grid-cols-[auto_1fr_auto_auto] short:py-1.5'>
+    <div className='mx-auto flex w-full max-w-xl flex-col gap-1 px-5 pt-3 pb-2'>
       <input
         type='range'
         aria-label='Song Position'
@@ -37,23 +35,21 @@ export const PlaybackBar = ({
           onSeek(Number(event.target.value))
         }}
         style={rangeVars}
-        className='col-span-3 row-start-1 slim-range w-full short:col-span-1 short:col-start-2'
+        className='slim-range w-full'
       />
-      <span className='col-start-1 row-start-2 text-xs text-(--reader-muted) tabular-nums short:row-start-1'>
-        {formatClock(time)}
-      </span>
-      <span className='col-start-3 row-start-2 text-right text-xs text-(--reader-muted) tabular-nums short:row-start-1'>
-        -{formatClock(duration - time)}
-      </span>
+      <div className='flex justify-between text-xs text-(--reader-muted) tabular-nums'>
+        <span>{formatClock(time)}</span>
+        <span>-{formatClock(duration - time)}</span>
+      </div>
       <button
         type='button'
         aria-label={playing ? 'Pause' : 'Play'}
         onClick={onToggle}
-        className='col-span-3 row-start-3 mx-auto flex size-14 items-center justify-center rounded-full bg-(--reader-fg) text-(--reader-bg) transition-transform motion-safe:active:scale-96 short:col-span-1 short:col-start-4 short:row-start-1 short:size-11'>
+        className='mx-auto flex size-14 items-center justify-center rounded-full bg-(--reader-fg) text-(--reader-bg) transition-transform motion-safe:active:scale-96'>
         {playing ? (
-          <PauseIcon className='size-6 fill-current short:size-5' />
+          <PauseIcon className='size-6 fill-current' />
         ) : (
-          <PlayIcon className='ml-0.5 size-6 fill-current short:size-5' />
+          <PlayIcon className='ml-0.5 size-6 fill-current' />
         )}
       </button>
     </div>

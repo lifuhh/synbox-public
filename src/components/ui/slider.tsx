@@ -29,7 +29,7 @@ const LOOKS: Record<
   SliderLook,
   { track: string; range: string; thumb: string }
 > = {
-  // On a panel's surface, light or dark (the reader's paper sets --color-track for its own)
+  // On a panel's surface
   block: {
     range: 'bg-primary',
     thumb:
