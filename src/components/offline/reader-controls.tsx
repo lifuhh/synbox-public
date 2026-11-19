@@ -210,7 +210,9 @@ export const TypeBar = () => {
   const video = useVideoColor()
   const [customOpen, setCustomOpen] = useState(false)
   return (
-    <div className='mx-auto flex h-14 w-full max-w-lg items-center gap-1.5 px-2 sm:gap-2.5 sm:px-3'>
+    <div
+      data-bench='text-style'
+      className='mx-auto flex h-14 w-full max-w-lg items-center gap-1.5 px-2 sm:gap-2.5 sm:px-3'>
       <ReaderButton
         label='Smaller Text'
         disabled={prefs.size === 0}

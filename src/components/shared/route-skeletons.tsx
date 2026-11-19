@@ -1,4 +1,4 @@
-import { LoaderIcon } from 'lucide-react'
+import { LoaderCircleIcon } from 'lucide-react'
 import { useLayoutEffect, useState } from 'react'
 import { useParams } from 'react-router'
 
@@ -53,7 +53,7 @@ const StageCoverSkeleton = ({ videoId }: { videoId: string }) => {
             />
           )}
           <div className='relative text-white drop-shadow-stage'>
-            <LoaderIcon className='size-14 animate-spin' />
+            <LoaderCircleIcon className='size-14 motion-safe:animate-spin' />
           </div>
         </div>
       </div>

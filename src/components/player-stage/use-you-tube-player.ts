@@ -32,7 +32,7 @@ export type StagePhase =
   | { kind: 'paused' }
   | { kind: 'ended' }
   | { kind: 'error'; code: number }
-  // Never got going, even on a player built again (STALL_MS): waits for Try Again
+  // Never got going, even on a player built again (STALL_MS): waits for Retry
   | { kind: 'stalled' }
 
 export interface PlayerVolume {
@@ -97,7 +97,7 @@ const VERIFY_TRIES = 3
 const START_CHECK_MS = 1500
 // A song still loading, or buffering towards its first frame, this long has an embed that stopped trying (YouTube
 // retries a dropped connection within seconds on its own): the player is built again once, then the stage stops
-// spinning and offers Try Again
+// spinning and offers Retry
 const STALL_MS = 10_000
 
 const STATE_NAMES: Record<YTStateCode, string> = {
@@ -339,7 +339,7 @@ export const useYouTubePlayer = ({
     }
   }, [stalledKind, onStall])
 
-  // Try Again after a stall: a new player, which plays once cued
+  // Retry after a stall: a new player, which plays once cued
   const retry = useCallback(() => {
     log('retry')
     rebuild({ muted: false })

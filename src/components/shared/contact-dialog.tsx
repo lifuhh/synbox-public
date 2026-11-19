@@ -18,7 +18,7 @@ import type { ContactResult } from '@/lib/contact'
 export const CONTACT_EMAIL = 'me@edwardhuang.dev'
 
 const PROBLEMS: Record<Exclude<ContactResult, 'sent'>, string> = {
-  failed: 'Couldn’t send, try again',
+  failed: 'Couldn’t send. Try again',
   invalid: INVALID,
   limit: `Daily limit reached, email ${CONTACT_EMAIL}`,
   signed_out: 'Signed out, sign in again',
