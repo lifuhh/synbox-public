@@ -4,6 +4,7 @@ import type { CSSProperties, RefObject } from 'react'
 import { use, useLayoutEffect, useRef } from 'react'
 
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
+import { FLOAT_SECTION_LABEL } from '@/components/ui/float'
 import {
   Popover,
   PopoverAnchor,
@@ -157,10 +158,19 @@ export const LyricsThemePicker = ({
   const [themeId, setThemeId] = useAtom(lyricsThemeIdAtom)
   const [customHue, setCustomHue] = useAtom(lyricsCustomHueAtom)
 
-  const heading = touch ? (
+  const title = touch ? (
     <DialogTitle size='sm'>Lyrics Style</DialogTitle>
   ) : (
     <h2 className='text-sm font-semibold'>Lyrics Style</h2>
+  )
+  // The watch page also has the Lyrics panel, styled by its own Text Style: say which lyrics this one changes
+  const heading = inline ? (
+    <div className='flex items-baseline gap-2'>
+      {title}
+      <span className='text-sm text-muted-foreground'>On the video</span>
+    </div>
+  ) : (
+    title
   )
   const controls = (
     <>
@@ -171,9 +181,7 @@ export const LyricsThemePicker = ({
       <div className='flex flex-col gap-2'>
         {sized && (
           <section className='flex flex-col gap-2'>
-            <h3 className='text-xs font-medium tracking-wide text-muted-foreground uppercase'>
-              Size
-            </h3>
+            <h3 className={FLOAT_SECTION_LABEL}>Size</h3>
             <div className='flex items-center gap-3'>
               <span
                 aria-hidden='true'
@@ -227,9 +235,7 @@ export const LyricsThemePicker = ({
       </div>
 
       <section className='flex flex-col gap-2'>
-        <h3 className='text-xs font-medium tracking-wide text-muted-foreground uppercase'>
-          Colour
-        </h3>
+        <h3 className={FLOAT_SECTION_LABEL}>Colour</h3>
         <div
           role='radiogroup'
           aria-label='Lyrics Colour'

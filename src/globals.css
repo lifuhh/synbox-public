@@ -157,6 +157,10 @@
   --color-glass: var(--glass);
   --color-glass-selected: var(--glass-selected);
   --color-generation-surface: var(--graphite-3);
+  /* A toggle that is on (the player's lyric toggles, Like): a lighter neutral disc, opaque so its glyph holds over
+     any video frame. Magenta stays for the seek bar and the karaoke fill */
+  --color-toggle-on: var(--graphite-6);
+  --color-toggle-on-hover: var(--graphite-7);
 
   --text-badge: 11px;
   --text-caption: 13px;
@@ -176,6 +180,8 @@
   --shadow-rail: 0 8px 24px rgb(0 0 0/0.4);
   --shadow-stage: 0 4px 16px rgb(0 0 0/0.35);
   --drop-shadow-stage: 0 2px 6px rgb(0 0 0/0.8);
+  /* The seek bar's edge: the unplayed track is white/25, invisible over a white frame without it */
+  --shadow-track-edge: 0 0 0 1px rgb(0 0 0/0.5);
 
   --transition-property-dashoffset: stroke-dashoffset;
   --transition-property-clip: clip-path;
@@ -1990,7 +1996,8 @@ html[data-installed] *::-webkit-scrollbar {
     --graphite-3: oklch(0.23 0.004 350); /* popover, sheet */
     --graphite-4: oklch(0.27 0.004 350); /* hover, track */
     --graphite-5: oklch(0.28 0.004 350); /* subtle line */
-    --graphite-6: oklch(0.36 0.004 350); /* dock line */
+    --graphite-6: oklch(0.36 0.004 350); /* dock line, toggle on */
+    --graphite-7: oklch(0.42 0.004 350); /* toggle on, hovered */
     --graphite-8: oklch(0.54 0.004 350); /* input line, 3.3:1 on a popover */
     --graphite-9: oklch(
       0.62 0.004 350

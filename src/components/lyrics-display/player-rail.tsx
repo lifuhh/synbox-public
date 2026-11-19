@@ -363,7 +363,7 @@ const VideoLyricsButtons = ({
             setShowRomaji(!showRomaji)
             trackLyricsFeature('romaji', !showRomaji)
           }}>
-          <span className='text-base leading-none font-bold'>R</span>
+          <span className='text-base leading-none font-semibold'>R</span>
         </RailButton>
       </RailTooltip>
       <RailTooltip
@@ -385,7 +385,7 @@ const VideoLyricsButtons = ({
             setEnglish(!english)
             trackLyricsFeature('language', !english)
           }}>
-          <span className='text-sm leading-none font-bold'>
+          <span className='text-sm leading-none font-semibold'>
             {english ? 'EN' : '中'}
           </span>
         </RailButton>

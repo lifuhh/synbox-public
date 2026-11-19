@@ -178,7 +178,6 @@ const IconButton = ({
 
 // YouTube's own speeds, for a player that hasn't said which the video allows yet
 const YOUTUBE_SPEEDS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2]
-const speedName = (rate: number) => (rate === 1 ? 'Normal' : `${rate}×`)
 const allowedSpeeds = () => {
   const reported = engineRates()
   return reported.length > 0 ? reported : YOUTUBE_SPEEDS
@@ -265,7 +264,8 @@ const SpeedMenu = ({
           }}>
           {speeds.map((speed) => (
             <DropdownMenuRadioItem key={speed} value={String(speed)}>
-              {speedName(speed)}
+              {/* As the button writes it: 1× too, not "Normal" */}
+              {speed}×
             </DropdownMenuRadioItem>
           ))}
         </DropdownMenuRadioGroup>

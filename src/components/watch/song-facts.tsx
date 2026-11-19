@@ -12,11 +12,22 @@ import type { CssVars } from '@/types'
 import { bracketStart } from '@/utils'
 import { cn } from '@/utils/cn'
 
+// The month as a word ("19 Nov 2024"): 19/11/24 reads as three different dates across the app's readers. The last
+// week in words ("today", "3 days ago")
 const ADDED = new Intl.DateTimeFormat('en-GB', {
-  day: '2-digit',
-  month: '2-digit',
-  year: '2-digit',
+  day: 'numeric',
+  month: 'short',
+  year: 'numeric',
 })
+const RECENT = new Intl.RelativeTimeFormat('en', { numeric: 'auto' })
+const DAY_MS = 86_400_000
+const addedText = (at: Date) => {
+  const days = Math.round(
+    (new Date().setHours(0, 0, 0, 0) - new Date(at).setHours(0, 0, 0, 0)) /
+      DAY_MS
+  )
+  return `Added ${days >= 0 && days < 7 ? RECENT.format(-days, 'day') : ADDED.format(at)}`
+}
 
 // "1 like", "1.2K likes"
 const likesText = (likes: number) =>
@@ -64,7 +75,7 @@ const useFacts = (videoId: string) => {
     stats && listensText(stats.listens),
     stats && stats.likes > 0 ? likesText(stats.likes) : undefined,
     addedAt !== null && !Number.isNaN(addedAt.getTime())
-      ? `Added ${ADDED.format(addedAt)}`
+      ? addedText(addedAt)
       : undefined,
   ].filter((fact) => fact !== undefined)
 }
