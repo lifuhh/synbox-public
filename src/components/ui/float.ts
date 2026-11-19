@@ -1,9 +1,14 @@
 // The one surface everything floating over the page shares (DESIGN.md §5): menus, popovers, dialogs, sheets, toasts
 // and the top bar's search results. Its radius and its shadow, which is also its only edge, are tokens in
 // src/globals.css (--radius-float, --shadow-float). The transparent border is what forced-colors mode draws once it
-// drops the shadow
-export const FLOAT_SURFACE =
-  'rounded-float border border-transparent bg-popover text-popover-foreground shadow-float'
+// drops the shadow. `edge: false` keeps the radius and the lift without the faint 1px edge (--shadow-float-bare),
+// for a menu over the video (the player's speed menu)
+export const floatSurface = ({ edge = true }: { edge?: boolean } = {}) =>
+  edge
+    ? 'rounded-float border border-transparent bg-popover text-popover-foreground shadow-float'
+    : 'rounded-float border border-transparent bg-popover text-popover-foreground shadow-float-bare'
+
+export const FLOAT_SURFACE = floatSurface()
 
 // A section's label inside a floating panel (the Notifications panel's Admin, Lyrics Fixed, Feedback Resolved): Title
 // Case words at a readable size, never small tracked capitals (DESIGN.md §1)

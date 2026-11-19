@@ -5,6 +5,7 @@ import { INVALID, MessageForm } from '@/components/shared/message-form'
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
@@ -123,11 +124,10 @@ export const FeedbackDialog = ({
   const { data: me, isPending } = useMe()
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      {/* No subtitle: the menu's "Bugs or Ideas" and the Subject's example already say what it takes, and the
-          Send Anonymously row says how it is answered */}
-      <DialogContent className='max-w-md' aria-describedby={undefined}>
+      <DialogContent className='max-w-md'>
         <DialogHeader>
           <DialogTitle>Send Feedback</DialogTitle>
+          <DialogDescription>Tell me what to fix or add</DialogDescription>
         </DialogHeader>
         {/* A fresh form each opening: sent feedback, or the last choice of Send Anonymously, doesn't come back */}
         {open && !isPending && (

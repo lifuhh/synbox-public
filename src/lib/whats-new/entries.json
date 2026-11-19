@@ -4,10 +4,11 @@
     "date": null,
     "title": "A Cleaner Look",
     "items": [
-      "Generate Lyrics, Play and Send stand out in solid colour, and menus, panels and dialogs share one cleaner look",
-      "Home opens straight on the search box, and Search shows recently played songs before you type",
+      "Search results sit three across, and More Like This is in each song’s menu",
+      "Words you’ve typed but not searched yet dim the results below until you press Search",
+      "The player’s Lyrics, Romaji and Translations buttons are a quiet grey when on",
       "On a phone, playlists give song titles more room, and Reorder Songs is in the playlist’s menu",
-      "Lyrics pages use the same Text Style as the video page, and with your phone on its side the play controls fit on one row"
+      "A missing page or a list that won’t load says so plainly, with Retry"
     ]
   },
   {

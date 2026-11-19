@@ -19,13 +19,6 @@ import {
   LibrarySongCard,
   VideoResultCard,
 } from '@/components/search/search-result-cards'
-import {
-  SONG_FIELD_COLUMN,
-  SONG_FIELD_HINT,
-  SongFieldAction,
-  songFieldPlaceholder,
-  songFieldState,
-} from '@/components/search/song-field'
 import { BoxScrollbar } from '@/components/shared/doc-scroll'
 import DotsLoader from '@/components/shared/dots-loader'
 import LoadError from '@/components/shared/load-error'
@@ -33,7 +26,6 @@ import { Button } from '@/components/ui/button'
 import { ClearFieldButton } from '@/components/ui/clear-field-button'
 import { Input, InputField } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
-import { RecentShelf } from '@/components/watch/shelves'
 import { useMediaQuery } from '@/hooks/use-media-query'
 import { wheelSideways } from '@/hooks/wheel-sideways'
 import {
@@ -60,9 +52,14 @@ const Notice = ({ children }: { children: React.ReactNode }) => (
   </p>
 )
 
+// The field's column, and the examples' under it before a search: four fifths of the page from sm
+const FIELD_COLUMN = 'w-full sm:mx-auto sm:w-4/5'
+// A search's results: 680px from md, so three cards across fill a row
+const RESULTS_COLUMN = 'w-full md:mx-auto md:max-w-170'
+
 const ResultGrid = ({ children }: { children: React.ReactNode }) => (
   // Each card pads its hover surface, so the grid reaches out by that padding and the pictures line up
-  // with the search field. Three columns fill the field's width (SONG_FIELD_COLUMN), so a row ends on its edge
+  // with the column's edges. Three columns fill the results' column (RESULTS_COLUMN), so a row ends on its edge
   <div className='-mx-2 grid grid-cols-2 gap-3 empty:hidden sm:grid-cols-3'>
     {children}
   </div>
@@ -209,11 +206,7 @@ const LinkedVideo = ({ videoId }: { videoId: string }) => {
     }
     if (lyrics.data) {
       return (
-        <Button
-          asChild
-          variant='tonal'
-          gap='sm'
-          className='self-start touch:h-11'>
+        <Button asChild gap='sm' className='self-start touch:h-11'>
           <Link to={`/v/${videoId}`} state={{ videoId }}>
             <PlayIcon aria-hidden className='size-4 shrink-0 fill-current' />
             Play Song
@@ -223,7 +216,6 @@ const LinkedVideo = ({ videoId }: { videoId: string }) => {
     }
     return (
       <Button
-        variant='tonal'
         gap='sm'
         aria-disabled={checking || undefined}
         className='self-start aria-disabled:cursor-progress touch:h-11'
@@ -267,9 +259,7 @@ const LinkedVideo = ({ videoId }: { videoId: string }) => {
         <div className='flex flex-col'>
           {action()}
           {/* Mounted empty, so its first answer is announced; no space until it has one */}
-          <div
-            aria-live='polite'
-            className='text-sm not-empty:mt-2 touch:not-empty:mt-4'>
+          <div aria-live='polite' className='text-sm not-empty:mt-2'>
             <SubmissionStatus submission={submission} />
           </div>
         </div>
@@ -522,14 +512,8 @@ const SearchBody = ({
     )
   }
   const text = readFieldText(query)
-  // Before a search, the examples and songs ready to sing where results will appear
   if (text.kind === 'empty') {
-    return (
-      <div className='flex flex-col gap-8'>
-        <Examples onSearch={onSearch} />
-        <RecentShelf />
-      </div>
-    )
+    return <Examples onSearch={onSearch} />
   }
   if (text.kind === 'own') {
     return <Navigate to={text.path} replace />
@@ -572,10 +556,12 @@ const SearchPage = () => {
   }
   // Under 360px wide the full text runs past the field, as Home's does
   const roomy = useMediaQuery('(min-width: 22.5rem)')
+  // Results for a search show under the field: the hint's line is kept for them, so it never pushes them down
+  const searched = query !== '' && similarTo === ''
   // Typed but not yet searched: the results under the field are for the last search, so they dim and the hint says
   // what Search will do, as on Home
-  const stale = similarTo === '' && typed.trim() !== query
-  const typedState = songFieldState(typed)
+  const stale = searched && typed.trim() !== query
+  const hint = stale && readFieldText(typed).kind === 'search'
   const hintId = useId()
 
   // A search or a link, as typed, pasted or read by Paste Link: our own song link opens in place
@@ -614,23 +600,16 @@ const SearchPage = () => {
       data-scroll-top
       className='flex flex-1 flex-col gap-4 overflow-y-scroll pt-page-top page-x pb-page-bottom'>
       <title>Search · Synbox</title>
-      {/* Named on screen where no tab bar marks the page (a browser); the installed app's tab bar does */}
-      <h1
-        className={cn(
-          SONG_FIELD_COLUMN,
-          'text-2xl font-semibold tracking-tight text-foreground tabbar:sr-only'
-        )}>
-        Search
-      </h1>
-      <div className={cn(SONG_FIELD_COLUMN, 'flex flex-col gap-2')}>
+      <h1 className='sr-only'>Search</h1>
+      <div className={cn(FIELD_COLUMN, 'flex flex-col gap-2')}>
         <form
           onSubmit={(e) => {
             e.preventDefault()
             const value = new FormData(e.currentTarget).get('q')
             submit(typeof value === 'string' ? value : '')
           }}>
-          {/* The home page's field (song-field.tsx): its words, width, border states and action */}
-          <InputField state={typedState}>
+          {/* The home page's field: a pill with its action inside, an icon on phones and a labelled one wider */}
+          <InputField>
             <Input
               ref={field}
               name='q'
@@ -639,14 +618,15 @@ const SearchPage = () => {
               onChange={(e) => {
                 setTyped(e.target.value)
               }}
-              // The page's own name for its field, as the layout audit's typed state finds it
               aria-label='Search Songs'
-              aria-describedby={hintId}
+              aria-describedby={searched ? hintId : undefined}
               enterKeyHint='search'
               autoCapitalize='off'
               autoCorrect='off'
               spellCheck={false}
-              placeholder={songFieldPlaceholder(roomy)}
+              placeholder={
+                roomy ? 'Song, Artist or YouTube Link' : 'Song or YouTube Link'
+              }
               // A link pasted over the whole field needs no Search press: it names one video, not words to search
               onPaste={(e) => {
                 const pasted = e.clipboardData.getData('text')
@@ -673,21 +653,35 @@ const SearchPage = () => {
                 }
               }}
             />
-            {/* A link shows its video under the field, which carries Play Song or Generate Lyrics; this stays Search */}
-            <SongFieldAction
-              label='Search'
-              icon={<SearchIcon aria-hidden className='size-5 shrink-0' />}
-            />
+            <Button
+              type='submit'
+              variant='hero'
+              size='icon'
+              aria-label='Search'
+              className='shrink-0 sm:hidden'>
+              <SearchIcon className='size-5' />
+            </Button>
+            <Button
+              type='submit'
+              variant='hero'
+              size='inset'
+              gap='sm'
+              className='hidden shrink-0 sm:inline-flex'>
+              <SearchIcon className='size-5' aria-hidden />
+              <span className='text-label'>Search</span>
+            </Button>
           </InputField>
         </form>
-        <p id={hintId} className='min-h-6 px-5 text-sm text-search'>
-          {stale && typedState === 'search' ? SONG_FIELD_HINT : null}
-        </p>
+        {searched && (
+          <p id={hintId} className='min-h-6 px-5 text-sm text-search'>
+            {hint ? 'Search by title, artist or mood' : null}
+          </p>
+        )}
       </div>
 
       <div
         className={cn(
-          SONG_FIELD_COLUMN,
+          query === '' && similarTo === '' ? FIELD_COLUMN : RESULTS_COLUMN,
           'transition-opacity duration-150 ease-out',
           stale && 'opacity-60'
         )}>

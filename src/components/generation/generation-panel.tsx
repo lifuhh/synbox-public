@@ -36,7 +36,7 @@ import type { Fix } from '@/lib/report-fixes'
 import { formatStamp } from '@/utils'
 import { cn } from '@/utils/cn'
 
-import StepList from './step-list'
+import StepWheel from './step-wheel'
 import {
   hideBrokenImage,
   hidePlaceholderImage,
@@ -241,7 +241,6 @@ const RowAction = ({ job, title }: { job: Job; title: string }) => {
     return (
       <Button
         asChild
-        variant='tonal'
         size='row'
         className='relative shrink-0 touch:after:absolute touch:after:inset-x-0 touch:after:-inset-y-2'>
         <Link
@@ -623,7 +622,6 @@ const FixRow = ({
       action={
         <Button
           asChild
-          variant='tonal'
           size='row'
           className='relative shrink-0 touch:after:absolute touch:after:inset-x-0 touch:after:-inset-y-2'>
           <Link to={to} aria-label={`Play ${name}`} onClick={dismiss}>
@@ -829,7 +827,7 @@ const SongDetail = ({
                 {progressNote()}
               </span>
             </div>
-            <StepList
+            <StepWheel
               views={view.views}
               index={view.index}
               failed={status.kind === 'failed'}
@@ -856,7 +854,6 @@ const SongDetail = ({
                   ) : null}
                   {status.retry ? (
                     <Button
-                      variant='tonal'
                       gap='md'
                       className='flex-1'
                       onClick={() => {

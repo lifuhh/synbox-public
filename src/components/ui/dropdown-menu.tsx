@@ -6,7 +6,7 @@ import type { VariantProps } from 'class-variance-authority'
 import { CheckIcon } from 'lucide-react'
 import * as React from 'react'
 
-import { FLOAT_MOTION, FLOAT_SURFACE } from '@/components/ui/float'
+import { FLOAT_MOTION, floatSurface } from '@/components/ui/float'
 import { keepScrollWhenTurned } from '@/lib/page-turn'
 import '@/lib/turned-popper'
 import { cn } from '@/utils/cn'
@@ -118,8 +118,14 @@ const dropdownMenuItemVariants = cva('', {
 
 const DropdownMenuContentRender: React.ForwardRefRenderFunction<
   React.ComponentRef<typeof DropdownMenuPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Content>
-> = ({ className, sideOffset = 4, onTouchMove, ...props }, ref) => (
+  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Content> & {
+    // The floating surface's faint edge (float.ts › floatSurface)
+    edge?: boolean
+  }
+> = (
+  { className, sideOffset = 4, onTouchMove, edge = true, ...props },
+  ref
+) => (
   <DropdownMenuPrimitive.Portal>
     <DropdownMenuPrimitive.Content
       ref={ref}
@@ -130,7 +136,7 @@ const DropdownMenuContentRender: React.ForwardRefRenderFunction<
       }}
       className={cn(
         'z-50 min-w-32 overflow-hidden p-1',
-        FLOAT_SURFACE,
+        floatSurface({ edge }),
         FLOAT_MOTION,
         className
       )}

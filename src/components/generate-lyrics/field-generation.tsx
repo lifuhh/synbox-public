@@ -165,11 +165,9 @@ export const GenerateLabel = ({ checking }: { checking: boolean }) => {
   )
 }
 
-// A text button in the status line. Its own box is 29px tall (6px padding that -my-1.5 takes back, so the line keeps
-// its height); its press area reaches 2px further with a mouse (33px) and 8px on touch (45px), so on touch the line
-// sits 16px under what is above it (the field's wrapper, LinkedVideo's action) and the press area stops short of it
-export const INLINE_ACTION =
-  "relative -my-1.5 inline-block py-1.5 font-semibold text-foreground underline underline-offset-4 after:absolute after:-inset-x-1 after:-inset-y-0.5 after:content-[''] touch:after:-inset-y-2"
+// A text button in the status line: its press area reaches 8px above and below the line, short of the field above
+const INLINE_ACTION =
+  "relative font-semibold text-foreground underline underline-offset-4 after:absolute after:-inset-x-1 after:-inset-y-2 after:content-['']"
 
 // The check's line, which says the backend is starting once the wait outlasts a warm answer (start-generation.tsx ›
 // SLOW_CHECK_MS). Fades in, keyed, so the swap reads as a new line rather than a jump
