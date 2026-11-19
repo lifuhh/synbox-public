@@ -79,12 +79,24 @@ const dialogCloseVariants = cva(
 const DialogContentRender: React.ForwardRefRenderFunction<
   React.ComponentRef<typeof DialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> &
-    VariantProps<typeof dialogContentVariants>
+    VariantProps<typeof dialogContentVariants> & {
+      // Where it is drawn, when not at the end of the page: inside a full-screen layer of its own (the reader), so it
+      // stacks over that layer and takes its colours
+      container?: HTMLElement | null
+    }
 > = (
-  { className, children, variant, onOpenAutoFocus, onTouchMove, ...props },
+  {
+    className,
+    children,
+    variant,
+    container,
+    onOpenAutoFocus,
+    onTouchMove,
+    ...props
+  },
   ref
 ) => (
-  <DialogPortal>
+  <DialogPortal container={container}>
     {/* A sheet leaves what it changes in view: its overlay only takes the tap that closes it */}
     <DialogOverlay
       className={variant === 'sheet' ? 'bg-transparent' : undefined}

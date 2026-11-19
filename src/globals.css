@@ -380,10 +380,9 @@
     0.75rem
   );
 
-  /* The offline reader: room under its bar and over its text style row, and type times the reader's scale */
+  /* The offline reader: room under its bar and at the end of the page, and type times the reader's scale */
   --spacing-reader-top: calc(var(--safe-top) + 3.75rem);
   --spacing-reader-bottom: calc(var(--safe-bottom) + 2.5rem);
-  --spacing-reader-bottom-bar: calc(var(--safe-bottom) + 6rem);
   /* Synced lyrics: room for the play controls, and for the last line to scroll up to where the sung line sits */
   --spacing-reader-follow: calc(var(--app-h) * 0.55);
   --spacing-reader-line: calc(0.875rem * var(--reader-scale));
@@ -443,6 +442,37 @@
     /* 4.9:1 for the ink. A Text Style colour on the light paper needs 0.88, which would no longer read as dim */
     --reader-dim: 0.64;
   }
+}
+
+/* The app's colour roles drawn in the reader's paper and ink, beside reader-paper on the reader's root (Text Style's
+   panel is drawn inside it), so the shared controls there (Text Style, its button, LoadError) suit either
+   paper: hovers and trays in the reader's hover tint, as its own buttons. Keyboard focus takes the ink: the app's
+   near-white ring vanishes on the light paper. The skeleton's fill reads --accent itself */
+@utility reader-surface {
+  --accent: var(--reader-hover);
+  --color-background: var(--reader-bg);
+  --color-foreground: var(--reader-fg);
+  --color-card: var(--reader-bg);
+  --color-popover: var(--reader-panel);
+  --color-popover-foreground: var(--reader-fg);
+  --color-muted-foreground: var(--reader-muted);
+  --color-secondary: var(--reader-hover);
+  --color-accent: var(--reader-hover);
+  --color-accent-foreground: var(--reader-fg);
+  --color-border: var(--reader-line-strong);
+  --focus-ring: var(--reader-fg);
+}
+
+/* A box that scrolls under bars laid out on the same centred column (the reader): its scrollbar's room on both
+   sides, so the column inside stays centred on the window, on the bars' edges, with or without a classic scrollbar */
+@utility scroll-gutter-both {
+  scrollbar-gutter: stable both-edges;
+}
+
+/* Text Style over the reader (drawn inside the reader's layer, so in its paper and ink): a choice in a tray
+   (English | 中文) is one step stronger than the tray */
+[data-reader-panel] {
+  --color-accent: var(--reader-line-strong);
 }
 
 /* Furigana over a page, not over a video (the reader, the watch page's lyrics): no shadow, a little quieter

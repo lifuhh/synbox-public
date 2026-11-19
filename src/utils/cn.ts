@@ -47,7 +47,6 @@ const twMerge = extendTailwindMerge({
         'cqh',
         'reader-top',
         'reader-bottom',
-        'reader-bottom-bar',
         'reader-follow',
         'reader-line',
         'reader-stanza',
