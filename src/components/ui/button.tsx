@@ -75,10 +75,6 @@ const buttonVariants = cva(
           'bg-secondary text-secondary-foreground hover:bg-secondary/80',
         // Continue With Google, wherever it is: Google's coloured mark on a neutral near-white fill, never on magenta
         solid: 'bg-foreground text-background hover:bg-foreground/90',
-        // A second-rank or repeated action that keeps the brand colour without competing with the main one (a Play
-        // on each notification row, a confirmation's action): the magenta label on a mostly neutral fill
-        tonal:
-          'bg-primary-subtle text-primary-text hover:bg-primary-subtle-hover',
         // A round icon button over content (the watch page's lyrics), filled so the lines under it don't show
         // through
         'surface-icon':
@@ -87,6 +83,10 @@ const buttonVariants = cva(
         // A button that stays on (aria-pressed), as a playlist's Shuffle: on, it takes the brand colour
         toggle:
           'rounded-full hover:bg-accent hover:text-accent-foreground aria-pressed:bg-primary-subtle aria-pressed:text-primary-text aria-pressed:hover:bg-primary-subtle-hover',
+        // A second-rank or repeated action that keeps the brand colour without competing with the main one (a Play
+        // on each notification row, a confirmation's action): the magenta label on a mostly neutral fill
+        tonal:
+          'bg-primary-subtle text-primary-text hover:bg-primary-subtle-hover',
         toolbar: 'rounded-full hover:bg-accent hover:text-accent-foreground',
         // A labelled top-bar button among the icon buttons, outlined: Sign In with Google, whose branding keeps a
         // visible boundary (its dark theme: a 1px line on a dark fill)
