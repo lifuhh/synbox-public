@@ -1,12 +1,13 @@
 import { atom, useAtom, useAtomValue } from 'jotai'
 import { ALargeSmallIcon } from 'lucide-react'
-import { useMemo, useRef } from 'react'
+import { useMemo, useRef, useState } from 'react'
 
 import { SEGMENT } from '@/components/lyrics-display/lyrics-style-scope'
 import { StyleSwitch } from '@/components/lyrics-display/style-switch'
 import { useVideoColor } from '@/components/offline/reader-controls'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
+import { FLOAT_SECTION_LABEL } from '@/components/ui/float'
 import {
   Popover,
   PopoverAnchor,
@@ -16,8 +17,12 @@ import {
 import { Slider } from '@/components/ui/slider'
 import { translationIsEnglishAtom } from '@/context/atoms'
 import { useMediaQuery } from '@/hooks/use-media-query'
-import { MENU_GAP } from '@/lib/menu-offset'
-import type { ReaderColor, ReaderLayer } from '@/lib/offline/reader-prefs'
+import { MENU_GAP, useMenuOffset } from '@/lib/menu-offset'
+import type {
+  ReaderColor,
+  ReaderLayer,
+  ReaderTheme,
+} from '@/lib/offline/reader-prefs'
 import {
   READER_COLORS,
   READER_SIZES,
@@ -27,11 +32,11 @@ import {
 import type { CssVars } from '@/types'
 import { cn } from '@/utils/cn'
 
-// One Text Style panel open at a time, whichever button opened it (the panel's header, the band's corner)
+// One Text Style panel open at a time, whichever button opened it (the panel's header, the band's corner, the reader)
 const textStyleOpenAtom = atom(false)
 
-const SECTION_HEADING =
-  'text-xs font-medium tracking-wide text-muted-foreground uppercase'
+// Whether Text Style is open: the reader keeps its bars while it is
+export const useTextStyleOpen = () => useAtomValue(textStyleOpenAtom)
 
 const LINES: { id: ReaderLayer; label: string }[] = [
   { id: 'japanese', label: 'Japanese' },
@@ -45,14 +50,13 @@ const LANGUAGES = [
 ] as const
 
 // Which lines the page shows, one always on so it is never blank, and the translation's language (the video's
-// too). Picking a language shows the translation
+// too). Picking a language shows the translation. No heading: the switches name the lines
 const LinesSection = () => {
   const [prefs, setPrefs] = useAtom(readerPrefsAtom)
   const [english, setEnglish] = useAtom(translationIsEnglishAtom)
   const shown = LINES.filter((line) => prefs[line.id]).length
   return (
-    <section className='flex flex-col gap-2'>
-      <h3 className={SECTION_HEADING}>Lines</h3>
+    <div className='flex flex-col gap-2'>
       <div className='flex flex-col'>
         {LINES.map((line) => (
           <StyleSwitch
@@ -94,7 +98,7 @@ const LinesSection = () => {
           )
         })}
       </div>
-    </section>
+    </div>
   )
 }
 
@@ -105,7 +109,7 @@ const TypeSection = ({ sized }: { sized: boolean }) => {
     <div className='flex flex-col gap-2'>
       {sized && (
         <section className='flex flex-col gap-2'>
-          <h3 className={SECTION_HEADING}>Size</h3>
+          <h3 className={FLOAT_SECTION_LABEL}>Size</h3>
           <div className='flex items-center gap-3'>
             <span
               aria-hidden='true'
@@ -192,16 +196,23 @@ const ColorTile = ({
   )
 }
 
-// The Japanese line's colour: Video follows Lyrics Style's, the rest are the page's own. A preset applies and
-// closes, like a menu; Custom stays open on its hue until Done
-const ColorSection = ({ onPick }: { onPick: () => void }) => {
+// The Japanese line's colour on the page it is drawn on (the reader's paper, else the dark watch page): Video follows
+// Lyrics Style's, the rest are the page's own. A preset applies and closes, like a menu; Custom stays open on its hue
+// until Done
+const ColorSection = ({
+  theme,
+  onPick,
+}: {
+  theme: ReaderTheme
+  onPick: () => void
+}) => {
   const [prefs, setPrefs] = useAtom(readerPrefsAtom)
   const video = useVideoColor()
   const colorOf = (id: ReaderColor) =>
-    readerColor({ id, prefs, theme: 'dark', video }) ?? 'var(--foreground)'
+    readerColor({ id, prefs, theme, video }) ?? 'var(--foreground)'
   return (
     <section className='flex flex-col gap-2'>
-      <h3 className={SECTION_HEADING}>Colour</h3>
+      <h3 className={FLOAT_SECTION_LABEL}>Colour</h3>
       <div
         role='radiogroup'
         aria-label='Japanese Colour'
@@ -253,34 +264,41 @@ const ColorSection = ({ onPick }: { onPick: () => void }) => {
   )
 }
 
+// Colour first: it is what people try first, and on a sheet that runs past its edge it stays in view
 const TextStyleControls = ({
   sized,
+  theme,
   onPick,
 }: {
   sized: boolean
+  theme: ReaderTheme
   onPick: () => void
 }) => (
   <>
+    <ColorSection theme={theme} onPick={onPick} />
     <LinesSection />
     <TypeSection sized={sized} />
-    <ColorSection onPick={onPick} />
   </>
 )
 
-// How the lyrics on the page look (src/lib/offline/reader-prefs.ts), apart from Lyrics Style's over the video. Either
-// way the lyrics it changes stay in view: with a mouse a popover out over the video (left of the panel's header,
-// above the corner's button at the panel's top); on a touch screen a sheet. `corner`: the round filled button over
-// the lines (the band, the panel under a narrow video); otherwise a header's plain one, whose popover sits beside
-// `anchor` (the header's id), not beside the button at the header's far end. `sized`: false on the band, whose size
-// is fixed
+// How the lyrics on the page look (src/lib/offline/reader-prefs.ts), apart from Lyrics Style over the video. Either
+// way the lyrics it changes stay in view: with a mouse a popover (on the watch page out over the video, left of the
+// panel's header, or above the corner's button at the panel's top; in the reader under its bar); on a touch screen a
+// sheet. `corner`: the round filled button over the lines (the band, the panel under a narrow video); otherwise a
+// header's plain one, whose popover sits beside `anchor` (the header's id), not beside the button at the header's far
+// end. `sized`: false on the band, whose size is fixed. `paper`: the reader's. There the panel is drawn inside the
+// reader's full-screen layer, so it stacks over it and takes its paper and ink (globals.css › reader-surface), and
+// with a mouse it opens under the bar, MENU_GAP from the drawn glyph
 export const TextStyleButton = ({
   anchor,
   corner = false,
   sized = true,
+  paper,
 }: {
   anchor?: string
   corner?: boolean
   sized?: boolean
+  paper?: ReaderTheme
 }) => {
   const [open, setOpen] = useAtom(textStyleOpenAtom)
   const touch = useMediaQuery('(pointer: coarse)')
@@ -297,11 +315,22 @@ export const TextStyleButton = ({
     }),
     [anchor]
   )
+  const { measure, offset, triggerRef } =
+    useMenuOffset<HTMLButtonElement>('bottom')
+  // The reader's layer, found from the button as it opens
+  const [container, setContainer] = useState<HTMLElement | null>(null)
   const close = () => {
     setOpen(false)
   }
+  // The audits wait on what opened (harness/bench/probes/layout.ts › OPENED_STATES `text-style`)
+  const surface = {
+    container,
+    'data-bench': 'text-style',
+    'data-reader-panel': paper === undefined ? undefined : '',
+  }
   const button = (
     <Button
+      ref={triggerRef}
       variant={corner ? 'surface-icon' : 'toolbar'}
       size='icon'
       aria-label='Text Style'
@@ -309,11 +338,20 @@ export const TextStyleButton = ({
       aria-expanded={open}
       onClick={(event) => {
         fromKeyboardRef.current = event.detail === 0
+        if (paper !== undefined && !open) {
+          setContainer(
+            event.currentTarget.closest<HTMLElement>('[data-reader]')
+          )
+          measure()
+        }
         setOpen(!open)
       }}
       className='touch:size-11'>
       <ALargeSmallIcon className='size-5' />
     </Button>
+  )
+  const controls = (
+    <TextStyleControls sized={sized} theme={paper ?? 'dark'} onPick={close} />
   )
 
   if (touch) {
@@ -327,6 +365,7 @@ export const TextStyleButton = ({
         }}>
         {button}
         <DialogContent
+          {...surface}
           aria-describedby={undefined}
           onOpenAutoFocus={(event) => {
             event.preventDefault()
@@ -336,14 +375,20 @@ export const TextStyleButton = ({
           <div className='flex min-h-6 flex-none items-center p-4 pr-14 pb-2'>
             <DialogTitle size='sm'>Text Style</DialogTitle>
           </div>
-          <div className='flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto overscroll-contain [mask-image:linear-gradient(to_bottom,transparent,#000_0.5rem)] px-4 pt-2 pb-4 unhighlightable'>
-            <TextStyleControls sized={sized} onPick={close} />
+          {/* Both edges fade: the top where rows pass under the title, the bottom to say more lies below. The
+              bottom padding clears the fade once scrolled to the end */}
+          <div className='flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto overscroll-contain [mask-image:linear-gradient(to_bottom,transparent,#000_0.5rem,#000_calc(100%-1.5rem),transparent)] px-4 pt-2 pb-6 unhighlightable'>
+            {controls}
           </div>
         </DialogContent>
       </Dialog>
     )
   }
 
+  let side: 'bottom' | 'top' | 'left' = anchor === undefined ? 'top' : 'left'
+  if (paper) {
+    side = 'bottom'
+  }
   return (
     <Popover
       open={open}
@@ -355,9 +400,10 @@ export const TextStyleButton = ({
       <PopoverTrigger asChild>{button}</PopoverTrigger>
       {anchor !== undefined && <PopoverAnchor virtualRef={anchorBox} />}
       <PopoverContent
-        side={anchor === undefined ? 'top' : 'left'}
+        {...surface}
+        side={side}
         align={anchor === undefined ? 'end' : 'start'}
-        sideOffset={MENU_GAP}
+        sideOffset={paper === undefined ? MENU_GAP : offset}
         // The layout audit measures it against the header it opens beside (detachedMenus)
         data-menu-anchor={anchor}
         collisionPadding={8}
@@ -379,7 +425,7 @@ export const TextStyleButton = ({
           <div className='flex min-h-6 items-center'>
             <h2 className='text-sm font-semibold'>Text Style</h2>
           </div>
-          <TextStyleControls sized={sized} onPick={close} />
+          {controls}
         </div>
       </PopoverContent>
     </Popover>
