@@ -378,6 +378,13 @@ const measure = async (
         .querySelector('[data-bench=carousel]')
         ?.closest('section')
       section?.parentElement?.scrollIntoView({ block: 'start' })
+      // Clear of the fixed top bar, which would cover the heading in the crop
+      const bar = document
+        .querySelector('[data-topbar]')
+        ?.getBoundingClientRect()
+      document
+        .querySelector('[data-scroll-top]')
+        ?.scrollBy({ behavior: 'instant', top: -((bar?.height ?? 0) + 8) })
       section?.dispatchEvent(new PointerEvent('pointerenter'))
     })
     await page.evaluate(async () => await window.__bench.settle(5000))
