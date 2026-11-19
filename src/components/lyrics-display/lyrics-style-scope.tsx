@@ -1,8 +1,7 @@
 import { useAtom, useAtomValue, useSetAtom } from 'jotai'
 
+import { offerUndo } from '@/components/shared/offer-undo'
 import { Button } from '@/components/ui/button'
-import { ToastAction } from '@/components/ui/toast'
-import { toast } from '@/components/ui/use-toast'
 import {
   lyricsPositionsMovedAtom,
   lyricsStyleScopeAtom,
@@ -15,22 +14,6 @@ import { cn } from '@/utils/cn'
 // A choice in a segmented track (rounded-lg, p-1): its corners are the track's less the padding
 export const SEGMENT =
   'rounded-sm py-1.5 text-xs font-medium transition-colors touch:py-3 touch:text-sm'
-
-// A style change that drops what was there, with the app's short Undo toast (as removing a song from the queue)
-const offerUndo = (title: string, undo: (() => void) | null) => {
-  if (undo === null) {
-    return
-  }
-  toast({
-    action: (
-      <ToastAction altText={`Undo: ${title}`} onClick={undo}>
-        Undo
-      </ToastAction>
-    ),
-    duration: 5000,
-    title,
-  })
-}
 
 const SCOPES: { id: LyricsStyleScope; name: string }[] = [
   { id: 'all', name: 'All Songs' },

@@ -1,11 +1,21 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  keepPreviousData,
+  useMutation,
+  useQueries,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query'
+import type { QueryClient } from '@tanstack/react-query'
 import { z } from 'zod'
 
 import { call } from '@/lib/admin'
 import { authClient } from '@/lib/auth'
 import { QUERY_KEYS } from '@/lib/react-query/query-keys'
 import { listLyricsVersions } from '@/lib/synbox-flask/lyrics-versions'
-import type { LyricsVersionSummary } from '@/lib/synbox-flask/lyrics-versions'
+import type {
+  LyricsVersionSummary,
+  LyricsVersionsResponse,
+} from '@/lib/synbox-flask/lyrics-versions'
 
 // What only the admin page reads and changes: accounts, the generation ledger, reports and settings. Apart from
 // lib/admin (recommendations, which the watch page's Save to Playlist uses too), so it loads with /admin only
@@ -215,18 +225,147 @@ const isDropReason = (reason: unknown): reason is DropReason =>
 export const dropReasonLabel = (reason: string | null | undefined) =>
   isDropReason(reason) ? DROP_REASONS[reason] : null
 
-export const useAdminReports = () =>
+// Every report not deleted, by state, past the list's limit; absent from a Worker before 2026-11-19
+const reportCountsSchema = z.object({
+  dropped: z.number(),
+  open: z.number(),
+  resolved: z.number(),
+  review: z.number(),
+})
+export type ReportCounts = z.infer<typeof reportCountsSchema>
+
+export const REPORTS_LIMIT = 200
+
+// The latest `limit` reports, open ones first, and the counts. Show More asks for a longer list; the shorter one
+// stays on screen until it comes
+export const useAdminReports = (limit = REPORTS_LIMIT) =>
   useQuery({
-    queryFn: async () => {
-      const { reports } = await fetchParsed(
-        z.object({ reports: z.array(reportSchema) }),
-        '/reports'
-      )
-      return reports
-    },
-    queryKey: [QUERY_KEYS.GET_ADMIN_REPORTS],
+    placeholderData: keepPreviousData,
+    queryFn: async () =>
+      await fetchParsed(
+        z.object({
+          counts: reportCountsSchema.optional(),
+          reports: z.array(reportSchema),
+        }),
+        limit === REPORTS_LIMIT ? '/reports' : `/reports?limit=${limit}`
+      ),
+    queryKey: [QUERY_KEYS.GET_ADMIN_REPORTS, limit],
     retry,
   })
+
+// The version a fix by hand made live after the fixer handed the report to a human: the song's live version, when
+// it was made after reviewAt. The backend's fixer resolves such a report at its next run, by the same rule; a
+// rollback to a version made before then is no fix. Null while the versions load, or when there is no such fix
+export const fixedVersion = (
+  report: AdminReport,
+  lyrics: Pick<LyricsVersionsResponse, 'active' | 'versions'> | undefined
+) => {
+  if (
+    lyrics === undefined ||
+    lyrics.active === null ||
+    report.reviewAt === null ||
+    report.reviewAt === undefined
+  ) {
+    return null
+  }
+  const live = lyrics.versions.find(({ version }) => version === lyrics.active)
+  return live !== undefined && Date.parse(live.created_at) > report.reviewAt
+    ? lyrics.active
+    : null
+}
+
+// Report id → the version that fixed it, for the Needs Review reports only (a few): each song's versions come from
+// the lookup service one song a call, under the same key as useGetLyricsVersions, so the two share them
+export const useFixedVersions = (reports: readonly AdminReport[]) => {
+  const review = reports.filter((report) => reportState(report) === 'review')
+  const videoIds = [...new Set(review.map((report) => report.videoId))]
+  const versions = useQueries({
+    queries: videoIds.map((videoId) => ({
+      queryFn: async () => await listLyricsVersions(videoId),
+      queryKey: [QUERY_KEYS.GET_LYRICS_VERSIONS, videoId],
+      retry: false,
+    })),
+  })
+  const byVideo = new Map(
+    videoIds.map((videoId, i) => [videoId, versions[i]?.data])
+  )
+  return new Map(
+    review.flatMap((report) => {
+      const version = fixedVersion(report, byVideo.get(report.videoId))
+      return version === null ? [] : [[report.id, version] as const]
+    })
+  )
+}
+
+// What a Delete changes: its list, and the admin's bell, which leaves deleted rows out too
+const DELETABLE = {
+  feedback: { key: QUERY_KEYS.GET_ADMIN_FEEDBACK, path: '/feedback' },
+  message: { key: QUERY_KEYS.GET_ADMIN_MESSAGES, path: '/messages' },
+  report: { key: QUERY_KEYS.GET_ADMIN_REPORTS, path: '/reports' },
+} as const
+export type DeletableKind = keyof typeof DELETABLE
+export type Deletable =
+  | { kind: 'report'; id: string }
+  | { kind: 'feedback' | 'message'; id: number }
+
+const refreshAfterDelete = async (
+  queryClient: QueryClient,
+  kind: DeletableKind
+) => {
+  await Promise.all([
+    queryClient.invalidateQueries({ queryKey: [DELETABLE[kind].key] }),
+    queryClient.invalidateQueries({
+      queryKey: [QUERY_KEYS.GET_ADMIN_NOTICES],
+    }),
+  ])
+}
+
+// Deletes one closed report, one feedback or one message (worker/src/deleted.ts); Undo is useRestoreDeleted
+export const useDeleteRow = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ kind, id }: Deletable) =>
+      await call(`${DELETABLE[kind].path}/${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+      }),
+    onSettled: async (_data, _error, { kind }) => {
+      await refreshAfterDelete(queryClient, kind)
+    },
+  })
+}
+
+// Clear All on the Dropped tab; answers the ids it deleted, for Undo
+export const useClearDropped = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async () =>
+      z
+        .object({ ids: z.array(z.string()) })
+        .parse(
+          await call('/reports/clear-dropped', { body: '{}', method: 'POST' })
+        ).ids,
+    onSettled: async () => {
+      await refreshAfterDelete(queryClient, 'report')
+    },
+  })
+}
+
+// Undo of a delete. A plain function, not a mutation: the toast that calls it outlives the row that offered it.
+// Never throws: a failure goes to onError
+export const useRestoreDeleted = (onError: (error: Error) => void) => {
+  const queryClient = useQueryClient()
+  return async (kind: DeletableKind, ids: readonly (string | number)[]) => {
+    try {
+      await call(`${DELETABLE[kind].path}/restore`, {
+        body: JSON.stringify({ ids }),
+        method: 'POST',
+      })
+    } catch (error) {
+      onError(error instanceof Error ? error : new Error('Undo failed'))
+    }
+    await refreshAfterDelete(queryClient, kind)
+  }
+}
 
 const LIVE_VERSION_WAIT_MS = 4000
 

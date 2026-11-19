@@ -1,17 +1,17 @@
 import { atom, useAtom, useAtomValue, useSetAtom } from 'jotai'
-import { CloudOffIcon, SearchIcon, XIcon } from 'lucide-react'
+import { CloudOffIcon, XIcon } from 'lucide-react'
 import {
   useCallback,
   useDeferredValue,
   useEffect,
   useMemo,
-  useRef,
   useState,
 } from 'react'
 import type { ReactNode, Ref } from 'react'
 import { Link } from 'react-router'
 import { toRomaji } from 'wanakana'
 
+import { SearchField } from '@/components/shared/search-field'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,7 +23,6 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
-import { ClearFieldButton } from '@/components/ui/clear-field-button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ToastAction } from '@/components/ui/toast'
 import { toast } from '@/components/ui/use-toast'
@@ -274,40 +273,6 @@ export const SyncStatusLine = ({
   )
 }
 
-const SearchField = ({
-  library: { query, setQuery },
-}: {
-  library: Library
-}) => {
-  const field = useRef<HTMLInputElement>(null)
-  return (
-    <label className='relative block'>
-      <span className='sr-only'>Search Library</span>
-      <SearchIcon className='pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground' />
-      <input
-        ref={field}
-        type='search'
-        value={query}
-        onChange={(event) => {
-          setQuery(event.target.value)
-        }}
-        placeholder='Title, Artist or a Lyric'
-        enterKeyHint='search'
-        autoComplete='off'
-        className='h-10 w-full rounded-full border border-border bg-card pr-10 pl-9 text-base text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none [&::-webkit-search-cancel-button]:hidden'
-      />
-      <ClearFieldButton
-        field={field}
-        value={query}
-        onClear={() => {
-          setQuery('')
-        }}
-        className='absolute top-1/2 right-2 -translate-y-1/2'
-      />
-    </label>
-  )
-}
-
 // Centred in whatever height the list leaves (the menu's panel, the page down to the dock), as Spotify's and Apple
 // Music's empty libraries
 const Empty = ({ children }: { children: ReactNode }) => (
@@ -504,7 +469,14 @@ export const LibraryView = ({
               ))}
             </TabsList>
           </div>
-          <SearchField library={library} />
+          <SearchField
+            label='Search Library'
+            placeholder='Title, Artist or a Lyric'
+            value={library.query}
+            onChange={(value) => {
+              library.setQuery(value)
+            }}
+          />
         </div>
         <div className={cn(!menu && 'mx-auto w-full max-w-xl px-4 pb-2')}>
           <SyncStatusLine library={library} className='pt-2' />

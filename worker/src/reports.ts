@@ -112,6 +112,12 @@ export const parseReport = (body: unknown): ParsedReport => {
   }
 }
 
+// Not deleted by an admin (migration 0033): a deleted report is in no list or count, changes no more, and never
+// notifies its reporter. Only a closed report can be deleted, so an open one never is
+const LIVE = `"deletedAt" is null`
+// Neither resolved nor dropped
+const OPEN = `"resolvedAt" is null and "droppedAt" is null and ${LIVE}`
+
 export const reportAllowed = async (
   db: D1Database,
   userId: string,
@@ -136,7 +142,7 @@ export const openReportOf = async (
   const row = await db
     .prepare(
       `select "message", "createdAt" from "report" where "userId" = ?1 and "videoId" = ?2
-         and "resolvedAt" is null and "droppedAt" is null`
+         and ${OPEN}`
     )
     .bind(userId, videoId)
     .first<{ message: string; createdAt: number }>()
@@ -193,24 +199,75 @@ export const saveReport = async (
   }
 }
 
-// Neither resolved nor dropped
-const OPEN = `"resolvedAt" is null and "droppedAt" is null`
 // Open and not handed to a human: what the daily expiry may drop
 const FOR_FIXER = `${OPEN} and "reviewAt" is null`
 
+export const LIST_LIMIT = 200
+export const LIST_LIMIT_MAX = 2000
+
 // The latest reports with who sent them (an account, or a guest before 2026-10-23): open ones first, so closed ones
-// never push an open one out of the 200, then newest first
-export const listReports = async (db: D1Database) => {
+// never push an open one out of the list, then newest first. Show More on /admin asks for a longer list
+export const listReports = async (db: D1Database, limit = LIST_LIMIT) => {
   const { results } = await db
     .prepare(
       `select r."id", r."videoId", r."atSeconds", r."version", r."message", r."client", r."build", r."createdAt",
          r."resolvedAt", r."resolvedVersion", r."resolution", r."droppedAt", r."dropReason", r."reviewAt",
          r."reviewNote", u."email", u."name", r."guestKey" is not null as "guest"
        from "report" r left join "user" u on u."id" = r."userId"
-       order by not (${OPEN}), r."createdAt" desc limit 200`
+       where r.${LIVE}
+       order by not (${OPEN}), r."createdAt" desc limit ?1`
     )
+    .bind(Math.min(Math.max(1, Math.trunc(limit)), LIST_LIMIT_MAX))
     .all()
   return results
+}
+
+export type ReportCounts = Record<
+  'open' | 'review' | 'resolved' | 'dropped',
+  number
+>
+
+// Every report not deleted, by state, for /admin's tabs, which the list's limit would otherwise cap. Needs Review
+// is open with "reviewAt" set; Fixed is the browser's own split of it (it needs the song's lyrics versions)
+export const countReports = async (db: D1Database) => {
+  const { results } = await db
+    .prepare(
+      `select case when "resolvedAt" is not null then 'resolved' when "droppedAt" is not null then 'dropped'
+         when "reviewAt" is not null then 'review' else 'open' end as "state", count(*) as "n"
+       from "report" where ${LIVE} group by "state"`
+    )
+    .all<{ state: keyof ReportCounts; n: number }>()
+  const counts: ReportCounts = { dropped: 0, open: 0, resolved: 0, review: 0 }
+  for (const { state, n } of results) {
+    counts[state] = n
+  }
+  return counts
+}
+
+const CLOSED = `("resolvedAt" is not null or "droppedAt" is not null)`
+
+// An admin's Delete of a resolved or dropped report: false when no closed report has the id (an open one is
+// dropped first). Its reporter's notification of a fix goes with it; undone by restoreRows (deleted.ts)
+export const deleteReport = async (db: D1Database, id: string, now: number) => {
+  const { meta } = await db
+    .prepare(
+      `update "report" set "deletedAt" = ?2 where "id" = ?1 and ${LIVE} and ${CLOSED}`
+    )
+    .bind(id, now)
+    .run()
+  return meta.changes > 0
+}
+
+// Clear All on the Dropped tab: deletes every dropped report, and answers their ids for Undo
+export const clearDropped = async (db: D1Database, now: number) => {
+  const { results } = await db
+    .prepare(
+      `update "report" set "deletedAt" = ?1
+       where ${LIVE} and "droppedAt" is not null and "resolvedAt" is null returning "id"`
+    )
+    .bind(now)
+    .all<{ id: string }>()
+  return results.map(({ id }) => id)
 }
 
 // What the backend's fixer works through, oldest first: open reports it hasn't handed to a human ("reviewAt" null),
@@ -274,7 +331,7 @@ export const resolveReport = async (
          "seenAt" = case when "resolvedVersion" is ?3 then "seenAt" end,
          "dismissedAt" = case when "resolvedVersion" is ?3 then "dismissedAt" end,
          "droppedAt" = null, "dropReason" = null
-       where "id" = ?1`
+       where "id" = ?1 and ${LIVE}`
     )
     .bind(id, now, version, note, reportedVersion)
     .run()
@@ -291,7 +348,7 @@ export const reopenReport = async (
       .prepare(
         `update "report" set "resolvedAt" = null, "resolvedVersion" = null, "resolution" = null, "seenAt" = null,
            "dismissedAt" = null, "droppedAt" = null, "dropReason" = null, "reviewAt" = null, "reviewNote" = null
-         where "id" = ?1`
+         where "id" = ?1 and ${LIVE}`
       )
       .bind(id)
       .run()
@@ -352,7 +409,7 @@ export const dropReport = async (
     .prepare(
       `update "report" set "droppedAt" = ?2, "dropReason" = ?3, "resolution" = ?4, "resolvedAt" = null,
          "resolvedVersion" = null, "seenAt" = null, "dismissedAt" = null
-       where "id" = ?1`
+       where "id" = ?1 and ${LIVE}`
     )
     .bind(id, now, reason, note)
     .run()
@@ -415,7 +472,8 @@ const FIX_READ_DAYS = 3
 // A signed-in reporter's report that was resolved with other lyrics than the ones they reported. Guests' old reports
 // get none (their key was a network's), and a dropped report never tells anyone
 const FIXED = `"userId" = ?1 and "resolvedVersion" is not null
-  and ("version" is null or "resolvedVersion" <> "version") and "droppedAt" is null`
+  and ("version" is null or "resolvedVersion" <> "version") and "droppedAt" is null
+  and ${LIVE}`
 
 // The caller's fixed songs not dismissed, newest fix first: several reports of one song are one notification,
 // seen once all of them are

@@ -1,3 +1,4 @@
+import { useQuery } from '@tanstack/react-query'
 import {
   BanIcon,
   CheckIcon,
@@ -5,6 +6,7 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   EllipsisIcon,
+  Trash2Icon,
   Undo2Icon,
 } from 'lucide-react'
 import { useState } from 'react'
@@ -17,6 +19,8 @@ import {
 } from '@/components/admin/recommendations-editor'
 import { DocScroll } from '@/components/shared/doc-scroll'
 import Forbidden from '@/components/shared/forbidden'
+import { offerUndo } from '@/components/shared/offer-undo'
+import { SearchField } from '@/components/shared/search-field'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -44,6 +48,7 @@ import { wheelSideways } from '@/hooks/wheel-sideways'
 import {
   AdminOutdatedError,
   GUESTS,
+  REPORTS_LIMIT,
   MANUAL_DROP_REASONS,
   DROP_REASONS,
   dropReasonLabel,
@@ -64,6 +69,10 @@ import {
   useSetGenerationEnabled,
   useSetDailyLimit,
   useChangeReport,
+  useClearDropped,
+  useDeleteRow,
+  useFixedVersions,
+  useRestoreDeleted,
 } from '@/lib/admin-console'
 import type {
   AdminFeedback,
@@ -76,13 +85,20 @@ import type {
   ReportState,
   AdminUser,
   DailyLimit,
+  Deletable,
+  DeletableKind,
   SignalFlag,
   SongsBy,
 } from '@/lib/admin-console'
 import { SONGS_A_DAY, useAccess, useMe } from '@/lib/auth'
 import { isStageId, overallAt, stepOf } from '@/lib/generation/plan'
 import { applyWaitingUpdate } from '@/lib/pwa'
-import { useGetSongInfoBySongId } from '@/lib/react-query/queries-and-mutations'
+import {
+  librarySongs,
+  useGetSongInfoBySongId,
+} from '@/lib/react-query/queries-and-mutations'
+import type { LibraryListSong } from '@/lib/synbox-flask/discovery'
+import { matchesQuery } from '@/lib/text-search'
 import type { CssVars } from '@/types'
 import { formatClock } from '@/utils'
 import { cn } from '@/utils/cn'
@@ -662,7 +678,54 @@ const LoadError = ({ error }: { error: Error }) =>
     <p className='text-sm text-error'>{error.message}</p>
   )
 
-const UsersTable = () => {
+// A list's search, in the address as `q` beside `tab`, so a reload or a shared link keeps it. Another tab starts
+// without one
+const useListQuery = () => {
+  const [params, setParams] = useSearchParams()
+  const query = params.get('q') ?? ''
+  const setQuery = (next: string) => {
+    setParams(
+      (current) => {
+        const updated = new URLSearchParams(current)
+        if (next === '') {
+          updated.delete('q')
+        } else {
+          updated.set('q', next)
+        }
+        return updated
+      },
+      { replace: true }
+    )
+  }
+  return { query, searching: query.trim() !== '', setQuery }
+}
+
+// What a search hid everything in; a status, so a screen reader hears it as the list empties
+const NoMatches = () => (
+  <output className='block py-6 text-center text-sm text-muted-foreground'>
+    No matches
+  </output>
+)
+
+// Closed lists (resolved and dropped reports, settled inbox items) show this many, then this many more a press
+const PAGE = 20
+
+const ShowMore = ({ onClick }: { onClick: () => void }) => (
+  <Button variant='quiet' size='text' className='self-center' onClick={onClick}>
+    Show More
+  </Button>
+)
+
+const titleOf = (songs: LibraryListSong[]) =>
+  new Map(songs.map((song) => [song.videoId, `${song.title} ${song.author}`]))
+
+// Song titles to search by, from the library list the app loads anyway (a row draws its own title, a song at a
+// time); only once something is typed. A song not in the library is found by its video id
+const useSongTitles = (searching: boolean) =>
+  useQuery({ ...librarySongs, enabled: searching, select: titleOf }).data ??
+  new Map<string, string>()
+
+const UsersTable = ({ query }: { query: string }) => {
   const { data: users, error } = useAdminUsers()
   const { data: settings } = useAdminSettings()
   const { data: me } = useMe()
@@ -679,7 +742,13 @@ const UsersTable = () => {
       </p>
     )
   }
-  const rows = users.map((user) => ({
+  const found = users.filter((user) =>
+    matchesQuery(query, [user.name, user.email, user.id])
+  )
+  if (found.length === 0) {
+    return <NoMatches />
+  }
+  const rows = found.map((user) => ({
     defaultLimit: settings.limits.user,
     isSelf: user.id === me?.user?.id,
     user,
@@ -937,21 +1006,33 @@ const SongsFilter = ({
 
 // The latest 200 songs generated since accounts arrived, everyone's or one requester's, newest first, a page at
 // a time
-const SongsTable = ({ by }: { by: SongsBy }) => {
-  const { data: generations, error } = useAdminGenerations(by)
+const SongsTable = ({ by, query }: { by: SongsBy; query: string }) => {
+  const { data: loaded, error } = useAdminGenerations(by)
+  const titles = useSongTitles(query.trim() !== '')
   const [page, setPage] = useState(0)
   if (error !== null) {
     return <LoadError error={error} />
   }
-  if (generations === undefined) {
+  if (loaded === undefined) {
     return <Skeleton className='h-40 w-full' />
   }
-  if (generations.length === 0) {
+  if (loaded.length === 0) {
     return (
       <p className='py-6 text-center text-sm text-muted-foreground'>
         {by === null ? 'No songs generated yet' : 'No songs'}
       </p>
     )
+  }
+  const generations = loaded.filter((generation) =>
+    matchesQuery(query, [
+      titles.get(generation.videoId),
+      generation.videoId,
+      requester(generation),
+      generation.email,
+    ])
+  )
+  if (generations.length === 0) {
+    return <NoMatches />
   }
   const pages = Math.ceil(generations.length / SONGS_PER_PAGE)
   // A shorter list (a refresh) never leaves the page past its end
@@ -1052,6 +1133,65 @@ const clientLabel = (client: string | null) => {
 const ROW_BUTTON =
   'relative shrink-0 touch:after:absolute touch:after:inset-x-0 touch:after:-inset-y-2'
 
+const DELETED_TITLES = {
+  feedback: 'Feedback Deleted',
+  message: 'Message Deleted',
+  report: 'Report Deleted',
+} as const
+
+// Runs a delete, then offers its Undo, or says it failed. Awaited rather than mutate's callbacks: the button that
+// started it is gone once the list refreshes without its row, and a gone button's callbacks never run
+const useDeleteWithUndo = () => {
+  const { toast } = useToast()
+  const failed = (title: string) => (error: Error) => {
+    toast({ description: error.message, title, variant: 'destructive' })
+  }
+  const restore = useRestoreDeleted(failed('Could Not Undo'))
+  return async (
+    title: string,
+    kind: DeletableKind,
+    run: () => Promise<readonly (string | number)[]>
+  ) => {
+    try {
+      const ids = await run()
+      offerUndo(
+        title,
+        ids.length === 0
+          ? null
+          : () => {
+              void restore(kind, ids)
+            }
+      )
+    } catch (error) {
+      failed('Could Not Delete')(
+        error instanceof Error ? error : new Error('Delete failed')
+      )
+    }
+  }
+}
+
+// A row's Delete: one press, then an Undo toast that brings it back (the delete is soft: worker/src/deleted.ts)
+const DeleteButton = ({ row }: { row: Deletable }) => {
+  const { isPending, mutateAsync } = useDeleteRow()
+  const deleteWithUndo = useDeleteWithUndo()
+  return (
+    <Button
+      size='row'
+      variant='outline'
+      disabled={isPending}
+      className={ROW_BUTTON}
+      onClick={() => {
+        void deleteWithUndo(DELETED_TITLES[row.kind], row.kind, async () => {
+          await mutateAsync(row)
+          return [row.id]
+        })
+      }}>
+      <Trash2Icon className='size-3.5' />
+      Delete
+    </Button>
+  )
+}
+
 const ReportAction = ({ report }: { report: AdminReport }) => {
   const { toast } = useToast()
   const { isPending, mutate } = useChangeReport()
@@ -1100,6 +1240,7 @@ const ReportAction = ({ report }: { report: AdminReport }) => {
           <Undo2Icon className='size-3.5' />
           Reopen
         </Button>
+        <DeleteButton row={{ id: report.id, kind: 'report' }} />
       </div>
     )
   }
@@ -1143,7 +1284,14 @@ const ReportAction = ({ report }: { report: AdminReport }) => {
   )
 }
 
-const ReportItem = ({ report }: { report: AdminReport }) => {
+// fixed: the live version a fix by hand made after the fixer handed it over (admin-console.ts › fixedVersion)
+const ReportItem = ({
+  report,
+  fixed,
+}: {
+  report: AdminReport
+  fixed: number | undefined
+}) => {
   const { data: songInfo } = useGetSongInfoBySongId(report.videoId)
   const state = reportState(report)
   const by = isGuest(report) ? 'Guest' : (report.name ?? 'Deleted Account')
@@ -1174,11 +1322,18 @@ const ReportItem = ({ report }: { report: AdminReport }) => {
         )}>
         {report.message}
       </p>
-      {state === 'review' && (
-        <p className='text-xs text-pretty text-muted-foreground'>
-          Fixer · {report.reviewNote ?? 'Nothing to fix'}
-        </p>
-      )}
+      {state === 'review' &&
+        (fixed === undefined ? (
+          <p className='text-xs text-pretty text-muted-foreground'>
+            Reviewed by Fixer · <When value={report.reviewAt ?? null} />
+            {(report.reviewNote ?? '') !== '' && ` · ${report.reviewNote}`}
+          </p>
+        ) : (
+          <p className='text-xs text-pretty text-muted-foreground'>
+            <span className='text-success'>Fixed in v{fixed}</span> · Closes at
+            the next fixer run
+          </p>
+        ))}
       {/* The closing note runs long (a fix's lines and seconds), so it gets its own line, never a truncated tail */}
       {(state === 'resolved' || state === 'dropped') &&
         (report.resolution ?? '') !== '' && (
@@ -1242,25 +1397,74 @@ const StatePicker = <T extends string>({
   </div>
 )
 
-const REPORT_STATES: { id: ReportState; name: string; empty: string }[] = [
-  { empty: 'No open reports', id: 'open', name: 'Open' },
-  { empty: 'Nothing waiting', id: 'review', name: 'Needs Review' },
-  { empty: 'No resolved reports', id: 'resolved', name: 'Resolved' },
-  { empty: 'No dropped reports', id: 'dropped', name: 'Dropped' },
+// Fixed: in Needs Review, but a fix by hand is live, so the fixer resolves it at its next run
+type ReportTab = ReportState | 'fixed'
+
+const REPORT_TABS: {
+  id: ReportTab
+  name: string
+  empty: string
+  closed: boolean
+}[] = [
+  { closed: false, empty: 'No open reports', id: 'open', name: 'Open' },
+  {
+    closed: false,
+    empty: 'Nothing waiting',
+    id: 'review',
+    name: 'Needs Review',
+  },
+  { closed: false, empty: 'Nothing waiting', id: 'fixed', name: 'Fixed' },
+  {
+    closed: true,
+    empty: 'No resolved reports',
+    id: 'resolved',
+    name: 'Resolved',
+  },
+  { closed: true, empty: 'No dropped reports', id: 'dropped', name: 'Dropped' },
 ]
 
+// Clear All on the Dropped tab: every dropped report, past those loaded too, with one Undo for all of them
+const ClearDropped = () => {
+  const { isPending, mutateAsync } = useClearDropped()
+  const deleteWithUndo = useDeleteWithUndo()
+  return (
+    <Button
+      variant='quiet'
+      size='text'
+      disabled={isPending}
+      onClick={() => {
+        void deleteWithUndo('Dropped Reports Deleted', 'report', async () => {
+          const ids = await mutateAsync()
+          return ids
+        })
+      }}>
+      Clear All
+    </Button>
+  )
+}
+
+const REPORTS_LIMIT_MAX = 2000
+
 // What listeners reported, newest first: the song, where in it, and what was wrong. One state at a time, open
-// first; Needs Review holds what the backend's fixer couldn't fix, with its note; dropped ones (by an admin, the
-// fixer's junk filter, or after 3 days open) show why
-const ReportsList = () => {
-  const { data: reports, error } = useAdminReports()
-  const [shownState, setShownState] = useState<ReportState>('open')
+// first; Needs Review holds what the backend's fixer couldn't fix, with when and its note, and Fixed those of them
+// fixed by hand since; dropped ones (by an admin, the fixer's junk filter, or after 3 days open) show why. The
+// counts are the Worker's, of every report, unless a search narrows them to the loaded ones. Resolved and Dropped
+// show the newest 20, then 20 more a press, loading more from the Worker past the first 200
+const ReportsList = ({ query }: { query: string }) => {
+  const [limit, setLimit] = useState(REPORTS_LIMIT)
+  const { data, error } = useAdminReports(limit)
+  const [tab, setTab] = useState<ReportTab>('open')
+  const [visible, setVisible] = useState(PAGE)
+  const fixed = useFixedVersions(data?.reports ?? [])
+  const searching = query.trim() !== ''
+  const titles = useSongTitles(searching)
   if (error !== null) {
     return <LoadError error={error} />
   }
-  if (reports === undefined) {
+  if (data === undefined) {
     return <Skeleton className='h-40 w-full' />
   }
+  const { reports, counts } = data
   if (reports.length === 0) {
     return (
       <p className='py-6 text-center text-sm text-muted-foreground'>
@@ -1268,28 +1472,88 @@ const ReportsList = () => {
       </p>
     )
   }
-  const shown = reports.filter((report) => reportState(report) === shownState)
+  const tabOf = (report: AdminReport): ReportTab => {
+    const state = reportState(report)
+    return state === 'review' && fixed.has(report.id) ? 'fixed' : state
+  }
+  const found = reports.filter((report) =>
+    matchesQuery(query, [
+      titles.get(report.videoId),
+      report.videoId,
+      report.message,
+      report.name,
+      report.email,
+    ])
+  )
+  const inTab = (id: ReportTab) =>
+    found.filter((report) => tabOf(report) === id)
+  const count = (id: ReportTab) => {
+    if (searching || counts === undefined) {
+      return inTab(id).length
+    }
+    if (id === 'fixed') {
+      return fixed.size
+    }
+    return id === 'review' ? counts.review - fixed.size : counts[id]
+  }
+  const option = REPORT_TABS.find(({ id }) => id === tab)
+  const closed = option?.closed === true
+  const all = inTab(tab)
+  const shown = closed ? all.slice(0, visible) : all
+  // Past the loaded rows, the Worker has more: a search covers only what is loaded
+  const more =
+    shown.length < all.length ||
+    (closed &&
+      !searching &&
+      count(tab) > all.length &&
+      limit < REPORTS_LIMIT_MAX)
+  let list: ReactNode = (
+    <ul className='text-sm'>
+      {shown.map((report) => (
+        <ReportItem
+          key={report.id}
+          report={report}
+          fixed={fixed.get(report.id)}
+        />
+      ))}
+    </ul>
+  )
+  if (shown.length === 0) {
+    list = searching ? (
+      <NoMatches />
+    ) : (
+      <p className='py-6 text-center text-sm text-muted-foreground'>
+        {option?.empty}
+      </p>
+    )
+  }
   return (
     <div className='flex flex-col gap-3'>
-      <StatePicker
-        label='Report State'
-        options={REPORT_STATES}
-        count={(id) =>
-          reports.filter((report) => reportState(report) === id).length
-        }
-        value={shownState}
-        onChange={setShownState}
-      />
-      {shown.length === 0 ? (
-        <p className='py-6 text-center text-sm text-muted-foreground'>
-          {REPORT_STATES.find((option) => option.id === shownState)?.empty}
-        </p>
-      ) : (
-        <ul className='text-sm'>
-          {shown.map((report) => (
-            <ReportItem key={report.id} report={report} />
-          ))}
-        </ul>
+      <div className='flex flex-wrap items-center justify-between gap-2'>
+        <StatePicker
+          label='Report State'
+          options={REPORT_TABS}
+          count={count}
+          value={tab}
+          onChange={(next) => {
+            setTab(next)
+            setVisible(PAGE)
+          }}
+        />
+        {tab === 'dropped' && !searching && count('dropped') > 0 && (
+          <ClearDropped />
+        )}
+      </div>
+      {list}
+      {more && (
+        <ShowMore
+          onClick={() => {
+            setVisible(visible + PAGE)
+            if (visible + PAGE > all.length && !searching) {
+              setLimit(Math.min(limit + REPORTS_LIMIT, REPORTS_LIMIT_MAX))
+            }
+          }}
+        />
       )}
     </div>
   )
@@ -1611,20 +1875,29 @@ const MessageItem = ({ message }: { message: AdminMessage }) => (
     <p className='wrap-break-word whitespace-pre-wrap text-foreground'>
       {message.message}
     </p>
-    <p className='text-xs text-muted-foreground'>
-      {message.replyTo === null ? (
-        messageFrom(message)
-      ) : (
-        <a
-          href={`mailto:${message.replyTo}`}
-          className='underline underline-offset-2 hover:text-foreground'>
-          {message.replyTo}
-        </a>
-      )}
-      {message.emailError !== null && (
-        <span className='text-error'> · Not Emailed: {message.emailError}</span>
-      )}
-    </p>
+    {/* As a feedback's: who wraps whole, and Delete drops under it when it's long */}
+    <div className='flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5'>
+      <p className='min-w-0 text-xs wrap-break-word text-muted-foreground'>
+        {message.replyTo === null ? (
+          messageFrom(message)
+        ) : (
+          <a
+            href={`mailto:${message.replyTo}`}
+            className='underline underline-offset-2 hover:text-foreground'>
+            {message.replyTo}
+          </a>
+        )}
+        {message.emailError !== null && (
+          <span className='text-error'>
+            {' '}
+            · Not Emailed: {message.emailError}
+          </span>
+        )}
+      </p>
+      <div className='ml-auto flex shrink-0 items-center gap-2'>
+        <DeleteButton row={{ id: message.id, kind: 'message' }} />
+      </div>
+    </div>
   </li>
 )
 
@@ -1668,6 +1941,7 @@ const FeedbackAction = ({ feedback }: { feedback: AdminFeedback }) => {
           <Undo2Icon className='size-3.5' />
           Reopen
         </Button>
+        <DeleteButton row={{ id: feedback.id, kind: 'feedback' }} />
       </div>
     )
   }
@@ -1851,43 +2125,74 @@ const RequestRow = ({ request }: { request: AdminRequest }) => {
   )
 }
 
-type InboxItem =
-  | { kind: 'feedback'; at: number; item: AdminFeedback }
-  | { kind: 'message'; at: number; item: AdminMessage }
-  | { kind: 'request'; at: number; item: AdminRequest }
+// open: waiting on the admin (feedback not resolved or dropped, a request not decided). A message has nothing to
+// decide, so it is settled from the start
+type InboxItem = { at: number; open: boolean; text: (string | null)[] } & (
+  | { kind: 'feedback'; item: AdminFeedback }
+  | { kind: 'message'; item: AdminMessage }
+  | { kind: 'request'; item: AdminRequest }
+)
 
 // Everything people sent: Send Feedback (worker/src/feedback.ts), Contact Me messages and requests for more songs
-// a day, in one list newest first, each labelled with its kind. A source that fails says so above the rest
-const InboxPanel = () => {
+// a day, each labelled with its kind: what waits on the admin first, then the rest, newest first, 20 at a time.
+// A source that fails says so above the rest
+const InboxPanel = ({ query }: { query: string }) => {
   const feedback = useAdminFeedback()
   const messages = useAdminMessages()
   const requests = useAdminRequests()
+  const [visible, setVisible] = useState(PAGE)
   const sources = [feedback, messages, requests]
   if (
     sources.some((source) => source.data === undefined && source.error === null)
   ) {
     return <Skeleton className='h-40 w-full' />
   }
-  const items: InboxItem[] = [
+  const loaded: InboxItem[] = [
     ...(feedback.data?.feedback ?? []).map((item) => ({
       at: item.createdAt,
       item,
       kind: 'feedback' as const,
+      open: feedbackState(item) === 'open',
+      text: [item.subject, item.message, item.name, item.email],
     })),
     ...(messages.data?.messages ?? []).map((item) => ({
       at: item.createdAt,
       item,
       kind: 'message' as const,
+      open: false,
+      text: [
+        item.subject,
+        item.message,
+        item.replyTo,
+        item.accountName,
+        item.accountEmail,
+      ],
     })),
     ...(requests.data?.requests ?? []).map((item) => ({
       at: item.createdAt,
       item,
       kind: 'request' as const,
+      open: item.status === 'open',
+      text: [item.note, item.name, item.email],
     })),
-  ].toSorted((a, b) => b.at - a.at)
+  ]
+  const found = loaded
+    .filter((entry) => matchesQuery(query, entry.text))
+    .toSorted((a, b) => Number(b.open) - Number(a.open) || b.at - a.at)
+  const open = found.filter((entry) => entry.open).length
+  const items = found.slice(0, open + visible)
   const errors = sources.flatMap((source) =>
     source.error === null ? [] : [source.error]
   )
+  let empty: ReactNode = null
+  if (items.length === 0 && errors.length === 0) {
+    empty =
+      loaded.length === 0 ? (
+        <p className='text-sm text-muted-foreground'>Nothing yet</p>
+      ) : (
+        <NoMatches />
+      )
+  }
   return (
     <div className='flex flex-col gap-3'>
       {errors.map((error) =>
@@ -1899,9 +2204,7 @@ const InboxPanel = () => {
           <LoadError key={error.message} error={error} />
         )
       )}
-      {items.length === 0 && errors.length === 0 ? (
-        <p className='text-sm text-muted-foreground'>Nothing yet</p>
-      ) : (
+      {empty ?? (
         <ol className='flex flex-col'>
           {items.map((entry) => {
             if (entry.kind === 'feedback') {
@@ -1917,6 +2220,13 @@ const InboxPanel = () => {
             return <RequestRow key={`r${entry.item.id}`} request={entry.item} />
           })}
         </ol>
+      )}
+      {items.length < found.length && (
+        <ShowMore
+          onClick={() => {
+            setVisible(visible + PAGE)
+          }}
+        />
       )}
     </div>
   )
@@ -1950,6 +2260,16 @@ const AdminTabs = () => {
   const tabParam = params.get('tab')
   const tab = tabOf(tabParam)
   const by = params.get('user')
+  const { query, setQuery } = useListQuery()
+  const search = (label: string, placeholder: string) => (
+    <SearchField
+      label={label}
+      placeholder={placeholder}
+      value={query}
+      onChange={setQuery}
+      className='w-full sm:max-w-sm'
+    />
+  )
   const show = (next: Tab, user: SongsBy = null) => {
     setParams(user === null ? { tab: next } : { tab: next, user }, {
       replace: true,
@@ -1993,18 +2313,24 @@ const AdminTabs = () => {
       </div>
       <TabsContent value='songs' className='mt-4'>
         <div className='flex flex-col gap-3'>
-          <SongsFilter
-            by={by}
-            onChange={(user) => {
-              show('songs', user)
-            }}
-          />
-          {/* Keyed by the filter, so a new filter starts on its first page */}
-          <SongsTable key={by ?? ''} by={by} />
+          <div className='flex flex-wrap items-center gap-x-4 gap-y-3'>
+            {search('Search Songs', 'Song, Video ID or Account')}
+            <SongsFilter
+              by={by}
+              onChange={(user) => {
+                show('songs', user)
+              }}
+            />
+          </div>
+          {/* Keyed by the filter and the search, so either starts on the first page */}
+          <SongsTable key={`${by ?? ''}\n${query}`} by={by} query={query} />
         </div>
       </TabsContent>
       <TabsContent value='reports' className='mt-4'>
-        <ReportsList />
+        <div className='flex flex-col gap-3'>
+          {search('Search Reports', 'Song, Message or Reporter')}
+          <ReportsList query={query} />
+        </div>
       </TabsContent>
       <TabsContent value='recommendations' className='mt-4'>
         <div className='flex flex-col gap-3'>
@@ -2020,7 +2346,8 @@ const AdminTabs = () => {
           <p className='text-sm text-muted-foreground'>
             Everyone who has signed in, most recently seen first
           </p>
-          <UsersTable />
+          {search('Search Accounts', 'Name, Email or ID')}
+          <UsersTable query={query} />
         </div>
       </TabsContent>
       <TabsContent value='signals' className='mt-4'>
@@ -2030,7 +2357,10 @@ const AdminTabs = () => {
         <UsagePanel />
       </TabsContent>
       <TabsContent value='inbox' className='mt-4'>
-        <InboxPanel />
+        <div className='flex flex-col gap-3'>
+          {search('Search Inbox', 'Text, Name or Email')}
+          <InboxPanel query={query} />
+        </div>
       </TabsContent>
     </Tabs>
   )

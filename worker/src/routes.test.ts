@@ -160,6 +160,7 @@ test('the fixer lists open reports oldest first, then resolves one and drops ano
     'createdAt',
     'id',
     'message',
+    'reviewAt',
     'version',
     'videoId',
   ])
@@ -194,7 +195,7 @@ test('the fixer lists open reports oldest first, then resolves one and drops ano
   })
 })
 
-test('the fixer hands a report it cannot fix to a human: off its list, still open, and back to it on Reopen', async () => {
+test('the fixer hands a report it cannot fix to a human: still listed with reviewAt, still open, and plain open again on Reopen', async () => {
   const { db, listed, status } = await setup()
   await saveReport(db, 'me', REPORT, '', 1000)
   const [listedFirst] = await listed()
@@ -207,7 +208,10 @@ test('the fixer hands a report it cannot fix to a human: off its list, still ope
       body: { note: 'Audit clean' },
     })
   ).toBe(204)
-  expect(await listed()).toEqual([])
+  // Listed still, marked, so the fixer can resolve it once a fix by hand goes live
+  const marked = await listed()
+  expect(marked.map((row) => row.id)).toEqual([first])
+  expect(typeof marked[0]?.reviewAt).toBe('number')
   const [held] = await listReports(db)
   expect(held).toMatchObject({
     droppedAt: null,
@@ -225,6 +229,7 @@ test('the fixer hands a report it cannot fix to a human: off its list, still ope
   expect(await reopenReport(db, first)).toBe('reopened')
   const back = await listed()
   expect(back.map((row) => row.id)).toEqual([first])
+  expect(back[0]?.reviewAt).toBeNull()
 })
 
 test('the daily cron expires reports open past 3 days', async () => {

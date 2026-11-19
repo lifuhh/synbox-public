@@ -164,6 +164,7 @@ export const listContacts = async (db: D1Database, limit = 100) => {
            c."emailError", u."email" as "accountEmail", u."name" as "accountName"
          from "contactMessage" c
          left join "user" u on c."sender" = 'u:' || u."id"
+         where c."deletedAt" is null
          order by c."createdAt" desc limit ?1`
     )
     .bind(limit)

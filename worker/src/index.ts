@@ -14,6 +14,8 @@ import {
   saveContact,
 } from './contact'
 import type { ContactEnv } from './contact'
+import { deleteRow, parseRestore, restoreRows } from './deleted'
+import type { DeletedKind } from './deleted'
 import { parseEvents, pruneEvents, readUsage, saveEvents } from './events'
 import {
   changeFeedback,
@@ -67,8 +69,12 @@ import {
   replaceRecommendations,
 } from './recommendations'
 import {
+  clearDropped,
+  countReports,
+  deleteReport,
   dropReport,
   expireReports,
+  LIST_LIMIT,
   listFixes,
   listReports,
   markFixes,
@@ -775,7 +781,11 @@ app.route('/api/generation', generation)
 app.route('/api', lyrics)
 
 // The admin pane (src/_root/pages/admin-page.tsx). Every route checks the session's role on the server
-const admin = new Hono<{ Bindings: AppEnv; Variables: { adminId: string } }>()
+interface AdminContext {
+  Bindings: AppEnv
+  Variables: { adminId: string }
+}
+const admin = new Hono<AdminContext>()
 
 admin.use(async (c, next) => {
   const session = await createAuth(c.env).api.getSession({
@@ -953,10 +963,59 @@ admin.put('/recommendations', async (c) => {
   return c.body(null, 204)
 })
 
-// The latest listener reports, for fixing the lyrics they point at
-admin.get('/reports', async (c) =>
-  c.json({ reports: await listReports(c.env.DB) })
+// The latest listener reports, for fixing the lyrics they point at (`limit`: Show More asks for more), and how many
+// there are in each state, past the limit too
+admin.get('/reports', async (c) => {
+  const limit = Number(c.req.query('limit') ?? LIST_LIMIT)
+  const [reports, counts] = await Promise.all([
+    listReports(c.env.DB, Number.isFinite(limit) ? limit : LIST_LIMIT),
+    countReports(c.env.DB),
+  ])
+  return c.json({ counts, reports })
+})
+
+// Deletes a resolved or dropped report (404 for an open one); restore undoes it
+admin.delete('/reports/:id', async (c) =>
+  (await deleteReport(c.env.DB, c.req.param('id'), Date.now()))
+    ? c.body(null, 204)
+    : c.json({ code: 'not_found' }, 404)
 )
+
+// Clear All on the Dropped tab: { ids } of the reports it deleted, for Undo
+admin.post('/reports/clear-dropped', async (c) =>
+  c.json({ ids: await clearDropped(c.env.DB, Date.now()) })
+)
+
+// Undo of a delete: { ids }
+const restoreRoute =
+  (kind: DeletedKind) => async (c: Context<AdminContext>) => {
+    const ids = parseRestore(
+      await c.req.json<unknown>().catch(() => null),
+      kind
+    )
+    if (ids === null) {
+      return c.json({ code: 'bad_request' }, 400)
+    }
+    await restoreRows(c.env.DB, kind, ids)
+    return c.body(null, 204)
+  }
+admin.post('/reports/restore', restoreRoute('report'))
+admin.post('/feedback/restore', restoreRoute('feedback'))
+admin.post('/messages/restore', restoreRoute('message'))
+
+// Deletes a feedback or a contact message, whatever its state; restore undoes it
+const deleteRoute =
+  (kind: 'feedback' | 'message') => async (c: Context<AdminContext>) => {
+    const id = Number(c.req.param('id'))
+    if (!Number.isInteger(id)) {
+      return c.json({ code: 'bad_request' }, 400)
+    }
+    return (await deleteRow(c.env.DB, kind, id, Date.now()))
+      ? c.body(null, 204)
+      : c.json({ code: 'not_found' }, 404)
+  }
+admin.delete('/feedback/:id', deleteRoute('feedback'))
+admin.delete('/messages/:id', deleteRoute('message'))
 
 // Marks a report dealt with; the body ({ version?, note? }) may be empty. Resolving again replaces the details
 admin.post('/reports/:id/resolve', async (c) => {

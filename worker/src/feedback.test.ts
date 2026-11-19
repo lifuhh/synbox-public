@@ -102,6 +102,7 @@ test('anonymous feedback from a signed-in account keeps nothing about its sender
   // The row's columns: nothing else could hold a sender
   expect(Object.keys(row ?? {}).toSorted()).toEqual([
     'createdAt',
+    'deletedAt',
     'dismissedAt',
     'droppedAt',
     'id',
