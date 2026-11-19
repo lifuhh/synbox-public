@@ -1514,23 +1514,6 @@ const ReportItem = ({
   )
 }
 
-// A ref for a sideways strip (the tabs, a StatePicker): a mouse wheel scrolls it, and it fades at an edge with more
-// past it (`mask-fade-x`)
-const useSidewaysStrip = () => {
-  const edges = useScrollEdges()
-  return useCallback(
-    (el: HTMLElement | null) => {
-      const unwatch = [edges(el), wheelSideways(el)]
-      return () => {
-        for (const stop of unwatch) {
-          stop?.()
-        }
-      }
-    },
-    [edges]
-  )
-}
-
 // One state of a list at a time (Reports, Inbox), each with its count (none while it loads): segmented buttons in a
 // radio group, drawn as the page's tabs one size down, so the console has one segmented control
 const StatePicker = <T extends string>({
@@ -1547,7 +1530,18 @@ const StatePicker = <T extends string>({
   onChange: (id: T) => void
 }) => {
   // Scrolls sideways on a phone too narrow for every state, fading at an edge with more past it, as the tabs above
-  const pickerRef = useSidewaysStrip()
+  const edges = useScrollEdges()
+  const pickerRef = useCallback(
+    (el: HTMLElement | null) => {
+      const unwatch = [edges(el), wheelSideways(el)]
+      return () => {
+        for (const stop of unwatch) {
+          stop?.()
+        }
+      }
+    },
+    [edges]
+  )
   return (
     <div
       ref={pickerRef}
@@ -2602,7 +2596,18 @@ const AdminTabs = () => {
   const reportsWaiting = useReportsWaiting()
   const inboxWaiting = useInboxWaiting()
   const countId = useId()
-  const stripRef = useSidewaysStrip()
+  const edges = useScrollEdges()
+  const stripRef = useCallback(
+    (el: HTMLElement | null) => {
+      const unwatch = [edges(el), wheelSideways(el)]
+      return () => {
+        for (const stop of unwatch) {
+          stop?.()
+        }
+      }
+    },
+    [edges]
+  )
   const search = (label: string, placeholder: string) => (
     <SearchField
       label={label}
