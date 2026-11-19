@@ -16,10 +16,11 @@ const selectVariants = cva(
     defaultVariants: { size: 'default' },
     variants: {
       size: {
-        // Radius 18: the drawing ends at 14 + 4. The value starts 16px in, as far as the chevron ends
-        default: 'h-9 rounded-full pr-9 pl-4 text-sm',
+        // Radius 18: the drawing ends at 14 + 4. The value starts 16px in, as far as the chevron ends. 16px text on
+        // touch, so iOS doesn't zoom into it
+        default: 'h-9 rounded-full pr-9 pl-4 text-sm touch:text-base',
         // Radius 6: the drawing ends at 4 + 4, clear of the corner
-        sm: 'h-8 rounded-md pr-7 pl-2 text-sm',
+        sm: 'h-8 rounded-md pr-7 pl-2 text-sm touch:text-base',
       },
     },
   }

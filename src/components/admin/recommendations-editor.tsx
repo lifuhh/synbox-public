@@ -1,20 +1,18 @@
 import { useQueryClient } from '@tanstack/react-query'
-import { CheckIcon, PlusIcon, SparklesIcon, XIcon } from 'lucide-react'
+import {
+  CheckIcon,
+  CircleAlertIcon,
+  PlusIcon,
+  SparklesIcon,
+  XIcon,
+} from 'lucide-react'
 import { useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Link } from 'react-router'
 
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
+import { offerUndo } from '@/components/shared/offer-undo'
+import { SearchField } from '@/components/shared/search-field'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useToast } from '@/components/ui/use-toast'
 import { SortableList } from '@/components/watch/sortable-list'
@@ -39,105 +37,81 @@ const thumbnailOf = (videoId: string) =>
 
 const LIBRARY_RESULTS = 8
 
-// Songs from our own library, which all have their lyrics, found by words of the title or the channel in any
-// order; one press adds a song to the end of the list
-const LibrarySearch = ({
-  songs,
+// A song the field found, with its Add
+const Result = ({
+  videoId,
+  title,
+  author,
+  added,
+  disabled,
+  label,
   onAdd,
 }: {
-  songs: Recommendation[]
-  onAdd: (song: Recommendation) => void
-}) => {
-  const { songs: library, isPending } = useGallerySongs()
-  const [query, setQuery] = useState('')
-  const listed = new Set(songs.map((song) => song.videoId))
-  const full = songs.length >= MAX_RECOMMENDATIONS
-  const words = fold(query).split(/\s+/u).filter(Boolean)
-  const matches =
-    words.length === 0
-      ? []
-      : library
-          .filter((song) => {
-            const text = fold(`${song.title} ${song.author}`)
-            return words.every((word) => text.includes(word))
-          })
-          .slice(0, LIBRARY_RESULTS)
-
-  return (
-    <div className='flex flex-col gap-2'>
-      <Input
-        type='search'
-        name='library'
-        autoComplete='off'
-        aria-label='Search Our Songs'
-        placeholder={
-          isPending
-            ? 'Loading Our Songs…'
-            : 'Search Our Songs by Title or Artist'
-        }
-        value={query}
-        className='h-10'
-        onChange={(event) => {
-          setQuery(event.target.value)
-        }}
-      />
-      {words.length > 0 &&
-        (matches.length === 0 ? (
-          <p className='text-xs text-muted-foreground'>
-            No library song matches “{query.trim()}”
-          </p>
-        ) : (
-          <ul aria-label='Matching Songs' className='flex flex-col'>
-            {matches.map((song) => {
-              const added = listed.has(song.videoId)
-              return (
-                <li
-                  key={song.videoId}
-                  className='flex min-h-14 items-center gap-3 py-1.5'>
-                  <img
-                    src={`https://i.ytimg.com/vi/${song.videoId}/mqdefault.jpg`}
-                    alt=''
-                    width='320'
-                    height='180'
-                    loading='lazy'
-                    decoding='async'
-                    className='aspect-video w-16 shrink-0 rounded-sm bg-thumbnail-placeholder object-cover'
-                  />
-                  <div className='min-w-0 flex-1'>
-                    <p className='line-clamp-1 text-sm font-medium text-foreground'>
-                      {song.title}
-                    </p>
-                    <span className='block truncate text-xs text-muted-foreground'>
-                      {song.author}
-                    </span>
-                  </div>
-                  <Button
-                    variant='outline'
-                    size='sm'
-                    disabled={added || full}
-                    aria-label={
-                      added ? `Added: ${song.title}` : `Add: ${song.title}`
-                    }
-                    onClick={() => {
-                      onAdd({
-                        author: song.author,
-                        thumbnailUrl: thumbnailOf(song.videoId),
-                        title: song.title,
-                        videoId: song.videoId,
-                      })
-                    }}>
-                    {added ? 'Added' : 'Add'}
-                  </Button>
-                </li>
-              )
-            })}
-          </ul>
-        ))}
+  videoId: string
+  title: string
+  author: string
+  added: boolean
+  disabled: boolean
+  label: string
+  onAdd: () => void
+}) => (
+  <li className='flex min-h-14 items-center gap-3 py-1.5'>
+    <img
+      src={`https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`}
+      alt=''
+      width='320'
+      height='180'
+      loading='lazy'
+      decoding='async'
+      className='aspect-video w-16 shrink-0 rounded-sm bg-thumbnail-placeholder object-cover'
+    />
+    <div className='min-w-0 flex-1'>
+      <p className='line-clamp-1 text-sm font-medium text-foreground'>
+        {title}
+      </p>
+      <span className='block truncate text-xs text-muted-foreground'>
+        {author}
+      </span>
     </div>
-  )
+    <Button
+      type='button'
+      variant='outline'
+      size='sm'
+      gap='sm'
+      disabled={added || disabled}
+      aria-label={added ? `Added: ${title}` : `${label}: ${title}`}
+      onClick={onAdd}>
+      {!added && <PlusIcon className='size-4' aria-hidden />}
+      {added ? 'Added' : label}
+    </Button>
+  </li>
+)
+
+// The line under the field: what went wrong, why nothing can be added, or that the words found nothing
+const addNote = ({
+  error,
+  full,
+  missed,
+  query,
+}: {
+  error: string
+  full: boolean
+  missed: boolean
+  query: string
+}) => {
+  if (error !== '') {
+    return error
+  }
+  if (full) {
+    return `The list holds at most ${MAX_RECOMMENDATIONS} songs`
+  }
+  return missed ? `No library song matches “${query}”` : ''
 }
 
-const AddSong = ({
+// One field to add a song to the end of the list. Typed words find songs in our library (they all have lyrics) by
+// title or channel, in any order; a pasted YouTube or Synbox link, or a video id, offers that video first, and Enter
+// adds it
+const AddSongs = ({
   songs,
   onAdd,
 }: {
@@ -145,29 +119,45 @@ const AddSong = ({
   onAdd: (song: Recommendation) => void
 }) => {
   const queryClient = useQueryClient()
-  const [value, setValue] = useState('')
+  const { songs: library, isPending } = useGallerySongs()
+  const [query, setQuery] = useState('')
   const [error, setError] = useState('')
   const [pending, setPending] = useState(false)
-  const field = useRef<HTMLInputElement>(null)
+  const listed = new Set(songs.map((song) => song.videoId))
   const full = songs.length >= MAX_RECOMMENDATIONS
-  const hint = full
-    ? `The list holds at most ${MAX_RECOMMENDATIONS} songs`
-    : 'Or a YouTube or Synbox link, or a video ID. Adds to the end'
+  // A link or an id is one word; extractVideoId logs an error for text it can't read as an address
+  const trimmed = query.trim()
+  const linked =
+    trimmed === '' || /\s/u.test(trimmed) ? null : extractVideoId(trimmed)
+  const words = fold(query).split(/\s+/u).filter(Boolean)
+  const matches =
+    words.length === 0
+      ? []
+      : library
+          .filter((song) => {
+            const text = fold(`${song.title} ${song.author}`)
+            return (
+              song.videoId !== linked &&
+              words.every((word) => text.includes(word))
+            )
+          })
+          .slice(0, LIBRARY_RESULTS)
 
-  // The field keeps focus on an error, so the fix is one keystroke away
-  const refuse = (message: string) => {
-    setError(message)
-    field.current?.focus()
-  }
-
-  const add = async () => {
-    const videoId = extractVideoId(value)
-    if (videoId === null) {
-      refuse('Paste a YouTube link or an 11-character video ID')
+  // A pasted link's video: ours when we have it, else YouTube's details, fetched on Add
+  const addLinked = async (videoId: string) => {
+    if (listed.has(videoId)) {
+      setError('Already in the list')
       return
     }
-    if (songs.some((song) => song.videoId === videoId)) {
-      refuse('Already in the list')
+    const ours = library.find((song) => song.videoId === videoId)
+    if (ours !== undefined) {
+      onAdd({
+        author: ours.author,
+        thumbnailUrl: thumbnailOf(videoId),
+        title: ours.title,
+        videoId,
+      })
+      setQuery('')
       return
     }
     setPending(true)
@@ -179,7 +169,7 @@ const AddSong = ({
       .catch(() => null)
     setPending(false)
     if (info === null) {
-      refuse("Couldn't load that video. Check the link")
+      setError("Couldn't load that video. Check the link")
       return
     }
     onAdd({
@@ -188,51 +178,82 @@ const AddSong = ({
       title: info.title,
       videoId,
     })
-    setValue('')
+    setQuery('')
   }
+
+  const linkedSong =
+    linked === null ? null : library.find((song) => song.videoId === linked)
+  const note = addNote({
+    error,
+    full,
+    missed: words.length > 0 && linked === null && matches.length === 0,
+    query: trimmed,
+  })
 
   return (
     <form
-      className='flex flex-col gap-1.5'
+      className='flex flex-col gap-2'
       onSubmit={(event) => {
         event.preventDefault()
-        void add()
+        if (linked !== null && !full && !pending) {
+          void addLinked(linked)
+        }
       }}>
-      <div className='flex gap-2'>
-        <Input
-          ref={field}
-          name='video'
-          autoComplete='off'
-          spellCheck={false}
-          aria-label='YouTube Link or Video ID'
-          aria-invalid={error !== '' || undefined}
-          aria-describedby='add-recommendation-hint'
-          placeholder='https://youtu.be/ZRtdQ81jPUQ'
-          value={value}
-          disabled={full}
-          className='h-10 min-w-0 flex-1'
-          onChange={(event) => {
-            setValue(event.target.value)
-            setError('')
-          }}
-        />
-        <Button
-          type='submit'
-          variant='outline'
-          gap='sm'
-          disabled={full || pending}>
-          <PlusIcon className='size-4' aria-hidden />
-          {pending ? 'Adding…' : 'Add Song'}
-        </Button>
-      </div>
+      <SearchField
+        label='Add a Song'
+        placeholder={
+          isPending ? 'Loading Our Songs…' : 'Title, Artist or YouTube Link'
+        }
+        value={query}
+        onChange={(next) => {
+          setQuery(next)
+          setError('')
+        }}
+        className='w-full sm:max-w-sm'
+      />
       <p
-        id='add-recommendation-hint'
         aria-live='polite'
         className={
           error === '' ? 'text-xs text-muted-foreground' : 'text-xs text-error'
         }>
-        {error === '' ? hint : error}
+        {note}
       </p>
+      {(linked !== null || matches.length > 0) && (
+        <ul aria-label='Matching Songs' className='flex flex-col'>
+          {linked !== null && (
+            <Result
+              videoId={linked}
+              title={linkedSong?.title ?? 'YouTube Video'}
+              author={linkedSong?.author ?? linked}
+              added={listed.has(linked)}
+              disabled={full || pending}
+              label={pending ? 'Adding…' : 'Add Song'}
+              onAdd={() => {
+                void addLinked(linked)
+              }}
+            />
+          )}
+          {matches.map((song) => (
+            <Result
+              key={song.videoId}
+              videoId={song.videoId}
+              title={song.title}
+              author={song.author}
+              added={listed.has(song.videoId)}
+              disabled={full}
+              label='Add'
+              onAdd={() => {
+                onAdd({
+                  author: song.author,
+                  thumbnailUrl: thumbnailOf(song.videoId),
+                  title: song.title,
+                  videoId: song.videoId,
+                })
+              }}
+            />
+          ))}
+        </ul>
+      )}
     </form>
   )
 }
@@ -365,38 +386,69 @@ export const RecommendButton = ({ videoId }: { videoId: string }) => {
   )
 }
 
+const RECOMMENDATIONS_KEY = [QUERY_KEYS.GET_ADMIN_RECOMMENDATIONS]
+
 // The landing page's carousel, in the order saved (each visitor sees it shuffled). Every change saves at once:
-// an add, a confirmed removal, a move. A failed save puts the list back as it was
+// an add, a removal (one press, then Undo puts it back where it was), a move. A failed save puts the list back as
+// it was
 export const RecommendationsEditor = () => {
   const { toast } = useToast()
   const queryClient = useQueryClient()
-  const { data: saved, error } = useAdminRecommendations()
+  const { data: saved, error, refetch } = useAdminRecommendations()
   const save = useSaveRecommendations()
   const addSong = useAddRecommendation()
   const feedback = useAddFeedback()
   const [announcement, setAnnouncement] = useState('')
-  // The song whose Remove was pressed, until the confirm answers
-  const [removing, setRemoving] = useState<Recommendation | null>(null)
-  // The row whose Remove takes the keyboard when the confirm closes: the pressed one, or after a removal the
-  // one now in its place. The dialog's own restore lost it in both engines (Safari never focuses a pressed button)
-  const refocus = useRef<string | null>(null)
   const list = useRef<HTMLDivElement>(null)
   const songs = saved ?? []
 
   if (error !== null) {
-    return <p className='text-sm text-error'>{error.message}</p>
+    return (
+      <p
+        role='alert'
+        className='flex items-center gap-2 text-sm text-muted-foreground'
+        title={error.message}>
+        <CircleAlertIcon aria-hidden className='size-4 shrink-0 text-error' />
+        Couldn&apos;t load recommendations
+        <Button
+          variant='quiet'
+          size='text'
+          onClick={() => {
+            void refetch()
+          }}>
+          Retry
+        </Button>
+      </p>
+    )
   }
   if (saved === undefined) {
-    return <Skeleton className='h-40 w-full' />
+    return (
+      <ul aria-hidden className='flex flex-col'>
+        {Array.from({ length: 6 }, (_, row) => (
+          <li
+            key={row}
+            className='flex min-h-16 items-center gap-3 border-t border-border py-2'>
+            <Skeleton className='aspect-video w-16 shrink-0 sm:w-20' />
+            <div className='flex flex-1 flex-col gap-2'>
+              <Skeleton className='h-3.5 w-1/2' />
+              <Skeleton className='h-3 w-1/4' />
+            </div>
+          </li>
+        ))}
+      </ul>
+    )
   }
 
-  // Shows the new list at once and saves it; puts the old one back if the save fails
-  const commit = (next: Recommendation[], onSaved?: () => void) => {
-    const key = [QUERY_KEYS.GET_ADMIN_RECOMMENDATIONS]
-    queryClient.setQueryData(key, next)
+  // Shows the new list at once and saves it; puts the one it replaced back if the save fails
+  const commit = (
+    next: Recommendation[],
+    previous: Recommendation[],
+    onSaved?: () => void
+  ) => {
+    queryClient.setQueryData(RECOMMENDATIONS_KEY, next)
     save.mutate(next, {
       onError: () => {
-        queryClient.setQueryData(key, saved)
+        queryClient.setQueryData(RECOMMENDATIONS_KEY, previous)
         toast({
           description: 'Nothing changed. Try again',
           title: "Couldn't Save Recommended",
@@ -407,7 +459,23 @@ export const RecommendationsEditor = () => {
     })
   }
 
-  // After a removal the keyboard goes to the row that took the removed one's place
+  // Puts a removed song back at its place in the list as it is now, unless it came back another way
+  const restore = (song: Recommendation, index: number) => {
+    const current =
+      queryClient.getQueryData<Recommendation[]>(RECOMMENDATIONS_KEY) ?? []
+    if (current.some((item) => item.videoId === song.videoId)) {
+      return
+    }
+    commit(
+      current.toSpliced(Math.min(index, current.length), 0, song),
+      current,
+      () => {
+        setAnnouncement(`Restored ${song.title}`)
+      }
+    )
+  }
+
+  // One press removes; the toast's Undo brings it back. The keyboard goes to the row that took its place
   const remove = (song: Recommendation) => {
     const index = songs.findIndex((item) => item.videoId === song.videoId)
     if (index === -1) {
@@ -421,15 +489,23 @@ export const RecommendationsEditor = () => {
       return
     }
     const next = songs.toSpliced(index, 1)
-    refocus.current = next[Math.min(index, next.length - 1)]?.videoId ?? null
-    commit(next, () => {
+    const hadFocus = list.current?.contains(document.activeElement) ?? false
+    commit(next, songs, () => {
       setAnnouncement(`Removed ${song.title}`)
-      toast({
-        description: song.title,
-        duration: 2500,
-        title: 'Removed from Recommended',
+      offerUndo('Removed from Recommended', () => {
+        restore(song, index)
       })
     })
+    const after = next[Math.min(index, next.length - 1)]?.videoId
+    if (hadFocus && after !== undefined) {
+      requestAnimationFrame(() => {
+        list.current
+          ?.querySelector<HTMLButtonElement>(
+            `[data-video-id="${after}"] [data-action="remove"]`
+          )
+          ?.focus()
+      })
+    }
   }
 
   const add = (song: Recommendation) => {
@@ -444,8 +520,7 @@ export const RecommendationsEditor = () => {
 
   return (
     <div className='flex flex-col gap-4'>
-      <LibrarySearch songs={songs} onAdd={add} />
-      <AddSong songs={songs} onAdd={add} />
+      <AddSongs songs={songs} onAdd={add} />
       {songs.length === 0 ? (
         <p className='py-6 text-center text-sm text-muted-foreground'>
           The list is empty
@@ -457,7 +532,10 @@ export const RecommendationsEditor = () => {
             keyOf={(song) => song.videoId}
             labelOf={(song) => song.title}
             onMove={(from, to) => {
-              commit(songs.toSpliced(from, 1).toSpliced(to, 0, songs[from]))
+              commit(
+                songs.toSpliced(from, 1).toSpliced(to, 0, songs[from]),
+                songs
+              )
             }}
             renderItem={(song, grip, index) => (
               <Row
@@ -465,8 +543,7 @@ export const RecommendationsEditor = () => {
                 index={index}
                 grip={grip}
                 onRemove={() => {
-                  refocus.current = song.videoId
-                  setRemoving(song)
+                  remove(song)
                 }}
               />
             )}
@@ -477,46 +554,6 @@ export const RecommendationsEditor = () => {
         {songs.length === 1 ? '1 song' : `${songs.length} songs`}
         {save.isPending && ' · Saving…'}
       </p>
-      <AlertDialog
-        open={removing !== null}
-        onOpenChange={(open) => {
-          if (!open) {
-            setRemoving(null)
-          }
-        }}>
-        <AlertDialogContent
-          aria-describedby={undefined}
-          className='max-w-xs'
-          onCloseAutoFocus={(event) => {
-            const videoId = refocus.current
-            refocus.current = null
-            const button =
-              videoId === null
-                ? null
-                : list.current?.querySelector<HTMLButtonElement>(
-                    `[data-video-id="${videoId}"] [data-action="remove"]`
-                  )
-            if (button) {
-              event.preventDefault()
-              button.focus()
-            }
-          }}>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Remove Song?</AlertDialogTitle>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                if (removing !== null) {
-                  remove(removing)
-                }
-              }}>
-              Remove
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
       <output className='sr-only'>{announcement}</output>
     </div>
   )
