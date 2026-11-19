@@ -301,7 +301,7 @@ const HeroGenerateLyricsDefault = ({
         className={cn(
           // The first line of the home page's rise
           'in-data-rise:rise-in',
-          'mt-3 flex w-full flex-col gap-2 md:max-w-170 touch:gap-3.5'
+          'mt-3 flex w-full flex-col gap-2 md:max-w-170 touch:gap-4'
         )}>
         {/* The field draws the border and its state; the action sits inside it (song-field.tsx) */}
         {/* A form, so Enter or the keyboard's Go key does what the button does, for a link as for a search */}

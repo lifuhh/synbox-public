@@ -278,7 +278,7 @@ const LinkedVideo = ({ videoId }: { videoId: string }) => {
           {/* Mounted empty, so its first answer is announced; no space until it has one */}
           <div
             aria-live='polite'
-            className='text-sm not-empty:mt-2 touch:not-empty:mt-3.5'>
+            className='text-sm not-empty:mt-2 touch:not-empty:mt-4'>
             <SubmissionStatus submission={submission} />
           </div>
         </div>
