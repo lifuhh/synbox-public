@@ -64,8 +64,10 @@ const inputFieldVariants = cva(
           'border-error-input focus-within:border-error-input hover:border-foreground',
         search:
           'border-search focus-within:border-search hover:border-foreground',
+        // A usable link keeps the focused neutral edge: the line under the field and the action's label say it is
+        // good, and a green edge would be a second hue beside the magenta action
         valid:
-          'border-success focus-within:border-success hover:border-foreground',
+          'border-foreground/80 focus-within:border-foreground/90 hover:border-foreground',
       },
     },
   }

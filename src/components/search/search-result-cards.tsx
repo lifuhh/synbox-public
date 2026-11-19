@@ -1,4 +1,3 @@
-import { SparklesIcon } from 'lucide-react'
 import { Link } from 'react-router'
 
 import { ListenCount } from '@/components/shared/listen-count'
@@ -9,7 +8,7 @@ import type {
 } from '@/lib/synbox-flask/discovery'
 
 const Thumbnail = ({ src }: { src: string }) => (
-  <div className='relative aspect-video w-full overflow-hidden rounded-lg bg-input'>
+  <div className='relative aspect-video w-full overflow-hidden rounded-lg bg-thumbnail-placeholder'>
     {src !== '' && (
       <img
         decoding='async'
@@ -70,27 +69,23 @@ export const LibrarySongCard = ({
       <Thumbnail src={song.thumbnail_url} />
       <Title>{song.title}</Title>
     </Link>
+    {/* The channel is the title's second line, at the card's gap; the one menu button is centred on it, its 40px box
+        (44 on touch) reaching above and below without making the line taller */}
     <div className='flex items-center gap-2'>
       <p className='flex min-w-0 flex-1 items-center gap-2.5 text-xs text-muted-foreground'>
         <ListenCount videoId={song.video_id} />
         <span className='truncate'>{song.artist}</span>
       </p>
-      <button
-        type='button'
-        aria-label='More Like This'
-        title='More Like This'
-        onClick={() => {
-          onMoreLikeThis(song.video_id)
-        }}
-        className='-my-1 shrink-0 rounded-md p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-primary-text'>
-        <SparklesIcon className='size-4' />
-      </button>
       <SongMenu
+        className='-my-3 -mr-2 touch:-my-3.5 touch:size-11'
         song={{
           author: song.artist,
           thumbnailUrl: song.thumbnail_url,
           title: song.title,
           videoId: song.video_id,
+        }}
+        onMoreLikeThis={() => {
+          onMoreLikeThis(song.video_id)
         }}
       />
     </div>
