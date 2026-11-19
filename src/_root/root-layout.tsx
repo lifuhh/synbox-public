@@ -24,11 +24,12 @@ const RootLayout: React.FC = () => (
         data-status-scrim
         className='top-scrim fixed inset-x-0 top-0 z-40 bg-background page-glow'
       />
-      {/* The first Tab stop: past the bars, straight to the page (WCAG 2.4.1). Seen only while focused */}
+      {/* The first Tab stop: past the bars, straight to the page (WCAG 2.4.1). Seen only while focused, floating just
+          under the top bar on the page's own left edge: in the bar's row it sat under the logo (WCAG 2.4.11) */}
       <button
         type='button'
         onClick={focusPage}
-        className='sr-only rounded-full bg-card px-4 text-sm font-medium text-foreground shadow-lg focus-visible:not-sr-only focus-visible:fixed focus-visible:top-[calc(var(--safe-top)+0.5rem)] focus-visible:left-2 focus-visible:z-50 focus-visible:h-11'>
+        className='sr-only rounded-full bg-popover px-4 text-sm font-medium text-popover-foreground shadow-float focus-visible:not-sr-only focus-visible:fixed focus-visible:top-[calc(var(--topbar-h)+0.5rem)] focus-visible:left-[calc(var(--safe-left)+1rem)] focus-visible:z-50 focus-visible:h-11 md:focus-visible:left-[calc(var(--safe-left)+var(--page-gutter-wide))]'>
         Skip to Content
       </button>
       <TopBar />

@@ -2,7 +2,12 @@ import { useEffect, useEffectEvent, useRef } from 'react'
 
 import { cn } from '@/utils/cn'
 
-import { BELL_BODY, BELL_CLAPPER, BADGE_CLASSES } from './progress-ring'
+import {
+  BELL_BODY,
+  BELL_CLAPPER,
+  BELL_PX,
+  BADGE_CLASSES,
+} from './progress-ring'
 
 // The last song in progress finished: the ring closes, the same stroke bends into the bell, and a tick pops
 // where the count goes, flashes, and turns into the count. One clock (ms from the start) drives all of it
@@ -20,8 +25,13 @@ const TO_NUMBER = [1150, 1400] as const
 const POINTS = 120
 const CENTRE = 20
 const RADIUS = 13
-// The 24 px glyph sits in the middle of the 40 px button
-const GLYPH_OFFSET = 8
+// The bell glyph (24 units drawn at BELL_PX) sits in the middle of the 40 px button; its 2-unit stroke draws thinner
+// than the ring's 2 px by the same scale
+const GLYPH_SCALE = BELL_PX / 24
+const GLYPH_OFFSET = (40 - BELL_PX) / 2
+const RING_STROKE = 2
+const BELL_STROKE = RING_STROKE * GLYPH_SCALE
+const GLYPH_TRANSFORM = `translate(${GLYPH_OFFSET} ${GLYPH_OFFSET}) scale(${GLYPH_SCALE})`
 
 type Point = readonly [number, number]
 
@@ -38,7 +48,10 @@ const bellPoints = (path: SVGPathElement): Point[] => {
   const length = path.getTotalLength()
   let points: Point[] = Array.from({ length: POINTS }, (_, index) => {
     const at = path.getPointAtLength((index / POINTS) * length)
-    return [at.x + GLYPH_OFFSET, at.y + GLYPH_OFFSET] as const
+    return [
+      at.x * GLYPH_SCALE + GLYPH_OFFSET,
+      at.y * GLYPH_SCALE + GLYPH_OFFSET,
+    ] as const
   })
   // Twice the signed area; with y pointing down, positive is clockwise on screen
   let area = 0
@@ -210,7 +223,11 @@ const play = (
     outlinePath.setAttribute('d', shape)
     // The track's faint white strengthens into the bell's own colour as it takes shape
     outlinePath.style.strokeOpacity = String(0.1 + 0.9 * k)
+    // and thins from the ring's stroke to the bell glyph's, so the hand-over to BellGlyph changes nothing
+    const stroke = String(RING_STROKE + (BELL_STROKE - RING_STROKE) * k)
+    outlinePath.style.strokeWidth = stroke
     arcPath.setAttribute('d', shape)
+    arcPath.style.strokeWidth = stroke
     if (done) {
       const closed = from + (1 - from) * easeOut(span(now, CLOSE))
       arcPath.style.strokeDashoffset = String(1 - closed)
@@ -308,7 +325,7 @@ export const RingToBell = ({ from, done, count, onDone }: RingToBellProps) => {
         <path
           ref={probe}
           d={BELL_BODY}
-          transform={`translate(${GLYPH_OFFSET} ${GLYPH_OFFSET})`}
+          transform={GLYPH_TRANSFORM}
           fill='none'
           visibility='hidden'
         />
@@ -318,7 +335,7 @@ export const RingToBell = ({ from, done, count, onDone }: RingToBellProps) => {
           strokeOpacity={0.1}
           fill='none'
           stroke='currentColor'
-          strokeWidth={2}
+          strokeWidth={RING_STROKE}
           strokeLinejoin='round'
         />
         <path
@@ -327,14 +344,14 @@ export const RingToBell = ({ from, done, count, onDone }: RingToBellProps) => {
           strokeDashoffset={1 - from}
           fill='none'
           stroke='url(#ring-to-bell)'
-          strokeWidth={2}
+          strokeWidth={RING_STROKE}
           strokeLinecap='round'
           strokeLinejoin='round'
           pathLength={1}
           strokeDasharray='1 1'
         />
-        {/* Its own group carries the offset: the drop's CSS transform would replace a transform attribute */}
-        <g transform={`translate(${GLYPH_OFFSET} ${GLYPH_OFFSET})`}>
+        {/* Its own group carries the offset and scale: the drop's CSS transform would replace a transform attribute */}
+        <g transform={GLYPH_TRANSFORM}>
           <path
             ref={clapper}
             d={BELL_CLAPPER}

@@ -45,7 +45,7 @@ const LibraryMenu = () => {
       }}>
       <PopoverTrigger ref={triggerRef} asChild>
         <Button variant='toolbar' size='icon' {...links} onClick={onClick}>
-          <LibraryBigIcon className='h-6 w-6 shrink-0' />
+          <LibraryBigIcon className='size-5 shrink-0' />
           <span className='sr-only'>Library</span>
         </Button>
       </PopoverTrigger>

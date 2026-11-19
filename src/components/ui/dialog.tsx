@@ -6,6 +6,7 @@ import type { VariantProps } from 'class-variance-authority'
 import { X } from 'lucide-react'
 import * as React from 'react'
 
+import { buttonVariants } from '@/components/ui/button'
 import { DIALOG_MOTION, FLOAT_SURFACE } from '@/components/ui/float'
 import { keepScrollWhenTurned } from '@/lib/page-turn'
 import { cn } from '@/utils/cn'
@@ -57,17 +58,19 @@ const dialogContentVariants = cva('', {
   },
 })
 
+// The top bar's own icon button at full ink, its 20px X centred on the title's first line and its drawing ending on
+// the content's right edge: 40px with a mouse, 44px on touch
 const dialogCloseVariants = cva(
-  'absolute rounded-xs p-1 opacity-70 ring-offset-background transition-opacity hover:opacity-100 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground touch:p-2.5',
+  cn(buttonVariants({ size: 'icon', variant: 'toolbar' }), 'absolute'),
   {
     defaultVariants: { variant: 'default' },
     variants: {
       variant: {
-        bare: 'top-5 right-3 touch:top-3.5 touch:right-2',
-        default: 'top-5 right-3 touch:top-3.5 touch:right-2',
-        // In the sheet's own corner, clear of the safe areas its surface runs under; a 44px target on touch
+        bare: 'top-4 right-2 touch:top-3.5 touch:size-11',
+        default: 'top-4 right-2 touch:top-3.5 touch:size-11',
+        // In the sheet's own corner, clear of the safe areas its surface runs under; sheets open on touch, so 44px
         sheet:
-          'top-1.5 right-1.5 touch:p-3.5 short:top-[calc(var(--safe-top)+0.375rem)] short:right-[calc(var(--safe-right)+0.375rem)]',
+          'top-1.5 right-1.5 size-11 short:top-[calc(var(--safe-top)+0.375rem)] short:right-[calc(var(--safe-right)+0.375rem)]',
       },
     },
   }
@@ -115,8 +118,8 @@ const DialogContentRender: React.ForwardRefRenderFunction<
       )}
       {...props}>
       {children}
-      <DialogPrimitive.Close className={dialogCloseVariants({ variant })}>
-        <X className='h-4 w-4' />
+      <DialogPrimitive.Close className={cn(dialogCloseVariants({ variant }))}>
+        <X className='size-5 shrink-0' aria-hidden />
         <span className='sr-only'>Close</span>
       </DialogPrimitive.Close>
     </DialogPrimitive.Content>
@@ -130,7 +133,8 @@ const DialogHeader = ({
   ...props
 }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
-    className={cn('flex flex-col gap-1.5 text-center sm:text-left', className)}
+    // On the form's own leading edge at every width: one alignment axis in the dialog
+    className={cn('flex flex-col gap-1.5 text-start', className)}
     {...props}
   />
 )
@@ -182,7 +186,9 @@ const DialogTitleRender: React.ForwardRefRenderFunction<
   <DialogPrimitive.Title
     ref={ref}
     className={cn(
-      'text-lg leading-none font-semibold tracking-tight',
+      // No negative tracking under 32px (DESIGN.md §2). A 24px line (1.33), so a wrapped title stays legible and the
+      // first line's centre is the Close's (dialogCloseVariants)
+      'text-lg leading-6 font-semibold',
       dialogTitleVariants({ size }),
       className
     )}

@@ -79,7 +79,6 @@ const buttonVariants = cva(
         // through
         'surface-icon':
           'rounded-full bg-secondary hover:bg-accent hover:text-accent-foreground',
-        // The top bar's icon buttons
         // A button that stays on (aria-pressed), as a playlist's Shuffle: on, it takes the brand colour
         toggle:
           'rounded-full hover:bg-accent hover:text-accent-foreground aria-pressed:bg-primary-subtle aria-pressed:text-primary-text aria-pressed:hover:bg-primary-subtle-hover',
@@ -87,6 +86,7 @@ const buttonVariants = cva(
         // on each notification row, a confirmation's action): the magenta label on a mostly neutral fill
         tonal:
           'bg-primary-subtle text-primary-text hover:bg-primary-subtle-hover',
+        // The top bar's icon buttons, and a dialog's Close
         toolbar: 'rounded-full hover:bg-accent hover:text-accent-foreground',
         // A labelled top-bar button among the icon buttons, outlined: Sign In with Google, whose branding keeps a
         // visible boundary (its dark theme: a 1px line on a dark fill)

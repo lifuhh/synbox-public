@@ -15,6 +15,7 @@ import { AdminMark } from '@/components/shared/admin-mark'
 import { GoogleMark } from '@/components/shared/google-mark'
 import { MarqueeText } from '@/components/shared/marquee-text'
 import { Button } from '@/components/ui/button'
+import { FLOAT_SECTION_LABEL } from '@/components/ui/float'
 import { SIGN_IN_CODES, signInWithGoogle, useAccess } from '@/lib/auth'
 import type { ResolvedFeedback } from '@/lib/feedback'
 import { overallValue } from '@/lib/generation/progress'
@@ -644,9 +645,7 @@ const FixList = ({
   onDismiss: (fixes: readonly Fix[]) => void
 }) => (
   <section aria-labelledby='fixes-heading' className='flex flex-col gap-1'>
-    <h3
-      id='fixes-heading'
-      className='text-xs font-medium tracking-wide text-muted-foreground uppercase'>
+    <h3 id='fixes-heading' className={FLOAT_SECTION_LABEL}>
       Lyrics Fixed
     </h3>
     <ul aria-label='Lyrics Fixed' className='-mx-3 flex flex-col gap-0.5'>
@@ -716,9 +715,7 @@ const ResolvedList = ({
   onDismiss: (resolved: readonly ResolvedFeedback[]) => void
 }) => (
   <section aria-labelledby='resolved-heading' className='flex flex-col gap-1'>
-    <h3
-      id='resolved-heading'
-      className='text-xs font-medium tracking-wide text-muted-foreground uppercase'>
+    <h3 id='resolved-heading' className={FLOAT_SECTION_LABEL}>
       Feedback Resolved
     </h3>
     <ul aria-label='Feedback Resolved' className='-mx-3 flex flex-col gap-0.5'>

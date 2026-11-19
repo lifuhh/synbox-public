@@ -17,7 +17,8 @@ export const UserAvatar = ({
 }: {
   src: string | null
   fallback: ReactNode
-  // The box the picture fills: its container by default; the top bar's is the size of the icons beside it
+  // The box the picture fills: its container by default. The top bar's is 24px: a photo, with no stroke, reads at
+  // the weight of the 20px line glyphs beside it
   className?: string
 }) => {
   const [lastSrc, setLastSrc] = useState(src)

@@ -5,6 +5,10 @@
 export const FLOAT_SURFACE =
   'rounded-float border border-transparent bg-popover text-popover-foreground shadow-float'
 
+// A section's label inside a floating panel (the Notifications panel's Admin, Lyrics Fixed, Feedback Resolved): Title
+// Case words at a readable size, never small tracked capitals (DESIGN.md §1)
+export const FLOAT_SECTION_LABEL = 'text-sm font-medium text-muted-foreground'
+
 // A dialog or sheet: in over 200ms, out over 120ms, on the UI ease (DESIGN.md §7). Its own variant says how it moves
 export const DIALOG_MOTION =
   'ease-ui data-[state=closed]:animate-out data-[state=closed]:duration-(--duration-menu-out) data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:duration-(--duration-menu-in) data-[state=open]:fade-in-0'

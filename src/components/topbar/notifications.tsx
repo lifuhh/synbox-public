@@ -181,8 +181,9 @@ const PanelBody = ({
         />
       )}
       {!songs && notices.length === 0 && content.news === null && (
-        <p className='px-6 py-8 text-center text-sm text-muted-foreground'>
-          No Notifications
+        // What arrives here, rather than that nothing has (DESIGN.md §8)
+        <p className='px-6 py-6 text-center text-sm text-pretty text-muted-foreground'>
+          Song progress and lyric fixes show here
         </p>
       )}
     </>

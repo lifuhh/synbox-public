@@ -80,19 +80,16 @@ export const ContactDialog = ({
   const email = me?.user?.email ?? null
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className='max-w-md'>
+      {/* A guest's dialog has no subtitle: the address under the title says it all */}
+      <DialogContent
+        className='max-w-md'
+        {...(email === null && { 'aria-describedby': undefined })}>
         <DialogHeader>
           <DialogTitle>Contact Me</DialogTitle>
-          {!isPending && (
+          {!isPending && email !== null && (
             <DialogDescription className='wrap-break-word'>
-              {email === null ? (
-                'Email me'
-              ) : (
-                <>
-                  I’ll reply to{' '}
-                  <span className='font-medium text-foreground'>{email}</span>
-                </>
-              )}
+              I’ll reply to{' '}
+              <span className='font-medium text-foreground'>{email}</span>
             </DialogDescription>
           )}
         </DialogHeader>
