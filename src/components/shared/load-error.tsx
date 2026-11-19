@@ -3,22 +3,28 @@ import { RotateCwIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/utils/cn'
 
-// A section whose data failed to load says so and offers another try, rather than loading forever
+// Data that failed to load says what failed and offers another try, rather than loading forever: the one error state
+// for a load (DESIGN.md §8). `inline`: a row in the flow of a page (Search's results), where a centred block would
+// float away from what failed
 const LoadError = ({
   message,
-  retrying,
+  retrying = false,
   onRetry,
+  inline = false,
   className,
 }: {
   message: string
-  retrying: boolean
+  retrying?: boolean
   onRetry: () => void
+  inline?: boolean
   className?: string
 }) => (
   <div
     role='alert'
     className={cn(
-      'flex flex-col items-center justify-center gap-3 p-6 text-center',
+      inline
+        ? 'flex flex-wrap items-center gap-x-3 gap-y-2'
+        : 'flex flex-col items-center justify-center gap-3 p-6 text-center',
       className
     )}>
     <p className='text-sm text-muted-foreground'>{message}</p>

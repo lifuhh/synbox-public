@@ -10,6 +10,8 @@ const skeletonVariants = cva('', {
     shape: {
       card: 'rounded-xl',
       default: '',
+      // A resting card on a page (the versions list): the soft 16px of DESIGN.md §5
+      panel: 'rounded-2xl',
       thumbnail: 'rounded-lg',
     },
   },

@@ -7,6 +7,7 @@ import { startFromButton } from '@/components/generation/start-generation'
 import { AdminMark } from '@/components/shared/admin-mark'
 import { DocScroll } from '@/components/shared/doc-scroll'
 import Forbidden from '@/components/shared/forbidden'
+import LoadError from '@/components/shared/load-error'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -138,7 +139,7 @@ const VersionCard = ({
 }: VersionCardProps) => {
   const note = describeNote(version.note)
   return (
-    <li className='flex flex-col gap-3 rounded-xl bg-card p-4 sm:flex-row sm:items-center sm:gap-6'>
+    <li className='flex flex-col gap-3 rounded-2xl bg-card p-4 sm:flex-row sm:items-center sm:gap-6'>
       <div className='flex min-w-0 flex-1 flex-col gap-1.5'>
         <div className='flex flex-wrap items-center gap-x-2 gap-y-1'>
           <h2 className='font-semibold text-foreground'>
@@ -162,7 +163,7 @@ const VersionCard = ({
         </p>
         <Gaps summary={version.summary} />
       </div>
-      <div className='flex shrink-0 gap-2'>
+      <div className='-ml-3 flex shrink-0 gap-2 sm:ml-0'>
         <Button asChild size='sm' variant='ghost' gap='sm'>
           <Link
             to={
@@ -277,7 +278,8 @@ const MakeDefaultDialog = ({
 }
 
 const VersionsAdmin = ({ videoId }: { videoId: string }) => {
-  const { data, error, isLoading } = useGetLyricsVersions(videoId)
+  const { data, error, isLoading, isRefetching, refetch } =
+    useGetLyricsVersions(videoId)
   const { data: songInfo } = useGetSongInfoBySongId(videoId)
   const [confirming, setConfirming] = useState<number | null>(null)
   const versions = data ? data.versions.toReversed() : []
@@ -297,7 +299,7 @@ const VersionsAdmin = ({ videoId }: { videoId: string }) => {
       <DocScroll />
       <Link
         to={`/v/${videoId}`}
-        className='-my-2.5 flex w-fit items-center gap-1.5 py-2.5 text-sm text-muted-foreground transition-colors hover:text-foreground'>
+        className='-my-2.5 flex w-fit label-icons items-center gap-1.5 py-2.5 text-sm text-muted-foreground transition-colors hover:text-foreground'>
         <ArrowLeftIcon className='size-4' />
         Back to Song
       </Link>
@@ -337,7 +339,7 @@ const VersionsAdmin = ({ videoId }: { videoId: string }) => {
               }}>
               <span>Regenerate Without Uploader Lyrics</span>
               <span className='text-xs text-muted-foreground'>
-                For when the video&apos;s subtitles are wrong
+                For when the video’s subtitles are wrong
               </span>
             </DropdownMenuItem>
           </DropdownMenuContent>
@@ -351,17 +353,22 @@ const VersionsAdmin = ({ videoId }: { videoId: string }) => {
 
       {isLoading && (
         <div className='flex flex-col gap-3'>
-          <Skeleton shape='card' className='h-28' />
-          <Skeleton shape='card' className='h-28' />
+          <Skeleton shape='panel' className='h-28' />
+          <Skeleton shape='panel' className='h-28' />
         </div>
       )}
       {error && (
-        <p role='alert' className='text-sm text-error'>
-          {error.message}
-        </p>
+        <LoadError
+          message='Couldn’t load the versions'
+          retrying={isRefetching}
+          onRetry={() => {
+            void refetch()
+          }}
+          className='rounded-2xl bg-card'
+        />
       )}
       {data?.versions.length === 0 && (
-        <p className='rounded-xl border border-dashed border-input p-6 text-center text-sm text-muted-foreground'>
+        <p className='rounded-2xl border border-dashed border-input p-6 text-center text-sm text-muted-foreground'>
           No versions yet. The first regeneration also keeps the current lyrics
           as the original version
         </p>

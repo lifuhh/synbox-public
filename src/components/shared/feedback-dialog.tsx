@@ -14,7 +14,7 @@ import type { FeedbackResult } from '@/lib/feedback'
 import { cn } from '@/utils/cn'
 
 const PROBLEMS: Record<Exclude<FeedbackResult, 'sent'>, string> = {
-  failed: 'Couldn’t send, try again',
+  failed: 'Couldn’t send. Try again',
   invalid: INVALID,
   limit: 'Daily limit reached, try tomorrow',
   signed_out: 'Signed out, sign in again',

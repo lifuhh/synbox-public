@@ -28,6 +28,7 @@ import {
 } from '@/components/search/song-field'
 import { BoxScrollbar } from '@/components/shared/doc-scroll'
 import DotsLoader from '@/components/shared/dots-loader'
+import LoadError from '@/components/shared/load-error'
 import { Button } from '@/components/ui/button'
 import { ClearFieldButton } from '@/components/ui/clear-field-button'
 import { Input, InputField } from '@/components/ui/input'
@@ -57,16 +58,6 @@ const Notice = ({ children }: { children: React.ReactNode }) => (
   <p className='rounded-md bg-muted/60 px-3 py-2 text-sm text-muted-foreground'>
     {children}
   </p>
-)
-
-// A search that failed: what failed and the way to try again, as the library's still-loading notice does
-const Failed = ({ what, retry }: { what: string; retry: () => void }) => (
-  <div className='flex flex-wrap items-center gap-3'>
-    <Notice>{what}</Notice>
-    <Button variant='ghost' onClick={retry}>
-      Try Again
-    </Button>
-  </div>
 )
 
 const ResultGrid = ({ children }: { children: React.ReactNode }) => (
@@ -202,9 +193,10 @@ const LinkedVideo = ({ videoId }: { videoId: string }) => {
     return video.error.message.startsWith('No video found') ? (
       <Notice>No video at this link. Paste another one</Notice>
     ) : (
-      <Failed
-        what='Couldn’t look up this link'
-        retry={() => {
+      <LoadError
+        inline
+        message='Couldn’t look up this link'
+        onRetry={() => {
           void video.refetch()
         }}
       />
@@ -300,9 +292,10 @@ const LibraryStatus = ({
   }
   if (library.error) {
     return (
-      <Failed
-        what='Couldn’t search the songs'
-        retry={() => {
+      <LoadError
+        inline
+        message='Couldn’t search the songs'
+        onRetry={() => {
           void library.refetch()
         }}
       />
@@ -317,7 +310,7 @@ const LibraryStatus = ({
           onClick={() => {
             void library.refetch()
           }}>
-          Try Again
+          Retry
         </Button>
       </div>
     )
@@ -368,7 +361,13 @@ const SearchResults = ({
         <div className='flex flex-col gap-3 empty:hidden'>
           <LibraryStatus library={library} searching={searching} />
           {karaoke.error && (
-            <Failed what='Couldn’t load the songs' retry={karaoke.retry} />
+            <LoadError
+              inline
+              message='Couldn’t load the songs'
+              onRetry={() => {
+                karaoke.retry()
+              }}
+            />
           )}
           <ResultGrid>
             {libraryResults.map((song) => (
@@ -437,12 +436,19 @@ const SimilarSongs = ({
       </div>
       {(isLoading || (data !== undefined && karaoke.waiting)) && <DotsLoader />}
       {karaoke.error && (
-        <Failed what='Couldn’t load the songs' retry={karaoke.retry} />
+        <LoadError
+          inline
+          message='Couldn’t load the songs'
+          onRetry={() => {
+            karaoke.retry()
+          }}
+        />
       )}
       {error && (
-        <Failed
-          what='Couldn’t load similar songs'
-          retry={() => {
+        <LoadError
+          inline
+          message='Couldn’t load similar songs'
+          onRetry={() => {
             void refetch()
           }}
         />

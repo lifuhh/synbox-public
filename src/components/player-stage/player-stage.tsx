@@ -1,6 +1,6 @@
 import { useAtom, useAtomValue, useSetAtom } from 'jotai'
 import {
-  LoaderIcon,
+  LoaderCircleIcon,
   PlayIcon,
   RotateCcwIcon,
   RotateCwIcon,
@@ -304,7 +304,7 @@ const StageCover = ({
       />
       <div className='relative text-white drop-shadow-stage'>
         {(phase.kind === 'loading' || phase.kind === 'starting') && (
-          <LoaderIcon className='size-14 animate-spin' />
+          <LoaderCircleIcon className='size-14 motion-safe:animate-spin' />
         )}
         {phase.kind === 'ready' && (
           <PlayIcon className='size-20 fill-current opacity-90' />
@@ -333,7 +333,7 @@ const StallRetry = ({
       }}
       className='absolute top-(--video-cy) left-1/2 z-40 flex -translate-1/2 items-center gap-2.5 rounded-full bg-black/60 px-5 py-2.5 text-base font-medium whitespace-nowrap text-white shadow-lg backdrop-blur-md transition duration-300 hover:bg-black/80 enabled:active:scale-[0.96]'>
       <RotateCwIcon className='size-5' aria-hidden='true' />
-      Try Again
+      Retry
     </button>
   ) : null
 
