@@ -1,0 +1,4 @@
+{
+  "$comment": "Taste findings accepted on purpose; `bun harness/taste.ts scan` leaves them out. One entry per finding: page (the scan's page name: home, player, about, ...), id (the check id), selector (exactly as findings.json prints it) and reason (why it stays: the repo rule it follows, or why the checker misreads it). Example: {\"page\": \"player\", \"id\": \"collide\", \"selector\": \"div.stage-controls\", \"reason\": \"AGENTS.md: the floating UI draws over the lyrics\"}",
+  "entries": []
+}

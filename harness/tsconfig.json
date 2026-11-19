@@ -18,6 +18,8 @@
     "readme",
     "release.ts",
     "smoke.ts",
+    "taste",
+    "taste.ts",
     "views.ts",
     "wt.ts"
   ]

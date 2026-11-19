@@ -1,0 +1,1473 @@
+{
+  "$comment": "Which of the taste checker's checks Synbox keeps (harness/taste.ts). checker: the pinned upstream copy `fetch` verifies. pageKinds: a route's kind (prose, player, admin; any other route is app). flags: the checker's switches, passed when `use` is true. checks: a verdict for every check id the checker reports (adopt, adapt or reject) and the page kinds it applies to (all, app, player, prose, admin). Only adopt and adapt findings on a page of a listed kind are kept. The 2.1.5 app rules have no runnable checker and are not here (DESIGN.md holds them as rules).",
+  "checker": {
+    "name": "taste-skill",
+    "version": "2.5.1",
+    "sha": "f6b76575f949707b4e3c37cd86cb44b0b98643e8",
+    "repo": "Leonxlnx/taste-skill",
+    "folder": "skills/taste-skill"
+  },
+  "pageKinds": {
+    "/about": "prose",
+    "/privacy": "prose",
+    "/terms": "prose",
+    "/whats-new": "prose",
+    "/v/:videoId": "player",
+    "/admin": "admin"
+  },
+  "flags": [
+    {
+      "flag": "--no-visuals",
+      "turnsOff": [
+        "visual-caption",
+        "visual-empty",
+        "effect-kind",
+        "hero-enter",
+        "moment-none"
+      ],
+      "use": true,
+      "reason": "captions, effects, hero entrance and dealt moments are marketing rules; visual-empty is lost with them, so broken thumbnails must come from empty-visual and Synbox's own layout audit"
+    },
+    {
+      "flag": "--no-address",
+      "turnsOff": [
+        "street-number",
+        "postcode",
+        "coordinates",
+        "company-number",
+        "phone-number"
+      ],
+      "use": true,
+      "reason": "invented-contact rules for a local business page"
+    },
+    {
+      "flag": "--no-rhythm",
+      "turnsOff": [
+        "hero-screen",
+        "section-height",
+        "section-air",
+        "one-section",
+        "one-heading",
+        "container-edges",
+        "row-lines",
+        "split-pair"
+      ],
+      "use": true,
+      "reason": "one-section-per-screen rhythm; container-edges and row-lines are adapted and re-checked by Synbox's own audit instead"
+    },
+    {
+      "flag": "--no-rhythm-expand",
+      "turnsOff": ["section-height (with answers and tabs opened)"],
+      "use": true,
+      "reason": "only feeds the rhythm block"
+    },
+    {
+      "flag": "--no-tiles",
+      "turnsOff": ["section-tile"],
+      "use": true,
+      "reason": "screen-tile rule for a scrolling landing page"
+    },
+    {
+      "flag": "--no-area",
+      "turnsOff": ["empty-area"],
+      "use": true,
+      "reason": "measures marketing sections against their container; app empty states are judged by the states rules instead"
+    },
+    {
+      "flag": "--no-motion-hooks",
+      "turnsOff": [
+        "motion-layer",
+        "count-text",
+        "loop-cycle",
+        "hidden-content (motion-layer part)"
+      ],
+      "use": true,
+      "reason": "checks the kit's own motion.css marks, which Synbox does not use"
+    },
+    {
+      "flag": "--no-gl-fallback",
+      "turnsOff": ["gl-fallback"],
+      "use": true,
+      "reason": "Synbox draws no WebGL"
+    },
+    {
+      "flag": "--no-slow",
+      "turnsOff": ["empty-visual (slow mobile photograph pass)"],
+      "use": true,
+      "reason": "photograph-frame timing on a throttled line; thumbnails are judged by Synbox's perf tooling"
+    },
+    {
+      "flag": "--no-sweep",
+      "turnsOff": ["first-screen sweep at 1280/1152/1024/896/768"],
+      "use": false,
+      "reason": "keep: the sweep finds cut text, spill and overflow between breakpoints"
+    },
+    {
+      "flag": "--no-reduced",
+      "turnsOff": ["reduced-motion"],
+      "use": false,
+      "reason": "keep: reduced motion is adopted"
+    },
+    {
+      "flag": "--no-hidden",
+      "turnsOff": ["hidden-content (second load)"],
+      "use": false,
+      "reason": "keep the reduced-motion part; the scripts-off walk will fail any SPA and should be read as noise"
+    },
+    {
+      "flag": "--no-narrow",
+      "turnsOff": ["320px pass of collide, tap-size, off-viewport"],
+      "use": false,
+      "reason": "keep: Synbox already checks safari-narrow at 320"
+    },
+    {
+      "flag": "--no-basics",
+      "turnsOff": [
+        "a11y-name",
+        "img-alt",
+        "field-label",
+        "heading-order",
+        "tabindex",
+        "focus-ring",
+        "menu-toggle",
+        "skip-link",
+        "focus-visible",
+        "focus-hidden",
+        "lang",
+        "page-meta",
+        "share-meta",
+        "action-repeat",
+        "map-link",
+        "open-now",
+        "assumed",
+        "run-on",
+        "form-fields",
+        "form-send"
+      ],
+      "use": false,
+      "reason": "keep: the access block is the most useful part for an app"
+    },
+    {
+      "flag": "--quick",
+      "turnsOff": [
+        "scroll stepping",
+        "reveal walk",
+        "hover-spill",
+        "hidden-visual",
+        "loop-pause",
+        "forms",
+        "reduced-motion",
+        "hover-move"
+      ],
+      "use": false,
+      "reason": "only for fix rounds"
+    }
+  ],
+  "checks": [
+    {
+      "id": "off-grid",
+      "group": "layout",
+      "verdict": "adopt",
+      "pages": "all",
+      "threshold": "FAIL at 4px+ off a shared left edge nearby; WARN for two common left edges in one section",
+      "reason": "every block starts on the page gutter or a shared column edge",
+      "conflicts": null
+    },
+    {
+      "id": "stagger",
+      "group": "layout",
+      "verdict": "adopt",
+      "pages": "all",
+      "threshold": "rows of a list at more than one left offset; heading lines whose starts spread over 48px",
+      "reason": "a list's rows share one left edge",
+      "conflicts": null
+    },
+    {
+      "id": "top-stagger",
+      "group": "layout",
+      "verdict": "adopt",
+      "pages": "all",
+      "threshold": "FAIL when boxes in a row start more than 8px apart",
+      "reason": "boxes side by side share one top",
+      "conflicts": null
+    },
+    {
+      "id": "right-edge",
+      "group": "layout",
+      "verdict": "adopt",
+      "pages": "all",
+      "threshold": null,
+      "reason": "blocks end on the content's right edge, not past it or short of it",
+      "conflicts": null
+    },
+    {
+      "id": "centre-axis",
+      "group": "layout",
+      "verdict": "adopt",
+      "pages": "all",
+      "threshold": null,
+      "reason": "a centred block is centred on its own container",
+      "conflicts": null
+    },
+    {
+      "id": "tilt",
+      "group": "layout",
+      "verdict": "adopt",
+      "pages": "all",
+      "threshold": null,
+      "reason": "nothing rotated or on a curve",
+      "conflicts": null
+    },
+    {
+      "id": "row-gap",
+      "group": "layout",
+      "verdict": "adapt",
+      "pages": "app",
+      "threshold": null,
+      "reason": "card grids (gallery, library, playlists) fill their last row or let it keep card width; marketing split part dropped",
+      "conflicts": null
+    },
+    {
+      "id": "section-gaps",
+      "group": "layout",
+      "verdict": "adapt",
+      "pages": "app",
+      "threshold": "gaps between groups within 25% of each other",
+      "reason": "one gap between groups on a screen, larger than any gap inside a group; no full-screen bands",
+      "conflicts": null
+    },
+    {
+      "id": "hole",
+      "group": "layout",
+      "verdict": "adopt",
+      "pages": "app",
+      "threshold": null,
+      "reason": "no accidental empty space inside a card or panel",
+      "conflicts": null
+    },
+    {
+      "id": "heading-align",
+      "group": "layout",
+      "verdict": "adopt",
+      "pages": "all",
+      "threshold": "WARN when one or two headings are centred among left-aligned ones",
+      "reason": "headings of one kind align one way",
+      "conflicts": null
+    },
+    {
+      "id": "spill",
+      "group": "containment",
+      "verdict": "adopt",
+      "pages": "all",
+      "threshold": null,
+      "reason": "a box stays inside the panel it starts on",
+      "conflicts": null
+    },
+    {
+      "id": "off-viewport",
+      "group": "containment",
+      "verdict": "adopt",
+      "pages": "all",
+      "threshold": "also walked at 320x640",
+      "reason": "nothing past the screen edge; no sideways pan",
+      "conflicts": null
+    },
+    {
+      "id": "fold-card",
+      "group": "containment",
+      "verdict": "reject",
+      "pages": "all",
+      "threshold": null,
+      "reason": "lists and rows scroll in an app; a card cut by the first screen's bottom is normal",
+      "conflicts": null
+    },
+    {
+      "id": "hover-spill",
+      "group": "containment",
+      "verdict": "adopt",
+      "pages": "app",
+      "threshold": null,
+      "reason": "a hovered card stays inside its column",
+      "conflicts": null
+    },
+    {
+      "id": "overlap-text",
+      "group": "containment",
+      "verdict": "adapt",
+      "pages": "app",
+      "threshold": null,
+      "reason": "valid off the player; on the player the floating controls cover lyrics on purpose",
+      "conflicts": "AGENTS.md › Phones, the installed app and desktop › Rules for the player: the floating UI draws over the lyrics and never moves them"
+    },
+    {
+      "id": "cut-text",
+      "group": "text",
+      "verdict": "adopt",
+      "pages": "all",
+      "threshold": null,
+      "reason": "no line clipped by its box (deliberate one-line truncation with an ellipsis excepted)",
+      "conflicts": null
+    },
+    {
+      "id": "fold-cut",
+      "group": "text",
+      "verdict": "reject",
+      "pages": "all",
+      "threshold": null,
+      "reason": "hero heading sliced by the fold is a landing-page rule",
+      "conflicts": null
+    },
+    {
+      "id": "marquee",
+      "group": "text",
+      "verdict": "adapt",
+      "pages": "app",
+      "threshold": null,
+      "reason": "a running title line, if used, rests on whole words; prefer an ellipsis",
+      "conflicts": null
+    },
+    {
+      "id": "orphan",
+      "group": "text",
+      "verdict": "adapt",
+      "pages": "prose",
+      "threshold": "WARN when the last line holds one short word",
+      "reason": "text-wrap: pretty on prose; song titles are data and are left alone",
+      "conflicts": null
+    },
+    {
+      "id": "contrast",
+      "group": "text",
+      "verdict": "adopt",
+      "pages": "all",
+      "threshold": "4.5:1 text, 3:1 large text, measured at the worst tenth of the ground",
+      "reason": "text over pictures and video stays readable",
+      "conflicts": null
+    },
+    {
+      "id": "busy-ground",
+      "group": "text",
+      "verdict": "adapt",
+      "pages": "player",
+      "threshold": null,
+      "reason": "words over video need a scrim, shadow or solid surface; judge at the busiest frame",
+      "conflicts": null
+    },
+    {
+      "id": "heading-scale",
+      "group": "text",
+      "verdict": "adapt",
+      "pages": "app",
+      "threshold": "FAIL when an h2 is as large as the h1; WARN h3 within 1.3x of h2",
+      "reason": "one size per level and no heading smaller than its body text; app titles stay small so the 1.3x step is a WARN only",
+      "conflicts": null
+    },
+    {
+      "id": "nav",
+      "group": "nav",
+      "verdict": "adapt",
+      "pages": "app",
+      "threshold": "FAIL at a gap over 24px between bar and content edges",
+      "reason": "the top bar sits on the page gutters; the tablet wordmark-plus-menu rule is dropped",
+      "conflicts": null
+    },
+    {
+      "id": "nav-covers",
+      "group": "nav",
+      "verdict": "adapt",
+      "pages": "app",
+      "threshold": null,
+      "reason": "the tab dock and mini player float over scrolling content by design; at the end of a page nothing rests under them",
+      "conflicts": null
+    },
+    {
+      "id": "nav-family",
+      "group": "nav",
+      "verdict": "adopt",
+      "pages": "all",
+      "threshold": null,
+      "reason": "one top bar, one tab bar, the same on every screen",
+      "conflicts": null
+    },
+    {
+      "id": "nav-labels",
+      "group": "nav",
+      "verdict": "adapt",
+      "pages": "app",
+      "threshold": "WARN for a menu whose 3+ entries share one target",
+      "reason": "menu entries lead to distinct places; the 'named after the section heading' part is marketing",
+      "conflicts": null
+    },
+    {
+      "id": "button-styles",
+      "group": "buttons",
+      "verdict": "adapt",
+      "pages": "all",
+      "threshold": null,
+      "reason": "one primary, one secondary, one text style, plus icon buttons; one height per row; the player's pill group counts as one family",
+      "conflicts": null
+    },
+    {
+      "id": "button-shape",
+      "group": "buttons",
+      "verdict": "adopt",
+      "pages": "all",
+      "threshold": null,
+      "reason": "no skewed, rotated or clipped buttons",
+      "conflicts": null
+    },
+    {
+      "id": "same-action",
+      "group": "buttons",
+      "verdict": "adapt",
+      "pages": "app",
+      "threshold": null,
+      "reason": "one action drawn one way everywhere; the nav-and-hero duplicate part is dropped",
+      "conflicts": null
+    },
+    {
+      "id": "label-centre",
+      "group": "buttons",
+      "verdict": "adopt",
+      "pages": "all",
+      "threshold": "skill WARNs at 12px off-centre; Synbox holds 1px",
+      "reason": "a label or icon is centred in its button",
+      "conflicts": null
+    },
+    {
+      "id": "button-picture",
+      "group": "buttons",
+      "verdict": "adapt",
+      "pages": "app",
+      "threshold": null,
+      "reason": "a button holds a label or an icon; a song card is a link and may hold its thumbnail",
+      "conflicts": null
+    },
+    {
+      "id": "fake-button",
+      "group": "buttons",
+      "verdict": "adopt",
+      "pages": "all",
+      "threshold": null,
+      "reason": "anything drawn as a button is a real button or link",
+      "conflicts": null
+    },
+    {
+      "id": "stranded-action",
+      "group": "buttons",
+      "verdict": "adopt",
+      "pages": "app",
+      "threshold": null,
+      "reason": "a button sits with the text or setting it acts on",
+      "conflicts": null
+    },
+    {
+      "id": "cta",
+      "group": "buttons",
+      "verdict": "reject",
+      "pages": "all",
+      "threshold": null,
+      "reason": "hero, priced-card and closing calls to action are landing-page structure",
+      "conflicts": null
+    },
+    {
+      "id": "link-styles",
+      "group": "buttons",
+      "verdict": "adopt",
+      "pages": "all",
+      "threshold": "WARN at 3+ looks",
+      "reason": "text links in one look",
+      "conflicts": null
+    },
+    {
+      "id": "scroll-linked",
+      "group": "motion",
+      "verdict": "adapt",
+      "pages": "app",
+      "threshold": null,
+      "reason": "no content moves because the page scrolled; chrome that hides on scroll and the reader's follow scroll are allowed",
+      "conflicts": null
+    },
+    {
+      "id": "scroll-reveal",
+      "group": "motion",
+      "verdict": "adopt",
+      "pages": "all",
+      "threshold": null,
+      "reason": "no card or row fades or rises in as it scrolls into view",
+      "conflicts": null
+    },
+    {
+      "id": "pinned",
+      "group": "motion",
+      "verdict": "adapt",
+      "pages": "app",
+      "threshold": null,
+      "reason": "sticky list headers and bars are fine; no scroll-held showcase sections",
+      "conflicts": null
+    },
+    {
+      "id": "loop-pause",
+      "group": "motion",
+      "verdict": "adapt",
+      "pages": "all",
+      "threshold": "anything still moving 5s after it is seen",
+      "reason": "decorative loops stop within 5s; the video and its lyrics are the content and already have Pause; loading shimmer stops when data lands",
+      "conflicts": null
+    },
+    {
+      "id": "webgl",
+      "group": "motion",
+      "verdict": "reject",
+      "pages": "all",
+      "threshold": "4 live contexts",
+      "reason": "Synbox draws no WebGL",
+      "conflicts": null
+    },
+    {
+      "id": "no-visual",
+      "group": "visuals",
+      "verdict": "reject",
+      "pages": "all",
+      "threshold": null,
+      "reason": "a picture in every section is a marketing rule; settings and lists are rightly text",
+      "conflicts": null
+    },
+    {
+      "id": "card-visual",
+      "group": "visuals",
+      "verdict": "reject",
+      "pages": "all",
+      "threshold": null,
+      "reason": "text-only rows and cards are normal in an app",
+      "conflicts": null
+    },
+    {
+      "id": "hidden-visual",
+      "group": "visuals",
+      "verdict": "adopt",
+      "pages": "app",
+      "threshold": null,
+      "reason": "nothing shows only on hover; touch never reads hover",
+      "conflicts": null
+    },
+    {
+      "id": "card-family",
+      "group": "visuals",
+      "verdict": "adopt",
+      "pages": "app",
+      "threshold": "4+ siblings in two fills, two title faces in one card class",
+      "reason": "cards of one kind drawn one way",
+      "conflicts": null
+    },
+    {
+      "id": "ui-fit",
+      "group": "visuals",
+      "verdict": "reject",
+      "pages": "all",
+      "threshold": null,
+      "reason": "judges the kit's drawn UI mocks on marketing cards",
+      "conflicts": null
+    },
+    {
+      "id": "ui-centre",
+      "group": "visuals",
+      "verdict": "reject",
+      "pages": "all",
+      "threshold": null,
+      "reason": "judges the kit's drawn UI mocks",
+      "conflicts": null
+    },
+    {
+      "id": "dark-ground",
+      "group": "visuals",
+      "verdict": "reject",
+      "pages": "all",
+      "threshold": "3:1",
+      "reason": "judges grounds behind mocks",
+      "conflicts": null
+    },
+    {
+      "id": "photo-upscale",
+      "group": "visuals",
+      "verdict": "adapt",
+      "pages": "app",
+      "threshold": null,
+      "reason": "pick a thumbnail size at least the shown width times the device pixel ratio",
+      "conflicts": null
+    },
+    {
+      "id": "photo-set",
+      "group": "visuals",
+      "verdict": "reject",
+      "pages": "all",
+      "threshold": null,
+      "reason": "thumbnails are third-party video frames; one grade cannot be imposed",
+      "conflicts": null
+    },
+    {
+      "id": "photo-credit",
+      "group": "visuals",
+      "verdict": "reject",
+      "pages": "all",
+      "threshold": null,
+      "reason": "stock-photo licensing check",
+      "conflicts": null
+    },
+    {
+      "id": "copy-headline",
+      "group": "copy",
+      "verdict": "reject",
+      "pages": "all",
+      "threshold": "2 to 8 words",
+      "reason": "the h1 naming a category and buyer is a sales-page rule",
+      "conflicts": null
+    },
+    {
+      "id": "copy-fact",
+      "group": "copy",
+      "verdict": "reject",
+      "pages": "all",
+      "threshold": null,
+      "reason": "a hard fact on a landing first screen",
+      "conflicts": null
+    },
+    {
+      "id": "copy-headings",
+      "group": "copy",
+      "verdict": "adapt",
+      "pages": "app",
+      "threshold": null,
+      "reason": "a heading names the thing it holds (Recently Played, Playlists), never a mood line",
+      "conflicts": null
+    },
+    {
+      "id": "copy-buttons",
+      "group": "copy",
+      "verdict": "adapt",
+      "pages": "all",
+      "threshold": "never Learn More, Read More, Discover, Explore, More, Click Here",
+      "reason": "a verb and its object where the object isn't obvious; short app verbs (Play, Save) are fine; Title Case per AGENTS.md",
+      "conflicts": "AGENTS.md › User-facing copy: short labels are Title Case (the skill writes sentence case)"
+    },
+    {
+      "id": "copy-actions",
+      "group": "copy",
+      "verdict": "adapt",
+      "pages": "app",
+      "threshold": null,
+      "reason": "one action, one wording everywhere it appears; hero action counts dropped",
+      "conflicts": null
+    },
+    {
+      "id": "links",
+      "group": "wiring",
+      "verdict": "adopt",
+      "pages": "all",
+      "threshold": null,
+      "reason": "no '#' links, dead anchors or missing pages",
+      "conflicts": null
+    },
+    {
+      "id": "forms",
+      "group": "wiring",
+      "verdict": "adopt",
+      "pages": "app",
+      "threshold": null,
+      "reason": "every form really sends",
+      "conflicts": null
+    },
+    {
+      "id": "assets",
+      "group": "wiring",
+      "verdict": "adopt",
+      "pages": "all",
+      "threshold": null,
+      "reason": "no broken asset reference",
+      "conflicts": null
+    },
+    {
+      "id": "placeholder",
+      "group": "leftovers",
+      "verdict": "adopt",
+      "pages": "all",
+      "threshold": null,
+      "reason": "no bracketed stand-ins, 'to be added', example.com or zero phone numbers",
+      "conflicts": null
+    },
+    {
+      "id": "sample-label",
+      "group": "leftovers",
+      "verdict": "adopt",
+      "pages": "all",
+      "threshold": "more than two sample tags",
+      "reason": "no 'sample' or 'example' notes in shipped UI",
+      "conflicts": null
+    },
+    {
+      "id": "caption",
+      "group": "leftovers",
+      "verdict": "reject",
+      "pages": "all",
+      "threshold": null,
+      "reason": "every song card carries its title and channel under the thumbnail: that is data, not a caption",
+      "conflicts": null
+    },
+    {
+      "id": "effect-repeat",
+      "group": "system",
+      "verdict": "reject",
+      "pages": "all",
+      "threshold": "2 sections",
+      "reason": "kit effects",
+      "conflicts": null
+    },
+    {
+      "id": "card-layout",
+      "group": "system",
+      "verdict": "reject",
+      "pages": "all",
+      "threshold": "2 sections",
+      "reason": "an app repeats one card layout on purpose",
+      "conflicts": null
+    },
+    {
+      "id": "nesting",
+      "group": "system",
+      "verdict": "adopt",
+      "pages": "app",
+      "threshold": "two boxes deep",
+      "reason": "never text in a box in a box",
+      "conflicts": null
+    },
+    {
+      "id": "pricing-tiers",
+      "group": "system",
+      "verdict": "reject",
+      "pages": "all",
+      "threshold": null,
+      "reason": "plan cards",
+      "conflicts": null
+    },
+    {
+      "id": "col-edge",
+      "group": "system",
+      "verdict": "reject",
+      "pages": "all",
+      "threshold": "3+ split starts",
+      "reason": "marketing split sections",
+      "conflicts": null
+    },
+    {
+      "id": "proximity",
+      "group": "system",
+      "verdict": "adopt",
+      "pages": "app",
+      "threshold": "8px+ between a picture and its text; row gap larger than the gap inside a row",
+      "reason": "related things closer than unrelated ones",
+      "conflicts": null
+    },
+    {
+      "id": "text-only",
+      "group": "system",
+      "verdict": "reject",
+      "pages": "all",
+      "threshold": null,
+      "reason": "wants a picture in every section",
+      "conflicts": null
+    },
+    {
+      "id": "text-contrast",
+      "group": "ink",
+      "verdict": "adopt",
+      "pages": "all",
+      "threshold": "running text 7:1; labels, meta and muted lines 4.5:1; 24px+ type 3:1",
+      "reason": "Synbox's graphite-11 (7.9:1) and graphite-9 (4.6:1) already sit on these lines",
+      "conflicts": null
+    },
+    {
+      "id": "body-size",
+      "group": "ink",
+      "verdict": "adapt",
+      "pages": "prose",
+      "threshold": "WARN under 16px",
+      "reason": "prose runs at 16px; app rows and meta follow the app scale instead",
+      "conflicts": null
+    },
+    {
+      "id": "empty-visual",
+      "group": "render",
+      "verdict": "adapt",
+      "pages": "app",
+      "threshold": null,
+      "reason": "a thumbnail or cover never ships as a flat empty frame; a loading tint is fine until it arrives",
+      "conflicts": null
+    },
+    {
+      "id": "shader-lint",
+      "group": "render",
+      "verdict": "reject",
+      "pages": "all",
+      "threshold": null,
+      "reason": "no shaders",
+      "conflicts": null
+    },
+    {
+      "id": "gl-fallback",
+      "group": "render",
+      "verdict": "reject",
+      "pages": "all",
+      "threshold": null,
+      "reason": "no WebGL",
+      "conflicts": null
+    },
+    {
+      "id": "effects-fit",
+      "group": "render",
+      "verdict": "reject",
+      "pages": "all",
+      "threshold": null,
+      "reason": "page-kind rule for effects",
+      "conflicts": null
+    },
+    {
+      "id": "hero-fill",
+      "group": "screens",
+      "verdict": "reject",
+      "pages": "all",
+      "threshold": null,
+      "reason": "no hero on app screens",
+      "conflicts": null
+    },
+    {
+      "id": "flush",
+      "group": "screens",
+      "verdict": "adapt",
+      "pages": "app",
+      "threshold": null,
+      "reason": "the last row keeps clear space above the tab dock or page end, never touching it",
+      "conflicts": null
+    },
+    {
+      "id": "credit-wall",
+      "group": "leftovers",
+      "verdict": "reject",
+      "pages": "all",
+      "threshold": "one footer line",
+      "reason": "photo credits",
+      "conflicts": null
+    },
+    {
+      "id": "unit-break",
+      "group": "text",
+      "verdict": "adopt",
+      "pages": "all",
+      "threshold": null,
+      "reason": "a number never breaks from its unit (3 min, 120 songs)",
+      "conflicts": null
+    },
+    {
+      "id": "tab-wrap",
+      "group": "nav",
+      "verdict": "adopt",
+      "pages": "app",
+      "threshold": null,
+      "reason": "tabs fit one line or scroll inside their own row",
+      "conflicts": null
+    },
+    {
+      "id": "fade-cut",
+      "group": "mocks",
+      "verdict": "reject",
+      "pages": "all",
+      "threshold": null,
+      "reason": "judges fades over drawn mocks",
+      "conflicts": null
+    },
+    {
+      "id": "photo-weight",
+      "group": "pictures",
+      "verdict": "adapt",
+      "pages": "app",
+      "threshold": "3x wider than drawn with no srcset",
+      "reason": "request the thumbnail size that matches the slot on phones",
+      "conflicts": null
+    },
+    {
+      "id": "photo-repeat",
+      "group": "pictures",
+      "verdict": "reject",
+      "pages": "all",
+      "threshold": null,
+      "reason": "the same song legitimately appears in two rows",
+      "conflicts": null
+    },
+    {
+      "id": "nav-current",
+      "group": "chrome",
+      "verdict": "adopt",
+      "pages": "app",
+      "threshold": null,
+      "reason": "the current tab or route is marked (aria-current and a visible change)",
+      "conflicts": null
+    },
+    {
+      "id": "button-contrast",
+      "group": "chrome",
+      "verdict": "adopt",
+      "pages": "all",
+      "threshold": "WARN under 1.3:1 fill against its surroundings (fix target 1.5:1)",
+      "reason": "a filled button with no outline stands off its ground",
+      "conflicts": null
+    },
+    {
+      "id": "progress-bar",
+      "group": "chrome",
+      "verdict": "reject",
+      "pages": "all",
+      "threshold": null,
+      "reason": "the seek bar, volume and pipeline progress are core controls",
+      "conflicts": "AGENTS.md › Rules for the player: sliders, drags and scrubbers are expected direct-manipulation controls"
+    },
+    {
+      "id": "copy-length",
+      "group": "copy",
+      "verdict": "adopt",
+      "pages": "all",
+      "threshold": "WARN at 22+ words or 4+ lines in a heading",
+      "reason": "headings stay short",
+      "conflicts": null
+    },
+    {
+      "id": "photo-print",
+      "group": "pictures",
+      "verdict": "reject",
+      "pages": "all",
+      "threshold": null,
+      "reason": "halftone effects over photographs",
+      "conflicts": null
+    },
+    {
+      "id": "split-align",
+      "group": "layout",
+      "verdict": "reject",
+      "pages": "all",
+      "threshold": null,
+      "reason": "marketing split sections",
+      "conflicts": null
+    },
+    {
+      "id": "grounds",
+      "group": "layout",
+      "verdict": "adapt",
+      "pages": "all",
+      "threshold": "WARN above three flat grounds",
+      "reason": "surfaces come only from the graphite steps; no new ground colours per screen (glass and the stage black are functional)",
+      "conflicts": null
+    },
+    {
+      "id": "fold-action",
+      "group": "screens",
+      "verdict": "reject",
+      "pages": "all",
+      "threshold": null,
+      "reason": "hero button above the fold",
+      "conflicts": null
+    },
+    {
+      "id": "one-screen",
+      "group": "screens",
+      "verdict": "reject",
+      "pages": "all",
+      "threshold": null,
+      "reason": "one-section-per-screen house rule",
+      "conflicts": null
+    },
+    {
+      "id": "fact-agree",
+      "group": "copy",
+      "verdict": "reject",
+      "pages": "all",
+      "threshold": null,
+      "reason": "reads opening hours only",
+      "conflicts": null
+    },
+    {
+      "id": "action-count",
+      "group": "copy",
+      "verdict": "reject",
+      "pages": "all",
+      "threshold": "5 buttons",
+      "reason": "counts a sales page's main action",
+      "conflicts": null
+    },
+    {
+      "id": "hover",
+      "group": "chrome",
+      "verdict": "adopt",
+      "pages": "all",
+      "threshold": "a control kind whose look does not change within 350ms of hover",
+      "reason": "every control answers a mouse; hover styles only for a fine pointer",
+      "conflicts": null
+    },
+    {
+      "id": "reduced-motion",
+      "group": "motion",
+      "verdict": "adapt",
+      "pages": "all",
+      "threshold": "anything still moving 1.5s after it came on screen",
+      "reason": "decorative motion rests under Reduce Motion; the karaoke fill and the video follow playback and keep running",
+      "conflicts": null
+    },
+    {
+      "id": "visual-caption",
+      "group": "visuals",
+      "verdict": "reject",
+      "pages": "all",
+      "threshold": null,
+      "reason": "song meta under a thumbnail is data",
+      "conflicts": null
+    },
+    {
+      "id": "visual-empty",
+      "group": "render",
+      "verdict": "adapt",
+      "pages": "app",
+      "threshold": "FAIL at 99.8% one colour",
+      "reason": "same aim as empty-visual for thumbnails; turned off with --no-visuals, so covered by empty-visual",
+      "conflicts": null
+    },
+    {
+      "id": "effect-kind",
+      "group": "render",
+      "verdict": "reject",
+      "pages": "all",
+      "threshold": null,
+      "reason": "effects by page kind",
+      "conflicts": null
+    },
+    {
+      "id": "hero-enter",
+      "group": "visuals (module)",
+      "verdict": "reject",
+      "pages": "all",
+      "threshold": "about 1.1s",
+      "reason": "no hero; page changes follow Synbox's own nav-motion curve",
+      "conflicts": "AGENTS.md › Motion: page changes are the push, pop and fade judged by nav-motion"
+    },
+    {
+      "id": "moment-none",
+      "group": "visuals (module)",
+      "verdict": "reject",
+      "pages": "all",
+      "threshold": null,
+      "reason": "a dealt scroll moment on every page is a marketing device",
+      "conflicts": null
+    },
+    {
+      "id": "street-number",
+      "group": "contact",
+      "verdict": "reject",
+      "pages": "all",
+      "threshold": null,
+      "reason": "invented-address rule",
+      "conflicts": null
+    },
+    {
+      "id": "postcode",
+      "group": "contact",
+      "verdict": "reject",
+      "pages": "all",
+      "threshold": null,
+      "reason": "invented-address rule",
+      "conflicts": null
+    },
+    {
+      "id": "coordinates",
+      "group": "contact",
+      "verdict": "reject",
+      "pages": "all",
+      "threshold": null,
+      "reason": "invented-address rule",
+      "conflicts": null
+    },
+    {
+      "id": "company-number",
+      "group": "contact",
+      "verdict": "reject",
+      "pages": "all",
+      "threshold": null,
+      "reason": "legal pages may need a real one",
+      "conflicts": null
+    },
+    {
+      "id": "phone-number",
+      "group": "contact",
+      "verdict": "reject",
+      "pages": "all",
+      "threshold": null,
+      "reason": "invented-contact rule",
+      "conflicts": null
+    },
+    {
+      "id": "hero-screen",
+      "group": "rhythm",
+      "verdict": "reject",
+      "pages": "all",
+      "threshold": null,
+      "reason": "hero alone on the first screen",
+      "conflicts": null
+    },
+    {
+      "id": "section-height",
+      "group": "rhythm",
+      "verdict": "reject",
+      "pages": "all",
+      "threshold": "1 or 2 screens, 2px",
+      "reason": "sections sized in whole screens",
+      "conflicts": null
+    },
+    {
+      "id": "section-air",
+      "group": "rhythm",
+      "verdict": "reject",
+      "pages": "all",
+      "threshold": null,
+      "reason": "screen-rhythm padding",
+      "conflicts": null
+    },
+    {
+      "id": "one-section",
+      "group": "rhythm",
+      "verdict": "reject",
+      "pages": "all",
+      "threshold": null,
+      "reason": "a home screen shows several rows at once by design",
+      "conflicts": null
+    },
+    {
+      "id": "one-heading",
+      "group": "rhythm",
+      "verdict": "reject",
+      "pages": "all",
+      "threshold": null,
+      "reason": "one heading per screen",
+      "conflicts": null
+    },
+    {
+      "id": "container-edges",
+      "group": "rhythm",
+      "verdict": "adapt",
+      "pages": "all",
+      "threshold": null,
+      "reason": "equal left and right margins measured inside the safe areas (a phone on its side has one notch side)",
+      "conflicts": null
+    },
+    {
+      "id": "row-lines",
+      "group": "rhythm",
+      "verdict": "adapt",
+      "pages": "app",
+      "threshold": null,
+      "reason": "card rows start on the left gutter and end on the right one",
+      "conflicts": null
+    },
+    {
+      "id": "split-pair",
+      "group": "rhythm",
+      "verdict": "reject",
+      "pages": "all",
+      "threshold": null,
+      "reason": "marketing splits",
+      "conflicts": null
+    },
+    {
+      "id": "motion-layer",
+      "group": "motion-hooks",
+      "verdict": "reject",
+      "pages": "all",
+      "threshold": null,
+      "reason": "checks the kit's motion.css",
+      "conflicts": null
+    },
+    {
+      "id": "count-text",
+      "group": "motion-hooks",
+      "verdict": "reject",
+      "pages": "all",
+      "threshold": null,
+      "reason": "count-up numbers are a marketing device",
+      "conflicts": null
+    },
+    {
+      "id": "loop-cycle",
+      "group": "motion-hooks",
+      "verdict": "reject",
+      "pages": "all",
+      "threshold": "2.5-4s",
+      "reason": "card loops",
+      "conflicts": null
+    },
+    {
+      "id": "hidden-content",
+      "group": "motion-hooks",
+      "verdict": "adapt",
+      "pages": "all",
+      "threshold": null,
+      "reason": "text in view never waits for an observer or animation to appear; the scripts-off walk does not fit an SPA",
+      "conflicts": null
+    },
+    {
+      "id": "hover-move",
+      "group": "chrome",
+      "verdict": "adapt",
+      "pages": "app",
+      "threshold": "FAIL tilt; WARN lift over 6px, growth past 1.03, image zoom past 1.05",
+      "reason": "no tilt or big lifts; the rule that every linked card must move on hover is dropped",
+      "conflicts": null
+    },
+    {
+      "id": "product-shown",
+      "group": "later",
+      "verdict": "reject",
+      "pages": "all",
+      "threshold": "60-80% of hero width",
+      "reason": "product photography rule",
+      "conflicts": null
+    },
+    {
+      "id": "same-object",
+      "group": "later",
+      "verdict": "reject",
+      "pages": "all",
+      "threshold": "4 sections",
+      "reason": "product photography rule",
+      "conflicts": null
+    },
+    {
+      "id": "section-tile",
+      "group": "screens",
+      "verdict": "reject",
+      "pages": "all",
+      "threshold": "24px",
+      "reason": "screen-tile rule",
+      "conflicts": null
+    },
+    {
+      "id": "font-load",
+      "group": "type",
+      "verdict": "adopt",
+      "pages": "all",
+      "threshold": null,
+      "reason": "every web face the tokens name really loads; the reader's system faces pass by design",
+      "conflicts": null
+    },
+    {
+      "id": "empty-area",
+      "group": "screens",
+      "verdict": "reject",
+      "pages": "all",
+      "threshold": "WARN over 35% of a section empty, FAIL over 50%",
+      "reason": "section-fill rule; app empty space is judged by panel-void and the empty-state rules",
+      "conflicts": null
+    },
+    {
+      "id": "a11y-name",
+      "group": "basics",
+      "verdict": "adopt",
+      "pages": "all",
+      "threshold": null,
+      "reason": "every control has an accessible name",
+      "conflicts": null
+    },
+    {
+      "id": "img-alt",
+      "group": "basics",
+      "verdict": "adopt",
+      "pages": "all",
+      "threshold": null,
+      "reason": "content images have alt; decorative ones alt=\"\"",
+      "conflicts": null
+    },
+    {
+      "id": "field-label",
+      "group": "basics",
+      "verdict": "adapt",
+      "pages": "app",
+      "threshold": null,
+      "reason": "a visible label on every form field; the lone search field with its icon and accessible name is the exception",
+      "conflicts": null
+    },
+    {
+      "id": "heading-order",
+      "group": "basics",
+      "verdict": "adopt",
+      "pages": "all",
+      "threshold": null,
+      "reason": "headings step down one level at a time",
+      "conflicts": null
+    },
+    {
+      "id": "tabindex",
+      "group": "basics",
+      "verdict": "adopt",
+      "pages": "all",
+      "threshold": "no tabindex above 0",
+      "reason": "tab order is reading order",
+      "conflicts": null
+    },
+    {
+      "id": "focus-ring",
+      "group": "basics",
+      "verdict": "adopt",
+      "pages": "all",
+      "threshold": null,
+      "reason": "the focus ring is never removed without an equal replacement",
+      "conflicts": null
+    },
+    {
+      "id": "menu-toggle",
+      "group": "basics",
+      "verdict": "adopt",
+      "pages": "all",
+      "threshold": null,
+      "reason": "menu buttons expose aria-expanded",
+      "conflicts": null
+    },
+    {
+      "id": "skip-link",
+      "group": "basics",
+      "verdict": "adapt",
+      "pages": "app",
+      "threshold": null,
+      "reason": "WARN only; useful where a top bar precedes a long list, not on the player",
+      "conflicts": null
+    },
+    {
+      "id": "focus-visible",
+      "group": "basics",
+      "verdict": "adopt",
+      "pages": "all",
+      "threshold": "3:1 against the ground, shown at once, no fade",
+      "reason": "keyboard focus is visible immediately",
+      "conflicts": null
+    },
+    {
+      "id": "focus-hidden",
+      "group": "basics",
+      "verdict": "adopt",
+      "pages": "all",
+      "threshold": null,
+      "reason": "a focused control is never under the top bar, tab dock or mini player",
+      "conflicts": null
+    },
+    {
+      "id": "lang",
+      "group": "basics",
+      "verdict": "adapt",
+      "pages": "all",
+      "threshold": null,
+      "reason": "html lang set, and Japanese runs marked lang=ja so fonts and screen readers pick the right language",
+      "conflicts": null
+    },
+    {
+      "id": "page-meta",
+      "group": "basics",
+      "verdict": "adapt",
+      "pages": "all",
+      "threshold": null,
+      "reason": "each route sets its own title and description; the 'Name: what for whom' title shape is dropped",
+      "conflicts": null
+    },
+    {
+      "id": "share-meta",
+      "group": "basics",
+      "verdict": "adapt",
+      "pages": "app",
+      "threshold": null,
+      "reason": "routes that get shared (a song, a playlist) carry og tags",
+      "conflicts": null
+    },
+    {
+      "id": "action-repeat",
+      "group": "basics",
+      "verdict": "adapt",
+      "pages": "app",
+      "threshold": "FAIL at one action 3+ times on a screen",
+      "reason": "per-row actions in a list are not repeats; page-level actions appear once",
+      "conflicts": null
+    },
+    {
+      "id": "map-link",
+      "group": "basics",
+      "verdict": "reject",
+      "pages": "all",
+      "threshold": null,
+      "reason": "directions links",
+      "conflicts": null
+    },
+    {
+      "id": "open-now",
+      "group": "basics",
+      "verdict": "reject",
+      "pages": "all",
+      "threshold": null,
+      "reason": "opening hours",
+      "conflicts": null
+    },
+    {
+      "id": "assumed",
+      "group": "basics",
+      "verdict": "reject",
+      "pages": "all",
+      "threshold": null,
+      "reason": "lists invented facts for a client brief",
+      "conflicts": null
+    },
+    {
+      "id": "run-on",
+      "group": "basics",
+      "verdict": "reject",
+      "pages": "all",
+      "threshold": null,
+      "reason": "the grey second sentence in a marketing heading",
+      "conflicts": null
+    },
+    {
+      "id": "form-fields",
+      "group": "basics",
+      "verdict": "adopt",
+      "pages": "app",
+      "threshold": null,
+      "reason": "right input type and autocomplete, paste allowed, button live until pressed",
+      "conflicts": null
+    },
+    {
+      "id": "form-send",
+      "group": "basics",
+      "verdict": "adopt",
+      "pages": "app",
+      "threshold": null,
+      "reason": "success shows only after a real send",
+      "conflicts": null
+    },
+    {
+      "id": "collide",
+      "group": "phone",
+      "verdict": "adapt",
+      "pages": "app",
+      "threshold": "at widths of 600px and less, and at 320",
+      "reason": "nothing lies on anything else; the player stage is excluded because its floating UI covers lyrics by rule",
+      "conflicts": "AGENTS.md › Rules for the player: the floating UI draws over the lyrics and may cover them"
+    },
+    {
+      "id": "tap-size",
+      "group": "phone",
+      "verdict": "adopt",
+      "pages": "all",
+      "threshold": "44px; FAIL under 32 tall or 24 wide with another target under 8px away",
+      "reason": "matches AGENTS.md's 44x44 and 8px",
+      "conflicts": null
+    }
+  ]
+}
