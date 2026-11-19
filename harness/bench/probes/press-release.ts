@@ -13,7 +13,7 @@ import type { Page } from 'playwright'
 
 import { open } from '../engines/browser'
 import type { BenchContext, Sample, Surface } from '../types'
-import { signIn } from './layout'
+import { signIn } from './lab-seeds'
 
 const LIMIT_MS = 60_000
 const PAGE = '/privacy'

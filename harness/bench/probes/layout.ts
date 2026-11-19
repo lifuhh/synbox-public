@@ -24,6 +24,7 @@ import type { Audit } from '../engines/recorder'
 import { isRecord, parseJson } from '../json'
 import type { BenchContext, Sample, Surface } from '../types'
 import { ICON_ALIGN_LIMIT_PX, iconTextOffsets } from './icon-align'
+import { adminSession, BENCH_PLAYLIST, seedPlaylist, signIn } from './lab-seeds'
 import { pressNotes, pressScanIn, pressValues } from './press'
 
 export interface LayoutPage {
@@ -34,6 +35,8 @@ export interface LayoutPage {
   path: string
   /** `note` names the wait it is in, so an audit stuck for its time limit says where */
   ready: (page: Page, note?: (wait: string) => void) => Promise<void>
+  /** What the page needs before it loads that a fresh lab context lacks (lab-seeds.ts: a stored playlist, a session) */
+  setup?: (page: Page) => Promise<void>
   /** UI states a user opens on this page, each audited as its own run (OPENED_STATES) */
   states?: OpenedState[]
 }
@@ -65,47 +68,11 @@ export interface OpenedState {
   name: string
   /** The views it is opened in (names from engines/browser.ts); the page's every view when omitted */
   views?: string[]
-  /** Opened as a signed-in listener (SIGNED_IN), for controls a guest doesn't get */
+  /** Opened as a signed-in listener (lab-seeds.ts › signIn), for controls a guest doesn't get */
   signedIn?: true
   /** With a song generating, held part way through translation (holdGeneration) */
   generating?: true
   steps: Step[]
-}
-
-// A listener with an empty library, as the auth Worker answers: what a signed-in state's page sees. Only GETs are
-// answered; a write (library or settings sync) gets a bare 204
-const SIGNED_IN: Record<string, unknown> = {
-  '/api/me': {
-    quota: {
-      limit: 5,
-      request: null,
-      resetsAt: '2099-01-01T00:00:00.000Z',
-      used: 2,
-    },
-    timeZone: 'UTC',
-    user: {
-      email: 'listener@example.com',
-      id: 'bench',
-      image: null,
-      name: 'Bench',
-      role: 'user',
-    },
-  },
-  '/api/me/feedback': { feedback: [] },
-  '/api/me/fixes': { fixes: [] },
-  '/api/me/library': { bookmarks: [], history: [], playlists: [] },
-  '/api/me/prefs': { prefs: {} },
-  '/api/me/songs': { songs: [] },
-}
-
-export const signIn = async (page: Page) => {
-  await page.route(/\/api\/me(?:\/|$|\?)/u, async (route) => {
-    const request = route.request()
-    const body = SIGNED_IN[new URL(request.url()).pathname]
-    await (request.method() === 'GET' && body !== undefined
-      ? route.fulfill({ json: body })
-      : route.fulfill({ status: 204 }))
-  })
 }
 
 export const PLAYER_SONG = '6rG_irmOQsM'
@@ -326,6 +293,19 @@ const SEARCH_BUTTON: OpenedState = {
 }
 
 /**
+ * One of the admin page's tabs chosen (Songs shows at rest). The page is laid out for a desktop first, so every tab is
+ * audited there, and the two whose rows turn into cards on a phone (Reports, Accounts) upright too
+ */
+const adminTab = (name: string, views: string[]): OpenedState => ({
+  name: name.toLowerCase(),
+  steps: [
+    { press: { name, role: 'tab' } },
+    { shows: { name, role: 'tabpanel' } },
+  ],
+  views,
+})
+
+/**
  * The UI states a user opens, by route, each audited as its own run (`layout-<page>-<view>+<state>`). The top bar is
  * the same on every page, so its menus are opened on one ordinary page (not a tab page: the installed app's tab
  * bar takes their place there), and its search also on the player, whose watch page has the bar too (in a browser; the
@@ -360,6 +340,14 @@ export const OPENED_STATES: Record<string, OpenedState[]> = {
         { shows: { name: 'Generate Lyrics', role: 'button' } },
       ],
     },
+  ],
+  '/admin': [
+    adminTab('Reports', ['web', 'pwa-portrait']),
+    adminTab('Recommendations', ['web']),
+    adminTab('Accounts', ['web', 'pwa-portrait']),
+    adminTab('Signals', ['web']),
+    adminTab('Usage', ['web']),
+    adminTab('Inbox', ['web']),
   ],
   '/lyrics/:videoId': [
     {
@@ -971,6 +959,36 @@ export const LAYOUT_PAGES: LayoutPage[] = [
     },
     route: '/lyrics/:videoId',
   },
+  // A playlist lives in the browser's storage: a guest's, seeded before the page loads
+  {
+    name: 'playlist',
+    path: `/playlists/${BENCH_PLAYLIST}`,
+    ready: async (page) => {
+      await settled(page)
+      await page
+        .getByRole('heading', { level: 1, name: 'Late Night Drive' })
+        .waitFor()
+    },
+    route: '/playlists/:playlistId',
+    setup: seedPlaylist,
+  },
+  // An admin's session and the console's lists answered in the page (lab-seeds.ts › adminSession); ready once the
+  // settings and the Songs list are drawn in place of their skeletons
+  {
+    name: 'admin',
+    path: '/admin',
+    ready: async (page) => {
+      await settled(page)
+      await page.getByRole('heading', { level: 1, name: 'Admin' }).waitFor()
+      await page.waitForFunction(
+        () => document.querySelector('main [data-slot=skeleton]') === null,
+        null,
+        { timeout: 10_000 }
+      )
+    },
+    route: '/admin',
+    setup: adminSession,
+  },
 ]
 
 interface RouteConfig {
@@ -1134,6 +1152,7 @@ export const pageAt = (url: URL): LayoutPage => {
     path: `${url.pathname}${url.search}`,
     ready: own?.ready ?? settled,
     route,
+    setup: own?.setup,
     states: OPENED_STATES[route],
   }
 }
@@ -1474,6 +1493,7 @@ const auditOnce = async (
     }
   })
   try {
+    await p.setup?.(page)
     if (state?.signedIn === true) {
       await signIn(page)
     }

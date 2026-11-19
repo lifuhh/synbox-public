@@ -302,11 +302,15 @@ interface ScanPage {
   kind: Kind
 }
 
-/** Every page the layout audits visit (LAYOUT_PAGES, routes.json samples, routes without parameters), once per URL */
+/**
+ * Every page the layout audits visit (LAYOUT_PAGES, routes.json samples, routes without parameters), once per URL.
+ * Not a page that needs the lab's seeds (`setup`: a stored playlist, an admin session): the checker's own browser
+ * can't be given them, and would judge a Not Found or Forbidden page instead
+ */
 const scanPages = (): ScanPage[] => {
   const seen = new Set<string>()
   return layoutPages().flatMap((p) => {
-    if (p.path.includes(':') || seen.has(p.path)) {
+    if (p.path.includes(':') || p.setup !== undefined || seen.has(p.path)) {
       return []
     }
     seen.add(p.path)

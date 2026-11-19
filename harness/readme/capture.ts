@@ -35,7 +35,7 @@
 // about 250 ms for a full 3× shot); frames.json keeps the region and each frame's song time for the composer, and
 // base.png the full screen the region sits in.
 //
-// `generate` is staged: a signed-in listener (probes/layout.ts › signIn) and the backend's generation streams answered
+// `generate` is staged: a signed-in listener (probes/lab-seeds.ts › signIn) and the backend's generation streams answered
 // in the page, held part way through the transcription. No request reaches the backend, and nothing is saved.
 
 import { mkdirSync, writeFileSync } from 'node:fs'
@@ -54,7 +54,7 @@ import {
   WEB,
 } from '../bench/engines/browser'
 import type { View } from '../bench/engines/browser'
-import { signIn } from '../bench/probes/layout'
+import { signIn } from '../bench/probes/lab-seeds'
 import { backendOrigins } from '../bench/replay'
 import { repoAt, storeDir } from '../bench/store'
 import { momentsOf } from './moments'
