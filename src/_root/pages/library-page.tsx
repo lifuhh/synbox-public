@@ -24,7 +24,7 @@ const LibraryPage = () => {
 
   if (access.ready && access.kind === 'guest') {
     return (
-      <section className='flex flex-1 flex-col overflow-y-auto pt-(--topbar-h) pr-(--safe-right) pb-page-bottom pl-(--safe-left)'>
+      <section className='flex flex-1 flex-col overflow-y-auto pt-(--topbar-h) page-x pb-page-bottom'>
         <title>Library · Synbox</title>
         <GuestLibrary />
       </section>
