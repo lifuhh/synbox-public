@@ -26,11 +26,12 @@ const RootLayout: React.FC = () => (
       />
       {/* The first Tab stop: past the bars, straight to the page (WCAG 2.4.1). Seen only while focused, floating just
           under the top bar on the page's own left edge: in the bar's row it sat under the logo (WCAG 2.4.11). Hidden by
-          sr-only only while unfocused, so focused it keeps its own padding and place (not-sr-only zeroes both) */}
+          sr-only only while unfocused, so focused it keeps its own padding (not-sr-only zeroes it); placed only while
+          focused, so at rest it is a 1×1 box off the page's corner */}
       <button
         type='button'
         onClick={focusPage}
-        className='fixed top-[calc(var(--topbar-h)+0.5rem+var(--notices-h,0px))] left-[calc(var(--safe-left)+1rem)] z-50 h-11 rounded-full bg-popover px-4 text-sm font-medium text-popover-foreground shadow-float not-focus-visible:sr-only md:left-[calc(var(--safe-left)+var(--page-gutter-wide))]'>
+        className='fixed z-50 h-11 rounded-full bg-popover px-4 text-sm font-medium text-popover-foreground shadow-float not-focus-visible:sr-only focus-visible:top-[calc(var(--topbar-h)+0.5rem)] focus-visible:left-[calc(var(--safe-left)+1rem)] md:focus-visible:left-[calc(var(--safe-left)+var(--page-gutter-wide))]'>
         Skip to Content
       </button>
       <TopBar />
