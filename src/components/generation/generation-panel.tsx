@@ -168,8 +168,8 @@ const DoneView = ({ job }: { job: Job }) => {
         initial={{ rotate: -20, scale: 0.4 }}
         animate={{ rotate: 0, scale: 1 }}
         transition={{ damping: 12, stiffness: 260, type: 'spring' }}
-        className='flex size-12 items-center justify-center rounded-full bg-primary-subtle text-primary-text'>
-        <Check className='size-6' strokeWidth={3} aria-hidden />
+        className='flex text-white'>
+        <Check className='size-10' strokeWidth={2.5} aria-hidden />
       </motion.span>
       <p className='px-2 text-label font-semibold text-white'>
         {outcome.title}

@@ -835,8 +835,9 @@ const useSongTitles = (searching: boolean) =>
   useQuery({ ...librarySongs, enabled: searching, select: titleOf }).data ??
   new Map<string, string>()
 
-// Fixed columns, so every row lines up whatever its content; the account keeps over a third of the width. Under
-// lg the six columns don't fit, and each account is a card
+// Fixed columns, so every row lines up whatever its content; the account keeps about a third of the width, the
+// widest column. Daily Limit holds its widest value whole ("Default (10)"). Under lg the six columns don't fit,
+// and each account is a card
 const UsersTableFrame = ({ children }: { children: ReactNode }) => (
   <table className='hidden w-full table-fixed text-left text-sm lg:table'>
     <colgroup>
@@ -845,7 +846,7 @@ const UsersTableFrame = ({ children }: { children: ReactNode }) => (
       <col className='w-20' />
       <col className='w-28' />
       <col className='w-28' />
-      <col className='w-36' />
+      <col className='w-40' />
       <col className='w-14' />
     </colgroup>
     <thead className='text-xs text-muted-foreground'>
@@ -1057,7 +1058,9 @@ const SongRow = ({ generation }: { generation: AdminGeneration }) => (
         <ByLink generation={generation} />
       </span>
       {!isGuest(generation) && generation.email !== null && (
-        <span className='block truncate text-xs text-muted-foreground'>
+        <span
+          className='block truncate text-xs text-muted-foreground'
+          title={generation.email}>
           {generation.email}
         </span>
       )}
@@ -1143,12 +1146,13 @@ const SongsFilter = ({
 
 // The latest 200 songs generated since accounts arrived, everyone's or one requester's, newest first, a page at
 // a time
-// The song keeps over a third of the width; under lg the five columns don't fit, and each song is a card
+// The song is the widest column; By shows a typical account email whole (about 170px). Under lg the five columns
+// don't fit, and each song is a card
 const SongsTableFrame = ({ children }: { children: ReactNode }) => (
   <table className='hidden w-full table-fixed text-left text-sm lg:table'>
     <colgroup>
       <col />
-      <col className='w-40' />
+      <col className='w-52' />
       <col className='w-28' />
       <col className='w-44' />
       <col className='w-32' />
@@ -1510,6 +1514,23 @@ const ReportItem = ({
   )
 }
 
+// A ref for a sideways strip (the tabs, a StatePicker): a mouse wheel scrolls it, and it fades at an edge with more
+// past it (`mask-fade-x`)
+const useSidewaysStrip = () => {
+  const edges = useScrollEdges()
+  return useCallback(
+    (el: HTMLElement | null) => {
+      const unwatch = [edges(el), wheelSideways(el)]
+      return () => {
+        for (const stop of unwatch) {
+          stop?.()
+        }
+      }
+    },
+    [edges]
+  )
+}
+
 // One state of a list at a time (Reports, Inbox), each with its count (none while it loads): segmented buttons in a
 // radio group, drawn as the page's tabs one size down, so the console has one segmented control
 const StatePicker = <T extends string>({
@@ -1524,38 +1545,42 @@ const StatePicker = <T extends string>({
   count: (id: T) => number | null
   value: T
   onChange: (id: T) => void
-}) => (
-  <div
-    ref={wheelSideways}
-    role='radiogroup'
-    aria-label={label}
-    className='no-scrollbar inline-flex max-w-full gap-1 self-start overflow-x-auto rounded-full bg-muted p-1'>
-    {options.map((option) => {
-      const checked = value === option.id
-      const n = count(option.id)
-      return (
-        <button
-          key={option.id}
-          type='button'
-          // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- segmented buttons in an ARIA radio group, like the lyrics style scope
-          role='radio'
-          aria-checked={checked}
-          onClick={() => {
-            onChange(option.id)
-          }}
-          className={cn(
-            'h-7 shrink-0 rounded-full px-3 text-sm font-medium whitespace-nowrap transition-colors touch:h-9 touch:px-4',
-            checked
-              ? 'bg-foreground text-background'
-              : 'text-muted-foreground hover:text-foreground'
-          )}>
-          {option.name}
-          {n !== null && <span className='ml-2 tabular-nums'>{n}</span>}
-        </button>
-      )
-    })}
-  </div>
-)
+}) => {
+  // Scrolls sideways on a phone too narrow for every state, fading at an edge with more past it, as the tabs above
+  const pickerRef = useSidewaysStrip()
+  return (
+    <div
+      ref={pickerRef}
+      role='radiogroup'
+      aria-label={label}
+      className='no-scrollbar inline-flex max-w-full gap-1 self-start overflow-x-auto rounded-full bg-muted mask-fade-x p-1'>
+      {options.map((option) => {
+        const checked = value === option.id
+        const n = count(option.id)
+        return (
+          <button
+            key={option.id}
+            type='button'
+            // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- segmented buttons in an ARIA radio group, like the lyrics style scope
+            role='radio'
+            aria-checked={checked}
+            onClick={() => {
+              onChange(option.id)
+            }}
+            className={cn(
+              'h-7 shrink-0 rounded-full px-3 text-sm font-medium whitespace-nowrap transition-colors touch:h-9 touch:px-4',
+              checked
+                ? 'bg-foreground text-background'
+                : 'text-muted-foreground hover:text-foreground'
+            )}>
+            {option.name}
+            {n !== null && <span className='ml-2 tabular-nums'>{n}</span>}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
 
 // Fixed: in Needs Review, but a fix by hand is live, so the fixer resolves it at its next run
 type ReportTab = ReportState | 'fixed'
@@ -2577,18 +2602,7 @@ const AdminTabs = () => {
   const reportsWaiting = useReportsWaiting()
   const inboxWaiting = useInboxWaiting()
   const countId = useId()
-  const edges = useScrollEdges()
-  const stripRef = useCallback(
-    (el: HTMLElement | null) => {
-      const unwatch = [edges(el), wheelSideways(el)]
-      return () => {
-        for (const stop of unwatch) {
-          stop?.()
-        }
-      }
-    },
-    [edges]
-  )
+  const stripRef = useSidewaysStrip()
   const search = (label: string, placeholder: string) => (
     <SearchField
       label={label}

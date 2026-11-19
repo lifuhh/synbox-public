@@ -14,7 +14,7 @@ import {
   ThumbsUpIcon,
 } from 'lucide-react'
 import type { ReactNode, RefObject } from 'react'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
 
 import { ariaKeys, SHORTCUTS } from '@/components/player-stage/shortcuts'
@@ -325,9 +325,11 @@ const railClass = (inline: boolean, interactive: boolean, open: boolean) =>
 // What the lyrics over the video show, and Lyrics Style
 const VideoLyricsButtons = ({
   anchorRef,
+  anchorId,
   peek,
 }: {
   anchorRef: RefObject<HTMLElement | null>
+  anchorId: string
   peek: ReturnType<typeof usePeek>
 }) => {
   const [showLyrics, setShowLyrics] = useAtom(lyricsVisibilityAtom)
@@ -390,7 +392,11 @@ const VideoLyricsButtons = ({
           </span>
         </RailButton>
       </RailTooltip>
-      <LyricsThemePicker anchorRef={anchorRef} peek={peek} />
+      <LyricsThemePicker
+        anchorRef={anchorRef}
+        anchorId={anchorId}
+        peek={peek}
+      />
     </>
   )
 }
@@ -405,6 +411,7 @@ const PlayerRail = ({ inline = false }: { inline?: boolean }) => {
   const guest = kind === 'guest'
   const { toast } = useToast()
   const panelRef = useRef<HTMLElement>(null)
+  const panelId = useId()
   const open = useAtomValue(playerChromeOpenAtom)
   const armed = useArmed(open)
   const peek = usePeek()
@@ -605,6 +612,7 @@ const PlayerRail = ({ inline = false }: { inline?: boolean }) => {
             }>
             <nav
               ref={panelRef}
+              id={panelId}
               data-player-chrome={inline ? undefined : true}
               aria-label='Player Controls'
               className={railClass(inline, open && armed, open)}>
@@ -614,7 +622,11 @@ const PlayerRail = ({ inline = false }: { inline?: boolean }) => {
                   chart || (!videoLyrics && !(admin && videoId !== ''))
                 )}>
                 {videoLyrics && (
-                  <VideoLyricsButtons anchorRef={panelRef} peek={peek} />
+                  <VideoLyricsButtons
+                    anchorRef={panelRef}
+                    anchorId={panelId}
+                    peek={peek}
+                  />
                 )}
                 {admin && videoId !== '' && (
                   <LyricsVersionsMenu videoId={videoId} />

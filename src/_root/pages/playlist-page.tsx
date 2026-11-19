@@ -182,7 +182,8 @@ const PlaylistPage = () => {
             <header className='grid grid-cols-[auto_minmax(0,1fr)] items-end gap-4 sm:grid-rows-[1fr_auto]'>
               <PlaylistCover
                 playlist={playlist}
-                className='size-28 sm:row-span-2 sm:size-40 short:size-20'
+                // Shorter than the name and actions beside it on a phone on its side: on the header's top edge there
+                className='size-28 sm:row-span-2 sm:size-40 short:size-20 short:self-start'
               />
               <div className='min-w-0'>
                 <h1 className='line-clamp-2 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl'>
