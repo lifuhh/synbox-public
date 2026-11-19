@@ -43,17 +43,18 @@ const buttonVariants = cva(
         text: "relative h-8 label-icons rounded-md px-2 touch:after:absolute touch:after:inset-x-0 touch:after:-inset-y-1.5 touch:after:content-['']",
       },
       variant: {
-        // The one main action on a view: a tonal pill that stands out without glaring
-        default:
-          'bg-primary-subtle text-primary-text hover:bg-primary-subtle-hover',
+        // The one main action on a view, and only one per view: solid magenta, its white label 4.8:1 (5.7:1
+        // hovered), the fill 3.5:1 or more on every ground. Anything else takes a quieter variant
+        default: 'bg-primary text-primary-foreground hover:bg-primary-hover',
         destructive:
           'bg-destructive text-destructive-foreground hover:bg-destructive/90',
         ghost: 'hover:bg-accent hover:text-accent-foreground',
         // Ghost with dimmed text that brightens on hover
         'ghost-subtle':
           'text-accent-foreground hover:bg-accent hover:text-foreground',
-        // The landing search box's action, sitting inside the field
-        hero: 'rounded-full bg-primary-subtle font-semibold text-primary-text hover:bg-primary-subtle-hover',
+        // The main action inside a field (Generate Lyrics, Search, a new playlist's Create) or beside a title (a
+        // playlist's Play): the default's solid fill as a pill
+        hero: 'rounded-full bg-primary font-semibold text-primary-foreground hover:bg-primary-hover',
         link: 'text-primary-text underline-offset-4 hover:underline',
         // A secondary action: a neutral fill, no outline
         outline: 'bg-secondary hover:bg-accent hover:text-accent-foreground',
@@ -72,7 +73,7 @@ const buttonVariants = cva(
           'rounded-full text-muted-foreground hover:bg-accent hover:text-foreground',
         secondary:
           'bg-secondary text-secondary-foreground hover:bg-secondary/80',
-        // A dialog's one action in neutral high contrast (Continue With Google, Send): near-white on the dark sheet
+        // Continue With Google, wherever it is: Google's coloured mark on a neutral near-white fill, never on magenta
         solid: 'bg-foreground text-background hover:bg-foreground/90',
         // A round icon button over content (the watch page's lyrics), filled so the lines under it don't show
         // through
@@ -82,6 +83,10 @@ const buttonVariants = cva(
         // A button that stays on (aria-pressed), as a playlist's Shuffle: on, it takes the brand colour
         toggle:
           'rounded-full hover:bg-accent hover:text-accent-foreground aria-pressed:bg-primary-subtle aria-pressed:text-primary-text aria-pressed:hover:bg-primary-subtle-hover',
+        // A second-rank or repeated action that keeps the brand colour without competing with the main one (a Play
+        // on each notification row, a confirmation's action): the magenta label on a mostly neutral fill
+        tonal:
+          'bg-primary-subtle text-primary-text hover:bg-primary-subtle-hover',
         toolbar: 'rounded-full hover:bg-accent hover:text-accent-foreground',
         // A labelled top-bar button among the icon buttons, outlined: Sign In with Google, whose branding keeps a
         // visible boundary (its dark theme: a 1px line on a dark fill)

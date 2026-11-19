@@ -2084,7 +2084,11 @@ const RequestRow = ({ request }: { request: AdminRequest }) => {
                 setSongs(event.target.value)
               }}
             />
-            <Button type='submit' size='row' disabled={!valid || isPending}>
+            <Button
+              type='submit'
+              variant='tonal'
+              size='row'
+              disabled={!valid || isPending}>
               Approve
             </Button>
             <Button
@@ -2100,6 +2104,7 @@ const RequestRow = ({ request }: { request: AdminRequest }) => {
         ) : (
           <div className='flex gap-2'>
             <Button
+              variant='tonal'
               size='row'
               disabled={isPending}
               onClick={() => {

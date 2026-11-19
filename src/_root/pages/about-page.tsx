@@ -28,7 +28,7 @@ const STEPS = [
 const FAQS = [
   {
     answer:
-      "When no published lyrics match, they come from speech recognition, and long intros, loud backing tracks or fast singing trip it up. Report Issue under the song's More menu flags it for a fix.",
+      'When no published lyrics match, they come from speech recognition, and long intros, loud backing tracks or fast singing trip it up. Report Issue under the song’s More menu flags it for a fix.',
     question: 'Why Are Some Lyrics Wrong?',
   },
   {
@@ -42,7 +42,7 @@ const FAQS = [
   },
   {
     answer:
-      "Yes. Add Synbox to your home screen from your browser's share menu, and it opens full screen like an app.",
+      'Yes. Add Synbox to your home screen from your browser’s share menu, and it opens full screen like an app.',
     question: 'Can I Install It?',
   },
 ]

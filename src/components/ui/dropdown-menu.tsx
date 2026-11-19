@@ -6,6 +6,7 @@ import type { VariantProps } from 'class-variance-authority'
 import { CheckIcon } from 'lucide-react'
 import * as React from 'react'
 
+import { FLOAT_MOTION, FLOAT_SURFACE } from '@/components/ui/float'
 import { keepScrollWhenTurned } from '@/lib/page-turn'
 import '@/lib/turned-popper'
 import { cn } from '@/utils/cn'
@@ -109,9 +110,6 @@ const dropdownMenuItemVariants = cva('', {
       destructive: 'text-error focus:text-error',
       // A quiet line under the call to action, as the guest's privacy note
       note: 'justify-center py-0.5 text-center text-xs text-balance text-muted-foreground focus:bg-transparent focus:text-foreground',
-      // The menu's one call to action, as a guest's Continue With Google: a tonal pill
-      primary:
-        'justify-center rounded-full bg-primary-subtle py-2 font-semibold text-primary-text focus:bg-primary-subtle-hover focus:text-primary-text',
       // A label over a line of description
       stacked: 'flex-col items-start gap-0.5',
     },
@@ -123,7 +121,6 @@ const DropdownMenuContentRender: React.ForwardRefRenderFunction<
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Content>
 > = ({ className, sideOffset = 4, onTouchMove, ...props }, ref) => (
   <DropdownMenuPrimitive.Portal>
-    {/* Timed as a popover: 200ms in, settling 4px; 150ms fading out */}
     <DropdownMenuPrimitive.Content
       ref={ref}
       sideOffset={sideOffset}
@@ -132,7 +129,9 @@ const DropdownMenuContentRender: React.ForwardRefRenderFunction<
         keepScrollWhenTurned(event)
       }}
       className={cn(
-        'z-50 min-w-32 overflow-hidden rounded-xl bg-popover p-1 text-popover-foreground shadow-md data-[state=closed]:animate-out data-[state=closed]:duration-150 data-[state=closed]:ease-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:duration-200 data-[state=open]:ease-[cubic-bezier(0.2,0,0,1)] data-[state=open]:fade-in-0 motion-safe:data-[side=bottom]:slide-in-from-top-1 motion-safe:data-[side=left]:slide-in-from-right-1 motion-safe:data-[side=right]:slide-in-from-left-1 motion-safe:data-[side=top]:slide-in-from-bottom-1',
+        'z-50 min-w-32 overflow-hidden p-1',
+        FLOAT_SURFACE,
+        FLOAT_MOTION,
         className
       )}
       {...props}
@@ -143,7 +142,7 @@ const DropdownMenuContent = React.forwardRef(DropdownMenuContentRender)
 DropdownMenuContent.displayName = DropdownMenuPrimitive.Content.displayName
 
 const ITEM =
-  'relative flex cursor-pointer items-center rounded-lg px-2 py-1.5 text-sm label-icons outline-hidden transition-colors select-none focus:bg-accent focus:text-accent-foreground data-disabled:pointer-events-none data-disabled:opacity-50'
+  'relative flex cursor-pointer items-center rounded-xl px-2 py-1.5 text-sm label-icons outline-hidden transition-colors select-none focus:bg-accent focus:text-accent-foreground data-disabled:pointer-events-none data-disabled:opacity-50'
 
 const DropdownMenuItemRender: React.ForwardRefRenderFunction<
   React.ComponentRef<typeof DropdownMenuPrimitive.Item>,
@@ -154,7 +153,7 @@ const DropdownMenuItemRender: React.ForwardRefRenderFunction<
 > = ({ className, inset, variant, ...props }, ref) => (
   <DropdownMenuPrimitive.Item
     ref={ref}
-    // rounded-lg: the menu's 12px corners less its 4px padding, so a highlighted row nests in them
+    // rounded-xl: the menu's 16px corners less its 4px padding, so a highlighted row nests in them
     className={cn(
       ITEM,
       inset === true && 'pl-8',

@@ -111,10 +111,10 @@ const statusText = (status: SyncStatus, online: boolean, saved: number) => {
       : `Saving lyrics… ${status.done} of ${status.total}`
   }
   if (status.kind === 'error') {
-    return `Couldn't update · ${count}`
+    return `Couldn’t update · ${count}`
   }
   const failed =
-    status.failed > 0 ? ` · ${status.failed} couldn't be saved` : ''
+    status.failed > 0 ? ` · ${status.failed} couldn’t be saved` : ''
   return status.syncedAt === null
     ? `${count}${failed}`
     : `${count} · Updated ${ago(status.syncedAt)}${failed}`
@@ -566,7 +566,7 @@ export const LibraryView = ({
           <AlertDialogHeader>
             <AlertDialogTitle>Clear History?</AlertDialogTitle>
             <AlertDialogDescription>
-              Removes every song you played. You can&apos;t undo it
+              Removes every song you played. You can’t undo it
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

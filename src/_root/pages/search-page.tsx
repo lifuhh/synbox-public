@@ -194,7 +194,7 @@ const LinkedVideo = ({ videoId }: { videoId: string }) => {
       <Notice>No video at this link. Paste another one</Notice>
     ) : (
       <Failed
-        what="Couldn't look up this link"
+        what='Couldn’t look up this link'
         retry={() => {
           void video.refetch()
         }}
@@ -208,7 +208,11 @@ const LinkedVideo = ({ videoId }: { videoId: string }) => {
     }
     if (lyrics.data) {
       return (
-        <Button asChild gap='sm' className='self-start touch:h-11'>
+        <Button
+          asChild
+          variant='tonal'
+          gap='sm'
+          className='self-start touch:h-11'>
           <Link to={`/v/${videoId}`} state={{ videoId }}>
             <PlayIcon aria-hidden className='size-4 shrink-0 fill-current' />
             Play Song
@@ -218,6 +222,7 @@ const LinkedVideo = ({ videoId }: { videoId: string }) => {
     }
     return (
       <Button
+        variant='tonal'
         gap='sm'
         aria-disabled={checking || undefined}
         className='self-start aria-disabled:cursor-progress touch:h-11'
@@ -285,7 +290,7 @@ const LibraryStatus = ({
   if (library.error) {
     return (
       <Failed
-        what="Couldn't search the songs"
+        what='Couldn’t search the songs'
         retry={() => {
           void library.refetch()
         }}
@@ -352,7 +357,7 @@ const SearchResults = ({
         <div className='flex flex-col gap-3 empty:hidden'>
           <LibraryStatus library={library} searching={searching} />
           {karaoke.error && (
-            <Failed what="Couldn't load the songs" retry={karaoke.retry} />
+            <Failed what='Couldn’t load the songs' retry={karaoke.retry} />
           )}
           <ResultGrid>
             {libraryResults.map((song) => (
@@ -421,11 +426,11 @@ const SimilarSongs = ({
       </div>
       {(isLoading || (data !== undefined && karaoke.waiting)) && <DotsLoader />}
       {karaoke.error && (
-        <Failed what="Couldn't load the songs" retry={karaoke.retry} />
+        <Failed what='Couldn’t load the songs' retry={karaoke.retry} />
       )}
       {error && (
         <Failed
-          what="Couldn't load similar songs"
+          what='Couldn’t load similar songs'
           retry={() => {
             void refetch()
           }}

@@ -11,6 +11,7 @@ import { useNavigate } from 'react-router'
 
 import { Button } from '@/components/ui/button'
 import { ClearFieldButton } from '@/components/ui/clear-field-button'
+import { FLOAT_SURFACE } from '@/components/ui/float'
 import {
   useGallerySongs,
   useSearchLibrary,
@@ -216,7 +217,7 @@ const Results = ({
   const rowClass = (index: number) =>
     cn(
       'flex h-11 cursor-pointer items-center gap-3 px-3 text-sm text-foreground touch:h-12',
-      inset && 'mx-2 rounded-xl px-3.5',
+      inset && 'mx-2 rounded-lg px-3.5',
       index === active ? 'bg-accent' : 'hover:bg-accent'
     )
   return (
@@ -489,7 +490,7 @@ export const TopbarSearch = ({ variant }: { variant: 'inline' | 'button' }) => {
         // 15px with a mouse, where Plus Jakarta's wide letters at 16px read larger than a top bar's field should
         className={cn(
           'w-full border border-border bg-background/60 pr-9 pl-10 text-base text-foreground outline-none placeholder:text-muted-foreground focus-visible:border-ring mouse:text-label [&::-webkit-search-cancel-button]:hidden',
-          panel ? 'h-11 rounded-xl' : 'h-10 rounded-full'
+          panel ? 'h-11 rounded-lg' : 'h-10 rounded-full'
         )}
       />
       <ClearFieldButton
@@ -507,7 +508,10 @@ export const TopbarSearch = ({ variant }: { variant: 'inline' | 'button' }) => {
         {field}
         {results(
           // Above the keyboard on a phone on its side, where the field sits in the bar
-          'absolute inset-x-0 top-full z-10 mt-1 max-h-[min(30rem,calc(var(--vv-h,var(--app-h))-var(--safe-top)-4rem),calc(var(--app-h)-var(--safe-top)-var(--safe-bottom)-4rem))] rounded-xl border border-border bg-popover py-2 shadow-lg'
+          cn(
+            'absolute inset-x-0 top-full z-10 mt-1 max-h-[min(30rem,calc(var(--vv-h,var(--app-h))-var(--safe-top)-4rem),calc(var(--app-h)-var(--safe-top)-var(--safe-bottom)-4rem))] py-2',
+            FLOAT_SURFACE
+          )
         )}
       </div>
     )
@@ -558,14 +562,15 @@ export const TopbarSearch = ({ variant }: { variant: 'inline' | 'button' }) => {
           }}
           className={cn(
             'search-panel flex-col open:flex',
-            'rounded-panel border border-transparent bg-popover p-2 text-foreground shadow-panel ring-1 ring-white/10'
+            FLOAT_SURFACE,
+            'p-2'
           )}>
           <div className='flex items-center gap-1'>
             {field}
             <button
               type='button'
               onClick={close}
-              className='h-11 shrink-0 rounded-xl px-3 text-base font-medium text-foreground transition-colors duration-150 hover:bg-accent'>
+              className='h-11 shrink-0 rounded-lg px-3 text-base font-medium text-foreground transition-colors duration-150 hover:bg-accent'>
               Cancel
             </button>
           </div>

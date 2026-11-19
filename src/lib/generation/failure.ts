@@ -72,7 +72,7 @@ export const failedResponse = (status: number, body: string) => {
   }
   if (status === 502 || status === 503 || status === 504) {
     return new GenerationError(
-      "Couldn't reach the lyrics server. Try again in a minute",
+      'Couldn’t reach the lyrics server. Try again in a minute',
       { lost: true }
     )
   }

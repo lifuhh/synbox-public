@@ -12,7 +12,7 @@ const NotFound = () => (
     <p className='text-7xl font-bold text-muted-foreground tabular-nums'>404</p>
     <h1 className='text-xl font-semibold text-foreground'>Page Not Found</h1>
     <p className='text-sm text-muted-foreground'>
-      This link doesn&apos;t lead anywhere
+      This link doesn’t lead anywhere
     </p>
     <div className='flex items-center gap-2'>
       <Button asChild variant='outline'>

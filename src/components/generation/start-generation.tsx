@@ -36,7 +36,6 @@ const checkingNotice = (description?: string) => ({
     />
   ),
   title: 'Checking Song',
-  variant: 'progress' as const,
 })
 
 // Input that means the listener carried on: a press, a scroll, a key. The press that started the song came before
@@ -108,7 +107,7 @@ const refusalToast = (refusal: Refusal) => {
       action: undefined,
       description: friendly.message,
       icon: undefined,
-      title: "Can't Generate This Song",
+      title: 'Can’t Generate This Song',
       variant: 'destructive' as const,
     }
   }

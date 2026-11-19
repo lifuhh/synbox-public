@@ -1,5 +1,13 @@
 [
   {
+    "id": "a-cleaner-look",
+    "date": null,
+    "title": "A Cleaner Look",
+    "items": [
+      "Generate Lyrics, Play and Send stand out in solid colour, and menus, panels and dialogs share one cleaner look"
+    ]
+  },
+  {
     "id": "fixes-2026-11-17",
     "date": "2026-11-17",
     "title": "Small Fixes",

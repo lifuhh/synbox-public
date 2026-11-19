@@ -22,6 +22,7 @@ const GuestLibrary = () => {
       </div>
       <BenefitList />
       <Button
+        variant='solid'
         gap='md'
         disabled={pending}
         onClick={() => {

@@ -53,7 +53,7 @@ const RequestForm = ({ onDone }: { onDone: () => void }) => {
       <div className='flex flex-col items-center gap-3 py-4 text-center'>
         <CheckIcon className='size-6 text-muted-foreground' aria-hidden />
         <output className='font-medium'>Thanks, I’ll get back to you</output>
-        <Button type='button' variant='solid' onClick={onDone}>
+        <Button type='button' onClick={onDone}>
           Done
         </Button>
       </div>
@@ -95,7 +95,7 @@ const RequestForm = ({ onDone }: { onDone: () => void }) => {
         <output id={`${id}-problem`} className='text-sm text-error'>
           {problem}
         </output>
-        <Button type='submit' variant='solid' disabled={sending}>
+        <Button type='submit' disabled={sending}>
           {sending ? 'Sending…' : 'Send'}
         </Button>
       </div>
