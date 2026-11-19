@@ -98,7 +98,6 @@
 
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
-  --color-primary-hover: var(--primary-hover);
   /* The only magenta allowed as text, and the tonal fill behind it */
   --color-primary-text: var(--primary-text);
   --color-primary-subtle: var(--primary-subtle);
@@ -137,6 +136,7 @@
   --color-callout-foreground: var(--callout-foreground);
 
   /* Neutral text and surfaces */
+  --color-tagline: var(--graphite-11);
   --color-lab-foreground: var(--graphite-12);
   --color-lab-muted: var(--graphite-11);
   --color-dock-divider: var(--graphite-6);
@@ -180,6 +180,8 @@
      where the popover's own fill is only 1.16:1) and a deep drop that still shows on graphite */
   --shadow-float:
     inset 0 0 0 1px oklch(1 0 0 / 0.08), 0 24px 64px -12px rgb(0 0 0/0.7);
+  /* The same lift with no edge, for a surface that floats over the video (the player's speed menu) */
+  --shadow-float-bare: 0 24px 64px -12px rgb(0 0 0/0.7);
   --shadow-rail: 0 8px 24px rgb(0 0 0/0.4);
   --shadow-stage: 0 4px 16px rgb(0 0 0/0.35);
   --drop-shadow-stage: 0 2px 6px rgb(0 0 0/0.8);
@@ -2065,7 +2067,6 @@ html[data-installed] *::-webkit-scrollbar {
     --popover-foreground: var(--graphite-12);
     --primary: var(--magenta-9);
     --primary-foreground: #fff;
-    --primary-hover: var(--magenta-10);
     --primary-text: var(--magenta-11);
     --primary-subtle: var(--magenta-3);
     --primary-subtle-hover: var(--magenta-4);

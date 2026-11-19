@@ -250,7 +250,9 @@ const SpeedMenu = ({
           )}
         </button>
       </DropdownMenuTrigger>
+      {/* No faint edge: it opens over the video, where the lift alone sets it apart */}
       <DropdownMenuContent
+        edge={false}
         side={side}
         align={side === 'top' ? 'end' : 'center'}
         sideOffset={offset}

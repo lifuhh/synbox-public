@@ -32,7 +32,7 @@ const twMerge = extendTailwindMerge({
       'drop-shadow': ['stage'],
       ease: ['ui', 'settle', 'travel'],
       radius: ['float'],
-      shadow: ['float', 'rail', 'stage'],
+      shadow: ['float', 'float-bare', 'rail', 'stage'],
       spacing: [
         'safe-top',
         'page-top',

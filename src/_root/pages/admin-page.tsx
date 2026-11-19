@@ -2300,7 +2300,6 @@ const RequestRow = ({ request }: { request: AdminRequest }) => {
         />
         <Button
           type='submit'
-          variant='tonal'
           size='row'
           disabled={!valid || isPending}
           className={ROW_BUTTON}>
@@ -2319,7 +2318,6 @@ const RequestRow = ({ request }: { request: AdminRequest }) => {
       </form>
     )
   } else if (request.status === 'open') {
-    // Approve keeps the tonal pair: one per waiting request, never the view's solid main action
     actions = (
       <>
         <Button
@@ -2336,7 +2334,6 @@ const RequestRow = ({ request }: { request: AdminRequest }) => {
           Decline
         </Button>
         <Button
-          variant='tonal'
           size='row'
           disabled={isPending}
           className={ROW_BUTTON}

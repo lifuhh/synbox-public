@@ -12,8 +12,8 @@ import {
 import { compactCount, useListensOf } from '@/lib/song-stats'
 import type { ChartSong, CssVars } from '@/types'
 
-// A row: the chart rank in a fixed 28px column, a 72×41 thumbnail (16:9), then the title on one 20px line over
-// YouTube views and Synbox listens on one 16px line.
+// A row: a 72×41 thumbnail (16:9), then the title on one 20px line over the rank, YouTube views and Synbox listens on one 16px
+// line.
 // 12 px apart inside a row; rows are 4 px padded top and bottom and 2 px apart, so six fit beside the
 // recommendations. The play cue ends 16px from the edge
 const ROW_PITCH_PX = 41 + 8 + 2
@@ -32,10 +32,10 @@ const SKELETON_TITLES = [
 // Only this list mixes songs with karaoke and songs without (a chart song outside the library plays with Generate
 // Lyrics), so only it marks the karaoke ones: a mic at the end of the meta line, drawn like the text beside it (its
 // size and a stroke as light as the text's weight), with Synbox's own listens after it, since only karaoke songs
-// have them. Last on the line, so a count that arrives later only lengthens it: the views never move. The
+// have them. Last on the line, so a count that arrives later only lengthens it: the rank and views never move. The
 // mic is upright (a diagonal one's handle pulls its weight down and left) and as tall in ink as the text's figures,
 // centred on them, not a size larger. Under 12.5rem (a
-// 320px phone) the line can’t hold "142M views · 2.1K listens", so the word goes, for the eye only
+// 320px phone) the line can't hold "#100 · 142M views · 2.1K listens", so the word goes, for the eye only
 const KaraokeMeta = ({ listens }: { listens: number | undefined }) => (
   <span className='inline-flex min-w-0 items-center gap-1 text-primary-text'>
     <MicIcon
@@ -75,12 +75,6 @@ const SongRow = ({
       data-marquee-host
       to={`/v/${song.id}`}
       className='group flex items-center gap-3 rounded-xl px-2 py-1 text-foreground transition-colors hover:bg-accent'>
-      {/* The chart's own position, so a song left off this list (Korean, or not playable here) leaves its number
-          out rather than renumbering YouTube's chart */}
-      <span className='w-7 shrink-0 text-right text-sm leading-5 text-muted-foreground tabular-nums'>
-        <span className='sr-only'>Rank </span>
-        {song.rank}
-      </span>
       <span className='relative aspect-video w-18 shrink-0 rounded-sm bg-thumbnail-placeholder'>
         <img
           src={`https://i.ytimg.com/vi/${song.id}/mqdefault.jpg`}
@@ -95,6 +89,9 @@ const SongRow = ({
       <span className='@container flex min-w-0 flex-1 flex-col gap-0.5'>
         <MarqueeText className='text-sm leading-5'>{song.title}</MarqueeText>
         <span className='flex min-w-0 items-center gap-2.5 text-xs leading-4 whitespace-nowrap text-muted-foreground tabular-nums'>
+          <span className='shrink-0 font-semibold text-foreground'>
+            <span className='sr-only'>Rank </span>#{song.rank}
+          </span>
           {song.views !== undefined && (
             <span className='shrink-0'>{compactCount(song.views)} views</span>
           )}
@@ -164,7 +161,6 @@ const LandingPageCharts: React.FC = () => {
                 <li
                   key={title.key}
                   className='flex items-center gap-3 px-2 py-1'>
-                  <span className='w-7 shrink-0' />
                   <Skeleton shape='thumbnail' className='aspect-video w-18' />
                   <span className='flex flex-1 flex-col gap-1.5'>
                     {title}
