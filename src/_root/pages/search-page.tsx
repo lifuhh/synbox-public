@@ -22,7 +22,6 @@ import {
 import {
   SONG_FIELD_COLUMN,
   SONG_FIELD_HINT,
-  SONG_FIELD_LABEL,
   SongFieldAction,
   songFieldPlaceholder,
   songFieldState,
@@ -634,7 +633,8 @@ const SearchPage = () => {
               onChange={(e) => {
                 setTyped(e.target.value)
               }}
-              aria-label={SONG_FIELD_LABEL}
+              // The page's own name for its field, as the layout audit's typed state finds it
+              aria-label='Search Songs'
               aria-describedby={hintId}
               enterKeyHint='search'
               autoCapitalize='off'

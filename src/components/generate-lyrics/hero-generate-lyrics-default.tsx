@@ -19,7 +19,6 @@ import {
 } from '@/components/generate-lyrics/field-generation'
 import {
   SONG_FIELD_HINT,
-  SONG_FIELD_LABEL,
   SongFieldAction,
   songFieldPlaceholder,
   songFieldState,
@@ -322,7 +321,7 @@ const HeroGenerateLyricsDefault = ({
               onChange={handleInputChange}
               readOnly={checking}
               data-clearing={clearing || undefined}
-              aria-label={SONG_FIELD_LABEL}
+              aria-label='Search Songs or Paste a YouTube Link'
               enterKeyHint={isSearch ? 'search' : 'go'}
               autoCapitalize='off'
               autoCorrect='off'

@@ -9,8 +9,6 @@ import { readFieldText } from '@/utils'
 export const songFieldPlaceholder = (roomy: boolean) =>
   roomy ? 'Search or Paste a YouTube Link' : 'Search or Paste a Link'
 
-export const SONG_FIELD_LABEL = 'Search Songs or Paste a YouTube Link'
-
 // The line under the field while it holds words to search
 export const SONG_FIELD_HINT = 'Search by title, artist or mood'
 
