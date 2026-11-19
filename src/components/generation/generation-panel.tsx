@@ -35,7 +35,7 @@ import type { Fix } from '@/lib/report-fixes'
 import { formatStamp } from '@/utils'
 import { cn } from '@/utils/cn'
 
-import StepWheel from './step-wheel'
+import StepList from './step-list'
 import {
   hideBrokenImage,
   hidePlaceholderImage,
@@ -832,7 +832,7 @@ const SongDetail = ({
                 {progressNote()}
               </span>
             </div>
-            <StepWheel
+            <StepList
               views={view.views}
               index={view.index}
               failed={status.kind === 'failed'}

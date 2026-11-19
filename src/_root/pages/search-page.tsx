@@ -5,7 +5,7 @@ import {
   PlayIcon,
   SearchIcon,
 } from 'lucide-react'
-import { useLayoutEffect, useRef, useState } from 'react'
+import { useId, useLayoutEffect, useRef, useState } from 'react'
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router'
 
 import {
@@ -19,12 +19,21 @@ import {
   LibrarySongCard,
   VideoResultCard,
 } from '@/components/search/search-result-cards'
+import {
+  SONG_FIELD_COLUMN,
+  SONG_FIELD_HINT,
+  SONG_FIELD_LABEL,
+  SongFieldAction,
+  songFieldPlaceholder,
+  songFieldState,
+} from '@/components/search/song-field'
 import { BoxScrollbar } from '@/components/shared/doc-scroll'
 import DotsLoader from '@/components/shared/dots-loader'
 import { Button } from '@/components/ui/button'
 import { ClearFieldButton } from '@/components/ui/clear-field-button'
 import { Input, InputField } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
+import { RecentShelf } from '@/components/watch/shelves'
 import { useMediaQuery } from '@/hooks/use-media-query'
 import { wheelSideways } from '@/hooks/wheel-sideways'
 import {
@@ -41,6 +50,7 @@ import type {
 } from '@/lib/synbox-flask/discovery'
 import type { CssVars } from '@/types'
 import { BAD_LINK, readFieldText } from '@/utils'
+import { cn } from '@/utils/cn'
 
 import { SEARCH_EXAMPLES } from './search-examples'
 
@@ -62,8 +72,8 @@ const Failed = ({ what, retry }: { what: string; retry: () => void }) => (
 
 const ResultGrid = ({ children }: { children: React.ReactNode }) => (
   // Each card pads its hover surface, so the grid reaches out by that padding and the pictures line up
-  // with the search field
-  <div className='-mx-2 grid grid-cols-2 gap-3 empty:hidden sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5'>
+  // with the search field. Three columns fill the field's width (SONG_FIELD_COLUMN), so a row ends on its edge
+  <div className='-mx-2 grid grid-cols-2 gap-3 empty:hidden sm:grid-cols-3'>
     {children}
   </div>
 )
@@ -237,7 +247,7 @@ const LinkedVideo = ({ videoId }: { videoId: string }) => {
     <div
       data-bench='search-result'
       className='flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-5'>
-      <div className='relative aspect-video w-full overflow-hidden rounded-lg bg-input sm:w-64 sm:shrink-0'>
+      <div className='relative aspect-video w-full overflow-hidden rounded-lg bg-thumbnail-placeholder sm:w-64 sm:shrink-0'>
         {video.data !== undefined && (
           <img
             decoding='async'
@@ -266,7 +276,9 @@ const LinkedVideo = ({ videoId }: { videoId: string }) => {
         <div className='flex flex-col'>
           {action()}
           {/* Mounted empty, so its first answer is announced; no space until it has one */}
-          <div aria-live='polite' className='text-sm not-empty:mt-2'>
+          <div
+            aria-live='polite'
+            className='text-sm not-empty:mt-2 touch:not-empty:mt-3.5'>
             <SubmissionStatus submission={submission} />
           </div>
         </div>
@@ -505,8 +517,14 @@ const SearchBody = ({
     )
   }
   const text = readFieldText(query)
+  // Before a search, the examples and songs ready to sing where results will appear
   if (text.kind === 'empty') {
-    return <Examples onSearch={onSearch} />
+    return (
+      <div className='flex flex-col gap-8'>
+        <Examples onSearch={onSearch} />
+        <RecentShelf />
+      </div>
+    )
   }
   if (text.kind === 'own') {
     return <Navigate to={text.path} replace />
@@ -549,6 +567,11 @@ const SearchPage = () => {
   }
   // Under 360px wide the full text runs past the field, as Home's does
   const roomy = useMediaQuery('(min-width: 22.5rem)')
+  // Typed but not yet searched: the results under the field are for the last search, so they dim and the hint says
+  // what Search will do, as on Home
+  const stale = similarTo === '' && typed.trim() !== query
+  const typedState = songFieldState(typed)
+  const hintId = useId()
 
   // A search or a link, as typed, pasted or read by Paste Link: our own song link opens in place
   const submit = (value: string) => {
@@ -586,79 +609,82 @@ const SearchPage = () => {
       data-scroll-top
       className='flex flex-1 flex-col gap-4 overflow-y-scroll pt-page-top page-x pb-page-bottom'>
       <title>Search · Synbox</title>
-      <h1 className='sr-only'>Search</h1>
-      <form
-        className='w-full sm:mx-auto sm:w-4/5'
-        onSubmit={(e) => {
-          e.preventDefault()
-          const value = new FormData(e.currentTarget).get('q')
-          submit(typeof value === 'string' ? value : '')
-        }}>
-        {/* The home page's field: a pill with its action inside, an icon on phones and a labelled one wider */}
-        <InputField>
-          <Input
-            ref={field}
-            name='q'
-            data-search-key
-            value={typed}
-            onChange={(e) => {
-              setTyped(e.target.value)
-            }}
-            aria-label='Search Songs'
-            enterKeyHint='search'
-            autoCapitalize='off'
-            autoCorrect='off'
-            spellCheck={false}
-            placeholder={
-              roomy ? 'Song, Artist or YouTube Link' : 'Song or YouTube Link'
-            }
-            // A link pasted over the whole field needs no Search press: it names one video, not words to search
-            onPaste={(e) => {
-              const pasted = e.clipboardData.getData('text')
-              const { kind } = readFieldText(pasted)
-              const { selectionEnd, selectionStart, value } = e.currentTarget
-              const replacesAll =
-                value.trim() === '' ||
-                (selectionStart === 0 && selectionEnd === value.length)
-              if ((kind === 'video' || kind === 'own') && replacesAll) {
-                e.preventDefault()
-                submit(pasted)
-              }
-            }}
-            variant='bare'
-          />
-          {/* Empties the field and leaves the search (its results, a pasted link's video, More Like This) */}
-          <ClearFieldButton
-            field={field}
-            value={typed}
-            onClear={() => {
-              setTyped('')
-              if (query !== '' || similarTo !== '') {
-                setParams({})
-              }
-            }}
-          />
-          <Button
-            type='submit'
-            variant='hero'
-            size='icon'
-            aria-label='Search'
-            className='shrink-0 sm:hidden'>
-            <SearchIcon className='size-5' />
-          </Button>
-          <Button
-            type='submit'
-            variant='hero'
-            size='inset'
-            gap='sm'
-            className='hidden shrink-0 sm:inline-flex'>
-            <SearchIcon className='size-5' aria-hidden />
-            <span className='text-label'>Search</span>
-          </Button>
-        </InputField>
-      </form>
+      {/* Named on screen where no tab bar marks the page (a browser); the installed app's tab bar does */}
+      <h1
+        className={cn(
+          SONG_FIELD_COLUMN,
+          'text-2xl font-semibold tracking-tight text-foreground tabbar:sr-only'
+        )}>
+        Search
+      </h1>
+      <div className={cn(SONG_FIELD_COLUMN, 'flex flex-col gap-2')}>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault()
+            const value = new FormData(e.currentTarget).get('q')
+            submit(typeof value === 'string' ? value : '')
+          }}>
+          {/* The home page's field (song-field.tsx): its words, width, border states and action */}
+          <InputField state={typedState}>
+            <Input
+              ref={field}
+              name='q'
+              data-search-key
+              value={typed}
+              onChange={(e) => {
+                setTyped(e.target.value)
+              }}
+              aria-label={SONG_FIELD_LABEL}
+              aria-describedby={hintId}
+              enterKeyHint='search'
+              autoCapitalize='off'
+              autoCorrect='off'
+              spellCheck={false}
+              placeholder={songFieldPlaceholder(roomy)}
+              // A link pasted over the whole field needs no Search press: it names one video, not words to search
+              onPaste={(e) => {
+                const pasted = e.clipboardData.getData('text')
+                const { kind } = readFieldText(pasted)
+                const { selectionEnd, selectionStart, value } = e.currentTarget
+                const replacesAll =
+                  value.trim() === '' ||
+                  (selectionStart === 0 && selectionEnd === value.length)
+                if ((kind === 'video' || kind === 'own') && replacesAll) {
+                  e.preventDefault()
+                  submit(pasted)
+                }
+              }}
+              variant='bare'
+            />
+            {/* Empties the field and leaves the search (its results, a pasted link's video, More Like This) */}
+            <ClearFieldButton
+              field={field}
+              value={typed}
+              onClear={() => {
+                setTyped('')
+                if (query !== '' || similarTo !== '') {
+                  setParams({})
+                }
+              }}
+            />
+            {/* A link shows its video under the field, which carries Play Song or Generate Lyrics; this stays Search */}
+            <SongFieldAction
+              label='Search'
+              icon={<SearchIcon aria-hidden className='size-5 shrink-0' />}
+            />
+          </InputField>
+        </form>
+        <p id={hintId} className='min-h-6 px-5 text-sm text-search'>
+          {stale && typedState === 'search' ? SONG_FIELD_HINT : null}
+        </p>
+      </div>
 
-      <div className='sm:mx-auto sm:w-4/5'>
+      <div
+        className={cn(
+          SONG_FIELD_COLUMN,
+          'transition-opacity duration-150 ease-out',
+          stale && 'opacity-60'
+        )}>
         <SearchBody
           query={query}
           similarTo={similarTo}

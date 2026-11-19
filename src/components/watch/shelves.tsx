@@ -117,6 +117,18 @@ const Shelf = ({ title, songs }: { title: string; songs: ListSong[] }) => {
 const SongShelf = ({ title, songs }: { title: string; songs: ListSong[] }) =>
   songs.length === 0 ? null : <Shelf title={title} songs={songs} />
 
+// What was played lately, for a page with no song of its own (the empty Search page): this device's history, or,
+// before it has any, what anyone on Synbox played. The player's shelves use the same titles
+export const RecentShelf = () => {
+  const recent = useRecentlyPlayed('')
+  const everywhere = useRecentlyPlayedEverywhere('')
+  return recent.length > 0 ? (
+    <SongShelf title='Your History' songs={recent} />
+  ) : (
+    <SongShelf title='Recently Played on Synbox' songs={everywhere} />
+  )
+}
+
 // The rows under the song: songs like it past the ones in Up Next, the artist's other songs, what anyone on Synbox
 // played lately, then what this device did
 export const Shelves = ({

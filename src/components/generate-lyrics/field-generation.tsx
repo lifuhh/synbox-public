@@ -165,9 +165,10 @@ export const GenerateLabel = ({ checking }: { checking: boolean }) => {
   )
 }
 
-// A text button in the status line: its press area reaches 8px above and below the line, short of the field above
-const INLINE_ACTION =
-  "relative font-semibold text-foreground underline underline-offset-4 after:absolute after:-inset-x-1 after:-inset-y-2 after:content-['']"
+// A text button in the status line: its press area reaches 8px above and below the line, 14px on touch (45px tall
+// in all), so the line sits 14px under what is above it there (the field's wrapper, LinkedVideo's action)
+export const INLINE_ACTION =
+  "relative font-semibold text-foreground underline underline-offset-4 after:absolute after:-inset-x-1 after:-inset-y-2 after:content-[''] touch:after:-inset-y-3.5"
 
 // The check's line, which says the backend is starting once the wait outlasts a warm answer (start-generation.tsx ›
 // SLOW_CHECK_MS). Fades in, keyed, so the swap reads as a new line rather than a jump
