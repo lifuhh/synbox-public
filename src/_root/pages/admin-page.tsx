@@ -983,7 +983,7 @@ const SongsFilter = ({
   const unknown =
     by !== null && by !== GUESTS && !accounts.some(({ email }) => email === by)
   return (
-    <label className='flex items-center gap-2 self-start text-sm text-muted-foreground'>
+    <label className='flex items-center gap-2 text-sm text-muted-foreground'>
       By
       <Select
         value={by ?? ''}
