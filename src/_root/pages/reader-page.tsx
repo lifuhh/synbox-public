@@ -182,7 +182,7 @@ const ReaderSkeleton = ({
   show: LineShow
   online: boolean
 }) => (
-  <div aria-busy className='mx-auto max-w-xl reader-surface px-5'>
+  <div aria-busy className='mx-auto max-w-xl px-5 reader-surface'>
     <div className='pb-5'>
       <div className='flex h-[1lh] items-center text-reader-title'>
         <Skeleton className='h-[1em] w-3/4' />
@@ -191,7 +191,7 @@ const ReaderSkeleton = ({
         <Skeleton className='h-3 w-1/3' />
       </div>
       {online && (
-        <Skeleton className='mt-3 h-10 w-36 rounded-full touch:h-11' />
+        <Skeleton shape='pill' className='mt-3 h-10 w-36 touch:h-11' />
       )}
     </div>
     {SKELETON_WIDTHS.map((width) => {
@@ -230,6 +230,39 @@ const ReaderSkeleton = ({
     <span className='sr-only'>Loading</span>
   </div>
 )
+
+// The page without a song yet: loading, a failed fetch (not a song without lyrics: it says what failed and offers
+// another try), or a song with no lyrics
+const NoSong = ({
+  pending,
+  failed,
+  retrying,
+  onRetry,
+  show,
+  online,
+}: {
+  pending: boolean
+  failed: boolean
+  retrying: boolean
+  onRetry: () => void
+  show: LineShow
+  online: boolean
+}) => {
+  if (pending) {
+    return <ReaderSkeleton show={show} online={online} />
+  }
+  if (failed) {
+    return (
+      <LoadError
+        message='Couldn’t load the lyrics'
+        retrying={retrying}
+        onRetry={onRetry}
+        className='mx-auto max-w-sm pt-16 reader-surface'
+      />
+    )
+  }
+  return <NotFound />
+}
 
 // What sits at the bottom: the text style row when open, and the play controls when synced, with Current
 // Line above them once the reader has scrolled away from the line being sung
@@ -451,7 +484,7 @@ const ReaderPage = () => {
           synced && 'pb-reader-follow',
           !synced && (typeOpen ? 'pb-reader-bottom-bar' : 'pb-reader-bottom')
         )}>
-        {song && (
+        {song ? (
           // oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions -- a tap anywhere toggles the bars; every control is also a button in them
           <article
             ref={content}
@@ -488,20 +521,18 @@ const ReaderPage = () => {
               />
             ))}
           </article>
-        )}
-        {!song && isPending && <ReaderSkeleton show={show} online={online} />}
-        {/* A failed fetch is not a song without lyrics: say what failed and offer another try */}
-        {!song && isError && (
-          <LoadError
-            message='Couldn’t load the lyrics'
+        ) : (
+          <NoSong
+            pending={isPending}
+            failed={isError}
             retrying={isRefetching}
             onRetry={() => {
               void refetch()
             }}
-            className='mx-auto max-w-sm reader-surface pt-16'
+            show={show}
+            online={online}
           />
         )}
-        {song === null && <NotFound />}
       </div>
 
       <ReaderBottom
