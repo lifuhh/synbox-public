@@ -4,6 +4,7 @@ The checks that judge a change before it ships, so an agent's "done" comes with 
 
 - **`bun harness/bench/cli.ts check`**: exact checks. A PR's check runs every static check, the build and the size budgets, and only the browser audits its diff can affect: one to four minutes. Every release runs it again (`--full`) on staging's combined tree. A docs-only commit after a passing run reuses its verdict in about a second, and checks from several sessions run at once ("Sharing the machine").
 - **`bun harness/views.ts <path-or-url>`**: one page in all views, audited and shot side by side, for looking at a UI change.
+- **`bun harness/carousel-zoom.ts`**: Home's Recommendations carousel measured at every desktop browser zoom (25 to 500%) and in the phone views, for a change to its sizing.
 - **`bun harness/smoke.ts --local`**: the same flows on a production build of this checkout served by Netlify's own runtime on this machine (`harness/local-site.ts`): no Netlify build minutes, about 45 seconds with the build. Run it before anything that builds on Netlify.
 - **`bun harness/smoke.ts <url>`**: the main user flows on a real deployed copy (a deploy preview, or https://synbox.io) against the real backends, read-only, about 40 seconds. `check` judges code and layout on recorded data; this is the check that the site still works.
 - **`bun harness/bench/cli.ts trend`**: timing benchmarks, minutes to an hour, off the release path. It writes what it finds to a queue for a person to read; it never blocks anything.
@@ -122,6 +123,17 @@ bun harness/taste.ts compare origin/staging         # this checkout's newest sca
 **`copy`** opens About, What's New, Privacy and Terms in the bench's Chromium (`open`) on the same served build, saves each as rendered, adds `index.html` as served, and runs the checker's `scripts/copy-lint.mjs` on them: FAIL, WARN and INFO by id, with examples. Its JSON goes to `.reports/YYYY-MM-DD-taste-copy/copy-lint.json`.
 
 **`compare <base> [<head>]`** diffs two scans: a `findings.json`, or a git ref, which means the newest scan of that commit (from a clean tree) in this checkout's or the main checkout's `.reports/`. `<head>` defaults to this checkout's newest scan. It compares only pages both scans walked at every width, refuses scans of different widths, prints each page's check counts that changed, then every finding added or gone, and exits 3 when anything was added. It doesn't scan a ref itself: run `scan` in a checkout of it first.
+
+## Home's carousel at every zoom: `carousel-zoom.ts`
+
+```sh
+bun harness/carousel-zoom.ts                              # this working tree's build: every zoom, then the phone views
+bun harness/carousel-zoom.ts --compare origin/staging     # before/after, and a page with the crops of what changed
+bun harness/carousel-zoom.ts --only 1920@50,1440@200      # some cases (screen width @ zoom %); 1440@100 always runs
+bun harness/carousel-zoom.ts --port 5174                  # a server already running (`wt serve`)
+```
+
+A browser's zoom shrinks the CSS viewport and raises the device scale, so each zoom (25 to 500%) on a 1366×768, 1440×900, 1920×1080 or 2560×1440 screen is a desktop Chromium viewport of screen ÷ zoom at device scale = zoom; a case within 5% of one already measured on both axes is skipped. The phone views (PWA portrait and landscape, Safari landscape and narrow) are measured the same way. Per case it prints the centred slide's size, its width on the monitor (`phys`) and share of the row, the side slide and the centre:side ratio, the two gaps between their pictures, how much of each neighbour shows, slides showing beyond the neighbours, the row's height against the screen's, and the arrows' distance to the charts. It flags a case against 1440×900 @100% measured in the same run (the thresholds and why are at the top of the file) and exits 3 when one is flagged. Rows over 80% of a screen under about 300 px tall stay flagged: the title block and heading alone take about 150 px there. With `--compare`, `.reports/YYYY-MM-DD-carousel-zoom/index.html` (or `--out`) shows each changed case before and after, cropped to the carousel in the monitor's pixels, then both tables. Bench build and replayed API data, as `views.ts`; read-only.
 
 ## The lyrics' clock: `clock-lag.ts`
 
