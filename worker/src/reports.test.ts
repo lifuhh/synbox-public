@@ -431,7 +431,10 @@ test('expiry leaves a report the fixer handed to a human', async () => {
     true
   )
   expect(await expireReports(db, NOW)).toBe(0)
-  expect(await listOpenReports(db)).toEqual([])
+  // The fixer still sees it, marked, to resolve it once the song is fixed by hand
+  expect(await listOpenReports(db)).toMatchObject([
+    { id: row?.id, reviewAt: NOW - 4 * DAY },
+  ])
   const [after] = await listReports(db)
   expect(after).toMatchObject({ droppedAt: null, reviewAt: NOW - 4 * DAY })
 })

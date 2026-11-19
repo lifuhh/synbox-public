@@ -195,7 +195,7 @@ export const saveReport = async (
 
 // Neither resolved nor dropped
 const OPEN = `"resolvedAt" is null and "droppedAt" is null`
-// Open and not handed to a human: what the fixer works through and the daily expiry may drop
+// Open and not handed to a human: what the daily expiry may drop
 const FOR_FIXER = `${OPEN} and "reviewAt" is null`
 
 // The latest reports with who sent them (an account, or a guest before 2026-10-23): open ones first, so closed ones
@@ -213,12 +213,13 @@ export const listReports = async (db: D1Database) => {
   return results
 }
 
-// What the backend's fixer works through: open reports it hasn't handed to a human, oldest first. None of them stays
-// open past EXPIRE_DAYS
+// What the backend's fixer works through, oldest first: open reports it hasn't handed to a human ("reviewAt" null),
+// which it examines and none of which stays open past EXPIRE_DAYS, and those it has, which it only resolves once the
+// song gets a live version made after "reviewAt" (a fix by hand)
 export const listOpenReports = async (db: D1Database) => {
   const { results } = await db
     .prepare(
-      `select "id", "videoId", "atSeconds", "version", "message", "createdAt" from "report" where ${FOR_FIXER}
+      `select "id", "videoId", "atSeconds", "version", "message", "createdAt", "reviewAt" from "report" where ${OPEN}
        order by "createdAt" limit 500`
     )
     .all()
