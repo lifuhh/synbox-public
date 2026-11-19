@@ -12,6 +12,8 @@ const skeletonVariants = cva('', {
       default: '',
       // A resting card on a page (the versions list): the soft 16px of DESIGN.md §5
       panel: 'rounded-2xl',
+      // A pill button (the reader's Watch Video)
+      pill: 'rounded-full',
       thumbnail: 'rounded-lg',
     },
   },

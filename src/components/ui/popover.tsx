@@ -48,15 +48,10 @@ const PopoverContent = ({
   align = 'center',
   sideOffset = 4,
   variant,
-  container,
   ...props
 }: React.ComponentProps<typeof PopoverPrimitive.Content> &
-  VariantProps<typeof popoverContentVariants> & {
-    // Where it is drawn, when not at the end of the page: inside a full-screen layer of its own (the reader), so it
-    // takes that layer's colours
-    container?: HTMLElement | null
-  }) => (
-  <PopoverPrimitive.Portal container={container}>
+  VariantProps<typeof popoverContentVariants>) => (
+  <PopoverPrimitive.Portal>
     <PopoverPrimitive.Content
       data-slot='popover-content'
       align={align}

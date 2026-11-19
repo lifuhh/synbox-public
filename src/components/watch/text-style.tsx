@@ -1,6 +1,6 @@
 import { atom, useAtom, useAtomValue } from 'jotai'
 import { ALargeSmallIcon } from 'lucide-react'
-import { useMemo, useRef, useState } from 'react'
+import { useMemo, useRef } from 'react'
 
 import { SEGMENT } from '@/components/lyrics-display/lyrics-style-scope'
 import { StyleSwitch } from '@/components/lyrics-display/style-switch'
@@ -17,12 +17,8 @@ import {
 import { Slider } from '@/components/ui/slider'
 import { translationIsEnglishAtom } from '@/context/atoms'
 import { useMediaQuery } from '@/hooks/use-media-query'
-import { MENU_GAP, useMenuOffset } from '@/lib/menu-offset'
-import type {
-  ReaderColor,
-  ReaderLayer,
-  ReaderTheme,
-} from '@/lib/offline/reader-prefs'
+import { MENU_GAP } from '@/lib/menu-offset'
+import type { ReaderColor, ReaderLayer } from '@/lib/offline/reader-prefs'
 import {
   READER_COLORS,
   READER_SIZES,
@@ -32,11 +28,8 @@ import {
 import type { CssVars } from '@/types'
 import { cn } from '@/utils/cn'
 
-// One Text Style panel open at a time, whichever button opened it (the panel's header, the band's corner, the reader)
+// One Text Style panel open at a time, whichever button opened it (the panel's header, the band's corner)
 const textStyleOpenAtom = atom(false)
-
-// Whether Text Style is open: the reader keeps its bars while it is
-export const useTextStyleOpen = () => useAtomValue(textStyleOpenAtom)
 
 const LINES: { id: ReaderLayer; label: string }[] = [
   { id: 'japanese', label: 'Japanese' },
@@ -196,20 +189,13 @@ const ColorTile = ({
   )
 }
 
-// The Japanese line's colour on the page it is drawn on (the reader's paper, else the dark watch page): Video follows
-// Lyrics Style's, the rest are the page's own. A preset applies and closes, like a menu; Custom stays open on its hue
-// until Done
-const ColorSection = ({
-  theme,
-  onPick,
-}: {
-  theme: ReaderTheme
-  onPick: () => void
-}) => {
+// The Japanese line's colour: Video follows Lyrics Style's, the rest are the page's own. A preset applies and
+// closes, like a menu; Custom stays open on its hue until Done
+const ColorSection = ({ onPick }: { onPick: () => void }) => {
   const [prefs, setPrefs] = useAtom(readerPrefsAtom)
   const video = useVideoColor()
   const colorOf = (id: ReaderColor) =>
-    readerColor({ id, prefs, theme, video }) ?? 'var(--foreground)'
+    readerColor({ id, prefs, theme: 'dark', video }) ?? 'var(--foreground)'
   return (
     <section className='flex flex-col gap-2'>
       <h3 className={FLOAT_SECTION_LABEL}>Colour</h3>
@@ -267,38 +253,32 @@ const ColorSection = ({
 // Colour first: it is what people try first, and on a sheet that runs past its edge it stays in view
 const TextStyleControls = ({
   sized,
-  theme,
   onPick,
 }: {
   sized: boolean
-  theme: ReaderTheme
   onPick: () => void
 }) => (
   <>
-    <ColorSection theme={theme} onPick={onPick} />
+    <ColorSection onPick={onPick} />
     <LinesSection />
     <TypeSection sized={sized} />
   </>
 )
 
 // How the lyrics on the page look (src/lib/offline/reader-prefs.ts), apart from Lyrics Style over the video. Either
-// way the lyrics it changes stay in view: with a mouse a popover (on the watch page out over the video, left of the
-// panel's header, or above the corner's button at the panel's top; in the reader under its bar); on a touch screen a
-// sheet. `corner`: the round filled button over the lines (the band, the panel under a narrow video); otherwise a
-// header's plain one, whose popover sits beside `anchor` (the header's id), not beside the button at the header's far
-// end. `sized`: false on the band, whose size is fixed. `paper`: the reader's. There the panel is drawn inside the
-// reader's full-screen layer, so it stacks over it and takes its paper and ink (globals.css › reader-surface), and
-// with a mouse it opens under the bar, MENU_GAP from the drawn glyph
+// way the lyrics it changes stay in view: with a mouse a popover out over the video (left of the panel's header,
+// above the corner's button at the panel's top); on a touch screen a sheet. `corner`: the round filled button over
+// the lines (the band, the panel under a narrow video); otherwise a header's plain one, whose popover sits beside
+// `anchor` (the header's id), not beside the button at the header's far end. `sized`: false on the band, whose size
+// is fixed
 export const TextStyleButton = ({
   anchor,
   corner = false,
   sized = true,
-  paper,
 }: {
   anchor?: string
   corner?: boolean
   sized?: boolean
-  paper?: ReaderTheme
 }) => {
   const [open, setOpen] = useAtom(textStyleOpenAtom)
   const touch = useMediaQuery('(pointer: coarse)')
@@ -315,22 +295,11 @@ export const TextStyleButton = ({
     }),
     [anchor]
   )
-  const { measure, offset, triggerRef } =
-    useMenuOffset<HTMLButtonElement>('bottom')
-  // The reader's layer, found from the button as it opens
-  const [container, setContainer] = useState<HTMLElement | null>(null)
   const close = () => {
     setOpen(false)
   }
-  // The audits wait on what opened (harness/bench/probes/layout.ts › OPENED_STATES `text-style`)
-  const surface = {
-    container,
-    'data-bench': 'text-style',
-    'data-reader-panel': paper === undefined ? undefined : '',
-  }
   const button = (
     <Button
-      ref={triggerRef}
       variant={corner ? 'surface-icon' : 'toolbar'}
       size='icon'
       aria-label='Text Style'
@@ -338,21 +307,13 @@ export const TextStyleButton = ({
       aria-expanded={open}
       onClick={(event) => {
         fromKeyboardRef.current = event.detail === 0
-        if (paper !== undefined && !open) {
-          setContainer(
-            event.currentTarget.closest<HTMLElement>('[data-reader]')
-          )
-          measure()
-        }
         setOpen(!open)
       }}
       className='touch:size-11'>
       <ALargeSmallIcon className='size-5' />
     </Button>
   )
-  const controls = (
-    <TextStyleControls sized={sized} theme={paper ?? 'dark'} onPick={close} />
-  )
+  const controls = <TextStyleControls sized={sized} onPick={close} />
 
   if (touch) {
     return (
@@ -365,7 +326,6 @@ export const TextStyleButton = ({
         }}>
         {button}
         <DialogContent
-          {...surface}
           aria-describedby={undefined}
           onOpenAutoFocus={(event) => {
             event.preventDefault()
@@ -385,10 +345,6 @@ export const TextStyleButton = ({
     )
   }
 
-  let side: 'bottom' | 'top' | 'left' = anchor === undefined ? 'top' : 'left'
-  if (paper) {
-    side = 'bottom'
-  }
   return (
     <Popover
       open={open}
@@ -400,10 +356,9 @@ export const TextStyleButton = ({
       <PopoverTrigger asChild>{button}</PopoverTrigger>
       {anchor !== undefined && <PopoverAnchor virtualRef={anchorBox} />}
       <PopoverContent
-        {...surface}
-        side={side}
+        side={anchor === undefined ? 'top' : 'left'}
         align={anchor === undefined ? 'end' : 'start'}
-        sideOffset={paper === undefined ? MENU_GAP : offset}
+        sideOffset={MENU_GAP}
         // The layout audit measures it against the header it opens beside (detachedMenus)
         data-menu-anchor={anchor}
         collisionPadding={8}
