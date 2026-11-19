@@ -30,8 +30,9 @@ const twMerge = extendTailwindMerge({
       // tw-animate-css's exit and the theme's own, so a popover variant's exit replaces the base one
       animate: ['out', 'into-trigger'],
       'drop-shadow': ['stage'],
-      radius: ['panel'],
-      shadow: ['panel', 'glow', 'glow-sm', 'rail', 'stage'],
+      ease: ['ui', 'settle', 'travel'],
+      radius: ['float'],
+      shadow: ['float', 'rail', 'stage'],
       spacing: [
         'safe-top',
         'page-top',

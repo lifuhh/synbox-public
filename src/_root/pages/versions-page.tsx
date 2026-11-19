@@ -266,7 +266,7 @@ const MakeDefaultDialog = ({
             <Button type='button' variant='ghost' onClick={onClose}>
               Cancel
             </Button>
-            <Button type='submit' disabled={isPending}>
+            <Button type='submit' variant='tonal' disabled={isPending}>
               {isPending ? 'Saving…' : 'Make Default'}
             </Button>
           </DialogFooter>
@@ -314,7 +314,7 @@ const VersionsAdmin = ({ videoId }: { videoId: string }) => {
         </div>
         <DropdownMenu modal={false}>
           <DropdownMenuTrigger asChild>
-            <Button gap='sm' className='w-fit shrink-0'>
+            <Button variant='tonal' gap='sm' className='w-fit shrink-0'>
               Regenerate
               <ChevronDownIcon className='size-4' />
             </Button>

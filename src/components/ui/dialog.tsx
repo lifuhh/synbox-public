@@ -6,6 +6,7 @@ import type { VariantProps } from 'class-variance-authority'
 import { X } from 'lucide-react'
 import * as React from 'react'
 
+import { DIALOG_MOTION, FLOAT_SURFACE } from '@/components/ui/float'
 import { keepScrollWhenTurned } from '@/lib/page-turn'
 import { cn } from '@/utils/cn'
 
@@ -36,7 +37,7 @@ DialogOverlay.displayName = DialogPrimitive.Overlay.displayName
 // In the middle of the screen: it grows a little from its own centre and never starts off the screen (shadcn's
 // slide-ins add to the centring translate in Tailwind 4, starting it half a dialog to the left and above)
 const CENTRED =
-  'top-[50%] left-[50%] max-h-[calc(var(--app-h)-2rem-var(--safe-top)-var(--safe-bottom))] w-[calc(100%-2rem)] max-w-lg translate-x-[-50%] translate-y-[-50%] rounded-2xl p-6 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95'
+  'top-[50%] left-[50%] max-h-[calc(var(--app-h)-2rem-var(--safe-top)-var(--safe-bottom))] w-[calc(100%-2rem)] max-w-lg translate-x-[-50%] translate-y-[-50%] p-6 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95'
 
 const dialogContentVariants = cva('', {
   defaultVariants: { variant: 'default' },
@@ -51,7 +52,7 @@ const dialogContentVariants = cva('', {
       // or a page turned by Lock Landscape) it runs down the trailing edge, so the stage stays in view beside it.
       // Its surface runs under the safe areas; its content stays out of them. The content lays out its own padding
       sheet:
-        'inset-x-0 bottom-0 mx-auto flex max-h-[max(calc(var(--app-h)*0.45),20rem)] w-full max-w-lg flex-col gap-0 overflow-y-hidden rounded-t-2xl p-0 pb-(--safe-bottom) data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom motion-reduce:data-[state=closed]:slide-out-to-bottom-0 motion-reduce:data-[state=closed]:slide-out-to-right-0 motion-reduce:data-[state=open]:slide-in-from-bottom-0 motion-reduce:data-[state=open]:slide-in-from-right-0 short:top-0 short:right-0 short:left-auto short:mx-0 short:h-full short:max-h-none short:w-[min(calc(22rem+var(--safe-right)),50%)] short:rounded-t-none short:rounded-l-2xl short:pt-(--safe-top) short:pr-(--safe-right) short:data-[state=closed]:slide-out-to-bottom-0 short:data-[state=closed]:slide-out-to-right short:data-[state=open]:slide-in-from-bottom-0 short:data-[state=open]:slide-in-from-right',
+        'inset-x-0 bottom-0 mx-auto flex max-h-[max(calc(var(--app-h)*0.45),20rem)] w-full max-w-lg flex-col gap-0 overflow-y-hidden rounded-none rounded-t-float p-0 pb-(--safe-bottom) data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom motion-reduce:data-[state=closed]:slide-out-to-bottom-0 motion-reduce:data-[state=closed]:slide-out-to-right-0 motion-reduce:data-[state=open]:slide-in-from-bottom-0 motion-reduce:data-[state=open]:slide-in-from-right-0 short:top-0 short:right-0 short:left-auto short:mx-0 short:h-full short:max-h-none short:w-[min(calc(22rem+var(--safe-right)),50%)] short:rounded-t-none short:rounded-l-float short:pt-(--safe-top) short:pr-(--safe-right) short:data-[state=closed]:slide-out-to-bottom-0 short:data-[state=closed]:slide-out-to-right short:data-[state=open]:slide-in-from-bottom-0 short:data-[state=open]:slide-in-from-right',
     },
   },
 })
@@ -106,7 +107,9 @@ const DialogContentRender: React.ForwardRefRenderFunction<
         keepScrollWhenTurned(event)
       }}
       className={cn(
-        'fixed z-50 grid gap-4 overflow-y-auto overscroll-contain bg-popover shadow-panel duration-200 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0',
+        'fixed z-50 grid gap-4 overflow-y-auto overscroll-contain',
+        FLOAT_SURFACE,
+        DIALOG_MOTION,
         dialogContentVariants({ variant }),
         className
       )}

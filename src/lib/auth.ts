@@ -278,7 +278,7 @@ export const sendSongRequest = async (note: string) => {
 const signInFailed = () => {
   toast({
     description: 'Check your connection and try again',
-    title: "Couldn't Sign In",
+    title: 'Couldn’t Sign In',
     variant: 'destructive',
   })
 }

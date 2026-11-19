@@ -233,6 +233,7 @@ const YouPage = () => {
             </Button>
           ) : (
             <Button
+              variant='solid'
               gap='md'
               onClick={() => {
                 void signInWithGoogle()

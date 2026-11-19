@@ -6,6 +6,7 @@ import type { VariantProps } from 'class-variance-authority'
 import { X } from 'lucide-react'
 import * as React from 'react'
 
+import { FLOAT_SURFACE } from '@/components/ui/float'
 import { cn } from '@/utils/cn'
 
 const ToastProvider = ToastPrimitives.Provider
@@ -27,19 +28,17 @@ const ToastViewport = React.forwardRef(ToastViewportRender)
 ToastViewport.displayName = ToastPrimitives.Viewport.displayName
 
 const toastVariants = cva(
-  'group pointer-events-auto relative flex w-full items-center justify-between gap-3 overflow-hidden rounded-xl py-2.5 pr-9 pl-3.5 shadow-md backdrop-blur-md transition-[translate] data-[state=closed]:animate-out data-[state=closed]:fade-out-80 data-[state=closed]:slide-out-to-right-full data-[state=open]:animate-in data-[state=open]:fade-in data-[state=open]:slide-in-from-right-4 data-[swipe=cancel]:translate-x-0 data-[swipe=end]:translate-x-(--radix-toast-swipe-end-x) data-[swipe=end]:animate-out data-[swipe=move]:translate-x-(--radix-toast-swipe-move-x) data-[swipe=move]:transition-none touch:pr-11',
+  // The floating surface (opaque, so no blur behind it), as every menu and dialog
+  `${FLOAT_SURFACE} group pointer-events-auto relative flex w-full items-center justify-between gap-3 overflow-hidden py-2.5 pr-9 pl-3.5 transition-[translate] data-[state=closed]:animate-out data-[state=closed]:fade-out-80 data-[state=closed]:slide-out-to-right-full data-[state=open]:animate-in data-[state=open]:fade-in data-[state=open]:slide-in-from-right-4 data-[swipe=cancel]:translate-x-0 data-[swipe=end]:translate-x-(--radix-toast-swipe-end-x) data-[swipe=end]:animate-out data-[swipe=move]:translate-x-(--radix-toast-swipe-move-x) data-[swipe=move]:transition-none touch:pr-11`,
   {
     defaultVariants: {
       variant: 'default',
     },
     variants: {
       variant: {
-        default: 'bg-popover text-popover-foreground',
+        default: '',
         // Errors and refusals: a dark red surface with light red text, like the tonal buttons
-        destructive: 'group bg-error-surface text-error-soft',
-        // Something under way the user is waiting on: the tonal surface of the main action, lifted off the page
-        progress:
-          'bg-primary-subtle text-foreground shadow-[0_12px_32px_rgb(0_0_0/0.5)]',
+        destructive: 'bg-error-surface text-error-soft',
       },
     },
   }
@@ -114,7 +113,10 @@ const ToastDescriptionRender: React.ForwardRefRenderFunction<
 > = ({ className, ...props }, ref) => (
   <ToastPrimitives.Description
     ref={ref}
-    className={cn('text-xs opacity-80', className)}
+    className={cn(
+      'text-xs text-muted-foreground group-data-[variant=destructive]:text-error-soft',
+      className
+    )}
     {...props}
   />
 )

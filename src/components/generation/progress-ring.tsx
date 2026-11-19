@@ -32,7 +32,7 @@ export const BellGlyph = ({ className }: { className?: string }) => (
 
 // A count at the top-right of a top-bar control, in the theme colour. The number carries the meaning, not the colour
 export const BADGE_CLASSES =
-  'absolute top-1 right-1 h-3.5 min-w-3.5 rounded-full bg-brand-light px-0.5 text-micro leading-none font-semibold text-generation-surface tabular-nums'
+  'absolute top-1 right-1 h-4 min-w-4 rounded-full bg-brand-light px-1 text-badge leading-none font-semibold text-generation-surface tabular-nums'
 
 export const CountBadge = ({ count }: { count: number }) => (
   <span aria-hidden className={cn(BADGE_CLASSES, 'grid place-items-center')}>

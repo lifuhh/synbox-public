@@ -134,7 +134,7 @@ const readStream = async (
       // Also what a busy server looks like: Cloud Run turns away the CORS preflight with a 429 and no
       // CORS headers, which the browser reports as a network error
       throw new GenerationError(
-        "Couldn't reach the lyrics server. Try again in a minute",
+        'Couldn’t reach the lyrics server. Try again in a minute',
         { lost: true }
       )
     }
@@ -322,7 +322,7 @@ export interface Refusal {
 // The check couldn't reach the backend: a generation started now would fail its first step the same way
 export const UNREACHABLE: Refusal = {
   code: 'unreachable',
-  message: "Couldn't reach Synbox. Check your connection and try again",
+  message: 'Couldn’t reach Synbox. Check your connection and try again',
 }
 
 // A cold generation service answers in 25 to 33 s (logs, 2026-10-28 to 2026-11-11: about 23 s of it is the app's

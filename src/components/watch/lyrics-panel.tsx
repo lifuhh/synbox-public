@@ -373,7 +373,7 @@ export const LyricsPanel = ({
       {!following && empty === null && (
         <div className='pointer-events-none absolute inset-x-0 bottom-3 z-10 flex justify-center'>
           <span className='pointer-events-auto rounded-full shadow-lg'>
-            <Button size='pill' gap='sm' onClick={follow}>
+            <Button variant='tonal' size='pill' gap='sm' onClick={follow}>
               <LocateFixedIcon className='size-4' aria-hidden />
               Current Line
             </Button>

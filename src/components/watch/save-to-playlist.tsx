@@ -80,7 +80,7 @@ const RecommendedRow = ({
                   title:
                     error.message === LAST_RECOMMENDATION
                       ? 'Recommended Needs One Song'
-                      : "Couldn't Remove from Recommended",
+                      : 'Couldn’t Remove from Recommended',
                   variant: 'destructive',
                 })
               },
@@ -101,7 +101,7 @@ const RecommendedRow = ({
                 title:
                   error instanceof RecommendationsFullError
                     ? 'Recommended Is Full'
-                    : "Couldn't Add to Recommended",
+                    : 'Couldn’t Add to Recommended',
                 variant: 'destructive',
               })
             },

@@ -98,6 +98,7 @@
 
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
+  --color-primary-hover: var(--primary-hover);
   /* The only magenta allowed as text, and the tonal fill behind it */
   --color-primary-text: var(--primary-text);
   --color-primary-subtle: var(--primary-subtle);
@@ -163,9 +164,15 @@
   --text-body: 16px;
   --text-micro: 0.5625rem;
 
-  --radius-panel: 20px;
+  /* Everything that floats over the page (menus, popovers, dialogs, sheets, toasts, the top bar's search results)
+     shares one surface: this radius, and the one shadow below as its only edge (DESIGN.md §5: border or shadow,
+     never both). A row nested in one takes this less its inset (16 - 4 = 12px in a menu) */
+  --radius-float: 1rem;
 
-  --shadow-panel: 0 24px 64px -12px rgb(0 0 0/0.7);
+  /* The floating surface's edge and lift in one: a 1px white/8 ring drawn inside it (1.46:1 against the page,
+     where the popover's own fill is only 1.16:1) and a deep drop that still shows on graphite */
+  --shadow-float:
+    inset 0 0 0 1px oklch(1 0 0 / 0.08), 0 24px 64px -12px rgb(0 0 0/0.7);
   --shadow-rail: 0 8px 24px rgb(0 0 0/0.4);
   --shadow-stage: 0 4px 16px rgb(0 0 0/0.35);
   --drop-shadow-stage: 0 2px 6px rgb(0 0 0/0.8);
@@ -210,6 +217,18 @@
   /* A popover shrinking into the trigger it hangs from (popover.tsx floating-tucked aims its transform-origin) */
   --animate-into-trigger: into-trigger 300ms cubic-bezier(0.4, 0, 0.2, 1)
     forwards;
+
+  /* Small transitions (DESIGN.md §7). Morphs and page changes keep their own curves (AGENTS.md › Motion).
+     ease-ui / ease-settle / ease-travel are Tailwind utilities; a duration is read as duration-(--duration-…) */
+  --ease-ui: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-settle: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-travel: cubic-bezier(0.65, 0, 0.35, 1);
+  --duration-hover-in: 150ms;
+  --duration-hover-out: 120ms;
+  --duration-press: 90ms;
+  --duration-menu-in: 200ms;
+  --duration-menu-out: 120ms;
+  --duration-indicator: 240ms;
 
   @keyframes accordion-down {
     from {
@@ -1486,7 +1505,7 @@ button[aria-expanded='true']:is(:hover, :focus-visible) > .control-tip {
   );
   margin: 0;
   transform-origin: top;
-  animation: float-in 0.2s ease-out;
+  animation: float-in var(--duration-menu-in) var(--ease-ui);
   @media (prefers-reduced-motion: reduce) {
     animation-name: appear;
   }
@@ -2020,6 +2039,7 @@ html[data-installed] *::-webkit-scrollbar {
     --popover-foreground: var(--graphite-12);
     --primary: var(--magenta-9);
     --primary-foreground: #fff;
+    --primary-hover: var(--magenta-10);
     --primary-text: var(--magenta-11);
     --primary-subtle: var(--magenta-3);
     --primary-subtle-hover: var(--magenta-4);
@@ -2042,7 +2062,6 @@ html[data-installed] *::-webkit-scrollbar {
     /* Keyboard focus (the unlayered :focus-visible rules below): near-white, the strongest contrast against the
        dark surfaces and the video, and not one more use of the brand colour */
     --focus-ring: var(--graphite-12);
-    --radius: 0.3rem;
   }
 
   * {

@@ -73,11 +73,11 @@ export const MessageForm = ({
 
   if (sent) {
     return (
-      <div className='flex flex-col items-center gap-3 py-4 text-center'>
-        <span className='grid size-10 place-items-center rounded-full bg-primary-subtle text-primary-text'>
-          <CheckIcon className='size-5' aria-hidden />
-        </span>
-        <output className='font-medium'>{sentLabel}</output>
+      <div className='flex flex-col items-center gap-4 py-4 text-center'>
+        <output className='flex label-icons items-center gap-2 font-medium'>
+          <CheckIcon className='size-5 shrink-0' aria-hidden />
+          {sentLabel}
+        </output>
         <Button type='button' onClick={onDone}>
           Done
         </Button>

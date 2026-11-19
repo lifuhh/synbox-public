@@ -461,7 +461,7 @@ const PlayerRail = ({ inline = false }: { inline?: boolean }) => {
         if (!(error instanceof DOMException && error.name === 'AbortError')) {
           toast({
             description: 'Press Share again',
-            title: "Couldn't Share",
+            title: 'Couldn’t Share',
             variant: 'destructive',
           })
         }
@@ -481,7 +481,7 @@ const PlayerRail = ({ inline = false }: { inline?: boolean }) => {
       // The link itself, to select and copy by hand (the installed app has no address bar)
       toast({
         description: <span className='select-all'>{url.href}</span>,
-        title: "Couldn't Copy the Link",
+        title: 'Couldn’t Copy the Link',
         variant: 'destructive',
       })
     }

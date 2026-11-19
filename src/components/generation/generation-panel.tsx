@@ -203,7 +203,7 @@ const DoneView = ({ job }: { job: Job }) => {
                 })
               }}>
               <AdminMark />
-              Lyrics look off? Try without the video&apos;s subtitles
+              Lyrics look off? Try without the video’s subtitles
             </button>
           )}
         </div>
@@ -240,6 +240,7 @@ const RowAction = ({ job, title }: { job: Job; title: string }) => {
     return (
       <Button
         asChild
+        variant='tonal'
         size='row'
         className='relative shrink-0 touch:after:absolute touch:after:inset-x-0 touch:after:-inset-y-2'>
         <Link
@@ -621,6 +622,7 @@ const FixRow = ({
       action={
         <Button
           asChild
+          variant='tonal'
           size='row'
           className='relative shrink-0 touch:after:absolute touch:after:inset-x-0 touch:after:-inset-y-2'>
           <Link to={to} aria-label={`Play ${name}`} onClick={dismiss}>
@@ -845,6 +847,7 @@ const SongDetail = ({
                   {status.code !== undefined &&
                   SIGN_IN_CODES.has(status.code) ? (
                     <Button
+                      variant='solid'
                       gap='md'
                       className='flex-1'
                       onClick={() => {
@@ -856,6 +859,7 @@ const SongDetail = ({
                   ) : null}
                   {status.retry ? (
                     <Button
+                      variant='tonal'
                       gap='md'
                       className='flex-1'
                       onClick={() => {

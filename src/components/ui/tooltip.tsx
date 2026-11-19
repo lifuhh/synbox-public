@@ -5,6 +5,7 @@ import { cva } from 'class-variance-authority'
 import type { VariantProps } from 'class-variance-authority'
 import * as React from 'react'
 
+import { FLOAT_SURFACE } from '@/components/ui/float'
 import { useMediaQuery } from '@/hooks/use-media-query'
 import '@/lib/turned-popper'
 import { cn } from '@/utils/cn'
@@ -56,8 +57,10 @@ const TooltipContentRender: React.ForwardRefRenderFunction<
     <TooltipPrimitive.Content
       ref={ref}
       sideOffset={sideOffset}
+      // The floating surface's shadow and edge, on the tight radius: a one-line label, not a panel
       className={cn(
-        'z-999 animate-in overflow-hidden rounded-md bg-popover px-3 py-1.5 text-sm text-popover-foreground shadow-md fade-in-0 zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95',
+        FLOAT_SURFACE,
+        'z-999 animate-in overflow-hidden rounded-lg px-3 py-1.5 text-sm fade-in-0 zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95',
         tooltipContentVariants({ variant }),
         className
       )}

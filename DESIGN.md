@@ -50,7 +50,7 @@ Removing these is half the job: a screen stripped bare reads as empty, not refin
 ## 3. Colour
 
 - **Mostly neutral.** About 90-95% of the interface is neutral [2.5.1 system.md]; strongly coloured chrome stays a few percent of a screen [2.1.5 app-screens intro]. Thumbnails, video and lyrics are content and don't count.
-- **One accent**, magenta [now: --primary]: the one filled primary action per view, the selected state, the karaoke fill. Its label 4.5:1 on it, the fill 3:1 on the ground [2.5.1 system.md]. A saturated fill with white text stays rare: once it would mark more than about a fifth of the visible rows, use the pale pair [2.1.5 §7.6].
+- **One accent**, magenta [now: --primary]: the one filled primary action per view, the selected state, the karaoke fill. Its label 4.5:1 on it, the fill 3:1 on the ground [2.5.1 system.md]. A saturated fill with white text stays rare: once it would mark more than about a fifth of the visible rows, use the pale pair [2.1.5 §7.6]. In code: `Button` `default` / `hero` is the solid main action (white label 4.8:1, fill 3.5:1 or more on page, card and popover), `tonal` the pale pair for repeated or second-rank actions, and `solid` (near-white) only Continue With Google, so Google's mark never sits on magenta.
 - **Never violet.** The accent stays outside OKLCH hue 270-330 [2.5.1 system.md]; the brand sits at 350.
 - **Neutral dark ground**: no navy or slate [2.1.5 §9.3]. The graphite steps (chroma 0.004) are.
 - **Text tiers**: primary near-white [now: --graphite-12]; at most two greys, clearly apart: secondary [now: --graphite-11], faint [now: --graphite-9] [2.1.5 §9.3].
@@ -78,11 +78,11 @@ Removing these is half the job: a screen stripped bare reads as empty, not refin
 | Card fill | Anywhere | One clear tone step off the page, or no box when space alone groups the content [2.5.1 cards.md] |
 | 1px border | Panels, tables, controls | 1.2-1.5:1 against its ground on dark; control outlines one step stronger [2.1.5 §9.2-9.3] |
 | Border and shadow together | Nowhere | One or the other [2.1.5 §9.4] |
-| Shadow | What floats: menus, popovers, tooltips, sheets, dialogs, the rail over video | Resting cards none [2.1.5 §13]. Floating: [now: --shadow-panel, --shadow-rail] |
+| Shadow | What floats: menus, popovers, tooltips, sheets, dialogs, the rail over video | Resting cards none [2.1.5 §13]. Floating: one surface, `src/components/ui/float.ts` › `FLOAT_SURFACE`, whose shadow is also its only edge (a 1px white/8 inset ring, 1.46:1 on the page) [now: --shadow-float]; the rail over video [now: --shadow-rail] |
 | Glass (backdrop blur) | Bars over moving content only: tab dock, mini player, notices, the player's controls | At least 0.88 opaque so labels hold 4.5:1 over a white thumbnail [now: --glass]; never a resting card |
 | Gradient | A scrim under floating UI over video, the faint top lift, the karaoke fill | Never on buttons, cards, text or grounds; no glow |
 | Text shadow | Words over video | Nowhere else |
-| Radius | Tight 4-8px or soft 16-24px; avoid the 11-12 middle | At most three panel radii; a nested radius is the outer minus the inset, never under 6 [2.1.5 §9.4, 2.5.1 cards.md]. Synbox: controls 4.8px [now: --radius], panels 20px [now: --radius-panel] |
+| Radius | Tight 4-8px or soft 16-24px; avoid the 11-12 middle | At most three panel radii; a nested radius is the outer minus the inset, never under 6 [2.1.5 §9.4, 2.5.1 cards.md]. Synbox: controls 6px (`rounded-md`), everything that floats 16px [now: --radius-float], a row nested in a menu 12px |
 | Nesting | Two levels | Never text in a box in a box [check: nesting] |
 | Dividers | Tables, lists, settings | 1px, 3-7% off the surface; dashed only for an empty slot or a drop zone [2.1.5 §7.3] |
 
@@ -97,7 +97,7 @@ Removing these is half the job: a screen stripped bare reads as empty, not refin
 
 ## 7. Motion
 
-`AGENTS.md`'s Motion rules govern morphs and page changes; these are the small transitions.
+`AGENTS.md`'s Motion rules govern morphs and page changes; these are the small transitions. The values are tokens in `src/globals.css` (`--duration-*`, `--ease-ui`, `--ease-settle`, `--ease-travel`); menus, popovers and dialogs read them through `src/components/ui/float.ts`.
 
 | Transition | Value | Source |
 | --- | --- | --- |
