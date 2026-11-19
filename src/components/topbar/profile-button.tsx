@@ -71,7 +71,7 @@ const MenuHint = ({ id, children }: { id: string; children: ReactNode }) => (
   <span
     id={id}
     aria-hidden
-    className='ms-auto ps-4 text-xs text-muted-foreground'>
+    className='ml-auto pl-4 text-xs text-muted-foreground'>
     {children}
   </span>
 )

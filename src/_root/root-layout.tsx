@@ -25,11 +25,12 @@ const RootLayout: React.FC = () => (
         className='top-scrim fixed inset-x-0 top-0 z-40 bg-background page-glow'
       />
       {/* The first Tab stop: past the bars, straight to the page (WCAG 2.4.1). Seen only while focused, floating just
-          under the top bar on the page's own left edge: in the bar's row it sat under the logo (WCAG 2.4.11) */}
+          under the top bar on the page's own left edge: in the bar's row it sat under the logo (WCAG 2.4.11). Hidden by
+          sr-only only while unfocused, so focused it keeps its own padding and place (not-sr-only zeroes both) */}
       <button
         type='button'
         onClick={focusPage}
-        className='sr-only rounded-full bg-popover px-4 text-sm font-medium text-popover-foreground shadow-float focus-visible:not-sr-only focus-visible:fixed focus-visible:top-[calc(var(--topbar-h)+0.5rem)] focus-visible:left-[calc(var(--safe-left)+1rem)] focus-visible:z-50 focus-visible:h-11 md:focus-visible:left-[calc(var(--safe-left)+var(--page-gutter-wide))]'>
+        className='fixed top-[calc(var(--topbar-h)+0.5rem+var(--notices-h,0px))] left-[calc(var(--safe-left)+1rem)] z-50 h-11 rounded-full bg-popover px-4 text-sm font-medium text-popover-foreground shadow-float not-focus-visible:sr-only md:left-[calc(var(--safe-left)+var(--page-gutter-wide))]'>
         Skip to Content
       </button>
       <TopBar />
