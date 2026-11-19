@@ -24,7 +24,13 @@ import type { Audit } from '../engines/recorder'
 import { isRecord, parseJson } from '../json'
 import type { BenchContext, Sample, Surface } from '../types'
 import { ICON_ALIGN_LIMIT_PX, iconTextOffsets } from './icon-align'
-import { adminSession, BENCH_PLAYLIST, seedPlaylist, signIn } from './lab-seeds'
+import {
+  adminSession,
+  BENCH_PLAYLIST,
+  seedPlaylist,
+  signIn,
+  versionsSession,
+} from './lab-seeds'
 import { pressNotes, pressScanIn, pressValues } from './press'
 
 export interface LayoutPage {
@@ -351,14 +357,15 @@ export const OPENED_STATES: Record<string, OpenedState[]> = {
   ],
   '/lyrics/:videoId': [
     {
-      // The reader's text size, weight and colours, in a bar along the bottom
+      // The reader's Text Style: its lines, size, weight and colours, wherever it opens (`data-bench='text-style'`
+      // on what the button shows)
       name: 'text-style',
       steps: [
         { press: { name: 'Text Style', role: 'button' } },
-        { shows: { name: 'Larger Text', role: 'button' } },
+        { shows: { bench: 'text-style' } },
       ],
-      // Where the bar is most cramped
-      views: ['pwa-landscape', 'safari-narrow'],
+      // Where it is most cramped (a phone on its side, 320px wide), and with a mouse
+      views: ['web', 'pwa-landscape', 'safari-narrow'],
     },
   ],
   '/privacy': [
@@ -988,6 +995,21 @@ export const LAYOUT_PAGES: LayoutPage[] = [
     },
     route: '/admin',
     setup: adminSession,
+  },
+  // An admin tool too: signed out it is the 403 page, so it opens as an admin with three versions answered in the
+  // page (lab-seeds.ts › versionsSession); ready once the cards replace their skeletons
+  {
+    name: 'versions',
+    path: `/v/${PLAYER_SONG}/versions`,
+    ready: async (page) => {
+      await settled(page)
+      await page
+        .getByRole('heading', { level: 1, name: 'Lyrics Versions' })
+        .waitFor()
+      await page.getByRole('heading', { level: 2, name: 'Version 3' }).waitFor()
+    },
+    route: '/v/:videoId/versions',
+    setup: versionsSession,
   },
 ]
 

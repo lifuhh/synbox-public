@@ -495,3 +495,53 @@ export const adminSession = async (page: Page) => {
     }
   )
 }
+
+// A version's coverage: every line translated and read, timing and romaji as given
+const coverage = (timed: number | null, romaji: number | null) => ({
+  chinese: 1,
+  english: 1,
+  lines: 42,
+  readings: 1,
+  romaji,
+  timed,
+})
+
+/**
+ * An admin on a song's Lyrics Versions page (src/lib/synbox-flask/lyrics-versions.ts › listLyricsVersions): three
+ * versions, the newest the default and complete, an auto-fix with gaps, and the original with no timing, so every
+ * kind of row the page draws shows. The backend is never asked
+ */
+export const versionsSession = async (page: Page) => {
+  await adminSession(page)
+  const now = Date.now()
+  const versions = [
+    {
+      created_at: new Date(now - 30 * DAY).toISOString(),
+      note: 'the lyrics shown before this change',
+      source: 'before versions',
+      summary: coverage(null, 1),
+      version: 1,
+    },
+    {
+      created_at: new Date(now - 9 * DAY).toISOString(),
+      note: 'text from lrclib; 38 of 42 lines verified',
+      source: 'audit-fix',
+      summary: coverage(0.95, 0.85),
+      version: 2,
+    },
+    {
+      created_at: new Date(now - 2 * HOUR).toISOString(),
+      note: 'text from lrclib; 42 of 42 lines verified',
+      source: 'lyrics-v2',
+      summary: coverage(1, 1),
+      version: 3,
+    },
+  ]
+  await page.route(/\/lyrics\/[^/?]+\/versions(?:\?|$)/u, async (route) => {
+    const videoId = /\/lyrics\/(?<id>[^/?]+)\//u.exec(route.request().url())
+      ?.groups?.id
+    await route.fulfill({
+      json: { active: 3, versions, video_id: videoId ?? '' },
+    })
+  })
+}
