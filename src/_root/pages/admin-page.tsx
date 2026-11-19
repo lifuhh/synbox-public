@@ -242,7 +242,7 @@ const GenerationPanel = () => {
   const { isPending, mutate: setEnabled } = useSetGenerationEnabled()
   const [confirming, setConfirming] = useState(false)
   if (data === undefined) {
-    return <Skeleton shape='card' className='h-13 w-full sm:h-20' />
+    return <Skeleton shape='card' className='h-12 w-full sm:h-20' />
   }
   const { autoPause, generationEnabled, limits } = data
   const status = (
@@ -757,7 +757,7 @@ const SkeletonRows = ({ cells, pitch }: { cells: number; pitch: string }) =>
     <tr key={row} aria-hidden className={cn('border-t border-border', pitch)}>
       <td className='pr-4'>
         <Skeleton className='h-3.5 w-2/3' />
-        <Skeleton className='mt-2 h-3 w-2/5' />
+        <Skeleton className='mt-2 h-3 w-1/3' />
       </td>
       {Array.from({ length: cells }, (_cell, cell) => (
         <td key={cell} className='px-4'>
@@ -779,7 +779,7 @@ const SkeletonList = ({
     {Array.from({ length: rows }, (_, row) => (
       <li
         key={row}
-        className='flex flex-col gap-2.5 border-t border-border py-3.5'>
+        className='flex flex-col gap-2.5 border-t border-border py-3'>
         <Skeleton className='h-4 w-1/2' />
         <Skeleton className='h-3.5 w-5/6' />
         <Skeleton className='h-3 w-1/3' />
@@ -1550,15 +1550,7 @@ const StatePicker = <T extends string>({
               : 'text-muted-foreground hover:text-foreground'
           )}>
           {option.name}
-          {n !== null && (
-            <span
-              className={cn(
-                'ml-2 tabular-nums',
-                checked ? 'text-background/70' : 'text-muted-foreground'
-              )}>
-              {n}
-            </span>
-          )}
+          {n !== null && <span className='ml-2 tabular-nums'>{n}</span>}
         </button>
       )
     })}
@@ -2546,14 +2538,12 @@ const tabOf = (value: string | null): Tab => {
   return value !== null && INBOX_ALIASES.has(value) ? 'inbox' : 'songs'
 }
 
-// What waits on the admin, after a tab's name, muted as a list state's count; none at 0 or while it loads
+// What waits on the admin, after a tab's name in its ink, as a list state's count; none at 0 or while it loads
 const hasWaiting = (n: number | null): n is number => n !== null && n > 0
 
 const TabCount = ({ n }: { n: number | null }) =>
   hasWaiting(n) ? (
-    <span
-      aria-hidden
-      className='ml-2 text-muted-foreground tabular-nums group-data-[state=active]:text-background/70'>
+    <span aria-hidden className='ml-2 tabular-nums'>
       {n}
     </span>
   ) : null
@@ -2632,7 +2622,7 @@ const AdminTabs = () => {
           <TabsTrigger
             value='reports'
             compact
-            className='group h-full'
+            className='h-full'
             aria-describedby={
               hasWaiting(reportsWaiting) ? `${countId}-reports` : undefined
             }>
@@ -2654,7 +2644,7 @@ const AdminTabs = () => {
           <TabsTrigger
             value='inbox'
             compact
-            className='group h-full'
+            className='h-full'
             aria-describedby={
               hasWaiting(inboxWaiting) ? `${countId}-inbox` : undefined
             }>
