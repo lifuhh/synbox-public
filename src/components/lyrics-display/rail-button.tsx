@@ -23,9 +23,11 @@ export const STAGE_DISC =
 // it instead of to its side
 export const RailInline = createContext(false)
 
-// A toggle that is on: a lighter neutral disc at full ink, inline and on the stage alike. Not magenta: the toggles
-// start on, and the brand colour is kept for the seek bar and the karaoke fill
-const PRESSED = 'bg-toggle-on text-foreground hover:bg-toggle-on-hover'
+// A toggle that is on: a lighter neutral disc at full ink with a 1px edge that holds 3:1 on the page, inline and on
+// the stage alike. Not magenta: the toggles start on, and the brand colour is kept for the seek bar and the karaoke
+// fill
+const PRESSED =
+  'bg-toggle-on text-foreground ring-1 ring-toggle-on-edge ring-inset hover:bg-toggle-on-hover'
 
 // Floating on the stage, a dark glass disc of its own, as the stage's centre and Previous/Next buttons are (no
 // panel behind the rail: owner, 2026-10-25). Inline under the video, a round button of its own, spaced from the

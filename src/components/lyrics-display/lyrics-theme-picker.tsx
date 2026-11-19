@@ -101,15 +101,27 @@ const ThemeSwatch = ({
   )
 }
 
+// Inline (the wide watch page, the only one with this button there), the panel opens beside the row, down from its
+// top, out over the side column, so it never covers the lyric line it styles; the row's other panels keep opening
+// above it. It names the row (`data-menu-anchor`), which the layout audit measures it against (detachedMenus).
+// Elsewhere it opens from the rail, as every rail panel does
+const placement = (inline: boolean, portrait: boolean, anchorId: string) =>
+  inline
+    ? ({ align: 'start', 'data-menu-anchor': anchorId, side: 'right' } as const)
+    : ({ align: 'center', side: railMenuSide(false, portrait) } as const)
+
 // A discrete pick (a preset colour) applies and closes, like a menu. Size and the custom hue
 // are adjusted by dragging and previewed live, so those keep the panel open until Done, Escape or a click
 // outside. The panel centers on the rail (`anchorRef`) rather than on its button. With a mouse, resting on
 // the button peeks the panel open (`peek`), and the panel stays while the pointer is on either
 export const LyricsThemePicker = ({
   anchorRef,
+  anchorId,
   peek,
 }: {
   anchorRef: RefObject<HTMLElement | null>
+  // The rail's id, named on the panel for the layout audit when it opens beside the rail rather than its button
+  anchorId: string
   peek: {
     enter: (fromButton: boolean) => void
     leave: (fromButton: boolean) => void
@@ -122,11 +134,13 @@ export const LyricsThemePicker = ({
   // Focus moves in, and back to the button on close, only for a panel opened from the keyboard; after a
   // hover or a click it would pop the button's tooltip and hold the player's UI open
   const fromKeyboardRef = useRef(false)
+  const place = placement(inline, portrait, anchorId)
+  const { side } = place
   const {
     measure,
     offset: menuOffset,
     triggerRef,
-  } = useMenuOffset<HTMLButtonElement>(railMenuSide(inline, portrait))
+  } = useMenuOffset<HTMLButtonElement>(side)
   // Off the inline row the panel opens from the rail itself, upright 8px off, floating over the stage MENU_GAP
   const floatingOffset = portrait ? 8 : MENU_GAP
   // Measured whenever the panel opens, from its button or from a click on the lyrics
@@ -370,9 +384,9 @@ export const LyricsThemePicker = ({
 
       <PopoverContent
         data-player-chrome
-        side={railMenuSide(inline, portrait)}
-        // Inline, the rail's edge is the button's, so the panel opens MENU_GAP from what the button draws, as the
-        // player's other menus (src/lib/menu-offset.ts)
+        {...place}
+        // Inline, the row's last button is a disc as this one is, so the panel opens MENU_GAP from what the buttons
+        // draw, as the player's other menus (src/lib/menu-offset.ts)
         sideOffset={inline ? menuOffset : floatingOffset}
         collisionPadding={8}
         // Follows the rail as it slides in, when a click on the lyrics opens both at once

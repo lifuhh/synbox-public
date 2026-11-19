@@ -29,25 +29,27 @@ const LOOKS: Record<
   SliderLook,
   { track: string; range: string; thumb: string }
 > = {
+  // On a panel's surface, light or dark (the reader's paper sets --color-track for its own)
   block: {
     range: 'bg-primary',
     thumb:
       'size-4 bg-foreground shadow-sm transition-transform active:scale-110 touch:size-5',
     track:
-      "data-[orientation='horizontal']:h-1 data-[orientation='horizontal']:w-full",
+      "bg-track data-[orientation='horizontal']:h-1 data-[orientation='horizontal']:w-full",
   },
+  // Over the video
   seek: {
     range: 'bg-primary',
     thumb:
       'size-3 bg-primary opacity-0 transition-opacity duration-150 group-hover/slider:opacity-100 group-active/slider:opacity-100 focus-visible:opacity-100 touch:size-3.5 touch:opacity-100',
     track:
-      "shadow-track-edge transition-[height] duration-150 data-[orientation='horizontal']:h-0.75 data-[orientation='horizontal']:w-full group-hover/slider:data-[orientation='horizontal']:h-1.25 touch:data-[orientation='horizontal']:h-1",
+      "bg-white/25 shadow-track-edge transition-[height] duration-150 data-[orientation='horizontal']:h-0.75 data-[orientation='horizontal']:w-full group-hover/slider:data-[orientation='horizontal']:h-1.25 touch:data-[orientation='horizontal']:h-1",
   },
   volume: {
     range: 'bg-white',
     thumb: 'size-3 bg-white',
     track:
-      "data-[orientation='horizontal']:h-0.75 data-[orientation='horizontal']:w-full",
+      "bg-white/25 data-[orientation='horizontal']:h-0.75 data-[orientation='horizontal']:w-full",
   },
 }
 
@@ -116,7 +118,7 @@ const SliderRender: React.ForwardRefRenderFunction<
       {...props}>
       <SliderPrimitive.Track
         className={cn(
-          'relative grow overflow-hidden rounded-full bg-white/25',
+          'relative grow overflow-hidden rounded-full',
           LOOKS[look].track,
           "data-[orientation='vertical']:h-full data-[orientation='vertical']:w-2"
         )}>
