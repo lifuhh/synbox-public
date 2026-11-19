@@ -29,6 +29,7 @@ import { useGallerySongs } from '@/lib/react-query/queries-and-mutations'
 import { QUERY_KEYS } from '@/lib/react-query/query-keys'
 import { MAX_RECOMMENDATIONS, toRecommendation } from '@/lib/recommendations'
 import type { Recommendation } from '@/lib/recommendations'
+import { fold } from '@/lib/text-search'
 import { getYoutubeVideoInfo } from '@/lib/youtube/api'
 import { extractVideoId } from '@/utils'
 
@@ -37,7 +38,6 @@ const thumbnailOf = (videoId: string) =>
   `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`
 
 const LIBRARY_RESULTS = 8
-const fold = (text: string) => text.normalize('NFKC').toLowerCase()
 
 // Songs from our own library, which all have their lyrics, found by words of the title or the channel in any
 // order; one press adds a song to the end of the list

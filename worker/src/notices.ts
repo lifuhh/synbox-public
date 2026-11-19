@@ -35,16 +35,18 @@ const recentRows = async (db: D1Database, adminId: string) => {
            coalesce(u."name", '') as "name", null as "videoId", m."subject" as "subject"
          from "contactMessage" m
          left join "user" u on m."sender" like 'u:%' and u."id" = substr(m."sender", 3)
+         where m."deletedAt" is null
          union all
          select 'report', r."id", r."createdAt", coalesce(u."name", ''), r."videoId", null
          from "report" r left join "user" u on u."id" = r."userId"
-         where r."userId" is not ?2
+         where r."userId" is not ?2 and r."deletedAt" is null
          union all
          select 'request', cast(q."id" as text), q."createdAt", coalesce(u."name", ''), null, null
          from "quotaRequest" q left join "user" u on u."id" = q."userId"
          union all
          select 'feedback', cast(f."id" as text), f."createdAt", coalesce(u."name", ''), null, f."subject"
          from "feedback" f left join "user" u on u."id" = f."userId"
+         where f."deletedAt" is null
        ) order by "at" desc limit ?1`
     )
     .bind(SCAN, adminId)

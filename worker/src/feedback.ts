@@ -150,6 +150,7 @@ export const listFeedback = async (db: D1Database) => {
       `select f."id", f."createdAt", f."subject", f."message", f."resolvedAt", f."droppedAt",
          f."userId" is null as "anonymous", u."name", u."email"
        from "feedback" f left join "user" u on u."id" = f."userId"
+       where f."deletedAt" is null
        order by (f."resolvedAt" is not null or f."droppedAt" is not null), f."createdAt" desc limit 200`
     )
     .all()
@@ -170,7 +171,7 @@ export const changeFeedback = async (
     .prepare(
       `update "feedback" set "resolvedAt" = case when ?3 = 'resolve' then ?2 end,
          "droppedAt" = case when ?3 = 'drop' then ?2 end, "seenAt" = null, "dismissedAt" = null
-       where "id" = ?1`
+       where "id" = ?1 and "deletedAt" is null`
     )
     .bind(id, now, change)
     .run()
@@ -182,7 +183,8 @@ export const changeFeedback = async (
 const RESOLVED_MAX = 50
 const READ_DAYS = 3
 
-const RESOLVED = `"userId" = ?1 and "resolvedAt" is not null`
+// A deleted one (migration 0033) is gone from its sender's notifications too
+const RESOLVED = `"userId" = ?1 and "resolvedAt" is not null and "deletedAt" is null`
 
 // The caller's resolved feedback not dismissed, newest first
 export const listResolved = async (
