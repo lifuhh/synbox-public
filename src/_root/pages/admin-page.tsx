@@ -5,11 +5,12 @@ import {
   ChevronDownIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  CircleAlertIcon,
   EllipsisIcon,
   Trash2Icon,
   Undo2Icon,
 } from 'lucide-react'
-import { useState } from 'react'
+import { useCallback, useId, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Link, useSearchParams } from 'react-router'
 
@@ -44,6 +45,7 @@ import { Select } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useToast } from '@/components/ui/use-toast'
+import { useScrollEdges } from '@/hooks/use-scroll-edges'
 import { wheelSideways } from '@/hooks/wheel-sideways'
 import {
   AdminOutdatedError,
@@ -240,45 +242,71 @@ const GenerationPanel = () => {
   const { isPending, mutate: setEnabled } = useSetGenerationEnabled()
   const [confirming, setConfirming] = useState(false)
   if (data === undefined) {
-    return <Skeleton className='h-20 w-full' />
+    return <Skeleton shape='card' className='h-13 w-full sm:h-20' />
   }
   const { autoPause, generationEnabled, limits } = data
+  const status = (
+    <span className='flex items-center gap-2'>
+      <span
+        aria-hidden
+        className={cn(
+          'size-2 shrink-0 rounded-full',
+          generationEnabled ? 'bg-success' : 'bg-warning'
+        )}
+      />
+      <span>
+        <GenerationStatus enabled={generationEnabled} autoPause={autoPause} />
+      </span>
+    </span>
+  )
+  const toggle = () => {
+    if (generationEnabled) {
+      setConfirming(true)
+    } else {
+      setEnabled(true)
+    }
+  }
+  const label = generationEnabled ? 'Pause Generation' : 'Resume Generation'
   return (
-    <section className='flex flex-wrap items-center gap-x-10 gap-y-4 rounded-xl bg-card/60 p-4'>
-      <Stat label='Generation'>
-        <span className='flex items-center gap-2'>
-          <span
-            aria-hidden
-            className={cn(
-              'size-2 shrink-0 rounded-full',
-              generationEnabled ? 'bg-success' : 'bg-warning'
-            )}
-          />
-          <span>
-            <GenerationStatus
-              enabled={generationEnabled}
-              autoPause={autoPause}
-            />
-          </span>
+    <section className='flex items-center gap-x-10 gap-y-4 rounded-xl bg-card/60 p-4 max-sm:gap-x-3 max-sm:py-2'>
+      {/* A phone gets the state and limits on one line, so the lists start on the first screen */}
+      <div className='flex min-w-0 flex-1 flex-wrap items-center gap-x-1.5 text-sm text-muted-foreground tabular-nums sm:hidden'>
+        <span className='font-medium text-foreground'>{status}</span>
+        <span className='whitespace-nowrap'>
+          · {limits.user} a day each
+          {limits.site === undefined ? null : ` · ${limits.site} site-wide`}
         </span>
-      </Stat>
-      <Stat label='Songs a Day per Account'>{limits.user}</Stat>
-      {limits.site === undefined ? null : (
-        <Stat label='Songs a Day Site-Wide'>{limits.site}</Stat>
-      )}
+      </div>
+      <div className='hidden flex-wrap items-center gap-x-10 gap-y-4 sm:flex'>
+        <Stat label='Generation'>{status}</Stat>
+        <Stat label='Songs a Day per Account'>{limits.user}</Stat>
+        {limits.site === undefined ? null : (
+          <Stat label='Songs a Day Site-Wide'>{limits.site}</Stat>
+        )}
+      </div>
+      {/* Resume is the view's one main action while generation is paused; Pause stays quiet, more so on a phone */}
       <Button
-        className='w-full sm:ml-auto sm:w-auto'
+        className={cn(
+          'shrink-0 sm:ml-auto',
+          generationEnabled && 'max-sm:hidden'
+        )}
         variant={generationEnabled ? 'outline' : 'default'}
         disabled={isPending}
-        onClick={() => {
-          if (generationEnabled) {
-            setConfirming(true)
-          } else {
-            setEnabled(true)
-          }
-        }}>
-        {generationEnabled ? 'Pause Generation' : 'Resume Generation'}
+        onClick={toggle}>
+        {label}
       </Button>
+      {/* Beside "On", Pause says what it pauses */}
+      {generationEnabled && (
+        <Button
+          className='shrink-0 sm:hidden'
+          variant='quiet'
+          size='text'
+          aria-label={label}
+          disabled={isPending}
+          onClick={toggle}>
+          Pause
+        </Button>
+      )}
       <AlertDialog open={confirming} onOpenChange={setConfirming}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -311,8 +339,17 @@ const effectiveLimit = (user: AdminUser, defaultLimit: number) => {
   return user.dailyLimit === 'default' ? defaultLimit : user.dailyLimit
 }
 
-// Songs in the last 24 hours against the limit, as a count and a thin bar
-const Usage = ({ used, limit }: { used: number; limit: number | null }) => {
+// Songs in the last 24 hours against the limit, as a count and a thin grey bar, amber once the limit is reached.
+// A table's figures line up on the right edge (end), a card's on its left
+const Usage = ({
+  used,
+  limit,
+  end = false,
+}: {
+  used: number
+  limit: number | null
+  end?: boolean
+}) => {
   if (limit === null) {
     return <span className='tabular-nums'>{used}</span>
   }
@@ -321,7 +358,7 @@ const Usage = ({ used, limit }: { used: number; limit: number | null }) => {
     '--fill': `${limit === 0 ? 100 : Math.min(100, (used / limit) * 100)}%`,
   }
   return (
-    <div className='flex flex-col gap-1.5'>
+    <div className={cn('flex flex-col gap-1.5', end && 'items-end')}>
       <span className='tabular-nums'>
         <span className={cn(full ? 'text-warning' : 'text-foreground')}>
           {used}
@@ -332,7 +369,7 @@ const Usage = ({ used, limit }: { used: number; limit: number | null }) => {
         <span
           className={cn(
             'block h-full w-(--fill) rounded-full',
-            full ? 'bg-warning' : 'bg-primary'
+            full ? 'bg-warning' : 'bg-foreground/50'
           )}
           style={fill}
         />
@@ -579,10 +616,15 @@ const Account = ({ user, isSelf }: AccountProps) => (
 )
 
 // A blocked person can't generate at all, so their usage is shown without a limit to measure against
-const AccountUsage = ({ user, defaultLimit }: AccountProps) => (
+const AccountUsage = ({
+  user,
+  defaultLimit,
+  end,
+}: AccountProps & { end?: boolean }) => (
   <Usage
     used={user.songsLastDay}
     limit={isBlocked(user) ? null : effectiveLimit(user, defaultLimit)}
+    end={end}
   />
 )
 
@@ -598,29 +640,33 @@ const AccountActions = ({ user, isSelf }: AccountProps) =>
     <RowActions user={user} blocked={isBlocked(user)} />
   )
 
-// Counted plays (every visit to a song), with the last one under the count
-const Plays = ({ user }: { user: AdminUser }) => (
-  <div className='flex flex-col'>
-    <span className='tabular-nums'>{user.plays}</span>
-    <span className='text-xs text-muted-foreground'>
-      <When value={user.lastPlayAt} />
+// Counted plays (every visit to a song); when the last one was is on hover, Last Active says nearly the same
+const Plays = ({ user }: { user: AdminUser }) => {
+  const last = toDate(user.lastPlayAt)
+  return (
+    <span
+      className='tabular-nums'
+      title={
+        last === null ? 'Never played' : `Last played ${fullDate.format(last)}`
+      }>
+      {user.plays}
     </span>
-  </div>
-)
+  )
+}
 
 const UserRow = (props: AccountProps) => (
   <tr className='h-16 border-t border-border align-middle'>
     <th scope='row' className='pr-4 text-left font-normal'>
       <Account {...props} />
     </th>
-    <td className='px-4 text-muted-foreground'>
+    <td className='truncate px-4 text-muted-foreground'>
       <When value={props.user.lastActiveAt} />
     </td>
-    <td className='px-4'>
+    <td className='px-4 text-right'>
       <Plays user={props.user} />
     </td>
-    <td className='px-4'>
-      <AccountUsage {...props} />
+    <td className='px-4 text-right'>
+      <AccountUsage {...props} end />
     </td>
     <td className='px-4 text-right tabular-nums'>{props.user.songsTotal}</td>
     <td className='px-4'>
@@ -659,24 +705,88 @@ const UserCard = (props: AccountProps) => (
   </li>
 )
 
-const LoadError = ({ error }: { error: Error }) =>
-  error instanceof AdminOutdatedError ? (
-    <p className='flex items-center gap-3 text-sm text-error'>
-      Page Out of Date
+// A failed read, inside the block that failed: what failed and a way out. The Worker's own words are on hover. A
+// page older than the Worker's answers reloads; a Worker without the route (404) has nothing to retry
+const LoadError = ({
+  error,
+  what,
+  onRetry,
+}: {
+  error: Error
+  what: string
+  onRetry: () => void
+}) => {
+  if (error.message.includes('404')) {
+    return (
+      <p className='py-1.5 text-sm text-muted-foreground'>
+        {what} not available yet
+      </p>
+    )
+  }
+  const outdated = error instanceof AdminOutdatedError
+  return (
+    <p
+      role='alert'
+      className='flex items-center gap-2 text-sm text-muted-foreground'
+      title={error.message}>
+      <CircleAlertIcon aria-hidden className='size-4 shrink-0 text-error' />
+      {outdated ? 'Page out of date' : `Couldn't load ${what.toLowerCase()}`}
       <Button
+        variant='quiet'
+        size='text'
         onClick={() => {
-          if (!applyWaitingUpdate()) {
+          if (!outdated) {
+            onRetry()
+          } else if (!applyWaitingUpdate()) {
             window.location.reload()
           }
-        }}
-        size='sm'
-        variant='outline'>
-        Reload
+        }}>
+        {outdated ? 'Reload' : 'Retry'}
       </Button>
     </p>
-  ) : (
-    <p className='text-sm text-error'>{error.message}</p>
   )
+}
+
+const LOADING_ROWS = 8
+
+// A table's rows while it loads, at the rows' own pitch: the identity's two lines and each value a grey bar, so
+// the header shows at once and nothing moves when the data lands. The last column holds an action, no value, and
+// is left empty
+const SkeletonRows = ({ cells, pitch }: { cells: number; pitch: string }) =>
+  Array.from({ length: LOADING_ROWS }, (_row, row) => (
+    <tr key={row} aria-hidden className={cn('border-t border-border', pitch)}>
+      <td className='pr-4'>
+        <Skeleton className='h-3.5 w-2/3' />
+        <Skeleton className='mt-2 h-3 w-2/5' />
+      </td>
+      {Array.from({ length: cells }, (_cell, cell) => (
+        <td key={cell} className='px-4'>
+          <Skeleton className='h-3.5 w-3/5' />
+        </td>
+      ))}
+    </tr>
+  ))
+
+// A list's rows while it loads: a title, a line of text and the meta line under it
+const SkeletonList = ({
+  rows = 4,
+  className,
+}: {
+  rows?: number
+  className?: string
+}) => (
+  <ul aria-hidden className={className}>
+    {Array.from({ length: rows }, (_, row) => (
+      <li
+        key={row}
+        className='flex flex-col gap-2.5 border-t border-border py-3.5'>
+        <Skeleton className='h-4 w-1/2' />
+        <Skeleton className='h-3.5 w-5/6' />
+        <Skeleton className='h-3 w-1/3' />
+      </li>
+    ))}
+  </ul>
+)
 
 // A list's search, in the address as `q` beside `tab`, so a reload or a shared link keeps it. Another tab starts
 // without one
@@ -725,15 +835,64 @@ const useSongTitles = (searching: boolean) =>
   useQuery({ ...librarySongs, enabled: searching, select: titleOf }).data ??
   new Map<string, string>()
 
+// Fixed columns, so every row lines up whatever its content; the account keeps over a third of the width. Under
+// lg the six columns don't fit, and each account is a card
+const UsersTableFrame = ({ children }: { children: ReactNode }) => (
+  <table className='hidden w-full table-fixed text-left text-sm lg:table'>
+    <colgroup>
+      <col />
+      <col className='w-36' />
+      <col className='w-20' />
+      <col className='w-28' />
+      <col className='w-28' />
+      <col className='w-36' />
+      <col className='w-14' />
+    </colgroup>
+    <thead className='text-xs text-muted-foreground'>
+      <tr>
+        <th className='pr-4 pb-2 font-medium'>Account</th>
+        <th className='px-4 pb-2 font-medium'>Last Active</th>
+        <th className='px-4 pb-2 text-right font-medium'>Plays</th>
+        <th className='px-4 pb-2 text-right font-medium whitespace-nowrap'>
+          Last 24 Hours
+        </th>
+        <th className='px-4 pb-2 text-right font-medium whitespace-nowrap'>
+          Total Songs
+        </th>
+        <th className='px-4 pb-2 font-medium'>Daily Limit</th>
+        <th className='pb-2 pl-2 font-medium'>
+          <span className='sr-only'>Actions</span>
+        </th>
+      </tr>
+    </thead>
+    <tbody>{children}</tbody>
+  </table>
+)
+
 const UsersTable = ({ query }: { query: string }) => {
-  const { data: users, error } = useAdminUsers()
+  const { data: users, error, refetch } = useAdminUsers()
   const { data: settings } = useAdminSettings()
   const { data: me } = useMe()
   if (error !== null) {
-    return <LoadError error={error} />
+    return (
+      <LoadError
+        error={error}
+        what='Accounts'
+        onRetry={() => {
+          void refetch()
+        }}
+      />
+    )
   }
   if (users === undefined || settings === undefined) {
-    return <Skeleton className='h-40 w-full' />
+    return (
+      <>
+        <SkeletonList rows={LOADING_ROWS} className='lg:hidden' />
+        <UsersTableFrame>
+          <SkeletonRows cells={5} pitch='h-16' />
+        </UsersTableFrame>
+      </>
+    )
   }
   if (users.length === 0) {
     return (
@@ -755,43 +914,16 @@ const UsersTable = ({ query }: { query: string }) => {
   }))
   return (
     <>
-      <ul className='text-sm md:hidden'>
+      <ul className='text-sm lg:hidden'>
         {rows.map((row) => (
           <UserCard key={row.user.id} {...row} />
         ))}
       </ul>
-      {/* Fixed columns, so every row lines up whatever its content */}
-      <table className='hidden w-full table-fixed text-left text-sm md:table'>
-        <colgroup>
-          <col />
-          <col className='w-36' />
-          <col className='w-28' />
-          <col className='w-28' />
-          <col className='w-28' />
-          <col className='w-44' />
-          <col className='w-14' />
-        </colgroup>
-        <thead className='text-xs text-muted-foreground'>
-          <tr>
-            <th className='pr-4 pb-2 font-medium'>Account</th>
-            <th className='px-4 pb-2 font-medium'>Last Active</th>
-            <th className='px-4 pb-2 font-medium'>Plays</th>
-            <th className='px-4 pb-2 font-medium'>Last 24 Hours</th>
-            <th className='px-4 pb-2 text-right font-medium whitespace-nowrap'>
-              Total Songs
-            </th>
-            <th className='px-4 pb-2 font-medium'>Daily Limit</th>
-            <th className='pb-2 pl-2 font-medium'>
-              <span className='sr-only'>Actions</span>
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row) => (
-            <UserRow key={row.user.id} {...row} />
-          ))}
-        </tbody>
-      </table>
+      <UsersTableFrame>
+        {rows.map((row) => (
+          <UserRow key={row.user.id} {...row} />
+        ))}
+      </UsersTableFrame>
     </>
   )
 }
@@ -848,7 +980,9 @@ const StatusCell = ({ generation }: { generation: AdminGeneration }) => {
   const { label, percent, cause } = statusOf(generation)
   return (
     <>
-      <span className='block truncate'>{label}</span>
+      <span className='block truncate' title={label}>
+        {label}
+      </span>
       {percent !== undefined && (
         <span className='block text-xs text-muted-foreground tabular-nums'>
           {percent}%
@@ -865,15 +999,16 @@ const StatusCell = ({ generation }: { generation: AdminGeneration }) => {
   )
 }
 
+// Primary ink only where the operator looks: a song still running. A failure is red; Done and quiet ends are grey
 const statusClass = (generation: AdminGeneration) =>
   cn(
     generation.status === 'failed' &&
       (quietEnd(generation) === undefined
         ? 'text-error'
         : 'text-muted-foreground'),
-    generation.status === 'succeeded' && 'text-foreground',
+    generation.status === 'succeeded' && 'text-muted-foreground',
     (generation.status === 'reserved' || generation.status === 'running') &&
-      'text-muted-foreground tabular-nums'
+      'text-foreground tabular-nums'
   )
 
 const isGuest = (generation: Pick<AdminGeneration, 'guest'>) =>
@@ -927,7 +1062,9 @@ const SongRow = ({ generation }: { generation: AdminGeneration }) => (
         </span>
       )}
     </td>
-    <td className='px-4'>{KIND_LABELS[generation.kind]}</td>
+    <td className='truncate px-4 text-muted-foreground'>
+      {KIND_LABELS[generation.kind]}
+    </td>
     <td className={cn('px-4', statusClass(generation))}>
       <StatusCell generation={generation} />
     </td>
@@ -1006,15 +1143,57 @@ const SongsFilter = ({
 
 // The latest 200 songs generated since accounts arrived, everyone's or one requester's, newest first, a page at
 // a time
+// The song keeps over a third of the width; under lg the five columns don't fit, and each song is a card
+const SongsTableFrame = ({ children }: { children: ReactNode }) => (
+  <table className='hidden w-full table-fixed text-left text-sm lg:table'>
+    <colgroup>
+      <col />
+      <col className='w-40' />
+      <col className='w-28' />
+      <col className='w-44' />
+      <col className='w-32' />
+      <col className='w-12' />
+    </colgroup>
+    <thead className='text-xs text-muted-foreground'>
+      <tr>
+        <th className='pr-4 pb-2 font-medium'>Song</th>
+        <th className='px-4 pb-2 font-medium'>By</th>
+        <th className='px-4 pb-2 font-medium'>Kind</th>
+        <th className='px-4 pb-2 font-medium'>Status</th>
+        <th className='pb-2 pl-4 font-medium'>When</th>
+        <th className='pb-2 pl-2 font-medium'>
+          <span className='sr-only'>Recommend</span>
+        </th>
+      </tr>
+    </thead>
+    <tbody>{children}</tbody>
+  </table>
+)
+
 const SongsTable = ({ by, query }: { by: SongsBy; query: string }) => {
-  const { data: loaded, error } = useAdminGenerations(by)
+  const { data: loaded, error, refetch } = useAdminGenerations(by)
   const titles = useSongTitles(query.trim() !== '')
   const [page, setPage] = useState(0)
   if (error !== null) {
-    return <LoadError error={error} />
+    return (
+      <LoadError
+        error={error}
+        what='Songs'
+        onRetry={() => {
+          void refetch()
+        }}
+      />
+    )
   }
   if (loaded === undefined) {
-    return <Skeleton className='h-40 w-full' />
+    return (
+      <>
+        <SkeletonList rows={LOADING_ROWS} className='lg:hidden' />
+        <SongsTableFrame>
+          <SkeletonRows cells={4} pitch='h-14' />
+        </SongsTableFrame>
+      </>
+    )
   }
   if (loaded.length === 0) {
     return (
@@ -1041,38 +1220,16 @@ const SongsTable = ({ by, query }: { by: SongsBy; query: string }) => {
   const rows = generations.slice(first, first + SONGS_PER_PAGE)
   return (
     <>
-      <ul className='text-sm md:hidden'>
+      <ul className='text-sm lg:hidden'>
         {rows.map((generation) => (
           <SongCard key={generation.id} generation={generation} />
         ))}
       </ul>
-      <table className='hidden w-full table-fixed text-left text-sm md:table'>
-        <colgroup>
-          <col />
-          <col className='w-56' />
-          <col className='w-28' />
-          <col className='w-48' />
-          <col className='w-36' />
-          <col className='w-12' />
-        </colgroup>
-        <thead className='text-xs text-muted-foreground'>
-          <tr>
-            <th className='pr-4 pb-2 font-medium'>Song</th>
-            <th className='px-4 pb-2 font-medium'>By</th>
-            <th className='px-4 pb-2 font-medium'>Kind</th>
-            <th className='px-4 pb-2 font-medium'>Status</th>
-            <th className='pb-2 pl-4 font-medium'>When</th>
-            <th className='pb-2 pl-2 font-medium'>
-              <span className='sr-only'>Recommend</span>
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((generation) => (
-            <SongRow key={generation.id} generation={generation} />
-          ))}
-        </tbody>
-      </table>
+      <SongsTableFrame>
+        {rows.map((generation) => (
+          <SongRow key={generation.id} generation={generation} />
+        ))}
+      </SongsTableFrame>
       {pages > 1 && (
         <nav
           aria-label='Songs Pages'
@@ -1353,7 +1510,8 @@ const ReportItem = ({
   )
 }
 
-// One state of a list at a time (Reports), each with its count: segmented buttons in a radio group
+// One state of a list at a time (Reports, Inbox), each with its count (none while it loads): segmented buttons in a
+// radio group, drawn as the page's tabs one size down, so the console has one segmented control
 const StatePicker = <T extends string>({
   label,
   options,
@@ -1363,7 +1521,7 @@ const StatePicker = <T extends string>({
 }: {
   label: string
   options: readonly { id: T; name: string }[]
-  count: (id: T) => number
+  count: (id: T) => number | null
   value: T
   onChange: (id: T) => void
 }) => (
@@ -1371,29 +1529,39 @@ const StatePicker = <T extends string>({
     ref={wheelSideways}
     role='radiogroup'
     aria-label={label}
-    className='no-scrollbar inline-flex max-w-full gap-1 self-start overflow-x-auto rounded-lg bg-secondary p-1'>
-    {options.map((option) => (
-      <button
-        key={option.id}
-        type='button'
-        // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- segmented buttons in an ARIA radio group, like the lyrics style scope
-        role='radio'
-        aria-checked={value === option.id}
-        onClick={() => {
-          onChange(option.id)
-        }}
-        className={cn(
-          'h-7 shrink-0 rounded-md px-3 text-sm font-medium whitespace-nowrap transition-colors touch:h-9 touch:px-4',
-          value === option.id
-            ? 'bg-background text-foreground shadow-sm'
-            : 'text-muted-foreground hover:text-foreground'
-        )}>
-        {option.name}
-        <span className='ml-2 text-muted-foreground tabular-nums'>
-          {count(option.id)}
-        </span>
-      </button>
-    ))}
+    className='no-scrollbar inline-flex max-w-full gap-1 self-start overflow-x-auto rounded-full bg-muted p-1'>
+    {options.map((option) => {
+      const checked = value === option.id
+      const n = count(option.id)
+      return (
+        <button
+          key={option.id}
+          type='button'
+          // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- segmented buttons in an ARIA radio group, like the lyrics style scope
+          role='radio'
+          aria-checked={checked}
+          onClick={() => {
+            onChange(option.id)
+          }}
+          className={cn(
+            'h-7 shrink-0 rounded-full px-3 text-sm font-medium whitespace-nowrap transition-colors touch:h-9 touch:px-4',
+            checked
+              ? 'bg-foreground text-background'
+              : 'text-muted-foreground hover:text-foreground'
+          )}>
+          {option.name}
+          {n !== null && (
+            <span
+              className={cn(
+                'ml-2 tabular-nums',
+                checked ? 'text-background/70' : 'text-muted-foreground'
+              )}>
+              {n}
+            </span>
+          )}
+        </button>
+      )
+    })}
   </div>
 )
 
@@ -1452,17 +1620,36 @@ const REPORTS_LIMIT_MAX = 2000
 // show the newest 20, then 20 more a press, loading more from the Worker past the first 200
 const ReportsList = ({ query }: { query: string }) => {
   const [limit, setLimit] = useState(REPORTS_LIMIT)
-  const { data, error } = useAdminReports(limit)
+  const { data, error, refetch } = useAdminReports(limit)
   const [tab, setTab] = useState<ReportTab>('open')
   const [visible, setVisible] = useState(PAGE)
   const fixed = useFixedVersions(data?.reports ?? [])
   const searching = query.trim() !== ''
   const titles = useSongTitles(searching)
   if (error !== null) {
-    return <LoadError error={error} />
+    return (
+      <LoadError
+        error={error}
+        what='Reports'
+        onRetry={() => {
+          void refetch()
+        }}
+      />
+    )
   }
   if (data === undefined) {
-    return <Skeleton className='h-40 w-full' />
+    return (
+      <div className='flex flex-col gap-3'>
+        <StatePicker
+          label='Report State'
+          options={REPORT_TABS}
+          count={() => null}
+          value={tab}
+          onChange={setTab}
+        />
+        <SkeletonList />
+      </div>
+    )
   }
   const { reports, counts } = data
   if (reports.length === 0) {
@@ -1571,16 +1758,20 @@ const songsLink = (email: string) =>
 
 // Leads, not verdicts: a family shares a network and a fan can hit the limit on day one. Block from Accounts
 const SignalsPanel = () => {
-  const { data, error } = useAdminSignals()
+  const { data, error, refetch } = useAdminSignals()
   if (error !== null) {
-    return error.message.includes('404') ? (
-      <p className='text-sm text-error'>Needs the Worker update</p>
-    ) : (
-      <LoadError error={error} />
+    return (
+      <LoadError
+        error={error}
+        what='Signals'
+        onRetry={() => {
+          void refetch()
+        }}
+      />
     )
   }
   if (data === undefined) {
-    return <Skeleton className='h-40 w-full' />
+    return <SkeletonList />
   }
   if (data.accounts.length === 0 && data.networks.length === 0) {
     return (
@@ -1619,8 +1810,16 @@ const SignalsPanel = () => {
                 <p className='truncate text-xs text-muted-foreground'>
                   {account.songs} songs · {account.refusals} refused · joined{' '}
                   <When value={account.createdAt} />
-                  {account.client !== null &&
-                    ` · ${account.client === '' ? 'No browser name' : account.client}`}
+                  {account.client !== null && (
+                    <>
+                      {' · '}
+                      <span title={account.client || undefined}>
+                        {account.client === ''
+                          ? 'No browser name'
+                          : (clientLabel(account.client) ?? 'Unknown browser')}
+                      </span>
+                    </>
+                  )}
                 </p>
               </li>
             ))}
@@ -1678,10 +1877,23 @@ const EVENT_LABELS: Record<string, string> = {
   song_open: 'Song Opens',
 }
 
+// The tables start and end on the page's edges, as the other tabs' do: no padding outside the first and last cells
+const USAGE_CELL = 'px-3 py-2 first:pl-0 last:pr-0'
+
 const UsageCell = ({ children }: { children: number | string }) => (
-  <td className='px-3 py-2 text-right whitespace-nowrap tabular-nums'>
+  <td className={cn(USAGE_CELL, 'text-right whitespace-nowrap tabular-nums')}>
     {children}
   </td>
+)
+
+const UsageHead = ({ children }: { children: string }) => (
+  <th
+    className={cn(
+      USAGE_CELL,
+      'text-right font-medium whitespace-nowrap first:text-left'
+    )}>
+    {children}
+  </th>
 )
 
 // How the app is used: people active, what they open and press, and what the server records anyway
@@ -1700,16 +1912,20 @@ const SongName = ({ videoId }: { videoId: string }) => {
 }
 
 const UsagePanel = () => {
-  const { data, error } = useAdminUsage()
+  const { data, error, refetch } = useAdminUsage()
   if (error !== null) {
-    return error.message.includes('404') ? (
-      <p className='text-sm text-error'>Needs the Worker update</p>
-    ) : (
-      <LoadError error={error} />
+    return (
+      <LoadError
+        error={error}
+        what='Usage'
+        onRetry={() => {
+          void refetch()
+        }}
+      />
     )
   }
   if (data === undefined) {
-    return <Skeleton className='h-40 w-full' />
+    return <SkeletonList rows={LOADING_ROWS} />
   }
   return (
     <div className='flex flex-col gap-8 text-sm'>
@@ -1727,36 +1943,24 @@ const UsagePanel = () => {
           <table className='w-full min-w-xl border-collapse'>
             <thead className='text-xs text-muted-foreground'>
               <tr>
-                <th className='px-3 py-2 text-left font-medium whitespace-nowrap'>
-                  Day
-                </th>
-                <th className='px-3 py-2 text-right font-medium whitespace-nowrap'>
-                  People
-                </th>
-                <th className='px-3 py-2 text-right font-medium whitespace-nowrap'>
-                  Signed In
-                </th>
-                <th className='px-3 py-2 text-right font-medium whitespace-nowrap'>
-                  Song Opens
-                </th>
-                <th className='px-3 py-2 text-right font-medium whitespace-nowrap'>
-                  New Accounts
-                </th>
-                <th className='px-3 py-2 text-right font-medium whitespace-nowrap'>
-                  Generations
-                </th>
-                <th className='px-3 py-2 text-right font-medium whitespace-nowrap'>
-                  Failed
-                </th>
-                <th className='px-3 py-2 text-right font-medium whitespace-nowrap'>
-                  Reports
-                </th>
+                <UsageHead>Day</UsageHead>
+                <UsageHead>People</UsageHead>
+                <UsageHead>Signed In</UsageHead>
+                <UsageHead>Song Opens</UsageHead>
+                <UsageHead>New Accounts</UsageHead>
+                <UsageHead>Generations</UsageHead>
+                <UsageHead>Failed</UsageHead>
+                <UsageHead>Reports</UsageHead>
               </tr>
             </thead>
             <tbody>
               {data.days.map((day) => (
                 <tr key={day.day} className='border-t border-border'>
-                  <td className='px-3 py-2 text-left whitespace-nowrap tabular-nums'>
+                  <td
+                    className={cn(
+                      USAGE_CELL,
+                      'text-left whitespace-nowrap tabular-nums'
+                    )}>
                     {day.day}
                   </td>
                   <UsageCell>{day.active}</UsageCell>
@@ -1780,21 +1984,15 @@ const UsagePanel = () => {
           <table className='w-full border-collapse'>
             <thead className='text-xs text-muted-foreground'>
               <tr>
-                <th className='px-3 py-2 text-left font-medium whitespace-nowrap'>
-                  Event
-                </th>
-                <th className='px-3 py-2 text-right font-medium whitespace-nowrap'>
-                  Times
-                </th>
-                <th className='px-3 py-2 text-right font-medium whitespace-nowrap'>
-                  People
-                </th>
+                <UsageHead>Event</UsageHead>
+                <UsageHead>Times</UsageHead>
+                <UsageHead>People</UsageHead>
               </tr>
             </thead>
             <tbody>
               {data.events.map((event) => (
                 <tr key={event.name} className='border-t border-border'>
-                  <td className='px-3 py-2 text-left'>
+                  <td className={cn(USAGE_CELL, 'text-left')}>
                     {EVENT_LABELS[event.name] ?? event.name}
                   </td>
                   <UsageCell>{event.count}</UsageCell>
@@ -1816,7 +2014,7 @@ const UsagePanel = () => {
             {data.plays.map((play) => (
               <li
                 key={`${play.at}-${play.by}-${play.videoId}`}
-                className='flex items-center justify-between gap-3 border-t border-border px-3 py-2'>
+                className='flex items-center justify-between gap-3 border-t border-border py-2'>
                 <SongName videoId={play.videoId} />
                 <span className='shrink-0 text-muted-foreground'>
                   {play.by} · <When value={play.at} />
@@ -1834,7 +2032,7 @@ const UsagePanel = () => {
           {data.songs.map((song) => (
             <li
               key={song.videoId}
-              className='flex items-center justify-between gap-3 border-t border-border px-3 py-2'>
+              className='flex items-center justify-between gap-3 border-t border-border py-2'>
               <SongName videoId={song.videoId} />
               <span className='shrink-0 text-muted-foreground tabular-nums'>
                 {song.listens} listens
@@ -1855,29 +2053,61 @@ const messageFrom = (message: AdminMessage) =>
     ? 'Guest'
     : message.sender)
 
-// What an Inbox row is, above its title: the three kinds share one list
-const KindLabel = ({ kind }: { kind: 'Feedback' | 'Message' | 'Request' }) => (
-  <div className='flex'>
-    <Badge tone='neutral'>{kind}</Badge>
-  </div>
+// One Inbox row, the same for all three kinds: the title and when on top, what they wrote, then the kind, who, and
+// the row's status and actions in one trailing slot. Who wraps whole rather than giving way to the actions; they
+// drop under it when it's long. A settled row (dropped, resolved, decided) greys its text
+const InboxRow = ({
+  title,
+  at,
+  text,
+  settled,
+  meta,
+  actions,
+}: {
+  title: string
+  at: number
+  text: string
+  settled: boolean
+  meta: ReactNode
+  actions: ReactNode
+}) => (
+  <li className='flex flex-col gap-1.5 border-t border-border py-3 text-sm'>
+    <div className='flex items-baseline justify-between gap-3'>
+      <p className='min-w-0 font-semibold text-pretty text-foreground'>
+        {title}
+      </p>
+      <p className='shrink-0 text-xs text-muted-foreground'>
+        <When value={at} />
+      </p>
+    </div>
+    <p
+      className={cn(
+        'wrap-break-word whitespace-pre-wrap',
+        settled ? 'text-muted-foreground' : 'text-foreground'
+      )}>
+      {text}
+    </p>
+    <div className='flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5'>
+      <p className='min-w-0 text-xs text-pretty wrap-break-word text-muted-foreground'>
+        {meta}
+      </p>
+      <div className='ml-auto flex shrink-0 flex-wrap items-center justify-end gap-2'>
+        {actions}
+      </div>
+    </div>
+  </li>
 )
 
 // A Contact Me message (worker/src/contact.ts): it was also emailed, unless it says why not
 const MessageItem = ({ message }: { message: AdminMessage }) => (
-  <li className='flex flex-col gap-1.5 border-t border-border py-3 text-sm'>
-    <KindLabel kind='Message' />
-    <div className='flex flex-wrap items-baseline justify-between gap-x-3'>
-      <p className='font-semibold text-foreground'>{message.subject}</p>
-      <p className='text-xs text-muted-foreground'>
-        <When value={message.createdAt} />
-      </p>
-    </div>
-    <p className='wrap-break-word whitespace-pre-wrap text-foreground'>
-      {message.message}
-    </p>
-    {/* As a feedback's: who wraps whole, and Delete drops under it when it's long */}
-    <div className='flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5'>
-      <p className='min-w-0 text-xs wrap-break-word text-muted-foreground'>
+  <InboxRow
+    title={message.subject}
+    at={message.createdAt}
+    text={message.message}
+    settled={false}
+    meta={
+      <>
+        Message ·{' '}
         {message.replyTo === null ? (
           messageFrom(message)
         ) : (
@@ -1893,12 +2123,10 @@ const MessageItem = ({ message }: { message: AdminMessage }) => (
             · Not Emailed: {message.emailError}
           </span>
         )}
-      </p>
-      <div className='ml-auto flex shrink-0 items-center gap-2'>
-        <DeleteButton row={{ id: message.id, kind: 'message' }} />
-      </div>
-    </div>
-  </li>
+      </>
+    }
+    actions={<DeleteButton row={{ id: message.id, kind: 'message' }} />}
+  />
 )
 
 // Resolve tells a signed sender in the app; Drop tells nobody; Reopen undoes either, so none asks first
@@ -1922,7 +2150,7 @@ const FeedbackAction = ({ feedback }: { feedback: AdminFeedback }) => {
   }
   if (state !== 'open') {
     return (
-      <div className='ml-auto flex shrink-0 items-center gap-2'>
+      <>
         <span
           className={cn(
             'text-xs whitespace-nowrap',
@@ -1942,11 +2170,11 @@ const FeedbackAction = ({ feedback }: { feedback: AdminFeedback }) => {
           Reopen
         </Button>
         <DeleteButton row={{ id: feedback.id, kind: 'feedback' }} />
-      </div>
+      </>
     )
   }
   return (
-    <div className='ml-auto flex shrink-0 items-center gap-2'>
+    <>
       <Button
         size='row'
         variant='outline'
@@ -1969,7 +2197,7 @@ const FeedbackAction = ({ feedback }: { feedback: AdminFeedback }) => {
         <CheckIcon className='size-3.5' />
         Resolve
       </Button>
-    </div>
+    </>
   )
 }
 
@@ -1977,7 +2205,6 @@ const isAnonymous = (feedback: AdminFeedback) =>
   feedback.anonymous === 1 || feedback.anonymous === true
 
 const FeedbackItem = ({ feedback }: { feedback: AdminFeedback }) => {
-  const open = feedbackState(feedback) === 'open'
   let from = feedback.name ?? 'Deleted Account'
   if (isAnonymous(feedback)) {
     from = 'Anonymous'
@@ -1985,34 +2212,29 @@ const FeedbackItem = ({ feedback }: { feedback: AdminFeedback }) => {
     from = `${from} · ${feedback.email}`
   }
   return (
-    <li className='flex flex-col gap-1.5 border-t border-border py-3 text-sm'>
-      <KindLabel kind='Feedback' />
-      <p className='font-semibold text-pretty text-foreground'>
-        {feedback.subject}
-      </p>
-      <p
-        className={cn(
-          'wrap-break-word whitespace-pre-wrap',
-          open ? 'text-foreground' : 'text-muted-foreground'
-        )}>
-        {feedback.message}
-      </p>
-      {/* Who and when wraps whole rather than giving way to the actions; they drop under it when it's long */}
-      <div className='flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5'>
-        <p className='min-w-0 text-xs text-pretty wrap-break-word text-muted-foreground'>
-          {from} · <When value={feedback.createdAt} />
-        </p>
-        <FeedbackAction feedback={feedback} />
-      </div>
-    </li>
+    <InboxRow
+      title={feedback.subject}
+      at={feedback.createdAt}
+      text={feedback.message}
+      settled={feedbackState(feedback) !== 'open'}
+      meta={`Feedback · ${from}`}
+      actions={<FeedbackAction feedback={feedback} />}
+    />
   )
 }
 
-const REQUEST_STATUS = {
-  approved: 'Approved',
-  declined: 'Declined',
-  open: 'Waiting',
-} as const
+// A request's decision, where an open one has its buttons
+const RequestStatus = ({ request }: { request: AdminRequest }) =>
+  request.status === 'approved' ? (
+    <span className='text-xs whitespace-nowrap text-success'>
+      Approved
+      {request.granted !== null && ` · ${request.granted} a day`}
+    </span>
+  ) : (
+    <span className='text-xs whitespace-nowrap text-muted-foreground'>
+      Declined
+    </span>
+  )
 
 // One request: who asked, their note, what they have now. Approve asks for the songs a day first (10 to start,
 // editable later on Accounts); Decline is one press
@@ -2034,99 +2256,96 @@ const RequestRow = ({ request }: { request: AdminRequest }) => {
   } else if (typeof request.dailyLimit === 'number') {
     now = `${request.dailyLimit} a day`
   }
+  let actions: ReactNode = <RequestStatus request={request} />
+  if (request.status === 'open' && approving) {
+    actions = (
+      <form
+        className='flex flex-wrap items-center justify-end gap-2'
+        onSubmit={(event) => {
+          event.preventDefault()
+          if (valid) {
+            decide(
+              { dailyLimit: count, id: request.id },
+              failed('Could Not Approve')
+            )
+          }
+        }}>
+        <label
+          htmlFor={`songs-${request.id}`}
+          className='text-xs text-muted-foreground'>
+          Songs a Day
+        </label>
+        <Input
+          id={`songs-${request.id}`}
+          type='number'
+          inputMode='numeric'
+          min={1}
+          max={1000}
+          value={songs}
+          className='h-8 w-20'
+          onChange={(event) => {
+            setSongs(event.target.value)
+          }}
+        />
+        <Button
+          type='submit'
+          variant='tonal'
+          size='row'
+          disabled={!valid || isPending}
+          className={ROW_BUTTON}>
+          Approve
+        </Button>
+        <Button
+          type='button'
+          size='row'
+          variant='ghost'
+          className={ROW_BUTTON}
+          onClick={() => {
+            setApproving(false)
+          }}>
+          Cancel
+        </Button>
+      </form>
+    )
+  } else if (request.status === 'open') {
+    // Approve keeps the tonal pair: one per waiting request, never the view's solid main action
+    actions = (
+      <>
+        <Button
+          size='row'
+          variant='outline'
+          disabled={isPending}
+          className={ROW_BUTTON}
+          onClick={() => {
+            decide(
+              { dailyLimit: null, id: request.id },
+              failed('Could Not Decline')
+            )
+          }}>
+          Decline
+        </Button>
+        <Button
+          variant='tonal'
+          size='row'
+          disabled={isPending}
+          className={ROW_BUTTON}
+          onClick={() => {
+            setApproving(true)
+          }}>
+          Approve
+        </Button>
+      </>
+    )
+  }
   return (
-    <li className='flex flex-col gap-1.5 border-t border-border py-3 text-sm'>
-      <KindLabel kind='Request' />
-      <div className='flex flex-wrap items-baseline justify-between gap-x-3'>
-        <p className='font-semibold text-foreground'>{request.name}</p>
-        <p className='text-xs text-muted-foreground'>
-          {REQUEST_STATUS[request.status]}
-          {request.status === 'approved' &&
-            request.granted !== null &&
-            ` · ${request.granted} a day`}
-          {' · '}
-          <When value={request.createdAt} />
-        </p>
-      </div>
-      <p className='wrap-break-word whitespace-pre-wrap text-foreground'>
-        {request.note}
-      </p>
-      <p className='truncate text-xs text-muted-foreground'>
-        {request.email} · Now: {now}
-      </p>
-      {request.status === 'open' &&
-        (approving ? (
-          <form
-            className='flex flex-wrap items-center gap-2'
-            onSubmit={(event) => {
-              event.preventDefault()
-              if (valid) {
-                decide(
-                  { dailyLimit: count, id: request.id },
-                  failed('Could Not Approve')
-                )
-              }
-            }}>
-            <label
-              htmlFor={`songs-${request.id}`}
-              className='text-muted-foreground'>
-              Songs a Day
-            </label>
-            <Input
-              id={`songs-${request.id}`}
-              type='number'
-              inputMode='numeric'
-              min={1}
-              max={1000}
-              value={songs}
-              className='w-24'
-              onChange={(event) => {
-                setSongs(event.target.value)
-              }}
-            />
-            <Button
-              type='submit'
-              variant='tonal'
-              size='row'
-              disabled={!valid || isPending}>
-              Approve
-            </Button>
-            <Button
-              type='button'
-              size='row'
-              variant='ghost'
-              onClick={() => {
-                setApproving(false)
-              }}>
-              Cancel
-            </Button>
-          </form>
-        ) : (
-          <div className='flex gap-2'>
-            <Button
-              variant='tonal'
-              size='row'
-              disabled={isPending}
-              onClick={() => {
-                setApproving(true)
-              }}>
-              Approve
-            </Button>
-            <Button
-              size='row'
-              variant='outline'
-              disabled={isPending}
-              onClick={() => {
-                decide(
-                  { dailyLimit: null, id: request.id },
-                  failed('Could Not Decline')
-                )
-              }}>
-              Decline
-            </Button>
-          </div>
-        ))}
-    </li>
+    <InboxRow
+      title={request.name}
+      at={request.createdAt}
+      text={request.note}
+      settled={request.status !== 'open'}
+      meta={`Request · ${request.email} · Now: ${now}`}
+      actions={actions}
+    />
   )
 }
 
@@ -2138,75 +2357,144 @@ type InboxItem = { at: number; open: boolean; text: (string | null)[] } & (
   | { kind: 'request'; item: AdminRequest }
 )
 
+// How many Inbox items wait on the admin, for the Inbox tab and its Open count: feedback neither resolved nor
+// dropped, and requests not decided. Null until both lists load
+const useInboxWaiting = () => {
+  const { data: feedback } = useAdminFeedback()
+  const { data: requests } = useAdminRequests()
+  if (feedback === undefined || requests === undefined) {
+    return null
+  }
+  return (
+    feedback.feedback.filter((item) => feedbackState(item) === 'open').length +
+    requests.requests.filter((item) => item.status === 'open').length
+  )
+}
+
+// The three lists as one, each item with what search reads
+const inboxItems = (
+  feedback: { feedback: AdminFeedback[] } | undefined,
+  messages: { messages: AdminMessage[] } | undefined,
+  requests: { requests: AdminRequest[] } | undefined
+): InboxItem[] => [
+  ...(feedback?.feedback ?? []).map((item) => ({
+    at: item.createdAt,
+    item,
+    kind: 'feedback' as const,
+    open: feedbackState(item) === 'open',
+    text: [item.subject, item.message, item.name, item.email],
+  })),
+  ...(messages?.messages ?? []).map((item) => ({
+    at: item.createdAt,
+    item,
+    kind: 'message' as const,
+    open: false,
+    text: [
+      item.subject,
+      item.message,
+      item.replyTo,
+      item.accountName,
+      item.accountEmail,
+    ],
+  })),
+  ...(requests?.requests ?? []).map((item) => ({
+    at: item.createdAt,
+    item,
+    kind: 'request' as const,
+    open: item.status === 'open',
+    text: [item.note, item.name, item.email],
+  })),
+]
+
+type InboxTab = 'open' | 'all'
+
+const INBOX_TABS: { id: InboxTab; name: string }[] = [
+  { id: 'open', name: 'Open' },
+  { id: 'all', name: 'All' },
+]
+
 // Everything people sent: Send Feedback (worker/src/feedback.ts), Contact Me messages and requests for more songs
-// a day, each labelled with its kind: what waits on the admin first, then the rest, newest first, 20 at a time.
-// A source that fails says so above the rest
+// a day. Open lists what waits on the admin; All lists everything, what waits first, then the rest newest first,
+// 20 at a time. A message has nothing to decide, so it is only under All. The Inbox opens on Open, or on All when
+// nothing waits. A source that fails says so above the rest
 const InboxPanel = ({ query }: { query: string }) => {
   const feedback = useAdminFeedback()
   const messages = useAdminMessages()
   const requests = useAdminRequests()
   const [visible, setVisible] = useState(PAGE)
-  const sources = [feedback, messages, requests]
-  if (
-    sources.some((source) => source.data === undefined && source.error === null)
-  ) {
-    return <Skeleton className='h-40 w-full' />
-  }
-  const loaded: InboxItem[] = [
-    ...(feedback.data?.feedback ?? []).map((item) => ({
-      at: item.createdAt,
-      item,
-      kind: 'feedback' as const,
-      open: feedbackState(item) === 'open',
-      text: [item.subject, item.message, item.name, item.email],
-    })),
-    ...(messages.data?.messages ?? []).map((item) => ({
-      at: item.createdAt,
-      item,
-      kind: 'message' as const,
-      open: false,
-      text: [
-        item.subject,
-        item.message,
-        item.replyTo,
-        item.accountName,
-        item.accountEmail,
-      ],
-    })),
-    ...(requests.data?.requests ?? []).map((item) => ({
-      at: item.createdAt,
-      item,
-      kind: 'request' as const,
-      open: item.status === 'open',
-      text: [item.note, item.name, item.email],
-    })),
+  const [picked, setPicked] = useState<InboxTab | null>(null)
+  const sources = [
+    { source: feedback, what: 'Feedback' },
+    { source: messages, what: 'Messages' },
+    { source: requests, what: 'Requests' },
   ]
+  const pick = (next: InboxTab) => {
+    setPicked(next)
+    setVisible(PAGE)
+  }
+  if (
+    sources.some(
+      ({ source }) => source.data === undefined && source.error === null
+    )
+  ) {
+    return (
+      <div className='flex flex-col gap-3'>
+        <StatePicker
+          label='Inbox State'
+          options={INBOX_TABS}
+          count={() => null}
+          value={picked ?? 'open'}
+          onChange={pick}
+        />
+        <SkeletonList />
+      </div>
+    )
+  }
+  const loaded = inboxItems(feedback.data, messages.data, requests.data)
+  const tab = picked ?? (loaded.some((entry) => entry.open) ? 'open' : 'all')
+  if (picked === null) {
+    // Settled once, on the first load: resolving the last open item doesn't move the admin to All
+    setPicked(tab)
+  }
   const found = loaded
     .filter((entry) => matchesQuery(query, entry.text))
     .toSorted((a, b) => Number(b.open) - Number(a.open) || b.at - a.at)
-  const open = found.filter((entry) => entry.open).length
-  const items = found.slice(0, open + visible)
-  const errors = sources.flatMap((source) =>
-    source.error === null ? [] : [source.error]
-  )
+  const open = found.filter((entry) => entry.open)
+  const items = tab === 'open' ? open : found.slice(0, open.length + visible)
+  const inTab = tab === 'open' ? open.length : found.length
   let empty: ReactNode = null
-  if (items.length === 0 && errors.length === 0) {
+  if (
+    items.length === 0 &&
+    sources.every(({ source }) => source.error === null)
+  ) {
     empty =
-      loaded.length === 0 ? (
-        <p className='text-sm text-muted-foreground'>Nothing yet</p>
-      ) : (
+      query.trim() !== '' && loaded.length > 0 ? (
         <NoMatches />
+      ) : (
+        <p className='py-6 text-center text-sm text-muted-foreground'>
+          {tab === 'open' ? 'Nothing waiting' : 'Nothing yet'}
+        </p>
       )
   }
   return (
     <div className='flex flex-col gap-3'>
-      {errors.map((error) =>
-        error.message.includes('404') ? (
-          <p key={error.message} className='text-sm text-error'>
-            Needs the Worker update
-          </p>
-        ) : (
-          <LoadError key={error.message} error={error} />
+      <StatePicker
+        label='Inbox State'
+        options={INBOX_TABS}
+        count={(id) => (id === 'open' ? open.length : found.length)}
+        value={tab}
+        onChange={pick}
+      />
+      {sources.map(({ source, what }) =>
+        source.error === null ? null : (
+          <LoadError
+            key={what}
+            error={source.error}
+            what={what}
+            onRetry={() => {
+              void source.refetch()
+            }}
+          />
         )
       )}
       {empty ?? (
@@ -2226,7 +2514,7 @@ const InboxPanel = ({ query }: { query: string }) => {
           })}
         </ol>
       )}
-      {items.length < found.length && (
+      {items.length < inTab && (
         <ShowMore
           onClick={() => {
             setVisible(visible + PAGE)
@@ -2258,14 +2546,59 @@ const tabOf = (value: string | null): Tab => {
   return value !== null && INBOX_ALIASES.has(value) ? 'inbox' : 'songs'
 }
 
+// What waits on the admin, after a tab's name, muted as a list state's count; none at 0 or while it loads
+const hasWaiting = (n: number | null): n is number => n !== null && n > 0
+
+const TabCount = ({ n }: { n: number | null }) =>
+  hasWaiting(n) ? (
+    <span
+      aria-hidden
+      className='ml-2 text-muted-foreground tabular-nums group-data-[state=active]:text-background/70'>
+      {n}
+    </span>
+  ) : null
+
+// Reports waiting on the admin: open, and those the fixer handed over (Needs Review, with any fixed by hand that the
+// fixer has yet to close). The Worker's counts, from the list the Reports tab reads; an older Worker sends none, and
+// the loaded list is counted instead
+const useReportsWaiting = () => {
+  const { data } = useAdminReports()
+  if (data === undefined) {
+    return null
+  }
+  if (data.counts !== undefined) {
+    return data.counts.open + data.counts.review
+  }
+  return data.reports.filter((report) => {
+    const state = reportState(report)
+    return state === 'open' || state === 'review'
+  }).length
+}
+
 // One list at a time, each of which can run long. The tab and the Songs filter live in the address, so a
-// reload, a shared link or a requester's name (ByLink) lands on the same view
+// reload, a shared link or a requester's name (ByLink) lands on the same view. Reports and Inbox read their lists
+// with the page, so their tabs say what waits
 const AdminTabs = () => {
   const [params, setParams] = useSearchParams()
   const tabParam = params.get('tab')
   const tab = tabOf(tabParam)
   const by = params.get('user')
   const { query, setQuery } = useListQuery()
+  const reportsWaiting = useReportsWaiting()
+  const inboxWaiting = useInboxWaiting()
+  const countId = useId()
+  const edges = useScrollEdges()
+  const stripRef = useCallback(
+    (el: HTMLElement | null) => {
+      const unwatch = [edges(el), wheelSideways(el)]
+      return () => {
+        for (const stop of unwatch) {
+          stop?.()
+        }
+      }
+    },
+    [edges]
+  )
   const search = (label: string, placeholder: string) => (
     <SearchField
       label={label}
@@ -2288,33 +2621,54 @@ const AdminTabs = () => {
           show(value)
         }
       }}>
-      {/* Scrolls sideways on a phone too narrow for every tab */}
+      {/* Scrolls sideways on a phone too narrow for every tab, fading at an edge with more past it */}
       <div
-        ref={wheelSideways}
-        className='-mx-1 no-scrollbar overflow-x-auto px-1'>
-        <TabsList className='justify-start touch:h-13'>
-          <TabsTrigger value='songs' className='h-full'>
+        ref={stripRef}
+        className='-mx-1 no-scrollbar overflow-x-auto mask-fade-x px-1'>
+        <TabsList compact className='justify-start touch:h-13'>
+          <TabsTrigger value='songs' compact className='h-full'>
             Songs
           </TabsTrigger>
-          <TabsTrigger value='reports' className='h-full'>
+          <TabsTrigger
+            value='reports'
+            compact
+            className='group h-full'
+            aria-describedby={
+              hasWaiting(reportsWaiting) ? `${countId}-reports` : undefined
+            }>
             Reports
+            <TabCount n={reportsWaiting} />
           </TabsTrigger>
-          <TabsTrigger value='recommendations' className='h-full'>
+          <TabsTrigger value='recommendations' compact className='h-full'>
             Recommendations
           </TabsTrigger>
-          <TabsTrigger value='accounts' className='h-full'>
+          <TabsTrigger value='accounts' compact className='h-full'>
             Accounts
           </TabsTrigger>
-          <TabsTrigger value='signals' className='h-full'>
+          <TabsTrigger value='signals' compact className='h-full'>
             Signals
           </TabsTrigger>
-          <TabsTrigger value='usage' className='h-full'>
+          <TabsTrigger value='usage' compact className='h-full'>
             Usage
           </TabsTrigger>
-          <TabsTrigger value='inbox' className='h-full'>
+          <TabsTrigger
+            value='inbox'
+            compact
+            className='group h-full'
+            aria-describedby={
+              hasWaiting(inboxWaiting) ? `${countId}-inbox` : undefined
+            }>
             Inbox
+            <TabCount n={inboxWaiting} />
           </TabsTrigger>
         </TabsList>
+        {/* The counts are drawn hidden from the tabs' names (Reports stays Reports) and read as their descriptions */}
+        <span hidden id={`${countId}-reports`}>
+          {reportsWaiting} waiting
+        </span>
+        <span hidden id={`${countId}-inbox`}>
+          {inboxWaiting} waiting
+        </span>
       </div>
       <TabsContent value='songs' className='mt-4'>
         <div className='flex flex-col gap-3'>
@@ -2340,8 +2694,7 @@ const AdminTabs = () => {
       <TabsContent value='recommendations' className='mt-4'>
         <div className='flex flex-col gap-3'>
           <p className='text-sm text-muted-foreground'>
-            The landing page&apos;s carousel, shuffled for each visitor. The mic
-            marks songs that have karaoke lyrics
+            The landing page&apos;s carousel, shuffled for each visitor
           </p>
           <RecommendationsEditor />
         </div>

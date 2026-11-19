@@ -11,7 +11,7 @@
     "motion-hero-flight-*": "0 since 2026-10-27 (fix/hero-flight, the one continuous box). chore/motion-audit (#564) and chore/motion-input-timing (#578) landed with staging's own counts as ceilings (web: teleports 53-55, detachments 101-159, scale reversals 4; safari-portrait: 73-75, 93-248, 8; safari-landscape: 67-72, 97-156, 4) so the audit could merge before the fix. Not to be raised to let a jump through: fix the motion (src/components/topbar/search-dock.tsx). Overshoots, slants and settles (chore/motion-overshoot-slant, #584, landed over staging's spring: settles 2-4, slants up to 11, overshoots 2) are 0 since fix/hero-flight-decisive's ease-out.",
     "layout-home-*+field-generate.smallTargets": "1 from the start (2026-10-27): Home's field status line holds an inline text action (Sign In for 5 a Day) inside its sentence, WCAG 2.5.8's inline exception; its press area reaches 8px above and below the 17px line through ::after, which the box measurement does not see.",
     "layout-playlist-*": "Known findings from the first audit of a playlist page (2026-11-19, chore/lab-admin-playlist, which seeds a stored playlist so the route is audited at all), accepted so the audit can land as an evaluator-only PR; to be fixed in src/ and set back to 0. smallTargets: the All Playlists back link is 92x20 in every view, and Playlist Actions (the ... beside Shuffle) 20x36 on touch upright (pwa-portrait, safari-portrait). iconOffText: All Playlists' chevron 1.2-1.5px above its label's ink centre, every view (src/_root/pages/playlist-page.tsx).",
-    "layout-admin-*.zoomInputs": "Known finding from the first audit of /admin (2026-11-19, chore/lab-admin-playlist, which gives the lab an admin session): the Songs tab's By filter (a Select) is 14px on a phone, so iOS zooms into it on focus (pwa-portrait, pwa-landscape, safari-portrait, safari-narrow; src/_root/pages/admin-page.tsx › SongsFilter). Accepted so the audit can land as an evaluator-only PR; to be fixed in src/ and set back to 0."
+    "layout-admin-*.zoomInputs": "0 since 2026-11-19 (fix/polish-admin: Select is 16px on touch). Before: 1 from the first audit of /admin (chore/lab-admin-playlist), the Songs tab's By filter at 14px on a phone, accepted so the audit could land as an evaluator-only PR."
   },
   "size": {
     "initialJsKB": 354,
@@ -65,17 +65,5 @@
   "layout-playlist-safari-narrow": {
     "smallTargets": 1,
     "iconOffText": 1
-  },
-  "layout-admin-pwa-portrait": {
-    "zoomInputs": 1
-  },
-  "layout-admin-pwa-landscape": {
-    "zoomInputs": 1
-  },
-  "layout-admin-safari-portrait": {
-    "zoomInputs": 1
-  },
-  "layout-admin-safari-narrow": {
-    "zoomInputs": 1
   }
 }
