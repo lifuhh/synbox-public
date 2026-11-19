@@ -20,6 +20,9 @@
 
 Any UI or UX change (a screen, component, dialog, layout, copy, colour, icon, motion or interaction) runs the `better-interface` skill and the `better-*` skills it routes to, alongside poteto-mode: once before designing and once as a review before the PR (the owner's rule, 2026-10-26; they should never have to ask). A subagent given UI work is told so in its prompt. The alignment rules below are part of that review.
 
+- **Design rules:** read `DESIGN.md` before designing (type, colour, space, surfaces, icons, states, lists). Where they disagree, this file wins, then the `better-*` skills, then `DESIGN.md`.
+- **A second opinion:** `bun harness/taste.ts scan <page>` runs a third-party design checker over a page (`harness/README.md` › Taste). It sees desktop and phone-width Chromium at rest only, so it never overrides the layout audits in `check`. Its own headless, muted Chrome is the one browser not opened through `engines/browser.ts` › `open`.
+
 - **User-facing copy** (the owner's rule, 2026-10-27; it covers `src/`, the Worker's messages and `index.html`): write every line a user reads by the `pstack:unslop` skill, with the fewest words that work and nothing the control already says.
   - One-line UI text ends without a full stop: descriptions, hints, notes, placeholders, empty states, menu secondary lines, toasts, badges and errors, also when it holds two short sentences ("Too long. Songs can be 1 to 8 minutes"). A question mark stays only on a real question. Prose pages (About's FAQ answers, Privacy, Terms) keep normal punctuation.
   - Nothing that reads as machine-written: "seamless", "effortless", "dive in", "journey", "elevate", "empower", "unlock", "delve", "embark", "feel free to", "don't hesitate", "we'd love to hear", "whether you're…", "in today's…", cheering exclamation marks, em-dash flourishes, lists of three adjectives.

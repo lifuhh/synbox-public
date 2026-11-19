@@ -98,6 +98,31 @@ bun harness/views.ts /privacy --state search-button            # with an opened 
 
 Each view gets the same audit `check` runs (`probes/layout.ts` › `auditPage`, `pageAt`: it waits for the page as its route's audit does, `/` as home, and uses the same safe areas and installed emulation), and one line per view: `ok`, or the counts over 0 and the offending elements. It writes `.reports/YYYY-MM-DD-views-<slug>/index.html`, the screenshots side by side on a dark page (one row per view with `--compare`), prints its path, and exits 3 when a view has a finding. Without `--port`, the build is served the way `check` serves it, with the same replayed API data.
 
+## A second opinion on design: `taste.ts`
+
+```sh
+bun harness/taste.ts fetch                          # verify the shared copy of the checker; download it when missing
+bun harness/taste.ts scan                           # every page at 1440 and 390 wide: about 15 to 25 minutes
+bun harness/taste.ts scan player --width 390        # one page (by name, path or route), one width
+bun harness/taste.ts scan about --site http://localhost:8890   # a build already served (`bun harness/local-site.ts`)
+bun harness/taste.ts copy                           # the copy linter on About, What's New, Privacy, Terms and the shell
+bun harness/taste.ts compare origin/staging         # this checkout's newest scan against staging's: added, gone
+```
+
+**The checker** is upstream taste-skill's `scripts/consistency.mjs` (github.com/Leonxlnx/taste-skill, folder `skills/taste-skill`), pinned in `harness/taste/checks.json` › `checker` (version 2.5.1, by commit). One copy serves every repo on the machine, at `~/.agents/vendor/taste-skill-<version>/` with the commit in `.pin`, outside every skills folder so no agent loads it as a skill. `fetch` verifies it, or downloads that commit, adds the upstream LICENSE, removes the `hooks:` block from `SKILL.md`'s frontmatter and writes `.pin`. It never overwrites a copy pinned to another commit: a version bump is a new folder name. Every other command stops with "run `bun harness/taste.ts fetch`" while the copy is missing or pinned wrong, so a missing checker never reads as a clean scan. Nothing in the copy is edited.
+
+**`scan`** serves this checkout's production build the way `smoke.ts --local` does (`local-site.ts`), and runs the checker on every page the layout audits visit (`probes/layout.ts` › `layoutPages`: `LAYOUT_PAGES`, the samples in `harness/routes.json` and every route without parameters, once per URL; a new route is scanned with no change here). One page at a time, `nice -n 19`, each in its own headless, muted Chrome (`--headless=new --mute-audio`; the one browser not opened through `engines/browser.ts` › `open`), with `--page software` and the switches `checks.json` › `flags` marks `use`. About 55 to 95 s a page at both widths. The checker's report (`report.json`, every width, the first-screen sweep at 1280 to 768 and the 320px walk) is read by `taste/findings.ts` › `parseReport`, and a finding is kept when `checks.json` adopts or adapts its id for the page's kind (`pageKinds`: About, Privacy, Terms and What's New are `prose`, the player is `player`, `/admin` is `admin`, anything else `app`) and `harness/taste/baseline.json` doesn't accept it (`judge`). It prints, per page, the kept findings by verdict, the baselined and dropped counts and whether every width was walked, then each page's checks by count, and writes `.reports/YYYY-MM-DD-taste-<slug>/findings.json` (page, width, id, level, selector, text, the checker's message, verdict, crop, the checker's version and commit, the commit scanned) with each page's crops, `report.json`, `rendered.html` and the checker's own output in a folder beside it. Exit 2 when a page could not be walked at some width.
+
+- **Read-only.** A guard in front of the site answers every write in place (the listen, usage events) and never forwards it; the scan prints how many it answered. The build has no error-tracker DSN, so its page loads report nothing. Reads still reach the live services, as `smoke.ts --local` does: the player and reader read karaoke timing from the lookup service.
+- **Nothing outside the run.** `--out` is the page's folder in the run, the Chrome profile a fresh folder in the OS temp folder (deleted after), the checker's working folder the run's own, and `TASTE_SKILL_RECENT` and `TASTE_SKILL_TMP` are unset for it. Nothing lands in `.taste-skill/` in the repo or in the home folder; the scan warns if one appears.
+- **What it is for.** A second measured opinion, raw material for a person or an evaluator to triage: it sees Chromium at rest, never WebKit, the installed app, a phone on its side or an opened state, and was tuned on marketing pages. The layout audits in `check` stay the authority. It is not part of `check`.
+- **`checks.json`** holds a verdict for each of the checker's 145 check ids (adopt 48, adapt 38, reject 59) with the page kinds it applies to, a threshold and the reason. Its 2.1.5 app-screen rules are not there: 2.5.1 removed that checker, so they have nothing to run on and live in `DESIGN.md` as rules. An id the checker reports that `checks.json` doesn't name is dropped and listed, so a new checker version shows what it added.
+- **`baseline.json`** accepts a finding on purpose: `{page, id, selector, reason}`, the page by its scan name and the selector exactly as `findings.json` prints it. A finding a repo rule requires (the player's floating UI over the lyrics) goes here with that rule as its reason.
+
+**`copy`** opens About, What's New, Privacy and Terms in the bench's Chromium (`open`) on the same served build, saves each as rendered, adds `index.html` as served, and runs the checker's `scripts/copy-lint.mjs` on them: FAIL, WARN and INFO by id, with examples. Its JSON goes to `.reports/YYYY-MM-DD-taste-copy/copy-lint.json`.
+
+**`compare <base> [<head>]`** diffs two scans: a `findings.json`, or a git ref, which means the newest scan of that commit (from a clean tree) in this checkout's or the main checkout's `.reports/`. `<head>` defaults to this checkout's newest scan. It compares only pages both scans walked at every width, refuses scans of different widths, prints each page's check counts that changed, then every finding added or gone, and exits 3 when anything was added. It doesn't scan a ref itself: run `scan` in a checkout of it first.
+
 ## The lyrics' clock: `clock-lag.ts`
 
 ```sh
@@ -283,4 +308,4 @@ bun harness/readme/colors.ts <out.webp>                        # one row, one ca
 
 ## Requirements
 
-Bun, Google Chrome, Playwright's WebKit (`bunx playwright install webkit`), and, for `trend`, the frontend-perf skill's cdp-perf (`~/.claude/skills/frontend-perf/scripts/cdp-perf`, or set `CDP_PERF`). Builds read the main checkout's env file like `vp build` does; nothing here reads or prints it.
+Bun, Google Chrome, Playwright's WebKit (`bunx playwright install webkit`), and, for `trend`, the frontend-perf skill's cdp-perf (`~/.claude/skills/frontend-perf/scripts/cdp-perf`, or set `CDP_PERF`). Optional, for `taste.ts`: Node 22 or later and the taste checker (`bun harness/taste.ts fetch`). Builds read the main checkout's env file like `vp build` does; nothing here reads or prints it.
