@@ -87,6 +87,27 @@ const Result = ({
   </li>
 )
 
+// The line under the field: what went wrong, why nothing can be added, or that the words found nothing
+const addNote = ({
+  error,
+  full,
+  missed,
+  query,
+}: {
+  error: string
+  full: boolean
+  missed: boolean
+  query: string
+}) => {
+  if (error !== '') {
+    return error
+  }
+  if (full) {
+    return `The list holds at most ${MAX_RECOMMENDATIONS} songs`
+  }
+  return missed ? `No library song matches “${query}”` : ''
+}
+
 // One field to add a song to the end of the list. Typed words find songs in our library (they all have lyrics) by
 // title or channel, in any order; a pasted YouTube or Synbox link, or a video id, offers that video first, and Enter
 // adds it
@@ -104,7 +125,10 @@ const AddSongs = ({
   const [pending, setPending] = useState(false)
   const listed = new Set(songs.map((song) => song.videoId))
   const full = songs.length >= MAX_RECOMMENDATIONS
-  const linked = extractVideoId(query)
+  // A link or an id is one word; extractVideoId logs an error for text it can't read as an address
+  const trimmed = query.trim()
+  const linked =
+    trimmed === '' || /\s/u.test(trimmed) ? null : extractVideoId(trimmed)
   const words = fold(query).split(/\s+/u).filter(Boolean)
   const matches =
     words.length === 0
@@ -159,14 +183,12 @@ const AddSongs = ({
 
   const linkedSong =
     linked === null ? null : library.find((song) => song.videoId === linked)
-  let note = ''
-  if (error !== '') {
-    note = error
-  } else if (full) {
-    note = `The list holds at most ${MAX_RECOMMENDATIONS} songs`
-  } else if (words.length > 0 && linked === null && matches.length === 0) {
-    note = `No library song matches “${query.trim()}”`
-  }
+  const note = addNote({
+    error,
+    full,
+    missed: words.length > 0 && linked === null && matches.length === 0,
+    query: trimmed,
+  })
 
   return (
     <form
