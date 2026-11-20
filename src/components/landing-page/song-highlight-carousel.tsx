@@ -16,21 +16,31 @@ import { cn } from '@/utils/cn'
 const SKELETON_CARDS = 5
 // The loading row's slide in the middle, the one centred (carousel-track: the loading row is centred)
 const SKELETON_CENTRE = Math.floor(SKELETON_CARDS / 2)
-// Off-centre slides shrink a little; the loading row's do too, so its neighbours sit exactly where the songs'
-// will and nothing moves sideways when they arrive
+// Off-centre slides are a fifth smaller, enough to read as smaller at a glance; the loading row's are too, so
+// its neighbours sit exactly where the songs' will and nothing moves sideways when they arrive. Each shrinks
+// towards the centred slide (those before it from their right edge, those after it from their left), so the
+// gap beside the centred slide stays the row's gap and a phone still shows the neighbours' edges. `after` is the
+// side: the half of the loop that follows the centred song, so it holds beside every copy of it
 const SLIDE_SCALE =
-  'motion-safe:scale-100 motion-safe:transition-transform motion-safe:duration-150 data-[active=false]:motion-safe:scale-94'
+  'origin-right motion-safe:scale-100 motion-safe:transition-transform motion-safe:duration-150 data-[active=false]:motion-safe:scale-80 data-[after=true]:origin-left'
+// Whether a song sits in the half of the loop after the centred one
+const isAfter = (item: number, active: number, count: number) => {
+  const ahead = (item - active + count) % count
+  return ahead !== 0 && ahead <= count / 2
+}
 // Slides on each side of the list's middle copy, more than one flick can travel past
 const LOOP_BUFFER = 16
 
 const Card = ({
   item,
   active,
+  after,
   clone,
   eager,
 }: {
   item: formattedYoutubeVideoItemForCarousel
   active: boolean
+  after: boolean
   clone: boolean
   eager: boolean
 }) => (
@@ -43,6 +53,7 @@ const Card = ({
     aria-hidden={clone || undefined}
     tabIndex={clone ? -1 : undefined}
     data-active={active}
+    data-after={after}
     className={cn(
       'focus-inset group flex min-w-0 snap-center flex-col rounded-xl',
       SLIDE_SCALE
@@ -82,9 +93,16 @@ const Card = ({
 const SongCard = memo(Card)
 
 // A card's exact box: the picture, then the same fixed text block, shrunk off centre as a card is
-const CardSkeleton = ({ active }: { active: boolean }) => (
+const CardSkeleton = ({
+  active,
+  after,
+}: {
+  active: boolean
+  after: boolean
+}) => (
   <div
     data-active={active}
+    data-after={after}
     className={cn('flex min-w-0 flex-col', SLIDE_SCALE)}>
     <Skeleton shape='card' className='aspect-video w-full' />
     <div className='mt-4 flex h-19 flex-col gap-2.5 pt-1'>
@@ -198,7 +216,11 @@ const SongHighlightCarousel = () => {
               className='carousel-track'>
               {Array.from({ length: SKELETON_CARDS }, (_, index) => (
                 // oxlint-disable-next-line no-array-index-key
-                <CardSkeleton key={index} active={index === SKELETON_CENTRE} />
+                <CardSkeleton
+                  key={index}
+                  active={index === SKELETON_CENTRE}
+                  after={index > SKELETON_CENTRE}
+                />
               ))}
             </output>
           ) : (
@@ -214,6 +236,7 @@ const SongHighlightCarousel = () => {
                   key={index}
                   item={item}
                   active={index % count === active}
+                  after={isAfter(index % count, active, count)}
                   clone={index < home || index >= home + count}
                   eager={Math.abs(index - home) < SKELETON_CARDS}
                 />

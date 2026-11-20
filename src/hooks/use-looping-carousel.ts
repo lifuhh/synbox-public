@@ -61,6 +61,9 @@ const onDragStart = (event: DragEvent) => {
 // (WebKit › ScrollingTreeScrollingNodeDelegateIOS.mm and WKWebViewIOS.mm ›
 // axesToPreventScrollingForPanGestureInScrollView), and the flick then lost its speed and moved one slide.
 // A sideways drag also prevents its touchmoves' default, so iOS pans nothing under it where it still can
+// oxlint-disable-next-line unicorn/prefer-number-coercion -- the value ends in px, which Number() rejects
+const pixels = (value: string) => Number.parseFloat(value) || 0
+
 const driveCarousel = (
   track: HTMLElement,
   count: number,
@@ -89,22 +92,12 @@ const driveCarousel = (
     if (slides.length === 0) {
       return
     }
-    const [first, second] = Array.from(
-      { length: Math.min(2, slides.length) },
-      (_, index) => slides[index].getBoundingClientRect()
-    )
-    const { left } = track.getBoundingClientRect()
-    base =
-      first.left -
-      left +
-      track.scrollLeft +
-      first.width / 2 -
-      track.clientWidth / 2
-    // Centres, not edges: an off-centre slide is scaled about its centre
-    pitch =
-      slides.length > 1
-        ? second.left + second.width / 2 - (first.left + first.width / 2)
-        : 1
+    // Laid-out sizes, not drawn boxes: an off-centre slide is scaled towards the centred one, which moves its
+    // drawn box but not its place in the row
+    const row = getComputedStyle(track)
+    const width = pixels(getComputedStyle(slides[0]).width)
+    base = pixels(row.paddingLeft) + width / 2 - track.clientWidth / 2
+    pitch = slides.length > 1 ? width + pixels(row.columnGap) : 1
   }
 
   const jump = (x: number) => {
