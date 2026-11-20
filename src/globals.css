@@ -673,18 +673,16 @@
   }
 }
 
-/* The landing carousel's box, around its row (or the loading row) and the glow under the centred slide. Its
-   container (@container) sizes the slide, capped so a phone on its side or a monitor still shows the
-   neighbours */
+/* The landing carousel's box, around its row (or the loading row) and the glow under the centred slide. The
+   slide is the least of: the row less a 1rem gap and a 2rem peek each side; 30rem, or 51% of the row once the
+   row is wider (a wide window or a zoomed-out page keeps one centred slide, not a shelf of small ones); and a
+   share of the screen's height that leaves the row whole on a short screen (22rem on a phone on its side,
+   390px tall). Gap and edge fade grow with the slide past 30rem, so the row only scales */
 @utility carousel-frame {
-  --gap: 1rem;
-  --peek: 2rem;
-  --slide: min(100cqw - 2 * (var(--gap) + var(--peek)), 30rem);
+  --slide: min(100cqw - 6rem, max(30rem, 51cqw), 64svh + 6.4rem);
+  --gap: max(1rem, var(--slide) / 30);
+  --peek: max(2rem, var(--slide) / 15);
   position: relative;
-
-  @media (orientation: landscape) and (max-height: 500px) {
-    --slide: min(100cqw - 2 * (var(--gap) + var(--peek)), 22rem);
-  }
 }
 
 /* The centred slide's picture, blurred and dimmed behind it, as if its light pooled around the card. Over the
@@ -699,8 +697,8 @@
   object-fit: cover;
   opacity: 0.5;
   scale: 0.9;
-  translate: 0 1.25rem;
-  filter: blur(40px) saturate(1.5);
+  translate: 0 max(1.25rem, var(--slide) / 24);
+  filter: blur(max(40px, var(--slide) / 12)) saturate(1.5);
   /* Faded to nothing at its edges whatever the blur does: iOS Safari can drop the blur on it, and the strip
      below the card then showed as a hard grey bar */
   -webkit-mask-image: radial-gradient(closest-side, #000 35%, transparent);
