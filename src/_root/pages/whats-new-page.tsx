@@ -52,14 +52,14 @@ const WhatsNewPage = () => {
     markSeen()
   }, [markSeen])
 
-  // The page scrolls in its own box, which the browser's own jump to a #fragment doesn't reach
+  // The page scrolls in its own box, which the browser's own jump to a #fragment doesn't reach. The newest entry
+  // already sits under the title, so a link to it stays at the top instead of scrolling the title away
   useEffect(() => {
-    if (box === null || hash === '') {
+    const id = decodeURIComponent(hash.slice(1))
+    if (box === null || id === '' || id === WHATS_NEW[0]?.id) {
       return
     }
-    box
-      .querySelector(`#${CSS.escape(decodeURIComponent(hash.slice(1)))}`)
-      ?.scrollIntoView({ block: 'start' })
+    box.querySelector(`#${CSS.escape(id)}`)?.scrollIntoView({ block: 'start' })
   }, [box, hash])
 
   return (
