@@ -7,10 +7,11 @@ import LoadError from '@/components/shared/load-error'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useAutoAdvance } from '@/hooks/use-auto-advance'
+import { useCoverZoom } from '@/hooks/use-cover-zoom'
 import { useLoopingCarousel } from '@/hooks/use-looping-carousel'
 import { loopCopies } from '@/lib/carousel-motion'
 import { useGetLandingPagePlaylist } from '@/lib/react-query/queries-and-mutations'
-import type { formattedYoutubeVideoItemForCarousel } from '@/types'
+import type { CssVars, formattedYoutubeVideoItemForCarousel } from '@/types'
 import { cn } from '@/utils/cn'
 
 const SKELETON_CARDS = 5
@@ -30,6 +31,35 @@ const isAfter = (item: number, active: number, count: number) => {
 }
 // Slides on each side of the list's middle copy, more than one flick can travel past
 const LOOP_BUFFER = 16
+
+// A song's picture, filling its card. A wide film's picture comes with black bars above and below (a 4:3 one,
+// at the sides): it is scaled about its centre until they fall outside the card. The scale is a transform, so
+// it adds to the hover's own `scale`
+const Cover = ({
+  item,
+  eager,
+  priority,
+}: {
+  item: formattedYoutubeVideoItemForCarousel
+  eager: boolean
+  priority: boolean
+}) => {
+  const zoom: CssVars = { '--cover-zoom': useCoverZoom(item.videoId) }
+  return (
+    <img
+      decoding='async'
+      src={item.thumbnailUrl}
+      alt=''
+      width='480'
+      height='270'
+      loading={eager ? 'eager' : 'lazy'}
+      fetchPriority={priority ? 'high' : 'auto'}
+      data-bench='carousel-cover'
+      style={zoom}
+      className='unselectable size-full transform-[scale(var(--cover-zoom))] object-cover transition-transform duration-500 group-hover:scale-104 motion-reduce:transition-none'
+    />
+  )
+}
 
 const Card = ({
   item,
@@ -62,16 +92,7 @@ const Card = ({
         whatever the pictures look like. Text is muted, not faded: faded text would fall below 4.5:1. The
         centred slide keeps a scale (100%), so a slide changing place restyles without laying out the row */}
     <span className='relative aspect-video overflow-hidden rounded-xl bg-thumbnail-placeholder transition-opacity duration-150 group-data-[active=false]:opacity-40'>
-      <img
-        decoding='async'
-        src={item.thumbnailUrl}
-        alt=''
-        width='480'
-        height='270'
-        loading={eager ? 'eager' : 'lazy'}
-        fetchPriority={eager && active ? 'high' : 'auto'}
-        className='unselectable size-full object-cover transition-transform duration-500 group-hover:scale-104 motion-reduce:transition-none'
-      />
+      <Cover item={item} eager={eager} priority={eager && active} />
       <span className='absolute right-2.5 bottom-2.5 grid size-10 place-items-center rounded-full bg-black/70 text-white opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100'>
         <PlayIcon className='size-4 fill-current' aria-hidden />
       </span>

@@ -1,5 +1,13 @@
 [
   {
+    "id": "fuller-pictures",
+    "date": null,
+    "title": "Fuller Pictures",
+    "items": [
+      "Recommendations’ pictures fill their cards, with no black bars above and below"
+    ]
+  },
+  {
     "id": "fixes-2026-11-20",
     "date": "2026-11-20",
     "title": "Small Fixes",
