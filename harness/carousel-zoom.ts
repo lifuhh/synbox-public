@@ -320,12 +320,12 @@ const measurePage = async (page: Page): Promise<Measure> => {
   }
 }
 
-// The carousel (its heading, arrows and row), cut to what the viewport shows
-const shootBand = async (page: Page, file: string) => {
+// The carousel (its heading, arrows and row), cut to what the viewport shows. False when none of it shows
+const shootBand = async (page: Page, file: string): Promise<boolean> => {
   const b = await one(page, SECTION)
   const viewport = page.viewportSize()
   if (b === undefined || viewport === null) {
-    return
+    return false
   }
   const top = Math.max(0, b.top - 8)
   const left = Math.max(0, b.left - 8)
@@ -335,9 +335,14 @@ const shootBand = async (page: Page, file: string) => {
     x: left,
     y: top,
   }
-  if (clip.height > 0) {
-    await page.screenshot({ clip, path: file })
+  if (clip.height <= 0 || clip.width <= 0) {
+    log(
+      `no crop for ${file}: carousel at ${Math.round(b.top)}-${Math.round(b.bottom)} in a ${viewport.height}px viewport`
+    )
+    return false
   }
+  await page.screenshot({ clip, path: file })
+  return true
 }
 
 const pct = (n: number) => `${Math.round(n * 100)}%`
@@ -390,9 +395,9 @@ const measure = async (
     await page.evaluate(async () => await window.__bench.settle(5000))
     const m = await measurePage(page)
     let shot: string | undefined
-    if (shotDir !== null) {
-      shot = `${side}-${c.name.replace('@', '-')}.png`
-      await shootBand(page, path.join(shotDir, shot))
+    const name = `${side}-${c.name.replace('@', '-')}.png`
+    if (shotDir !== null && (await shootBand(page, path.join(shotDir, name)))) {
+      shot = name
     }
     return { case: c, flags: [], m, shot }
   } catch (error) {
