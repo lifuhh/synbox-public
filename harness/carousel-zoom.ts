@@ -8,6 +8,8 @@
 //   bun harness/carousel-zoom.ts --compare <git-ref>     before (the ref's build) and after, one page with crops
 //   bun harness/carousel-zoom.ts --only 1440@100,1920@50 just these cases (screen width @ zoom %)
 //   bun harness/carousel-zoom.ts --out <dir>             where the page and crops go (default .reports/<day>-carousel-zoom)
+//   bun harness/carousel-zoom.ts --walk 60               also step the row 60 songs right, then 120 left (past the loop's
+//                                                        seams and its far side), and name every stop whose layout differs
 //
 // Read-only: lookup reads come from the bench's fixtures and writes are absorbed (bench/server.ts). Exits 3 when a
 // case is flagged.
@@ -77,6 +79,7 @@ const { values: flags } = parseArgs({
     only: { type: 'string' },
     out: { type: 'string' },
     port: { type: 'string' },
+    walk: { type: 'string' },
   },
 })
 
@@ -355,6 +358,72 @@ interface Row {
   flags: string[]
 }
 
+// The row is a loop of copies: stepping far enough crosses the seam between copies, the jump back to the middle
+// copy and the song half a loop away. Every stop must look like the first: same slide and neighbour widths, same
+// gaps, the centred slide on the row's centre
+const WALK_TOLERANCE = 1
+let walkFaults = 0
+const walk = async (
+  page: Page,
+  name: string,
+  steps: number,
+  first: Measure
+) => {
+  const songs = new Set<string>()
+  const stop = async (label: string) => {
+    await page.evaluate(async () => await window.__bench.settle(5000))
+    // The neighbours' 150ms scale transition
+    await page.waitForTimeout(250)
+    songs.add(
+      await page.evaluate(
+        (slide) =>
+          document
+            .querySelector(`${slide}[data-active=true]`)
+            ?.getAttribute('title') ?? '',
+        SLIDE
+      )
+    )
+    const m = await measurePage(page)
+    const tr = await one(page, TRACK)
+    const pics = await boxes(page, `${SLIDE} > :first-child`)
+    const off =
+      tr === undefined
+        ? 0
+        : centreX(pics[nearestTo(pics, centreX(tr))]) - centreX(tr)
+    const diffs = (
+      [
+        ['centre', m.slideW, first.slideW],
+        ['side', m.sideW, first.sideW],
+        ['gap left', m.gapL, first.gapL],
+        ['gap right', m.gapR, first.gapR],
+        ['peek left', m.peekL, first.peekL],
+        ['peek right', m.peekR, first.peekR],
+        ['off centre', round(off), 0],
+      ] as const
+    ).filter(([, got, want]) => Math.abs(got - want) > WALK_TOLERANCE)
+    if (diffs.length > 0) {
+      walkFaults += 1
+      process.stdout.write(
+        `  ! ${name} ${label}: ${diffs.map(([k, got, want]) => `${k} ${got} (first ${want})`).join(', ')}\n`
+      )
+    }
+  }
+  await page.focus(TRACK)
+  /* oxlint-disable no-await-in-loop -- one step at a time: each stop is measured after the row settles */
+  for (let i = 1; i <= steps; i += 1) {
+    await page.keyboard.press('ArrowRight')
+    await stop(`${i} right`)
+  }
+  for (let i = 1; i <= steps * 2; i += 1) {
+    await page.keyboard.press('ArrowLeft')
+    await stop(`${i} left of there`)
+  }
+  /* oxlint-enable no-await-in-loop */
+  log(
+    `walked ${name}: ${steps * 3} stops, ${songs.size} different songs centred`
+  )
+}
+
 const measure = async (
   origin: string,
   c: Case,
@@ -398,6 +467,9 @@ const measure = async (
     const name = `${side}-${c.name.replace('@', '-')}.png`
     if (shotDir !== null && (await shootBand(page, path.join(shotDir, name)))) {
       shot = name
+    }
+    if (flags.walk !== undefined && side === 'after') {
+      await walk(page, c.name, Number(flags.walk), m)
     }
     return { case: c, flags: [], m, shot }
   } catch (error) {
@@ -656,7 +728,8 @@ const main = async () => {
   if (compare === undefined) {
     const rows = await runAll(after, cases, null, 'after')
     printTable('carousel at each zoom', rows)
-    process.exitCode = rows.some((r) => r.flags.length > 0) ? 3 : 0
+    process.exitCode =
+      rows.some((r) => r.flags.length > 0) || walkFaults > 0 ? 3 : 0
     return
   }
   const sha = execFileSync('git', ['-C', repo.top, 'rev-parse', compare], {
