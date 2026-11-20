@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test'
 
-import { coverZoom } from './use-cover-zoom'
+import { coverZoom } from './cover-zoom'
 
 const WIDTH = 320
 const HEIGHT = 180
