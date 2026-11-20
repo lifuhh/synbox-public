@@ -467,9 +467,18 @@ const judge = (
   moved: 'undockRowsMoved' | 'redockRowsMoved'
 ) => {
   let worst = { down: 0, frame: -1, most: 0 }
+  // Where the rows went, for a failing case's note: each frame at which their move changed by over 1px
+  const trace: string[] = []
+  let last = 0
   let overlap = { frame: -1, px: 0, with: '' }
   for (const [index, frame] of frames.entries()) {
     const move = rowsMove(frame, from)
+    if (Math.abs(move.most - last) > MOVED_PX) {
+      last = move.most
+      trace.push(
+        `${index + 1}: ${px(move.most)}px (down ${px(move.down)}, ${frame.docked ? 'docked' : 'off'}, ${frame.rows.filter((r) => r !== null).length} lines)`
+      )
+    }
     if (move.most > worst.most) {
       worst = { ...move, frame: index }
     }
@@ -490,7 +499,7 @@ const judge = (
   if (worst.most > MOVED_PX) {
     tally[moved] += 1
     notes.push(
-      `${what}: the rows' lines moved ${px(worst.most)}px (${worst.down >= 0 ? 'toward the bottom' : 'toward the top'} by ${px(Math.abs(worst.down))}px), frame ${worst.frame + 1} of ${frames.length}`
+      `${what}: the rows' lines moved ${px(worst.most)}px (${worst.down >= 0 ? 'toward the bottom' : 'toward the top'} by ${px(Math.abs(worst.down))}px), frame ${worst.frame + 1} of ${frames.length}; trace (frame: move): ${trace.slice(0, 14).join('; ')}`
     )
   }
   if (overlap.px > OVERLAP_PX) {
