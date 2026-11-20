@@ -11,21 +11,17 @@ const STORE = 'synbox:cover-zoom'
 
 type Pixels = Pick<ImageData, 'data' | 'width' | 'height'>
 
-const isDark = (data: Pixels['data'], at: number) =>
-  data[at] < DARK && data[at + 1] < DARK && data[at + 2] < DARK
-
-const darkRow = ({ data, width }: Pixels, y: number) => {
-  for (let x = 0; x < width; x += 1) {
-    if (!isDark(data, (y * width + x) * 4)) {
-      return false
-    }
-  }
-  return true
-}
-
-const darkColumn = ({ data, width, height }: Pixels, x: number) => {
-  for (let y = 0; y < height; y += 1) {
-    if (!isDark(data, (y * width + x) * 4)) {
+// Whether a line of pixels is all black: `count` pixels from pixel `from`, `step` apart (1 along a row, the
+// picture's width down a column)
+const darkLine = (
+  data: Pixels['data'],
+  from: number,
+  step: number,
+  count: number
+) => {
+  for (let index = 0; index < count; index += 1) {
+    const at = (from + index * step) * 4
+    if (Math.max(data[at], data[at + 1], data[at + 2]) >= DARK) {
       return false
     }
   }
@@ -54,10 +50,10 @@ const axisZoom = (size: number, dark: (at: number) => boolean) => {
 
 /** How far a picture must be scaled about its centre for its black bars (above and below, or at the sides)
  *  to fall outside its frame; 1 when it has none, or when they are too thick to be bars */
-export const coverZoom = (pixels: Pixels): number => {
+export const coverZoom = ({ data, width, height }: Pixels): number => {
   const zoom = Math.max(
-    axisZoom(pixels.height, (y) => darkRow(pixels, y)),
-    axisZoom(pixels.width, (x) => darkColumn(pixels, x))
+    axisZoom(height, (y) => darkLine(data, y * width, 1, width)),
+    axisZoom(width, (x) => darkLine(data, x, width, height))
   )
   return zoom > MAX_ZOOM ? 1 : zoom
 }
