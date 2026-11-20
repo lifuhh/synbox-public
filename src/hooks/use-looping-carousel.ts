@@ -61,6 +61,9 @@ const onDragStart = (event: DragEvent) => {
 // (WebKit › ScrollingTreeScrollingNodeDelegateIOS.mm and WKWebViewIOS.mm ›
 // axesToPreventScrollingForPanGestureInScrollView), and the flick then lost its speed and moved one slide.
 // A sideways drag also prevents its touchmoves' default, so iOS pans nothing under it where it still can
+// oxlint-disable-next-line unicorn/prefer-number-coercion -- the value ends in px, which Number() rejects
+const pixels = (value: string) => Number.parseFloat(value) || 0
+
 const driveCarousel = (
   track: HTMLElement,
   count: number,
@@ -84,8 +87,6 @@ const driveCarousel = (
   const xOf = (index: number) => base + index * pitch
   const position = () => (track.scrollLeft - base) / pitch
   const nearest = () => (glide ? glide.to : Math.round(position()))
-
-  const pixels = (value: string) => Number.parseFloat(value) || 0
 
   const measure = () => {
     if (slides.length === 0) {
