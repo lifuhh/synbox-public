@@ -8,6 +8,7 @@ import LoadError from '@/components/shared/load-error'
 import { Skeleton } from '@/components/ui/skeleton'
 import { SongMenu } from '@/components/watch/song-menu'
 import { useMediaQuery } from '@/hooks/use-media-query'
+import { firstScreenIn } from '@/lib/first-screen'
 import { useGallerySongs } from '@/lib/react-query/queries-and-mutations'
 import { scrollMotion } from '@/lib/reduced-motion'
 import { markStuck } from '@/lib/stuck-row'
@@ -204,31 +205,29 @@ const loadTitleFonts = (songs: LibraryListSong[]) => {
   }
 }
 
-// After the first screen, as the pages' prefetch (src/app.tsx): asked for at `load`, the slices competed with the
-// first screen's pictures and fonts (Chromium LCP 1,144 → 1,392 ms)
-const OPENING_MS = 4000
+// Data Saver is on: the 2 MB batch is skipped, and titles load their slices as they show
+const savesData = () =>
+  'connection' in navigator &&
+  typeof navigator.connection === 'object' &&
+  navigator.connection !== null &&
+  'saveData' in navigator.connection &&
+  navigator.connection.saveData === true
 
+// After the first screen is in, as the pages' prefetch (src/app.tsx): the batch is about 70 files and 2 MB, and
+// asked for any sooner it competed with the first screen's lists and pictures
 const useTitleFonts = (songs: LibraryListSong[]) => {
   useEffect(() => {
-    let timer: ReturnType<typeof setTimeout> | undefined
-    const later = () => {
-      timer = setTimeout(
-        () => {
+    let left = false
+    if (songs.length > 0 && !savesData()) {
+      void (async () => {
+        await firstScreenIn()
+        if (!left) {
           loadTitleFonts(songs)
-        },
-        Math.max(0, OPENING_MS - performance.now())
-      )
-    }
-    if (songs.length > 0) {
-      if (document.readyState === 'complete') {
-        later()
-      } else {
-        window.addEventListener('load', later, { once: true })
-      }
+        }
+      })()
     }
     return () => {
-      window.removeEventListener('load', later)
-      clearTimeout(timer)
+      left = true
     }
   }, [songs])
 }
