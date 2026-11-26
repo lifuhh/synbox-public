@@ -1193,7 +1193,7 @@
    the white glyph holds on a white frame (3.3:1 against its edge), and a soft shadow under that. The stage's own
    shadow alone (--drop-shadow-stage) spreads too thin under a 2px stroke: 1.1:1 around the glyph on a white frame.
    Under a mouse it takes the rail's glass, which shows on a bright frame, and a light edge, which shows on a dark
-   one. Where the discs are 36px (a phone on its side) its press target reaches 4px further each way, to 44px */
+   one */
 @utility rail-swap-on-video {
   color: rgb(255 255 255/0.85);
   filter: drop-shadow(0 0 1px rgb(0 0 0/0.9))
@@ -1207,10 +1207,16 @@
     }
   }
 
+  /* A phone on its side: a 44px press area, starting 8px clear of the discs (the pill starts 3px clear) and
+     reaching onto the video, so it never meets theirs */
   @variant short {
     &::before {
       position: absolute;
-      inset: -0.25rem;
+      top: 50%;
+      left: 0.3125rem;
+      width: 2.75rem;
+      height: 2.75rem;
+      translate: 0 -50%;
       content: '';
     }
   }
