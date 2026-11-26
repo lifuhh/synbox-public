@@ -87,18 +87,25 @@ export const useExchange = (
   }, [order, first, second])
 }
 
-const SWAP =
-  'relative z-10 grid shrink-0 place-items-center rounded-full rail-swap'
+const SWAP = 'z-10 grid shrink-0 place-items-center rounded-full rail-swap'
 // On the stage: no disc of its own, its glyph drawn on the video (globals.css › rail-swap-on-video: its ink, its
-// hover, and its press target on a phone on its side). As large as the discs on a touch screen
-const ON_STAGE = 'size-8 rail-swap-on-video touch:size-11 short:size-9'
+// hover, and its press target on a phone on its side). As large as the discs on a touch screen.
+// It floats beside the pair, not in the rail: out of the rail's flow, centred on the seam between the two buttons,
+// on the video's side of the column, 12px clear of the discs so its 44px press target keeps 8px from theirs. The
+// rail upright is a row that scrolls sideways and so clips anything outside it: there it keeps a place between the
+// two. It sits outside the rail's box, which slides off the screen to hide, so it fades as the rail goes
+const ON_STAGE = cn(
+  'rail-swap-on-video absolute top-1/2 left-full ms-3 size-8 -translate-y-1/2 touch:size-11 short:size-9',
+  'portrait:relative portrait:top-auto portrait:left-auto portrait:ms-0 portrait:translate-y-0',
+  'in-data-rail-closed:invisible in-data-rail-closed:opacity-0'
+)
 // In the row under the video: the page's ink and the row's own hover; as large as the row's discs on a touch screen
 const IN_ROW =
-  'size-8 text-muted-foreground hover:bg-accent hover:text-foreground touch:size-10'
+  'relative size-8 text-muted-foreground hover:bg-accent hover:text-foreground touch:size-10'
 
-// Between the Translations and Romaji buttons: trades the two rows' places under each line, and the buttons' with
-// them. `flipped`: the romaji comes first. Shown only while both rows show as rows under the line; otherwise it
-// fades out and keeps its place, so no button beside it moves
+// Beside the Translations and Romaji buttons (between them in a row): trades the two rows' places under each line,
+// and the buttons' with them. `flipped`: the romaji comes first. Shown only while both rows show as rows under the
+// line; otherwise it fades out where it stands, so no button beside it moves
 export const RowSwap = ({
   flipped,
   shown,
