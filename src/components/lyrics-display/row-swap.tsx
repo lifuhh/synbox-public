@@ -99,12 +99,15 @@ const SWAP = 'z-10 grid shrink-0 place-items-center rounded-full rail-swap'
 // On the stage: no disc of its own, its glyph drawn on the video (globals.css › rail-swap-on-video: its ink, its
 // hover, and its press target on a phone on its side). As large as the discs on a touch screen.
 // It floats beside the pair, not in the rail: out of the rail's flow, centred on the seam between the two buttons,
-// on the video's side of the column, 12px clear of the discs so its 44px press target keeps 8px from theirs. The
+// on the video's side of the column. The
 // rail upright is a row that scrolls sideways and so clips anything outside it: there it keeps a place between the
 // two. It sits outside the rail's box, which slides off the screen to hide, so it fades as the rail goes
+// Beside the column the button is a pill as narrow as the turned U allows (24px, the least a press target may be
+// drawn), 3px off the discs, so the arrow's ink stands 10px from them; on a phone its press area is a 44px square
+// that starts 8px from the discs (globals.css › rail-swap-on-video)
 const ON_STAGE = cn(
-  'rail-swap-on-video absolute top-1/2 left-full ms-3 size-8 -translate-y-1/2 touch:size-11 short:size-9',
-  'portrait:relative portrait:top-auto portrait:left-auto portrait:ms-0 portrait:translate-y-0',
+  'rail-swap-on-video absolute top-1/2 left-full ms-0.75 h-10 w-6 -translate-y-1/2',
+  'portrait:relative portrait:top-auto portrait:left-auto portrait:ms-0 portrait:size-8 portrait:translate-y-0',
   'in-data-rail-closed:invisible in-data-rail-closed:opacity-0'
 )
 // In the row under the video: the page's ink and the row's own hover; as large as the row's discs on a touch screen
@@ -144,7 +147,9 @@ export const RowSwap = ({
           <SwapIcon
             aria-hidden
             className={cn(
-              'size-5 transition-transform duration-(--duration-indicator) ease-travel motion-reduce:transition-none',
+              'pointer-events-none transition-transform duration-(--duration-indicator) ease-travel motion-reduce:transition-none',
+              // On the stage half as large again as the discs' glyphs
+              inline ? 'size-5' : 'size-7.5',
               flipped && 'rotate-360'
             )}
           />
