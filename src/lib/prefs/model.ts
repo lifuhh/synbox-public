@@ -19,6 +19,7 @@ const SYNCED_KEYS = new Set([
   'lyricsShowRomaji',
   'lyricsShowTranslation',
   'lyricsTranslationEnglish',
+  'lyricsTranslationFirst',
   'lyricsTranslationDocked',
   // The reader, and whether a song's end plays the next one
   'offlineReader',

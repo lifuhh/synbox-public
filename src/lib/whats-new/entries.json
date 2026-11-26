@@ -1,5 +1,14 @@
 [
   {
+    "id": "swap-lyric-rows",
+    "date": null,
+    "title": "Swap Lyric Rows",
+    "items": [
+      "On the video, each line’s translation now sits above its romaji",
+      "The arrow between the Translations and Romaji buttons swaps them"
+    ]
+  },
+  {
     "id": "fixes-2026-11-26",
     "date": "2026-11-26",
     "title": "Small Fixes",

@@ -34,6 +34,7 @@ import {
   lyricsAnchorAtom,
   lyricsAnchorPortraitAtom,
   translationDockedAtom,
+  translationFirstAtom,
   lyricsStylePanelAtom,
 } from '@/context/atoms'
 import { useLyricsSurface, usePortrait } from '@/hooks/use-media-query'
@@ -279,12 +280,13 @@ interface ShownRows {
   translation: boolean
 }
 
-// One lyric line with the rows the viewer shows with it: its romaji, then its translation, below it. Each
-// karaoke line hands its fill handle to `track` while mounted
+// One lyric line with the rows the viewer shows with it, below it: its translation and its romaji, in the order
+// the viewer keeps (`translationFirst`). Each karaoke line hands its fill handle to `track` while mounted
 const LineRows = ({
   line: { karaokeLine, romaji, text, translation },
   lineKey,
   shown,
+  translationFirst,
   sizes,
   track,
   measured = false,
@@ -292,14 +294,51 @@ const LineRows = ({
   line: ReturnType<typeof lineAt> & { text: string }
   lineKey: number
   shown: ShownRows
+  translationFirst: boolean
   sizes: LineSizes
   // None for a measured copy, whose karaoke lines are never filled
   track?: (handle: KaraokeLineHandle | null) => () => void
   measured?: boolean
 }) => {
-  // One line tags its rows for its own spacing (lyric-line-rows); two lines space theirs as they are
+  // One line tags its rows for its own spacing (globals.css › player-lyrics-overlay); two lines space theirs as
+  // they are
   const rowOf = (row: keyof typeof LINE_SIZE) =>
     sizes === LINE_SIZE ? row : undefined
+  // Keyed, so a change of order moves the two rows' own elements: the romaji's fill and the translation's text stay
+  // as drawn, nothing mounts again
+  const romajiRow =
+    shown.romaji &&
+    (karaokeLine ? (
+      <div
+        key='romaji'
+        data-row={rowOf('romaji')}
+        className={cn('text-center', sizes.romaji)}>
+        <KaraokeRomajiLine key={lineKey} ref={track} line={karaokeLine} />
+      </div>
+    ) : (
+      romaji &&
+      !sameText(romaji, text) && (
+        <LyricLine
+          key='romaji'
+          html={romaji}
+          kind='romaji'
+          size={sizes.romaji}
+          row={rowOf('romaji')}
+          shown={!measured}
+        />
+      )
+    ))
+  // A span's lines all show its text; the same text keeps its row, so it stays put across the span
+  const translationRow = shown.translation && translation && (
+    <LyricLine
+      key='translation'
+      html={translation}
+      kind='translation'
+      size={sizes.translation}
+      row={rowOf('translation')}
+      shown={!measured}
+    />
+  )
   return (
     <>
       {shown.lyrics &&
@@ -323,35 +362,9 @@ const LineRows = ({
             shown={!measured}
           />
         ))}
-      {shown.romaji &&
-        (karaokeLine ? (
-          <div
-            data-row={rowOf('romaji')}
-            className={cn('text-center', sizes.romaji)}>
-            <KaraokeRomajiLine key={lineKey} ref={track} line={karaokeLine} />
-          </div>
-        ) : (
-          romaji &&
-          !sameText(romaji, text) && (
-            <LyricLine
-              html={romaji}
-              kind='romaji'
-              size={sizes.romaji}
-              row={rowOf('romaji')}
-              shown={!measured}
-            />
-          )
-        ))}
-      {/* A span's lines all show its text; the same text keeps its row, so it stays put across the span */}
-      {shown.translation && translation && (
-        <LyricLine
-          html={translation}
-          kind='translation'
-          size={sizes.translation}
-          row={rowOf('translation')}
-          shown={!measured}
-        />
-      )}
+      {translationFirst
+        ? [translationRow, romajiRow]
+        : [romajiRow, translationRow]}
     </>
   )
 }
@@ -1777,6 +1790,7 @@ export const StageLyrics = ({
   const showRomaji = useAtomValue(romajiVisibilityAtom)
   const showTranslation = useAtomValue(translationVisibilityAtom)
   const english = useAtomValue(translationIsEnglishAtom)
+  const translationFirst = useAtomValue(translationFirstAtom)
   // Each line's translation span: the timing doc's spans when its lines are these lyrics', else one per line
   const spans = useMemo(
     () =>
@@ -1906,6 +1920,7 @@ export const StageLyrics = ({
         line={{ ...line, text: line.text }}
         lineKey={index}
         shown={rowShown}
+        translationFirst={translationFirst}
         sizes={twoLines ? STAGGER_SIZE : LINE_SIZE}
         track={track}
       />
@@ -1927,6 +1942,8 @@ export const StageLyrics = ({
               romaji: showRomaji,
               translation: false,
             }}
+            // No translation row in a Two Lines row, so no order to keep
+            translationFirst
             sizes={STAGGER_SIZE}
             measured
           />
