@@ -1,7 +1,7 @@
 [
   {
     "id": "swap-lyric-rows",
-    "date": null,
+    "date": "2026-11-27",
     "title": "Swap Lyric Rows",
     "items": [
       "Translations now sit above romaji on the video; the arrow beside their buttons swaps them",
