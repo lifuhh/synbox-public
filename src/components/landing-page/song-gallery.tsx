@@ -8,11 +8,11 @@ import LoadError from '@/components/shared/load-error'
 import { Skeleton } from '@/components/ui/skeleton'
 import { SongMenu } from '@/components/watch/song-menu'
 import { useMediaQuery } from '@/hooks/use-media-query'
-import { firstScreenIn } from '@/lib/first-screen'
 import { useGallerySongs } from '@/lib/react-query/queries-and-mutations'
 import { scrollMotion } from '@/lib/reduced-motion'
 import { markStuck } from '@/lib/stuck-row'
 import type { LibraryListSong } from '@/lib/synbox-flask/discovery'
+import { useTitleFonts } from '@/lib/title-fonts'
 import type { CssVars } from '@/types'
 
 // The gallery is part of the page's own scroll, so a finger on it never gets caught in a box inside the page.
@@ -192,46 +192,6 @@ const VirtualRows = ({
 // A first screen's worth at every column count
 const SKELETON_CARDS = 8
 
-// The web fonts come a slice of characters at a time (unicode-range), each loaded when a character from it first
-// shows. Only the rows near the view exist, so the titles' slices arrived mid-scroll, and in WebKit each slice that
-// arrives restyles and lays out the whole page (about 95ms on Home), a stall per slice. Asked for together, they cost
-// one such pause, at rest. One family at a time: given the whole stack, WebKit loads a character's slice only from
-// the first family whose range lists it, so a symbol Plus Jakarta Sans's range lists but the font doesn't draw still
-// brought Noto Sans JP's Latin slice in mid-scroll
-const loadTitleFonts = (songs: LibraryListSong[]) => {
-  const text = songs.map((song) => `${song.title}${song.author}`).join('')
-  for (const family of getComputedStyle(document.body).fontFamily.split(',')) {
-    void document.fonts.load(`600 1rem ${family.trim()}`, text)
-  }
-}
-
-// Data Saver is on: the 2 MB batch is skipped, and titles load their slices as they show
-const savesData = () =>
-  'connection' in navigator &&
-  typeof navigator.connection === 'object' &&
-  navigator.connection !== null &&
-  'saveData' in navigator.connection &&
-  navigator.connection.saveData === true
-
-// After the first screen is in, as the pages' prefetch (src/app.tsx): the batch is about 70 files and 2 MB, and
-// asked for any sooner it competed with the first screen's lists and pictures
-const useTitleFonts = (songs: LibraryListSong[]) => {
-  useEffect(() => {
-    let left = false
-    if (songs.length > 0 && !savesData()) {
-      void (async () => {
-        await firstScreenIn()
-        if (!left) {
-          loadTitleFonts(songs)
-        }
-      })()
-    }
-    return () => {
-      left = true
-    }
-  }, [songs])
-}
-
 // Marks the title stuck while the gallery has scrolled up under it. Returns the cleanup
 const watchStuck = (
   heading: HTMLElement,
@@ -263,7 +223,8 @@ const SongGallery = () => {
   const [list, setList] = useState<HTMLDivElement | null>(null)
   const scroller = section?.closest<HTMLElement>('[data-scroll-top]') ?? null
   const title = useRef<HTMLHeadingElement>(null)
-  useTitleFonts(songs)
+  // Only the rows near the view exist, so the titles' fonts come ahead of the scroll
+  useTitleFonts(songs.map((song) => `${song.title}${song.author}`).join(''))
 
   // data-stuck is set on the title as the page scrolls, not through React state: a render later, a fast fling
   // had already carried cards under a see-through title for a frame or two
