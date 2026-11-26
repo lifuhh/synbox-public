@@ -231,6 +231,13 @@ const ProfileButtonDropdown = () => {
             </div>
           ) : null}
           <DropdownMenuGroup>
+            <DropdownMenuItem asChild className='cursor-pointer'>
+              <Link to={whatsNewPath()}>
+                <MegaphoneIcon className='mr-2 size-5 shrink-0' />
+                <span>What’s New</span>
+                {whatsNew.unread && <NewDot className='ml-2' />}
+              </Link>
+            </DropdownMenuItem>
             {me?.quota !== undefined &&
               me.quota.limit !== null &&
               me.quota.request?.status !== 'open' && (
@@ -252,14 +259,7 @@ const ProfileButtonDropdown = () => {
             <DropdownMenuItem asChild className='cursor-pointer'>
               <Link to='/about'>
                 <CircleQuestionMarkIcon className='mr-2 size-5 shrink-0' />
-                <span>About Synbox</span>
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild className='cursor-pointer'>
-              <Link to={whatsNewPath()}>
-                <MegaphoneIcon className='mr-2 size-5 shrink-0' />
-                <span>What’s New</span>
-                {whatsNew.unread && <NewDot className='ml-2' />}
+                <span>About</span>
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem

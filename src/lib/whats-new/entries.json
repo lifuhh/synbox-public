@@ -1,5 +1,11 @@
 [
   {
+    "id": "fixes-2026-11-26",
+    "date": null,
+    "title": "Small Fixes",
+    "items": ["Bug fixes and performance improvements"]
+  },
+  {
     "id": "fuller-pictures",
     "date": "2026-11-20",
     "title": "Fuller Pictures",

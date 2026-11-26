@@ -244,6 +244,12 @@ const YouPage = () => {
         </div>
 
         <div className='flex flex-col'>
+          <LinkRow
+            to={whatsNewPath()}
+            icon={<MegaphoneIcon className='size-5' />}
+            label='What’s New'
+            unread={whatsNew.unread}
+          />
           {user?.role === 'admin' && (
             <LinkRow
               to='/admin'
@@ -254,13 +260,7 @@ const YouPage = () => {
           <LinkRow
             to='/about'
             icon={<CircleQuestionMarkIcon className='size-5' />}
-            label='About Synbox'
-          />
-          <LinkRow
-            to={whatsNewPath()}
-            icon={<MegaphoneIcon className='size-5' />}
-            label='What’s New'
-            unread={whatsNew.unread}
+            label='About'
           />
           <DialogRow
             icon={<MessageSquareIcon className='size-5' />}
