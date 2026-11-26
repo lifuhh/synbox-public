@@ -37,7 +37,7 @@ const pageLoaded = async () => {
 const loadingOnScreen = async () => {
   const loading = [
     ...document.querySelectorAll('[data-slot="skeleton"]'),
-    ...[...document.images].filter((image) => !image.complete),
+    ...[...document.querySelectorAll('img')].filter((image) => !image.complete),
   ]
   if (loading.length === 0) {
     return false
@@ -54,12 +54,27 @@ const loadingOnScreen = async () => {
   })
 }
 
+// The app has drawn its page in place of index.html's static one. Until then nothing of the first screen exists to
+// be waited for, and `load` can come first: the empty page read as a finished one, and everything started at `load`
+const appDrawn = () => {
+  const root = document.querySelector('#root')
+  return (
+    root !== null &&
+    root.childElementCount > 0 &&
+    root.querySelector('#static-home') === null
+  )
+}
+
 const settle = async () => {
   await pageLoaded()
   await wait(Math.max(0, OPENING_MS - performance.now()))
+  // Two looks in a row with nothing loading: between one list's placeholders leaving and its pictures starting,
+  // a single look can find the screen idle
+  let idle = 0
   for (let polls = 0; polls < MAX_POLLS; polls += 1) {
     // oxlint-disable-next-line no-await-in-loop -- one look at a time, half a second apart
-    if (!(await loadingOnScreen())) {
+    idle = appDrawn() && !(await loadingOnScreen()) ? idle + 1 : 0
+    if (idle === 2) {
       return
     }
     // oxlint-disable-next-line no-await-in-loop
