@@ -33,6 +33,7 @@ import {
   PRESS_RELEASE_FINDINGS,
   pressReleaseAudit,
 } from './probes/press-release'
+import { ROW_SWAP_FINDINGS, rowSwapAudit } from './probes/row-swap'
 import { buildSize } from './probes/size'
 import {
   THEATER_MOTION_FINDINGS,
@@ -254,6 +255,26 @@ const lyricUndock = (name: string, view: View, turned: boolean): Benchmark => ({
   scope: probe('lyric-undock', [PLAYER], []),
   surface: view.surface,
   title: `Karaoke Style's docked translation in ${name} (${view.label}${turned ? ', turned by Lock Landscape' : ''}), the block dragged to the middle, the translation pulled to the bottom, the top, just under the block and onto the rows, then dragged back: the rows' lines never move, the translation never overlaps them or the block, comes off where there is room, and docks again`,
+})
+
+/**
+ * The swap between the rail's Translations and Romaji buttons, clicked, every frame sampled
+ * (probes/row-swap.ts): the two rows and the two buttons trade places and nothing else moves or starts over. On
+ * desktop (the row under the video), the installed app on its side (the rail's column) and upright turned by Lock
+ * Landscape
+ */
+const rowSwap = (name: string, view: View, turned: boolean): Benchmark => ({
+  id: `row-swap-${name}`,
+  metrics: [
+    ...ROW_SWAP_FINDINGS.map((key) => count(key)),
+    count('frames', false),
+  ],
+  run: rowSwapAudit(view.surface, turned),
+  runs: 1,
+  scope: probe('row-swap', [PLAYER], []),
+  surface: view.surface,
+  timing: true,
+  title: `The swap between the rail's Translations and Romaji buttons in ${name} (${view.label}${turned ? ', turned by Lock Landscape' : ''}), a swap, a swap back, a second press mid-move, a row hidden and shown, a press under Reduce Motion: rows and buttons out of order, the lyrics' block moved, rows or fill drawn anew, a button's part jumping, overshooting or creeping in, another button moved, travel under Reduce Motion, the control popping, focus lost`,
 })
 
 /**
@@ -482,6 +503,9 @@ export const SUITE: Benchmark[] = [
   controlShade('pwa-landscape', PWA_LANDSCAPE, false),
   controlShade('pwa-turned', PWA_PORTRAIT, true),
   lyricShift('pwa-turned', PWA_PORTRAIT, true),
+  rowSwap('web', WEB, false),
+  rowSwap('pwa-landscape', PWA_LANDSCAPE, false),
+  rowSwap('pwa-turned', PWA_PORTRAIT, true),
   sizeDrag(WEB, [KARAOKE_DRAG, ONE_LINE_DRAG]),
   sizeDrag(PWA_LANDSCAPE, [KARAOKE_DRAG, ONE_LINE_DRAG]),
   sizeDrag(PWA_PORTRAIT, [
