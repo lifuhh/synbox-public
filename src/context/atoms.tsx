@@ -41,6 +41,15 @@ export const translationVisibilityAtom = atomWithStorage(
   syncedStorage(),
   shownOptions
 )
+// Which of a line's two rows under the Japanese comes first: the translation, then the romaji at the foot (the
+// default), or the other way round. One choice for every song, and the order of their two buttons on the rail.
+// Karaoke Style keeps its own places: the romaji with each line, the translation on its own
+export const translationFirstAtom = atomWithStorage(
+  'lyricsTranslationFirst',
+  true,
+  syncedStorage(),
+  shownOptions
+)
 // Karaoke Style's translation docked under the rows instead of in its own room at the top: one choice for every
 // song, not part of a song's style (nor of a shared link)
 export const translationDockedAtom = atomWithStorage(

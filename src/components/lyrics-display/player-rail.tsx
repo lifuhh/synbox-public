@@ -14,7 +14,7 @@ import {
   ThumbsUpIcon,
 } from 'lucide-react'
 import type { ReactNode, RefObject } from 'react'
-import { useEffect, useId, useRef, useState } from 'react'
+import { Fragment, useEffect, useId, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
 
 import { ariaKeys, SHORTCUTS } from '@/components/player-stage/shortcuts'
@@ -38,14 +38,20 @@ import {
   currentVideoAtom,
   lyricsVisibilityAtom,
   romajiVisibilityAtom,
+  translationFirstAtom,
   translationIsEnglishAtom,
   translationVisibilityAtom,
   playerChromeOpenAtom,
   lyricsStyleAtom,
   lyricsStylePanelAtom,
+  lyricsTwoLinesAtom,
 } from '@/context/atoms'
 import { useArmed } from '@/hooks/use-armed'
-import { useMediaQuery, usePortrait } from '@/hooks/use-media-query'
+import {
+  useLyricsSurface,
+  useMediaQuery,
+  usePortrait,
+} from '@/hooks/use-media-query'
 import { signInWithGoogle, useAccess } from '@/lib/auth'
 import {
   addFavoriteAtom,
@@ -72,6 +78,7 @@ import {
   RailTooltipsOff,
 } from './rail-button'
 import { useRailReport } from './report-sent-note'
+import { RowSwap, useExchange } from './row-swap'
 
 // The style panel peeks open while the pointer rests on its button, and closes once the pointer has been off
 // button and panel this long; a click pins it. The only hover-to-open surface left: it previews, and menus
@@ -322,6 +329,15 @@ const railClass = (inline: boolean, interactive: boolean, open: boolean) =>
           : '-translate-x-[calc(100%+var(--safe-left))] motion-reduce:translate-x-0 motion-reduce:opacity-0 portrait:translate-x-0 portrait:opacity-0'
       )
 
+// One of the two rows under a lyric line, as its button on the rail
+interface RowToggle {
+  label: string
+  tip: string
+  icon: ReactNode
+  on: boolean
+  handleToggle: () => void
+}
+
 // What the lyrics over the video show, and Lyrics Style
 const VideoLyricsButtons = ({
   anchorRef,
@@ -341,6 +357,37 @@ const VideoLyricsButtons = ({
   const languageLabel = english
     ? 'View Chinese Translations'
     : 'View English Translations'
+  const romaji: RowToggle = {
+    handleToggle: () => {
+      setShowRomaji(!showRomaji)
+      trackLyricsFeature('romaji', !showRomaji)
+    },
+    icon: <span className='text-base leading-none font-semibold'>R</span>,
+    label: 'Romaji',
+    on: showRomaji,
+    tip: showRomaji ? 'Hide Romaji' : 'Show Romaji',
+  }
+  const translation: RowToggle = {
+    handleToggle: () => {
+      setShowTranslation(!showTranslation)
+      trackLyricsFeature('translation', !showTranslation)
+    },
+    icon: <LanguagesIcon className='size-5 shrink-0' />,
+    label: 'Translations',
+    on: showTranslation,
+    tip: showTranslation ? 'Hide Translations' : 'Show Translations',
+  }
+  // The two buttons stand in their rows' order under the line, the swap between them. Each button keeps its place
+  // in the page and takes the other's part when the order changes (useExchange), so the focus stays where it was
+  const [translationFirst, setTranslationFirst] = useAtom(translationFirstAtom)
+  const rows = translationFirst ? [translation, romaji] : [romaji, translation]
+  const firstRef = useRef<HTMLButtonElement>(null)
+  const secondRef = useRef<HTMLButtonElement>(null)
+  useExchange(translationFirst, firstRef, secondRef)
+  // Karaoke Style (never upright: stage-lyrics.tsx) has no translation row under a line: nothing to swap there
+  const surface = useLyricsSurface()
+  const twoLines = useAtomValue(lyricsTwoLinesAtom) && surface !== 'portrait'
+  const [swapped, setSwapped] = useState('')
   return (
     <>
       <RailTooltip
@@ -357,29 +404,37 @@ const VideoLyricsButtons = ({
           <MessageSquareTextIcon className='size-5 shrink-0' />
         </RailButton>
       </RailTooltip>
-      <RailTooltip label={showRomaji ? 'Hide Romaji' : 'Show Romaji'}>
-        <RailButton
-          label='Romaji'
-          pressed={showRomaji}
-          onClick={() => {
-            setShowRomaji(!showRomaji)
-            trackLyricsFeature('romaji', !showRomaji)
-          }}>
-          <span className='text-base leading-none font-semibold'>R</span>
-        </RailButton>
-      </RailTooltip>
-      <RailTooltip
-        label={showTranslation ? 'Hide Translations' : 'Show Translations'}>
-        <RailButton
-          label='Translations'
-          pressed={showTranslation}
-          onClick={() => {
-            setShowTranslation(!showTranslation)
-            trackLyricsFeature('translation', !showTranslation)
-          }}>
-          <LanguagesIcon className='size-5 shrink-0' />
-        </RailButton>
-      </RailTooltip>
+      {rows.map((row, at) => (
+        // Places, not rows: the first and the second button, whichever row each holds
+        // oxlint-disable-next-line no-array-index-key
+        <Fragment key={at}>
+          {at === 1 && (
+            <RowSwap
+              flipped={!translationFirst}
+              shown={showRomaji && showTranslation && !twoLines}
+              onSwap={() => {
+                setTranslationFirst(!translationFirst)
+                setSwapped(
+                  translationFirst
+                    ? 'Romaji above translations'
+                    : 'Translations above romaji'
+                )
+              }}
+            />
+          )}
+          <RailTooltip label={row.tip}>
+            <RailButton
+              ref={at === 0 ? firstRef : secondRef}
+              label={row.label}
+              pressed={row.on}
+              onClick={row.handleToggle}>
+              {row.icon}
+            </RailButton>
+          </RailTooltip>
+        </Fragment>
+      ))}
+      {/* Rendered empty first, so the new order is announced when it is set */}
+      <output className='sr-only'>{swapped}</output>
       <RailTooltip label={languageLabel}>
         <RailButton
           label={languageLabel}
