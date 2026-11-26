@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react'
 import { registerSW } from 'virtual:pwa-register'
 
+import { firstScreenIn } from '@/lib/first-screen'
 import { anyActive, getGenerationState } from '@/lib/generation/store'
 
 import { trackLater } from './usage-later'
@@ -265,41 +266,48 @@ export const reloadPage = () => {
   return true
 }
 
-registerSW({
-  onNeedRefresh: () => {
-    updateReady = true
-  },
-  onNeedReload: () => {
-    // loadOnNewVersion loads the page once the new version is active
-  },
-  onRegisteredSW: (_url, registration) => {
-    if (!registration) {
-      return
-    }
-    // update() rejects with "newestWorker is null" when the browser has dropped the registration's worker
-    // (iOS clears it for storage), and offline. Neither is news: the page loads from the network then, and
-    // the next check tries again
-    const check = async () => {
-      if (
-        registration.installing ??
-        registration.waiting ??
-        registration.active
-      ) {
-        try {
-          await registration.update()
-        } catch {
-          // Checked again within the hour and on the next return
+// Registered once the first screen is in: a first visit's worker then downloads the whole app shell (about 1.9 MB)
+// for offline use, which at `load` shared the connection with the first screen
+const register = () =>
+  registerSW({
+    onNeedRefresh: () => {
+      updateReady = true
+    },
+    onNeedReload: () => {
+      // loadOnNewVersion loads the page once the new version is active
+    },
+    onRegisteredSW: (_url, registration) => {
+      if (!registration) {
+        return
+      }
+      // update() rejects with "newestWorker is null" when the browser has dropped the registration's worker
+      // (iOS clears it for storage), and offline. Neither is news: the page loads from the network then, and
+      // the next check tries again
+      const check = async () => {
+        if (
+          registration.installing ??
+          registration.waiting ??
+          registration.active
+        ) {
+          try {
+            await registration.update()
+          } catch {
+            // Checked again within the hour and on the next return
+          }
         }
       }
-    }
-    // An installed app is resumed rather than reloaded, so check whenever it comes back too
-    setInterval(() => {
-      void check()
-    }, UPDATE_CHECK_MS)
-    document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible') {
+      // An installed app is resumed rather than reloaded, so check whenever it comes back too
+      setInterval(() => {
         void check()
-      }
-    })
-  },
-})
+      }, UPDATE_CHECK_MS)
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+          void check()
+        }
+      })
+    },
+  })
+void (async () => {
+  await firstScreenIn()
+  register()
+})()

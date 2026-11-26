@@ -9,6 +9,7 @@ import {
   TextPageSkeleton,
 } from '@/components/shared/route-skeletons'
 import { Toaster } from '@/components/ui/toaster'
+import { firstScreenIn } from '@/lib/first-screen'
 import { LibrarySync } from '@/lib/library/sync'
 import { OfflineSync } from '@/lib/offline/sync'
 import { PrefsSync } from '@/lib/prefs/sync'
@@ -57,8 +58,6 @@ const WhatsNewPage = lazy(pageImports.whatsNew)
 // Not prefetched: only admins open it
 const AdminPage = lazy(async () => await import('./_root/pages/admin-page'))
 
-const PREFETCH_DELAY_MS = 4000
-
 // A page's code starts loading the moment a pointer rests on, a finger lands on, or the keyboard reaches a link to it,
 // ahead of the click: the time between the two is often all the download needs. Each import loads once
 const PAGE_OF_PATH: [RegExp, keyof typeof pageImports][] = [
@@ -101,12 +100,12 @@ const prefetchPages = () => {
 }
 
 const App = () => {
-  // After the first screen has loaded, so the prefetch never competes with it
+  // After the first screen is in, so the prefetch never competes with it
   useEffect(() => {
-    const id = setTimeout(prefetchPages, PREFETCH_DELAY_MS)
-    return () => {
-      clearTimeout(id)
-    }
+    void (async () => {
+      await firstScreenIn()
+      prefetchPages()
+    })()
   }, [])
   useEffect(() => {
     for (const type of INTENT_EVENTS) {

@@ -1,5 +1,6 @@
 import * as Sentry from '@sentry/react'
 
+import { firstScreenIn } from '@/lib/first-screen'
 import { BE_ADDRESS, LOOKUP_ADDRESS } from '@/lib/synbox-flask/address'
 
 // No DSN (local runs without one) leaves the SDK disabled
@@ -20,7 +21,7 @@ Sentry.init({
   tracesSampleRate: 1,
 })
 
-// Replay is 120 KiB of the first bundle; Sentry's CDN serves it once the page has loaded instead. Its error
+// Replay is 120 KiB of the first bundle; Sentry's CDN serves it once the first screen is in instead. Its error
 // replays then start recording a moment later, and an error before that has no replay
 const addReplay = async () => {
   try {
@@ -40,11 +41,8 @@ if (
   Sentry.getClient()?.getDsn() !== undefined &&
   window.location.hostname === 'synbox.io'
 ) {
-  window.addEventListener(
-    'load',
-    () => {
-      void addReplay()
-    },
-    { once: true }
-  )
+  void (async () => {
+    await firstScreenIn()
+    await addReplay()
+  })()
 }

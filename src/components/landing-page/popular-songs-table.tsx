@@ -10,6 +10,7 @@ import {
   useKaraokeIds,
 } from '@/lib/react-query/queries-and-mutations'
 import { compactCount, useListensOf } from '@/lib/song-stats'
+import { useTitleFonts } from '@/lib/title-fonts'
 import type { ChartSong, CssVars } from '@/types'
 
 // A row: a 72×41 thumbnail (16:9), then the title on one 20px line over the rank, YouTube views and Synbox listens on one 16px
@@ -69,12 +70,16 @@ const SongRow = ({
   karaoke: boolean
   listens: number | undefined
 }) => (
-  <li>
+  // A row out of the list's view is not rendered until it scrolls near: laid out all at once, the hundred titles
+  // asked for some 40 font files (over 1 MB) with the first screen, and every font that arrived laid all of them
+  // out again. Its height is the 72px picture's 16:9 plus the padding. The focus ring is drawn inside the row,
+  // since an unrendered row's box clips what is drawn outside it
+  <li className='[contain-intrinsic-block-size:auto_3.03125rem] [content-visibility:auto]'>
     <Link
       data-bench='charts-row'
       data-marquee-host
       to={`/v/${song.id}`}
-      className='group flex items-center gap-3 rounded-xl px-2 py-1 text-foreground transition-colors hover:bg-accent'>
+      className='focus-inset group flex items-center gap-3 rounded-xl px-2 py-1 text-foreground transition-colors hover:bg-accent'>
       <span className='relative aspect-video w-18 shrink-0 rounded-sm bg-thumbnail-placeholder'>
         <img
           src={`https://i.ytimg.com/vi/${song.id}/mqdefault.jpg`}
@@ -129,6 +134,8 @@ const LandingPageCharts: React.FC = () => {
       .map((song) => song.id) ?? []
   // One request for every karaoke song on the chart
   const { data: listens } = useListensOf(karaokeSongs)
+  // The rows below the list's view are not rendered, so their titles' fonts come ahead of its scroll
+  useTitleFonts(chartsData?.map((song) => song.title).join('') ?? '')
 
   return (
     <section
