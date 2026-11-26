@@ -983,30 +983,39 @@
 }
 
 /* One line's rows: the Japanese line's double leading (room for furigana when it wraps) leaves about half its
-   size free below it, so its romaji sat further from it (8px at 1440) than from the translation (3px). The romaji
-   moves up into that room and the translation down by as much (0.25em of the romaji, 0.29em of the translation,
-   both 5px of a 24.6px line), so the block keeps its height. With the translation first (stage-lyrics.tsx ›
-   LineRows) the same two lengths, on the other row each: the translation up into that room by the romaji's
-   0.25em, the romaji down by the translation's 0.29em. So the two orders are exactly as tall as each other, and
-   changing the order never moves the block */
+   size free below it, so the row under it sat further from it than the next row did. The two gaps are made even by
+   what a reader sees, not by the rows' boxes: from the Japanese line's ideographs to the next row's x-height, and
+   from that row's baseline to the last row's x-height (a translation's descenders hang into its gap, so ink-to-ink
+   reads it as smaller than it looks). The first row moves up into the room and the second down by what is left of
+   one total, -0.25em of the romaji plus 0.29em of the translation, in either order (stage-lyrics.tsx › LineRows).
+   So the two orders are exactly as tall as each other, and changing the order never moves the block. Measured
+   (2026-11-26, 1440 web, theater, a phone on its side): the two gaps within 1.1px of each other in both orders,
+   where the earlier shared lengths left 3 to 9px between them with the translation first */
 .player-lyrics-overlay {
+  /* A romaji alone under the Japanese */
   & [data-row='japanese'] + [data-row='romaji'] {
     margin-top: -0.25em;
   }
 
+  &
+    [data-row='japanese']
+    + [data-row='romaji']:has(+ [data-row='translation']) {
+    margin-top: -0.18em;
+  }
+
   & [data-row='japanese'] + [data-row='romaji'] + [data-row='translation'] {
-    margin-top: 0.29em;
+    margin-top: calc(0.29em - 0.07 * --theme(--text-lyric-romaji));
   }
 
   /* Only with the romaji under it: a translation alone under the Japanese keeps the gap it always had */
   &
     [data-row='japanese']
     + [data-row='translation']:has(+ [data-row='romaji']) {
-    margin-top: calc(-0.25 * --theme(--text-lyric-romaji));
+    margin-top: -0.075em;
   }
 
   & [data-row='japanese'] + [data-row='translation'] + [data-row='romaji'] {
-    margin-top: calc(0.29 * --theme(--text-lyric-secondary));
+    margin-top: calc(0.365 * --theme(--text-lyric-secondary) - 0.25em);
   }
 }
 

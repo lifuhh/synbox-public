@@ -14,7 +14,7 @@ import {
   ThumbsUpIcon,
 } from 'lucide-react'
 import type { ReactNode, RefObject } from 'react'
-import { Fragment, useEffect, useId, useRef, useState } from 'react'
+import { Fragment, use, useEffect, useId, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
 
 import { ariaKeys, SHORTCUTS } from '@/components/player-stage/shortcuts'
@@ -314,6 +314,10 @@ const lyricsGroupClass = (inline: boolean, empty: boolean) =>
 // A gap between the lyrics' buttons and the song's, the discs' own spacing again
 const dividerClass = (chart: boolean) => (chart ? 'hidden' : 'size-1 shrink-0')
 
+// Set on the stage's rail while it is slid away, for what is drawn outside its box
+const railClosed = (inline: boolean, open: boolean) =>
+  inline || open ? undefined : true
+
 const railClass = (inline: boolean, interactive: boolean, open: boolean) =>
   inline
     ? 'flex w-fit max-w-full flex-wrap items-center gap-x-5 gap-y-2 watch-narrow:w-full watch-narrow:flex-col watch-narrow:items-stretch'
@@ -328,6 +332,14 @@ const railClass = (inline: boolean, interactive: boolean, open: boolean) =>
           ? 'translate-x-0'
           : '-translate-x-[calc(100%+var(--safe-left))] motion-reduce:translate-x-0 motion-reduce:opacity-0 portrait:translate-x-0 portrait:opacity-0'
       )
+
+// The Translations and Romaji buttons' own box. On the stage it spaces and turns them exactly as the rail does
+// (railClass), so the rail looks as it would without it, and it is what the swap floats beside. Inline it is no box
+// at all: the row's own flex or grid places the pair, the swap between them
+const pairClass = (inline: boolean) =>
+  inline
+    ? 'contents'
+    : 'relative flex flex-col items-center gap-2 short:gap-1.5 portrait:flex-row'
 
 // One of the two rows under a lyric line, as its button on the rail
 interface RowToggle {
@@ -404,35 +416,39 @@ const VideoLyricsButtons = ({
           <MessageSquareTextIcon className='size-5 shrink-0' />
         </RailButton>
       </RailTooltip>
-      {rows.map((row, at) => (
-        // Places, not rows: the first and the second button, whichever row each holds
-        // oxlint-disable-next-line no-array-index-key
-        <Fragment key={at}>
-          {at === 1 && (
-            <RowSwap
-              flipped={!translationFirst}
-              shown={showRomaji && showTranslation && !twoLines}
-              onSwap={() => {
-                setTranslationFirst(!translationFirst)
-                setSwapped(
-                  translationFirst
-                    ? 'Romaji above translations'
-                    : 'Translations above romaji'
-                )
-              }}
-            />
-          )}
-          <RailTooltip label={row.tip}>
-            <RailButton
-              ref={at === 0 ? firstRef : secondRef}
-              label={row.label}
-              pressed={row.on}
-              onClick={row.handleToggle}>
-              {row.icon}
-            </RailButton>
-          </RailTooltip>
-        </Fragment>
-      ))}
+      {/* The pair in a box of their own, laid out as the rail lays out its buttons, so the swap can float beside
+          it on the stage without taking a place in the rail (row-swap.tsx › RowSwap) */}
+      <div className={pairClass(use(RailInline))}>
+        {rows.map((row, at) => (
+          // Places, not rows: the first and the second button, whichever row each holds
+          // oxlint-disable-next-line no-array-index-key
+          <Fragment key={at}>
+            {at === 1 && (
+              <RowSwap
+                flipped={!translationFirst}
+                shown={showRomaji && showTranslation && !twoLines}
+                onSwap={() => {
+                  setTranslationFirst(!translationFirst)
+                  setSwapped(
+                    translationFirst
+                      ? 'Romaji above translations'
+                      : 'Translations above romaji'
+                  )
+                }}
+              />
+            )}
+            <RailTooltip label={row.tip}>
+              <RailButton
+                ref={at === 0 ? firstRef : secondRef}
+                label={row.label}
+                pressed={row.on}
+                onClick={row.handleToggle}>
+                {row.icon}
+              </RailButton>
+            </RailTooltip>
+          </Fragment>
+        ))}
+      </div>
       {/* Rendered empty first, so the new order is announced when it is set */}
       <output className='sr-only'>{swapped}</output>
       <RailTooltip label={languageLabel}>
@@ -669,6 +685,8 @@ const PlayerRail = ({ inline = false }: { inline?: boolean }) => {
               ref={panelRef}
               id={panelId}
               data-player-chrome={inline ? undefined : true}
+              // The swap floats outside the rail's box, so it fades as the rail slides away (row-swap.tsx)
+              data-rail-closed={railClosed(inline, open)}
               aria-label='Player Controls'
               className={railClass(inline, open && armed, open)}>
               <div
