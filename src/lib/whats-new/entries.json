@@ -4,15 +4,9 @@
     "date": "2026-11-26",
     "title": "Swap Lyric Rows",
     "items": [
-      "On the video, each line’s translation now sits above its romaji",
-      "The arrow between the Translations and Romaji buttons swaps them"
+      "Translations now sit above romaji on the video; the arrow beside their buttons swaps them",
+      "Bug fixes and performance improvements"
     ]
-  },
-  {
-    "id": "fixes-2026-11-26",
-    "date": "2026-11-26",
-    "title": "Small Fixes",
-    "items": ["Bug fixes and performance improvements"]
   },
   {
     "id": "fuller-pictures",
