@@ -135,13 +135,17 @@ export const RowSwap = ({
           inline ? IN_ROW : ON_STAGE,
           !shown && 'pointer-events-none invisible opacity-0'
         )}>
-        {/* The rail stands as a column except upright; the row under the video lies flat */}
-        <span className={cn('grid', !inline && 'rotate-90 portrait:rotate-0')}>
+        {/* The glyph is a U opening up, a head at each end. On the stage's column it floats to the pair's right, so
+            a quarter turn back opens it to the left: each end points at one of the two buttons. Upright and in the
+            row under the video it lies flat between them */}
+        <span className={cn('grid', !inline && '-rotate-90 portrait:rotate-0')}>
+          {/* A press turns it once round, one way and then back the other, so it always comes to rest facing the
+              pair (a half turn left it facing away every other press) */}
           <SwapIcon
             aria-hidden
             className={cn(
               'size-5 transition-transform duration-(--duration-indicator) ease-travel motion-reduce:transition-none',
-              flipped && 'rotate-180'
+              flipped && 'rotate-360'
             )}
           />
         </span>

@@ -58,8 +58,8 @@ export const TheaterIcon = ({
 )
 
 // Two things trading places, in Lucide's line style (24px, 2px stroke): one curved line with a head at each end,
-// each pointing at the thing beside it. Drawn for two things side by side; a quarter turn serves a pair one above
-// the other
+// each pointing at the thing beside it. Drawn opening up, for two things side by side above it; a quarter turn serves
+// a pair one above the other, opening toward them
 export const SwapIcon = ({ className, ...props }: ComponentProps<'svg'>) => (
   <svg
     xmlns='http://www.w3.org/2000/svg'
