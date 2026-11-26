@@ -82,6 +82,8 @@ const driveCarousel = (
   let settleTimer = 0
   let suppressClick = false
   let lastSettled = 0
+  // Where the row was last seen resting off a slide
+  let strayAt: number | null = null
 
   const item = (index: number) => ((index % count) + count) % count
   const xOf = (index: number) => base + index * pitch
@@ -124,7 +126,26 @@ const driveCarousel = (
     }
   }
 
+  // The row at rest between two slides is brought to the nearer one. A smooth scroll that script started (the
+  // auto-advance) is not snapped when something stops it partway, as a finger landing on the row does on a phone,
+  // and nothing then moves the row until the next advance, which whatever holds the row still puts off. Looked at
+  // twice, SETTLE_MS apart: a scroll that only paused between two events has moved on by the second look
   const settle = () => {
+    const x = track.scrollLeft
+    if (Math.abs(x - xOf(Math.round(position()))) > 1) {
+      if (x === strayAt) {
+        // Settled again by onScroll once it is there
+        track.scrollTo({
+          behavior: scrollMotion(),
+          left: xOf(Math.round(position())),
+        })
+      } else {
+        settleTimer = window.setTimeout(settle, SETTLE_MS)
+      }
+      strayAt = x === strayAt ? null : x
+      return
+    }
+    strayAt = null
     recentre()
     const now = item(Math.round(position()))
     if (now !== lastSettled) {
@@ -232,6 +253,8 @@ const driveCarousel = (
       }
       if (dy >= dx) {
         drag = null
+        // The touch that became the page's scroll may have stopped the row partway
+        settleTimer = window.setTimeout(settle, SETTLE_MS)
         return false
       }
       current.dragging = true
@@ -257,6 +280,9 @@ const driveCarousel = (
     const { dragging, from, samples } = drag
     drag = null
     if (!dragging) {
+      // A tap, which may have stopped the row partway
+      window.clearTimeout(settleTimer)
+      settleTimer = window.setTimeout(settle, SETTLE_MS)
       return
     }
     suppressClick = true
