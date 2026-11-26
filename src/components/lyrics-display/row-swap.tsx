@@ -13,6 +13,8 @@ const EXCHANGE_MS = 240
 const TRAVEL = 'cubic-bezier(0.65, 0, 0.35, 1)'
 // The least a turn back takes, however short its way: five frames
 const TURN_BACK_MIN_MS = 80
+// A turn back shorter than this is no move at all: one frame lands it
+const SNAP_PX = 2
 // Reduce Motion: no travel, a short fade where each button now stands
 const FADE_MS = 150
 
@@ -60,6 +62,12 @@ export const useExchange = (
     // A press mid-move sends the two back over the part of the way they had come, in that share of the time, as
     // the arrow's own turn back does (a CSS transition reversed mid-way)
     const way = Math.hypot(apart.x + drawn.b.x, apart.y + drawn.b.y)
+    // Pressed again before they had left (a frame or two in): they are back where they stand, as the cancel above
+    // draws them. Even the shortest turn back would hold them within a hair of their place for its five frames
+    if (way < SNAP_PX) {
+      running.current = []
+      return
+    }
     const share = Math.min(1, way / Math.max(1, Math.hypot(apart.x, apart.y)))
     const duration = Math.max(TURN_BACK_MIN_MS, EXCHANGE_MS * share)
     const travel = (button: HTMLElement, x: number, y: number) => {
