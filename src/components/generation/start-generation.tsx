@@ -21,9 +21,9 @@ import type { Refusal } from '@/lib/generation/stream'
 // A check answered this fast needs no notice; one that waits on a backend starting up does
 const STARTING_NOTICE_DELAY_MS = 400
 // A warm backend answers within about 3 s, so a check still going after this waits on one starting up from idle
-// (25 to 33 s, stream.ts › CHECK_MS), and says so instead of looking stuck
+// (25 to 33 s, and the check waits up to a minute: stream.ts › CHECK_MS), and says so instead of looking stuck
 export const SLOW_CHECK_MS = 5000
-export const STARTING_UP = 'Starting Synbox, up to 30 s'
+export const STARTING_UP = 'Starting Synbox, up to a minute'
 
 // What is happening: the server is asked whether it can take the song
 const checkingNotice = (description?: string) => ({

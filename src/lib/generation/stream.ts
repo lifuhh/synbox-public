@@ -331,33 +331,64 @@ const CHECK_MS = 60_000
 // A started instance stays up for several idle minutes, so one warm-up covers the links pasted in that time
 const WARM_MS = 5 * 60_000
 
+// One request of the check. Throws when no answer came: the wait ran out, `cut` ended it, or the connection died
+const askOnce = async (
+  videoId: string,
+  kind: 'new' | 'regenerate',
+  cut?: AbortSignal
+): Promise<Refusal | null> => {
+  const wait = AbortSignal.timeout(CHECK_MS)
+  const token = await backendToken()
+  const response = await fetch(`${BE_ADDRESS}/generation-check`, {
+    body: JSON.stringify(withOrigin({ id: videoId, kind })),
+    headers: {
+      'Content-Type': 'application/json',
+      ...callerHeaders(token),
+    },
+    method: 'POST',
+    signal: cut ? AbortSignal.any([wait, cut]) : wait,
+  })
+  const body: unknown = await response.json()
+  if (
+    isRecord(body) &&
+    body.ok === false &&
+    typeof body.code === 'string' &&
+    typeof body.message === 'string'
+  ) {
+    return { code: body.code, message: appMessage(body.code, body.message) }
+  }
+  return response.ok ? null : UNREACHABLE
+}
+
+const waitedOut = (error: unknown) =>
+  error instanceof DOMException && error.name === 'TimeoutError'
+
+// A check that got no answer is asked once more, unless it waited the whole CHECK_MS. A phone that switches away
+// from the app during a cold start loses the connection, and the page hears of it only on its return, after the
+// backend has started and answered into nothing (2026-11-26: answered at 31 s, "Couldn't reach Synbox" at 54 s,
+// and the next press went through in 1.4 s). A check still open when the page comes back (resume.ts) is cut and
+// asked again at once, as the generation streams reconnect, instead of waiting on a connection that is gone
 const askGeneration = async (
   videoId: string,
   kind: 'new' | 'regenerate'
 ): Promise<Refusal | null> => {
+  const back = new AbortController()
+  const stopResume = onResume(() => {
+    back.abort()
+  })
   try {
-    const token = await backendToken()
-    const response = await fetch(`${BE_ADDRESS}/generation-check`, {
-      body: JSON.stringify(withOrigin({ id: videoId, kind })),
-      headers: {
-        'Content-Type': 'application/json',
-        ...callerHeaders(token),
-      },
-      method: 'POST',
-      signal: AbortSignal.timeout(CHECK_MS),
-    })
-    const body: unknown = await response.json()
-    if (
-      isRecord(body) &&
-      body.ok === false &&
-      typeof body.code === 'string' &&
-      typeof body.message === 'string'
-    ) {
-      return { code: body.code, message: appMessage(body.code, body.message) }
+    return await askOnce(videoId, kind, back.signal)
+  } catch (error) {
+    if (waitedOut(error)) {
+      return UNREACHABLE
     }
-    return response.ok ? null : UNREACHABLE
-  } catch {
-    return UNREACHABLE
+    try {
+      return await askOnce(videoId, kind)
+    } catch {
+      return UNREACHABLE
+    }
+  } finally {
+    stopResume()
   }
 }
 
