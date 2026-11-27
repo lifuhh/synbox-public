@@ -86,9 +86,25 @@ const rememberedMe = (): Me | null => {
   }
 }
 
+// Set by the auth Worker beside the session cookie, for as long, saying only that there is a session
+// (worker/src/signed-in-hint.ts). It outlives the remembered answer: Safari clears a site's storage after 7 days
+// without a visit but keeps the cookies the server set, and the first load after signing in has nothing remembered yet
+const signedInHint = () =>
+  document.cookie.split('; ').includes('synbox_signed_in=1')
+
+// Who to draw before /api/me answers: the account this browser last saw, else, while the session cookie is there,
+// an account not yet known (no name, picture or quota), else a guest (null)
+const rememberedAccount = (): Me | 'unknown' | null =>
+  rememberedMe() ?? (signedInHint() ? 'unknown' : null)
+
 export const lastAccount = (): { image: string | null } | null => {
-  const user = rememberedMe()?.user ?? null
-  return user === null ? null : { image: user.image }
+  const account = rememberedAccount()
+  if (account === null) {
+    return null
+  }
+  return {
+    image: account === 'unknown' ? null : (account.user?.image ?? null),
+  }
 }
 
 const rememberAccount = (me: Me) => {
@@ -172,23 +188,32 @@ export const useGuestSongUsed = (ask: boolean) =>
 // a few a day. `newSong` is false for a guest whose song this page saw go (useGuestSongUsed asks the device's), and for an account that
 // added today's songs.
 // `ready` is false until the sign-in check answers; until then it is whoever this browser last saw signed in
-// (rememberedMe), else a guest
+// (rememberedAccount), else a guest. `quota` is null while the account isn't known yet
 export type Access =
   | { kind: 'guest'; newSong: boolean; admin: false; ready: boolean }
   | {
       kind: 'user'
       newSong: boolean
       admin: boolean
-      quota: Quota
+      quota: Quota | null
       ready: boolean
     }
 
 export const useAccess = (): Access => {
   const { data, isPending } = useMe()
-  const remembered = useMemo(() => rememberedMe(), [])
-  const me = isPending ? remembered : (data ?? null)
-  const user = me?.user ?? null
+  const remembered = useMemo(() => rememberedAccount(), [])
   const spent = useAtomValue(guestSongSpentAtom)
+  const me = isPending ? remembered : (data ?? null)
+  if (me === 'unknown') {
+    return {
+      admin: false,
+      kind: 'user',
+      newSong: true,
+      quota: null,
+      ready: false,
+    }
+  }
+  const user = me?.user ?? null
   if (user === null || me?.quota === undefined) {
     return { admin: false, kind: 'guest', newSong: !spent, ready: !isPending }
   }

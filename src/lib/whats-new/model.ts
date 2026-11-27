@@ -68,13 +68,15 @@ export const parseEntries = (raw: unknown): WhatsNewEntry[] => {
   return entries
 }
 
-// Whether the bell shows the newest entry: the listener hasn't seen it yet, and they knew Synbox before it (a
-// returning browser, or an account that saw an older entry). Someone new to Synbox isn't told what changed
+// Whether the newest entry is news: to an account back on Synbox, its session confirmed on this load, that hasn't
+// seen it (a returning browser, or an account that saw an older entry). A guest or someone new isn't told what changed
 export const whatsNewUnread = (
   latest: string | null,
   seen: string | null,
-  returning: boolean
-) => latest !== null && latest !== seen && (seen !== null || returning)
+  returning: boolean,
+  signedIn: boolean
+) =>
+  signedIn && latest !== null && latest !== seen && (seen !== null || returning)
 
 // How many entries, newest first, the What's New page shows above Earlier Updates: those newer than the last one
 // the listener had seen when they opened it (several, for someone back after a few releases), and at least the

@@ -1,5 +1,11 @@
 [
   {
+    "id": "fixes-2026-11-28",
+    "date": null,
+    "title": "Small Fixes",
+    "items": ["Bug fixes and performance improvements"]
+  },
+  {
     "id": "swap-lyric-rows",
     "date": "2026-11-27",
     "title": "Swap Lyric Rows",

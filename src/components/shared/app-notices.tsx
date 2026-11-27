@@ -7,6 +7,7 @@ import {
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useMatch } from 'react-router'
 
+import { useAccess } from '@/lib/auth'
 import { appJustUpdated, useOnline } from '@/lib/pwa'
 import { LATEST_ENTRY, useWhatsNew, whatsNewPath } from '@/lib/whats-new'
 import { cn } from '@/utils/cn'
@@ -25,16 +26,18 @@ const NEWS_MS = 8000
 // the last one, and someone back after a while hears of what they missed whatever the last release changed
 type UpdatedNotice = 'news' | 'updated' | null
 
-// Decided once, on the load: reading the entry while the note shows doesn't turn it into another note. Shown for
-// NEWS_MS (held while `held`) or NOTICE_MS; null once pressed
+// Decided once, when the sign-in check answers (only a signed-in account hears of What's New): reading the entry
+// while the note shows doesn't turn it into another note. Shown for NEWS_MS (held while `held`) or NOTICE_MS; null
+// once pressed
 const useUpdatedNotice = (held: boolean) => {
   const { unread } = useWhatsNew()
-  const [notice, setNotice] = useState<UpdatedNotice>(() => {
-    if (!appJustUpdated) {
-      return null
-    }
-    return unread ? 'news' : 'updated'
-  })
+  const { ready } = useAccess()
+  const [decided, setDecided] = useState(!appJustUpdated)
+  const [notice, setNotice] = useState<UpdatedNotice>(null)
+  if (!decided && ready) {
+    setDecided(true)
+    setNotice(unread ? 'news' : 'updated')
+  }
   useEffect(() => {
     const timer =
       notice !== null && !held
