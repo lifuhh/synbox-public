@@ -1,6 +1,6 @@
 # What's New
 
-Listeners read what changed on the What's New page (`/whats-new`), from the profile menu, the You page, the bell and the "Updated · See What's New" note after an update. That note links here only while the newest entry is unread by this listener (a release with no entry of its own says just "Updated" to someone who read the last one; someone back after several releases still gets the link). Every release that changes anything a listener sees gets an entry. Write it in the same PR as the change, or in the last PR before the release.
+Listeners read what changed on the What's New page (`/whats-new`), from the profile menu, the You page, the bell and the "Updated · See What's New" note after an update. Only a signed-in account back on Synbox is told (the note's link, the bell's row, the menu's dot), once its session is confirmed on the load; a guest or someone new never is. That note links here only while the newest entry is unread by this listener (a release with no entry of its own says just "Updated" to someone who read the last one; someone back after several releases still gets the link). Every release that changes anything a listener sees gets an entry. Write it in the same PR as the change, or in the last PR before the release.
 
 ## Where entries live
 

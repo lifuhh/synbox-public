@@ -2,6 +2,7 @@ import { useAtom } from 'jotai'
 import { atomWithStorage } from 'jotai/utils'
 import { useCallback } from 'react'
 
+import { useAccess } from '@/lib/auth'
 import { syncedStorage } from '@/lib/prefs/storage'
 import { returningVisitor } from '@/lib/pwa'
 
@@ -31,8 +32,14 @@ export const whatsNewPath = (entry?: WhatsNewEntry) =>
 // Whether the newest entry is still news to this listener, and the call that marks it read
 export const useWhatsNew = () => {
   const [seen, setSeen] = useAtom(seenAtom)
+  const access = useAccess()
   const latest = LATEST_ENTRY?.id ?? null
-  const unread = whatsNewUnread(latest, seen, returningVisitor)
+  const unread = whatsNewUnread(
+    latest,
+    seen,
+    returningVisitor,
+    access.ready && access.kind === 'user'
+  )
   const markSeen = useCallback(() => {
     if (latest !== null) {
       setSeen(latest)

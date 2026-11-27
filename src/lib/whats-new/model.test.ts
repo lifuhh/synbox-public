@@ -17,17 +17,18 @@ describe('recentCount', () => {
 })
 
 describe('whatsNewUnread', () => {
-  test('a listener who knew Synbox before hears about the newest release once', () => {
+  test('an account back on Synbox hears about the newest release once', () => {
     // A returning browser that never opened What's New
-    expect(whatsNewUnread('b', null, true)).toBe(true)
+    expect(whatsNewUnread('b', null, true, true)).toBe(true)
     // An account that saw an older entry, on a browser new to Synbox
-    expect(whatsNewUnread('b', 'a', false)).toBe(true)
+    expect(whatsNewUnread('b', 'a', false, true)).toBe(true)
     // Already seen
-    expect(whatsNewUnread('b', 'b', true)).toBe(false)
+    expect(whatsNewUnread('b', 'b', true, true)).toBe(false)
   })
 
-  test('someone new to Synbox is not told what changed', () => {
-    expect(whatsNewUnread('b', null, false)).toBe(false)
+  test('a guest or someone new is not told what changed', () => {
+    expect(whatsNewUnread('b', 'a', true, false)).toBe(false)
+    expect(whatsNewUnread('b', null, false, true)).toBe(false)
   })
 })
 

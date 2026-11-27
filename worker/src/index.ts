@@ -97,6 +97,11 @@ import {
 } from './requests'
 import { isAutomated, readSignals } from './signals'
 import {
+  hasSignedInHint,
+  signedInHintFor,
+  withSignedInHint,
+} from './signed-in-hint'
+import {
   addListen,
   isVideoId,
   likerOf,
@@ -159,16 +164,22 @@ const automatedClient = (
   body: Record<string, unknown> | null
 ) => body?.automated === true || isAutomated(c.req.header('user-agent') ?? '')
 
-app.on(
-  ['GET', 'POST'],
-  '/api/auth/*',
-  async (c) => await createAuth(c.env).handler(c.req.raw)
+app.on(['GET', 'POST'], '/api/auth/*', async (c) =>
+  withSignedInHint(await createAuth(c.env).handler(c.req.raw))
 )
 
 app.get('/api/me', async (c) => {
   const session = await createAuth(c.env).api.getSession({
     headers: c.req.raw.headers,
   })
+  const hint = signedInHintFor(
+    session ? new Date(session.session.expiresAt) : null,
+    Date.now(),
+    hasSignedInHint(c.req.header('cookie'))
+  )
+  if (hint !== null) {
+    c.header('Set-Cookie', hint, { append: true })
+  }
   if (!session) {
     return c.json({ user: null })
   }

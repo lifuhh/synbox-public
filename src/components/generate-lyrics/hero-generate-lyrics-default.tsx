@@ -92,7 +92,7 @@ const newSongNote = (access: Access, guestSpent: boolean): SongNote | null => {
         }
       : null
   }
-  return access.newSong
+  return access.newSong || access.quota === null
     ? null
     : {
         action: { handleClick: openRequestMore, label: 'Request More' },
