@@ -31,6 +31,8 @@ const TOP_SLACK_PX = 32
 /** How far the rows' lines may move when only the translation was dragged (a line's re-wrap, rounding) */
 const KEEP_SLACK_PX = 6
 const LIMIT_MS = 150_000
+/** How long a layout saved overlapped has to come apart after load (the move's ease is 200ms) */
+const SAVED_SETTLE_MS = 2000
 
 const ROWS = '[data-lyric-rows-area] [data-lyrics-style-toggle]'
 const TRANSLATION = '[data-lyric-translation] [data-lyrics-style-toggle]'
@@ -369,11 +371,31 @@ const dockAudit = async (
       lyricsTranslationAnchor: '1',
     })
     try {
-      const end = await boxes(page)
-      if (!end.docked && overlap(end.rowsText, end.translation)) {
+      // The app moves the translation out on load (a ResizeObserver, then a 200ms ease), so judge where it comes to
+      // rest: on a busy machine the first look can land mid-ease
+      const first = await boxes(page)
+      let end = first
+      const until = Date.now() + SAVED_SETTLE_MS
+      while (
+        !end.docked &&
+        overlap(end.rowsText, end.translation) &&
+        Date.now() < until
+      ) {
+        // oxlint-disable-next-line eslint/no-await-in-loop -- one look per wait, until it rests
+        await page.waitForTimeout(100)
+        // oxlint-disable-next-line eslint/no-await-in-loop -- one look per wait, until it rests
+        end = await boxes(page)
+      }
+      const stillOver = !end.docked && overlap(end.rowsText, end.translation)
+      if (!stillOver && end !== first) {
+        notes.push(
+          `saved: overlapped at first look, apart ${SAVED_SETTLE_MS - (until - Date.now())}ms later (${end.docked ? 'docked' : 'moved out'})`
+        )
+      }
+      if (stillOver) {
         values.savedOverlapped = 1
         notes.push(
-          `saved: a layout saved overlapped loaded overlapped (rows' lines ${JSON.stringify(end.rowsText)}, translation ${JSON.stringify(end.translation)})`
+          `saved: a layout saved overlapped stayed overlapped ${SAVED_SETTLE_MS}ms after load (rows' lines ${JSON.stringify(end.rowsText)}, translation ${JSON.stringify(end.translation)}; at first look ${JSON.stringify(first.rowsText)}, ${JSON.stringify(first.translation)})`
         )
       }
     } finally {
