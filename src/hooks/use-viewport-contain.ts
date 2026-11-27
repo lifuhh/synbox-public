@@ -10,18 +10,24 @@ import { useEffect } from 'react'
 // property (the lab's WebKit lacks it, and the bug)
 export const VIEWPORT_CONTAIN_ATTR = 'data-viewport-contain'
 
+// Without cover until the cleanup
+const contain = (meta: HTMLMetaElement) => {
+  const cover = meta.content
+  meta.content = cover.replace(/,\s*viewport-fit=cover/u, '')
+  document.documentElement.setAttribute(VIEWPORT_CONTAIN_ATTR, '')
+  return () => {
+    meta.content = cover
+    document.documentElement.removeAttribute(VIEWPORT_CONTAIN_ATTR)
+  }
+}
+
 export const useViewportContain = (on: boolean) => {
   useEffect(() => {
-    const meta = document.querySelector<HTMLMetaElement>('meta[name="viewport"]')
-    if (!on || meta === null || !CSS.supports('-webkit-touch-callout', 'none')) {
-      return undefined
-    }
-    const cover = meta.content
-    meta.content = cover.replace(/,\s*viewport-fit=cover/u, '')
-    document.documentElement.setAttribute(VIEWPORT_CONTAIN_ATTR, '')
-    return () => {
-      meta.content = cover
-      document.documentElement.removeAttribute(VIEWPORT_CONTAIN_ATTR)
-    }
+    const meta = document.querySelector<HTMLMetaElement>(
+      'meta[name="viewport"]'
+    )
+    return on && meta !== null && CSS.supports('-webkit-touch-callout', 'none')
+      ? contain(meta)
+      : undefined
   }, [on])
 }
