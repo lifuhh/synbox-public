@@ -2180,6 +2180,12 @@ html[data-installed] *::-webkit-scrollbar {
     --safe-bottom: env(safe-area-inset-bottom, 0px);
     --safe-left: env(safe-area-inset-left, 0px);
     --safe-right: env(safe-area-inset-right, 0px);
+    /* The player on its side without viewport-fit=cover (hooks/use-viewport-contain.ts): the browser already keeps
+       the page out of the side insets, and WebKit can still report them (bug 272779) */
+    &[data-viewport-contain] {
+      --safe-left: 0px;
+      --safe-right: 0px;
+    }
     /* What the installed app's tab bar (and the resume bar over it) covers at the bottom; 0 without them */
     --tabbar-h: 0px;
     /* Room after a page's last content. A finger needs it to lift the last row clear of the screen's edge
