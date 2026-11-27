@@ -241,6 +241,7 @@ const installMeter = () => {
           .phase ?? 'none',
       rows,
       rowsText: union(present),
+      slot: within(boxOf(docked), layer),
       time: Number(
         document
           .querySelector(
@@ -248,7 +249,6 @@ const installMeter = () => {
           )
           ?.getAttribute('aria-valuenow') ?? -1
       ),
-      slot: within(boxOf(docked), layer),
       translation: within(text, layer),
     }
   }
@@ -509,11 +509,19 @@ const emptyTally = (): Tally => ({
 
 /** `more` counted into `tally`: counts add, the largest pixels stay */
 const addTally = (tally: Tally, more: Tally) => {
-  for (const key of Object.keys(tally) as (keyof Tally)[]) {
-    tally[key] = key.endsWith('MaxPx')
-      ? Math.max(tally[key], more[key])
-      : tally[key] + more[key]
+  for (const key of [
+    'undockRowsMoved',
+    'undockOverlap',
+    'undockRefused',
+    'undockEndedInside',
+    'redockRowsMoved',
+    'redockFailed',
+    'redos',
+  ] as const) {
+    tally[key] += more[key]
   }
+  tally.rowsMovedMaxPx = Math.max(tally.rowsMovedMaxPx, more.rowsMovedMaxPx)
+  tally.overlapMaxPx = Math.max(tally.overlapMaxPx, more.overlapMaxPx)
 }
 
 /**

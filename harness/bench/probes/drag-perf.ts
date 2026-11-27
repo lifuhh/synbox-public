@@ -224,12 +224,16 @@ export const measuredDrag = async (
       `${what}, attempt ${attempt + 1}: over budget (${result.slowFrames} slow frames, ${result.blockedPerMoveMs}ms blocked a move${result.stalled ? ', beside a machine stall' : ''})${attempt < REDOS ? '; run again' : ''}`
     )
   }
-  if (attempts.every((a) => a.stalled)) {
+  const [first] = attempts
+  if (first === undefined || attempts.every((a) => a.stalled)) {
     return null
   }
-  const best = attempts.reduce((a, b) =>
-    b.blockedPerMoveMs < a.blockedPerMoveMs ? b : a
-  )
+  let best = first
+  for (const a of attempts) {
+    if (a.blockedPerMoveMs < best.blockedPerMoveMs) {
+      best = a
+    }
+  }
   return { ...best, redos: REDOS }
 }
 
