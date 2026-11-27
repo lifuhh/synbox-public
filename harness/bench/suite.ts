@@ -249,6 +249,8 @@ const lyricUndock = (name: string, view: View, turned: boolean): Benchmark => ({
     count('redockFailed'),
     count('rowsMovedMaxPx', false),
     count('overlapMaxPx', false),
+    // Targets made again because the player moved under a drag: the machine's, reported
+    count('redos', false),
   ],
   run: lyricUndockAudit(view.surface, turned),
   runs: 1,
@@ -268,6 +270,8 @@ const rowSwap = (name: string, view: View, turned: boolean): Benchmark => ({
   metrics: [
     ...ROW_SWAP_FINDINGS.map((key) => count(key)),
     count('frames', false),
+    // A row hidden and shown again, made again because a stalled frame hid the fade: the machine's, reported
+    count('redos', false),
   ],
   run: rowSwapAudit(view.surface, turned),
   runs: 1,

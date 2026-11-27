@@ -17,7 +17,15 @@
 // (LINE_ONE_ROW_SEC), where the translation pulled up against the rows overlapped them by 1px (2026-11-11). Each
 // failing case counts 1 in its metric; `check` gates each at 0. The largest row move and overlap in pixels are
 // reported beside them.
+//
+// The rows are judged only while the player holds still. The page starts the video once, whenever it arrives, and its
+// time passes through 0 on the way, which redraws the rows; under load that start lands inside a drag (2026-11-27:
+// the rows moved 46px on the last frame of a drag). A target whose drag saw the player's phase, time or sung line
+// change is put back on the block and made again once the player holds still (REDOS times at most; `redos`), and one
+// the player moved under on every attempt leaves no sample, which `check` retries. Every drag's frames are kept in the
+// run's frames.json.
 
+import { mkdirSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 
 import type { Page } from 'playwright'
@@ -30,6 +38,7 @@ import {
   PLAYER_SONG,
   twoRowsHeld,
 } from './layout'
+import { REDOS } from './motion'
 
 /** Past this a move is a move; below it, subpixel rounding */
 const MOVED_PX = 1
@@ -40,6 +49,11 @@ const LIMIT_MS = 240_000
 const STEPS = 24
 /** A drop's places come to rest: the drag's end, a 200ms ease, any settle the app does after a drop */
 const SETTLE_MS = 1000
+/** The player holds still: its time moves no more than this under a drag, and stays put this long before a redo */
+const PLAYER_TIME_S = 0.05
+const HOLD_MS = 500
+const SEEK =
+  '[role=slider][aria-label="Seek"], [aria-label="Seek"] [role=slider]'
 
 const ROWS = '[data-lyric-rows-area] [data-lyrics-style-toggle]'
 const TRANSLATION = '[data-lyric-translation] [data-lyrics-style-toggle]'
@@ -82,6 +96,12 @@ interface Frame {
   docked: boolean
   /** The translation's drawn text, docked (pulled or not) or on its own; previews of where it would go left out */
   translation: Box | null
+  /** The player stage's phase (loading, playing, paused…) */
+  phase: string
+  /** The rows' lines and which of them is sung, as a hash: a line change is a new number */
+  line: number
+  /** The player's time in seconds, as the Seek slider shows it (-1 without one) */
+  time: number
 }
 
 /** What installMeter leaves in the page */
@@ -190,6 +210,15 @@ const installMeter = () => {
       docked === null
         ? glyphs(own)
         : glyphs(docked.querySelector('.docked-translation-text'))
+    let line = 0
+    for (const char of rowElements
+      .map(
+        (row) =>
+          `${row instanceof HTMLElement ? row.dataset.lyricRow : ''}:${row.textContent}`
+      )
+      .join('|')) {
+      line = Math.imul(line, 31) + (char.codePointAt(0) ?? 0)
+    }
     return {
       block: within(
         boxOf(
@@ -206,9 +235,20 @@ const installMeter = () => {
         right: layer.right - layer.left,
         top: 0,
       },
+      line,
+      phase:
+        document.querySelector<HTMLElement>('[data-player-stage]')?.dataset
+          .phase ?? 'none',
       rows,
       rowsText: union(present),
       slot: within(boxOf(docked), layer),
+      time: Number(
+        document
+          .querySelector(
+            '[role=slider][aria-label="Seek"], [aria-label="Seek"] [role=slider]'
+          )
+          ?.getAttribute('aria-valuenow') ?? -1
+      ),
       translation: within(text, layer),
     }
   }
@@ -451,6 +491,37 @@ interface Tally {
   redockFailed: number
   rowsMovedMaxPx: number
   overlapMaxPx: number
+  /** Targets made again because the player moved under a drag: the machine's, reported */
+  redos: number
+}
+
+const emptyTally = (): Tally => ({
+  overlapMaxPx: 0,
+  redockFailed: 0,
+  redockRowsMoved: 0,
+  redos: 0,
+  rowsMovedMaxPx: 0,
+  undockEndedInside: 0,
+  undockOverlap: 0,
+  undockRefused: 0,
+  undockRowsMoved: 0,
+})
+
+/** `more` counted into `tally`: counts add, the largest pixels stay */
+const addTally = (tally: Tally, more: Tally) => {
+  for (const key of [
+    'undockRowsMoved',
+    'undockOverlap',
+    'undockRefused',
+    'undockEndedInside',
+    'redockRowsMoved',
+    'redockFailed',
+    'redos',
+  ] as const) {
+    tally[key] += more[key]
+  }
+  tally.rowsMovedMaxPx = Math.max(tally.rowsMovedMaxPx, more.rowsMovedMaxPx)
+  tally.overlapMaxPx = Math.max(tally.overlapMaxPx, more.overlapMaxPx)
 }
 
 /**
@@ -467,16 +538,21 @@ const judge = (
   moved: 'undockRowsMoved' | 'redockRowsMoved'
 ) => {
   let worst = { down: 0, frame: -1, most: 0 }
-  // Where the rows went, for a failing case's note: each frame at which their move changed by over 1px
+  // Where the rows went, for a failing case's note: each frame at which their move changed by over 1px, or the
+  // player's phase or the line changed
   const trace: string[] = []
-  let last = 0
+  let last = { line: from.line, most: 0, phase: from.phase }
   let overlap = { frame: -1, px: 0, with: '' }
   for (const [index, frame] of frames.entries()) {
     const move = rowsMove(frame, from)
-    if (Math.abs(move.most - last) > MOVED_PX) {
-      last = move.most
+    if (
+      Math.abs(move.most - last.most) > MOVED_PX ||
+      frame.phase !== last.phase ||
+      frame.line !== last.line
+    ) {
+      last = { line: frame.line, most: move.most, phase: frame.phase }
       trace.push(
-        `${index + 1}: ${px(move.most)}px (down ${px(move.down)}, ${frame.docked ? 'docked' : 'off'}, ${frame.rows.filter((r) => r !== null).length} lines)`
+        `${index + 1}: ${px(move.most)}px (down ${px(move.down)}, ${frame.docked ? 'docked' : 'off'}, ${frame.rows.filter((r) => r !== null).length} lines, ${frame.phase} at ${frame.time}s${frame.line === from.line ? '' : ', another line'})`
       )
     }
     if (move.most > worst.most) {
@@ -499,7 +575,7 @@ const judge = (
   if (worst.most > MOVED_PX) {
     tally[moved] += 1
     notes.push(
-      `${what}: the rows' lines moved ${px(worst.most)}px (${worst.down >= 0 ? 'toward the bottom' : 'toward the top'} by ${px(Math.abs(worst.down))}px), frame ${worst.frame + 1} of ${frames.length}; trace (frame: move): ${trace.slice(0, 14).join('; ')}`
+      `${what} (from ${from.phase} at ${from.time}s): the rows' lines moved ${px(worst.most)}px (${worst.down >= 0 ? 'toward the bottom' : 'toward the top'} by ${px(Math.abs(worst.down))}px), frame ${worst.frame + 1} of ${frames.length}; trace (frame: move): ${trace.slice(0, 14).join('; ')}`
     )
   }
   if (overlap.px > OVERLAP_PX) {
@@ -509,6 +585,13 @@ const judge = (
     )
   }
   return frames.at(-1) ?? null
+}
+
+/** One recorded drag, kept in the run's frames.json */
+interface Drag {
+  what: string
+  from: Frame
+  frames: Frame[]
 }
 
 type Target = 'bottom' | 'top' | 'below' | 'inside'
@@ -585,19 +668,85 @@ const judgeEnd = (
   }
 }
 
-/** One target from the docked block: pulled off there, then, if it came off, dragged back onto the block */
-const undockOnce = async (
+/**
+ * How the player moved under a drag: the first frame whose phase, time or sung line is not `from`'s; null when it held.
+ * The page starts the video once, whenever it arrives (layout.ts › twoRowsHeld pauses it within 50ms), and on the way
+ * its time reads 0, which redraws the rows; under load that lands inside a recorded drag
+ */
+const playerMoved = (frames: Frame[], from: Frame): string | null => {
+  for (const [index, frame] of frames.entries()) {
+    if (
+      frame.phase !== from.phase ||
+      frame.line !== from.line ||
+      Math.abs(frame.time - from.time) > PLAYER_TIME_S
+    ) {
+      return `frame ${index + 1} of ${frames.length}: ${from.phase} at ${from.time}s, then ${frame.phase} at ${frame.time}s${frame.line === from.line ? '' : ', another line'}`
+    }
+  }
+  return null
+}
+
+/** Until the player holds still: its phase and time unchanged for HOLD_MS (a video stuck buffering at one time holds) */
+const playerStill = async (page: Page) => {
+  await page
+    .waitForFunction(
+      ({ holdMs, seek }) => {
+        const phase =
+          document.querySelector<HTMLElement>('[data-player-stage]')?.dataset
+            .phase ?? 'none'
+        const now = `${phase}@${document.querySelector(seek)?.getAttribute('aria-valuenow') ?? ''}`
+        const held = document.documentElement.dataset
+        if (held.benchPlayer !== now) {
+          held.benchPlayer = now
+          held.benchPlayerSince = String(performance.now())
+          return false
+        }
+        return performance.now() - Number(held.benchPlayerSince) >= holdMs
+      },
+      { holdMs: HOLD_MS, seek: SEEK },
+      { polling: 50, timeout: 20_000 }
+    )
+    .catch(async () => {
+      const seen = await page.evaluate(
+        () => document.documentElement.dataset.benchPlayer ?? 'nothing'
+      )
+      throw new Error(
+        `the player never held still for 20s (last seen: ${seen})`
+      )
+    })
+}
+
+/** The translation docked again after an attempt that came off, unrecorded */
+const redock = async (page: Page) => {
+  const off = await measure(page)
+  if (off.docked || off.translation === null || off.rowsText === null) {
+    return
+  }
+  await dragBy(
+    page,
+    TRANSLATION,
+    (off.rowsText.top + off.rowsText.bottom) / 2 -
+      (off.translation.top + off.translation.bottom) / 2
+  )
+  await page.waitForTimeout(SETTLE_MS)
+}
+
+/**
+ * One attempt at a target from the docked block: pulled off there, then, if it came off, dragged back onto the block.
+ * Judged into `tally` and `notes`, unless the player moved under a drag: then nothing is judged and that is returned
+ */
+const undockAttempt = async (
   page: Page,
   target: Target,
-  label: string,
+  what: string,
   tally: Tally,
-  notes: string[]
-) => {
-  const what = `${label}, translation pulled to the ${TARGET_NAMES[target]}`
+  notes: string[],
+  drags: Drag[]
+): Promise<string | null> => {
   const from = await measure(page)
   if (!from.docked || from.slot === null || from.rowsText === null) {
     notes.push(`${what}: not run, the translation wasn't docked to begin with`)
-    return
+    return null
   }
   const area: Box = {
     bottom: from.slot.bottom,
@@ -610,18 +759,23 @@ const undockOnce = async (
     DOCKED_TEXT,
     pullFor(target, from, area)
   )
+  drags.push({ frames, from, what })
+  const moved = playerMoved(frames, from)
+  if (moved !== null) {
+    return `pulled, ${moved}`
+  }
   const end = judge(frames, from, area, what, tally, notes, 'undockRowsMoved')
   if (end === null) {
-    return
+    return null
   }
   judgeEnd(target, end, from, area, what, tally, notes)
   if (end.docked) {
-    return
+    return null
   }
   // Back onto the block: its centre onto the rows' lines
   const off = await measure(page)
   if (off.translation === null || off.rowsText === null) {
-    return
+    return null
   }
   const back = await recordedDrag(
     page,
@@ -630,6 +784,11 @@ const undockOnce = async (
       (off.translation.top + off.translation.bottom) / 2
   )
   const again = `${what}, then dragged back onto the block`
+  drags.push({ frames: back, from, what: again })
+  const backMoved = playerMoved(back, from)
+  if (backMoved !== null) {
+    return `dragged back, ${backMoved}`
+  }
   const last = judge(back, from, area, again, tally, notes, 'redockRowsMoved')
   if (last?.docked !== true) {
     tally.redockFailed += 1
@@ -637,6 +796,48 @@ const undockOnce = async (
       `${again}: it didn't dock (translation ${JSON.stringify(last?.translation)})`
     )
   }
+  return null
+}
+
+/** One target, made again (REDOS times at most) from the docked block once the player holds still, while it moved under a drag */
+const undockOnce = async (
+  page: Page,
+  target: Target,
+  label: string,
+  tally: Tally,
+  notes: string[],
+  drags: Drag[]
+) => {
+  const what = `${label}, translation pulled to the ${TARGET_NAMES[target]}`
+  for (let attempt = 0; attempt <= REDOS; attempt += 1) {
+    const counted = emptyTally()
+    const said: string[] = []
+    // oxlint-disable-next-line eslint/no-await-in-loop -- one attempt at a time, each judged before the next
+    const moved = await undockAttempt(
+      page,
+      target,
+      attempt === 0 ? what : `${what} (attempt ${attempt + 1})`,
+      counted,
+      said,
+      drags
+    )
+    if (moved === null) {
+      addTally(tally, counted)
+      notes.push(...said)
+      return
+    }
+    tally.redos += 1
+    notes.push(
+      `${what}, attempt ${attempt + 1}: the player moved under the drag (${moved}); made again`
+    )
+    // oxlint-disable-next-line eslint/no-await-in-loop -- back to the docked block, held still, before the next attempt
+    await redock(page)
+    // oxlint-disable-next-line eslint/no-await-in-loop -- the player settles before the next attempt
+    await playerStill(page)
+  }
+  throw new Error(
+    `${what}: the player moved under the drag on all ${REDOS + 1} attempts`
+  )
 }
 
 /** The owner's case in one view, at one size on one line: the docked block to the middle of the stage, then each target and back */
@@ -647,6 +848,7 @@ const undockAtSize = async (
   setup: (typeof CASES)[number],
   tally: Tally,
   notes: string[],
+  drags: Drag[],
   shot: string
 ) => {
   const { page, close } = await dockedPage(surface, turned, url, setup)
@@ -663,7 +865,7 @@ const undockAtSize = async (
     await page.waitForTimeout(SETTLE_MS)
     for (const target of TARGETS) {
       // oxlint-disable-next-line eslint/no-await-in-loop -- one drag at a time, each from where the last left things
-      await undockOnce(page, target, setup.label, tally, notes)
+      await undockOnce(page, target, setup.label, tally, notes, drags)
     }
     await page.screenshot({ path: shot })
   } finally {
@@ -677,28 +879,26 @@ const undockAudit = async (
   url: string,
   artifactDir: string
 ): Promise<{ samples: Sample[]; errors: string[] }> => {
-  const tally: Tally = {
-    overlapMaxPx: 0,
-    redockFailed: 0,
-    redockRowsMoved: 0,
-    rowsMovedMaxPx: 0,
-    undockEndedInside: 0,
-    undockOverlap: 0,
-    undockRefused: 0,
-    undockRowsMoved: 0,
-  }
+  const tally = emptyTally()
   const notes: string[] = []
-  for (const [index, setup] of CASES.entries()) {
-    // oxlint-disable-next-line eslint/no-await-in-loop -- one page at a time
-    await undockAtSize(
-      surface,
-      turned,
-      url,
-      setup,
-      tally,
-      notes,
-      path.join(artifactDir, `screen-${index}.png`)
-    )
+  const drags: Drag[] = []
+  mkdirSync(artifactDir, { recursive: true })
+  try {
+    for (const [index, setup] of CASES.entries()) {
+      // oxlint-disable-next-line eslint/no-await-in-loop -- one page at a time
+      await undockAtSize(
+        surface,
+        turned,
+        url,
+        setup,
+        tally,
+        notes,
+        drags,
+        path.join(artifactDir, `screen-${index}.png`)
+      )
+    }
+  } finally {
+    writeFileSync(path.join(artifactDir, 'frames.json'), JSON.stringify(drags))
   }
   return { errors: [], samples: [{ notes, values: { ...tally } }] }
 }

@@ -176,10 +176,16 @@ test('under Reduce Motion the parts trade at once, and any travel is counted', (
   ])
 })
 
-// A row hidden: the swap's opacity frame by frame, hidden at the end once it reaches 0; `tweak` changes the last frame
-const hide = (opacities: number[], tweak: Partial<Frame> = {}) => {
+// A row hidden: the swap's opacity frame by frame, hidden at the end once it reaches 0; `tweak` changes the last frame,
+// `times` the frames' times (else 60Hz). Returns what was counted, or the stall that sends it round again
+const hide = (
+  opacities: number[],
+  tweak: Partial<Frame> = {},
+  times: number[] = []
+) => {
   const frames = opacities.map((opacity, i) => ({
     ...frame(i, { opacity, r: HOME.second, t: HOME.first }),
+    ...(times[i] === undefined ? {} : { t: times[i] }),
     ...(i === opacities.length - 1 ? tweak : {}),
   }))
   const last = frames.at(-1)
@@ -187,7 +193,7 @@ const hide = (opacities: number[], tweak: Partial<Frame> = {}) => {
     last.swap.visibility = 'hidden'
   }
   const hits: string[] = []
-  judgeHide(
+  const stall = judgeHide(
     'case',
     { after: FIRST, before: FIRST, frames, presses: [1] },
     true,
@@ -195,7 +201,7 @@ const hide = (opacities: number[], tweak: Partial<Frame> = {}) => {
       hits.push(finding)
     }
   )
-  return [...new Set(hits)].toSorted()
+  return stall === null ? [...new Set(hits)].toSorted() : 'stalled'
 }
 
 test('the swap fades when a row is hidden: at once, left shown, or with a button moved, it is counted', () => {
@@ -211,4 +217,20 @@ test('the swap fades when a row is hidden: at once, left shown, or with a button
   expect(
     hide([1, 1, 0.7, 0.4, 0.1, 0], { others: OTHERS.replace('52,50', '60,50') })
   ).toEqual(['neighbourMoves'])
+})
+
+test('a fade swallowed by a stalled frame is made again, and the same jump between frames on time is a pop', () => {
+  // pwa-landscape, 2026-11-27: a 179ms frame right after the click, the fade over by the frame after it
+  const stalled = [0, 17, 34, 51, 68, 85, 102, 281, 338, 355, 372, 389]
+  const fade = [1, 1, 1, 1, 1, 1, 1, 0.007, 0, 0, 0, 0]
+  expect(hide(fade, {}, stalled)).toBe('stalled')
+  expect(hide(fade)).toEqual(['pops'])
+  // web, a 234ms stall forced on the click's frame: drawn at full opacity after the gap, at 0 on the next frame
+  expect(
+    hide([1, 1, 1, 1, 1, 0, 0, 0], {}, [0, 17, 34, 51, 285, 302, 319, 336])
+  ).toBe('stalled')
+  // A long frame that a full fade drew across is no stall to redo
+  expect(
+    hide([1, 1, 0.7, 0.4, 0.1, 0, 0], {}, [0, 17, 120, 137, 154, 171, 188])
+  ).toEqual([])
 })
