@@ -5,7 +5,8 @@
 // Only the look: every request is still checked against the session itself
 export const SIGNED_IN_COOKIE = 'synbox_signed_in'
 
-const SESSION_COOKIE = /^(?:__Secure-)?better-auth\.session_token=([^;]*)/u
+const SESSION_COOKIE =
+  /^(?:__Secure-)?better-auth\.session_token=(?<value>[^;]*)/u
 
 // No max age: gone with the browser session, as a session cookie without one is
 const set = (maxAgeSeconds: number | null) =>
@@ -35,14 +36,14 @@ export const signedInHintFor = (
 export const withSignedInHint = (response: Response): Response => {
   const session = response.headers
     .getSetCookie()
-    .map((cookie) => ({ cookie, match: SESSION_COOKIE.exec(cookie) }))
-    .find(({ match }) => match !== null)
-  if (session?.match == null) {
+    .find((cookie) => SESSION_COOKIE.test(cookie))
+  if (session === undefined) {
     return response
   }
-  const maxAge = /;\s*Max-Age=(-?\d+)/iu.exec(session.cookie)?.[1]
-  const cleared =
-    session.match[1] === '' || (maxAge !== undefined && Number(maxAge) <= 0)
+  const value = SESSION_COOKIE.exec(session)?.groups?.value ?? ''
+  const maxAge = /;\s*Max-Age=(?<seconds>-?\d+)/iu.exec(session)?.groups
+    ?.seconds
+  const cleared = value === '' || (maxAge !== undefined && Number(maxAge) <= 0)
   const answer = new Response(response.body, response)
   answer.headers.append(
     'Set-Cookie',

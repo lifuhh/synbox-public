@@ -89,8 +89,13 @@ const rememberedMe = (): Me | null => {
 // Set by the auth Worker beside the session cookie, for as long, saying only that there is a session
 // (worker/src/signed-in-hint.ts). It outlives the remembered answer: Safari clears a site's storage after 7 days
 // without a visit but keeps the cookies the server set, and the first load after signing in has nothing remembered yet
-const signedInHint = () =>
-  document.cookie.split('; ').includes('synbox_signed_in=1')
+const signedInHint = () => {
+  try {
+    return document.cookie.split('; ').includes('synbox_signed_in=1')
+  } catch {
+    return false
+  }
+}
 
 // Who to draw before /api/me answers: the account this browser last saw, else, while the session cookie is there,
 // an account not yet known (no name, picture or quota), else a guest (null)
