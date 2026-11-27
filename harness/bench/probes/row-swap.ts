@@ -16,7 +16,9 @@
 //   came or went;
 // - reducedMotionMoves: under Reduce Motion a part was drawn anywhere but in one of the two places;
 // - pops: the swap came or went at once when a row was hidden or shown again (fewer than FADE_FRAMES frames drawn
-//   part way), or was still shown, or still took focus, with a row hidden;
+//   part way), or was still shown, or still took focus, with a row hidden. A fade that changed across a frame the
+//   machine stalled (motion.ts › stallLimit) was not seen, not a pop: the row is hidden and shown again, REDOS times
+//   at most, and a fade stalled on every attempt leaves no sample (`machine stalled`), which `check` retries;
 // - lostFocus: pressed with focus on it, the swap lost focus.
 // Overshoot and settle use probes/motion.ts's thresholds. A case that couldn't run (no line on the stage, no swap
 // on the rail) is an error, no sample.
@@ -29,6 +31,7 @@ import type { Page } from 'playwright'
 import { open } from '../engines/browser'
 import type { BenchContext, Sample, Surface } from '../types'
 import { LAYOUT_PAGES, PLAYER_AUDIT_SEC, PLAYER_SONG } from './layout'
+import { REDOS, stallLimit } from './motion'
 
 const LIMIT_MS = 150_000
 const MOVE_PX = 0.5
@@ -466,26 +469,60 @@ export const judgeSwap = (
   }
 }
 
-/** The frames of a row hidden or shown again: the swap fades, its place and every other button stay */
+const opacityOf = (f: Frame | undefined) => f?.swap?.opacity ?? 0
+
+const gapAt = (frames: Frame[], n: number) => {
+  const frame = frames[n]
+  const prev = frames[n - 1]
+  return frame === undefined || prev === undefined ? 0 : frame.t - prev.t
+}
+
+/**
+ * The stalled frame gap the swap's opacity changed across, as a note; null when every change came between frames on
+ * time. A change on the frame after a stalled one counts too: Chromium draws what the stall swallowed there (a fade's
+ * first frame after a 234ms gap at full opacity, the next one at 0)
+ */
+const fadeStall = (frames: Frame[]): string | null => {
+  const limitMs = stallLimit(frames.map((f) => f.t))
+  for (const [n, frame] of frames.entries()) {
+    const gapMs = Math.max(gapAt(frames, n), gapAt(frames, n - 1))
+    if (
+      gapMs > limitMs &&
+      Math.abs(opacityOf(frame) - opacityOf(frames[n - 1])) > 0.02
+    ) {
+      return `the fade crossed a ${gapMs.toFixed(0)}ms frame gap at frame ${n} (over ${limitMs.toFixed(0)}ms)`
+    }
+  }
+  return null
+}
+
+/**
+ * The frames of a row hidden or shown again: the swap fades, its place and every other button stay. Returns the stall
+ * that hid a fade drawn on too few frames, judging nothing else; then the recording is made again
+ */
 export const judgeHide = (
   name: string,
   { frames }: Recording,
   hidden: boolean,
   flag: Flag
-): void => {
+): string | null => {
   const [first] = frames
   const last = frames.at(-1)
   if (first === undefined || last === undefined) {
-    return
-  }
-  if (frames.some((f) => f.others !== first.others)) {
-    flag('neighbourMoves', `${name}: a button of the rail moved`)
+    return null
   }
   // Counted in frames drawn part way, not as a step per frame: the toggle's own long frame comes first in WebKit,
   // and a step allowed for each frame it took would let a control that went at once through
   const partWay = frames.filter(
     (f) => f.swap !== null && f.swap.opacity > 0.02 && f.swap.opacity < 0.98
   ).length
+  const stall = partWay < FADE_FRAMES ? fadeStall(frames) : null
+  if (stall !== null) {
+    return `${name}: ${stall}`
+  }
+  if (frames.some((f) => f.others !== first.others)) {
+    flag('neighbourMoves', `${name}: a button of the rail moved`)
+  }
   if (partWay < FADE_FRAMES) {
     flag(
       'pops',
@@ -499,6 +536,7 @@ export const judgeHide = (
       `${name}: the swap ended at opacity ${last.swap?.opacity ?? -1}, visibility ${last.swap?.visibility ?? 'none'}`
     )
   }
+  return null
 }
 
 const pressLabel = async (page: Page, label: string) => {
@@ -627,13 +665,39 @@ const swapAudit = async (
     // A second press 100ms into the first: the two turn back from where they are
     kept.twice = await record(page, [SWAP_LABEL, SWAP_LABEL], 100, 900)
     judgeSwap('a second press mid-move', kept.twice, 2, false, flag)
-    kept.hide = await record(page, ['Romaji'], 0, 600)
-    judgeHide('Romaji hidden', kept.hide, true, flag)
-    if (await swapFocused(page, false)) {
-      flag('pops', 'the swap takes focus while Romaji is hidden')
+    // Hidden and shown again as a pair, so an attempt a stall spoiled is made again from where the first began
+    const stalls: string[] = []
+    for (let attempt = 0; ; attempt += 1) {
+      const found: [Finding, string][] = []
+      const keep: Flag = (finding, note) => {
+        found.push([finding, note])
+      }
+      // oxlint-disable-next-line eslint/no-await-in-loop -- one attempt at a time, each judged before the next
+      kept.hide = await record(page, ['Romaji'], 0, 600)
+      const hideStall = judgeHide('Romaji hidden', kept.hide, true, keep)
+      // oxlint-disable-next-line eslint/no-await-in-loop -- the hidden state, before Romaji is shown again
+      if (await swapFocused(page, false)) {
+        keep('pops', 'the swap takes focus while Romaji is hidden')
+      }
+      // oxlint-disable-next-line eslint/no-await-in-loop -- shown again, back where the attempt began
+      kept.show = await record(page, ['Romaji'], 0, 600)
+      const stall =
+        judgeHide('Romaji shown again', kept.show, false, keep) ?? hideStall
+      if (stall === null) {
+        for (const [finding, note] of found) {
+          flag(finding, note)
+        }
+        break
+      }
+      stalls.push(`attempt ${attempt + 1}: ${stall}`)
+      if (attempt === REDOS) {
+        throw new Error(
+          `machine stalled: Romaji hidden and shown again stalled on all ${REDOS + 1} attempts (${stalls.join('; ')})`
+        )
+      }
     }
-    kept.show = await record(page, ['Romaji'], 0, 600)
-    judgeHide('Romaji shown again', kept.show, false, flag)
+    notes.push(...stalls.map((s) => `redo: ${s}`))
+    values.redos = stalls.length
     if (!(await swapFocused(page, true))) {
       flag('lostFocus', 'focus left the swap when it was pressed')
     }
