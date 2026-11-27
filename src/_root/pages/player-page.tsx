@@ -41,6 +41,7 @@ import {
 import { useLyricsReady } from '@/hooks/use-lyrics-ready'
 import { useMediaQuery } from '@/hooks/use-media-query'
 import { useSongVisit } from '@/hooks/use-song-visit'
+import { useViewportContain } from '@/hooks/use-viewport-contain'
 import type { SongVisit } from '@/hooks/use-song-visit'
 import { useAccess } from '@/lib/auth'
 import { useSongPresence } from '@/lib/library/presence'
@@ -114,6 +115,7 @@ const usePlayerSurface = (
     (playable || checking) && ((fullscreen && !phone) || onItsSide || held)
       ? 'stage'
       : 'watch'
+  useViewportContain(surface === 'stage' && short)
   const setSurface = useSetAtom(playerSurfaceAtom)
   useEffect(() => {
     setSurface(surface)
