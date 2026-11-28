@@ -177,7 +177,7 @@ export const ReportIssue = ({
               value={message}
               maxLength={REPORT_MESSAGE_MAX}
               rows={4}
-              placeholder='What’s wrong?'
+              placeholder='One report per song: list every issue (wrong words, timing, furigana, romaji, translation)'
               aria-invalid={problem !== null || undefined}
               aria-describedby={`${hintId} ${problemId}`}
               onChange={(event) => {
@@ -194,7 +194,7 @@ export const ReportIssue = ({
               className='min-h-28 w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-base placeholder:text-muted-foreground focus-visible:border-foreground/80 sm:text-sm touch:text-base'
             />
             <p id={hintId} className='-mt-1 text-xs text-muted-foreground'>
-              One report per song: list every issue
+              Usually fixed automatically within a day
             </p>
             <div className='flex items-center justify-between gap-3'>
               <output id={problemId} className='text-sm text-error'>
