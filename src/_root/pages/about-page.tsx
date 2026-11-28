@@ -16,11 +16,11 @@ const STEPS = [
     title: 'Paste a Link',
   },
   {
-    text: 'The song is transcribed and its lyrics timed word by word',
+    text: 'Synbox matches every word to the moment it’s sung',
     title: 'Lyrics Are Timed',
   },
   {
-    text: 'Each word fills as it is sung, with furigana, romaji and an English or Chinese translation',
+    text: 'Each word lights up on time, with furigana, romaji and an English or Chinese translation',
     title: 'Sing Along',
   },
 ]
@@ -28,21 +28,21 @@ const STEPS = [
 const FAQS = [
   {
     answer:
-      'When no published lyrics match, they come from speech recognition, and long intros, loud backing tracks or fast singing trip it up. Report Issue under the song’s More menu flags it for a fix.',
+      'Long intros, loud backing tracks and fast singing can cause mistakes. Use Report Issue in the player’s controls, and I’ll look at the song.',
     question: 'Why Are Some Lyrics Wrong?',
   },
   {
     answer:
-      'Japanese songs on YouTube, 1 to 8 minutes long, that the uploader lets other sites play. Age-restricted videos only play on YouTube.',
+      'Japanese songs on YouTube, 1 to 8 minutes long, that the uploader lets other sites play. Age-restricted videos don’t work.',
     question: 'Which Videos Work?',
   },
   {
-    answer: `No. Every song in the library is free to watch and sing, and your first new song is on me. Sign in to add ${SONGS_A_DAY} new songs a day, keep your lyric style and bookmarks on every device, and listen offline.`,
+    answer: `No. Every song in the library is free to watch and sing, and so is your first new song. Sign in to add ${SONGS_A_DAY} new songs a day, keep your library and lyric style on every device, and listen offline.`,
     question: 'Does It Cost Anything?',
   },
   {
     answer:
-      'Yes. Add Synbox to your home screen from your browser’s share menu, and it opens full screen like an app.',
+      'Yes. Choose Install App in the menu at the top right to add Synbox to your home screen or desktop.',
     question: 'Can I Install It?',
   },
 ]
@@ -103,8 +103,8 @@ const AboutPage = () => {
         <header className='flex flex-col gap-3'>
           <h1 className='text-3xl font-bold tracking-tight'>About Synbox</h1>
           <p className='text-lg text-pretty text-muted-foreground'>
-            Synbox turns a Japanese song on YouTube into karaoke: timed lyrics
-            with furigana, romaji and translations over the original video.
+            Synbox turns a Japanese song on YouTube into karaoke, with timed
+            lyrics, furigana, romaji and translations over the original video.
           </p>
         </header>
 
@@ -186,8 +186,9 @@ const AboutPage = () => {
 
         <p className='border-t border-border pt-6 text-xs text-pretty text-muted-foreground'>
           A non-commercial personal project with no ads. Songs, videos and
-          lyrics belong to their owners and are shown for learning and singing
-          along; rights holders can ask for removal through Contact Me below.
+          lyrics belong to their owners, and Synbox shows them for learning and
+          singing along. Rights holders can ask for removal through Contact Me
+          below.
         </p>
       </div>
 
