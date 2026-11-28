@@ -207,7 +207,9 @@ const ProfileButtonDropdown = () => {
 
   return (
     <>
-      <DropdownMenu>
+      {/* Non-modal, as every menu here: a modal one stops presses reaching the layers under it, so a Notifications
+          panel left open would never hear the press that opened this and stay open beside it */}
+      <DropdownMenu modal={false}>
         <ProfileTrigger user={user} pending={isPending} />
         {/* As wide as its longest line, within a floor and a ceiling: a long name or email truncates. Privacy and
             Terms live in the footers of Home, About and the policies themselves, not here */}
