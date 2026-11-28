@@ -103,7 +103,7 @@ export const ContactDialog = ({
           <MessageForm
             subjectMax={SUBJECT_MAX}
             messageMax={MESSAGE_MAX}
-            subjectPlaceholder='Question or collaboration'
+            subjectPlaceholder='Ask or report anything'
             sentLabel='Message Sent'
             send={async (fields) => {
               const result = await sendContact(fields)

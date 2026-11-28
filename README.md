@@ -44,7 +44,7 @@ This repository is the web app and its auth Worker. The service that makes the l
   <img src="docs/readme/showcase/generate.webp" alt="Generation progress on desktop and iPhone" width="100%" />
 </p>
 
-Paste a link to a song that isn't in the library. Synbox transcribes it and aligns it to its lyrics, word by word: published lyrics when they match, speech recognition when they don't. Progress shows step by step while you browse. The song is saved for everyone. One new song a day is free; signing in gives you more.
+Paste a link to a song that isn't in the library. Synbox times its lyrics word by word, with progress shown step by step while you browse. The song is saved for everyone. Your first new song is free; signing in gives you more.
 
 ## Made for Phones
 
