@@ -49,12 +49,16 @@ test('accounts list most recently active first, whichever source dates them', as
     env,
     ctx
   )
-  const { users } = (await response.json()) as { users: { id: string }[] }
+  const json: unknown = await response.json()
+  const users: unknown =
+    typeof json === 'object' && json !== null ? Reflect.get(json, 'users') : []
+  const ids = Array.isArray(users)
+    ? users.map((user: unknown): unknown =>
+        typeof user === 'object' && user !== null
+          ? Reflect.get(user, 'id')
+          : null
+      )
+    : []
   // The admin's own request just marked it active
-  expect(users.map((user) => user.id)).toEqual([
-    'boss',
-    'recent',
-    'quiet',
-    'old',
-  ])
+  expect(ids).toEqual(['boss', 'recent', 'quiet', 'old'])
 })
