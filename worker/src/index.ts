@@ -814,13 +814,17 @@ admin.use(async (c, next) => {
 // Everyone who has signed in, most recently active first, with their songs in the last 24 hours and overall, and
 // their counted plays (accountStats). Last active is the app opened or a song played (activity.ts); an account
 // not seen since accountStats began falls back to its last sign-in or session refresh (better-auth refreshes a
-// session at most daily)
+// session at most daily). Better Auth stores the session's date as ISO text and accountStats as epoch ms; SQLite
+// sorts every text above every number, so the session's is turned into epoch ms before the two meet
 admin.get('/users', async (c) => {
   await expireStalled(c.env.DB)
   const since = Date.now() - 86_400_000
   const { results } = await c.env.DB.prepare(
     `select u."id", u."email", u."name", u."image", u."role", u."banned", u."banReason", u."createdAt",
-       coalesce(a."lastActiveAt", (select max(s."updatedAt") from "session" s where s."userId" = u."id"))
+       coalesce(a."lastActiveAt", (select max(case typeof(s."updatedAt")
+           when 'text' then cast(round((julianday(s."updatedAt") - 2440587.5) * 86400000) as integer)
+           else s."updatedAt" end)
+         from "session" s where s."userId" = u."id"))
          as "lastActiveAt",
        coalesce(a."plays", 0) as "plays", a."lastPlayAt",
        case when q."userId" is null then 'default' when q."dailyLimit" is null then 'unlimited'

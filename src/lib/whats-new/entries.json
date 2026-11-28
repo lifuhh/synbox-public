@@ -1,5 +1,11 @@
 [
   {
+    "id": "fixes-menus-one-at-a-time",
+    "date": null,
+    "title": "Small Fixes",
+    "items": ["Bug fixes and performance improvements"]
+  },
+  {
     "id": "fixes-2026-11-28",
     "date": "2026-11-27",
     "title": "Small Fixes",
