@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
+import { AdminApiError } from '@/lib/admin-api-error'
 import { QUERY_KEYS } from '@/lib/react-query/query-keys'
 import {
   fetchRecommendations,
@@ -19,7 +20,7 @@ export const call = async (
     headers: { 'Content-Type': 'application/json' },
   })
   if (!response.ok) {
-    throw new Error(`The admin API answered ${response.status}`)
+    throw new AdminApiError(response.status)
   }
   return response.status === 204 ? null : await response.json()
 }

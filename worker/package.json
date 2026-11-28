@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
-    "deploy": "wrangler deploy",
+    "deploy": "wrangler d1 migrations apply synbox --remote && wrangler deploy",
     "typecheck": "tsc --noEmit",
     "test": "bun test"
   },

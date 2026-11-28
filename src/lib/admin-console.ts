@@ -9,6 +9,7 @@ import type { QueryClient } from '@tanstack/react-query'
 import { z } from 'zod'
 
 import { call } from '@/lib/admin'
+import { AdminApiError } from '@/lib/admin-api-error'
 import { authClient } from '@/lib/auth'
 import { QUERY_KEYS } from '@/lib/react-query/query-keys'
 import { listLyricsVersions } from '@/lib/synbox-flask/lyrics-versions'
@@ -98,9 +99,19 @@ const fetchParsed = async <T>(schema: z.ZodType<T>, path: string) => {
   return result.data
 }
 
-// Asking again gets the same answer, so Reload shows at once. Other failures keep React Query's 3 retries
-const retry = (failures: number, error: Error) =>
-  !(error instanceof AdminOutdatedError) && failures < 3
+// How often a failed read is asked again before its error shows. A Worker that answered mostly answers the same
+// again: a refusal (4xx) or an out-of-date shape never, a server error (5xx) once, so the error shows in about a
+// second, not after 4 asks over 8 (a 500 from a query its database couldn't run, 2026-11-28). A request that got
+// no answer keeps React Query's 3
+const retry = (failures: number, error: Error) => {
+  if (error instanceof AdminOutdatedError) {
+    return false
+  }
+  if (error instanceof AdminApiError) {
+    return error.status >= 500 && failures < 1
+  }
+  return failures < 3
+}
 
 export type DailyLimit = z.infer<typeof dailyLimitSchema>
 export type AdminUser = z.infer<typeof adminUserSchema>
