@@ -181,7 +181,7 @@ const driveCarousel = (
 
   // On by one, unless someone is moving the row: the same glide as the arrows, one motion that ends on the slide.
   // Not the browser's smooth scroll: in this snapping row WebKit stopped it short and snapped the rest in a second
-  // motion (installed app's view, 2026-11-28: 9 of 12 advances stopped 48px short)
+  // motion (2026-11-28, the installed app's view: 4 of 12 advances stopped 29px short)
   const advance = () => {
     if (drag || glide) {
       return
