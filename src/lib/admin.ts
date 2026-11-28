@@ -9,6 +9,14 @@ import type { Recommendation } from '@/lib/recommendations'
 
 // The auth Worker's /api/admin routes (worker/src/index.ts); each checks the admin role on the server
 
+// The Worker answered, with an error status: told apart from a request that never got an answer
+export class AdminApiError extends Error {
+  override name = 'AdminApiError'
+  constructor(readonly status: number) {
+    super(`The admin API answered ${status}`)
+  }
+}
+
 export const call = async (
   path: string,
   init: RequestInit = {}
@@ -19,7 +27,7 @@ export const call = async (
     headers: { 'Content-Type': 'application/json' },
   })
   if (!response.ok) {
-    throw new Error(`The admin API answered ${response.status}`)
+    throw new AdminApiError(response.status)
   }
   return response.status === 204 ? null : await response.json()
 }

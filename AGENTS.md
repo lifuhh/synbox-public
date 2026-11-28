@@ -123,6 +123,8 @@ Finished work collects in one long-lived branch, `staging`, and reaches producti
 
 This repo is the frontend only. The backend (`synbox-transcribe-whisper`) ships the same way, with its own staging branch and `python3 harness/release.py` (Cloud Run); merging here never deploys it. A request that changed both repos still asks one question, listing both stagings; Ship Now runs both releases, the backend's first when the frontend depends on it.
 
+The auth Worker (`worker/`) deploys apart from both, with `bun run deploy` in `worker/` from staging's tip: it applies pending D1 migrations to production, then deploys the code. Never a bare `wrangler deploy`: code that reads a column its migration hasn't added fails on every query that names the column with a table prefix, and silently matches nothing where it doesn't (D1 reads an unknown double-quoted name as a string). That took /admin › Reports down when a Worker needing migration 0033 went out without it (2026-11-27).
+
 ## Resolving conflicts
 
 - **Rebase, don't merge `staging` in:** `git fetch origin && git rebase origin/staging`, then `git push --force-with-lease`. The PR that merges second does the rebasing.
