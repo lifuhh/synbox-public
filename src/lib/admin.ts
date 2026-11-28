@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
+import { AdminApiError } from '@/lib/admin-api-error'
 import { QUERY_KEYS } from '@/lib/react-query/query-keys'
 import {
   fetchRecommendations,
@@ -8,14 +9,6 @@ import {
 import type { Recommendation } from '@/lib/recommendations'
 
 // The auth Worker's /api/admin routes (worker/src/index.ts); each checks the admin role on the server
-
-// The Worker answered, with an error status: told apart from a request that never got an answer
-export class AdminApiError extends Error {
-  override name = 'AdminApiError'
-  constructor(readonly status: number) {
-    super(`The admin API answered ${status}`)
-  }
-}
 
 export const call = async (
   path: string,

@@ -8,7 +8,8 @@ import {
 import type { QueryClient } from '@tanstack/react-query'
 import { z } from 'zod'
 
-import { AdminApiError, call } from '@/lib/admin'
+import { call } from '@/lib/admin'
+import { AdminApiError } from '@/lib/admin-api-error'
 import { authClient } from '@/lib/auth'
 import { QUERY_KEYS } from '@/lib/react-query/query-keys'
 import { listLyricsVersions } from '@/lib/synbox-flask/lyrics-versions'
