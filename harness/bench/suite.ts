@@ -13,7 +13,7 @@ import {
 } from './engines/browser'
 import type { View } from './engines/browser'
 import { cdpPerf } from './engines/cdp'
-import { carouselStopAudit } from './probes/carousel-stop'
+import { carouselAdvanceAudit } from './probes/carousel-advance'
 import { controlShadeAudit } from './probes/control-shade'
 import { sizeDragAudit } from './probes/drag-perf'
 import type { DragCase } from './probes/drag-perf'
@@ -571,20 +571,24 @@ export const SUITE: Benchmark[] = [
       'Page changes in the installed app (WebKit, 390×844), every frame: the push and pop slide and the tab fade against their curves: teleports, a page off its path or its ends, a page not opaque, a bar that moves, the wrong kind or html[data-nav] left behind, the wrong length; margins reported',
   },
   {
-    // Home's Recommendations row with its auto-advance cut short, as a finger landing on it does on a phone: it must
-    // come to rest on a slide, not between two (probes/carousel-stop.ts)
-    id: 'carousel-stop-pwa-portrait',
+    // Home's Recommendations row moving on by itself, every frame: each advance one motion of one slide, ending
+    // centred, after load and after coming back to Home (probes/carousel-advance.ts)
+    id: 'carousel-advance-pwa-portrait',
     metrics: [
+      count('splitAdvances'),
+      count('reversals'),
+      count('wrongTravel'),
       count('restsOffSlide'),
       count('offMaxPx', false),
-      count('stops', false),
+      count('advances', false),
     ],
-    run: carouselStopAudit(),
+    run: carouselAdvanceAudit(),
     runs: 1,
-    scope: probe('carousel-stop', ['/']),
+    scope: probe('carousel-advance', ['/']),
     surface: PWA_PORTRAIT.surface,
+    timing: true,
     title:
-      'Home’s Recommendations row in the installed app (WebKit, 390×844), its auto-advance stopped partway, twice: the slide nearest the middle within 1px of it once the row rests',
+      'Home’s Recommendations row in the installed app (WebKit, 390×844), 3 auto-advances after load and 3 after coming back to Home, every frame: each one motion, no reversal, exactly one slide, ending within 1px of centre',
   },
   {
     // The full-screen player on an iPhone on its side, turned by CSS (rotation lock on) and rotated by iOS (lock off,
