@@ -450,6 +450,14 @@ export interface Opened {
  * SYNBOX_LIVE_LOOKUP=1) or from the service (`live`: the smoke test of a deployed copy). `scale` overrides the device scale (README captures want 2× desktop); `video` records the
  * page into that folder as WebM, at the viewport size times `video.scale`
  */
+// A View passed by mistake (an untyped script) has no engine: it opened WebKit at desktop size, and its numbers
+// were reported as the installed app's (2026-11-28)
+const assertSurface = (surface: Surface) => {
+  if (surface.engine !== 'chromium' && surface.engine !== 'webkit') {
+    throw new Error('open takes a surface (PWA_PORTRAIT.surface), not a view')
+  }
+}
+
 export const open = async (
   surface: Surface,
   opts: {
@@ -460,6 +468,7 @@ export const open = async (
     video?: { dir: string; scale: number }
   } = {}
 ): Promise<Opened> => {
+  assertSurface(surface)
   const browser = await launch(surface.engine)
   const phone = surface.kind === 'phone'
   const viewport = phone ? VIEWPORTS[phoneKey(surface)] : VIEWPORTS.desktop
